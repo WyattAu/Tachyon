@@ -259,11 +259,12 @@ export class ApiClient {
    * Search documents
    */
   search(query: string, options?: { page?: number; limit?: number }): ResultAsync<ApiResponse<{ results: unknown[]; total: number }>, ApiError> {
-    const params = new URLSearchParams({ q: query });
+    const params = new URLSearchParams();
+    params.set('search', query);
     if (options?.page) params.set('page', options.page.toString());
-    if (options?.limit) params.set('limit', options.limit.toString());
+    if (options?.limit) params.set('page_size', options.limit.toString());
     
-    return this.request(`/api/v1/search?${params.toString()}`);
+    return this.request(`/api/v1/documents?${params.toString()}`);
   }
 
   /**
