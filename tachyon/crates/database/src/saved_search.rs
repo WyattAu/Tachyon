@@ -1,0 +1,212 @@
+// Saved Search
+// Persistent search queries and filters for users
+
+use crate::error::{DatabaseError, DatabaseResult};
+use crate::schema::DatabasePool;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::{query, query_as, FromRow, Row};
+use tracing::{debug, info, instrument};
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct SavedSearch {
+    pub id: String,
+    pub user_id: String,
+    pub name: String,
+    pub query: String,
+    pub filters: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl SavedSearch {
+    pub fn parse_filters(&self) -> DatabaseResult<Option<super::search::SearchFilters>> {
+        match &self.filters {
+            Some(f) => Ok(Some(
+                serde_json::from_str(f)
+                    .map_err(|e| DatabaseError::SerializationError(e.to_string()))?,
+            )),
+            None => Ok(None),
+        }
+    }
+
+    pub fn serialize_filters(
+        filters: &Option<super::search::SearchFilters>,
+    ) -> DatabaseResult<Option<String>> {
+        match filters {
+            Some(f) => Ok(Some(
+                serde_json::to_string(f)
+                    .map_err(|e| DatabaseError::SerializationError(e.to_string()))?,
+            )),
+            None => Ok(None),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateSavedSearchRequest {
+    pub user_id: String,
+    pub name: String,
+    pub query: String,
+    pub filters: Option<super::search::SearchFilters>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateSavedSearchRequest {
+    pub name: Option<String>,
+    pub query: Option<String>,
+    pub filters: Option<super::search::SearchFilters>,
+}
+
+#[derive(Clone)]
+pub struct SavedSearchRepository {
+    pool: DatabasePool,
+}
+
+impl SavedSearchRepository {
+    pub fn new(pool: DatabasePool) -> Self {
+        Self { pool }
+    }
+
+    #[instrument(skip(self))]
+    pub async fn create(&self, request: CreateSavedSearchRequest) -> DatabaseResult<SavedSearch> {
+        let id = uuid::Uuid::new_v4().to_string();
+        let now = Utc::now();
+        let filters_json = SavedSearch::serialize_filters(&request.filters)?;
+
+        let sql = r#"
+            INSERT INTO saved_searches (id, user_id, name, query, filters, created_at, updated_at)
+            VALUES ($1::uuid, $2::uuid, $3, $4, $5::jsonb, $6, $7)
+            RETURNING id::text as id, user_id::text as user_id, name, query, filters::text as filters, created_at, updated_at
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let saved_search: SavedSearch = query_as(sql)
+            .bind(&id)
+            .bind(&request.user_id)
+            .bind(&request.name)
+            .bind(&request.query)
+            .bind(&filters_json)
+            .bind(&now)
+            .bind(&now)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| {
+                if e.to_string().contains("duplicate key") {
+                    DatabaseError::duplicate("saved_search", &request.name)
+                } else {
+                    DatabaseError::QueryError(e.to_string())
+                }
+            })?;
+
+        info!("Saved search created: {} for user {}", saved_search.id, saved_search.user_id);
+        Ok(saved_search)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn get_by_id(&self, id: &str) -> DatabaseResult<SavedSearch> {
+        let sql = r#"
+            SELECT id::text as id, user_id::text as user_id, name, query, filters::text as filters, created_at, updated_at
+            FROM saved_searches
+            WHERE id = $1::uuid
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let saved_search = query_as(sql)
+            .bind(id)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        match saved_search {
+            Some(s) => Ok(s),
+            None => Err(DatabaseError::not_found("saved_search", id)),
+        }
+    }
+
+    #[instrument(skip(self))]
+    pub async fn list_by_user(&self, user_id: &str) -> DatabaseResult<Vec<SavedSearch>> {
+        let sql = r#"
+            SELECT id::text as id, user_id::text as user_id, name, query, filters::text as filters, created_at, updated_at
+            FROM saved_searches
+            WHERE user_id = $1::uuid
+            ORDER BY created_at DESC
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let saved_searches = query_as(sql)
+            .bind(user_id)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        debug!("Found {} saved searches for user {}", saved_searches.len(), user_id);
+        Ok(saved_searches)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn update(&self, id: &str, request: UpdateSavedSearchRequest) -> DatabaseResult<SavedSearch> {
+        let current = self.get_by_id(id).await?;
+        let filters_json = SavedSearch::serialize_filters(&request.filters)?;
+
+        let name = request.name.unwrap_or(current.name);
+        let query = request.query.unwrap_or(current.query);
+        let filters = filters_json.or(current.filters);
+        let now = Utc::now();
+
+        let sql = r#"
+            UPDATE saved_searches
+            SET name = $2, query = $3, filters = $4::jsonb, updated_at = $5
+            WHERE id = $1::uuid
+            RETURNING id::text as id, user_id::text as user_id, name, query, filters::text as filters, created_at, updated_at
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let saved_search: SavedSearch = query_as(sql)
+            .bind(id)
+            .bind(&name)
+            .bind(&query)
+            .bind(&filters)
+            .bind(&now)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        info!("Saved search updated: {}", id);
+        Ok(saved_search)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn delete(&self, id: &str) -> DatabaseResult<()> {
+        let sql = "DELETE FROM saved_searches WHERE id = $1::uuid";
+
+        let mut conn = self.pool.acquire().await?;
+        let result = query(sql)
+            .bind(id)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::not_found("saved_search", id));
+        }
+
+        info!("Saved search deleted: {}", id);
+        Ok(())
+    }
+
+    #[instrument(skip(self))]
+    pub async fn count_by_user(&self, user_id: &str) -> DatabaseResult<i64> {
+        let sql = "SELECT COUNT(*) as count FROM saved_searches WHERE user_id = $1::uuid";
+
+        let mut conn = self.pool.acquire().await?;
+        let row = query(sql)
+            .bind(user_id)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        let count: i64 = row.get("count");
+        Ok(count)
+    }
+}

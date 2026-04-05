@@ -1,0 +1,76 @@
+name: SBOM Generation
+
+on:
+  push:
+    branches: [main, develop, 'release/*']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-sbom:
+    name: Rust SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install cargo-bom
+        run: cargo install cargo-bom
+
+      - name: Generate SPDX SBOM
+        run: |
+          cargo bom --format spdx --output .spdx/tachyon-server.spdx.json
+
+      - name: Generate CycloneDX SBOM
+        run: |
+          cargo bom --format cyclonedx --output .cyclonedx/tachyon-server.json
+
+      - name: Upload Rust SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-sbom
+          path: |
+            .spdx/tachyon-server.spdx.json
+            .cyclonedx/tachyon-server.json
+          retention-days: 90
+
+  node-sbom:
+    name: Node.js SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install cyclonedx-npm
+        run: npm install -g @cyclonedx/cyclonedx-npm
+
+      - name: Generate CycloneDX SBOM
+        working-directory: tachyon/web
+        run: |
+          cyclonedx-npm -o ../../.cyclonedx/tachyon-web.json
+
+      - name: Upload Node.js SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-sbom
+          path: |
+            .cyclonedx/tachyon-web.json
+          retention-days: 90

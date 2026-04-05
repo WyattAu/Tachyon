@@ -1,0 +1,493 @@
+name: Supply Chain Monitoring
+
+on:
+  schedule:
+    # Run vulnerability scan every 6 hours
+    - cron: '0 */6 * * *'
+    # Run license check daily at 2 AM UTC
+    - cron: '0 2 * * *'
+    # Run comprehensive scan weekly on Sunday at 3 AM UTC
+    - cron: '0 3 * * 0'
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Type of scan to run'
+        required: true
+        type: choice
+        options:
+          - all
+          - vulnerabilities
+          - licenses
+          - sbom
+          - freshness
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  security-events: write
+
+env:
+  RUST_BACKTRACE: '1'
+  CARGO_TERM_COLOR: 'always'
+
+jobs:
+  vulnerability-scan:
+    name: Vulnerability Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type != 'licenses' && github.event.inputs.scan_type != 'sbom' && github.event.inputs.scan_type != 'freshness'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install npm dependencies
+        working-directory: ./tachyon/web
+        run: npm ci
+
+      - name: Run cargo audit
+        run: |
+          cd tachyon
+          cargo audit --json > ../vulnerability-rust.json || true
+          cargo audit
+
+      - name: Run npm audit
+        working-directory: ./tachyon/web
+        run: |
+          npm audit --json > ../../vulnerability-npm.json || true
+          npm audit
+
+      - name: Run cargo-deny
+        run: |
+          cd tachyon
+          cargo deny check bans licenses sources --format json > ../cargo-deny-report.json || true
+
+      - name: Process vulnerability results
+        run: |
+          python3 .github/scripts/process_vulnerabilities.py \
+            --rust-report vulnerability-rust.json \
+            --npm-report vulnerability-npm.json \
+            --output vulnerability-summary.json
+
+      - name: Check for critical vulnerabilities
+        run: |
+          python3 .github/scripts/check_vulnerabilities.py \
+            --report vulnerability-summary.json \
+            --severity critical,high \
+            --exit-on-fail
+
+      - name: Upload vulnerability reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vulnerability-reports-${{ github.sha }}
+          path: |
+            vulnerability-rust.json
+            vulnerability-npm.json
+            cargo-deny-report.json
+            vulnerability-summary.json
+          retention-days: 30
+
+      - name: Create GitHub issue on critical vulnerability
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('vulnerability-summary.json', 'utf8'));
+            const criticalVulns = report.vulnerabilities.filter(v => v.severity === 'CRITICAL');
+            if (criticalVulns.length > 0) {
+              const title = `CRITICAL: ${criticalVulns.length} Critical Vulnerability(ies) Detected`;
+              const body = criticalVulns.map(v =>
+                `**Package:** ${v.package}\n` +
+                `**CVE:** ${v.cve_id}\n` +
+                `**CVSS:** ${v.cvss_score}\n` +
+                `**Action:** ${v.recommendation}\n\n`
+              ).join('---\n') +
+              `Build: ${{ github.sha }}\n` +
+              `Reported: ${new Date().toISOString()}\n\n` +
+              `Reference: [Vulnerability Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+              
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['critical-vulnerability', 'security']
+              });
+            }
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type != 'vulnerabilities' && github.event.inputs.scan_type != 'sbom' && github.event.inputs.scan_type != 'freshness'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny
+
+      - name: Install license-checker
+        run: npm install -g license-checker
+
+      - name: Run cargo-deny license check
+        run: |
+          cd tachyon
+          cargo deny check licenses --format json > ../license-rust.json || true
+
+      - name: Run npm license check
+        working-directory: ./tachyon/web
+        run: |
+          license-checker --json --production > ../../license-npm.json || true
+
+      - name: Process license results
+        run: |
+          python3 .github/scripts/process_licenses.py \
+            --rust-report license-rust.json \
+            --npm-report license-npm.json \
+            --allowed-licenses .specs/07_ci_cd/allowed_licenses.txt \
+            --output license-summary.json
+
+      - name: Check for prohibited licenses
+        run: |
+          python3 .github/scripts/check_licenses.py \
+            --report license-summary.json \
+            --output license-violations.json
+
+      - name: Upload license reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: license-reports-${{ github.sha }}
+          path: |
+            license-rust.json
+            license-npm.json
+            license-summary.json
+            license-violations.json
+          retention-days: 30
+
+      - name: Create GitHub issue on license violation
+        if: hashFiles('license-violations.json') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const violations = JSON.parse(fs.readFileSync('license-violations.json', 'utf8'));
+            if (violations.length > 0) {
+              const title = `CRITICAL: ${violations.length} License Violation(s) Detected`;
+              const body = violations.map(v =>
+                `**Package:** ${v.package}\n` +
+                `**License:** ${v.license}\n` +
+                `**Status:** ${v.status}\n\n` +
+                `Action Required: REMOVE this dependency immediately\n\n`
+              ).join('---\n') +
+              `Build: ${{ github.sha }}\n` +
+              `Reported: ${new Date().toISOString()}\n\n` +
+              `Prohibited Licenses: GPL-2.0, GPL-3.0, AGPL-3.0, LGPL-2.1, LGPL-3.0\n` +
+              `Allowed Licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD\n\n` +
+              `Reference: [License Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+              
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['license-violation', 'compliance']
+              });
+            }
+
+  sbom-generation:
+    name: SBOM Generation and Verification
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'sbom'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install cargo-bom
+        run: cargo install cargo-bom
+
+      - name: Install cyclonedx-npm
+        run: npm install -g @cyclonedx/cyclonedx-npm
+
+      - name: Install syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Generate Rust SBOM
+        run: |
+          cd tachyon
+          cargo bom --format spdx --output ../.spdx/tachyon-server.spdx.json
+          cargo bom --format cyclonedx --output ../.cyclonedx/tachyon-server.json
+
+      - name: Generate Web SBOM
+        run: |
+          cd tachyon/web
+          cyclonedx-npm -o ../../.cyclonedx/tachyon-web.json
+
+      - name: Verify SBOM completeness
+        run: |
+          python3 .github/scripts/verify_sbom.py \
+            --spdx-dir .spdx \
+            --cyclonedx-dir .cyclonedx \
+            --output sbom-verification.json
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-artifacts-${{ github.sha }}
+          path: |
+            .spdx/
+            .cyclonedx/
+            sbom-verification.json
+          retention-days: 90
+
+      - name: Attach SBOM to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            .spdx/tachyon-server.spdx.json
+            .cyclonedx/tachyon-server.json
+            .cyclonedx/tachyon-web.json
+
+  dependency-freshness:
+    name: Dependency Freshness Check
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'freshness'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install cargo-outdated
+        run: cargo install cargo-outdated
+
+      - name: Run cargo-outdated
+        run: |
+          cd tachyon
+          cargo outdated --json > ../outdated-rust.json || true
+
+      - name: Run npm outdated
+        working-directory: ./tachyon/web
+        run: |
+          npm outdated --json > ../../outdated-npm.json || true
+
+      - name: Process freshness results
+        run: |
+          python3 .github/scripts/process_freshness.py \
+            --rust-report outdated-rust.json \
+            --npm-report outdated-npm.json \
+            --threshold 90 \
+            --output freshness-summary.json
+
+      - name: Upload freshness reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: freshness-reports-${{ github.sha }}
+          path: |
+            outdated-rust.json
+            outdated-npm.json
+            freshness-summary.json
+          retention-days: 30
+
+      - name: Create Dependabot PRs
+        if: contains(needs.*.result, 'success')
+        run: |
+          python3 .github/scripts/create_dependabot_prs.py \
+            --report freshness-summary.json
+
+  alert-processing:
+    name: Process and Send Alerts
+    runs-on: ubuntu-latest
+    needs: [vulnerability-scan, license-check, sbom-generation, dependency-freshness]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+        with:
+          path: reports/
+          pattern: '*-reports-*'
+
+      - name: Generate consolidated report
+        run: |
+          python3 .github/scripts/generate_report.py \
+            --reports-dir reports/ \
+            --output consolidated-report.json \
+            --output-html report.html
+
+      - name: Check alert conditions
+        run: |
+          python3 .github/scripts/check_alerts.py \
+            --report consolidated-report.json \
+            --alert-config .specs/09_5_supply_monitoring/alerting_rules.md \
+            --output alerts.json
+
+      - name: Send Slack notification
+        if: hashFiles('alerts.json') != ''
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "Supply Chain Monitoring Results",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Scan completed with ${{ needs.vulnerability-scan.result }} vulnerabilities, ${{ needs.license-check.result }} license issues"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "View full report: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send PagerDuty alert on critical
+        if: hashFiles('alerts.json') != ''
+        run: |
+          python3 .github/scripts/send_pagerduty.py \
+            --alerts alerts.json \
+            --severity critical \
+            --integration-key ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+
+      - name: Upload consolidated report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: consolidated-report-${{ github.sha }}
+          path: |
+            consolidated-report.json
+            report.html
+            alerts.json
+          retention-days: 90
+
+  security-scan:
+    name: Security Scan (Secrets and SAST)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog-action@master
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: ${{ github.ref }}
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: true
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/cwe-top-25
+            p/owasp-top-10
+
+      - name: Upload security scan reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-reports-${{ github.sha }}
+          path: |
+            trufflehog-report.json
+            gitleaks-report.json
+            semgrep-report.json
+          retention-days: 30
+
+      - name: Create GitHub issue on secret leak
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'CRITICAL: Secret Detected in Repository';
+            const body = `A secret has been detected in the repository by security scanning tools.\n\n` +
+              `Commit: ${{ github.sha }}\n` +
+              `Workflow: ${{ github.workflow }}\n` +
+              `Run: ${{ github.run_id }}\n\n` +
+              `Action Required:\n` +
+              `1. Rotate the leaked secret immediately\n` +
+              `2. Remove the secret from the repository\n` +
+              `3. Invalidate any affected credentials\n\n` +
+              `Reference: [Security Scan Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n` +
+              `View the [Security Scan Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+              
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['secret-leak', 'security', 'critical']
+            });

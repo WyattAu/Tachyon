@@ -1,0 +1,438 @@
+name: Documentation Verification
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - '.specs/07_5_doc_verification/**'
+      - 'docs/**'
+      - 'tachyon/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '.specs/07_5_doc_verification/**'
+      - 'docs/**'
+      - 'tachyon/**'
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 02:00 UTC
+  workflow_dispatch:  # Manual trigger
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  consistency-checks:
+    name: Documentation Consistency Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      
+      - name: Install dependencies
+        run: |
+          cargo install --quiet syn-cli
+          cargo install --quiet mdbook
+      
+      - name: Extract code examples
+        run: |
+          python3 -m pip install --quiet markdown-it-py
+          
+      - name: Run consistency checks
+        run: |
+          echo "Running structural consistency checks..."
+          python3 .specs/07_5_doc_verification/scripts/check_structure.py || true
+          
+          echo "Running semantic consistency checks..."
+          cargo run --bin doc_verify --consistency || true
+          
+      - name: Upload consistency results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: consistency-results
+          path: |
+            .reports/doc_verification/consistency_*.json
+            .reports/doc_verification/consistency_*.md
+
+  drift-detection:
+    name: Documentation Drift Detection
+    runs-on: ubuntu-latest
+    needs: consistency-checks
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+      
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      
+      - name: Run drift detection
+        run: |
+          cargo run --bin doc_verify --drift \
+            --baseline .specs/07_5_doc_verification/baselines/current.json \
+            --output .reports/doc_verification/drift_report.json
+        env:
+          DOCSRS: 1
+      
+      - name: Check for critical drifts
+        run: |
+          if [ -f .reports/doc_verification/drift_report.json ]; then
+            python3 .specs/07_5_doc_verification/scripts/check_drift_severity.py \
+              --report .reports/doc_verification/drift_report.json \
+              --threshold critical
+          fi
+      
+      - name: Upload drift results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: drift-results
+          path: |
+            .reports/doc_verification/drift_report.json
+            .reports/doc_verification/drift_*.md
+      
+      - name: Create issue on critical drift
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('.reports/doc_verification/drift_report.json', 'utf8'));
+            const criticalDrifts = report.drift_items.filter(d => d.severity === 'critical');
+            
+            if (criticalDrifts.length > 0) {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Critical Documentation Drift Detected - ${report.timestamp}`,
+                body: criticalDrifts.map(d => 
+                  `- **${d.qualified_name}**: ${d.description}\n  **Action**: ${d.suggested_action}`
+                ).join('\n\n'),
+                labels: ['documentation', 'drift', 'critical']
+              });
+            }
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  api-documentation-generation:
+    name: API Documentation Generation
+    runs-on: ubuntu-latest
+    needs: drift-detection
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rust-docs
+      
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install documentation tools
+        run: |
+          cargo install --quiet utoipagen-cli
+          cargo install --quiet typify-cli
+          npm install -g @openapitools/openapi-generator
+      
+      - name: Generate OpenAPI specification
+        run: |
+          cargo run --bin doc_gen --openapi \
+            --output docs/api/openapi.json \
+            --format json
+          
+          cargo run --bin doc_gen --openapi \
+            --output docs/api/openapi.yaml \
+            --format yaml
+        env:
+          DOCSRS: 1
+      
+      - name: Generate TypeScript types
+        run: |
+          cargo run --bin doc_gen --typescript \
+            --output web/src/types/api.ts \
+            --strict
+      
+      - name: Generate Rust documentation
+        run: |
+          cargo doc --no-deps --all-features \
+            --document-private-items \
+            --output-dir target/doc
+        env:
+          RUSTDOCFLAGS: --html-after-content '<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>'
+      
+      - name: Generate Markdown documentation
+        run: |
+          cargo run --bin doc_gen --markdown \
+            --output docs/api/reference.md \
+            --include-examples
+      
+      - name: Validate generated documentation
+        run: |
+          # Validate OpenAPI spec
+          npm install -g @apidevtools/swagger-cli
+          swagger-cli validate docs/api/openapi.json
+          
+          # Validate TypeScript types
+          cd web
+          npm run type-check
+          
+          # Validate Markdown links
+          markdown-link-check docs/api/reference.md
+      
+      - name: Upload generated documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: api-documentation
+          path: |
+            docs/api/openapi.json
+            docs/api/openapi.yaml
+            docs/api/reference.md
+            web/src/types/api.ts
+            target/doc/
+      
+      - name: Deploy documentation
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add docs/api/openapi.json docs/api/openapi.yaml docs/api/reference.md
+          git add web/src/types/api.ts
+          git commit -m "docs: auto-generated API documentation"
+          git push
+
+  example-validation:
+    name: Code Example Validation
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        rust: [stable, beta]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+          components: rustfmt, clippy
+      
+      - name: Install dependencies
+        run: |
+          cargo install --quiet cargo-doctest
+      
+      - name: Extract examples from documentation
+        run: |
+          cargo run --bin doc_verify --extract-examples \
+            --input docs/ \
+            --output .reports/doc_verification/examples.json
+      
+      - name: Validate Rust examples
+        run: |
+          cargo run --bin doc_verify --validate-examples \
+            --input .reports/doc_verification/examples.json \
+            --language rust \
+            --output .reports/doc_verification/rust_examples_validation.json
+      
+      - name: Run doctests
+        run: |
+          cargo test --doc --no-fail-fast || true
+      
+      - name: Compile and test examples
+        run: |
+          cargo run --bin doc_verify --compile-examples \
+            --input .reports/doc_verification/examples.json \
+            --language rust \
+            --timeout 300
+      
+      - name: Execute examples
+        run: |
+          cargo run --bin doc_verify --execute-examples \
+            --input .reports/doc_verification/examples.json \
+            --language rust \
+            --timeout 60 \
+            --sandbox
+      
+      - name: Verify example output
+        run: |
+          cargo run --bin doc_verify --verify-output \
+            --input .reports/doc_verification/examples.json \
+            --output .reports/doc_verification/output_verification.json
+      
+      - name: Upload validation results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: example-validation-${{ matrix.os }}-${{ matrix.rust }}
+          path: |
+            .reports/doc_verification/examples.json
+            .reports/doc_verification/rust_examples_validation.json
+            .reports/doc_verification/output_verification.json
+
+  quality-gates:
+    name: Documentation Quality Gates
+    runs-on: ubuntu-latest
+    needs: [consistency-checks, drift-detection, api-documentation-generation, example-validation]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: .reports/doc_verification
+      
+      - name: Evaluate quality gates
+        run: |
+          python3 .specs/07_5_doc_verification/scripts/evaluate_quality_gates.py \
+            --consistency .reports/doc_verification/consistency_*.json \
+            --drift .reports/doc_verification/drift_report.json \
+            --examples .reports/doc_verification/rust_examples_validation.json \
+            --thresholds .specs/07_5_doc_verification/quality_gate_thresholds.toml \
+            --output .reports/doc_verification/quality_gate_report.json
+      
+      - name: Check gate compliance
+        run: |
+          python3 .specs/07_5_doc_verification/scripts/check_gate_compliance.py \
+              --report .reports/doc_verification/quality_gate_report.json
+      
+      - name: Generate summary report
+        run: |
+          cargo run --bin doc_verify --generate-summary \
+            --input .reports/doc_verification/quality_gate_report.json \
+            --output .reports/doc_verification/verification_summary.md
+      
+      - name: Upload quality gate report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: quality-gate-report
+          path: |
+            .reports/doc_verification/quality_gate_report.json
+            .reports/doc_verification/verification_summary.md
+      
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('.reports/doc_verification/quality_gate_report.json', 'utf8'));
+            const summary = fs.readFileSync('.reports/doc_verification/verification_summary.md', 'utf8');
+            
+            const body = `## Documentation Verification Results
+            
+            **Overall Status**: ${report.passed ? 'PASSED' : 'FAILED'}
+            
+            ### Summary
+            ${summary}
+            
+            ### Details
+            - Consistency: ${report.consistency_passed ? 'PASSED' : 'FAILED'}
+            - Drift Detection: ${report.drift_passed ? 'PASSED' : 'FAILED'}
+            - API Documentation: ${report.api_docs_passed ? 'PASSED' : 'FAILED'}
+            - Example Validation: ${report.examples_passed ? 'PASSED' : 'FAILED'}
+            
+            Full report available in workflow artifacts.`;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Fail workflow if gates not passed
+        if: steps.evaluate-quality-gates.outputs.status == 'failed'
+        run: exit 1
+
+  security-scan:
+    name: Documentation Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Scan for secrets in documentation
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: docs/
+          base: ${{ github.event.repository.url }}
+          detection_depth: 100000
+      
+      - name: Scan for sensitive data
+        run: |
+          grep -r -i -n "password\|api[_-]key\|secret\|token" docs/ || echo "No secrets found"
+      
+      - name: Check for broken external links
+        run: |
+          npm install -g markdown-link-check
+          markdown-link-check docs/ --config .markdown-link-check.json
+
+  report-aggregation:
+    name: Aggregated Documentation Report
+    runs-on: ubuntu-latest
+    needs: [consistency-checks, drift-detection, api-documentation-generation, example-validation, quality-gates]
+    if: always()
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download all reports
+        uses: actions/download-artifact@v3
+        with:
+          path: .reports/doc_verification
+      
+      - name: Generate aggregated report
+        run: |
+          cargo run --bin doc_verify --aggregate \
+            --input .reports/doc_verification \
+            --output .reports/phase_06_5_doc_verification_report.md
+      
+      - name: Store report
+        uses: actions/upload-artifact@v3
+        with:
+          name: final-report
+          path: .reports/phase_06_5_doc_verification_report.md
+      
+      - name: Commit report to repository
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add .reports/phase_06_5_doc_verification_report.md
+          git commit -m "docs: update documentation verification report"
+          git push

@@ -1,165 +1,296 @@
 # Tachyon
 
-**Version:** 0.2.0-beta
-**Classification:** Universal Documentation Engine / Internal Developer Portal
-**Architecture:** Cross-Platform (Rust/Tokio)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.2.0--beta-green.svg)](VERSION.md)
 
-## 1. Abstract
+A deterministic, high-performance knowledge management platform for teams and individuals.
 
-Tachyon is a deterministic, high-performance knowledge management platform designed for hybrid operational environments. It functions simultaneously as a local-first desktop application for individual knowledge capture and a centralized Just-In-Time (JIT) documentation server for enterprise deployment.
+## Overview
 
-Architected in Rust on the Tokio asynchronous runtime, Tachyon eliminates the "build step" latency inherent in traditional Static Site Generators (SSG). It operates directly upon the host file system or Git repository as its single source of truth, utilizing a reactive file-watching architecture to provide instantaneous rendering synchronization with external editors (e.g., VS Code, Neovim, JetBrains).
+Tachyon is a local-first documentation engine that operates directly on your file system or Git repository. Unlike traditional static site generators, Tachyon eliminates build steps by providing instant, just-in-time rendering.
 
-## 2. System Architecture
+### Key Features
 
-The Tachyon operational pipeline is structured into four logic layers:
+- **Sub-15ms Rendering**: Content renders on-demand without build steps
+- **Local-First**: Full offline functionality with Git-based version control
+- **Real-Time Collaboration**: Live cursors, presence, and collaborative editing
+- **Full-Text Search**: Sub-100ms search with fuzzy matching
+- **Role-Based Access Control**: Fine-grained permissions and content redaction
+- **Cross-Platform**: Native desktop apps + web interface + headless server
 
-1. **Runtime Layer:** Utilizes `tokio` for cross-platform asynchronous I/O (IOCP on Windows, Kqueue on macOS, Epoll/io_uring on Linux), ensuring native performance parity across operating systems.
-2. **Reactive Layer:** Implements kernel-level file system monitoring via the `notify` crate. Modifications to the repository by external processes trigger immediate cache invalidation and WebSocket-driven UI updates.
-3. **Processing Layer:**
-   - **Data Access:** Direct interface with the `.git` object database via `git2-rs`.
-   - **JIT Rendering:** SIMD-accelerated parsing (`pulldown-cmark`) and template compilation (`minijinja`).
-   - **Mathematics:** Server-side LaTeX rendering via `katex-rs` to eliminate client-side layout shifts.
-4. **Presentation Layer:**
-   - **Desktop:** Encapsulated via `tauri` using the native OS WebView (WebView2/WebKit).
-   - **Server:** Headless `axum` HTTP/2 server for network distribution.
+## Quick Start
 
-## 3. Technical Specifications
+```bash
+# Clone and setup
+git clone https://github.com/tachyon-org/tachyon.git
+cd tachyon
+./scripts/quickstart.sh setup
 
-| Metric                 | Specification                             |
-| :--------------------- | :---------------------------------------- |
-| **Language**           | Rust (2024 Edition)                       |
-| **Concurrency Model**  | Multi-threaded Work-stealing (Tokio)      |
-| **GUI Framework**      | Tauri (Native WebView)                    |
-| **Hot-Reload Latency** | < 15ms (File Save to Render)              |
-| **Storage Engine**     | Local File System / Git Repository        |
-| **Transport Protocol** | HTTP/2 (Server Mode) / IPC (Desktop Mode) |
+# Start development server
+./scripts/quickstart.sh start
 
-## 4. Prerequisites
+# Run tests
+./scripts/quickstart.sh test
+```
 
-- **Windows:** Windows 10 (Build 1903+) or Windows 11.
-- **macOS:** macOS 11 (Big Sur) or later (Intel/Apple Silicon).
-- **Linux:** Kernel ≥ 5.4 (GTK3 required for Desktop Mode).
+| Command | Description |
+|---------|-------------|
+| `setup` | Build project and install dependencies |
+| `start` | Start development server |
+| `stop` | Stop development server |
+| `test` | Run test suite |
+| `status` | Show project status |
+| `clean` | Clean build artifacts |
 
-## 5. Installation
+## Installation
 
-### 5.1. Desktop Application (End User)
+### Desktop Application
 
-Execute the platform-specific installer. This installs the Tachyon binary and registers the URL protocol handler.
+Download platform-specific installers:
 
-- **Windows:** `tachyon_setup_x64.exe`
-- **macOS:** `Tachyon.dmg`
-- **Linux:** `tachyon_amd64.deb` / `tachyon-x86_64.AppImage`
+| Platform | Download |
+|----------|----------|
+| Windows | `tachyon_setup_x64.exe` |
+| macOS | `Tachyon.dmg` |
+| Linux | `tachyon_amd64.deb` / `tachyon-x86_64.AppImage` |
 
-### 5.2. Server Daemon (SysAdmin)
+### Server (Docker)
 
-For centralized hosting, compile from source or utilize the Docker container.
+```bash
+docker pull tachyon-org/tachyon-server:latest
+docker run -d -p 8080:8080 -v /path/to/docs:/docs tachyon-org/tachyon-server:latest
+```
+
+### Server (Binary)
 
 ```bash
 cargo build --release --no-default-features --features "server-mode"
-# or
-docker pull tachyon-org/tachyon-server:latest
 ```
 
-## 6. Operation Modes
+See [Installation Guide](docs/user/installation.md) for detailed instructions.
 
-Tachyon provides three mutually exclusive execution modes derived from a single binary.
+## Operation Modes
 
-### 6.1. Desktop Mode (GUI)
+### Desktop Mode
 
-The default execution mode. Launches a graphical interface wrapping the JIT engine.
-
-- **Behavior:** Starts a local loopback server on a randomized port.
-- **Usage:** Personal knowledge base, drafting, and local review.
-- **Sync:** Commits to the local Git repository; "Publish" executes `git push`.
-
-### 6.2. Server Mode (Daemon)
-
-Headless execution for hosting internal documentation portals.
+Local-first application for personal knowledge management:
 
 ```bash
-tachyon serve --port 8080 --config ./tachyon.toml
+tachyon /path/to/docs
 ```
 
-- **Behavior:** Binds to 0.0.0.0. Enforces Authentication and RBAC.
-- **Usage:** Enterprise intranet, team documentation.
+- Operates on local Git repository
+- No network required
+- Full offline functionality
 
-### 6.3. Static Export Mode (CI/CD)
+### Server Mode
 
-Generates standard HTML artifacts for generic HTTP hosting.
+Headless server for team documentation portals:
+
+```bash
+tachyon serve --port 8080 --config tachyon.toml
+```
+
+- Multi-user collaboration
+- Authentication and RBAC
+- Real-time editing
+
+### Static Export
+
+Generate static HTML for any hosting:
 
 ```bash
 tachyon build --output ./dist
 ```
 
-- **Behavior:** Traverses the repository and serializes all JIT views to disk.
-- **Usage:** GitHub Pages, Cloudflare Pages, Netlify.
+- Deploy to GitHub Pages, Netlify, etc.
+- No server required
 
-## 7. External Editor Integration
+## Configuration
 
-Tachyon supports a "Bring Your Own Editor" (BYOE) workflow. It does not enforce exclusive file locks.
-
-1. **Workflow:** Open the documentation repository in an IDE (VS Code, IntelliJ) and Tachyon simultaneously.
-2. **Synchronization:**
-   - **IDE -> Tachyon:** Saving a file in the IDE triggers the kernel watcher. Tachyon invalidates the cache and pushes a WebSocket refresh to the view.
-   - **Tachyon -> IDE:** Editing within Tachyon writes to the file system. The IDE detects the change and updates its buffer.
-3. **Conflict Resolution:** Relies on standard OS file locking and Git merge strategies.
-
-## 8. Configuration
-
-Configuration is managed via `tachyon.toml` in the repository root.
+Create `tachyon.toml` in your repository root:
 
 ```toml
 [system]
 mode = "hybrid"          # desktop | server | static
-watch_interval_ms = 100  # File system polling rate
+watch_interval_ms = 100
 
 [server]
-auth_provider = "kanidm" # Required for Server Mode
+host = "0.0.0.0"
+port = 8080
+auth_provider = "kanidm"
 enable_sso = true
 
 [rendering]
-math_engine = "katex"    # katex | mathjax (client-side)
+math_engine = "katex"
 syntax_theme = "axiom-dark"
-enable_diagrams = true   # Mermaid.js support
+enable_diagrams = true
 
 [security]
-# Define file patterns to exclude from serving
 exclude = [".env", "*.secret.md", "private/"]
 ```
 
-## 9. Access Control Implementation
+See [Configuration Guide](docs/user/configuration_guide.md) for all options.
 
-Tachyon implements Role-Based Access Control (RBAC) at the parsing level. This is active in **Server Mode** only.
+## Features
 
-### 9.1. Frontmatter Directives
+### Markdown Support
 
-```yaml
----
-title: Deployment Protocols
-access: restricted
-groups: [devops, sysadmin]
----
+- CommonMark and GitHub Flavored Markdown
+- Syntax highlighting for 12+ languages
+- KaTeX math rendering
+- Mermaid.js diagrams
+- YAML frontmatter
+
+### Search
+
+- Full-text search with Tantivy
+- Fuzzy matching
+- Field filters (`author:`, `tag:`, `status:`)
+- Date ranges
+
+### Collaboration
+
+- Real-time editing with operational transform
+- Live cursors and presence
+- Comments and threads
+- Version history
+
+### Security
+
+- Multiple auth providers (Kanidm, OAuth, LDAP)
+- Role-based access control
+- Document-level permissions
+- Block-level content redaction
+
+## Documentation
+
+### User Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](docs/user/README.md) | Overview and quick links |
+| [Installation](docs/user/installation.md) | Installation guide |
+| [Quick Start](docs/user/quick-start.md) | 5-minute tutorial |
+| [Features](docs/user/features.md) | Feature overview |
+| [Documents](docs/user/documents.md) | Document management |
+| [Search](docs/user/search.md) | Search functionality |
+| [Collaboration](docs/user/collaboration.md) | Real-time collaboration |
+| [Permissions](docs/user/permissions.md) | Roles and access control |
+
+### Developer Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Developer Overview](docs/dev/README.md) | Getting started for developers |
+| [Architecture](docs/dev/architecture.md) | System architecture |
+| [Setup](docs/dev/setup.md) | Development environment |
+| [Contributing](docs/dev/contributing.md) | Contribution guidelines |
+| [Testing](docs/dev/testing.md) | Testing guide |
+| [Deployment](docs/dev/deployment.md) | Deployment guide |
+
+### API Documentation
+
+- [REST API](docs/api/rest_api_documentation.md)
+- [WebSocket API](docs/api/websocket_api_documentation.md)
+- [Search API](docs/api/search_api_specification.md)
+
+### Architecture
+
+| Document | Description |
+|----------|-------------|
+| [Overview](docs/architecture/overview.md) | High-level architecture |
+| [Database](docs/architecture/database.md) | Database schema |
+| [API Design](docs/architecture/api.md) | REST API design |
+| [WebSocket](docs/architecture/websocket.md) | WebSocket protocol |
+| [Security](docs/architecture/security.md) | Security architecture |
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|------------|
+| Language | Rust 2024 Edition |
+| Async Runtime | Tokio |
+| Server | Axum (HTTP/2) |
+| Desktop | Tauri 2.0 |
+| Frontend | Leptos (WASM) |
+| Database | SQLite (rusqlite) |
+| Search | Tantivy |
+| Markdown | pulldown-cmark (SIMD) |
+| Git | git2-rs |
+
+## Performance
+
+| Metric | Target |
+|--------|--------|
+| Render latency | < 15ms |
+| Search query | < 100ms |
+| File watch response | < 50ms |
+| WebSocket update | < 10ms |
+| Memory usage | < 100MB base |
+
+## Requirements
+
+### Desktop
+
+| Platform | Minimum |
+|----------|---------|
+| Windows | Windows 10 (Build 1903+) |
+| macOS | macOS 11 (Big Sur) |
+| Linux | Kernel ≥ 5.4, GTK3 |
+
+### Server
+
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| RAM | 2GB | 4GB+ |
+| CPU | 2 cores | 4+ cores |
+| Disk | 1GB/1000 docs | SSD |
+
+## Contributing
+
+We welcome contributions! Please see:
+
+- [Contributing Guide](docs/dev/contributing.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+
+### Development Setup
+
+```bash
+git clone https://github.com/tachyon-org/tachyon.git
+cd tachyon
+cargo build
+cargo test
 ```
 
-Requests for this document by unprivileged users result in a `404 Not Found` (Security through obscurity) or `403 Forbidden` response, configurable via TOML.
+## Changelog
 
-### 9.2. Block Redaction
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-```markdown
-::: internal
-**SENSITIVE:** API Keys for Production...
-:::
+## License
+
+Copyright © 2026. Licensed under the [Apache License, Version 2.0](LICENSE).
+
+```
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
 ```
 
-The parser excises these blocks from the Abstract Syntax Tree (AST) before HTML generation if the requesting session lacks the required clearance.
+## Support
 
-## 10. Standards Compliance
+- **Documentation**: [docs/](docs/)
+- **Issues**: GitHub Issues
+- **Security**: security@tachyon.example.com
 
-- **ISO/IEC 25010:** Adheres to software quality models for performance efficiency and compatibility.
-- **IEEE 829:** Documentation generation supports standard test documentation formats.
-- **Data Sovereignty:** Tachyon performs no telemetry. All data processing occurs on the host hardware.
+## Acknowledgments
 
-## 11. Licensing
-
-Copyright © 2026. Licensed under the Apache License, Version 2.0. See `LICENSE` for terms.
+Built with:
+- [Rust](https://rust-lang.org/)
+- [Tokio](https://tokio.rs/)
+- [Axum](https://github.com/tokio-rs/axum)
+- [Tauri](https://tauri.app/)
+- [Leptos](https://leptos.dev/)
+- [Tantivy](https://github.com/quickwit-oss/tantivy)

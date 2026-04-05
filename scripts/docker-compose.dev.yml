@@ -1,0 +1,129 @@
+# Tachyon Development Docker Compose Configuration
+# PostgreSQL database with pgAdmin for development
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: tachyon-postgres
+    restart: unless-stopped
+    
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tachyon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tachyon_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-tachyon}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    
+    ports:
+      - "5433:5432"
+    
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tachyon} -d ${POSTGRES_DB:-tachyon}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    
+    networks:
+      - tachyon-dev-network
+
+  # pgAdmin - PostgreSQL GUI (optional but useful for development)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: tachyon-pgadmin
+    restart: unless-stopped
+    
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@tachyon.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    networks:
+      - tachyon-dev-network
+
+  # Redis for caching and session storage (future use)
+  redis:
+    image: redis:7-alpine
+    container_name: tachyon-redis
+    restart: unless-stopped
+    
+    command: redis-server --appendonly yes
+    
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    
+    volumes:
+      - redis-data:/data
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    networks:
+      - tachyon-dev-network
+
+  # Tachyon Server (development build)
+  server:
+    build:
+      context: ../tachyon
+      dockerfile: Dockerfile.dev
+    container_name: tachyon-server
+    restart: unless-stopped
+    
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+      - "${METRICS_PORT:-9090}:9090"
+    
+    environment:
+      - RUST_LOG=${RUST_LOG:-debug}
+      - TACHYON_HOST=0.0.0.0
+      - TACHYON_PORT=8080
+      - TACHYON_DATABASE_URL=postgres://${POSTGRES_USER:-tachyon}:${POSTGRES_PASSWORD:-tachyon_dev_password}@postgres:5432/${POSTGRES_DB:-tachyon}
+      - TACHYON_JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-change-in-production-min-32-chars}
+      - TACHYON_JWT_EXPIRATION=${JWT_EXPIRATION:-86400}
+      - TACHYON_REDIS_URL=redis://redis:6379
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    
+    networks:
+      - tachyon-dev-network
+    
+    profiles:
+      - full
+
+# Persistent Volumes
+volumes:
+  postgres-data:
+    driver: local
+  pgadmin-data:
+    driver: local
+  redis-data:
+    driver: local
+
+# Networks
+networks:
+  tachyon-dev-network:
+    driver: bridge

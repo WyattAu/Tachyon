@@ -1,0 +1,85 @@
+# Development Docker Compose Configuration
+# For local development and testing
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tachyon-postgres
+    environment:
+      POSTGRES_USER: tachyon
+      POSTGRES_PASSWORD: tachyon
+      POSTGRES_DB: tachyon
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tachyon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tachyon-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: tachyon-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - tachyon-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tachyon-server
+    environment:
+      RUST_LOG: debug
+      DATABASE_URL: postgresql://tachyon:tachyon@postgres:5432/tachyon
+      TACHYON_HOST: 0.0.0.0
+      TACHYON_PORT: "3000"
+      TACHYON_JWT_SECRET: dev-secret-change-in-production
+      TACHYON_CORS_ORIGINS: http://localhost:8080,http://localhost:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    volumes:
+      - ./data:/app/data
+    networks:
+      - tachyon-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: tachyon-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - tachyon-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  tachyon-network:
+    driver: bridge

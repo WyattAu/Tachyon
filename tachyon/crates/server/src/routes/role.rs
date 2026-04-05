@@ -1,0 +1,270 @@
+// Role API routes
+// Handles role management operations (admin only)
+
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::Json,
+};
+use serde::{Deserialize, Serialize};
+use tachyon_database::{DatabasePool, RoleRecord, RoleRepository};
+use tracing::{debug, info, warn};
+
+#[derive(Clone)]
+pub struct RoleState {
+    pub pool: DatabasePool,
+    pub repo: RoleRepository,
+}
+
+impl RoleState {
+    pub fn new(pool: DatabasePool) -> Self {
+        let repo = RoleRepository::new(pool.clone());
+        Self { pool, repo }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateRoleRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub permissions: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateRoleRequest {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub permissions: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RoleResponse {
+    pub id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub permissions: Vec<String>,
+    pub is_system: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<RoleRecord> for RoleResponse {
+    fn from(role: RoleRecord) -> Self {
+        let permissions = role.parse_permissions().unwrap_or_default();
+        Self {
+            id: role.id,
+            name: role.name,
+            description: role.description,
+            permissions,
+            is_system: role.is_system,
+            created_at: role.created_at.to_rfc3339(),
+            updated_at: role.updated_at.to_rfc3339(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ErrorResponse {
+    pub code: String,
+    pub message: String,
+}
+
+pub async fn list_roles(
+    State(state): State<RoleState>,
+) -> Result<Json<Vec<RoleResponse>>, (StatusCode, Json<ErrorResponse>)> {
+    debug!("Listing roles");
+
+    let roles = state.repo.list_all().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "DATABASE_ERROR".to_string(),
+                message: format!("Failed to list roles: {}", e),
+            }),
+        )
+    })?;
+
+    Ok(Json(roles.into_iter().map(RoleResponse::from).collect()))
+}
+
+pub async fn get_role(
+    Path(role_id): Path<i64>,
+    State(state): State<RoleState>,
+) -> Result<Json<RoleResponse>, (StatusCode, Json<ErrorResponse>)> {
+    debug!("Getting role: {}", role_id);
+
+    let role = state.repo.get_by_id(role_id).await.map_err(|e| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                code: "NOT_FOUND".to_string(),
+                message: format!("Role not found: {}", e),
+            }),
+        )
+    })?;
+
+    Ok(Json(RoleResponse::from(role)))
+}
+
+pub async fn create_role(
+    State(state): State<RoleState>,
+    Json(req): Json<CreateRoleRequest>,
+) -> Result<Json<RoleResponse>, (StatusCode, Json<ErrorResponse>)> {
+    info!("Creating role: {}", req.name);
+
+    if req.name.is_empty() || req.name.len() > 50 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "VALIDATION_ERROR".to_string(),
+                message: "Role name must be between 1 and 50 characters".to_string(),
+            }),
+        ));
+    }
+
+    let permissions = serde_json::to_value(&req.permissions).unwrap_or(serde_json::json!([]));
+    let mut role = RoleRecord::new(req.name, permissions);
+    if let Some(desc) = req.description {
+        role = role.with_description(desc);
+    }
+
+    let created = state.repo.create(&role).await.map_err(|e| {
+        warn!("Failed to create role: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "DATABASE_ERROR".to_string(),
+                message: format!("Failed to create role: {}", e),
+            }),
+        )
+    })?;
+
+    Ok(Json(RoleResponse::from(created)))
+}
+
+pub async fn update_role(
+    Path(role_id): Path<i64>,
+    State(state): State<RoleState>,
+    Json(req): Json<UpdateRoleRequest>,
+) -> Result<Json<RoleResponse>, (StatusCode, Json<ErrorResponse>)> {
+    debug!("Updating role: {}", role_id);
+
+    let mut role = state.repo.get_by_id(role_id).await.map_err(|e| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                code: "NOT_FOUND".to_string(),
+                message: format!("Role not found: {}", e),
+            }),
+        )
+    })?;
+
+    if role.is_system {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                code: "FORBIDDEN".to_string(),
+                message: "Cannot modify system roles".to_string(),
+            }),
+        ));
+    }
+
+    if let Some(name) = req.name {
+        role.name = name;
+    }
+    if let Some(description) = req.description {
+        role.description = Some(description);
+    }
+    if let Some(permissions) = req.permissions {
+        role.permissions = serde_json::to_value(permissions).unwrap_or(serde_json::json!([]));
+    }
+    role.updated_at = chrono::Utc::now();
+
+    let updated = state.repo.update(&role).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "DATABASE_ERROR".to_string(),
+                message: format!("Failed to update role: {}", e),
+            }),
+        )
+    })?;
+
+    Ok(Json(RoleResponse::from(updated)))
+}
+
+pub async fn delete_role(
+    Path(role_id): Path<i64>,
+    State(state): State<RoleState>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    debug!("Deleting role: {}", role_id);
+
+    state.repo.delete(role_id).await.map_err(|e| {
+        (
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                code: "FORBIDDEN".to_string(),
+                message: format!("Cannot delete role: {}", e),
+            }),
+        )
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn seed_default_roles(
+    State(state): State<RoleState>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    info!("Seeding default roles");
+
+    state.repo.seed_default_roles().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "DATABASE_ERROR".to_string(),
+                message: format!("Failed to seed roles: {}", e),
+            }),
+        )
+    })?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Default roles seeded successfully"
+    })))
+}
+
+pub fn create_role_router() -> axum::Router<RoleState> {
+    use axum::routing::{delete, get, post, put};
+
+    axum::Router::new()
+        .route("/roles", get(list_roles))
+        .route("/roles", post(create_role))
+        .route("/roles/seed", post(seed_default_roles))
+        .route("/roles/{role_id}", get(get_role))
+        .route("/roles/{role_id}", put(update_role))
+        .route("/roles/{role_id}", delete(delete_role))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_role_request() {
+        let req = CreateRoleRequest {
+            name: "custom".to_string(),
+            description: Some("Custom role".to_string()),
+            permissions: vec!["read".to_string(), "write".to_string()],
+        };
+        assert_eq!(req.name, "custom");
+        assert_eq!(req.permissions.len(), 2);
+    }
+
+    #[test]
+    fn test_role_response_from_record() {
+        let role = RoleRecord::new("test".to_string(), serde_json::json!(["read"]));
+        let response = RoleResponse::from(role);
+        assert_eq!(response.name, "test");
+        assert_eq!(response.permissions, vec!["read"]);
+    }
+}

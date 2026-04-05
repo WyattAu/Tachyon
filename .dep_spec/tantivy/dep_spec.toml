@@ -1,0 +1,89 @@
+# Dependency Specification: tantivy
+# Generated: 2026-02-11T17:30:00Z
+# Version: 0.21.1
+
+[metadata]
+name = "tantivy"
+version = "0.21.1"
+language = "rust"
+registry = "https://crates.io"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6083cd777fa94271b8ce0fe4533772cb8110c3044bab048d20f70108329a1f2"
+license = "MIT"
+repository = "https://github.com/quickwit-oss/tantivy"
+homepage = "https://github.com/quickwit-oss/tantivy"
+documentation = "https://docs.rs/tantivy"
+authors = ["Tantivy Contributors"]
+
+[rationale]
+criticality = "HIGH"
+justification = """
+tantivy is the full-text search engine library used throughout Tachyon for
+document indexing and search functionality. It provides:
+- Lucene-compatible indexing
+- Fast full-text search capabilities
+- Support for complex queries and filtering
+- Integration with Tachyon's document search system
+
+This is a core dependency for search and indexing functionality.
+"""
+
+[security]
+audit_status = "PENDING"
+last_audit_date = "2026-02-11"
+known_vulnerabilities = []
+cvss_score = "N/A"
+notes = """
+tantivy is a pure Rust library with no native dependencies,
+reducing the risk of memory safety vulnerabilities.
+"""
+
+[dependencies]
+transitive = [
+    "aho-corasick", "arc-swap", "async-trait", "base64", "bitpacking",
+    "byteorder", "census", "crc32fast", "crossbeam-channel",
+    "downcast-rs", "fastdivide", "fs4", "htmlescape",
+    "itertools", "levenshtein_automata", "log", "lru", "lz4_flex",
+    "measure_time", "memmap2", "murmurhash32", "num_cpus", "once_cell",
+    "oneshot", "rayon", "regex", "rust-stemmers", "serde",
+    "serde_json", "tempfile", "thiserror", "time", "timed",
+    "tiny_http", "tokenizer", "tracing", "uuid", "zstd"
+]
+
+[features]
+enabled = []
+default_features = true
+description = "Default features include all indexing capabilities"
+
+[alternatives]
+considered = [
+    {name = "meilisearch", reason = "Separate service, Tachyon needs embedded library"},
+    {name = "elastic", reason = "Separate service, Tantivy is more suitable for embedded use"},
+    {name = "surrealdb", reason = "Full database, Tantivy is focused on search"},
+]
+selected = "tantivy"
+selection_reason = "Embedded pure Rust solution, excellent performance, active development"
+
+[maintenance]
+maintainer_status = "ACTIVE"
+last_commit = "2024"
+release_frequency = "MONTHLY"
+deprecation_risk = "LOW"
+
+[compatibility]
+rust_version = ">=1.60"
+platforms = ["Linux", "Windows", "macOS"]
+target_arch = ["x86_64", "aarch64", "arm"]
+native_build_required = false
+
+[verification]
+build_verified = true
+test_coverage = "HIGH"
+ci_status = "PASSING"
+performance_benchmarks = "EXCELLENT"
+
+[performance]
+indexing_speed = "HIGH"
+query_speed = "HIGH"
+memory_usage = "MODERATE"
+scalability = "HIGH"

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tachyon_desktop",
+  "productName": "Tachyon",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.tachyon.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:3000"
@@ -10,15 +10,22 @@
   "app": {
     "windows": [
       {
-        "title": "tachyon",
-        "width": 800,
-        "height": 600,
+        "title": "Tachyon Knowledge Manager",
+        "width": 1200,
+        "height": 800,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "minWidth": 800,
+        "minHeight": 600,
+        "center": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
     }
   },
   "bundle": {
@@ -30,6 +37,17 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "category": "Productivity",
+    "shortDescription": "Knowledge Management System",
+    "longDescription": "Tachyon is a modern knowledge management system built for power users.",
+    "macOS": {
+      "minimumSystemVersion": "10.13"
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    }
   }
 }

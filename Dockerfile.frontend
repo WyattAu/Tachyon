@@ -1,0 +1,25 @@
+FROM rust:1.75-alpine AS builder
+WORKDIR /app
+RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconfig cmake
+
+RUN cargo install trunk wasm-bindgen-cli
+
+COPY tachyon/Cargo.toml tachyon/Cargo.lock ./
+COPY tachyon/crates crates/
+
+WORKDIR /app/crates/frontend
+RUN rustup target add wasm32-unknown-unknown
+COPY tachyon/crates/frontend .
+
+RUN trunk build --release --dist dist
+
+FROM nginx:alpine AS runtime
+RUN apk add --no-cache curl
+RUN rm -rf /usr/share/nginx/html/*
+COPY --from=builder /app/crates/frontend/dist /usr/share/nginx/html
+COPY nginx/frontend.conf /etc/nginx/conf.d/default.conf
+COPY nginx/ssl.conf /etc/nginx/ssl.conf
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:80/health || exit 1
+EXPOSE 80 443
+CMD ["nginx", "-g", "daemon off;"]

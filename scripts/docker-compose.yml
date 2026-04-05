@@ -1,0 +1,181 @@
+# Tachyon Docker Compose Configuration
+# Production-ready deployment with monitoring and health checks
+
+version: '3.8'
+
+services:
+  # Main Tachyon Server
+  server:
+    build:
+      context: ../
+      dockerfile: scripts/Dockerfile
+      target: runtime
+    image: tachyon/server:${VERSION:-latest}
+    container_name: tachyon-server
+    restart: unless-stopped
+    
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    
+    environment:
+      - RUST_LOG=${RUST_LOG:-info}
+      - DATABASE_PATH=/data/tachyon.db
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-86400}
+    
+    volumes:
+      # Persistent database storage
+      - tachyon-data:/data
+      # Config file (optional)
+      - ./config:/app/config:ro
+      # Logs
+      - tachyon-logs:/app/logs
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    networks:
+      - tachyon-network
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # Reverse Proxy (Nginx)
+  nginx:
+    image: nginx:alpine
+    container_name: tachyon-nginx
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - tachyon-logs:/var/log/nginx
+    
+    depends_on:
+      server:
+        condition: service_healthy
+    
+    networks:
+      - tachyon-network
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: tachyon-prometheus
+    restart: unless-stopped
+    
+    ports:
+      - "9090:9090"
+    
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    
+    networks:
+      - tachyon-network
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tachyon-grafana
+    restart: unless-stopped
+    
+    ports:
+      - "3000:3000"
+    
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    
+    networks:
+      - tachyon-network
+
+  # Log Aggregation (Optional)
+  loki:
+    image: grafana/loki:latest
+    container_name: tachyon-loki
+    restart: unless-stopped
+    
+    ports:
+      - "3100:3100"
+    
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    
+    command: -config.file=/etc/loki/local-config.yaml
+    
+    networks:
+      - tachyon-network
+
+  # SSL Certificate Renewal (Let's Encrypt)
+  certbot:
+    image: certbot/certbot
+    container_name: tachyon-certbot
+    restart: unless-stopped
+    
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - ./certbot-data:/var/lib/letsencrypt
+    
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    
+    networks:
+      - tachyon-network
+
+# Persistent Volumes
+volumes:
+  tachyon-data:
+    driver: local
+  tachyon-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  loki-data:
+    driver: local
+  certbot-data:
+    driver: local
+
+# Networks
+networks:
+  tachyon-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -8,6 +8,116 @@ use sqlx::{Row, query, query_as};
 use tachyon_core::id::{DocumentId, RepositoryId};
 use tracing::{debug, info, instrument};
 
+/// Document SELECT SQL with UUID casting for PostgreSQL
+const DOCUMENT_SELECT_SQL: &str = r#"
+    SELECT 
+        id::text as id,
+        title,
+        slug,
+        author_id::text as author_id,
+        description,
+        tags::text as tags,
+        frontmatter::text as frontmatter,
+        project_id::text as project_id,
+        visibility,
+        status,
+        content_type,
+        word_count,
+        character_count,
+        read_count,
+        edit_count,
+        content,
+        html,
+        created_at,
+        updated_at,
+        published_at
+    FROM documents
+"#;
+
+/// Repository SELECT SQL with UUID casting for PostgreSQL
+const REPOSITORY_SELECT_SQL: &str = r#"
+    SELECT 
+        id::text as id,
+        name,
+        slug,
+        description,
+        repository_type,
+        owner_id::text as owner_id,
+        visibility,
+        status,
+        default_branch,
+        auto_sync,
+        sync_interval_seconds,
+        file_watching_enabled,
+        remote_url,
+        last_commit_hash,
+        current_branch,
+        commits_ahead,
+        commits_behind,
+        document_count,
+        total_storage_bytes,
+        member_count,
+        local_path,
+        created_at,
+        updated_at
+    FROM repositories
+"#;
+
+/// Helper to construct DocumentMetadata from a database row
+fn row_to_document_metadata(row: sqlx::postgres::PgRow) -> DatabaseResult<DocumentMetadata> {
+    Ok(DocumentMetadata {
+        id: row.get("id"),
+        title: row.get("title"),
+        slug: row.get("slug"),
+        author_id: row.get("author_id"),
+        description: row.get("description"),
+        tags: row.get("tags"),
+        frontmatter: row.get("frontmatter"),
+        project_id: row.get("project_id"),
+        visibility: row.get("visibility"),
+        status: row.get("status"),
+        content_type: row.get("content_type"),
+        word_count: row.get("word_count"),
+        character_count: row.get("character_count"),
+        read_count: row.get("read_count"),
+        edit_count: row.get("edit_count"),
+        content: row.get("content"),
+        html: row.get("html"),
+        created_at: row.get("created_at"),
+        updated_at: row.get("updated_at"),
+        published_at: row.get("published_at"),
+    })
+}
+
+/// Helper to construct RepositoryMetadata from a database row
+fn row_to_repository_metadata(row: sqlx::postgres::PgRow) -> DatabaseResult<RepositoryMetadata> {
+    Ok(RepositoryMetadata {
+        id: row.get("id"),
+        name: row.get("name"),
+        slug: row.get("slug"),
+        description: row.get("description"),
+        repository_type: row.get("repository_type"),
+        owner_id: row.get("owner_id"),
+        visibility: row.get("visibility"),
+        status: row.get("status"),
+        default_branch: row.get("default_branch"),
+        auto_sync: row.get("auto_sync"),
+        sync_interval_seconds: row.get("sync_interval_seconds"),
+        file_watching_enabled: row.get("file_watching_enabled"),
+        remote_url: row.get("remote_url"),
+        last_commit_hash: row.get("last_commit_hash"),
+        current_branch: row.get("current_branch"),
+        commits_ahead: row.get("commits_ahead"),
+        commits_behind: row.get("commits_behind"),
+        document_count: row.get("document_count"),
+        total_storage_bytes: row.get("total_storage_bytes"),
+        member_count: row.get("member_count"),
+        local_path: row.get("local_path"),
+        created_at: row.get("created_at"),
+        updated_at: row.get("updated_at"),
+    })
+}
+
 /// Document repository for CRUD operations
 #[derive(Clone)]
 pub struct DocumentRepository {
@@ -42,10 +152,11 @@ impl DocumentRepository {
         let insert_sql = r#"
             INSERT INTO documents (
                 id, title, slug, author_id, description, tags, frontmatter,
-                repository_id, visibility, status, content_type,
+                project_id, visibility, status, content_type,
                 word_count, character_count, read_count, edit_count,
+                content, html,
                 created_at, updated_at, published_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6::jsonb, $7::jsonb, $8::uuid, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
         "#;
 
         let mut conn = self.pool.acquire().await?;
@@ -57,7 +168,7 @@ impl DocumentRepository {
             .bind(&metadata.description)
             .bind(&tags_json)
             .bind(&frontmatter_json)
-            .bind(&metadata.repository_id)
+            .bind(&metadata.project_id)
             .bind(&metadata.visibility)
             .bind(&metadata.status)
             .bind(&metadata.content_type)
@@ -65,13 +176,15 @@ impl DocumentRepository {
             .bind(metadata.character_count)
             .bind(metadata.read_count)
             .bind(metadata.edit_count)
+            .bind(&metadata.content)
+            .bind(&metadata.html)
             .bind(&metadata.created_at)
             .bind(&metadata.updated_at)
             .bind(&metadata.published_at)
             .execute(&mut *conn)
             .await
             .map_err(|e| {
-                if e.to_string().contains("UNIQUE constraint failed") {
+                if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
                     DatabaseError::duplicate(
                         "document",
                         format!("Document ID {} already exists", metadata.id),
@@ -94,16 +207,19 @@ impl DocumentRepository {
     /// Result containing DocumentMetadata or error
     #[instrument(skip(self))]
     pub async fn get_by_id(&self, id: &DocumentId) -> DatabaseResult<DocumentMetadata> {
-        let select_sql = "SELECT * FROM documents WHERE id = ?";
+        let select_sql = format!("{} WHERE id = $1::uuid", DOCUMENT_SELECT_SQL);
 
         let mut conn = self.pool.acquire().await?;
-        let result = query_as::<_, DocumentMetadata>(select_sql)
+        let row = query(&select_sql)
             .bind(id.as_str())
             .fetch_optional(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        result.ok_or_else(|| DatabaseError::not_found("document", id.as_str()))
+        match row {
+            Some(r) => row_to_document_metadata(r),
+            None => Err(DatabaseError::not_found("document", id.as_str())),
+        }
     }
 
     /// Update a document
@@ -121,11 +237,12 @@ impl DocumentRepository {
 
         let update_sql = r#"
             UPDATE documents SET
-                title = ?, slug = ?, description = ?, tags = ?, frontmatter = ?,
-                repository_id = ?, visibility = ?, status = ?, content_type = ?,
-                word_count = ?, character_count = ?, read_count = ?, edit_count = ?,
-                updated_at = ?, published_at = ?
-            WHERE id = ?
+                title = $1, slug = $2, description = $3, tags = $4::jsonb, frontmatter = $5::jsonb,
+                project_id = $6::uuid, visibility = $7, status = $8, content_type = $9,
+                word_count = $10, character_count = $11, read_count = $12, edit_count = $13,
+                content = $16, html = $17,
+                updated_at = $14, published_at = $15
+            WHERE id = $18::uuid
         "#;
 
         let mut conn = self.pool.acquire().await?;
@@ -135,7 +252,7 @@ impl DocumentRepository {
             .bind(&metadata.description)
             .bind(&tags_json)
             .bind(&frontmatter_json)
-            .bind(&metadata.repository_id)
+            .bind(&metadata.project_id)
             .bind(&metadata.visibility)
             .bind(&metadata.status)
             .bind(&metadata.content_type)
@@ -145,6 +262,8 @@ impl DocumentRepository {
             .bind(metadata.edit_count)
             .bind(&metadata.updated_at)
             .bind(&metadata.published_at)
+            .bind(&metadata.content)
+            .bind(&metadata.html)
             .bind(&metadata.id)
             .execute(&mut *conn)
             .await
@@ -167,7 +286,7 @@ impl DocumentRepository {
     /// Result indicating success or error
     #[instrument(skip(self))]
     pub async fn delete(&self, id: &DocumentId) -> DatabaseResult<()> {
-        let delete_sql = "DELETE FROM documents WHERE id = ?";
+        let delete_sql = "DELETE FROM documents WHERE id = $1::uuid";
 
         let mut conn = self.pool.acquire().await?;
         let result = query(delete_sql)
@@ -199,59 +318,59 @@ impl DocumentRepository {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> DatabaseResult<Vec<DocumentMetadata>> {
-        let base_sql = "SELECT * FROM documents WHERE author_id = ? ORDER BY updated_at DESC";
-        let (sql, limit, offset) = apply_pagination(base_sql, limit, offset);
+        let base_sql = format!("{} WHERE author_id = $1::uuid ORDER BY updated_at DESC", DOCUMENT_SELECT_SQL);
+        let (sql, limit_val, offset_val) = apply_pagination(&base_sql, limit, offset);
 
         let mut conn = self.pool.acquire().await?;
-        let mut query_builder = query_as::<_, DocumentMetadata>(&sql).bind(author_id);
-        if let Some(limit) = limit {
-            query_builder = query_builder.bind(limit);
+        let mut query_builder = sqlx::query(&sql).bind(author_id);
+        if let Some(l) = limit_val {
+            query_builder = query_builder.bind(l);
         }
-        if let Some(offset) = offset {
-            query_builder = query_builder.bind(offset);
+        if let Some(o) = offset_val {
+            query_builder = query_builder.bind(o);
         }
 
-        let documents = query_builder
+        let rows = query_builder
             .fetch_all(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        Ok(documents)
+        rows.into_iter().map(row_to_document_metadata).collect()
     }
 
-    /// List documents by repository
+    /// List documents by project
     ///
     /// # Arguments
-    /// * `repository_id` - Repository ID
+    /// * `project_id` - Project ID
     /// * `limit` - Maximum number of documents to return
     /// * `offset` - Offset for pagination
     ///
     /// # Returns
     /// Result containing vector of documents or error
-    pub async fn list_by_repository(
+    pub async fn list_by_project(
         &self,
-        repository_id: &RepositoryId,
+        project_id: &str,
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> DatabaseResult<Vec<DocumentMetadata>> {
-        let base_sql = "SELECT * FROM documents WHERE repository_id = ? ORDER BY updated_at DESC";
-        let (sql, limit, offset) = apply_pagination(base_sql, limit, offset);
+        let base_sql = format!("{} WHERE project_id = $1::uuid ORDER BY updated_at DESC", DOCUMENT_SELECT_SQL);
+        let (sql, limit_val, offset_val) = apply_pagination(&base_sql, limit, offset);
 
         let mut conn = self.pool.acquire().await?;
-        let mut query_builder = query_as::<_, DocumentMetadata>(&sql).bind(repository_id.as_str());
-        if let Some(limit) = limit {
-            query_builder = query_builder.bind(limit);
+        let mut query_builder = sqlx::query(&sql).bind(project_id);
+        if let Some(l) = limit_val {
+            query_builder = query_builder.bind(l);
         }
-        if let Some(offset) = offset {
-            query_builder = query_builder.bind(offset);
+        if let Some(o) = offset_val {
+            query_builder = query_builder.bind(o);
         }
 
-        let documents = query_builder
+        let rows = query_builder
             .fetch_all(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        Ok(documents)
+        rows.into_iter().map(row_to_document_metadata).collect()
     }
 
     /// List all documents with pagination
@@ -267,24 +386,24 @@ impl DocumentRepository {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> DatabaseResult<Vec<DocumentMetadata>> {
-        let base_sql = "SELECT * FROM documents ORDER BY updated_at DESC";
-        let (sql, limit, offset) = apply_pagination(base_sql, limit, offset);
+        let base_sql = format!("{} ORDER BY updated_at DESC", DOCUMENT_SELECT_SQL);
+        let (sql, limit_val, offset_val) = apply_pagination(&base_sql, limit, offset);
 
         let mut conn = self.pool.acquire().await?;
-        let mut query_builder = query_as::<_, DocumentMetadata>(&sql);
-        if let Some(limit) = limit {
-            query_builder = query_builder.bind(limit);
+        let mut query_builder = sqlx::query(&sql);
+        if let Some(l) = limit_val {
+            query_builder = query_builder.bind(l);
         }
-        if let Some(offset) = offset {
-            query_builder = query_builder.bind(offset);
+        if let Some(o) = offset_val {
+            query_builder = query_builder.bind(o);
         }
 
-        let documents = query_builder
+        let rows = query_builder
             .fetch_all(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        Ok(documents)
+        rows.into_iter().map(row_to_document_metadata).collect()
     }
 
     /// Search documents by tags
@@ -304,22 +423,25 @@ impl DocumentRepository {
 
         let mut documents = Vec::new();
         for tag in tags {
-            let select_sql = r#"
-                SELECT * FROM documents
-                WHERE json_array_contains(tags, ?)
-                ORDER BY updated_at DESC
-                LIMIT ?
-            "#;
+            let select_sql = format!(
+                "{} WHERE tags::jsonb @> $1::jsonb ORDER BY updated_at DESC LIMIT $2",
+                DOCUMENT_SELECT_SQL
+            );
 
             let mut conn = self.pool.acquire().await?;
-            let tag_documents = query_as::<_, DocumentMetadata>(select_sql)
-                .bind(format!("\"{}\"", tag))
+            let tag_json = serde_json::to_string(&vec![tag])
+                .map_err(|e| DatabaseError::SerializationError(e.to_string()))?;
+            
+            let rows = query(&select_sql)
+                .bind(&tag_json)
                 .bind(limit)
                 .fetch_all(&mut *conn)
                 .await
                 .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-            documents.extend(tag_documents);
+            for row in rows {
+                documents.push(row_to_document_metadata(row)?);
+            }
         }
 
         Ok(documents)
@@ -342,7 +464,7 @@ impl DocumentRepository {
         content: &str,
         tags: &[String],
     ) -> DatabaseResult<()> {
-        let delete_sql = "DELETE FROM search_index WHERE document_id = ?";
+        let delete_sql = "DELETE FROM search_index WHERE document_id = $1::uuid";
         let mut conn = self.pool.acquire().await?;
         query(delete_sql)
             .bind(document_id.as_str())
@@ -352,7 +474,7 @@ impl DocumentRepository {
 
         let insert_sql = r#"
             INSERT INTO search_index (document_id, content_type, content, weight)
-            VALUES (?, 'title', ?, 2.0)
+            VALUES ($1::uuid, 'title', $2, 2.0)
         "#;
         query(insert_sql)
             .bind(document_id.as_str())
@@ -363,7 +485,7 @@ impl DocumentRepository {
 
         let insert_sql = r#"
             INSERT INTO search_index (document_id, content_type, content, weight)
-            VALUES (?, 'content', ?, 1.0)
+            VALUES ($1::uuid, 'content', $2, 1.0)
         "#;
         query(insert_sql)
             .bind(document_id.as_str())
@@ -375,7 +497,7 @@ impl DocumentRepository {
         for tag in tags {
             let insert_sql = r#"
                 INSERT INTO search_index (document_id, content_type, content, weight)
-                VALUES (?, 'tag', ?, 1.5)
+                VALUES ($1::uuid, 'tag', $2, 1.5)
             "#;
             query(insert_sql)
                 .bind(document_id.as_str())
@@ -406,11 +528,12 @@ impl DocumentRepository {
         limit: Option<i64>,
     ) -> DatabaseResult<Vec<String>> {
         let limit = limit.unwrap_or(50);
+        // PostgreSQL full-text search using to_tsvector and to_tsquery
         let select_sql = r#"
-            SELECT DISTINCT document_id FROM search_index
-            WHERE search_index MATCH ?
-            ORDER BY rank
-            LIMIT ?
+            SELECT DISTINCT document_id::text as document_id FROM search_index
+            WHERE to_tsvector('english', content) @@ to_tsquery('english', $1)
+            ORDER BY document_id
+            LIMIT $2
         "#;
 
         let mut conn = self.pool.acquire().await?;
@@ -433,7 +556,7 @@ impl DocumentRepository {
     /// # Returns
     /// Result containing document count or error
     pub async fn count_by_author(&self, author_id: &str) -> DatabaseResult<i64> {
-        let count_sql = "SELECT COUNT(*) as count FROM documents WHERE author_id = ?";
+        let count_sql = "SELECT COUNT(*) as count FROM documents WHERE author_id = $1::uuid";
 
         let mut conn = self.pool.acquire().await?;
         let row = query(count_sql)
@@ -446,19 +569,19 @@ impl DocumentRepository {
         Ok(count)
     }
 
-    /// Count documents by repository
+    /// Count documents by project
     ///
     /// # Arguments
-    /// * `repository_id` - Repository ID
+    /// * `project_id` - Project ID
     ///
     /// # Returns
     /// Result containing document count or error
-    pub async fn count_by_repository(&self, repository_id: &RepositoryId) -> DatabaseResult<i64> {
-        let count_sql = "SELECT COUNT(*) as count FROM documents WHERE repository_id = ?";
+    pub async fn count_by_project(&self, project_id: &str) -> DatabaseResult<i64> {
+        let count_sql = "SELECT COUNT(*) as count FROM documents WHERE project_id = $1::uuid";
 
         let mut conn = self.pool.acquire().await?;
         let row = query(count_sql)
-            .bind(repository_id.as_str())
+            .bind(project_id)
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -501,7 +624,7 @@ impl RepositoryRepository {
                 file_watching_enabled, remote_url, last_commit_hash, current_branch,
                 commits_ahead, commits_behind, document_count, total_storage_bytes,
                 member_count, local_path, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES ($1::uuid, $2, $3, $4, $5, $6::uuid, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
         "#;
 
         let mut conn = self.pool.acquire().await?;
@@ -515,9 +638,9 @@ impl RepositoryRepository {
             .bind(&metadata.visibility)
             .bind(&metadata.status)
             .bind(&metadata.default_branch)
-            .bind(metadata.auto_sync as i64)
+            .bind(metadata.auto_sync)
             .bind(metadata.sync_interval_seconds)
-            .bind(metadata.file_watching_enabled as i64)
+            .bind(metadata.file_watching_enabled)
             .bind(&metadata.remote_url)
             .bind(&metadata.last_commit_hash)
             .bind(&metadata.current_branch)
@@ -532,7 +655,7 @@ impl RepositoryRepository {
             .execute(&mut *conn)
             .await
             .map_err(|e| {
-                if e.to_string().contains("UNIQUE constraint failed") {
+                if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
                     DatabaseError::duplicate(
                         "repository",
                         format!("Repository ID {} already exists", metadata.id),
@@ -555,16 +678,19 @@ impl RepositoryRepository {
     /// Result containing RepositoryMetadata or error
     #[instrument(skip(self))]
     pub async fn get_by_id(&self, id: &RepositoryId) -> DatabaseResult<RepositoryMetadata> {
-        let select_sql = "SELECT * FROM repositories WHERE id = ?";
+        let select_sql = format!("{} WHERE id = $1::uuid", REPOSITORY_SELECT_SQL);
 
         let mut conn = self.pool.acquire().await?;
-        let result = query_as::<_, RepositoryMetadata>(select_sql)
+        let row = query(&select_sql)
             .bind(id.as_str())
             .fetch_optional(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        result.ok_or_else(|| DatabaseError::not_found("repository", id.as_str()))
+        match row {
+            Some(r) => row_to_repository_metadata(r),
+            None => Err(DatabaseError::not_found("repository", id.as_str())),
+        }
     }
 
     /// Update a repository
@@ -578,12 +704,12 @@ impl RepositoryRepository {
     pub async fn update(&self, metadata: RepositoryMetadata) -> DatabaseResult<()> {
         let update_sql = r#"
             UPDATE repositories SET
-                name = ?, slug = ?, description = ?, repository_type = ?, owner_id = ?,
-                visibility = ?, status = ?, default_branch = ?, auto_sync = ?, sync_interval_seconds = ?,
-                file_watching_enabled = ?, remote_url = ?, last_commit_hash = ?, current_branch = ?,
-                commits_ahead = ?, commits_behind = ?, document_count = ?, total_storage_bytes = ?,
-                member_count = ?, local_path = ?, updated_at = ?
-            WHERE id = ?
+                name = $1, slug = $2, description = $3, repository_type = $4, owner_id = $5::uuid,
+                visibility = $6, status = $7, default_branch = $8, auto_sync = $9, sync_interval_seconds = $10,
+                file_watching_enabled = $11, remote_url = $12, last_commit_hash = $13, current_branch = $14,
+                commits_ahead = $15, commits_behind = $16, document_count = $17, total_storage_bytes = $18,
+                member_count = $19, local_path = $20, updated_at = $21
+            WHERE id = $22::uuid
         "#;
 
         let mut conn = self.pool.acquire().await?;
@@ -596,9 +722,9 @@ impl RepositoryRepository {
             .bind(&metadata.visibility)
             .bind(&metadata.status)
             .bind(&metadata.default_branch)
-            .bind(metadata.auto_sync as i64)
+            .bind(metadata.auto_sync)
             .bind(metadata.sync_interval_seconds)
-            .bind(metadata.file_watching_enabled as i64)
+            .bind(metadata.file_watching_enabled)
             .bind(&metadata.remote_url)
             .bind(&metadata.last_commit_hash)
             .bind(&metadata.current_branch)
@@ -631,7 +757,7 @@ impl RepositoryRepository {
     /// Result indicating success or error
     #[instrument(skip(self))]
     pub async fn delete(&self, id: &RepositoryId) -> DatabaseResult<()> {
-        let delete_sql = "DELETE FROM repositories WHERE id = ?";
+        let delete_sql = "DELETE FROM repositories WHERE id = $1::uuid";
 
         let mut conn = self.pool.acquire().await?;
         let result = query(delete_sql)
@@ -663,24 +789,24 @@ impl RepositoryRepository {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> DatabaseResult<Vec<RepositoryMetadata>> {
-        let base_sql = "SELECT * FROM repositories WHERE owner_id = ? ORDER BY updated_at DESC";
-        let (sql, limit, offset) = apply_pagination(base_sql, limit, offset);
+        let base_sql = format!("{} WHERE owner_id = $1::uuid ORDER BY updated_at DESC", REPOSITORY_SELECT_SQL);
+        let (sql, limit_val, offset_val) = apply_pagination(&base_sql, limit, offset);
 
         let mut conn = self.pool.acquire().await?;
-        let mut query_builder = query_as::<_, RepositoryMetadata>(&sql).bind(owner_id);
-        if let Some(limit) = limit {
-            query_builder = query_builder.bind(limit);
+        let mut query_builder = sqlx::query(&sql).bind(owner_id);
+        if let Some(l) = limit_val {
+            query_builder = query_builder.bind(l);
         }
-        if let Some(offset) = offset {
-            query_builder = query_builder.bind(offset);
+        if let Some(o) = offset_val {
+            query_builder = query_builder.bind(o);
         }
 
-        let repositories = query_builder
+        let rows = query_builder
             .fetch_all(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        Ok(repositories)
+        rows.into_iter().map(row_to_repository_metadata).collect()
     }
 
     /// Update repository document count
@@ -692,7 +818,7 @@ impl RepositoryRepository {
     /// # Returns
     /// Result indicating success or error
     pub async fn update_document_count(&self, id: &RepositoryId, delta: i64) -> DatabaseResult<()> {
-        let update_sql = "UPDATE repositories SET document_count = document_count + ? WHERE id = ?";
+        let update_sql = "UPDATE repositories SET document_count = document_count + $1 WHERE id = $2::uuid";
 
         let mut conn = self.pool.acquire().await?;
         query(update_sql)
@@ -714,7 +840,7 @@ impl RepositoryRepository {
     /// # Returns
     /// Result indicating success or error
     pub async fn update_storage_bytes(&self, id: &RepositoryId, bytes: i64) -> DatabaseResult<()> {
-        let update_sql = "UPDATE repositories SET total_storage_bytes = ? WHERE id = ?";
+        let update_sql = "UPDATE repositories SET total_storage_bytes = $1 WHERE id = $2::uuid";
 
         let mut conn = self.pool.acquire().await?;
         query(update_sql)
@@ -743,25 +869,25 @@ fn apply_pagination(
     offset: Option<i64>,
 ) -> (String, Option<i64>, Option<i64>) {
     match (limit, offset) {
-        (Some(l), Some(o)) => (format!("{} LIMIT ? OFFSET ?", base_sql), Some(l), Some(o)),
-        (Some(l), None) => (format!("{} LIMIT ?", base_sql), Some(l), None),
-        (None, Some(o)) => (format!("{} OFFSET ?", base_sql), None, Some(o)),
+        (Some(l), Some(o)) => (format!("{} LIMIT ${} OFFSET ${}", base_sql, count_placeholders(base_sql) + 1, count_placeholders(base_sql) + 2), Some(l), Some(o)),
+        (Some(l), None) => (format!("{} LIMIT ${}", base_sql, count_placeholders(base_sql) + 1), Some(l), None),
+        (None, Some(o)) => (format!("{} OFFSET ${}", base_sql, count_placeholders(base_sql) + 1), None, Some(o)),
         (None, None) => (base_sql.to_string(), None, None),
     }
 }
 
-/// Extension for Option to provide or_else
-trait OptionExt<T> {
-    fn ok_or_else<F>(self, f: F) -> Result<T, DatabaseError>
-    where
-        F: FnOnce() -> DatabaseError;
-}
-
-impl<T> OptionExt<T> for Option<T> {
-    fn ok_or_else<F>(self, f: F) -> Result<T, DatabaseError>
-    where
-        F: FnOnce() -> DatabaseError,
-    {
-        self.ok_or_else(f)
+/// Count the number of $N placeholders in a SQL query
+fn count_placeholders(sql: &str) -> usize {
+    let mut count = 0;
+    let mut chars = sql.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '$' {
+            // Skip the digit(s) after $
+            while chars.peek().map_or(false, |c| c.is_ascii_digit()) {
+                chars.next();
+            }
+            count += 1;
+        }
     }
+    count
 }

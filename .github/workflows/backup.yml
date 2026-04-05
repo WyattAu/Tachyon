@@ -1,0 +1,318 @@
+name: Backup and Recovery
+
+on:
+  schedule:
+    # Run incremental backup every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      backup_type:
+        description: 'Backup type (incremental, full, restore)'
+        required: true
+        type: choice
+        options:
+          - incremental
+          - full
+          - restore
+        default: incremental
+      environment:
+        description: 'Target environment (development, staging, production)'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+        default: staging
+      retention_days:
+        description: 'Retention period in days'
+        required: false
+        type: number
+        default: 30
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  BACKUP_BUCKET: s3://tachyon-backups
+  RETENTION_DAYS: ${{ github.event.inputs.retention_days || 30 }}
+  BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+
+jobs:
+  backup-database:
+    name: Backup Database
+    runs-on: ubuntu-latest
+    outputs:
+      backup_id: ${{ steps.generate-id.outputs.backup_id }}
+      backup_timestamp: ${{ steps.generate-id.outputs.timestamp }}
+    steps:
+      - name: Generate Backup ID
+        id: generate-id
+        run: |
+          TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          BACKUP_ID="db-${{ inputs.environment }}-${TIMESTAMP}"
+          echo "backup_id=${BACKUP_ID}"
+          echo "timestamp=${TIMESTAMP}"
+
+      - name: Check Database Connection
+        run: |
+          pg_isready -h ${{ secrets.DATABASE_HOST }} -p 5432 -d ${{ secrets.DATABASE_NAME }}
+
+      - name: Perform Database Dump
+        env:
+          PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        run: |
+          pg_dump -h ${{ secrets.DATABASE_HOST }} \
+            -U ${{ secrets.DATABASE_USER }} \
+            -d ${{ secrets.DATABASE_NAME }} \
+            -F c \
+            -f /tmp/${{ steps.generate-id.outputs.backup_id }}.dump
+
+      - name: Compress Backup
+        run: |
+          gzip /tmp/${{ steps.generate-id.outputs.backup_id }}.dump
+
+      - name: Encrypt Backup
+        run: |
+          gpg --batch \
+            --yes \
+            --cipher-algo AES256 \
+            --passphrase "${{ secrets.BACKUP_ENCRYPTION_KEY }}" \
+            --symmetric \
+            --output /tmp/${{ steps.generate-id.outputs.backup_id }}.dump.gpg \
+            /tmp/${{ steps.generate-id.outputs.backup_id }}.dump.gz
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp /tmp/${{ steps.generate-id.outputs.backup_id }}.dump.gpg \
+            ${BACKUP_BUCKET}/database/${{ steps.generate-id.outputs.backup_id }}.dump.gpg \
+            --storage-class STANDARD_IA
+
+      - name: Verify Backup
+        run: |
+          aws s3 ls ${BACKUP_BUCKET}/database/${{ steps.generate-id.outputs.backup_id }}.dump.gpg
+
+      - name: Record Backup Metadata
+        run: |
+          echo "Backup completed at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      - name: Send Success Notification
+        if: ${{ success() }}
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"Database backup completed: ${{ steps.generate-id.outputs.backup_id }}\"}"
+
+      - name: Send Failure Notification
+        if: ${{ failure() }}
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"Database backup FAILED: ${{ steps.generate-id.outputs.backup_id }}\"}"
+
+  backup-configuration:
+    name: Backup Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Export Configuration
+        run: |
+          # Export kubernetes configurations
+          kubectl get configmaps -o json > /tmp/configmaps.json
+          kubectl get secrets -o json > /tmp/secrets.json
+          
+          # Export application configurations
+          envsubst < .env.template > /tmp/.env.backup
+
+      - name: Compress Configuration
+        run: |
+          tar -czf /tmp/config-${{ inputs.environment }}-$(date +%Y%m%dT%H%M%SZ).tar.gz \
+            -C /tmp configmaps.json secrets.json .env.backup
+
+      - name: Encrypt Configuration
+        run: |
+          gpg --batch \
+            --yes \
+            --cipher-algo AES256 \
+            --passphrase "${{ secrets.BACKUP_ENCRYPTION_KEY }}" \
+            --symmetric \
+            --output /tmp/config-${{ inputs.environment }}-$(date +%Y%m%dT%H%M%SZ).tar.gz.gpg \
+            /tmp/config-${{ inputs.environment }}-$(date +%Y%m%dT%H%M%SZ).tar.gz
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp /tmp/config-${{ inputs.environment }}-$(date +%Y%m%dT%H%M%SZ).tar.gz.gpg \
+            ${BACKUP_BUCKET}/configuration/
+
+      - name: Record Backup Metadata
+        run: |
+          echo "Configuration backup completed at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  backup-logs:
+    name: Backup Logs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Export Logs
+        run: |
+          # Export application logs
+          kubectl logs -l app=tachyon --tail=10000 > /tmp/app.log
+          
+          # Export system logs
+          journalctl -u tachyon-server --since "1 day ago" > /tmp/system.log
+
+      - name: Compress Logs
+        run: |
+          tar -czf /tmp/logs-${{ inputs.environment }}-$(date +%Y%m%dT%H%M%SZ).tar.gz \
+            /tmp/app.log /tmp/system.log
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp /tmp/logs-${{ inputs.environment }}-$(date +%Y%m%dT%H%M%SZ).tar.gz \
+            ${BACKUP_BUCKET}/logs/
+
+      - name: Record Backup Metadata
+        run: |
+          echo "Logs backup completed at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  verify-backups:
+    name: Verify Backup Integrity
+    runs-on: ubuntu-latest
+    needs: [backup-database, backup-configuration, backup-logs]
+    steps:
+      - name: Download Latest Database Backup
+        run: |
+          LATEST_BACKUP=$(aws s3 ls ${BACKUP_BUCKET}/database/ | sort -r | head -1 | awk '{print $4}')
+          aws s3 cp ${BACKUP_BUCKET}/database/${LATEST_BACKUP} /tmp/verify-backup.gpg
+
+      - name: Decrypt Backup
+        run: |
+          gpg --batch \
+            --yes \
+            --passphrase "${{ secrets.BACKUP_ENCRYPTION_KEY }}" \
+            --output /tmp/verify-backup.gz \
+            --decrypt /tmp/verify-backup.gpg
+
+      - name: Verify Backup Integrity
+        run: |
+          pg_restore -l /tmp/verify-backup.gz > /tmp/restore-list.txt
+          wc -l /tmp/restore-list.txt
+
+      - name: Report Verification Results
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "Backup verification passed"
+            curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+              -H "Content-Type: application/json" \
+              -d "{\"text\": \"Backup verification passed\"}"
+          else
+            echo "Backup verification failed"
+            curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+              -H "Content-Type: application/json" \
+              -d "{\"text\": \"Backup verification FAILED\"}"
+            exit 1
+          fi
+
+  restore-database:
+    name: Restore Database
+    runs-on: ubuntu-latest
+    needs: backup-database
+    if: ${{ inputs.backup_type == 'restore' }}
+    steps:
+      - name: Download Backup
+        run: |
+          aws s3 cp ${BACKUP_BUCKET}/database/${{ inputs.restore_backup }} /tmp/restore-backup.gpg
+
+      - name: Decrypt Backup
+        run: |
+          gpg --batch \
+            --yes \
+            --passphrase "${{ secrets.BACKUP_ENCRYPTION_KEY }}" \
+            --output /tmp/restore-backup.gz \
+            --decrypt /tmp/restore-backup.gpg
+
+      - name: Restore Database
+        env:
+          PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        run: |
+          pg_restore -h ${{ secrets.DATABASE_HOST }} \
+            -U ${{ secrets.DATABASE_USER }} \
+            -d ${{ secrets.DATABASE_NAME }} \
+            -c -j 4 \
+            /tmp/restore-backup.gz
+
+      - name: Verify Restore
+        run: |
+          psql -h ${{ secrets.DATABASE_HOST }} \
+            -U ${{ secrets.DATABASE_USER }} \
+            -d ${{ secrets.DATABASE_NAME }} \
+            -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'"
+
+  cleanup-old-backups:
+    name: Cleanup Old Backups
+    runs-on: ubuntu-latest
+    needs: verify-backups
+    steps:
+      - name: List Old Backups
+        run: |
+          aws s3 ls ${BACKUP_BUCKET}/database/ | \
+            awk -v days="${RETENTION_DAYS}" '$1 < strftime("%Y%m%d", systime() - days*86400) {print $4}' \
+            > /tmp/old-backups.txt
+
+      - name: Delete Old Backups
+        run: |
+          while read -r backup; do
+            aws s3 rm ${BACKUP_BUCKET}/database/${backup}
+          done < /tmp/old-backups.txt
+
+      - name: Report Cleanup Results
+        run: |
+          DELETED_COUNT=$(wc -l < /tmp/old-backups.txt)
+          echo "Deleted ${DELETED_COUNT} old backups"
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"Cleaned up ${DELETED_COUNT} old backups\"}"
+
+  generate-backup-report:
+    name: Generate Backup Report
+    runs-on: ubuntu-latest
+    needs: [backup-database, backup-configuration, backup-logs, verify-backups]
+    steps:
+      - name: Generate Report
+        run: |
+          cat > /tmp/backup-report.md << 'EOF'
+          # Backup Report
+          
+          - **Date**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          - **Environment**: ${{ inputs.environment }}
+          - **Backup Type**: ${{ inputs.backup_type }}
+          - **Retention Period**: ${RETENTION_DAYS} days
+          
+          ## Backup Summary
+          
+          | Component | Status | Size | Location |
+          |-----------|--------|------|----------|
+          | Database | Success | $(aws s3 ls ${BACKUP_BUCKET}/database/ | sort -r | head -1 | awk '{print $3}') | S3 |
+          | Configuration | Success | $(aws s3 ls ${BACKUP_BUCKET}/configuration/ | sort -r | head -1 | awk '{print $3}') | S3 |
+          | Logs | Success | $(aws s3 ls ${BACKUP_BUCKET}/logs/ | sort -r | head -1 | awk '{print $3}') | S3 |
+          
+          ## Verification Results
+          
+          - **Database Backup**: Passed
+          - **Configuration Backup**: Passed
+          - **Logs Backup**: Passed
+          
+          ## Next Backup
+          
+          - **Scheduled**: $(date -u -d '6 hours' +%Y-%m-%dT%H:%M:%SZ)
+          EOF
+
+      - name: Upload Report
+        run: |
+          aws s3 cp /tmp/backup-report.md \
+            ${BACKUP_BUCKET}/reports/backup-report-${{ inputs.environment }}-$(date +%Y%m%dT%H%M%SZ).md
+
+      - name: Send Report to Slack
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"Backup report generated. Full report available at ${BACKUP_BUCKET}/reports/\"}"

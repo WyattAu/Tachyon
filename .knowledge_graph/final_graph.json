@@ -1,0 +1,62 @@
+{
+  "@context": {
+    "schema": "http://schema.org/",
+    "taco": "https://taco.org/ns#",
+    "prov": "http://www.w3.org/ns/prov#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "owl": "http://www.w3.org/2002/07/owl#"
+  },
+  "@graph": [
+    {
+      "@id": "taco:project/tachyon",
+      "@type": "schema:SoftwareApplication",
+      "name": "Tachyon",
+      "description": "High-performance knowledge management system with Just-In-Time (JIT) rendering capabilities",
+      "applicationCategory": "Knowledge Management",
+      "version": "1.0.0",
+      "status": "COMPLETE",
+      "projectPhase": "12 - Knowledge Transfer",
+      "taco:deploymentModes": ["Desktop", "Server", "Static"],
+      "taco:hasModule": [
+        "taco:module/content-management",
+        "taco:module/rendering-engine",
+        "taco:module/search-engine",
+        "taco:module/user-interface",
+        "taco:module/access-control",
+        "taco:module/infrastructure"
+      ],
+      "taco:hasPattern": [
+        "taco:pattern/p-rust-001",
+        "taco:pattern/p-rust-002",
+        "taco:pattern/p-rust-003",
+        "taco:pattern/p-rust-004",
+        "taco:pattern/p-arch-001",
+        "taco:pattern/p-arch-002",
+        "taco:pattern/p-arch-003",
+        "taco:pattern/p-arch-004",
+        "taco:pattern/p-cicd-001",
+        "taco:pattern/p-cicd-002",
+        "taco:pattern/p-cicd-003",
+        "taco:pattern/p-cicd-004",
+        "taco:pattern/p-sec-001"
+      ],
+      "taco:hasLesson": [
+        "taco:lesson/jit-rendering-performance",
+        "taco:lesson/concurrent-caching",
+        "taco:lesson/rust-async-runtime",
+        "taco:lesson/rbac-implementation",
+        "taco:lesson/bm25-tuning",
+        "taco:lesson/security-first-design",
+        "taco:lesson/formal-verification",
+        "taco:lesson/supply-chain-security"
+      ],
+      "taco:hasAntiPattern": [
+        "taco:antipattern/synchronous-blocking",
+        "taco:antipattern/mutex-contention",
+        "taco:antipattern/god-module",
+        "taco:antipattern/implicit-auth",
+        "taco:antipattern/cache-miss-storm"
+      ]
+    }
+  ]
+}

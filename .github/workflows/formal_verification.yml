@@ -1,0 +1,263 @@
+name: Formal Verification
+
+on:
+  push:
+    branches: [main, develop, 'release/*']
+    paths:
+      - '.specs/**/proof.lean'
+      - '.specs/**/*.lean'
+      - 'tachyon/**/*.lean'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '.specs/**/proof.lean'
+      - '.specs/**/*.lean'
+      - 'tachyon/**/*.lean'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Lean4 Proof Verification
+  lean-verification:
+    name: Lean4 Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Lean
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh
+          elan default leanprover/lean4:stable
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Cache Lean build
+        uses: actions/cache@v4
+        with:
+          path: |
+            .lake
+            ~/.elan
+          key: ${{ runner.os }}-lean-${{ hashFiles('lake-manifest.lean') }}
+          restore-keys: |
+            ${{ runner.os }}-lean-
+
+      - name: Install Lake dependencies
+        run: lake setup
+
+      - name: Verify Lean proofs
+        run: lake build --verbose
+
+      - name: Generate proof report
+        run: |
+          python .github/scripts/generate_lean_proof_report.py \
+            --output lean-proof-report.json
+
+      - name: Check for unproven theorems
+        run: |
+          python .github/scripts/check_unproven_proofs.py \
+            --input lean-proof-report.json \
+            --fail-on-critical
+
+      - name: Upload Lean proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-proof-artifacts
+          path: |
+            .lake/
+            lean-proof-report.json
+          retention-days: 30
+
+      - name: Upload Lean proof results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-proof-results
+          path: |
+            .lake/build/ir/
+          retention-days: 90
+
+  # Coq Proof Verification (if applicable)
+  coq-verification:
+    name: Coq Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Coq
+        run: |
+          opam init -a -y
+          opam switch create 4.15.0 -y
+          eval $(opam env)
+          opam install -y coq-mathcomp-ssreflect
+
+      - name: Cache Coq build
+        uses: actions/cache@v4
+        with:
+          path: |
+            _opam
+            ~/.opam
+          key: ${{ runner.os }}-coq-${{ hashFiles('.specs/**/*.v') }}
+          restore-keys: |
+            ${{ runner.os }}-coq-
+
+      - name: Verify Coq proofs
+        run: |
+          find .specs -name '*.v' -exec coqc -R .specs {} \;
+
+      - name: Generate Coq proof report
+        run: |
+          python .github/scripts/generate_coq_proof_report.py \
+            --output coq-proof-report.json
+
+      - name: Check for unproven theorems
+        run: |
+          python .github/scripts/check_unproven_proofs.py \
+            --input coq-proof-report.json \
+            --fail-on-critical
+
+      - name: Upload Coq proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coq-proof-artifacts
+          path: |
+            .specs/**/*.vo
+            .specs/**/*.glob
+            coq-proof-report.json
+          retention-days: 30
+
+  # Formal Verification Summary
+  formal-verification-summary:
+    name: Formal Verification Summary
+    runs-on: ubuntu-latest
+    needs: [lean-verification, coq-verification]
+    if: always()
+    timeout-minutes: 10
+
+    steps:
+      - name: Download all proof artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Generate formal verification report
+        run: |
+          python .github/scripts/generate_formal_verification_report.py \
+            --lean-input artifacts/lean-proof-artifacts/lean-proof-report.json \
+            --coq-input artifacts/coq-proof-artifacts/coq-proof-report.json \
+            --output formal-verification-report.json
+
+      - name: Upload formal verification report
+        uses: actions/upload-artifact@v4
+        with:
+          name: formal-verification-report
+          path: |
+            formal-verification-report.json
+          retention-days: 30
+
+      - name: Check proof coverage
+        run: |
+          python .github/scripts/check_proof_coverage.py \
+            --input formal-verification-report.json \
+            --min-critical-coverage 100.0 \
+            --min-overall-coverage 90.0
+
+      - name: Post proof summary to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('artifacts/formal-verification-report.json', 'utf8'));
+            
+            const summary = `
+            ## Formal Verification Summary
+            
+            ### Lean4 Proofs
+            - Total theorems: ${report.lean.totalTheorems}
+            - Proven: ${report.lean.provenTheorems}
+            - Unproven: ${report.lean.unprovenTheorems}
+            - Coverage: ${report.lean.coverage}%
+            
+            ### Coq Proofs
+            - Total theorems: ${report.coq.totalTheorems}
+            - Proven: ${report.coq.provenTheorems}
+            - Unproven: ${report.coq.unprovenTheorems}
+            - Coverage: ${report.coq.coverage}%
+            
+            ### Overall
+            - Total theorems: ${report.totalTheorems}
+            - Proven: ${report.provenTheorems}
+            - Unproven: ${report.unprovenTheorems}
+            - Overall coverage: ${report.overallCoverage}%
+            
+            ### Critical Unproven Theorems
+            
+            ${report.criticalUnproven.map(t => `- ${t.name}: ${t.file}`).join('\n') || 'None'}
+            `;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: summary
+            });
+
+  # Model Checking (for critical algorithms)
+  model-checking:
+    name: Model Checking
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install CBMC
+        run: |
+          wget -qO - https://github.com/diffblue/cbmc/releases/download/6.0.0/ubuntu-22.04-cbmc-6.0.0-Linux.deb
+          sudo dpkg -i ubuntu-22.04-cbmc-6.0.0-Linux.deb
+
+      - name: Run CBMC on critical components
+        run: |
+          cd tachyon/crates/core
+          cbmc src/cache/lru.rs \
+            --unwind 10 \
+            --object-bits 32 \
+            --floatbv \
+            --trace 2>&1 | tee cbmc-trace.txt
+
+      - name: Parse CBMC results
+        run: |
+          python .github/scripts/parse_cbmc_results.py \
+            --input cbmc-trace.txt \
+            --output cbmc-results.json
+
+      - name: Check for CBMC violations
+        run: |
+          python .github/scripts/check_cbmc_violations.py \
+            --input cbmc-results.json
+
+      - name: Upload CBMC results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbmc-results
+          path: |
+            cbmc-trace.txt
+            cbmc-results.json
+          retention-days: 30

@@ -1,0 +1,154 @@
+# Tachyon Development Commands
+# Common commands for building, testing, and running the application
+
+# Variables
+project_dir := justfile_directory()
+backend := "tachyon-server"
+frontend := "tachyon-frontend"
+
+# Default: show available commands
+default:
+    @just --list
+
+# Install development dependencies
+install-deps:
+    rustup component add rustfmt clippy
+    cargo install trunk
+    cargo install cargo-watch
+    cargo install cargo-audit
+
+# Build all workspace members
+build:
+    cargo build --workspace
+
+# Build backend in release mode
+build-backend:
+    cargo build --release -p {{backend}}
+
+# Build frontend WASM
+build-frontend:
+    cd crates/frontend && trunk build --release
+
+# Build all in release mode
+build-release: build-backend build-frontend
+
+# Run backend server
+run-backend:
+    cargo run -p {{backend}}
+
+# Run backend with auto-reload
+watch-backend:
+    cargo watch -x "run -p {{backend}}"
+
+# Run frontend development server
+run-frontend:
+    cd crates/frontend && trunk serve --open
+
+# Run all tests
+test:
+    cargo test --workspace --exclude {{frontend}} --exclude tachyon-testing
+
+# Run tests with coverage
+test-coverage:
+    cargo tarpaulin --workspace --exclude {{frontend}} --exclude tachyon-testing --out Html --output-dir target/coverage
+
+# Run linting (format + clippy)
+lint:
+    cargo fmt --all -- --check
+    cargo clippy --workspace --all-targets -- -D warnings
+
+# Format code
+fmt:
+    cargo fmt --all
+
+# Run security audit
+audit:
+    cargo audit
+
+# Clean build artifacts
+clean:
+    cargo clean
+    rm -rf crates/frontend/dist
+
+# Docker commands
+# Build Docker images
+docker-build:
+    docker-compose build
+
+# Build production Docker images
+docker-build-prod:
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
+
+# Run development stack
+docker-up:
+    docker-compose up -d
+
+# Run production stack (requires .env file)
+docker-up-prod:
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Stop Docker stack
+docker-down:
+    docker-compose down
+
+# View Docker logs
+docker-logs:
+    docker-compose logs -f
+
+# Clean Docker resources
+docker-clean:
+    docker-compose down -v --rmi local
+
+# Database commands
+# Run database migrations
+db-migrate:
+    cargo run -p {{backend}} -- migrate
+
+# Reset database
+db-reset:
+    cargo run -p {{backend}} -- reset-db
+
+# Development workflow
+# Setup development environment
+setup: install-deps build
+    @echo "Development environment ready!"
+
+# Quick development cycle
+dev: lint test build
+
+# Full CI check (what runs in CI)
+ci: fmt lint test build-backend build-frontend
+
+# Release preparation
+release: clean ci
+    @echo "Ready for release!"
+
+# Help
+help:
+    @echo "Tachyon Development Commands"
+    @echo ""
+    @echo "Building:"
+    @echo "  just build              - Build all workspace members"
+    @echo "  just build-backend      - Build backend in release mode"
+    @echo "  just build-frontend     - Build frontend WASM"
+    @echo ""
+    @echo "Running:"
+    @echo "  just run-backend        - Run backend server"
+    @echo "  just watch-backend      - Run backend with auto-reload"
+    @echo "  just run-frontend       - Run frontend dev server"
+    @echo ""
+    @echo "Testing:"
+    @echo "  just test               - Run all tests"
+    @echo "  just test-coverage      - Run tests with coverage"
+    @echo "  just lint               - Run format + clippy checks"
+    @echo ""
+    @echo "Docker:"
+    @echo "  just docker-build       - Build Docker images"
+    @echo "  just docker-up          - Run development stack"
+    @echo "  just docker-down        - Stop Docker stack"
+    @echo "  just docker-logs        - View Docker logs"
+    @echo ""
+    @echo "Workflow:"
+    @echo "  just setup              - Setup dev environment"
+    @echo "  just dev                - Quick development cycle"
+    @echo "  just ci                 - Full CI check"

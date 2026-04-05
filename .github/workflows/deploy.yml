@@ -1,0 +1,364 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip pre-deployment tests'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Pre-deployment validation
+  pre-deployment-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify all quality gates passed
+        run: |
+          python .github/scripts/verify_quality_gates.py \
+            --pipeline-id ${GITHUB_RUN_ID}
+
+      - name: Verify documentation is up to date
+        run: |
+          python .github/scripts/verify_documentation.py \
+            --version ${GITHUB_REF_NAME#refs/tags/}
+
+      - name: Verify configuration is valid
+        run: |
+          python .github/scripts/verify_configuration.py \
+            --environment ${{ inputs.environment }}
+
+      - name: Verify rollback readiness
+        run: |
+          python .github/scripts/verify_rollback_readiness.py \
+            --environment ${{ inputs.environment }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: artifacts/
+
+      - name: Verify build artifacts
+        run: |
+          python .github/scripts/verify_build_artifacts.py \
+            --artifacts-dir artifacts/
+
+  # Deploy to development environment
+  deploy-development:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    if: github.event.inputs.environment == 'development'
+    timeout-minutes: 30
+    environment:
+      ENVIRONMENT: development
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          config: ${{ secrets.DEV_KUBE_CONFIG }}
+
+      - name: Deploy development
+        run: |
+          kubectl set image deployment/tachyon-server \
+            tachyon-server=ghcr.io/tachyon/tachyon-server:${GITHUB_SHA} \
+            -n development
+          kubectl rollout restart deployment/tachyon-server -n development
+
+      - name: Wait for deployment
+        run: |
+          kubectl rollout status deployment/tachyon-server -n development --timeout=5m
+
+      - name: Verify deployment
+        run: |
+          kubectl wait --for=condition=available pod \
+            -l app=tachyon-server \
+            -n development \
+            --timeout=5m
+
+  # Deploy to staging environment
+  deploy-staging:
+    name: Deploy to Staging (Canary)
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    if: github.event.inputs.environment == 'staging'
+    timeout-minutes: 60
+    environment:
+      ENVIRONMENT: staging
+      CANARY_PERCENT: 10
+      PROMOTE_AFTER: 1h
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          config: ${{ secrets.STAGING_KUBE_CONFIG }}
+
+      - name: Deploy canary version
+        run: |
+          kubectl patch deployment tachyon-server \
+            -n staging \
+            -p '{"spec":{"template":{"spec":{"containers":[{"name":"tachyon-server","image":"ghcr.io/tachyon/tachyon-server:${GITHUB_SHA}"}}]}}}'
+
+      - name: Route 10% traffic to canary
+        run: |
+          kubectl patch service tachyon-server \
+            -n staging \
+            --type=json \
+            -p '{"spec":{"traffic":[{"percentage":10}]}}'
+
+      - name: Wait for canary validation
+        run: |
+          python .github/scripts/wait_for_canary_validation.py \
+            --environment staging \
+            --duration 1800
+
+      - name: Check canary metrics
+        run: |
+          python .github/scripts/check_canary_metrics.py \
+            --environment staging \
+            --threshold 0.1
+
+      - name: Promote to 50%
+        run: |
+          kubectl patch service tachyon-server \
+            -n staging \
+            --type=json \
+            -p '{"spec":{"traffic":[{"percentage":50}]}}'
+
+      - name: Wait for 50% validation
+        run: |
+          python .github/scripts/wait_for_canary_validation.py \
+            --environment staging \
+            --duration 1800
+
+      - name: Check canary metrics
+        run: |
+          python .github/scripts/check_canary_metrics.py \
+            --environment staging \
+            --threshold 0.05
+
+      - name: Promote to 100%
+        run: |
+          kubectl patch service tachyon-server \
+            -n staging \
+            --type=json \
+            -p '{"spec":{"traffic":[{"percentage":100}]}}'
+
+      - name: Wait for full deployment
+        run: |
+          kubectl rollout status deployment/tachyon-server -n staging --timeout=5m
+
+      - name: Verify deployment
+        run: |
+          kubectl wait --for=condition=available pod \
+            -l app=tachyon-server \
+            -n staging \
+            --timeout=5m
+
+  # Deploy to production environment
+  deploy-production:
+    name: Deploy to Production (Blue-Green)
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    if: github.event.inputs.environment == 'production'
+    timeout-minutes: 60
+    environment:
+      ENVIRONMENT: production
+
+    steps:
+      - name: Request approval
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ secrets.PRODUCTION_DEPLOY_APPROVAL_TOKEN }}
+          approvers: devops-lead,architecture-lead,security-lead
+          minimum-approvals: 2
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          config: ${{ secrets.PRODUCTION_KUBE_CONFIG }}
+
+      - name: Deploy to green environment
+        run: |
+          kubectl apply -f manifests/tachyon-server-green.yaml
+          kubectl rollout restart deployment/tachyon-server -n green
+
+      - name: Wait for green deployment
+        run: |
+          kubectl rollout status deployment/tachyon-server -n green --timeout=5m
+
+      - name: Verify green deployment
+        run: |
+          kubectl wait --for=condition=available pod \
+            -l app=tachyon-server \
+            -n green \
+            --timeout=5m
+
+      - name: Route 1% internal traffic to green
+        run: |
+          kubectl patch service tachyon-server \
+            -n production \
+            --type=json \
+            -p '{"spec":{"traffic":[{"percentage":1}]}}'
+
+      - name: Wait for internal validation
+        run: |
+          python .github/scripts/wait_for_internal_validation.py \
+            --environment production \
+            --duration 900
+
+      - name: Check internal metrics
+        run: |
+          python .github/scripts/check_internal_metrics.py \
+            --environment production \
+            --threshold 0.1
+
+      - name: Route 10% traffic to green
+        run: |
+          kubectl patch service tachyon-server \
+            -n production \
+            --type=json \
+            -p '{"spec":{"traffic":[{"percentage":10}]}}'
+
+      - name: Wait for validation
+        run: |
+          python .github/scripts/wait_for_internal_validation.py \
+            --environment production \
+            --duration 1800
+
+      - name: Check green metrics
+        run: |
+          python .github/scripts/check_green_metrics.py \
+            --environment production \
+            --threshold 0.1
+
+      - name: Route 50% traffic to green
+        run: |
+          kubectl patch service tachyon-server \
+            -n production \
+            --type=json \
+            -p '{"spec":{"traffic":[{"percentage":50}]}}'
+
+      - name: Wait for validation
+        run: |
+          python .github/scripts/wait_for_internal_validation.py \
+            --environment production \
+            --duration 1800
+
+      - name: Check green metrics
+        run: |
+          python .github/scripts/check_green_metrics.py \
+            --environment production \
+            --threshold 0.05
+
+      - name: Route 100% traffic to green
+        run: |
+          kubectl patch service tachyon-server \
+            -n production \
+            --type=json \
+            -p '{"spec":{"traffic":[{"percentage":100}]}}'
+
+      - name: Wait for full cutover
+        run: |
+          python .github/scripts/wait_for_full_cutover.py \
+            --environment production \
+            --duration 300
+
+      - name: Verify production deployment
+        run: |
+          kubectl wait --for=condition=available pod \
+            -l app=tachyon-server \
+            -n production \
+            --timeout=5m
+
+      - name: Teardown blue environment
+        run: |
+          kubectl delete -f manifests/tachyon-server-blue.yaml --ignore-not-found=true
+
+  # Post-deployment validation
+  post-deployment:
+    name: Post-deployment Validation
+    runs-on: ubuntu-latest
+    needs: [deploy-development, deploy-staging, deploy-production]
+    if: always()
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify deployment health
+        run: |
+          python .github/scripts/verify_deployment_health.py \
+            --environment ${{ inputs.environment }} \
+            --duration 300
+
+      - name: Run smoke tests
+        if: github.event.inputs.skip_tests != 'true'
+        run: |
+          python .github/scripts/run_smoke_tests.py \
+            --environment ${{ inputs.environment }}
+
+      - name: Generate deployment report
+        run: |
+          python .github/scripts/generate_deployment_report.py \
+            --environment ${{ inputs.environment }} \
+            --output deployment-report.json
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-report
+          path: |
+            deployment-report.json
+          retention-days: 90
+
+      - name: Send deployment notification
+        if: success()
+        run: |
+          python .github/scripts/send_deployment_notification.py \
+            --environment ${{ inputs.environment }} \
+            --report deployment-report.json
+
+      - name: Create release
+        if: |
+          github.event.inputs.environment == 'production' &&
+          startsWith(github.ref, 'refs/tags/')
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --notes "See deployment report for details" \
+            --title "Release ${{ github.ref_name }}"

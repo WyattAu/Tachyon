@@ -1,0 +1,272 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "shell": {
+      "executable": "bash",
+      "args": ["-c"]
+    }
+  },
+  "tasks": [
+    {
+      "label": "check",
+      "type": "shell",
+      "command": "make",
+      "args": ["check"],
+      "problemMatcher": ["$rustc"],
+      "group": "build",
+      "detail": "Check Rust workspace for compilation errors"
+    },
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "make",
+      "args": ["build"],
+      "problemMatcher": ["$rustc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Build Rust workspace in debug mode"
+    },
+    {
+      "label": "build:release",
+      "type": "shell",
+      "command": "make",
+      "args": ["build-release"],
+      "problemMatcher": ["$rustc"],
+      "group": "build",
+      "detail": "Build Rust workspace in release mode"
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "make",
+      "args": ["test"],
+      "problemMatcher": ["$rustc"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "detail": "Run all workspace tests"
+    },
+    {
+      "label": "test:core",
+      "type": "shell",
+      "command": "make",
+      "args": ["test-core"],
+      "problemMatcher": ["$rustc"],
+      "group": "test",
+      "detail": "Run tests for tachyon-core"
+    },
+    {
+      "label": "test:database",
+      "type": "shell",
+      "command": "make",
+      "args": ["test-database"],
+      "problemMatcher": ["$rustc"],
+      "group": "test",
+      "detail": "Run tests for tachyon-database"
+    },
+    {
+      "label": "test:server",
+      "type": "shell",
+      "command": "make",
+      "args": ["test-server"],
+      "problemMatcher": ["$rustc"],
+      "group": "test",
+      "detail": "Run tests for tachyon-server"
+    },
+    {
+      "label": "test:search",
+      "type": "shell",
+      "command": "make",
+      "args": ["test-search"],
+      "problemMatcher": ["$rustc"],
+      "group": "test",
+      "detail": "Run tests for tachyon-search"
+    },
+    {
+      "label": "test:renderer",
+      "type": "shell",
+      "command": "make",
+      "args": ["test-renderer"],
+      "problemMatcher": ["$rustc"],
+      "group": "test",
+      "detail": "Run tests for tachyon-renderer"
+    },
+    {
+      "label": "test:rbac",
+      "type": "shell",
+      "command": "make",
+      "args": ["test-rbac"],
+      "problemMatcher": ["$rustc"],
+      "group": "test",
+      "detail": "Run tests for tachyon-rbac"
+    },
+    {
+      "label": "test:cli",
+      "type": "shell",
+      "command": "make",
+      "args": ["test-cli"],
+      "problemMatcher": ["$rustc"],
+      "group": "test",
+      "detail": "Run tests for tachyon-cli"
+    },
+    {
+      "label": "fmt",
+      "type": "shell",
+      "command": "make",
+      "args": ["fmt"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Format all code"
+    },
+    {
+      "label": "fmt:check",
+      "type": "shell",
+      "command": "make",
+      "args": ["fmt-check"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Check code formatting"
+    },
+    {
+      "label": "lint",
+      "type": "shell",
+      "command": "make",
+      "args": ["lint"],
+      "problemMatcher": ["$rustc"],
+      "group": "build",
+      "detail": "Run clippy linter"
+    },
+    {
+      "label": "audit",
+      "type": "shell",
+      "command": "make",
+      "args": ["audit"],
+      "problemMatcher": [],
+      "group": "test",
+      "detail": "Run security audit"
+    },
+    {
+      "label": "doc",
+      "type": "shell",
+      "command": "make",
+      "args": ["doc"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Generate documentation"
+    },
+    {
+      "label": "clean",
+      "type": "shell",
+      "command": "make",
+      "args": ["clean"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Clean build artifacts"
+    },
+    {
+      "label": "serve",
+      "type": "shell",
+      "command": "make",
+      "args": ["serve"],
+      "problemMatcher": ["$rustc"],
+      "group": "build",
+      "detail": "Run development server",
+      "isBackground": true
+    },
+    {
+      "label": "serve:release",
+      "type": "shell",
+      "command": "make",
+      "args": ["serve-release"],
+      "problemMatcher": ["$rustc"],
+      "group": "build",
+      "detail": "Run release server",
+      "isBackground": true
+    },
+    {
+      "label": "deploy:staging",
+      "type": "shell",
+      "command": "make",
+      "args": ["deploy-staging"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Deploy to staging"
+    },
+    {
+      "label": "deploy:production",
+      "type": "shell",
+      "command": "make",
+      "args": ["deploy-production"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Deploy to production"
+    },
+    {
+      "label": "docker:build",
+      "type": "shell",
+      "command": "make",
+      "args": ["docker-build"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Build Docker images"
+    },
+    {
+      "label": "docker:up",
+      "type": "shell",
+      "command": "make",
+      "args": ["docker-up"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Start Docker containers"
+    },
+    {
+      "label": "docker:down",
+      "type": "shell",
+      "command": "make",
+      "args": ["docker-down"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Stop Docker containers"
+    },
+    {
+      "label": "docker:logs",
+      "type": "shell",
+      "command": "make",
+      "args": ["docker-logs"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "View Docker logs",
+      "isBackground": true
+    },
+    {
+      "label": "ci",
+      "type": "shell",
+      "command": "make",
+      "args": ["ci"],
+      "problemMatcher": ["$rustc"],
+      "group": "test",
+      "detail": "Run full CI pipeline"
+    },
+    {
+      "label": "ci:lite",
+      "type": "shell",
+      "command": "make",
+      "args": ["ci-lite"],
+      "problemMatcher": ["$rustc"],
+      "group": "test",
+      "detail": "Run lightweight CI"
+    },
+    {
+      "label": "help",
+      "type": "shell",
+      "command": "make",
+      "args": ["help"],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Show all available commands"
+    }
+  ]
+}

@@ -1,0 +1,735 @@
+{
+  "version": "1.0",
+  "created": "2026-02-11",
+  "languages": ["EN", "ZH", "RU", "DE", "FR", "JP", "KO", "ES", "IT", "PT", "NL", "PL", "CS", "AR", "FA", "TR"],
+  "domains": {
+    "jit_rendering": {
+      "id": "domain-jit",
+      "name": "JIT Rendering",
+      "description": "Just-In-Time compilation and rendering technologies",
+      "concepts": [
+        {
+          "id": "jit-compilation",
+          "names": {
+            "EN": "JIT Compilation",
+            "ZH": "即时编译",
+            "RU": "JIT-компиляция",
+            "DE": "JIT-Kompilierung",
+            "FR": "Compilation JIT",
+            "JP": "JITコンパイル",
+            "KO": "JIT 컴파일",
+            "ES": "Compilación JIT",
+            "IT": "Compilazione JIT",
+            "PT": "Compilação JIT",
+            "NL": "JIT-compilatie",
+            "PL": "Kompilacja JIT",
+            "CS": "Kompilace JIT",
+            "AR": "تجميع JIT",
+            "FA": "کامپایل JIT",
+            "TR": "JIT kompilasyonu"
+          },
+          "definition": "Runtime compilation of code to native machine code for performance optimization",
+          "related_requirements": ["RE-RQ-001"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "server-side-rendering",
+          "names": {
+            "EN": "Server-Side Rendering",
+            "ZH": "服务器端渲染",
+            "RU": "Серверный рендеринг",
+            "DE": "Server-Side-Rendering",
+            "FR": "Rendu cote serveur",
+            "JP": "サーバーサイドレンダリング",
+            "KO": "서버 측 렌더링",
+            "ES": "Renderizado del lado del servidor",
+            "IT": "Rendering lato server",
+            "PT": "Renderização do lado do servidor",
+            "NL": "Server-side rendering",
+            "PL": "Renderowanie po stronie serwera",
+            "CS": "Vykreslování na straně serveru",
+            "AR": "العرض من جانب الخادم",
+            "FA": "رندرینگ سمت سرور",
+            "TR": "Sunucu taraflı işleme"
+          },
+          "definition": "Generating HTML on the server before sending to client",
+          "related_requirements": ["RE-RQ-001"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "cache-invalidation",
+          "names": {
+            "EN": "Cache Invalidation",
+            "ZH": "缓存失效",
+            "RU": "Недействительность кэша",
+            "DE": "Cache-Invalidierung",
+            "FR": "Invalidation du cache",
+            "JP": "キャッシュ無効化",
+            "KO": "캐시 무효화",
+            "ES": "Invalidación de caché",
+            "IT": "Invalidazione cache",
+            "PT": "Invalidação de cache",
+            "NL": "Cache-invalidatie",
+            "PL": "Unieważnienie cache",
+            "CS": "Neplatnost cache",
+            "AR": "إبطال التخزين المؤقت",
+            "FA": "نامعتبر کردن کش",
+            "TR": "Önbellek geçersizliği"
+          },
+          "definition": "Removing stale entries from cache when underlying data changes",
+          "related_requirements": ["RE-RQ-006"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "hot-reload",
+          "names": {
+            "EN": "Hot Reload",
+            "ZH": "热重载",
+            "RU": "Горячая перезагрузка",
+            "DE": "Hot-Reload",
+            "FR": "Rechargement à chaud",
+            "JP": "ホットリロード",
+            "KO": "핫 리로드",
+            "ES": "Recarga en caliente",
+            "IT": "Ricaricamento a caldo",
+            "PT": "Recarga quente",
+            "NL": "Hot-reload",
+            "PL": "Przeładowanie na gorąco",
+            "CS": "Hot-reload",
+            "AR": "إعادة التحميل الساخن",
+            "FA": "بارگذاری مجدد داغ",
+            "TR": "Sıcak yeniden yükleme"
+          },
+          "definition": "Automatically updating content when source files change",
+          "related_requirements": ["PF-RQ-001"],
+          "related_standards": ["ISO/IEC 25010"]
+        }
+      ]
+    },
+    "caching": {
+      "id": "domain-caching",
+      "name": "Caching Strategies",
+      "description": "Memory caching algorithms and policies",
+      "concepts": [
+        {
+          "id": "lru-cache",
+          "names": {
+            "EN": "LRU Cache",
+            "ZH": "LRU缓存",
+            "RU": "LRU кэш",
+            "DE": "LRU-Cache",
+            "FR": "Cache LRU",
+            "JP": "LRUキャッシュ",
+            "KO": "LRU 캐시",
+            "ES": "Caché LRU",
+            "IT": "Cache LRU",
+            "PT": "Cache LRU",
+            "NL": "LRU cache",
+            "PL": "Cache LRU",
+            "CS": "LRU cache",
+            "AR": "ذاكرة LRU",
+            "FA": "کش LRU",
+            "TR": "LRU önbelleği"
+          },
+          "definition": "Least-Recently-Used eviction policy for cache management",
+          "related_requirements": ["RE-RQ-005"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "cache-hit-rate",
+          "names": {
+            "EN": "Cache Hit Rate",
+            "ZH": "缓存命中率",
+            "RU": "Коэффициент попадания в кэш",
+            "DE": "Cache-Trefferquote",
+            "FR": "Taux de succès du cache",
+            "JP": "キャッシュヒット率",
+            "KO": "캐시 적중률",
+            "ES": "Tasa de aciertos de caché",
+            "IT": "Tasso di successo della cache",
+            "PT": "Taxa de acerto de cache",
+            "NL": "Cache hit rate",
+            "PL": "Wspczynnik trafii cache",
+            "CS": "Míra úspěšnosti cache",
+            "AR": "معدل إصابة ذاكرة التخزين",
+            "FA": "نرخ موفقیت کش",
+            "TR": "Önbellek isabet oranı"
+          },
+          "definition": "Ratio of cache hits to total requests",
+          "related_requirements": ["RE-RQ-005"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "multi-level-cache",
+          "names": {
+            "EN": "Multi-Level Cache",
+            "ZH": "多级缓存",
+            "RU": "Многоуровневый кэш",
+            "DE": "Mehrstufiger Cache",
+            "FR": "Cache multiniveaux",
+            "JP": "マルチレベルキャッシュ",
+            "KO": "다단계 캐시",
+            "ES": "Caché multinivel",
+            "IT": "Cache multi-livello",
+            "PT": "Cache multinível",
+            "NL": "Multi-level cache",
+            "PL": "Cache wielopoziomowy",
+            "CS": "Víceúrovňová cache",
+            "AR": "ذاكرة متعددة المستويات",
+            "FA": "کش چند سطحی",
+            "TR": "Çok seviyeli önbellek"
+          },
+          "definition": "Hierarchical cache architecture (L1, L2, etc.)",
+          "related_requirements": ["RE-RQ-005"],
+          "related_standards": ["ISO/IEC 25010"]
+        }
+      ]
+    },
+    "search": {
+      "id": "domain-search",
+      "name": "Full-Text Search",
+      "description": "Information retrieval algorithms and indexing",
+      "concepts": [
+        {
+          "id": "bm25-algorithm",
+          "names": {
+            "EN": "BM25 Algorithm",
+            "ZH": "BM25算法",
+            "RU": "Алгоритм BM25",
+            "DE": "BM25-Algorithmus",
+            "FR": "Algorithme BM25",
+            "JP": "BM25アルゴリズム",
+            "KO": "BM25 알고리즘",
+            "ES": "Algoritmo BM25",
+            "IT": "Algoritmo BM25",
+            "PT": "Algoritmo BM25",
+            "NL": "BM25-algoritme",
+            "PL": "Algorytm BM25",
+            "CS": "Algoritmus BM25",
+            "AR": "خوارزمية BM25",
+            "FA": "الگوریتم BM25",
+            "TR": "BM25 Algoritması"
+          },
+          "definition": "Probabilistic relevance scoring for information retrieval",
+          "related_requirements": ["SD-RQ-001"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "tf-idf",
+          "names": {
+            "EN": "TF-IDF",
+            "ZH": "TF-IDF",
+            "RU": "TF-IDF",
+            "DE": "TF-IDF",
+            "FR": "TF-IDF",
+            "JP": "TF-IDF",
+            "KO": "TF-IDF",
+            "ES": "TF-IDF",
+            "IT": "TF-IDF",
+            "PT": "TF-IDF",
+            "NL": "TF-IDF",
+            "PL": "TF-IDF",
+            "CS": "TF-IDF",
+            "AR": "TF-IDF",
+            "FA": "TF-IDF",
+            "TR": "TF-IDF"
+          },
+          "definition": "Term Frequency-Inverse Document Frequency weighting",
+          "related_requirements": ["SD-RQ-002"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "inverted-index",
+          "names": {
+            "EN": "Inverted Index",
+            "ZH": "倒排索引",
+            "RU": "Инвертированный индекс",
+            "DE": "Invertierter Index",
+            "FR": "Index inversé",
+            "JP": "転置インデックス",
+            "KO": "역 인덱스",
+            "ES": "Índice invertido",
+            "IT": "Indice invertito",
+            "PT": "Índice invertido",
+            "NL": "Geïndexeerde index",
+            "PL": "Indeks odwrócony",
+            "CS": "Invertovaný index",
+            "AR": "الفهرس المقلوب",
+            "FA": "شاخص معکوس",
+            "TR": "Ters endeks"
+          },
+          "definition": "Data structure mapping terms to document locations for fast retrieval",
+          "related_requirements": ["SD-RQ-002"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "search-ranking",
+          "names": {
+            "EN": "Search Ranking",
+            "ZH": "搜索排名",
+            "RU": "Ранжирование поиска",
+            "DE": "Such-Ranking",
+            "FR": "Classement des résultats de recherche",
+            "JP": "検索ランキング",
+            "KO": "검색 랭킹",
+            "ES": "Clasificación de resultados de búsqueda",
+            "IT": "Classificazione dei risultati di ricerca",
+            "PT": "Classificação dos resultados de busca",
+            "NL": "Zoekresultaat ranking",
+            "PL": "Ranking wyników wyszukiwania",
+            "CS": "Hodnocení výsledků vyhledávání",
+            "AR": "ترتيب نتائج البحث",
+            "FA": "رتب‌بندی نتایج جستجو",
+            "TR": "Arama sıralaması"
+          },
+          "definition": "Ordering search results by relevance score",
+          "related_requirements": ["SD-RQ-003"],
+          "related_standards": ["ISO/IEC 25010"]
+        }
+      ]
+    },
+    "version_control": {
+      "id": "domain-git",
+      "name": "Git Version Control",
+      "description": "Distributed version control system operations",
+      "concepts": [
+        {
+          "id": "git-commit",
+          "names": {
+            "EN": "Git Commit",
+            "ZH": "Git提交",
+            "RU": "Git коммит",
+            "DE": "Git-Commit",
+            "FR": "Commit Git",
+            "JP": "Gitコミット",
+            "KO": "Git 커밋",
+            "ES": "Commit de Git",
+            "IT": "Commit Git",
+            "PT": "Commit Git",
+            "NL": "Git-commit",
+            "PL": "Commit Git",
+            "CS": "Git commit",
+            "AR": "التقديم Git",
+            "FA": "کامیت Git",
+            "TR": "Git commit"
+          },
+          "definition": "Atomic change to repository with metadata",
+          "related_requirements": ["CM-RQ-003"],
+          "related_standards": ["ISO/IEC 27001"]
+        },
+        {
+          "id": "git-branch",
+          "names": {
+            "EN": "Git Branch",
+            "ZH": "Git分支",
+            "RU": "Git ветка",
+            "DE": "Git-Branch",
+            "FR": "Branche Git",
+            "JP": "Gitブランチ",
+            "KO": "Git 브랜치",
+            "ES": "Rama Git",
+            "IT": "Ramo Git",
+            "PT": "Ramo Git",
+            "NL": "Git-branch",
+            "PL": "Gałąź Git",
+            "CS": "Větev Git",
+            "AR": "فرع Git",
+            "FA": "شاخه Git",
+            "TR": "Git dalı"
+          },
+          "definition": "Parallel line of development",
+          "related_requirements": ["CM-RQ-005"],
+          "related_standards": ["ISO/IEC 27001"]
+        },
+        {
+          "id": "merge-conflict",
+          "names": {
+            "EN": "Merge Conflict",
+            "ZH": "合并冲突",
+            "RU": "Конфликт слияния",
+            "DE": "Merge-Konflikt",
+            "FR": "Conflit de fusion",
+            "JP": "マージ衝突",
+            "KO": "병합 충돌",
+            "ES": "Conflicto de fusión",
+            "IT": "Conflitto di fusione",
+            "PT": "Conflito de fusão",
+            "NL": "Merge-conflict",
+            "PL": "Konflikt scalania",
+            "CS": "Konflikt při sloučení",
+            "AR": "تعارض الدمج",
+            "FA": "تضاد ادغام",
+            "TR": "Birleştirme çakışması"
+          },
+          "definition": "Conflicting changes that cannot be automatically resolved",
+          "related_requirements": ["CM-RQ-007"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "last-write-wins",
+          "names": {
+            "EN": "Last-Write-Wins",
+            "ZH": "最后写入胜出",
+            "RU": "Последняя запись побеждает",
+            "DE": "Letzter Schreibvorgang gewinnt",
+            "FR": "Dernier écriture gagne",
+            "JP": "最終書き込み勝者",
+            "KO": "마지막 쓰기 승리",
+            "ES": "Última escritura gana",
+            "IT": "Ultima scrittura vince",
+            "PT": "Última escritura vence",
+            "NL": "Laatste schrijfwijziging wint",
+            "PL": "Ostatni zapis wygrywa",
+            "CS": "Poslední zápis vyhrává",
+            "AR": "آخر كتابة تفوز",
+            "FA": "آخرین نوشته برنده است",
+            "TR": "Son yazma kazanıyor"
+          },
+          "definition": "Conflict resolution where most recent change takes precedence",
+          "related_requirements": ["CM-RQ-007"],
+          "related_standards": ["ISO/IEC 25010"]
+        }
+      ]
+    },
+    "file_watching": {
+      "id": "domain-filewatch",
+      "name": "File System Monitoring",
+      "description": "Cross-platform file change notification systems",
+      "concepts": [
+        {
+          "id": "inotify",
+          "names": {
+            "EN": "inotify",
+            "ZH": "inotify",
+            "RU": "inotify",
+            "DE": "inotify",
+            "FR": "inotify",
+            "JP": "inotify",
+            "KO": "inotify",
+            "ES": "inotify",
+            "IT": "inotify",
+            "PT": "inotify",
+            "NL": "inotify",
+            "PL": "inotify",
+            "CS": "inotify",
+            "AR": "inotify",
+            "FA": "inotify",
+            "TR": "inotify"
+          },
+          "definition": "Linux kernel event-driven file monitoring API",
+          "related_requirements": ["CM-RQ-004"],
+          "related_standards": ["Linux Kernel Documentation"]
+        },
+        {
+          "id": "kqueue",
+          "names": {
+            "EN": "kqueue",
+            "ZH": "kqueue",
+            "RU": "kqueue",
+            "DE": "kqueue",
+            "FR": "kqueue",
+            "JP": "kqueue",
+            "KO": "kqueue",
+            "ES": "kqueue",
+            "IT": "kqueue",
+            "PT": "kqueue",
+            "NL": "kqueue",
+            "PL": "kqueue",
+            "CS": "kqueue",
+            "AR": "kqueue",
+            "FA": "kqueue",
+            "TR": "kqueue"
+          },
+          "definition": "BSD/macOS event notification facility",
+          "related_requirements": ["CM-RQ-004"],
+          "related_standards": ["BSD Documentation"]
+        },
+        {
+          "id": "fsevents",
+          "names": {
+            "EN": "FSEvents",
+            "ZH": "FSEvents",
+            "RU": "FSEvents",
+            "DE": "FSEvents",
+            "FR": "FSEvents",
+            "JP": "FSEvents",
+            "KO": "FSEvents",
+            "ES": "FSEvents",
+            "IT": "FSEvents",
+            "PT": "FSEvents",
+            "NL": "FSEvents",
+            "PL": "FSEvents",
+            "CS": "FSEvents",
+            "AR": "FSEvents",
+            "FA": "FSEvents",
+            "TR": "FSEvents"
+          },
+          "definition": "macOS file system event streaming API",
+          "related_requirements": ["CM-RQ-004"],
+          "related_standards": ["Apple Developer Documentation"]
+        },
+        {
+          "id": "debounce",
+          "names": {
+            "EN": "Debounce",
+            "ZH": "防抖",
+            "RU": "Дебаунсинг",
+            "DE": "Debounce",
+            "FR": "Anti-rebond",
+            "JP": "デバウンス",
+            "KO": "디바운스",
+            "ES": "Rebote",
+            "IT": "Debounce",
+            "PT": "Debounce",
+            "NL": "Debounce",
+            "PL": "Debounce",
+            "CS": "Debounce",
+            "AR": "إلغاء التكرار",
+            "FA": "دبونس",
+            "TR": "Debounce"
+          },
+          "definition": "Delaying event processing to avoid excessive operations",
+          "related_requirements": ["CM-RQ-004"],
+          "related_standards": ["ISO/IEC 25010"]
+        }
+      ]
+    },
+    "security": {
+      "id": "domain-security",
+      "name": "Security and Access Control",
+      "description": "Authentication, authorization, and data protection",
+      "concepts": [
+        {
+          "id": "rbac",
+          "names": {
+            "EN": "RBAC",
+            "ZH": "RBAC",
+            "RU": "RBAC (роль-доступ)",
+            "DE": "RBAC (Rollen-Zugriff)",
+            "FR": "RBAC (Contrôle d'accès)",
+            "JP": "RBAC",
+            "KO": "RBAC",
+            "ES": "RBAC",
+            "IT": "RBAC",
+            "PT": "RBAC",
+            "NL": "RBAC",
+            "PL": "RBAC",
+            "CS": "RBAC",
+            "AR": "RBAC",
+            "FA": "RBAC",
+            "TR": "RBAC"
+          },
+          "definition": "Role-Based Access Control authorization model",
+          "related_requirements": ["AC-RQ-001", "AC-RQ-002", "AC-RQ-003"],
+          "related_standards": ["RFC 7643", "RFC 7519", "RFC 7643", "OWASP Top 10"]
+        },
+        {
+          "id": "jwt",
+          "names": {
+            "EN": "JWT",
+            "ZH": "JWT",
+            "RU": "JWT",
+            "DE": "JWT",
+            "FR": "JWT",
+            "JP": "JWT",
+            "KO": "JWT",
+            "ES": "JWT",
+            "IT": "JWT",
+            "PT": "JWT",
+            "NL": "JWT",
+            "PL": "JWT",
+            "CS": "JWT",
+            "AR": "JWT",
+            "FA": "JWT",
+            "TR": "JWT"
+          },
+          "definition": "JSON Web Token for stateless authentication",
+          "related_requirements": ["AC-RQ-004", "AC-RQ-005"],
+          "related_standards": ["RFC 7519", "RFC 7643", "OWASP A07"]
+        },
+        {
+          "id": "oauth2",
+          "names": {
+            "EN": "OAuth 2.0",
+            "ZH": "OAuth 2.0",
+            "RU": "OAuth 2.0",
+            "DE": "OAuth 2.0",
+            "FR": "OAuth 2.0",
+            "JP": "OAuth 2.0",
+            "KO": "OAuth 2.0",
+            "ES": "OAuth 2.0",
+            "IT": "OAuth 2.0",
+            "PT": "OAuth 2.0",
+            "NL": "OAuth 2.0",
+            "PL": "OAuth 2.0",
+            "CS": "OAuth 2.0",
+            "AR": "OAuth 2.0",
+            "FA": "OAuth 2.0",
+            "TR": "OAuth 2.0"
+          },
+          "definition": "Open standard for authorization",
+          "related_requirements": ["AC-RQ-005", "AC-RQ-006"],
+          "related_standards": ["RFC 6749", "RFC 7519", "OWASP A01"]
+        }
+      ]
+    },
+    "performance": {
+      "id": "domain-performance",
+      "name": "Performance Metrics",
+      "description": "System performance benchmarks and quality indicators",
+      "concepts": [
+        {
+          "id": "latency",
+          "names": {
+            "EN": "Latency",
+            "ZH": "延迟",
+            "RU": "Задержка",
+            "DE": "Latenz",
+            "FR": "Latence",
+            "JP": "レイテンシ",
+            "KO": "지연시간",
+            "ES": "Latencia",
+            "IT": "Latenza",
+            "PT": "Latência",
+            "NL": "Latentie",
+            "PL": "Opóźnienie",
+            "CS": "Zpoždění",
+            "AR": "زمن الاستجابة",
+            "FA": "تاخیر پاسخ",
+            "TR": "Gecikme süresi"
+          },
+          "definition": "Time delay between request initiation and response completion",
+          "related_requirements": ["PF-RQ-001", "PF-RQ-002"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "throughput",
+          "names": {
+            "EN": "Throughput",
+            "ZH": "吞吐量",
+            "RU": "Пропускная способность",
+            "DE": "Durchsatz",
+            "FR": "Débit",
+            "JP": "スループット",
+            "KO": "처리량",
+            "ES": "Rendimiento",
+            "IT": "Throughput",
+            "PT": "Vazão",
+            "NL": "Doorvoersnelheid",
+            "PL": "Przepustowość",
+            "CS": "Propustnost",
+            "AR": "معدل الإنتاجية",
+            "FA": "ازدحام خروجی",
+            "TR": "Verimlilik"
+          },
+          "definition": "Rate of successful request completion per unit time",
+          "related_requirements": ["PF-RQ-003", "PF-RQ-004"],
+          "related_standards": ["ISO/IEC 25010"]
+        },
+        {
+          "id": "p95-p99",
+          "names": {
+            "EN": "P95/P99 Percentiles",
+            "ZH": "P95/P99百分位数",
+            "RU": "Процентили P95/P99",
+            "DE": "P95/P99-Perzentile",
+            "FR": "Centiles P95/P99",
+            "JP": "P95/P99パーセンタイル",
+            "KO": "P95/P99 백분위수",
+            "ES": "Percentiles P95/P99",
+            "IT": "Percentili P95/P99",
+            "PT": "Percentis P95/P99",
+            "NL": "Percentielen P95/P99",
+            "PL": "Punkty P95/P99",
+            "CS": "Percentily P95/P99",
+            "AR": "النسب المئوية P95/P99",
+            "FA": "صدک P95/P99",
+            "TR": "P95/P99 yüzdelikleri"
+          },
+          "definition": "95th and 99th percentile values for latency distribution",
+          "related_requirements": ["PF-RQ-001"],
+          "related_standards": ["ISO/IEC 25010"]
+        }
+      ]
+    },
+    "accessibility": {
+      "id": "domain-accessibility",
+      "name": "Accessibility Standards",
+      "description": "WCAG and Section 508 compliance requirements",
+      "concepts": [
+        {
+          "id": "wcag-21-aa",
+          "names": {
+            "EN": "WCAG 2.1 AA",
+            "ZH": "WCAG 2.1 AA级",
+            "RU": "WCAG 2.1 AA",
+            "DE": "WCAG 2.1 AA",
+            "FR": "WCAG 2.1 AA",
+            "JP": "WCAG 2.1 AA",
+            "KO": "WCAG 2.1 AA",
+            "ES": "WCAG 2.1 AA",
+            "IT": "WCAG 2.1 AA",
+            "PT": "WCAG 2.1 AA",
+            "NL": "WCAG 2.1 AA",
+            "PL": "WCAG 2.1 AA",
+            "CS": "WCAG 2.1 AA",
+            "AR": "WCAG 2.1 AA",
+            "FA": "WCAG 2.1 AA",
+            "TR": "WCAG 2.1 AA"
+          },
+          "definition": "Web Content Accessibility Guidelines Level AA conformance",
+          "related_requirements": ["SC-RQ-001"],
+          "related_standards": ["WCAG 2.1 AA", "Section 508"]
+        },
+        {
+          "id": "screen-reader",
+          "names": {
+            "EN": "Screen Reader",
+            "ZH": "屏幕阅读器",
+            "RU": "Экранный считыватель",
+            "DE": "Bildschirmleseger",
+            "FR": "Lecteur d'écran",
+            "JP": "スクリーンリーダー",
+            "KO": "스크린 리더",
+            "ES": "Lector de pantalla",
+            "IT": "Lettore dello schermo",
+            "PT": "Leitor de tela",
+            "NL": "Schermlezer",
+            "PL": "Czytnik ekranowy",
+            "CS": "Čtečka obrazovky",
+            "AR": "قارئ الشاشة",
+            "FA": "خوانش صفحه نمایش",
+            "TR": "Ekran okuyucusu"
+          },
+          "definition": "Assistive technology for visually impaired users",
+          "related_requirements": ["SC-RQ-001"],
+          "related_standards": ["WCAG 2.1 AA"]
+        },
+        {
+          "id": "keyboard-navigation",
+          "names": {
+            "EN": "Keyboard Navigation",
+            "ZH": "键盘导航",
+            "RU": "Навигация с клавиатурой",
+            "DE": "Tastaturnavigation",
+            "FR": "Navigation au clavier",
+            "JP": "キーボードナビゲーション",
+            "KO": "키보드 탐색",
+            "ES": "Navegación por teclado",
+            "IT": "Navigazione da tastiera",
+            "PT": "Navegação por teclado",
+            "NL": "Toetsenbordnavigatie",
+            "PL": "Nawigacja klawiaturą",
+            "CS": "Navigace klávesnicí",
+            "AR": "التنقل باستخدام لوحة المفاتيح",
+            "FA": "ناوبری با صفحه کلید",
+            "TR": "Klavye navigasyonu"
+          },
+          "definition": "Full interface functionality without mouse input",
+          "related_requirements": ["UI-RQ-003"],
+          "related_standards": ["WCAG 2.1 AA"]
+        }
+      ]
+    }
+  }
+}

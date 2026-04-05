@@ -1,0 +1,44 @@
+[package]
+name = "tachyon-search"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Full-text search engine for Tachyon knowledge management system using Tantivy"
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "tachyon_search"
+path = "src/lib.rs"
+
+[dependencies]
+# Workspace dependencies
+tachyon-core = { path = "../core" }
+tachyon-rbac = { path = "../rbac" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+
+# Search Engine
+tantivy = { workspace = true }
+
+# Date/Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+thiserror = "1"
+
+# HTTP/WebSocket API
+axum = { workspace = true }
+axum-tungstenite = { workspace = true }
+tower = "0.4"
+tower-http = { workspace = true }
+futures-util = "0.3"
+
+# Async support
+async-trait = "0.1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3"

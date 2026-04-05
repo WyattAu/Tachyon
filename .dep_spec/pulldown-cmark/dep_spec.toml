@@ -1,0 +1,63 @@
+# Dependency Specification: pulldown-cmark
+# Generated: 2026-02-11T17:30:00Z
+# Version: 0.9.6
+
+[metadata]
+name = "pulldown-cmark"
+version = "0.9.6"
+language = "rust"
+registry = "https://crates.io"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57206b407293d2bcd3af849ce869d52068623f19e1b5ff8e8778e3309439682b"
+license = "MIT"
+repository = "https://github.com/raphlinus/pulldown-cmark"
+homepage = "https://github.com/raphlinus/pulldown-cmark"
+documentation = "https://docs.rs/pulldown-cmark"
+authors = ["Raph Levien <raph.levien@gmail.com>"]
+
+[rationale]
+criticality = "HIGH"
+justification = """
+pulldown-cmark is the Markdown parser used throughout Tachyon for processing
+and rendering markdown content. It provides:
+- Fast CommonMark compliant parsing
+- Support for GFM (GitHub Flavored Markdown)
+- SIMD optimizations for better performance
+- Extensible event-based API for custom rendering
+
+This is a core dependency for document processing functionality.
+"""
+
+[security]
+audit_status = "PENDING"
+last_audit_date = "2026-02-11"
+known_vulnerabilities = []
+cvss_score = "N/A"
+
+[features]
+enabled = ["simd"]
+description = "SIMD acceleration for faster parsing"
+
+[alternatives]
+considered = [
+    {name = "markdown", reason = "Slower, less actively maintained"},
+    {name = "comrak", reason = "Good but pulldown-cmark has better Rust ecosystem integration"},
+]
+selected = "pulldown-cmark"
+selection_reason = "Best performance, active maintenance, SIMD support"
+
+[maintenance]
+maintainer_status = "ACTIVE"
+last_commit = "2024"
+release_frequency = "QUARTERLY"
+deprecation_risk = "LOW"
+
+[compatibility]
+rust_version = ">=1.60"
+platforms = ["Linux", "Windows", "macOS", "WASM"]
+target_arch = ["x86_64", "aarch64", "arm"]
+
+[verification]
+build_verified = true
+test_coverage = "HIGH"
+ci_status = "PASSING"

@@ -1,0 +1,234 @@
+name: Performance Regression
+
+on:
+  push:
+    branches: [main, develop, 'release/*']
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install benchmark tools
+        run: cargo install cargo-criterion
+
+      - name: Download baseline metrics
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: baseline-metrics
+          path: .specs/06_5_regression/baseline_metrics.toml
+
+      - name: Run benchmarks
+        run: |
+          cargo bench --workspace --bench '*' \
+            -- --save-baseline main \
+            --output-format json \
+            --target-dir target/bench \
+            2>&1 | tee benchmark-results.json
+
+      - name: Compare with baseline
+        run: |
+          python .github/scripts/compare_benchmarks.py \
+            --current benchmark-results.json \
+            --baseline .specs/06_5_regression/baseline_metrics.toml \
+            --output comparison-report.json \
+            --threshold 0.10
+
+      - name: Check for regressions
+        run: |
+          python .github/scripts/check_regressions.py comparison-report.json
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmark-results.json
+            comparison-report.json
+            target/bench/criterion/
+          retention-days: 30
+
+      - name: Post to Bencher
+        if: github.event_name == 'push'
+        run: |
+          cargo bencher run \
+            --token "${{ secrets.BENCHER_API_TOKEN }}" \
+            --project tachyon \
+            --branch "${GITHUB_REF_NAME}"
+
+  trend-analysis:
+    name: Trend Analysis
+    runs-on: ubuntu-latest
+    needs: benchmark
+    if: github.event_name == 'push'
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download historical benchmark data
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/benchmark-results/
+
+      - name: Analyze performance trends
+        run: |
+          python .github/scripts/analyze_trends.py \
+            --benchmark-input benchmark-results.json \
+            --baseline .specs/06_5_regression/baseline_metrics.toml \
+            --output trend-report.json
+
+      - name: Upload trend analysis report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trend-analysis-report
+          path: |
+            trend-report.json
+          retention-days: 90
+
+      - name: Check for degrading trends
+        run: |
+          python .github/scripts/check_trend_degradation.py \
+            --input trend-report.json
+
+  performance-summary:
+    name: Performance Summary
+    runs-on: ubuntu-latest
+    needs: [benchmark, trend-analysis]
+    if: always()
+    timeout-minutes: 10
+
+    steps:
+      - name: Download all performance artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Generate performance report
+        run: |
+          python .github/scripts/generate_performance_report.py \
+            --comparison-input artifacts/benchmark-results/comparison-report.json \
+            --trend-input artifacts/trend-analysis-report/trend-report.json \
+            --output performance-report.json
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report
+          path: |
+            performance-report.json
+          retention-days: 30
+
+      - name: Post performance summary to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('artifacts/performance-report.json', 'utf8'));
+            
+            const summary = `
+            ## Performance Regression Summary
+            
+            ### Benchmark Results
+            - Total benchmarks: ${report.comparison.totalBenchmarks}
+            - Regressions: ${report.comparison.regressions}
+            - Improvements: ${report.comparison.improvements}
+            - Unchanged: ${report.comparison.unchanged}
+            
+            ### Trend Analysis
+            - Overall trend: ${report.trend.direction}
+            - Trend slope: ${report.trend.slope}%
+            
+            ### Regressions Detected
+            
+            ${report.comparison.regressions.map(r => '- ${r.benchmark}: +${r.percentChange.toFixed(2)}%').join('\n') || 'None'}
+            
+            ### Improvements Detected
+            
+            ${report.comparison.improvements.map(r => '- ${r.benchmark}: ${r.percentChange.toFixed(2)}%').join('\n') || 'None'}
+            `;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: summary
+            });
+
+      - name: Create issue on regression
+        if: |
+          needs.performance-summary.outputs.has-regression == 'true' &&
+          github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('artifacts/performance-report.json', 'utf8'));
+            
+            const title = `Performance Regression Detected - ${new Date().toISOString()}`;
+            const body = `
+            ## Performance Regression Report
+            
+            Performance regressions were detected in the Tachyon codebase.
+            
+            ### Regression Summary
+            
+            ${report.comparison.regressions.map(r => '**${r.benchmark}**: +${r.percentChange.toFixed(2)}%').join('\n')}
+            
+            ### Trend Analysis
+            
+            Overall trend: **${report.trend.direction}**
+            Trend slope: **${report.trend.slope.toFixed(2)}%**
+            
+            ### Action Required
+            
+            Please review and address the performance regressions before proceeding with deployment.
+            
+            ### Details
+            
+            See the attached performance report for detailed information about each regression.
+            
+            **Commit:** ${{ github.sha }}
+            **Report ID:** ${report.reportId}
+            `;
+            
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['performance', 'regression']
+            });

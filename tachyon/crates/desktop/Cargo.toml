@@ -1,0 +1,30 @@
+[package]
+name = "tachyon-desktop"
+version = "0.1.0"
+description = "Desktop client for Tachyon knowledge management system"
+authors = ["Tachyon Team"]
+license = "MIT"
+repository = "https://github.com/tachyon/tachyon"
+edition = "2021"
+rust-version = "1.75"
+
+[dependencies]
+# Workspace dependencies
+tachyon-core = { path = "../core" }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Async Runtime
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+# Error Handling & Logging
+anyhow = { workspace = true }
+tracing = { workspace = true }
+
+# Network
+reqwest = { version = "0.12", features = ["json"] }
+
+[dev-dependencies]
+tokio-test = "0.4"

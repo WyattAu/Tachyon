@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tachyon - Knowledge Management System</title>
+    
+<script type="module">
+import init, * as bindings from '/tachyon-frontend-6c67b4bd9be8d571.js';
+const wasm = await init({ module_or_path: '/tachyon-frontend-6c67b4bd9be8d571_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+    <base href="/">
+<link rel="modulepreload" href="/tachyon-frontend-6c67b4bd9be8d571.js" crossorigin="anonymous" integrity="sha384-5ihHLmmEG/jcLBwapBdSL6bWyDXtkdWANLkw3TW1Znb6WUIZlhwS7I/r+nb63WUn"><link rel="preload" href="/tachyon-frontend-6c67b4bd9be8d571_bg.wasm" crossorigin="anonymous" integrity="sha384-C9732omLRunLooQauVnhvDf+PtSzXIzUD2iuNptl1FX/MfkiTXSgt+7X6U3FG/oF" as="fetch" type="application/wasm"></head>
+<body>
+    <div id="app"></div>
+</body>
+</html>

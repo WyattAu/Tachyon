@@ -1,18 +1,63 @@
 [package]
-name = "tachyon_server"
+name = "tachyon-server"
 version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-axum.workspace = true
-leptos = "0.8.15"
-leptos_axum = "0.8.7"
-leptos_meta = "0.8.5"
-leptos_router = "0.8.11"
-tachyon_core = { version = "0.1.0", path = "../core" }
-tokio = { workspace = true, features = ["full"] }
-tower-http.workspace = true
-wasm-bindgen = "0.2.108"
+description = "JIT documentation server for Tachyon knowledge management system"
+edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+name = "tachyon_server"
+path = "src/lib.rs"
+
+[dependencies]
+# Core libraries
+tachyon-core = { path = "../core" }
+tachyon-rbac = { path = "../rbac" }
+tachyon-database = { path = "../database" }
+tachyon-renderer = { path = "../renderer" }
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP Server
+axum = { version = "0.8", features = ["tracing", "macros", "ws", "multipart"] }
+tower = { version = "0.5", features = ["full"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "compression-full", "limit"] }
+
+# WebSocket
+tokio-tungstenite = "0.26"
+futures-util = "0.3"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Authentication
+jsonwebtoken = "9"
+
+# Error Handling & Logging
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Utilities
+uuid = { version = "1", features = ["v4", "serde"] }
+base64 = "0.22"
+
+# Validation & Security
+regex = "1"
+url = "2"
+html-escape = "0.2"
+
+# OpenAPI Documentation
+utoipa = "5"
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+wiremock = { workspace = true }
+serial_test = { workspace = true }
+pretty_assertions = "1.4"
+assert_matches = "1.5"
