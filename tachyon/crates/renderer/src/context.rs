@@ -61,7 +61,7 @@ pub struct RelatedPage {
 
 impl RenderContext {
     /// Create a new render context
-    /// 
+    ///
     /// # Arguments
     /// * `title` - Document title
     /// * `content` - HTML content
@@ -74,7 +74,7 @@ impl RenderContext {
             navigation: None,
         }
     }
-    
+
     /// Convert to JSON Value
     pub fn to_json(&self) -> Value {
         serde_json::to_value(self).unwrap_or(Value::Null)
@@ -90,14 +90,14 @@ impl Default for RenderContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_render_context_new() {
         let ctx = RenderContext::new("Test".to_string(), "<p>Content</p>".to_string());
         assert_eq!(ctx.title, "Test");
         assert_eq!(ctx.content, "<p>Content</p>");
     }
-    
+
     #[test]
     fn test_render_context_to_json() {
         let ctx = RenderContext::new("Test".to_string(), "<p>Content</p>".to_string());

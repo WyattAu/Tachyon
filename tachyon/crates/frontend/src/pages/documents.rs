@@ -4,8 +4,8 @@ use leptos::prelude::*;
 use leptos_router::hooks::{use_params, use_navigate};
 use leptos_router::params::Params;
 use crate::api::ApiClient;
-use crate::types::{Document, DocumentListResponse};
-use crate::components::{DocumentEditor, ActivityFeed, Activity, ActivityType};
+use crate::types::{Document, DocumentListResponse, DocumentTemplate};
+use crate::components::{DocumentEditor, ActivityFeed, Activity, ActivityType, VersionHistory, TemplateSelector};
 use crate::websocket::{WebSocketClient, WsMessage};
 use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
@@ -175,6 +175,18 @@ pub fn DocumentsPage() -> impl IntoView {
                             })}
 
                             <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        "Start from template"
+                                    </label>
+                                    <TemplateSelector
+                                        on_select={Callback::new(move |template: DocumentTemplate| {
+                                            let title = template.name.clone();
+                                            set_new_doc_title.set(title);
+                                        })}
+                                        category={None}
+                                    />
+                                </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         "Title"
@@ -359,6 +371,7 @@ pub fn DocumentEditPage() -> impl IntoView {
     let (doc_title, set_doc_title) = signal(String::new());
     let (loading, set_loading) = signal(true);
     let (load_error, set_load_error) = signal::<Option<String>>(None);
+    let (sidebar_tab, set_sidebar_tab) = signal("activity".to_string());
 
     let api_client = ApiClient::default();
     let fetch_doc_id = document_id();
@@ -476,11 +489,37 @@ pub fn DocumentEditPage() -> impl IntoView {
                 </div>
             </div>
             
-            <div class="w-80 flex-shrink-0">
-                <ActivityFeed 
-                    activities={activities.get()}
-                    max_items=20
-                />
+            <div class="w-80 flex-shrink-0 border-l border-gray-200 dark:border-gray-700">
+                <div class="flex border-b border-gray-200 dark:border-gray-700">
+                    <button
+                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
+                        on:click=move |_| set_sidebar_tab.set("activity".to_string())
+                    >
+                        "Activity"
+                    </button>
+                    <button
+                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
+                        on:click=move |_| set_sidebar_tab.set("history".to_string())
+                    >
+                        "History"
+                    </button>
+                </div>
+                {move || if sidebar_tab.get() == "history" {
+                    view! {
+                        <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                            <VersionHistory document_id={document_id()} on_rollback=None />
+                        </div>
+                    }.into_any()
+                } else {
+                    view! {
+                        <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                            <ActivityFeed
+                                activities={activities.get()}
+                                max_items=20
+                            />
+                        </div>
+                    }.into_any()
+                }}
             </div>
         </div>
     }

@@ -489,6 +489,50 @@ impl ApiClient {
     }
 
     // ========================================================================
+    // Teams API
+    // ========================================================================
+
+    /// List all teams
+    pub async fn list_teams(&self) -> Result<Vec<serde_json::Value>, ApiError> {
+        let url = format!("{}/teams", self.base_url);
+        self.get(&url).await
+    }
+
+    /// Create a new team
+    pub async fn create_team(&self, request: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/teams", self.base_url);
+        self.post(&url, request).await
+    }
+
+    /// Get team members
+    pub async fn list_team_members(&self, team_id: &str) -> Result<Vec<serde_json::Value>, ApiError> {
+        let url = format!("{}/teams/{}/members", self.base_url, team_id);
+        self.get(&url).await
+    }
+
+    // ========================================================================
+    // Roles API
+    // ========================================================================
+
+    /// List all roles
+    pub async fn list_roles(&self) -> Result<Vec<serde_json::Value>, ApiError> {
+        let url = format!("{}/roles", self.base_url);
+        self.get(&url).await
+    }
+
+    /// Create a new role
+    pub async fn create_role(&self, request: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/roles", self.base_url);
+        self.post(&url, request).await
+    }
+
+    /// Delete a role
+    pub async fn delete_role(&self, role_id: &str) -> Result<(), ApiError> {
+        let url = format!("{}/roles/{}", self.base_url, role_id);
+        self.delete(&url).await
+    }
+
+    // ========================================================================
     // HTTP Helper Methods
     // ========================================================================
 

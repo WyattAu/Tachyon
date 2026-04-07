@@ -11,10 +11,10 @@ use std::backtrace::Backtrace;
 use std::net::SocketAddr;
 use std::sync::OnceLock;
 use tachyon_database::init_with_migrations;
-use tachyon_server::api_docs::create_swagger_router;
+use tachyon_server::api_docs::create_swagger_ui;
 use tachyon_server::config::ServerConfig;
 use tachyon_server::middleware::{
-    RateLimitConfig, RateLimitState, security_headers_middleware,
+    RateLimitConfig, RateLimitState, AuthState, cache_control_middleware, security_headers_middleware,
 };
 use tachyon_server::routes::catalog::{CatalogState, create_catalog_router};
 use tachyon_server::routes::document::{DocumentState, create_document_router};
@@ -23,6 +23,7 @@ use tachyon_server::routes::repository::{RepositoryState, create_repository_rout
 use tachyon_server::routes::role::{RoleState, create_role_router};
 use tachyon_server::routes::search::{SearchState, create_search_router};
 use tachyon_server::routes::session::{SessionState, create_session_router};
+use tachyon_server::routes::seo::{SeoState, create_seo_router};
 use tachyon_server::routes::team::{TeamState, create_team_router};
 use tachyon_server::routes::user::{UserState, create_user_router};
 use tachyon_server::websocket::{ConnectionManager, handle_websocket_upgrade};
@@ -156,6 +157,11 @@ fn build_router(
     let role_router = create_role_router().with_state(RoleState::new(pool.clone()));
     let search_router = create_search_router().with_state(SearchState::new(pool.clone()));
 
+    let seo_router = create_seo_router().with_state(SeoState {
+        pool: pool.clone(),
+        site_config: config.site.clone(),
+    });
+
     let api_v1 = Router::new()
         .merge(document_router)
         .merge(user_router)
@@ -171,7 +177,7 @@ fn build_router(
         .route("/ws", get(handle_websocket_upgrade))
         .with_state(connection_manager);
 
-    let swagger_router = create_swagger_router();
+    let swagger_ui = create_swagger_ui();
 
     let rate_limit_state = RateLimitState::new(RateLimitConfig {
         enabled: config.rate_limit.enabled,
@@ -187,19 +193,31 @@ fn build_router(
         .route("/", get(root_handler))
         .route("/health", get(health_handler))
         .route("/metrics", get(metrics_handler))
+        .merge(seo_router)
         .merge(ws_router)
         .nest("/api/v1", api_v1)
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
+                .layer(axum::middleware::from_fn(cache_control_middleware))
                 .layer(CompressionLayer::new())
                 .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
                 .layer(cors)
                 .map_response(tachyon_server::middleware::add_security_headers),
         );
-    
-    // Note: Swagger UI temporarily disabled due to axum 0.8 compatibility
-    // router = router.merge(swagger_router.into());
+
+    // Merge Swagger UI (utoipa-swagger-ui 9.x supports axum 0.8)
+    router = router.merge(swagger_ui);
+
+    // Wire authentication middleware — protects all /api/v1 routes except auth endpoints.
+    // Bypasses: /health, /metrics, /api/v1/auth/*, SEO routes, /ws, /api/docs.
+    let auth_state = AuthState::new(config.clone());
+    let auth_layer = axum::middleware::from_fn_with_state(
+        auth_state,
+        tachyon_server::middleware::auth_middleware,
+    );
+    // Apply auth to the full router; auth_middleware internally skips its bypass paths.
+    router = router.layer(auth_layer);
     
     if config.rate_limit.enabled {
         router = router.layer(axum::middleware::from_fn_with_state(

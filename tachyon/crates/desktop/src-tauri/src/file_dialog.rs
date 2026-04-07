@@ -72,20 +72,94 @@ impl FileDialogManager {
     }
 
     /// Open a file dialog for selecting files
-    pub async fn open_file_dialog(&self, _options: FileDialogOptions) -> ErrorResult<FileDialogResult> {
-        // Simplified implementation - returns canceled for now
-        // Full implementation requires async dialog handling in Tauri 2.x
-        Ok(FileDialogResult {
-            paths: vec![],
-            canceled: true,
+    pub async fn open_file_dialog(&self, options: FileDialogOptions) -> ErrorResult<FileDialogResult> {
+        use tauri_plugin_dialog::DialogExt;
+
+        // FileDialogBuilder methods consume self and return Self — must chain
+        let mut builder = self.app_handle.dialog().file();
+
+        if let Some(name) = &options.default_name {
+            builder = builder.set_file_name(name);
+        }
+
+        if !options.extensions.is_empty() {
+            let ext_refs: Vec<&str> = options.extensions.iter().map(|s| s.as_str()).collect();
+            builder = builder.add_filter("Files", &ext_refs);
+        }
+
+        let (sender, receiver) = tokio::sync::oneshot::channel::<FileDialogResult>();
+
+        if options.directory {
+            builder.pick_folder(move |path: Option<tauri_plugin_dialog::FilePath>| {
+                let result = match path {
+                    Some(p) => FileDialogResult {
+                        paths: vec![p.to_string()],
+                        canceled: false,
+                    },
+                    None => FileDialogResult { paths: vec![], canceled: true },
+                };
+                let _ = sender.send(result);
+            });
+        } else if options.multiple {
+            builder.pick_files(move |paths: Option<Vec<tauri_plugin_dialog::FilePath>>| {
+                let result = match paths {
+                    Some(ps) => FileDialogResult {
+                        paths: ps.iter().map(|p| p.to_string()).collect(),
+                        canceled: false,
+                    },
+                    None => FileDialogResult { paths: vec![], canceled: true },
+                };
+                let _ = sender.send(result);
+            });
+        } else {
+            builder.pick_file(move |path: Option<tauri_plugin_dialog::FilePath>| {
+                let result = match path {
+                    Some(p) => FileDialogResult {
+                        paths: vec![p.to_string()],
+                        canceled: false,
+                    },
+                    None => FileDialogResult { paths: vec![], canceled: true },
+                };
+                let _ = sender.send(result);
+            });
+        }
+
+        receiver.await.map_err(|_| {
+            TachyonError::internal("DIALOG_ERROR", "File dialog channel closed")
         })
     }
 
     /// Open a save file dialog
-    pub async fn save_file_dialog(&self, _options: FileDialogOptions) -> ErrorResult<FileDialogResult> {
-        Ok(FileDialogResult {
-            paths: vec![],
-            canceled: true,
+    pub async fn save_file_dialog(&self, options: FileDialogOptions) -> ErrorResult<FileDialogResult> {
+        use tauri_plugin_dialog::DialogExt;
+
+        // FileDialogBuilder methods consume self and return Self — must chain
+        let mut builder = self.app_handle.dialog().file();
+
+        if let Some(name) = &options.default_name {
+            builder = builder.set_file_name(name);
+        }
+
+        if !options.extensions.is_empty() {
+            let ext_refs: Vec<&str> = options.extensions.iter().map(|s| s.as_str()).collect();
+            builder = builder.add_filter("Files", &ext_refs);
+        }
+
+        let (sender, receiver) = tokio::sync::oneshot::channel::<FileDialogResult>();
+
+        builder.save_file(move |path: Option<tauri_plugin_dialog::FilePath>| {
+            let result = match path {
+                Some(p) => FileDialogResult {
+                    paths: vec![p.to_string()],
+                    canceled: false,
+                },
+                None => FileDialogResult { paths: vec![], canceled: true },
+            };
+            let _ = sender.send(result);
+        });
+
+        receiver.await.map_err(|_| {
+            TachyonError::internal("DIALOG_ERROR", "Save dialog channel closed")
         })
     }
 

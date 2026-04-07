@@ -3,7 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tachyon - A deterministic, high-performance knowledge management system with sub-15ms rendering and real-time collaboration.">
+    <meta name="theme-color" content="#2563eb">
     <title>Tachyon - Knowledge Management System</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace'],
+                    },
+                    typography: {
+                        DEFAULT: {
+                            css: {
+                                maxWidth: 'none',
+                            },
+                        },
+                    },
+                },
+            },
+            plugins: [
+                // Prose classes for document rendering
+                function({ addUtilities }) {
+                    const newUtilities = {
+                        '.prose': {
+                            'color': '#374151',
+                            'line-height': '1.75',
+                            'max-width': '65ch',
+                        },
+                        '.prose-sm': {
+                            'font-size': '0.875rem',
+                            'line-height': '1.7142857',
+                        },
+                    }
+                    addUtilities(newUtilities)
+                },
+            ],
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            html {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+            body {
+                @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+            }
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb {
+                @apply bg-gray-300 dark:bg-gray-600 rounded;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                @apply bg-gray-400 dark:bg-gray-500;
+            }
+        }
+    </style>
     <link data-trunk rel="rust" data-target-name="tachyon_frontend" data-wasm-opt="z">
     <base data-trunk-public-url>
 </head>

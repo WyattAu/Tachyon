@@ -2,86 +2,64 @@
 // Team list and management interface
 
 use leptos::prelude::*;
-use serde::{Deserialize, Serialize};
-use wasm_bindgen_futures::spawn_local;
+use serde::Deserialize;
+use leptos::task::spawn_local;
+use crate::api::ApiClient;
 
-const API_BASE: &str = "http://localhost:8080/api/v1";
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Team {
     pub id: String,
     pub name: String,
     pub slug: String,
     pub description: Option<String>,
+    #[allow(dead_code)]
     pub owner_id: String,
+    #[allow(dead_code)]
     pub avatar_url: Option<String>,
+    #[allow(dead_code)]
     pub created_at: String,
+    #[allow(dead_code)]
     pub updated_at: String,
     pub member_count: Option<i64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct TeamMember {
+    #[allow(dead_code)]
     pub id: i64,
+    #[allow(dead_code)]
     pub team_id: String,
     pub user_id: String,
+    #[allow(dead_code)]
     pub role_id: i64,
     pub role_name: String,
     pub joined_at: String,
+    #[allow(dead_code)]
     pub invited_by: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Role {
-    pub id: i64,
-    pub name: String,
-}
-
 async fn fetch_teams() -> Result<Vec<Team>, String> {
-    let url = format!("{}/teams", API_BASE);
-    let response = gloo_net::http::Request::get(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if response.ok() {
-        response.json::<Vec<Team>>().await.map_err(|e| e.to_string())
-    } else {
-        Err(format!("Failed to fetch teams: {}", response.status()))
-    }
+    let client = ApiClient::default();
+    let raw = client.list_teams().await.map_err(|e| e.to_string())?;
+    // Deserialize from serde_json::Value
+    serde_json::from_value(serde_json::Value::Array(raw)).map_err(|e| e.to_string())
 }
 
 async fn fetch_team_members(team_id: &str) -> Result<Vec<TeamMember>, String> {
-    let url = format!("{}/teams/{}/members", API_BASE, team_id);
-    let response = gloo_net::http::Request::get(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if response.ok() {
-        response.json::<Vec<TeamMember>>().await.map_err(|e| e.to_string())
-    } else {
-        Err(format!("Failed to fetch team members: {}", response.status()))
-    }
+    let client = ApiClient::default();
+    let raw = client.list_team_members(team_id).await.map_err(|e| e.to_string())?;
+    serde_json::from_value(serde_json::Value::Array(raw)).map_err(|e| e.to_string())
 }
 
-async fn create_team(name: String, slug: String, description: Option<String>) -> Result<Team, String> {
-    let url = format!("{}/teams", API_BASE);
+async fn create_team_req(name: String, slug: String, description: Option<String>) -> Result<Team, String> {
+    let client = ApiClient::default();
     let body = serde_json::json!({
         "name": name,
         "slug": slug,
         "description": description,
     });
-    let response = gloo_net::http::Request::post(&url)
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .map_err(|e| e.to_string())?
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if response.ok() {
-        response.json::<Team>().await.map_err(|e| e.to_string())
-    } else {
-        Err(format!("Failed to create team: {}", response.status()))
-    }
+    let raw = client.create_team(&body).await.map_err(|e| e.to_string())?;
+    serde_json::from_value(raw).map_err(|e| e.to_string())
 }
 
 #[component]
@@ -122,7 +100,7 @@ pub fn TeamsPage() -> impl IntoView {
 
         spawn_local(async move {
             let desc = if description.is_empty() { None } else { Some(description) };
-            match create_team(name, slug, desc).await {
+            match create_team_req(name, slug, desc).await {
                 Ok(team) => {
                     let mut current_teams = teams.get();
                     current_teams.push(team);

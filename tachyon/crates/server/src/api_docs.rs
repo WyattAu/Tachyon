@@ -98,11 +98,9 @@ impl utoipa::Modify for SecurityAddon {
     }
 }
 
-/// Create Swagger UI router
-pub fn create_swagger_router() -> axum::Router {
-    SwaggerUi::new("/api/docs")
-        .url("/api/docs/openapi.json", ApiDoc::openapi())
-        .into()
+/// Create Swagger UI instance for merging into router
+pub fn create_swagger_ui() -> SwaggerUi {
+    SwaggerUi::new("/api/docs").url("/api/docs/openapi.json", ApiDoc::openapi())
 }
 
 #[cfg(test)]

@@ -11,9 +11,11 @@
 
 // Public modules
 pub mod cache;
+pub mod context;
 pub mod error;
 pub mod latex;
 pub mod markdown;
+pub mod page;
 pub mod syntax;
 pub mod template;
 pub mod types;
@@ -23,6 +25,7 @@ pub use cache::RenderCache;
 pub use error::{RendererError, RendererResult};
 pub use latex::{LatexDocumentRenderer, LatexRenderer};
 pub use markdown::MarkdownParser;
+pub use page::{render_full_page, SiteConfig};
 pub use syntax::SyntaxHighlighter;
 pub use template::TemplateEngine;
 pub use types::{

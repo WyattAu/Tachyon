@@ -21,10 +21,10 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://*.github.com https://api.github.com; frame-src 'none'; object-src 'none'",
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": ["$APPDATA/**", "$APPCONFIG/**", "$RESOURCE/**"]
       }
     }
   },

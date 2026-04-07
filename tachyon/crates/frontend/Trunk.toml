@@ -1,0 +1,17 @@
+[build]
+target = "index.html"
+dist = "dist"
+public_url = "/"
+
+[watch]
+watch = ["src/", "public/"]
+ignore = ["dist/"]
+
+[serve]
+address = "127.0.0.1"
+port = 8080
+no-error-on-404 = true
+
+[clean]
+dist = "dist"
+cargo = false

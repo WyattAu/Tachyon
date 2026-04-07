@@ -41,6 +41,8 @@ pub struct ServerConfig {
     pub rate_limit: RateLimitConfig,
     /// Security headers configuration
     pub security: SecurityConfig,
+    /// Site configuration for SEO and SSR
+    pub site: SiteConfig,
 }
 
 /// JWT configuration for token-based authentication
@@ -164,6 +166,22 @@ pub struct SecurityConfig {
     pub csp_directives: HashMap<String, String>,
 }
 
+/// Site configuration for SEO and server-side rendering
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SiteConfig {
+    /// Site title (e.g., "Tachyon")
+    pub title: String,
+    /// Site description for meta tags
+    pub description: String,
+    /// Canonical base URL (e.g., "https://tachyon.dev")
+    pub base_url: String,
+    /// Theme color for mobile browsers
+    pub theme_color: String,
+    /// OG image URL (default site-wide image)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub og_image: Option<String>,
+}
+
 impl Default for ServerConfig {
     fn default() -> Self {
         Self {
@@ -183,6 +201,7 @@ impl Default for ServerConfig {
             guest: GuestConfig::default(),
             rate_limit: RateLimitConfig::default(),
             security: SecurityConfig::default(),
+            site: SiteConfig::default(),
         }
     }
 }
@@ -308,6 +327,19 @@ impl Default for SecurityConfig {
     }
 }
 
+impl Default for SiteConfig {
+    fn default() -> Self {
+        Self {
+            title: "Tachyon".to_string(),
+            description: "A deterministic, high-performance knowledge management system."
+                .to_string(),
+            base_url: "http://localhost:8080".to_string(),
+            theme_color: "#2563eb".to_string(),
+            og_image: None,
+        }
+    }
+}
+
 impl ServerConfig {
     /// Create a new server configuration
     pub fn new() -> Self {
@@ -373,6 +405,18 @@ impl ServerConfig {
 
         if self.cache_size_mb == 0 {
             return Err("Cache size must be greater than 0".to_string());
+        }
+
+        if self.jwt.secret == "change-this-secret-key-in-production" {
+            return Err(
+                "JWT secret must be changed from the default value for production".to_string(),
+            );
+        }
+
+        if self.cors.enabled && self.cors.allowed_origins.contains(&"*".to_string()) {
+            tracing::warn!(
+                "CORS is enabled with wildcard origin - this should be restricted in production"
+            );
         }
 
         Ok(())
@@ -443,6 +487,18 @@ impl ServerConfig {
             config.rate_limit.enabled = rate_limit_enabled != "0" && rate_limit_enabled != "false";
         }
 
+        if let Ok(site_title) = std::env::var("TACHYON_SITE_TITLE") {
+            config.site.title = site_title;
+        }
+
+        if let Ok(site_description) = std::env::var("TACHYON_SITE_DESCRIPTION") {
+            config.site.description = site_description;
+        }
+
+        if let Ok(base_url) = std::env::var("TACHYON_BASE_URL") {
+            config.site.base_url = base_url;
+        }
+
         config
     }
 }
@@ -471,13 +527,15 @@ mod tests {
 
     #[test]
     fn test_config_validation_valid() {
-        let config = ServerConfig::default();
+        let mut config = ServerConfig::default();
+        config.jwt.secret = "a-properly-long-secret-key-for-testing".to_string();
         assert!(config.validate().is_ok());
     }
 
     #[test]
     fn test_config_validation_invalid_host() {
         let mut config = ServerConfig::default();
+        config.jwt.secret = "a-properly-long-secret-key-for-testing".to_string();
         config.host = String::new();
         assert!(config.validate().is_err());
     }

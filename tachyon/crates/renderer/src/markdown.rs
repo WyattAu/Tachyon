@@ -5,7 +5,7 @@
 
 use crate::error::{RendererError, RendererResult};
 use crate::types::{MarkdownOptions, OutputFormat, RenderMetadata, RenderResult, RenderStats};
-use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, html};
+use pulldown_cmark::{html, Event, HeadingLevel, Options, Parser, Tag};
 use std::time::Instant;
 use tracing::{debug, instrument};
 
@@ -132,6 +132,11 @@ impl MarkdownParser {
         // Render to HTML
         let mut html_output = String::with_capacity(markdown.len() * 2);
         html::push_html(&mut html_output, parser_with_count);
+
+        // Sanitize HTML output to prevent XSS attacks.
+        // Allows safe elements (headings, paragraphs, lists, tables, code blocks, links)
+        // while stripping script tags, event handlers, and other dangerous content.
+        html_output = ammonia::clean(&html_output);
 
         // Count code blocks from original parse
         let parser_for_count = Parser::new_ext(markdown, self.cmark_options);

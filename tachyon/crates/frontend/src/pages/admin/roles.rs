@@ -2,30 +2,32 @@
 // Role management interface for administrators
 
 use leptos::prelude::*;
-use serde::{Deserialize, Serialize};
-use wasm_bindgen_futures::spawn_local;
+use serde::Deserialize;
+use leptos::task::spawn_local;
+use crate::api::ApiClient;
 
-const API_BASE: &str = "http://localhost:8080/api/v1";
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Role {
     pub id: i64,
     pub name: String,
     pub description: Option<String>,
     pub permissions: Vec<String>,
     pub is_system: bool,
+    #[allow(dead_code)]
     pub created_at: String,
+    #[allow(dead_code)]
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct CreateRoleRequest {
     pub name: String,
     pub description: Option<String>,
     pub permissions: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct UpdateRoleRequest {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -33,45 +35,21 @@ pub struct UpdateRoleRequest {
 }
 
 async fn fetch_roles() -> Result<Vec<Role>, String> {
-    let url = format!("{}/roles", API_BASE);
-    let response = gloo_net::http::Request::get(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if response.ok() {
-        response.json::<Vec<Role>>().await.map_err(|e| e.to_string())
-    } else {
-        Err(format!("Failed to fetch roles: {}", response.status()))
-    }
+    let client = ApiClient::default();
+    let raw = client.list_roles().await.map_err(|e| e.to_string())?;
+    serde_json::from_value(serde_json::Value::Array(raw)).map_err(|e| e.to_string())
 }
 
-async fn create_role(req: CreateRoleRequest) -> Result<Role, String> {
-    let url = format!("{}/roles", API_BASE);
-    let response = gloo_net::http::Request::post(&url)
-        .header("Content-Type", "application/json")
-        .json(&req)
-        .map_err(|e| e.to_string())?
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if response.ok() {
-        response.json::<Role>().await.map_err(|e| e.to_string())
-    } else {
-        Err(format!("Failed to create role: {}", response.status()))
-    }
+async fn create_role_req(req: CreateRoleRequest) -> Result<Role, String> {
+    let client = ApiClient::default();
+    let body = serde_json::to_value(&req).map_err(|e| e.to_string())?;
+    let raw = client.create_role(&body).await.map_err(|e| e.to_string())?;
+    serde_json::from_value(raw).map_err(|e| e.to_string())
 }
 
-async fn delete_role(id: i64) -> Result<(), String> {
-    let url = format!("{}/roles/{}", API_BASE, id);
-    let response = gloo_net::http::Request::delete(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if response.ok() {
-        Ok(())
-    } else {
-        Err(format!("Failed to delete role: {}", response.status()))
-    }
+async fn delete_role_req(id: i64) -> Result<(), String> {
+    let client = ApiClient::default();
+    client.delete_role(&id.to_string()).await.map_err(|e| e.to_string())
 }
 
 #[component]
@@ -128,7 +106,7 @@ pub fn RolesPage() -> impl IntoView {
                 description: if description.is_empty() { None } else { Some(description) },
                 permissions,
             };
-            match create_role(req).await {
+            match create_role_req(req).await {
                 Ok(role) => {
                     let mut current_roles = roles.get();
                     current_roles.push(role);
@@ -148,7 +126,7 @@ pub fn RolesPage() -> impl IntoView {
 
     let handle_delete = move |id: i64| {
         spawn_local(async move {
-            match delete_role(id).await {
+            match delete_role_req(id).await {
                 Ok(()) => {
                     let current_roles = roles.get();
                     let updated: Vec<Role> = current_roles.into_iter().filter(|r| r.id != id).collect();

@@ -7,6 +7,7 @@ pub mod node;
 pub mod repository;
 pub mod role;
 pub mod search;
+pub mod seo;
 pub mod session;
 pub mod team;
 pub mod user;
@@ -133,3 +134,6 @@ pub use user::{
     logout, update_user, AuthenticateRequest, AuthenticateResponse, CreateUserRequest,
     UpdateUserRequest, UserListResponse, UserQuery, UserResponse, UserState,
 };
+
+// SEO exports
+pub use seo::{SeoState, create_seo_router};

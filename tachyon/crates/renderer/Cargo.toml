@@ -55,6 +55,9 @@ tree-sitter-markdown = "0.7"
 # LaTeX rendering
 katex = { version = "0.2", default-features = false }
 
+# HTML sanitization
+ammonia = "4"
+
 # Caching
 lru = "0.12"
 parking_lot = "0.12"

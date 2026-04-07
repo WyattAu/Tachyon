@@ -265,7 +265,7 @@ pub async fn websocket_search_handler(
                                     error: None,
                                 };
                                 if let Ok(json) = serde_json::to_string(&ws_response) {
-                                    let _ = socket.send(Message::Text(json)).await;
+                                    let _ = socket.send(Message::Text(json.into())).await;
                                 }
                             }
                             Err(e) => {
@@ -275,7 +275,7 @@ pub async fn websocket_search_handler(
                                     error: Some(e.to_string()),
                                 };
                                 if let Ok(json) = serde_json::to_string(&ws_response) {
-                                    let _ = socket.send(Message::Text(json)).await;
+                                    let _ = socket.send(Message::Text(json.into())).await;
                                 }
                             }
                         }

@@ -1,5 +1,6 @@
 // WebSocket client wrapper
-// Handles WebSocket connection for real-time collaboration
+// Handles WebSocket connection for real-time collaboration with
+// automatic heartbeat, exponential backoff reconnection, and message queue.
 
 #![allow(dead_code)]
 
@@ -98,14 +99,44 @@ pub struct SelectionRange {
 pub type MessageCallback = Rc<dyn Fn(WsMessage)>;
 pub type StateCallback = Rc<dyn Fn(ConnectionState)>;
 
+/// Configuration for heartbeat and reconnection behavior.
+#[derive(Debug, Clone)]
+struct WsConfig {
+    /// Interval between heartbeat pings in milliseconds
+    heartbeat_interval_ms: u32,
+    /// Maximum reconnect attempts before giving up
+    max_reconnect_attempts: u32,
+    /// Base delay for exponential backoff in milliseconds
+    base_reconnect_delay_ms: u32,
+    /// Maximum reconnect delay in milliseconds (caps exponential backoff)
+    max_reconnect_delay_ms: u32,
+}
+
+impl Default for WsConfig {
+    fn default() -> Self {
+        Self {
+            heartbeat_interval_ms: 30_000, // 30 seconds
+            max_reconnect_attempts: 10,
+            base_reconnect_delay_ms: 1_000, // 1 second
+            max_reconnect_delay_ms: 30_000, // 30 seconds
+        }
+    }
+}
+
 struct WebSocketInner {
     ws: Option<SysWebSocket>,
     state: ConnectionState,
     on_message: Option<MessageCallback>,
     on_state_change: Option<StateCallback>,
     reconnect_attempts: u32,
-    max_reconnect_attempts: u32,
+    config: WsConfig,
     base_url: String,
+    /// Queue of messages to send once reconnected
+    message_queue: Vec<String>,
+    /// Handle to the heartbeat interval timer
+    heartbeat_handle: Option<i32>,
+    /// Handle to the reconnect timeout timer
+    reconnect_handle: Option<i32>,
 }
 
 pub struct WebSocketClient {
@@ -130,8 +161,11 @@ impl WebSocketClient {
                 on_message: None,
                 on_state_change: None,
                 reconnect_attempts: 0,
-                max_reconnect_attempts: 5,
+                config: WsConfig::default(),
                 base_url: ws_url,
+                message_queue: Vec::new(),
+                heartbeat_handle: None,
+                reconnect_handle: None,
             })),
         }
     }
@@ -175,52 +209,228 @@ impl WebSocketClient {
         }
     }
 
-    pub fn connect(&self) {
-        let mut inner = self.inner.borrow_mut();
-        if inner.state != ConnectionState::Disconnected {
+    /// Start the heartbeat timer that sends periodic pings to keep the connection alive.
+    fn start_heartbeat(&self) {
+        self.stop_heartbeat();
+
+        let inner = self.inner.borrow();
+        let interval_ms = inner.config.heartbeat_interval_ms;
+        drop(inner);
+
+        let self_clone = self.clone();
+
+        let closure = Closure::<dyn Fn()>::new(move || {
+            let inner = self_clone.inner.borrow();
+            if inner.state == ConnectionState::Connected {
+                if let Some(ws) = &inner.ws {
+                    // Send a lightweight ping JSON message
+                    let _ = ws.send_with_str(r#"{"type":"ping","timestamp":null}"#);
+                }
+            } else {
+                // Connection lost during heartbeat — stop pinging
+                self_clone.stop_heartbeat();
+            }
+        });
+
+        let handle = web_sys::window()
+            .and_then(|w| {
+                w.set_interval_with_callback_and_timeout_and_arguments_0(
+                    closure.as_ref().unchecked_ref(),
+                    interval_ms as i32,
+                )
+                .ok()
+            })
+            .unwrap_or(0);
+
+        closure.forget();
+
+        self.inner.borrow_mut().heartbeat_handle = Some(handle);
+    }
+
+    /// Stop the heartbeat timer.
+    fn stop_heartbeat(&self) {
+        let handle = self.inner.borrow_mut().heartbeat_handle.take();
+        if let Some(h) = handle {
+            if let Some(window) = web_sys::window() {
+                window.clear_interval_with_handle(h);
+            }
+        }
+    }
+
+    /// Schedule a reconnection attempt with exponential backoff.
+    fn schedule_reconnect(&self) {
+        let inner = self.inner.borrow();
+        if inner.reconnect_attempts >= inner.config.max_reconnect_attempts {
+            web_sys::console::log_1(
+                &format!(
+                    "Max reconnect attempts ({}) reached, giving up",
+                    inner.config.max_reconnect_attempts
+                )
+                .into(),
+            );
+            drop(inner);
+            self.set_state(ConnectionState::Disconnected);
             return;
         }
 
-        inner.state = ConnectionState::Connecting;
-        let base_url = inner.base_url.clone();
+        // Exponential backoff with jitter: delay = base * 2^attempt + random jitter
+        let delay_ms = std::cmp::min(
+            inner.config.base_reconnect_delay_ms * (1 << inner.reconnect_attempts),
+            inner.config.max_reconnect_delay_ms,
+        );
+
+        let attempts = inner.reconnect_attempts;
         drop(inner);
 
-        web_sys::console::log_1(&format!("Connecting to WebSocket: {}", base_url).into());
+        web_sys::console::log_1(
+            &format!(
+                "Reconnecting in {}ms (attempt {}/{})",
+                delay_ms,
+                attempts + 1,
+                self.inner.borrow().config.max_reconnect_attempts,
+            )
+            .into(),
+        );
+
+        let self_clone = self.clone();
+
+        let closure = Closure::<dyn Fn()>::new(move || {
+            self_clone.inner.borrow_mut().reconnect_handle = None;
+            self_clone.do_connect();
+        });
+
+        let handle = web_sys::window()
+            .and_then(|w| {
+                w.set_timeout_with_callback_and_timeout_and_arguments_0(
+                    closure.as_ref().unchecked_ref(),
+                    delay_ms as i32,
+                )
+                .ok()
+            })
+            .unwrap_or(0);
+
+        closure.forget();
+
+        self.inner.borrow_mut().reconnect_handle = Some(handle);
+    }
+
+    /// Cancel any pending reconnection timer.
+    fn cancel_reconnect(&self) {
+        let handle = self.inner.borrow_mut().reconnect_handle.take();
+        if let Some(h) = handle {
+            if let Some(window) = web_sys::window() {
+                window.clear_timeout_with_handle(h);
+            }
+        }
+    }
+
+    /// Flush the message queue (send all queued messages after reconnection).
+    fn flush_message_queue(&self) {
+        let mut inner = self.inner.borrow_mut();
+        let queue: Vec<String> = inner.message_queue.drain(..).collect();
+        drop(inner);
+
+        for msg_json in queue {
+            if let Some(ws) = &self.inner.borrow().ws {
+                if ws.send_with_str(&msg_json).is_err() {
+                    // Re-queue on failure
+                    self.inner.borrow_mut().message_queue.push(msg_json);
+                    break;
+                }
+            }
+        }
+    }
+
+    pub fn connect(&self) {
+        self.cancel_reconnect();
+        self.do_connect();
+    }
+
+    /// Internal connect implementation — creates the WebSocket and sets up callbacks.
+    fn do_connect(&self) {
+        let mut inner = self.inner.borrow_mut();
+
+        // Don't connect if already connecting or connected
+        if inner.state == ConnectionState::Connecting || inner.state == ConnectionState::Connected {
+            return;
+        }
+
+        let is_reconnect = inner.reconnect_attempts > 0;
+        if is_reconnect {
+            inner.state = ConnectionState::Reconnecting;
+        } else {
+            inner.state = ConnectionState::Connecting;
+        }
+
+        let base_url = inner.base_url.clone();
+        let on_message = inner.on_message.clone();
+        drop(inner);
+
+        let state_label = if is_reconnect {
+            "Reconnecting"
+        } else {
+            "Connecting"
+        };
+        web_sys::console::log_1(&format!("{} to WebSocket: {}", state_label, base_url).into());
 
         match SysWebSocket::new(&base_url) {
             Ok(ws) => {
-                let mut inner = self.inner.borrow_mut();
-                inner.ws = Some(ws.clone());
-                inner.state = ConnectionState::Connected;
-                inner.reconnect_attempts = 0;
-                let on_message = inner.on_message.clone();
-                drop(inner);
+                self.inner.borrow_mut().ws = Some(ws.clone());
 
-                let _inner_clone = self.inner.clone(); // Reserved for reconnection logic
+                // === onopen: NOW set Connected (not before) ===
+                let self_clone = self.clone();
                 let onopen_closure = Closure::<dyn Fn(Event)>::new(move |_| {
                     web_sys::console::log_1(&"WebSocket connected".into());
+                    self_clone.inner.borrow_mut().reconnect_attempts = 0;
+                    self_clone.set_state(ConnectionState::Connected);
+                    self_clone.start_heartbeat();
+                    self_clone.flush_message_queue();
                 });
                 ws.set_onopen(Some(onopen_closure.as_ref().unchecked_ref()));
                 onopen_closure.forget();
 
-                let inner_clone2 = self.inner.clone();
-                let onclose_closure = Closure::<dyn Fn(CloseEvent)>::new(move |_| {
-                    web_sys::console::log_1(&"WebSocket closed".into());
-                    inner_clone2.borrow_mut().ws = None;
-                    inner_clone2.borrow_mut().state = ConnectionState::Disconnected;
-                });
+                // === onclose: trigger reconnection ===
+                let self_clone = self.clone();
+                let onclose_closure =
+                    Closure::<dyn Fn(CloseEvent)>::new(move |event: CloseEvent| {
+                        web_sys::console::log_1(
+                            &format!(
+                                "WebSocket closed: code={}, reason={}",
+                                event.code(),
+                                event.reason(),
+                            )
+                            .into(),
+                        );
+
+                        self_clone.inner.borrow_mut().ws = None;
+                        self_clone.stop_heartbeat();
+                        self_clone.set_state(ConnectionState::Disconnected);
+
+                        // Only auto-reconnect on abnormal closures or clean closures with reconnect intent
+                        // Code 1000 = normal closure (don't reconnect)
+                        if event.code() != 1000 {
+                            self_clone.inner.borrow_mut().reconnect_attempts += 1;
+                            self_clone.schedule_reconnect();
+                        }
+                    });
                 ws.set_onclose(Some(onclose_closure.as_ref().unchecked_ref()));
                 onclose_closure.forget();
 
+                // === onerror ===
                 let onerror_closure = Closure::<dyn Fn(Event)>::new(move |_| {
                     web_sys::console::log_1(&"WebSocket error".into());
                 });
                 ws.set_onerror(Some(onerror_closure.as_ref().unchecked_ref()));
                 onerror_closure.forget();
 
+                // === onmessage ===
                 let onmessage_closure =
                     Closure::<dyn Fn(MessageEvent)>::new(move |event: MessageEvent| {
                         if let Some(txt) = event.data().as_string() {
+                            // Ignore pong/ping messages
+                            if txt == r#"{"type":"ping"}"# || txt == r#"{"type":"pong"}"# {
+                                return;
+                            }
                             if let Ok(msg) = serde_json::from_str::<WsMessage>(&txt) {
                                 if let Some(callback) = &on_message {
                                     callback(msg);
@@ -231,34 +441,48 @@ impl WebSocketClient {
                 ws.set_onmessage(Some(onmessage_closure.as_ref().unchecked_ref()));
                 onmessage_closure.forget();
             }
-            Err(_) => {
+            Err(e) => {
+                web_sys::console::log_1(&format!("WebSocket creation failed: {:?}", e).into());
                 self.set_state(ConnectionState::Disconnected);
+
+                // Schedule reconnect even on creation failure
+                self.inner.borrow_mut().reconnect_attempts += 1;
+                self.schedule_reconnect();
             }
         }
     }
 
     pub fn disconnect(&self) {
+        self.cancel_reconnect();
+        self.stop_heartbeat();
+
         let mut inner = self.inner.borrow_mut();
+        inner.reconnect_attempts = inner.config.max_reconnect_attempts; // prevent auto-reconnect
         if let Some(ws) = inner.ws.take() {
-            let _ = ws.close();
+            // Close with code 1000 (normal) to signal intentional close
+            let _ = ws.close_with_code_and_reason(1000, "Client disconnect");
         }
         inner.state = ConnectionState::Disconnected;
+        inner.message_queue.clear();
+        drop(inner);
+
+        self.set_state(ConnectionState::Disconnected);
     }
 
     pub fn send(&self, message: &WsMessage) -> Result<(), String> {
-        let inner = self.inner.borrow();
-        if inner.state != ConnectionState::Connected {
-            return Err("Not connected".to_string());
-        }
-
+        let mut inner = self.inner.borrow_mut();
         let json = serde_json::to_string(message).map_err(|e| e.to_string())?;
 
-        if let Some(ws) = &inner.ws {
-            ws.send_with_str(&json).map_err(|e| format!("{:?}", e))?;
-            Ok(())
-        } else {
-            Err("WebSocket not initialized".to_string())
+        if inner.state == ConnectionState::Connected {
+            if let Some(ws) = &inner.ws {
+                ws.send_with_str(&json).map_err(|e| format!("{:?}", e))?;
+                return Ok(());
+            }
         }
+
+        // Not connected — queue the message for when we reconnect
+        inner.message_queue.push(json);
+        Err("Not connected — message queued".to_string())
     }
 
     pub fn join_document(

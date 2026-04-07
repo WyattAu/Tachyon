@@ -24,6 +24,40 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_log::Builder::default().build())
+        .invoke_handler(tauri::generate_handler![
+            // State & Auth
+            commands::get_state,
+            commands::set_server_url,
+            commands::authenticate,
+            commands::is_authenticated,
+            commands::is_connected,
+            commands::has_repository,
+            // File dialogs
+            commands::open_file_dialog,
+            commands::save_file_dialog,
+            // File I/O
+            commands::read_file,
+            commands::write_file,
+            commands::file_exists,
+            commands::delete_file,
+            commands::create_directory,
+            // Repository & Git sync
+            commands::set_repository_path,
+            commands::initialize_repository,
+            commands::commit_pending,
+            commands::push_to_remote,
+            commands::pull_from_remote,
+            commands::get_sync_status,
+            commands::get_queue_size,
+            commands::clear_queue,
+            commands::queue_file_change,
+            commands::enable_auto_sync,
+            commands::disable_auto_sync,
+            // Dialogs
+            commands::show_error_dialog,
+            commands::show_warning_dialog,
+            commands::show_info_dialog,
+        ])
         .setup(|app| {
             // Initialize state manager
             let state_manager = DesktopStateManager::new(DesktopState::default());

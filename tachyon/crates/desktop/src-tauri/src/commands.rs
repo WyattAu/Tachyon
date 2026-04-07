@@ -387,11 +387,35 @@ pub async fn set_repository_path(
 /// Initialize repository
 #[tauri::command]
 pub async fn initialize_repository(
+    state: State<'_, DesktopStateManager>,
     sync_manager: State<'_, AutoSyncManager>,
 ) -> Result<(), String> {
-    // Note: This requires mut access, which is problematic with State
-    // In a real implementation, we would use interior mutability
-    Ok(())
+    // Get the configured repository path from state
+    let repo_path = state.get_state()
+        .map(|s| s.repository_path.clone())
+        .map_err(|e| e.to_string())?;
+
+    let path = repo_path
+        .ok_or_else(|| "Repository path not configured. Call set_repository_path first.".to_string())?;
+
+    // Use spawn_blocking because git2::Repository is not Send.
+    // initialize_repository() calls Repository::init(path) which creates
+    // the repo and drops it immediately — safe to run off-thread.
+    let path_for_thread = path.clone();
+    tokio::task::spawn_blocking(move || {
+        // Ensure parent directories exist
+        if let Some(parent) = std::path::Path::new(&path_for_thread).parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        // git2::Repository::init is a quick filesystem operation; we don't
+        // need the full AutoSyncManager for this — just init the repo.
+        git2::Repository::init(&path_for_thread)
+            .map_err(|e| TachyonError::git("INIT_ERROR", format!("Failed to initialize repository: {}", e)))?;
+        Ok::<(), TachyonError>(())
+    })
+    .await
+    .map_err(|e: tokio::task::JoinError| e.to_string())?
+    .map_err(|e: TachyonError| e.to_string())
 }
 
 /// Commit pending changes

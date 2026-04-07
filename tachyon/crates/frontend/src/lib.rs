@@ -10,8 +10,7 @@ pub mod websocket;
 use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
-use components::AppShell;
-use styles::GlobalStyles;
+use components::{AppShell, AuthGuard, provide_auth_context};
 
 /// Not found page component
 #[component]
@@ -28,6 +27,9 @@ fn NotFound() -> impl IntoView {
 /// Main application component
 #[component]
 pub fn App() -> impl IntoView {
+    // Restore auth token from localStorage on app startup
+    provide_auth_context();
+
     // Theme signal - "light" or "dark"
     let (theme, set_theme) = signal("light".to_string());
 
@@ -35,10 +37,10 @@ pub fn App() -> impl IntoView {
     let toggle_theme = move || {
         let new_theme = if theme.get() == "light" { "dark" } else { "light" };
         set_theme.set(new_theme.to_string());
-        
+
         // Apply theme to html element
         apply_theme_to_document(&new_theme);
-        
+
         // Also save to localStorage
         if let Some(window) = web_sys::window() {
             if let Ok(Some(storage)) = window.local_storage() {
@@ -52,16 +54,67 @@ pub fn App() -> impl IntoView {
         <Router>
             <AppShell theme=theme toggle_theme=toggle_theme>
                 <Routes fallback=NotFound>
+                    // Public routes (no auth required)
                     <Route path=path!("/") view=pages::HomePage />
-                    <Route path=path!("/dashboard") view=pages::DashboardPage />
-                    <Route path=path!("/documents") view=pages::DocumentsPage />
-                    <Route path=path!("/documents/:id/edit") view=pages::DocumentEditPage />
-                    <Route path=path!("/teams") view=pages::TeamsPage />
-                    <Route path=path!("/search") view=pages::SearchPage />
-                    <Route path=path!("/catalog") view=pages::CatalogPage />
-                    <Route path=path!("/settings") view=pages::SettingsPage />
-                    <Route path=path!("/admin/roles") view=pages::RolesPage />
                     <Route path=path!("/login") view=pages::LoginPage />
+
+                    // Protected routes (require authentication)
+                    <Route path=path!("/dashboard") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::DashboardPage />
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/documents") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::DocumentsPage />
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/documents/:id/edit") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::DocumentEditPage />
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/teams") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::TeamsPage />
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/search") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::SearchPage />
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/catalog") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::CatalogPage />
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/settings") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::SettingsPage />
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/admin/roles") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::RolesPage />
+                            </AuthGuard>
+                        }
+                    } />
                 </Routes>
             </AppShell>
         </Router>
@@ -83,3 +136,5 @@ fn apply_theme_to_document(theme: &str) {
         }
     }
 }
+
+use styles::GlobalStyles;

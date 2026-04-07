@@ -274,14 +274,14 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
 
     info!(client_id = %client_id, "WebSocket connection established");
 
-    let client_id_clone = client_id.clone();
+    let client_id_recv = client_id.clone();
     let manager_clone = manager.clone();
     let recv_task = async move {
         while let Some(result) = receiver.next().await {
             match result {
                 Ok(Message::Text(text)) => {
                     if let Ok(msg) = serde_json::from_str::<WebSocketMessage>(&text) {
-                        handle_client_message(&manager_clone, &client_id_clone, msg).await;
+                        handle_client_message(&manager_clone, &client_id_recv, msg).await;
                     } else {
                         warn!(text = %text, "Failed to parse WebSocket message");
                     }
@@ -289,40 +289,70 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
                 Ok(Message::Binary(data)) => {
                     if let Ok(text) = String::from_utf8(data.to_vec()) {
                         if let Ok(msg) = serde_json::from_str::<WebSocketMessage>(&text) {
-                            handle_client_message(&manager_clone, &client_id_clone, msg).await;
+                            handle_client_message(&manager_clone, &client_id_recv, msg).await;
                         }
                     }
                 }
                 Ok(Message::Close(_)) => {
-                    info!(client_id = %client_id_clone, "Client sent close frame");
+                    info!(client_id = %client_id_recv, "Client sent close frame");
                     break;
                 }
                 Ok(Message::Ping(_)) => {
-                    debug!(client_id = %client_id_clone, "Received ping");
+                    debug!(client_id = %client_id_recv, "Received protocol ping");
+                    // tokio-tungstenite auto-responds with Pong at the protocol level
                 }
                 Ok(Message::Pong(_)) => {
-                    debug!(client_id = %client_id_clone, "Received pong");
+                    debug!(client_id = %client_id_recv, "Received pong — connection alive");
                 }
                 Err(e) => {
-                    error!(client_id = %client_id_clone, error = %e, "WebSocket error");
+                    error!(client_id = %client_id_recv, error = %e, "WebSocket error");
                     break;
                 }
             }
         }
     };
 
+    // Send task also handles periodic heartbeat pings to detect dead connections.
+    // tokio-tungstenite handles protocol-level Ping/Pong automatically,
+    // but we send application-level pings via the broadcast channel as a backup.
+    let client_id_send = client_id.clone();
     let send_task = async move {
-        while let Ok(msg) = rx.recv().await {
-            let json = match serde_json::to_string(&msg) {
-                Ok(j) => j,
-                Err(e) => {
-                    error!(error = %e, "Failed to serialize message");
-                    continue;
+        let mut heartbeat = tokio::time::interval(tokio::time::Duration::from_secs(30));
+        heartbeat.tick().await; // skip the immediate first tick
+
+        loop {
+            tokio::select! {
+                msg = rx.recv() => {
+                    match msg {
+                        Ok(msg) => {
+                            let json = match serde_json::to_string(&msg) {
+                                Ok(j) => j,
+                                Err(e) => {
+                                    error!(error = %e, "Failed to serialize message");
+                                    continue;
+                                }
+                            };
+                            
+                            if sender.send(Message::Text(json.into())).await.is_err() {
+                                break;
+                            }
+                        }
+                        Err(broadcast::error::RecvError::Lagged(n)) => {
+                            warn!(skipped = n, "Broadcast receiver lagged, skipping messages");
+                        }
+                        Err(broadcast::error::RecvError::Closed) => {
+                            break;
+                        }
+                    }
                 }
-            };
-            
-            if sender.send(Message::Text(json.into())).await.is_err() {
-                break;
+                _ = heartbeat.tick() => {
+                    // Send a protocol-level Ping frame to detect dead connections.
+                    // tokio-tungstenite will auto-close the connection if Pong isn't received.
+                    if sender.send(Message::Ping(vec![].into())).await.is_err() {
+                        info!(client_id = %client_id_send, "Failed to send heartbeat ping — connection dead");
+                        break;
+                    }
+                }
             }
         }
     };

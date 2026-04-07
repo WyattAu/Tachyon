@@ -179,26 +179,42 @@ impl AutoSyncManager {
     pub async fn commit_pending(&self) -> ErrorResult<SyncResult> {
         let path = self.repository_path
             .as_ref()
-            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?;
+            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?
+            .clone();
 
-        let repo = Repository::open(path)
-            .map_err(|e| TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e)))?;
-
-        let mut commits_made = 0;
-        let mut files_synced = 0;
-
-        // Process commit queue
-        {
+        // Drain the commit queue — we must take ownership of entries
+        // to move them into the blocking thread.
+        let entries: Vec<CommitQueueEntry> = {
             let mut queue = self.commit_queue.write().await;
-            
-            while let Some(entry) = queue.pop_front() {
-                match self.commit_file(&repo, &entry).await {
+            queue.drain(..).collect()
+        };
+
+        if entries.is_empty() {
+            return Ok(SyncResult {
+                status: SyncStatus::Success,
+                commits_made: 0,
+                files_synced: 0,
+                error: None,
+            });
+        }
+
+        // All git2 operations must run on a blocking thread because
+        // git2::Repository is not Send/Sync.
+        let result = tokio::task::spawn_blocking(move || {
+            let repo = Repository::open(&path)
+                .map_err(|e| TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e)))?;
+
+            let mut commits_made = 0u32;
+            let mut files_synced = 0u32;
+
+            for entry in &entries {
+                match Self::commit_file_sync(&repo, entry) {
                     Ok(_) => {
                         commits_made += 1;
                         files_synced += 1;
                     }
                     Err(e) => {
-                        return Ok(SyncResult {
+                        return Ok::<_, TachyonError>(SyncResult {
                             status: SyncStatus::Failed,
                             commits_made,
                             files_synced,
@@ -207,22 +223,26 @@ impl AutoSyncManager {
                     }
                 }
             }
-        }
 
-        Ok(SyncResult {
-            status: SyncStatus::Success,
-            commits_made,
-            files_synced,
-            error: None,
+            Ok(SyncResult {
+                status: SyncStatus::Success,
+                commits_made,
+                files_synced,
+                error: None,
+            })
         })
+        .await
+        .map_err(|e| TachyonError::internal("JOIN_ERROR", format!("Task join error: {}", e)))??;
+
+        Ok(result)
     }
 
-    /// Commit a single file
+    /// Commit a single file (synchronous, for use inside spawn_blocking)
     ///
     /// # Arguments
     /// * `repo` - Git repository
     /// * `entry` - Commit queue entry
-    async fn commit_file(&self, repo: &Repository, entry: &CommitQueueEntry) -> ErrorResult<()> {
+    fn commit_file_sync(repo: &Repository, entry: &CommitQueueEntry) -> ErrorResult<()> {
         let path = Path::new(&entry.path);
 
         // Check if file exists

@@ -337,6 +337,16 @@ pub async fn create_document(
         ));
     }
 
+    // Update search index for full-text search
+    if let Err(e) = state.repository.update_search_index(
+        &doc.id,
+        &doc.metadata.title,
+        doc.content.as_text().unwrap_or(""),
+        &doc.metadata.tags,
+    ).await {
+        warn!("Failed to update search index for document {}: {}", doc.id, e);
+    }
+
     // Render markdown to HTML (create renderer on demand due to katex thread-safety issues)
     // Note: Renderer is not Send, so we create it after all await points
     let html_content = {
@@ -485,6 +495,16 @@ pub async fn update_document(
             }),
         )
     })?;
+
+    // Update search index for full-text search
+    if let Err(e) = state.repository.update_search_index(
+        &doc_id,
+        &metadata.title,
+        metadata.content.as_deref().unwrap_or(""),
+        &metadata.parse_tags().unwrap_or_default(),
+    ).await {
+        warn!("Failed to update search index for document {}: {}", doc_id, e);
+    }
 
     let tags = metadata.parse_tags().unwrap_or_default();
     let response = DocumentResponse {

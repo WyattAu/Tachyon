@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tachyon -> target
+          key: ${{ runner.os }}-cargo-
+      - name: Check workspace
+        working-directory: tachyon
+        run: cargo check --all-targets
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tachyon
+          POSTGRES_PASSWORD: tachyon
+          POSTGRES_DB: tachyon_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tachyon -> target
+          key: ${{ runner.os }}-cargo-
+      - name: Run tests (non-frontend)
+        working-directory: tachyon
+        env:
+          DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
+        run: cargo test --lib -p tachyon-core -p tachyon-rbac -p tachyon-database -p tachyon-renderer -p tachyon-server -- --nocapture
+      - name: Verify no errors
+        working-directory: tachyon
+        run: |
+          cargo check 2>&1 | grep "^error" && exit 1 || echo "No errors found"
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tachyon -> target
+          key: ${{ runner.os }}-cargo-
+      - name: Check formatting
+        working-directory: tachyon
+        run: cargo fmt --all -- --check
+      - name: Clippy (warnings allowed)
+        working-directory: tachyon
+        run: cargo clippy --lib -p tachyon-core -p tachyon-rbac -p tachyon-database -p tachyon-renderer -p tachyon-server -- -D warnings
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: cargo-audit
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tachyon -> target
+          key: ${{ runner.os }}-cargo-
+      - name: Cargo audit
+        working-directory: tachyon
+        run: cargo audit
