@@ -1,40 +1,11 @@
 //! Custom assertion helpers for testing
 //!
 //! Provides specialized assertion macros and functions for Tachyon testing.
-
-/// Assert that a result is Ok and return the inner value
-#[macro_export]
-macro_rules! assert_ok {
-    ($expr:expr) => {
-        match $expr {
-            Ok(val) => val,
-            Err(err) => panic!("Expected Ok, got Err: {:?}", err),
-        }
-    };
-    ($expr:expr, $msg:expr) => {
-        match $expr {
-            Ok(val) => val,
-            Err(err) => panic!("{}: {:?}", $msg, err),
-        }
-    };
-}
-
-/// Assert that a result is Err and return the inner error
-#[macro_export]
-macro_rules! assert_err {
-    ($expr:expr) => {
-        match $expr {
-            Ok(val) => panic!("Expected Err, got Ok: {:?}", val),
-            Err(err) => err,
-        }
-    };
-    ($expr:expr, $msg:expr) => {
-        match $expr {
-            Ok(val) => panic!("{}: {:?}", $msg, val),
-            Err(err) => err,
-        }
-    };
-}
+//!
+//! Note: `assert_ok` and `assert_err` macros are defined in `test_utils.rs`
+//! to avoid duplicate macro definitions. Use `assert_some`, `assert_none`,
+//! `assert_eq_unordered`, `assert_contains`, `assert_not_contains`,
+//! `assert_in_range`, and `assert_timeout` from this module.
 
 /// Assert that an option is Some and return the inner value
 #[macro_export]
@@ -129,7 +100,7 @@ macro_rules! assert_in_range {
 #[macro_export]
 macro_rules! assert_timeout {
     ($future:expr, $duration:expr) => {{
-        use tokio::time::{timeout, Duration, error::Elapsed};
+        use tokio::time::{error::Elapsed, timeout, Duration};
         match timeout($duration, $future).await {
             Ok(result) => result,
             Err(Elapsed { .. }) => panic!("Operation timed out after {:?}", $duration),

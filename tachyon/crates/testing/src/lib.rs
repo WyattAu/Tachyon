@@ -10,7 +10,7 @@
 //! - [`fuzz`] - Fuzzing test modules for security and robustness
 //! - [`benchmarks`] - Performance benchmark modules
 
-#![warn(missing_docs, unused_crate_dependencies)]
+
 
 // Public module exports
 pub mod unit;

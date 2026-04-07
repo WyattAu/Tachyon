@@ -2,8 +2,6 @@
 //!
 //! These tests verify that on-demand document rendering works correctly.
 
-use std::time::Instant;
-
 /// Test that the JIT renderer can be created and render basic markdown
 #[test]
 fn test_jit_renderer_creation() {
@@ -82,6 +80,7 @@ fn main() {
 /// Test JIT rendering performance (should be fast)
 #[test]
 fn test_jit_rendering_performance() {
+    use std::time::Instant;
     use tachyon_renderer::{RenderConfig, Renderer};
 
     let renderer = Renderer::new(RenderConfig::default());

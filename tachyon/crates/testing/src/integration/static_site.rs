@@ -299,7 +299,6 @@ fn test_static_site_asset_bundling() {
 #[test]
 fn test_static_vs_jit_consistency() {
     use tachyon_renderer::{OutputFormat, RenderConfig, Renderer};
-    use tempfile::tempdir;
 
     let markdown = r#"# Test Document
 
@@ -409,7 +408,7 @@ fn test_full_static_site_build() {
     create_test_repo(repo_dir.path()).unwrap();
 
     // Simulate full build workflow
-    let build_steps = vec![
+    let _build_steps = vec![
         "create_output_structure",
         "copy_static_files",
         "generate_documentation",

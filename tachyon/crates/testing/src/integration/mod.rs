@@ -2,6 +2,8 @@
 //!
 //! This module contains integration tests that test multiple components together.
 
+#![allow(dead_code)]
+
 pub mod database;
 pub mod ipc;
 pub mod jit;

@@ -220,7 +220,7 @@ impl ServeCommand {
                     while let Some(Ok(msg)) = socket.recv().await {
                         if let axum::extract::ws::Message::Text(text) = msg {
                             if let Err(e) = socket
-                                .send(axum::extract::ws::Message::Text(format!("Echo: {}", text)))
+                                .send(axum::extract::ws::Message::Text(format!("Echo: {}", text).into()))
                                 .await
                             {
                                 eprintln!("WebSocket error: {}", e);

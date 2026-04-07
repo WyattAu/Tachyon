@@ -1,15 +1,13 @@
 use tachyon_database::{
-    DocumentMetadata, Project, SessionRecord, Team, TeamMember,
-    CreateTemplateRequest, DocumentTemplate, CatalogRepository,
-    DocumentRepository, init_with_migrations,
+    DocumentMetadata, Project, SessionRecord, Team,
+    CreateTemplateRequest, CatalogRepository,
+    DocumentRepository, DatabasePool, init_with_migrations,
 };
 use chrono::{Utc, Duration};
 use serde_json::json;
-use sqlx::PgPool;
-use std::collections::HashMap;
 
 pub struct TestDatabase {
-    pub pool: PgPool,
+    pub pool: DatabasePool,
 }
 
 impl TestDatabase {
@@ -34,10 +32,7 @@ impl TestDatabase {
         ];
         
         for query in cleanup_queries {
-            sqlx::query(query)
-                .execute(&self.pool)
-                .await
-                .ok();
+            let _ = self.pool.execute(query).await;
         }
     }
 }
@@ -50,11 +45,11 @@ impl TestDataFactory {
         DocumentMetadata {
             id: uuid::Uuid::new_v4().to_string(),
             title: format!("TEST_Document_{}", now.timestamp()),
-            slug: format!("test-doc-{}", now.timestamp()),
+            slug: Some(format!("test-doc-{}", now.timestamp())),
             author_id: uuid::Uuid::new_v4().to_string(),
             description: Some("Test document description".to_string()),
-            tags: vec!["test".to_string()],
-            frontmatter: json!({}),
+            tags: "test".to_string(),
+            frontmatter: None,
             project_id: None,
             visibility: "Private".to_string(),
             status: "Draft".to_string(),
@@ -63,6 +58,8 @@ impl TestDataFactory {
             character_count: 0,
             read_count: 0,
             edit_count: 0,
+            content: None,
+            html: None,
             created_at: now,
             updated_at: now,
             published_at: None,
@@ -72,7 +69,7 @@ impl TestDataFactory {
     pub fn create_document_with_title(title: &str) -> DocumentMetadata {
         let mut doc = Self::create_document();
         doc.title = format!("TEST_{}", title);
-        doc.slug = format!("test-{}", title.to_lowercase().replace(' ', "-"));
+        doc.slug = Some(format!("test-{}", title.to_lowercase().replace(' ', "-")));
         doc
     }
     
@@ -121,11 +118,15 @@ impl TestDataFactory {
     
     pub fn create_team() -> Team {
         let now = Utc::now();
+        let owner_id = uuid::Uuid::new_v4().to_string();
         Team {
             id: uuid::Uuid::new_v4().to_string(),
             name: format!("TEST_Team_{}", now.timestamp()),
             slug: format!("test-team-{}", now.timestamp()),
             description: Some("Test team".to_string()),
+            owner_id: owner_id.clone(),
+            avatar_url: None,
+            settings: json!({}),
             created_at: now,
             updated_at: now,
         }
@@ -136,9 +137,9 @@ impl TestDataFactory {
             name: format!("TEST_Template_{}", Utc::now().timestamp()),
             description: Some("Test template".to_string()),
             content: "# Test Template\n\nContent here.".to_string(),
-            category: "general".to_string(),
-            tags: vec!["test".to_string()],
-            variables: Some(json!({})),
+            category: Some("general".to_string()),
+            tags: Some(vec!["test".to_string()]),
+            created_by: uuid::Uuid::new_v4().to_string(),
         }
     }
 }
@@ -152,9 +153,9 @@ impl TestFixtures {
         for i in 0..count {
             let mut doc = TestDataFactory::create_document();
             doc.title = format!("TEST_Fixture_{}_{}", i, Utc::now().timestamp());
-            doc.slug = format!("test-fixture-{}-{}", i, Utc::now().timestamp());
+            doc.slug = Some(format!("test-fixture-{}-{}", i, Utc::now().timestamp()));
             
-            repo.create_document(&doc).await.expect("Failed to create test document");
+            repo.create(doc.clone()).await.expect("Failed to create test document");
             documents.push(doc);
             
             tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
@@ -215,10 +216,12 @@ macro_rules! assert_err {
 
 pub fn setup_test_env() {
     if std::env::var("TEST_DATABASE_URL").is_err() {
-        std::env::set_var(
-            "TEST_DATABASE_URL",
-            "postgres://tachyon:tachyon@localhost:5432/tachyon_test"
-        );
+        unsafe {
+            std::env::set_var(
+                "TEST_DATABASE_URL",
+                "postgres://tachyon:tachyon@localhost:5432/tachyon_test"
+            );
+        }
     }
 }
 

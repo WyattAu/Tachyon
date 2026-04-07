@@ -1,7 +1,7 @@
 // Init command for Tachyon CLI
 
 use crate::commands::Command;
-use crate::config::{DEFAULT_REPO_DIR, TachyonConfig};
+use crate::config::{TachyonConfig, DEFAULT_REPO_DIR};
 use crate::error::{CliError, CliResult};
 use git2::{Repository, RepositoryInitOptions};
 use std::fs;
@@ -220,6 +220,7 @@ For more information, visit the Tachyon documentation.
     }
 
     /// Interactive setup wizard
+    #[allow(dead_code)]
     fn interactive_setup(&mut self) -> CliResult<String> {
         let mut name = self.options.name.clone();
 
