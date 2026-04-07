@@ -50,7 +50,7 @@ pub async fn create_router() -> Router {
         "tachyon".to_string(),
         guest_config,
     );
-    let session_state = SessionState::new(3600);
+    let session_state = SessionState::new(pool.clone(), 3600);
     let repository_state = RepositoryState::new();
     let node_state = NodeState::new();
     let catalog_state = CatalogState::new(pool);

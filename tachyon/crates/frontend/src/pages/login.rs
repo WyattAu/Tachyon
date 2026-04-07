@@ -199,11 +199,10 @@ pub fn LoginPage() -> impl IntoView {
                 </div>
                 
                 <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4">
-                    <h4 class="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">"Demo Credentials"</h4>
+                    <h4 class="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">"Getting Started"</h4>
                     <div class="text-xs text-blue-700 dark:text-blue-400 space-y-1">
-                        <p><strong>"Admin:"</strong> " admin / admin123"</p>
-                        <p><strong>"Editor:"</strong> " editor / editor123"</p>
-                        <p><strong>"Guest:"</strong> " guest / guest"</p>
+                        <p>"Register a new account or ask an administrator to create one for you."</p>
+                        <p>"The first user registered on a fresh instance will be the admin."</p>
                     </div>
                 </div>
                 

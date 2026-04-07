@@ -34,7 +34,7 @@ use tower_http::{
     limit::RequestBodyLimitLayer, 
     trace::TraceLayer,
 };
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Global panic information storage for debugging
@@ -109,6 +109,37 @@ async fn init_state(config: &ServerConfig) -> Result<(DocumentState, UserState, 
         .await
         .context("Failed to initialize database")?;
 
+    // Seed initial admin user if no users exist.
+    // Configurable via TACHYON_ADMIN_USERNAME / TACHYON_ADMIN_PASSWORD / TACHYON_ADMIN_EMAIL.
+    {
+        let user_repo = tachyon_database::UserRepository::new(pool.clone());
+        let admin_username = std::env::var("TACHYON_ADMIN_USERNAME").unwrap_or_else(|_| "admin".into());
+        let admin_password = std::env::var("TACHYON_ADMIN_PASSWORD").unwrap_or_else(|_| {
+            // Generate a random password if not set, so the default isn't a security hole
+            uuid::Uuid::new_v4().to_string().replace('-', "")[..16].to_string()
+        });
+        let admin_email = std::env::var("TACHYON_ADMIN_EMAIL").unwrap_or_else(|_| "admin@tachyon.local".into());
+
+        match user_repo.seed_admin(&admin_username, "Administrator", &admin_email, &admin_password).await {
+            Ok(Some(user)) => {
+                info!(
+                    "Initial admin user seeded: {} ({}) — save these credentials!",
+                    user.username, user.id
+                );
+                info!("  Username: {}", admin_username);
+                info!("  Password: {}", admin_password);
+                info!("  (Set TACHYON_ADMIN_PASSWORD env var to use a custom password)");
+            }
+            Ok(None) => {
+                info!("Admin seed skipped: users already exist");
+            }
+            Err(e) => {
+                // Log but don't fail startup — admin seed is best-effort
+                warn!("Failed to seed admin user: {}. Users must be created manually.", e);
+            }
+        }
+    }
+
     let document_state = DocumentState::with_guest_config(pool.clone(), config.guest.clone());
     let user_state = UserState::with_guest_config(
         pool.clone(),
@@ -118,7 +149,7 @@ async fn init_state(config: &ServerConfig) -> Result<(DocumentState, UserState, 
         config.jwt.audience.clone(),
         config.guest.clone(),
     );
-    let session_state = SessionState::new(config.jwt.expiration_secs);
+    let session_state = SessionState::new(pool.clone(), config.jwt.expiration_secs);
     let repository_state = RepositoryState::new();
     let node_state = NodeState::new();
     let catalog_state = CatalogState::new(pool.clone());
@@ -211,7 +242,7 @@ fn build_router(
 
     // Wire authentication middleware — protects all /api/v1 routes except auth endpoints.
     // Bypasses: /health, /metrics, /api/v1/auth/*, SEO routes, /ws, /api/docs.
-    let auth_state = AuthState::new(config.clone());
+    let auth_state = AuthState::new(config.clone(), pool.clone());
     let auth_layer = axum::middleware::from_fn_with_state(
         auth_state,
         tachyon_server::middleware::auth_middleware,

@@ -16,6 +16,7 @@ pub mod session;
 pub mod team;
 pub mod template;
 pub mod types;
+pub mod user;
 
 // Re-export common types for convenience
 pub use attachment::{Attachment, AttachmentRepository, CreateAttachmentRequest};
@@ -38,6 +39,7 @@ pub use search::{
 };
 pub use session::SessionRepository;
 pub use team::{RoleRecord, RoleRepository, Team, TeamMember, TeamRepository};
+pub use user::{UserRecord, UserRepository};
 pub use types::*;
 
 // Re-export tachyon-core types

@@ -1,5 +1,9 @@
 // User API routes
 // Handles user CRUD operations and authentication
+//
+// All user operations are persisted to PostgreSQL via UserRepository.
+// The pluggable AuthProvider trait allows swapping authentication strategies
+// (local password, OAuth, API keys) without changing route handlers.
 
 use axum::{
     extract::{Path, Query, State},
@@ -9,11 +13,18 @@ use axum::{
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use tachyon_core::{User, UserId, UserRole};
-use tachyon_database::DatabasePool;
-use tracing::{debug, info, warn};
+use tachyon_database::{DatabasePool, UserRepository};
+use tracing::{debug, info, instrument, warn};
 use crate::config::GuestConfig;
 
-/// JWT claims structure for token validation
+// ============================================================================
+// JWT Claims
+// ============================================================================
+
+/// JWT claims structure for token validation.
+///
+/// This is compatible with the middleware Claims in `middleware/auth.rs`:
+/// both include `permissions` (defaults to empty vec) and `team_id` (defaults to None).
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
     /// Subject (user ID)
@@ -28,9 +39,22 @@ struct Claims {
     iat: usize,
     /// User role
     role: String,
+    /// Granted permissions (empty for role-based auth)
+    #[serde(default)]
+    permissions: Vec<String>,
+    /// Team ID (for team-scoped tokens)
+    #[serde(default)]
+    team_id: Option<String>,
 }
 
-/// Application state for user routes
+// ============================================================================
+// Application State
+// ============================================================================
+
+/// Application state for user routes.
+///
+/// Holds the database pool and JWT configuration. The `UserRepository`
+/// is constructed on-demand from the pool.
 #[derive(Clone)]
 pub struct UserState {
     /// Database pool
@@ -48,37 +72,7 @@ pub struct UserState {
 }
 
 impl UserState {
-    /// Create a new user state
-    pub fn new(pool: DatabasePool, jwt_secret: String, token_expiration_secs: u64) -> Self {
-        Self {
-            pool,
-            jwt_secret,
-            token_expiration_secs,
-            jwt_issuer: "tachyon-server".to_string(),
-            jwt_audience: "tachyon-client".to_string(),
-            guest_config: GuestConfig::default(),
-        }
-    }
-
-    /// Create a new user state with full JWT config
-    pub fn with_jwt_config(
-        pool: DatabasePool,
-        jwt_secret: String,
-        token_expiration_secs: u64,
-        jwt_issuer: String,
-        jwt_audience: String,
-    ) -> Self {
-        Self {
-            pool,
-            jwt_secret,
-            token_expiration_secs,
-            jwt_issuer,
-            jwt_audience,
-            guest_config: GuestConfig::default(),
-        }
-    }
-
-    /// Create a new user state with guest config
+    /// Create a new user state with full JWT config and guest config.
     pub fn with_guest_config(
         pool: DatabasePool,
         jwt_secret: String,
@@ -97,7 +91,15 @@ impl UserState {
         }
     }
 
-    /// Generate a JWT token for a user
+    /// Get a UserRepository for this state.
+    fn user_repo(&self) -> UserRepository {
+        UserRepository::new(self.pool.clone())
+    }
+
+    /// Generate a JWT token for a user.
+    ///
+    /// The token includes `permissions` and `team_id` fields (defaulting to
+    /// empty/None) to maintain compatibility with the auth middleware Claims.
     fn generate_jwt(&self, user_id: &str, role: UserRole) -> Result<String, String> {
         let now = jsonwebtoken::get_current_timestamp();
         let exp = now + self.token_expiration_secs;
@@ -109,6 +111,8 @@ impl UserState {
             exp: exp as usize,
             iat: now as usize,
             role: role.to_string(),
+            permissions: vec![],
+            team_id: None,
         };
 
         encode(
@@ -119,7 +123,7 @@ impl UserState {
         .map_err(|e| format!("JWT encoding error: {}", e))
     }
 
-    /// Validate a JWT token and return the claims
+    /// Validate a JWT token and return the claims.
     fn validate_jwt(&self, token: &str) -> Result<Claims, String> {
         let mut validation = Validation::new(Algorithm::HS256);
         validation.set_issuer(&[&self.jwt_issuer]);
@@ -135,10 +139,27 @@ impl UserState {
     }
 }
 
-/// Request to create a new user
+// ============================================================================
+// Request/Response Types
+// ============================================================================
+
+/// Request to register a new user.
+#[derive(Debug, Deserialize)]
+pub struct RegisterRequest {
+    /// Username (3-50 chars, alphanumeric/underscore/hyphen)
+    pub username: String,
+    /// Display name (1-100 chars)
+    pub display_name: String,
+    /// Email address (optional)
+    pub email: Option<String>,
+    /// Password (8-128 chars)
+    pub password: String,
+}
+
+/// Request to create a new user (admin-only, can set role).
 #[derive(Debug, Deserialize)]
 pub struct CreateUserRequest {
-    /// User name
+    /// Username
     pub username: String,
     /// Display name
     pub display_name: String,
@@ -146,27 +167,34 @@ pub struct CreateUserRequest {
     pub email: Option<String>,
     /// User password
     pub password: String,
-    /// User role
+    /// User role (admin-only)
     #[serde(default)]
     pub role: Option<String>,
 }
 
-/// Request to update a user
+/// Request to update a user.
 #[derive(Debug, Deserialize)]
 pub struct UpdateUserRequest {
-    /// User name
-    pub username: Option<String>,
     /// Display name
     pub display_name: Option<String>,
     /// User email
     pub email: Option<String>,
-    /// User role
+    /// User role (admin-only)
     pub role: Option<String>,
-    /// Active status
+    /// Active status (admin-only)
     pub is_active: Option<bool>,
 }
 
-/// Request for user authentication
+/// Request to change password.
+#[derive(Debug, Deserialize)]
+pub struct ChangePasswordRequest {
+    /// Current password
+    pub current_password: String,
+    /// New password
+    pub new_password: String,
+}
+
+/// Request for user authentication.
 #[derive(Debug, Deserialize)]
 pub struct AuthenticateRequest {
     /// Username or email
@@ -175,7 +203,7 @@ pub struct AuthenticateRequest {
     pub password: String,
 }
 
-/// Authentication response
+/// Authentication response.
 #[derive(Debug, Serialize)]
 pub struct AuthenticateResponse {
     /// Success flag
@@ -198,7 +226,7 @@ pub struct AuthenticateResponse {
     pub user: Option<UserResponse>,
 }
 
-/// User response
+/// User response (never includes password_hash).
 #[derive(Debug, Serialize)]
 pub struct UserResponse {
     /// User ID
@@ -208,6 +236,7 @@ pub struct UserResponse {
     /// Display name
     pub display_name: String,
     /// Email
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
     /// User type
     pub user_type: String,
@@ -237,20 +266,20 @@ impl From<User> for UserResponse {
     }
 }
 
-/// User list response
+/// User list response.
 #[derive(Debug, Serialize)]
 pub struct UserListResponse {
     /// List of users
     pub users: Vec<UserResponse>,
     /// Total count
-    pub total: usize,
+    pub total: i64,
     /// Page number
     pub page: usize,
     /// Page size
     pub page_size: usize,
 }
 
-/// Query parameters for user listing
+/// Query parameters for user listing.
 #[derive(Debug, Deserialize)]
 pub struct UserQuery {
     /// Page number
@@ -261,7 +290,7 @@ pub struct UserQuery {
     pub role: Option<String>,
 }
 
-/// Error response
+/// Error response.
 #[derive(Debug, Serialize)]
 pub struct UserErrorResponse {
     /// Error code
@@ -270,46 +299,143 @@ pub struct UserErrorResponse {
     pub message: String,
 }
 
-/// Create a new user
-pub async fn create_user(
-    State(_state): State<UserState>,
-    Json(req): Json<CreateUserRequest>,
+// ============================================================================
+// Route Handlers
+// ============================================================================
+
+/// Register a new user (public endpoint).
+///
+/// Creates a user with the default `Reader` role. The password is hashed
+/// with Argon2id before storage.
+#[instrument(skip(state), fields(username = %req.username))]
+pub async fn register(
+    State(state): State<UserState>,
+    Json(req): Json<RegisterRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<UserErrorResponse>)> {
-    info!("Creating new user: {}", req.username);
+    info!("User registration: {}", req.username);
 
-    // Validate username
-    if req.username.len() < 3 {
+    // Validate input
+    if req.username.len() < 3 || req.username.len() > 50 {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(UserErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: "Username must be at least 3 characters".to_string(),
+                code: "VALIDATION_ERROR".into(),
+                message: "Username must be between 3 and 50 characters".into(),
             }),
         ));
     }
 
-    if req.username.len() > 50 {
+    if req.display_name.is_empty() || req.display_name.len() > 100 {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(UserErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: "Username cannot exceed 50 characters".to_string(),
+                code: "VALIDATION_ERROR".into(),
+                message: "Display name must be between 1 and 100 characters".into(),
             }),
         ));
     }
 
-    // Validate password
     if req.password.len() < 8 {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(UserErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: "Password must be at least 8 characters".to_string(),
+                code: "VALIDATION_ERROR".into(),
+                message: "Password must be at least 8 characters".into(),
             }),
         ));
     }
 
-    // Parse role
+    if let Some(ref email) = req.email {
+        if !email.contains('@') || !email.contains('.') {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(UserErrorResponse {
+                    code: "VALIDATION_ERROR".into(),
+                    message: "Invalid email format".into(),
+                }),
+            ));
+        }
+    }
+
+    // Build user with hashed password
+    let user_id = tachyon_core::generate_user_id();
+    let mut user = User::new(user_id, req.username, req.display_name, UserRole::Reader);
+    if let Some(email) = req.email {
+        user = user.with_email(email);
+    }
+    if let Err(e) = user.set_password(&req.password) {
+        warn!("Failed to hash password during registration: {}", e);
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(UserErrorResponse {
+                code: "PASSWORD_ERROR".into(),
+                message: "Failed to process password".into(),
+            }),
+        ));
+    }
+
+    // Persist
+    let repo = state.user_repo();
+    match repo.create(&user).await {
+        Ok(created) => {
+            info!("User registered: {} ({})", created.username, created.id);
+            Ok(Json(UserResponse::from(created)))
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("already exists") || msg.contains("duplicate") || msg.contains("unique") {
+                Err((
+                    StatusCode::CONFLICT,
+                    Json(UserErrorResponse {
+                        code: "CONFLICT".into(),
+                        message: "Username or email already exists".into(),
+                    }),
+                ))
+            } else {
+                warn!("User registration failed: {}", msg);
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(UserErrorResponse {
+                        code: "INTERNAL_ERROR".into(),
+                        message: "Failed to create user".into(),
+                    }),
+                ))
+            }
+        }
+    }
+}
+
+/// Create a new user (admin-only, can set role).
+///
+/// Unlike `/auth/register`, this endpoint allows setting an arbitrary role
+/// and is intended for admin use.
+pub async fn create_user(
+    State(state): State<UserState>,
+    Json(req): Json<CreateUserRequest>,
+) -> Result<Json<UserResponse>, (StatusCode, Json<UserErrorResponse>)> {
+    info!("Admin creating user: {}", req.username);
+
+    // Validate input
+    if req.username.len() < 3 || req.username.len() > 50 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(UserErrorResponse {
+                code: "VALIDATION_ERROR".into(),
+                message: "Username must be between 3 and 50 characters".into(),
+            }),
+        ));
+    }
+
+    if req.password.len() < 8 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(UserErrorResponse {
+                code: "VALIDATION_ERROR".into(),
+                message: "Password must be at least 8 characters".into(),
+            }),
+        ));
+    }
+
     let role = match req.role.as_deref() {
         Some("admin") => UserRole::Admin,
         Some("editor") => UserRole::Editor,
@@ -317,173 +443,191 @@ pub async fn create_user(
         _ => UserRole::Reader,
     };
 
-    // Create user
     let user_id = tachyon_core::generate_user_id();
     let mut user = User::new(user_id, req.username, req.display_name, role);
-
-    // Set email if provided
     if let Some(email) = req.email {
-        if !email.contains('@') {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(UserErrorResponse {
-                    code: "VALIDATION_ERROR".to_string(),
-                    message: "Invalid email format".to_string(),
-                }),
-            ));
-        }
         user = user.with_email(email);
     }
-
-    // Set password
     if let Err(e) = user.set_password(&req.password) {
-        warn!("Failed to set password: {}", e);
+        warn!("Failed to hash password: {}", e);
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(UserErrorResponse {
-                code: "PASSWORD_ERROR".to_string(),
-                message: "Failed to set password".to_string(),
+                code: "PASSWORD_ERROR".into(),
+                message: "Failed to process password".into(),
             }),
         ));
     }
 
-    // Validate user
-    if let Err(e) = user.validate() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(UserErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: e.to_string(),
-            }),
-        ));
+    let repo = state.user_repo();
+    match repo.create(&user).await {
+        Ok(created) => Ok(Json(UserResponse::from(created))),
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("already exists") || msg.contains("duplicate") || msg.contains("unique") {
+                Err((
+                    StatusCode::CONFLICT,
+                    Json(UserErrorResponse {
+                        code: "CONFLICT".into(),
+                        message: "Username or email already exists".into(),
+                    }),
+                ))
+            } else {
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(UserErrorResponse {
+                        code: "INTERNAL_ERROR".into(),
+                        message: "Failed to create user".into(),
+                    }),
+                ))
+            }
+        }
     }
-
-    info!("User created successfully: {}", user.username);
-
-    Ok(Json(UserResponse::from(user)))
 }
 
-/// Get a user by ID
+/// Get a user by ID.
 pub async fn get_user(
     Path(user_id): Path<String>,
-    State(_state): State<UserState>,
+    State(state): State<UserState>,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<UserErrorResponse>)> {
-    debug!("Getting user: {}", user_id);
-
-    // Parse user ID
-    let _id = UserId::parse_str(&user_id).map_err(|e| {
+    let id = UserId::parse_str(&user_id).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
             Json(UserErrorResponse {
-                code: "INVALID_ID".to_string(),
+                code: "INVALID_ID".into(),
                 message: format!("Invalid user ID: {}", e),
             }),
         )
     })?;
 
-    // TODO: Fetch from database
-    Err((
-        StatusCode::NOT_FOUND,
-        Json(UserErrorResponse {
-            code: "NOT_FOUND".to_string(),
-            message: format!("User {} not found", user_id),
-        }),
-    ))
+    let repo = state.user_repo();
+    match repo.get_by_id(&id).await {
+        Ok(user) => Ok(Json(UserResponse::from(user))),
+        Err(_) => Err((
+            StatusCode::NOT_FOUND,
+            Json(UserErrorResponse {
+                code: "NOT_FOUND".into(),
+                message: format!("User {} not found", user_id),
+            }),
+        )),
+    }
 }
 
-/// Update a user
+/// Update a user.
 pub async fn update_user(
     Path(user_id): Path<String>,
-    State(_state): State<UserState>,
-    Json(_req): Json<UpdateUserRequest>,
+    State(state): State<UserState>,
+    Json(req): Json<UpdateUserRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<UserErrorResponse>)> {
-    debug!("Updating user: {}", user_id);
-
-    // Parse user ID
-    let _id = UserId::parse_str(&user_id).map_err(|e| {
+    let id = UserId::parse_str(&user_id).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
             Json(UserErrorResponse {
-                code: "INVALID_ID".to_string(),
+                code: "INVALID_ID".into(),
                 message: format!("Invalid user ID: {}", e),
             }),
         )
     })?;
 
-    // TODO: Fetch from database, update, and save
+    let role = req.role.as_deref().and_then(|r| match r {
+        "admin" => Some(UserRole::Admin),
+        "editor" => Some(UserRole::Editor),
+        "writer" => Some(UserRole::Writer),
+        "reader" => Some(UserRole::Reader),
+        _ => None,
+    });
 
-    // Return placeholder response
-    Err((
-        StatusCode::NOT_FOUND,
-        Json(UserErrorResponse {
-            code: "NOT_FOUND".to_string(),
-            message: format!("User {} not found", user_id),
-        }),
-    ))
+    let repo = state.user_repo();
+    match repo.update(&id, req.display_name.as_deref(), req.email.as_deref(), role, req.is_active).await {
+        Ok(user) => Ok(Json(UserResponse::from(user))),
+        Err(_) => Err((
+            StatusCode::NOT_FOUND,
+            Json(UserErrorResponse {
+                code: "NOT_FOUND".into(),
+                message: format!("User {} not found", user_id),
+            }),
+        )),
+    }
 }
 
-/// Delete a user
+/// Delete a user (soft-delete: sets is_active = false).
 pub async fn delete_user(
     Path(user_id): Path<String>,
-    State(_state): State<UserState>,
+    State(state): State<UserState>,
 ) -> Result<StatusCode, (StatusCode, Json<UserErrorResponse>)> {
-    debug!("Deleting user: {}", user_id);
-
-    // Parse user ID
-    let _id = UserId::parse_str(&user_id).map_err(|e| {
+    let id = UserId::parse_str(&user_id).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
             Json(UserErrorResponse {
-                code: "INVALID_ID".to_string(),
+                code: "INVALID_ID".into(),
                 message: format!("Invalid user ID: {}", e),
             }),
         )
     })?;
 
-    // TODO: Delete from database
-
-    Ok(StatusCode::NO_CONTENT)
+    let repo = state.user_repo();
+    match repo.deactivate(&id).await {
+        Ok(()) => Ok(StatusCode::NO_CONTENT),
+        Err(_) => Err((
+            StatusCode::NOT_FOUND,
+            Json(UserErrorResponse {
+                code: "NOT_FOUND".into(),
+                message: format!("User {} not found", user_id),
+            }),
+        )),
+    }
 }
 
-/// List all users
+/// List all users with pagination.
 pub async fn list_users(
     Query(query): Query<UserQuery>,
-    State(_state): State<UserState>,
+    State(state): State<UserState>,
 ) -> Result<Json<UserListResponse>, (StatusCode, Json<UserErrorResponse>)> {
-    debug!(
-        "Listing users (page: {:?}, size: {:?})",
-        query.page, query.page_size
-    );
-
     let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(20).min(100);
 
-    // TODO: Fetch from database
-
-    Ok(Json(UserListResponse {
-        users: vec![],
-        total: 0,
-        page,
-        page_size,
-    }))
+    let repo = state.user_repo();
+    match repo.list(page, page_size, query.role.as_deref()).await {
+        Ok((users, total)) => {
+            let user_responses = users.into_iter().map(UserResponse::from).collect();
+            Ok(Json(UserListResponse {
+                users: user_responses,
+                total,
+                page,
+                page_size,
+            }))
+        }
+        Err(e) => {
+            warn!("Failed to list users: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UserErrorResponse {
+                    code: "INTERNAL_ERROR".into(),
+                    message: "Failed to list users".into(),
+                }),
+            ))
+        }
+    }
 }
 
-/// Authenticate user
+/// Authenticate user (login).
+///
+/// Looks up the user by username or email in the database, verifies the
+/// password with Argon2id, and returns a JWT token on success.
 pub async fn authenticate(
     State(state): State<UserState>,
     Json(req): Json<AuthenticateRequest>,
 ) -> Result<Json<AuthenticateResponse>, (StatusCode, Json<UserErrorResponse>)> {
-    info!("User authentication request: {}", req.username);
+    info!("Authentication request: {}", req.username);
 
-    // Validate input
     if req.username.is_empty() {
         return Ok(Json(AuthenticateResponse {
             success: false,
             user_id: None,
             access_token: None,
-            token_type: "Bearer".to_string(),
+            token_type: "Bearer".into(),
             expires_in: state.token_expiration_secs,
-            error: Some("Username cannot be empty".to_string()),
+            error: Some("Username cannot be empty".into()),
             user: None,
         }));
     }
@@ -493,122 +637,104 @@ pub async fn authenticate(
             success: false,
             user_id: None,
             access_token: None,
-            token_type: "Bearer".to_string(),
+            token_type: "Bearer".into(),
             expires_in: state.token_expiration_secs,
-            error: Some("Password cannot be empty".to_string()),
+            error: Some("Password cannot be empty".into()),
             user: None,
         }));
     }
 
-    // TODO: Fetch user from database and verify password
-    // For now, support local-first mode with demo users
+    let repo = state.user_repo();
 
-    // Define seed users for local-first / demo mode
-    // These users are available without database setup
-    let seed_users = [
-        ("admin", "admin123", "Administrator", UserRole::Admin, "admin@tachyon.local"),
-        ("guest", "guest", "Guest User", UserRole::Reader, "guest@tachyon.local"),
-        ("editor", "editor123", "Editor User", UserRole::Editor, "editor@tachyon.local"),
-    ];
-
-    for (username, password, display_name, role, email) in seed_users {
-        if req.username == username && req.password == password {
-            let user_id = tachyon_core::generate_user_id();
-            let user = User::new(
-                user_id.clone(),
-                username.to_string(),
-                display_name.to_string(),
-                role,
-            )
-            .with_email(email.to_string());
-
-            // Generate a proper JWT token
-            let token = match state.generate_jwt(&user_id.to_string(), role) {
-                Ok(t) => t,
-                Err(e) => {
-                    warn!("Failed to generate JWT token: {}", e);
-                    return Ok(Json(AuthenticateResponse {
-                        success: false,
-                        user_id: None,
-                        access_token: None,
-                        token_type: "Bearer".to_string(),
-                        expires_in: state.token_expiration_secs,
-                        error: Some("Failed to generate authentication token".to_string()),
-                        user: None,
-                    }));
-                }
-            };
-
-            info!("JWT authentication successful for user: {}", req.username);
-
+    // Look up user by username or email
+    let user = match repo.find_by_username_or_email(&req.username).await {
+        Ok(u) => u,
+        Err(_) => {
+            // Use a generic message to prevent username enumeration
+            debug!("Authentication failed: user not found");
             return Ok(Json(AuthenticateResponse {
-                success: true,
-                user_id: Some(user_id.to_string()),
-                access_token: Some(token),
-                token_type: "Bearer".to_string(),
+                success: false,
+                user_id: None,
+                access_token: None,
+                token_type: "Bearer".into(),
                 expires_in: state.token_expiration_secs,
-                error: None,
-                user: Some(UserResponse::from(user)),
+                error: Some("Invalid username or password".into()),
+                user: None,
+            }));
+        }
+    };
+
+    // Check if user is active
+    if !user.is_active.unwrap_or(true) {
+        debug!("Authentication failed: user {} is inactive", user.username);
+        return Ok(Json(AuthenticateResponse {
+            success: false,
+            user_id: None,
+            access_token: None,
+            token_type: "Bearer".into(),
+            expires_in: state.token_expiration_secs,
+            error: Some("Account is disabled".into()),
+            user: None,
+        }));
+    }
+
+    // Verify password
+    match user.verify(&req.password) {
+        Ok(true) => {}
+        Ok(false) | Err(_) => {
+            debug!("Authentication failed: invalid password for user {}", user.username);
+            return Ok(Json(AuthenticateResponse {
+                success: false,
+                user_id: None,
+                access_token: None,
+                token_type: "Bearer".into(),
+                expires_in: state.token_expiration_secs,
+                error: Some("Invalid username or password".into()),
+                user: None,
             }));
         }
     }
 
-    // Demo: Create a temporary user for local-first mode (legacy - keeping for backwards compatibility)
-    if req.username == "admin" && req.password == "admin123" {
-        let user_id = tachyon_core::generate_user_id();
-        let user = User::new(
-            user_id.clone(),
-            "admin".to_string(),
-            "Administrator".to_string(),
-            UserRole::Admin,
-        )
-        .with_email("admin@tachyon.local".to_string());
+    // Generate JWT
+    let token = match state.generate_jwt(&user.id.to_string(), user.permissions.role) {
+        Ok(t) => t,
+        Err(e) => {
+            warn!("Failed to generate JWT: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UserErrorResponse {
+                    code: "TOKEN_ERROR".into(),
+                    message: "Failed to generate authentication token".into(),
+                }),
+            ));
+        }
+    };
 
-        // Generate a simple token (in production, use proper JWT)
-        let token = format!("local_{}", uuid::Uuid::new_v4());
-
-        info!("Local authentication successful for user: {}", req.username);
-
-        return Ok(Json(AuthenticateResponse {
-            success: true,
-            user_id: Some(user_id.to_string()),
-            access_token: Some(token),
-            token_type: "Bearer".to_string(),
-            expires_in: state.token_expiration_secs,
-            error: None,
-            user: Some(UserResponse::from(user)),
-        }));
-    }
-
-    // Authentication failed
-    warn!("Authentication failed for user: {}", req.username);
+    info!("Authentication successful: {} ({})", user.username, user.id);
 
     Ok(Json(AuthenticateResponse {
-        success: false,
-        user_id: None,
-        access_token: None,
-        token_type: "Bearer".to_string(),
+        success: true,
+        user_id: Some(user.id.to_string()),
+        access_token: Some(token),
+        token_type: "Bearer".into(),
         expires_in: state.token_expiration_secs,
-        error: Some("Invalid username or password".to_string()),
-        user: None,
+        error: None,
+        user: Some(UserResponse::from(user)),
     }))
 }
 
-/// Check authentication status
+/// Check authentication status.
 pub async fn auth_status(
     State(state): State<UserState>,
     headers: HeaderMap,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<UserErrorResponse>)> {
-    // Extract Authorization header
     let auth_header = headers
         .get("authorization")
         .and_then(|h| h.to_str().ok());
 
     match auth_header {
         Some(auth_str) if auth_str.starts_with("Bearer ") => {
-            let token = &auth_str[7..]; // Skip "Bearer "
-
-            // Validate the JWT token
+            let token = &auth_str[7..];
             match state.validate_jwt(token) {
                 Ok(claims) => {
                     info!("Auth status check: user {} authenticated", claims.sub);
@@ -639,38 +765,39 @@ pub async fn auth_status(
     }
 }
 
-/// Logout user
+/// Logout user.
+///
+/// Currently a no-op since JWTs are stateless. When session persistence
+/// is wired, this will revoke the session in the database.
 pub async fn logout(
     State(_state): State<UserState>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<UserErrorResponse>)> {
     info!("User logout");
-
     Ok(Json(serde_json::json!({
         "success": true,
         "message": "Logged out successfully"
     })))
 }
 
-/// Guest login - auto-authenticate as guest user
-/// This endpoint is only available when guest_login_enabled is true
+/// Guest login — auto-authenticate as a guest user.
+///
+/// Only available when `guest_login_enabled` is true in config.
 pub async fn guest_login(
     State(state): State<UserState>,
 ) -> Result<Json<AuthenticateResponse>, (StatusCode, Json<UserErrorResponse>)> {
     info!("Guest login request");
 
-    // Check if guest login is enabled
     if !state.guest_config.guest_login_enabled {
         warn!("Guest login attempted but guest login is disabled");
         return Err((
             StatusCode::FORBIDDEN,
             Json(UserErrorResponse {
-                code: "GUEST_LOGIN_DISABLED".to_string(),
-                message: "Guest login is not enabled".to_string(),
+                code: "GUEST_LOGIN_DISABLED".into(),
+                message: "Guest login is not enabled".into(),
             }),
         ));
     }
 
-    // Create guest user
     let guest_user_id = if state.guest_config.guest_user_id.is_empty() {
         "00000000-0000-0000-0000-000000000099".to_string()
     } else {
@@ -690,35 +817,33 @@ pub async fn guest_login(
     )
     .with_email("guest@tachyon.local".to_string());
 
-    // Generate JWT token for guest
     let token = match state.generate_jwt(&user_id.to_string(), UserRole::Reader) {
         Ok(t) => t,
         Err(e) => {
-            warn!("Failed to generate guest JWT token: {}", e);
+            warn!("Failed to generate guest JWT: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(UserErrorResponse {
-                    code: "TOKEN_ERROR".to_string(),
-                    message: "Failed to generate authentication token".to_string(),
+                    code: "TOKEN_ERROR".into(),
+                    message: "Failed to generate authentication token".into(),
                 }),
             ));
         }
     };
 
-    info!("Guest login successful for user: {}", user_id);
-
+    info!("Guest login successful: {}", user_id);
     Ok(Json(AuthenticateResponse {
         success: true,
         user_id: Some(user_id.to_string()),
         access_token: Some(token),
-        token_type: "Bearer".to_string(),
+        token_type: "Bearer".into(),
         expires_in: state.token_expiration_secs,
         error: None,
         user: Some(UserResponse::from(user)),
     }))
 }
 
-/// Get guest configuration status (public endpoint)
+/// Get guest configuration status (public endpoint).
 pub async fn guest_status(
     State(state): State<UserState>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<UserErrorResponse>)> {
@@ -728,38 +853,59 @@ pub async fn guest_status(
     })))
 }
 
-/// Create the user router (without state - caller must use .with_state())
+// ============================================================================
+// Router
+// ============================================================================
+
+/// Create the user router.
+///
+/// Routes:
+/// - `POST /auth/register` — public registration (Reader role)
+/// - `POST /auth/login` — authenticate (username/email + password)
+/// - `POST /auth/guest` — guest login (when enabled)
+/// - `GET  /auth/status` — check JWT validity
+/// - `POST /auth/logout` — logout (no-op for JWT)
+/// - `GET  /auth/guest-status` — guest config (public)
+/// - `GET  /users` — list users (paginated)
+/// - `POST /users` — create user (admin, can set role)
+/// - `GET  /users/{user_id}` — get user by ID
+/// - `PUT  /users/{user_id}` — update user
+/// - `DELETE /users/{user_id}` — deactivate user
 pub fn create_user_router() -> axum::Router<UserState> {
     use axum::routing::{delete, get, post, put};
 
     axum::Router::new()
-        .route("/users", get(list_users))
-        .route("/users", post(create_user))
-        .route("/users/{user_id}", get(get_user))
-        .route("/users/{user_id}", put(update_user))
-        .route("/users/{user_id}", delete(delete_user))
+        // Auth routes (public)
+        .route("/auth/register", post(register))
         .route("/auth/login", post(authenticate))
         .route("/auth/guest", post(guest_login))
         .route("/auth/status", get(auth_status))
         .route("/auth/logout", post(logout))
         .route("/auth/guest-status", get(guest_status))
+        // User management routes
+        .route("/users", get(list_users))
+        .route("/users", post(create_user))
+        .route("/users/{user_id}", get(get_user))
+        .route("/users/{user_id}", put(update_user))
+        .route("/users/{user_id}", delete(delete_user))
 }
+
+// ============================================================================
+// Tests
+// ============================================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_create_user_request_construction() {
-        // Note: CreateUserRequest is Deserialize only (for incoming requests)
-        let req = CreateUserRequest {
+    fn test_register_request_construction() {
+        let req = RegisterRequest {
             username: "testuser".to_string(),
             display_name: "Test User".to_string(),
             email: Some("test@example.com".to_string()),
             password: "password123".to_string(),
-            role: Some("writer".to_string()),
         };
-
         assert_eq!(req.username, "testuser");
         assert_eq!(req.display_name, "Test User");
     }
@@ -794,5 +940,18 @@ mod tests {
         let response = UserResponse::from(user);
         assert_eq!(response.username, "testuser");
         assert_eq!(response.role, "writer");
+        assert!(response.is_active);
+    }
+
+    #[test]
+    fn test_user_list_response_serialization() {
+        let resp = UserListResponse {
+            users: vec![],
+            total: 0,
+            page: 1,
+            page_size: 20,
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(json.contains("\"total\":0"));
     }
 }
