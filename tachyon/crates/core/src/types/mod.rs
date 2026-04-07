@@ -4,6 +4,8 @@
 pub mod document;
 pub mod edge;
 pub mod error;
+#[cfg(test)]
+mod graph_invariants;
 pub mod node;
 pub mod repository;
 pub mod session;

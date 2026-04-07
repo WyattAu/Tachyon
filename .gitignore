@@ -33,3 +33,6 @@ nginx/ssl/
 
 # Deployment artifacts
 deploy/
+
+# Proptest regression files (auto-generated)
+**/proptest-regressions/
