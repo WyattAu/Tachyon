@@ -29,6 +29,7 @@ pub fn run() {
             commands::get_state,
             commands::set_server_url,
             commands::authenticate,
+            commands::logout,
             commands::is_authenticated,
             commands::is_connected,
             commands::has_repository,

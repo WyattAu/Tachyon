@@ -2,13 +2,13 @@
 // Implements IPC commands that can be invoked from the WebView
 
 use serde::{Deserialize, Serialize};
-use tauri::{State, AppHandle, Emitter, Window};
-use tachyon_core::{ErrorResult, TachyonError, ErrorCategory};
+use tauri::{State, AppHandle};
+use tachyon_core::TachyonError;
 
 use crate::state::{DesktopStateManager, DesktopState, ConnectionStatus};
-use crate::events::{EventEmitter, DesktopEvent};
+use crate::events::EventEmitter;
 use crate::file_dialog::{FileDialogManager, FileDialogOptions, FileContent, FileWriteResult};
-use crate::sync::{AutoSyncManager, SyncResult, SyncConfig};
+use crate::sync::{AutoSyncManager, SyncResult};
 
 /// Authentication request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,6 +33,7 @@ pub struct AuthResponse {
 }
 
 /// Server configuration request
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfigRequest {
     /// Server URL
@@ -221,6 +222,7 @@ async fn authenticate_with_server(
 ///
 /// # Returns
 /// Result containing (token, user_id) or error message
+#[allow(dead_code)]
 fn authenticate_local_first(username: &str) -> Result<(String, String), String> {
     // Generate a deterministic user ID based on username
     use sha2::{Digest, Sha256};
@@ -248,6 +250,7 @@ fn authenticate_local_first(username: &str) -> Result<(String, String), String> 
 ///
 /// # Returns
 /// Result containing (token, user_id, is_local) or error message
+#[allow(dead_code)]
 pub async fn authenticate_with_fallback(
     server_url: &str,
     request: &AuthRequest,
@@ -388,7 +391,7 @@ pub async fn set_repository_path(
 #[tauri::command]
 pub async fn initialize_repository(
     state: State<'_, DesktopStateManager>,
-    sync_manager: State<'_, AutoSyncManager>,
+    _sync_manager: State<'_, AutoSyncManager>,
 ) -> Result<(), String> {
     // Get the configured repository path from state
     let repo_path = state.get_state()

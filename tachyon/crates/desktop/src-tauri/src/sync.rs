@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
-use tachyon_core::{ErrorResult, TachyonError, ErrorCategory};
-use git2::{Repository, Signature, Time, Oid};
+use tachyon_core::{ErrorResult, TachyonError};
+use git2::{Repository, Signature, Time};
 use chrono::{DateTime, Utc};
 use std::collections::VecDeque;
 use tokio::task::JoinHandle;
@@ -81,6 +81,7 @@ pub struct AutoSyncManager {
     repository_path: Option<PathBuf>,
     config: SyncConfig,
     commit_queue: Arc<RwLock<VecDeque<CommitQueueEntry>>>,
+    #[allow(dead_code)]
     sync_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
     is_syncing: Arc<RwLock<bool>>,
 }
@@ -320,29 +321,33 @@ impl AutoSyncManager {
     pub async fn push_to_remote(&self, remote_name: &str, branch_name: &str) -> ErrorResult<SyncResult> {
         let path = self.repository_path
             .as_ref()
-            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?;
+            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?
+            .clone();
+        let remote_name = remote_name.to_string();
+        let branch_name = branch_name.to_string();
 
-        let repo = Repository::open(path)
-            .map_err(|e| TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e)))?;
+        // All git2 operations run on a blocking thread (Repository is not Send)
+        tokio::task::spawn_blocking(move || {
+            let repo = Repository::open(&path)
+                .map_err(|e| TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e)))?;
 
-        // Find remote
-        let mut remote = repo.find_remote(remote_name)
-            .map_err(|e| TachyonError::git("REMOTE_ERROR", format!("Failed to find remote: {}", e)))?;
+            // Find remote
+            let mut remote = repo.find_remote(&remote_name)
+                .map_err(|e| TachyonError::git("REMOTE_ERROR", format!("Failed to find remote: {}", e)))?;
 
-        // Get HEAD reference
-        let head = repo.head()
-            .map_err(|e| TachyonError::git("HEAD_ERROR", format!("Failed to get HEAD: {}", e)))?;
+            // Push to remote
+            remote.push(&[format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name)], None)
+                .map_err(|e| TachyonError::git("PUSH_ERROR", format!("Failed to push: {}", e)))?;
 
-        // Push to remote
-        remote.push(&[format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name)], None)
-            .map_err(|e| TachyonError::git("PUSH_ERROR", format!("Failed to push: {}", e)))?;
-
-        Ok(SyncResult {
-            status: SyncStatus::Success,
-            commits_made: 0,
-            files_synced: 0,
-            error: None,
+            Ok::<_, TachyonError>(SyncResult {
+                status: SyncStatus::Success,
+                commits_made: 0,
+                files_synced: 0,
+                error: None,
+            })
         })
+        .await
+        .map_err(|e| TachyonError::internal("JOIN_ERROR", format!("Task join error: {}", e)))?
     }
 
     /// Pull changes from remote repository
@@ -352,50 +357,55 @@ impl AutoSyncManager {
     pub async fn pull_from_remote(&self, remote_name: &str, branch_name: &str) -> ErrorResult<SyncResult> {
         let path = self.repository_path
             .as_ref()
-            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?;
+            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?
+            .clone();
+        let remote_name = remote_name.to_string();
+        let branch_name = branch_name.to_string();
 
-        let repo = Repository::open(path)
-            .map_err(|e| TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e)))?;
+        // All git2 operations run on a blocking thread (Repository is not Send)
+        tokio::task::spawn_blocking(move || {
+            let repo = Repository::open(&path)
+                .map_err(|e| TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e)))?;
 
-        // Find remote
-        let mut remote = repo.find_remote(remote_name)
-            .map_err(|e| TachyonError::git("REMOTE_ERROR", format!("Failed to find remote: {}", e)))?;
+            // Find remote
+            let mut remote = repo.find_remote(&remote_name)
+                .map_err(|e| TachyonError::git("REMOTE_ERROR", format!("Failed to find remote: {}", e)))?;
 
-        // Fetch from remote
-        remote.fetch(&[branch_name], None, None)
-            .map_err(|e| TachyonError::git("FETCH_ERROR", format!("Failed to fetch: {}", e)))?;
+            // Fetch from remote
+            remote.fetch(&[&branch_name], None, None)
+                .map_err(|e| TachyonError::git("FETCH_ERROR", format!("Failed to fetch: {}", e)))?;
 
-        // Get fetch head
-        let fetch_head = repo.find_reference(&format!("refs/remotes/{}/{}", remote_name, branch_name))
-            .map_err(|e| TachyonError::git("FETCH_HEAD_ERROR", format!("Failed to find FETCH_HEAD: {}", e)))?;
+            // Get fetch head
+            let fetch_head = repo.find_reference(&format!("refs/remotes/{}/{}", remote_name, branch_name))
+                .map_err(|e| TachyonError::git("FETCH_HEAD_ERROR", format!("Failed to find FETCH_HEAD: {}", e)))?;
 
-        let fetch_commit = fetch_head.peel_to_commit()
-            .map_err(|e| TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e)))?;
+            let fetch_commit = fetch_head.peel_to_commit()
+                .map_err(|e| TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e)))?;
 
-        // Merge into HEAD
-        let head = repo.head()
-            .map_err(|e| TachyonError::git("HEAD_ERROR", format!("Failed to get HEAD: {}", e)))?;
+            // Merge into HEAD
+            let head = repo.head()
+                .map_err(|e| TachyonError::git("HEAD_ERROR", format!("Failed to get HEAD: {}", e)))?;
 
-        let head_commit = head.peel_to_commit()
-            .map_err(|e| TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e)))?;
+            let _head_commit = head.peel_to_commit()
+                .map_err(|e| TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e)))?;
 
-        let annotated_head = repo.find_annotated_commit(head_commit.id())
-            .map_err(|e| TachyonError::git("ANNOTATED_ERROR", format!("Failed to find annotated commit: {}", e)))?;
+            let annotated_fetch = repo.find_annotated_commit(fetch_commit.id())
+                .map_err(|e| TachyonError::git("ANNOTATED_ERROR", format!("Failed to find annotated commit: {}", e)))?;
 
-        let annotated_fetch = repo.find_annotated_commit(fetch_commit.id())
-            .map_err(|e| TachyonError::git("ANNOTATED_ERROR", format!("Failed to find annotated commit: {}", e)))?;
+            // Perform merge with the fetched commit
+            let mut merge_opts = git2::MergeOptions::new();
+            repo.merge(&[&annotated_fetch], Some(&mut merge_opts), None)
+                .map_err(|e| TachyonError::git("MERGE_ERROR", format!("Failed to merge: {}", e)))?;
 
-        // Perform merge with the fetched commit
-        let mut merge_opts = git2::MergeOptions::new();
-        repo.merge(&[&annotated_fetch], Some(&mut merge_opts), None)
-            .map_err(|e| TachyonError::git("MERGE_ERROR", format!("Failed to merge: {}", e)))?;
-
-        Ok(SyncResult {
-            status: SyncStatus::Success,
-            commits_made: 0,
-            files_synced: 0,
-            error: None,
+            Ok::<_, TachyonError>(SyncResult {
+                status: SyncStatus::Success,
+                commits_made: 0,
+                files_synced: 0,
+                error: None,
+            })
         })
+        .await
+        .map_err(|e| TachyonError::internal("JOIN_ERROR", format!("Task join error: {}", e)))?
     }
 
     /// Get the sync status

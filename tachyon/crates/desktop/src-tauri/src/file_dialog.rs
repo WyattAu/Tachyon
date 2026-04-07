@@ -2,7 +2,7 @@
 // Provides native file dialogs and file operations
 
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 use tachyon_core::{ErrorResult, TachyonError};
