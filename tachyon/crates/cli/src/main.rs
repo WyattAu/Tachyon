@@ -81,6 +81,14 @@ enum Commands {
         /// Request timeout in seconds
         #[arg(long, value_name = "SECONDS")]
         timeout: Option<u64>,
+
+        /// Enable file watching and auto-sync
+        #[arg(long)]
+        watch: bool,
+
+        /// Path to watch for changes (defaults to --repo-path or current directory)
+        #[arg(long, value_name = "PATH")]
+        watch_path: Option<std::path::PathBuf>,
     },
 
     /// Launch Tauri desktop application
@@ -118,29 +126,37 @@ enum Commands {
         server_port: Option<u16>,
     },
 
-    /// Build documentation and bundle assets
+    /// Build static site from database documents
     Build {
-        /// Repository path
-        #[arg(short, long, value_name = "PATH", default_value = ".tachyon")]
+        /// Path to the content repository
+        #[arg(long, default_value = ".")]
         repo_path: std::path::PathBuf,
 
-        /// Output directory
-        #[arg(short, long, value_name = "DIR")]
-        output_dir: Option<std::path::PathBuf>,
+        /// Output directory for generated site
+        #[arg(short, long, default_value = "dist")]
+        output_dir: std::path::PathBuf,
 
-        /// Generate documentation
+        /// Database URL (PostgreSQL connection string)
         #[arg(long)]
-        gen_docs: bool,
+        database_url: Option<String>,
 
-        /// Minify assets
+        /// Site title
+        #[arg(long, default_value = "Tachyon Docs")]
+        site_title: String,
+
+        /// Site description
+        #[arg(long, default_value = "Knowledge Management System")]
+        site_description: String,
+
+        /// Base URL for canonical links and sitemap
+        #[arg(long, default_value = "/")]
+        base_url: String,
+
+        /// Only build published documents
         #[arg(long)]
-        minify: bool,
+        published_only: bool,
 
-        /// Generate source maps
-        #[arg(long)]
-        source_maps: bool,
-
-        /// Clean build (remove output directory first)
+        /// Clean output directory before building
         #[arg(long)]
         clean: bool,
 
@@ -205,6 +221,8 @@ fn main() {
             repo_path,
             max_body_size,
             timeout,
+            watch,
+            watch_path,
         } => {
             let cmd = ServeCommand::from_args(
                 Some(host),
@@ -216,6 +234,8 @@ fn main() {
                 Some(repo_path),
                 max_body_size,
                 timeout,
+                watch,
+                watch_path,
             );
             cmd.execute()
         }
@@ -246,18 +266,22 @@ fn main() {
         Commands::Build {
             repo_path,
             output_dir,
-            gen_docs,
-            minify,
-            source_maps,
+            database_url,
+            site_title,
+            site_description,
+            base_url,
+            published_only,
             clean,
             verbose,
         } => {
             let cmd = BuildCommand::from_args(
                 Some(repo_path),
-                output_dir,
-                gen_docs,
-                minify,
-                source_maps,
+                Some(output_dir),
+                database_url,
+                Some(site_title),
+                Some(site_description),
+                Some(base_url),
+                published_only,
                 clean,
                 verbose,
             );

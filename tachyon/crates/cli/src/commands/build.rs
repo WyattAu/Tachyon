@@ -1,566 +1,84 @@
-// Build command for Tachyon CLI
-
 use crate::commands::Command;
-use crate::config::TachyonConfig;
 use crate::error::{CliError, CliResult};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
+use std::time::Instant;
+use tachyon_core::compute_content_hash;
+use tachyon_database::{DocumentRepository, init_with_migrations};
+use tachyon_renderer::context::{RenderContext, RenderMetadata};
+use tachyon_renderer::page::{render_full_page, SiteConfig};
+use tachyon_renderer::{RenderConfig, Renderer};
 
-/// Options for build command
 #[derive(Debug, Clone)]
-pub struct BuildOptions {
-    /// Repository path
+pub struct BuildCommand {
     pub repo_path: PathBuf,
-
-    /// Output directory
-    pub output_dir: Option<PathBuf>,
-
-    /// Generate documentation
-    pub gen_docs: bool,
-
-    /// Minify assets
-    pub minify: bool,
-
-    /// Generate source maps
-    pub source_maps: bool,
-
-    /// Clean build (remove output directory first)
+    pub output_dir: PathBuf,
+    pub database_url: Option<String>,
+    pub site_title: String,
+    pub site_description: String,
+    pub base_url: String,
+    pub published_only: bool,
     pub clean: bool,
-
-    /// Verbose output
     pub verbose: bool,
 }
 
-impl Default for BuildOptions {
-    fn default() -> Self {
-        Self {
-            repo_path: PathBuf::from(".tachyon"),
-            output_dir: None,
-            gen_docs: true,
-            minify: false,
-            source_maps: true,
-            clean: false,
-            verbose: false,
-        }
-    }
-}
-
-/// Build statistics
-#[derive(Debug, Default)]
-pub struct BuildStats {
-    /// Number of files copied
-    pub files_copied: usize,
-
-    /// Number of documents generated
-    pub docs_generated: usize,
-
-    /// Number of assets bundled
-    pub assets_bundled: usize,
-
-    /// Build duration in seconds
-    pub duration_secs: f64,
-}
-
-/// Build command handler
-pub struct BuildCommand {
-    options: BuildOptions,
-}
-
 impl BuildCommand {
-    /// Create a new build command
-    pub fn new(options: BuildOptions) -> Self {
-        Self { options }
-    }
-
-    /// Create from clap arguments
-    pub fn from_args(
-        repo_path: Option<PathBuf>,
-        output_dir: Option<PathBuf>,
-        gen_docs: bool,
-        minify: bool,
-        source_maps: bool,
+    pub fn new(
+        repo_path: PathBuf,
+        output_dir: PathBuf,
+        database_url: Option<String>,
+        site_title: String,
+        site_description: String,
+        base_url: String,
+        published_only: bool,
         clean: bool,
         verbose: bool,
     ) -> Self {
-        Self::new(BuildOptions {
-            repo_path: repo_path.unwrap_or_else(|| PathBuf::from(".tachyon")),
+        Self {
+            repo_path,
             output_dir,
-            gen_docs,
-            minify,
-            source_maps,
+            database_url,
+            site_title,
+            site_description,
+            base_url,
+            published_only,
             clean,
             verbose,
-        })
-    }
-
-    /// Load configuration from file
-    fn load_config(&self) -> CliResult<TachyonConfig> {
-        let config_path = self.options.repo_path.join("tachyon.toml");
-
-        if config_path.exists() {
-            TachyonConfig::load_from_file(&config_path)
-        } else {
-            Ok(TachyonConfig::default())
         }
     }
 
-    /// Validate repository path
-    fn validate_repo_path(&self) -> CliResult<()> {
-        if !self.options.repo_path.exists() {
-            return Err(CliError::init_failed(format!(
-                "Repository path does not exist: {}. Run 'tachyon init' first.",
-                self.options.repo_path.display()
-            )));
-        }
-
-        let db_path = self.options.repo_path.join("db");
-        if !db_path.exists() {
-            return Err(CliError::init_failed(format!(
-                "Database directory does not exist: {}. Run 'tachyon init' first.",
-                db_path.display()
-            )));
-        }
-
-        Ok(())
-    }
-
-    /// Get effective output directory
-    fn get_output_dir(&self, config: &TachyonConfig) -> PathBuf {
-        self.options
-            .output_dir
-            .clone()
-            .unwrap_or_else(|| config.build.output_dir.clone())
-    }
-
-    /// Get effective gen_docs setting
-    fn get_gen_docs(&self, config: &TachyonConfig) -> bool {
-        self.options.gen_docs || config.build.gen_docs
-    }
-
-    /// Get effective minify setting
-    fn get_minify(&self, config: &TachyonConfig) -> bool {
-        self.options.minify || config.build.minify
-    }
-
-    /// Get effective source_maps setting
-    fn get_source_maps(&self, config: &TachyonConfig) -> bool {
-        self.options.source_maps || config.build.source_maps
-    }
-
-    /// Clean output directory
-    fn clean_output_dir(&self, output_dir: &Path) -> CliResult<()> {
-        if output_dir.exists() {
-            println!("Cleaning output directory: {}", output_dir.display());
-
-            fs::remove_dir_all(output_dir).map_err(|e| {
-                CliError::io(
-                    output_dir,
-                    format!("Failed to clean output directory: {}", e),
-                )
-            })?;
-
-            println!("Output directory cleaned.");
-        }
-
-        Ok(())
-    }
-
-    /// Create output directory structure
-    fn create_output_structure(&self, output_dir: &Path) -> CliResult<()> {
-        let directories = vec![
-            output_dir.join("docs"),
-            output_dir.join("assets"),
-            output_dir.join("static"),
-            output_dir.join("css"),
-            output_dir.join("js"),
-        ];
-
-        for dir in &directories {
-            if !dir.exists() {
-                fs::create_dir_all(dir)
-                    .map_err(|e| CliError::io(dir, format!("Failed to create directory: {}", e)))?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Copy static files
-    fn copy_static_files(&self, repo_path: &Path, output_dir: &Path) -> CliResult<usize> {
-        let static_dir = output_dir.join("static");
-        let mut count = 0;
-
-        // Copy README
-        let readme_src = repo_path.join("README.md");
-        if readme_src.exists() {
-            let readme_dst = static_dir.join("README.md");
-            fs::copy(&readme_src, &readme_dst)
-                .map_err(|e| CliError::io(&readme_dst, format!("Failed to copy README: {}", e)))?;
-            count += 1;
-        }
-
-        // Copy gitignore
-        let gitignore_src = repo_path.join(".gitignore");
-        if gitignore_src.exists() {
-            let gitignore_dst = static_dir.join(".gitignore");
-            fs::copy(&gitignore_src, &gitignore_dst).map_err(|e| {
-                CliError::io(&gitignore_dst, format!("Failed to copy .gitignore: {}", e))
-            })?;
-            count += 1;
-        }
-
-        Ok(count)
-    }
-
-    /// Generate documentation
-    fn generate_docs(&self, _repo_path: &Path, output_dir: &Path) -> CliResult<usize> {
-        let docs_dir = output_dir.join("docs");
-        let mut count = 0;
-
-        // Generate index.html
-        let index_content = r#"<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tachyon Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            line-height: 1.6;
-        }
-        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 0.5rem; }
-        h2 { color: #555; margin-top: 2rem; }
-        code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 4px; }
-        pre { background: #2d2d2d; color: #f4f4f4; padding: 1rem; border-radius: 4px; overflow-x: auto; }
-    </style>
-</head>
-<body>
-    <h1>Tachyon Documentation</h1>
-    <p>Welcome to the Tachyon knowledge base documentation.</p>
-    <p>This documentation was automatically generated by the Tachyon build system.</p>
-    <h2>Getting Started</h2>
-    <p>Tachyon is a high-performance knowledge base system built for managing complex information networks.</p>
-    <h2>Documentation Structure</h2>
-    <ul>
-        <li>Nodes - Individual knowledge units</li>
-        <li>Edges - Relationships between nodes</li>
-        <li>Documents - Rich content with formatting</li>
-    </ul>
-</body>
-</html>
-"#;
-
-        let index_path = docs_dir.join("index.html");
-        fs::write(&index_path, index_content)
-            .map_err(|e| CliError::io(&index_path, format!("Failed to write index.html: {}", e)))?;
-        count += 1;
-
-        // Generate API documentation placeholder
-        let api_content = r#"<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Documentation</title>
-    <link rel="stylesheet" href="../css/style.css">
-</head>
-<body>
-    <h1>API Documentation</h1>
-    <p>API documentation will be generated here.</p>
-</body>
-</html>
-"#;
-
-        let api_path = docs_dir.join("api.html");
-        fs::write(&api_path, api_content)
-            .map_err(|e| CliError::io(&api_path, format!("Failed to write api.html: {}", e)))?;
-        count += 1;
-
-        Ok(count)
-    }
-
-    /// Bundle assets
-    fn bundle_assets(&self, repo_path: &Path, output_dir: &Path) -> CliResult<usize> {
-        let assets_dir = output_dir.join("assets");
-        let nodes_dir = repo_path.join("nodes");
-        let documents_dir = repo_path.join("documents");
-        let mut count = 0;
-
-        // Copy nodes
-        if nodes_dir.exists() {
-            for entry in WalkDir::new(&nodes_dir).min_depth(1) {
-                let entry = entry
-                    .map_err(|e| CliError::generic(format!("Failed to walk directory: {}", e)))?;
-
-                if entry.path().is_file() {
-                    let file_name = entry.file_name();
-                    let dst_path = assets_dir.join("nodes").join(file_name);
-
-                    // Create parent directory if needed
-                    if let Some(parent) = dst_path.parent() {
-                        fs::create_dir_all(parent).map_err(|e| {
-                            CliError::io(parent, format!("Failed to create directory: {}", e))
-                        })?;
-                    }
-
-                    fs::copy(entry.path(), &dst_path).map_err(|e| {
-                        CliError::io(
-                            &dst_path,
-                            format!("Failed to copy {}: {}", entry.path().display(), e),
-                        )
-                    })?;
-                    count += 1;
-                }
-            }
-        }
-
-        // Copy documents
-        if documents_dir.exists() {
-            for entry in WalkDir::new(&documents_dir).min_depth(1) {
-                let entry = entry
-                    .map_err(|e| CliError::generic(format!("Failed to walk directory: {}", e)))?;
-
-                if entry.path().is_file() {
-                    let file_name = entry.file_name();
-                    let dst_path = assets_dir.join("documents").join(file_name);
-
-                    // Create parent directory if needed
-                    if let Some(parent) = dst_path.parent() {
-                        fs::create_dir_all(parent).map_err(|e| {
-                            CliError::io(parent, format!("Failed to create directory: {}", e))
-                        })?;
-                    }
-
-                    fs::copy(entry.path(), &dst_path).map_err(|e| {
-                        CliError::io(
-                            &dst_path,
-                            format!("Failed to copy {}: {}", entry.path().display(), e),
-                        )
-                    })?;
-                    count += 1;
-                }
-            }
-        }
-
-        Ok(count)
-    }
-
-    /// Generate CSS
-    fn generate_css(&self, output_dir: &Path) -> CliResult<()> {
-        let css_dir = output_dir.join("css");
-        fs::create_dir_all(&css_dir)?;
-        let style_content = r#"/* Tachyon Base Styles */
-:root {
-    --primary-color: #007bff;
-    --secondary-color: #6c757d;
-    --success-color: #28a745;
-    --danger-color: #dc3545;
-    --warning-color: #ffc107;
-    --info-color: #17a2b8;
-    --light-color: #f8f9fa;
-    --dark-color: #343a40;
-    --border-color: #dee2e6;
-    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-size-base: 16px;
-    --line-height: 1.6;
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: var(--font-family);
-    font-size: var(--font-size-base);
-    line-height: var(--line-height);
-    color: var(--dark-color);
-    background-color: #fff;
-}
-
-a {
-    color: var(--primary-color);
-    text-decoration: none;
-}
-
-a:hover {
-    text-decoration: underline;
-}
-
-code {
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    background-color: var(--light-color);
-    padding: 0.2rem 0.4rem;
-    border-radius: 4px;
-    font-size: 0.9em;
-}
-
-pre {
-    background-color: var(--dark-color);
-    color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 4px;
-    overflow-x: auto;
-}
-
-pre code {
-    background-color: transparent;
-    padding: 0;
-    color: inherit;
-}
-"#;
-
-        let style_path = css_dir.join("style.css");
-        fs::write(&style_path, style_content)
-            .map_err(|e| CliError::io(&style_path, format!("Failed to write style.css: {}", e)))?;
-
-        Ok(())
-    }
-
-    /// Generate JavaScript
-    fn generate_js(&self, output_dir: &Path) -> CliResult<()> {
-        let js_dir = output_dir.join("js");
-        fs::create_dir_all(&js_dir)?;
-        let app_content = r#"// Tachyon Base JavaScript
-(function() {
-    'use strict';
-
-    const Tachyon = {
-        version: '0.1.0',
-        
-        init: function() {
-            console.log('Tachyon v' + this.version + ' initialized');
-        },
-        
-        // Utility functions
-        debounce: function(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        },
-        
-        throttle: function(func, limit) {
-            let inThrottle;
-            return function executedFunction(...args) {
-                if (!inThrottle) {
-                    func(...args);
-                    inThrottle = true;
-                    setTimeout(() => inThrottle = false, limit);
-                }
-            };
-        }
-    };
-
-    // Initialize when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', Tachyon.init.bind(Tachyon));
-    } else {
-        Tachyon.init();
-    }
-
-    // Export to global scope
-    window.Tachyon = Tachyon;
-})();
-"#;
-
-        let app_path = js_dir.join("app.js");
-        fs::write(&app_path, app_content)
-            .map_err(|e| CliError::io(&app_path, format!("Failed to write app.js: {}", e)))?;
-
-        Ok(())
+    pub fn from_args(
+        repo_path: Option<PathBuf>,
+        output_dir: Option<PathBuf>,
+        database_url: Option<String>,
+        site_title: Option<String>,
+        site_description: Option<String>,
+        base_url: Option<String>,
+        published_only: bool,
+        clean: bool,
+        verbose: bool,
+    ) -> Self {
+        Self::new(
+            repo_path.unwrap_or_else(|| PathBuf::from(".")),
+            output_dir.unwrap_or_else(|| PathBuf::from("dist")),
+            database_url,
+            site_title.unwrap_or_else(|| "Tachyon Docs".to_string()),
+            site_description.unwrap_or_else(|| "Knowledge Management System".to_string()),
+            base_url.unwrap_or_else(|| "/".to_string()),
+            published_only,
+            clean,
+            verbose,
+        )
     }
 }
 
 impl Command for BuildCommand {
     fn execute(&self) -> CliResult<()> {
-        // Validate repository path
-        self.validate_repo_path()?;
-
-        // Load configuration
-        let config = self.load_config()?;
-
-        // Get effective settings
-        let output_dir = self.get_output_dir(&config);
-        let gen_docs = self.get_gen_docs(&config);
-        let minify = self.get_minify(&config);
-        let source_maps = self.get_source_maps(&config);
-
-        println!("");
-        println!("Tachyon Build");
-        println!("===============");
-        println!("Repository: {}", self.options.repo_path.display());
-        println!("Output: {}", output_dir.display());
-        println!("Generate docs: {}", gen_docs);
-        println!("Minify: {}", minify);
-        println!("Source maps: {}", source_maps);
-        println!("");
-
-        // Clean output directory if requested
-        if self.options.clean {
-            self.clean_output_dir(&output_dir)?;
-            println!();
-        }
-
-        // Create output directory structure
-        println!("Creating output structure...");
-        self.create_output_structure(&output_dir)?;
-        println!("Output structure created.");
-        println!("");
-
-        // Copy static files
-        println!("Copying static files...");
-        let files_copied = self.copy_static_files(&self.options.repo_path, &output_dir)?;
-        println!("Copied {} static file(s).", files_copied);
-        println!("");
-
-        // Generate documentation
-        if gen_docs {
-            println!("Generating documentation...");
-            let docs_generated = self.generate_docs(&self.options.repo_path, &output_dir)?;
-            println!("Generated {} documentation file(s).", docs_generated);
-            println!("");
-        }
-
-        // Bundle assets
-        println!("Bundling assets...");
-        let assets_bundled = self.bundle_assets(&self.options.repo_path, &output_dir)?;
-        println!("Bundled {} asset(s).", assets_bundled);
-        println!("");
-
-        // Generate CSS
-        println!("Generating CSS...");
-        self.generate_css(&output_dir)?;
-        println!("CSS generated.");
-        println!("");
-
-        // Generate JavaScript
-        println!("Generating JavaScript...");
-        self.generate_js(&output_dir)?;
-        println!("JavaScript generated.");
-        println!("");
-
-        // Summary
-        println!("Build completed successfully!");
-        println!("");
-        println!("Summary:");
-        println!("  Files copied: {}", files_copied);
-        println!("  Assets bundled: {}", assets_bundled);
-        println!("  Output directory: {}", output_dir.display());
-        println!("");
-
-        Ok(())
+        let rt = tokio::runtime::Runtime::new()
+            .map_err(|e| CliError::generic(format!("Failed to create async runtime: {}", e)))?;
+        rt.block_on(self.run())
     }
 
     fn name(&self) -> &str {
@@ -568,8 +86,453 @@ impl Command for BuildCommand {
     }
 
     fn description(&self) -> &str {
-        "Build documentation and bundle assets"
+        "Build static site from database documents"
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct BuildManifest {
+    build_time: String,
+    commit_hash: Option<String>,
+    documents: BTreeMap<String, DocumentEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DocumentEntry {
+    content_hash: String,
+    output_file: String,
+    built_at: String,
+}
+
+struct DocInfo {
+    slug: String,
+    title: String,
+    content: String,
+    description: Option<String>,
+    tags: Vec<String>,
+    updated_at: String,
+    created_at: String,
+}
+
+impl BuildCommand {
+    async fn run(&self) -> CliResult<()> {
+        let start = Instant::now();
+
+        println!("");
+        println!("Tachyon Build");
+        println!("===============");
+        println!("Repository: {}", self.repo_path.display());
+        println!("Output:     {}", self.output_dir.display());
+        println!("");
+
+        let database_url = self.resolve_database_url()?;
+
+        if self.verbose {
+            println!("Database URL: {}", database_url);
+        }
+
+        println!("Initializing database...");
+        let pool = init_with_migrations(&database_url)
+            .await
+            .map_err(|e| CliError::database(format!("Failed to initialize database: {}", e)))?;
+
+        let prev_manifest = load_manifest(&self.output_dir);
+
+        println!("Fetching documents...");
+        let repo = DocumentRepository::new(pool);
+        let documents = repo
+            .list_all(Some(100_000), None)
+            .await
+            .map_err(|e| CliError::database(format!("Failed to fetch documents: {}", e)))?;
+
+        let mut docs: Vec<DocInfo> = documents
+            .into_iter()
+            .filter(|d| {
+                if self.published_only {
+                    d.status == "published" && d.visibility == "public"
+                } else {
+                    true
+                }
+            })
+            .filter_map(|d| {
+                let slug = d.slug.clone()?;
+                let tags = d.parse_tags().ok().unwrap_or_default();
+                let content = d.content.clone()?;
+                Some(DocInfo {
+                    slug,
+                    title: d.title,
+                    content,
+                    description: d.description,
+                    tags,
+                    updated_at: d.updated_at.to_rfc3339(),
+                    created_at: d.created_at.to_rfc3339(),
+                })
+            })
+            .collect();
+
+        docs.sort_by(|a, b| a.slug.as_str().cmp(b.slug.as_str()));
+        println!("Found {} document(s).", docs.len());
+
+        if self.clean && self.output_dir.exists() {
+            println!("Cleaning output directory...");
+            fs::remove_dir_all(&self.output_dir).map_err(|e| {
+                CliError::io(&self.output_dir, format!("Failed to clean: {}", e))
+            })?;
+        }
+
+        fs::create_dir_all(self.output_dir.join("docs")).map_err(|e| {
+            CliError::io(
+                &self.output_dir,
+                format!("Failed to create output dir: {}", e),
+            )
+        })?;
+        fs::create_dir_all(self.output_dir.join("static")).map_err(|e| {
+            CliError::io(
+                &self.output_dir,
+                format!("Failed to create static dir: {}", e),
+            )
+        })?;
+
+        let renderer = Renderer::new(RenderConfig::default());
+        let site_config = SiteConfig {
+            site_title: self.site_title.clone(),
+            site_description: self.site_description.clone(),
+            base_url: self.base_url.clone(),
+            theme_color: "#2563eb".to_string(),
+            og_image: None,
+        };
+
+        let mut new_manifest = BuildManifest {
+            build_time: chrono::Utc::now().to_rfc3339(),
+            commit_hash: get_commit_hash(&self.repo_path),
+            documents: BTreeMap::new(),
+        };
+
+        let mut built: usize = 0;
+        let mut skipped: usize = 0;
+        let mut errors: Vec<(String, String)> = Vec::new();
+
+        println!("Rendering documents...");
+
+        for doc in &docs {
+            let content_hash = compute_content_hash(&doc.content);
+            let output_file = format!("docs/{}/index.html", doc.slug);
+            let output_path = self.output_dir.join(&output_file);
+
+            if let Some(ref prev) = prev_manifest {
+                if let Some(entry) = prev.documents.get(&doc.slug) {
+                    if entry.content_hash == content_hash && output_path.exists() {
+                        if self.verbose {
+                            println!("  [cached] {}", doc.slug);
+                        }
+                        skipped += 1;
+                        new_manifest.documents.insert(
+                            doc.slug.clone(),
+                            DocumentEntry {
+                                content_hash,
+                                output_file,
+                                built_at: entry.built_at.clone(),
+                            },
+                        );
+                        continue;
+                    }
+                }
+            }
+
+            match render_document(&renderer, &site_config, doc) {
+                Ok(html) => {
+                    if let Some(parent) = output_path.parent() {
+                        fs::create_dir_all(parent).map_err(|e| {
+                            CliError::io(parent, format!("Failed to create dir: {}", e))
+                        })?;
+                    }
+                    fs::write(&output_path, html).map_err(|e| {
+                        CliError::io(&output_path, format!("Failed to write: {}", e))
+                    })?;
+
+                    if self.verbose {
+                        println!("  [built]  {}", doc.slug);
+                    }
+                    built += 1;
+                    new_manifest.documents.insert(
+                        doc.slug.clone(),
+                        DocumentEntry {
+                            content_hash,
+                            output_file,
+                            built_at: new_manifest.build_time.clone(),
+                        },
+                    );
+                }
+                Err(e) => {
+                    errors.push((doc.slug.clone(), e.to_string()));
+                    eprintln!("  [error]  {}: {}", doc.slug, e);
+                }
+            }
+        }
+
+        println!("Generating index page...");
+        generate_index(&self.output_dir, &docs, &site_config)?;
+
+        println!("Generating sitemap...");
+        generate_sitemap(&self.output_dir, &docs, &self.base_url)?;
+
+        println!("Writing build manifest...");
+        write_manifest(&self.output_dir, &new_manifest)?;
+
+        let removed = remove_stale(&self.output_dir, &prev_manifest, &new_manifest, self.verbose)?;
+
+        let elapsed = start.elapsed();
+
+        println!("");
+        println!("Build completed in {:.2}s", elapsed.as_secs_f64());
+        println!("  Built:   {}", built);
+        println!("  Cached:  {}", skipped);
+        println!("  Removed: {}", removed);
+        println!("  Errors:  {}", errors.len());
+
+        if !errors.is_empty() {
+            println!("");
+            println!("Failed documents:");
+            for (slug, err) in &errors {
+                println!("  {}: {}", slug, err);
+            }
+            return Err(CliError::build(format!(
+                "{} document(s) failed to render",
+                errors.len()
+            )));
+        }
+
+        Ok(())
+    }
+
+    fn resolve_database_url(&self) -> CliResult<String> {
+        if let Some(ref url) = self.database_url {
+            Ok(url.clone())
+        } else {
+            let db_path = self.repo_path.join(".tachyon").join("db").join("tachyon.db");
+            Err(CliError::database(format!(
+                "No database URL provided. SQLite is not yet supported.\n\
+                 Use --database-url to specify a PostgreSQL connection string.\n\
+                 Example: --database-url postgres://user:pass@localhost/db\n\
+                 Expected SQLite path would be: {}",
+                db_path.display()
+            )))
+        }
+    }
+}
+
+fn render_document(
+    renderer: &Renderer,
+    site: &SiteConfig,
+    doc: &DocInfo,
+) -> Result<String, CliError> {
+    let result = renderer
+        .render(&doc.content, None)
+        .map_err(|e| CliError::build(format!("Render failed for '{}': {}", doc.slug, e)))?;
+
+    let ctx = RenderContext {
+        title: doc.title.clone(),
+        content: result.content,
+        author: None,
+        metadata: Some(RenderMetadata {
+            created_at: doc.created_at.clone(),
+            updated_at: doc.updated_at.clone(),
+            tags: doc.tags.clone(),
+            read_time: None,
+        }),
+        navigation: None,
+    };
+
+    Ok(render_full_page(&ctx, site))
+}
+
+fn escape_html(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&#x27;"),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+fn generate_index(
+    output_dir: &Path,
+    docs: &[DocInfo],
+    site: &SiteConfig,
+) -> CliResult<()> {
+    let mut items = String::new();
+    for doc in docs {
+        let title = escape_html(&doc.title);
+        let desc = escape_html(doc.description.as_deref().unwrap_or("No description"));
+        let slug = escape_html(&doc.slug);
+        let tags_csv = escape_html(&doc.tags.join(","));
+        let tags_html = if doc.tags.is_empty() {
+            String::new()
+        } else {
+            let tags: Vec<String> = doc
+                .tags
+                .iter()
+                .map(|t| {
+                    format!(
+                        r#"<span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{}</span>"#,
+                        escape_html(t)
+                    )
+                })
+                .collect();
+            format!(r#"<div class="flex flex-wrap gap-1 mt-1">{}</div>"#, tags.join(""))
+        };
+
+        items.push_str(&format!(
+            r#"<div class="doc-item border-b border-gray-200 dark:border-gray-700 py-4" data-title="{title}" data-tags="{tags}">
+                    <a href="docs/{slug}/" class="text-xl font-semibold text-blue-600 dark:text-blue-400 hover:underline">{title}</a>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">{desc}</p>
+                    {tags_html}
+                </div>"#,
+            title = title,
+            slug = slug,
+            desc = desc,
+            tags = tags_csv,
+        ));
+    }
+
+    let search_js = r#"<script>
+document.getElementById('search').addEventListener('input', function() {
+    var query = this.value.toLowerCase();
+    var items = document.querySelectorAll('.doc-item');
+    var visible = 0;
+    items.forEach(function(item) {
+        var title = item.getAttribute('data-title').toLowerCase();
+        var tags = item.getAttribute('data-tags').toLowerCase();
+        var match = title.indexOf(query) !== -1 || tags.indexOf(query) !== -1;
+        item.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    document.getElementById('no-results').style.display = visible > 0 ? 'none' : 'block';
+});
+</script>"#;
+
+    let content = format!(
+        r#"<div class="mb-6">
+                <input type="text" id="search" placeholder="Search documents..." 
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            </div>
+            <div id="doc-list">{items}</div>
+            <p id="no-results" class="text-gray-500 dark:text-gray-400 text-center py-8" style="display:none">No documents found.</p>
+            {search_js}"#,
+        items = items,
+        search_js = search_js,
+    );
+
+    let ctx = RenderContext::new(format!("{} - Index", site.site_title), content);
+    let html = render_full_page(&ctx, site);
+
+    let index_path = output_dir.join("index.html");
+    fs::write(&index_path, html)
+        .map_err(|e| CliError::io(&index_path, format!("Failed to write index.html: {}", e)))?;
+
+    Ok(())
+}
+
+fn generate_sitemap(output_dir: &Path, docs: &[DocInfo], base_url: &str) -> CliResult<()> {
+    let mut urls = String::new();
+    let base = base_url.trim_end_matches('/');
+    for doc in docs {
+        urls.push_str(&format!(
+            r#"  <url>
+    <loc>{base}/docs/{slug}/</loc>
+    <lastmod>{updated}</lastmod>
+  </url>
+"#,
+            base = base,
+            slug = doc.slug,
+            updated = doc.updated_at,
+        ));
+    }
+
+    let sitemap = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{urls}
+</urlset>"#,
+        urls = urls,
+    );
+
+    let sitemap_path = output_dir.join("sitemap.xml");
+    fs::write(&sitemap_path, sitemap)
+        .map_err(|e| CliError::io(&sitemap_path, format!("Failed to write sitemap.xml: {}", e)))?;
+
+    Ok(())
+}
+
+fn load_manifest(output_dir: &Path) -> Option<BuildManifest> {
+    let path = output_dir.join(".build-manifest.json");
+    if !path.exists() {
+        return None;
+    }
+    let data = fs::read_to_string(&path).ok()?;
+    serde_json::from_str(&data).ok()
+}
+
+fn write_manifest(output_dir: &Path, manifest: &BuildManifest) -> CliResult<()> {
+    let path = output_dir.join(".build-manifest.json");
+    let json = serde_json::to_string_pretty(manifest)
+        .map_err(|e| CliError::generic(format!("Failed to serialize manifest: {}", e)))?;
+    fs::write(&path, json)
+        .map_err(|e| CliError::io(&path, format!("Failed to write manifest: {}", e)))?;
+    Ok(())
+}
+
+fn remove_stale(
+    output_dir: &Path,
+    prev: &Option<BuildManifest>,
+    current: &BuildManifest,
+    verbose: bool,
+) -> CliResult<usize> {
+    let prev = match prev {
+        Some(p) => p,
+        None => return Ok(0),
+    };
+
+    let mut removed: usize = 0;
+    for (slug, entry) in &prev.documents {
+        if !current.documents.contains_key(slug) {
+            let path = output_dir.join(&entry.output_file);
+            if path.exists() {
+                if let Some(parent) = path.parent() {
+                    match fs::remove_dir_all(parent) {
+                        Ok(()) => {
+                            removed += 1;
+                            if verbose {
+                                println!("  [removed] {}", slug);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Warning: failed to remove stale directory {}: {}",
+                                parent.display(),
+                                e
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(removed)
+}
+
+fn get_commit_hash(repo_path: &Path) -> Option<String> {
+    let repo = git2::Repository::discover(repo_path).ok()?;
+    let head = repo.head().ok()?;
+    let commit = head.peel_to_commit().ok()?;
+    let hash = commit.id().to_string();
+    Some(hash[..8].to_string())
 }
 
 #[cfg(test)]
@@ -578,120 +541,157 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn test_build_options_default() {
-        let options = BuildOptions::default();
-        assert_eq!(options.repo_path, PathBuf::from(".tachyon"));
-        assert!(options.gen_docs);
-        assert!(!options.minify);
-        assert!(options.source_maps);
-        assert!(!options.clean);
-        assert!(!options.verbose);
+    fn test_build_command_from_args_defaults() {
+        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false);
+        assert_eq!(cmd.repo_path, PathBuf::from("."));
+        assert_eq!(cmd.output_dir, PathBuf::from("dist"));
+        assert!(cmd.database_url.is_none());
+        assert_eq!(cmd.site_title, "Tachyon Docs");
+        assert_eq!(cmd.site_description, "Knowledge Management System");
+        assert_eq!(cmd.base_url, "/");
+        assert!(!cmd.published_only);
+        assert!(!cmd.clean);
+        assert!(!cmd.verbose);
     }
 
     #[test]
-    fn test_build_command_from_args() {
+    fn test_build_command_from_args_custom() {
         let cmd = BuildCommand::from_args(
-            Some(PathBuf::from("/tmp/test")),
-            Some(PathBuf::from("/tmp/dist")),
-            false,
+            Some(PathBuf::from("/repo")),
+            Some(PathBuf::from("/out")),
+            Some("postgres://localhost/db".to_string()),
+            Some("My Site".to_string()),
+            Some("My Desc".to_string()),
+            Some("https://example.com".to_string()),
             true,
-            false,
             true,
             true,
         );
-
-        assert_eq!(cmd.options.repo_path, PathBuf::from("/tmp/test"));
-        assert_eq!(cmd.options.output_dir, Some(PathBuf::from("/tmp/dist")));
-        assert!(!cmd.options.gen_docs);
-        assert!(cmd.options.minify);
-        assert!(!cmd.options.source_maps);
-        assert!(cmd.options.clean);
-        assert!(cmd.options.verbose);
+        assert_eq!(cmd.repo_path, PathBuf::from("/repo"));
+        assert_eq!(cmd.output_dir, PathBuf::from("/out"));
+        assert_eq!(cmd.database_url, Some("postgres://localhost/db".to_string()));
+        assert_eq!(cmd.site_title, "My Site");
+        assert_eq!(cmd.site_description, "My Desc");
+        assert_eq!(cmd.base_url, "https://example.com");
+        assert!(cmd.published_only);
+        assert!(cmd.clean);
+        assert!(cmd.verbose);
     }
 
     #[test]
-    fn test_validate_repo_path_not_exists() {
-        let options = BuildOptions {
-            repo_path: PathBuf::from("/nonexistent/path"),
-            ..Default::default()
-        };
-        let cmd = BuildCommand::new(options);
+    fn test_resolve_database_url_with_flag() {
+        let cmd = BuildCommand::from_args(
+            None,
+            None,
+            Some("postgres://user:pass@host/db".to_string()),
+            None,
+            None,
+            None,
+            false,
+            false,
+            false,
+        );
+        let url = cmd.resolve_database_url().unwrap();
+        assert_eq!(url, "postgres://user:pass@host/db");
+    }
 
-        let result = cmd.validate_repo_path();
+    #[test]
+    fn test_resolve_database_url_missing() {
+        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false);
+        let result = cmd.resolve_database_url();
         assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("No database URL provided"));
+        assert!(err.contains("SQLite is not yet supported"));
     }
 
     #[test]
-    fn test_create_output_structure() {
+    fn test_manifest_round_trip() {
         let dir = tempdir().unwrap();
-        let output_dir = dir.path().join("dist");
-        let options = BuildOptions::default();
-        let cmd = BuildCommand::new(options);
+        let output = dir.path().join("dist");
+        fs::create_dir_all(&output).unwrap();
 
-        cmd.create_output_structure(&output_dir).unwrap();
+        let manifest = BuildManifest {
+            build_time: "2026-04-07T00:00:00+00:00".to_string(),
+            commit_hash: Some("abc12345".to_string()),
+            documents: {
+                let mut map = BTreeMap::new();
+                map.insert(
+                    "getting-started".to_string(),
+                    DocumentEntry {
+                        content_hash: "deadbeef".to_string(),
+                        output_file: "docs/getting-started/index.html".to_string(),
+                        built_at: "2026-04-07T00:00:00+00:00".to_string(),
+                    },
+                );
+                map
+            },
+        };
 
-        assert!(output_dir.join("docs").exists());
-        assert!(output_dir.join("assets").exists());
-        assert!(output_dir.join("static").exists());
-        assert!(output_dir.join("css").exists());
-        assert!(output_dir.join("js").exists());
+        write_manifest(&output, &manifest).unwrap();
+        let loaded = load_manifest(&output).unwrap();
+        assert_eq!(loaded.build_time, manifest.build_time);
+        assert_eq!(loaded.commit_hash, manifest.commit_hash);
+        assert_eq!(loaded.documents.len(), 1);
+        assert_eq!(
+            loaded.documents["getting-started"].content_hash,
+            "deadbeef"
+        );
     }
 
     #[test]
-    fn test_clean_output_dir() {
+    fn test_load_manifest_missing() {
         let dir = tempdir().unwrap();
-        let output_dir = dir.path().join("dist");
-
-        // Create some files
-        fs::create_dir_all(&output_dir).unwrap();
-        fs::write(output_dir.join("test.txt"), "test").unwrap();
-
-        let options = BuildOptions::default();
-        let cmd = BuildCommand::new(options);
-
-        cmd.clean_output_dir(&output_dir).unwrap();
-
-        assert!(!output_dir.exists());
+        let output = dir.path().join("nonexistent");
+        assert!(load_manifest(&output).is_none());
     }
 
     #[test]
-    fn test_generate_css() {
+    fn test_escape_html() {
+        assert_eq!(escape_html("<script>alert('xss')</script>"), "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;");
+        assert_eq!(escape_html("Hello & <World>"), "Hello &amp; &lt;World&gt;");
+        assert_eq!(escape_html("plain text"), "plain text");
+    }
+
+    #[test]
+    fn test_remove_stale() {
         let dir = tempdir().unwrap();
-        let output_dir = dir.path().join("dist");
-        let options = BuildOptions::default();
-        let cmd = BuildCommand::new(options);
+        let output = dir.path().join("dist");
+        fs::create_dir_all(output.join("docs").join("old-doc")).unwrap();
+        fs::write(output.join("docs").join("old-doc").join("index.html"), "old").unwrap();
 
-        cmd.generate_css(&output_dir).unwrap();
+        let prev = BuildManifest {
+            build_time: "2026-01-01T00:00:00+00:00".to_string(),
+            commit_hash: None,
+            documents: {
+                let mut map = BTreeMap::new();
+                map.insert(
+                    "old-doc".to_string(),
+                    DocumentEntry {
+                        content_hash: "aaa".to_string(),
+                        output_file: "docs/old-doc/index.html".to_string(),
+                        built_at: "2026-01-01T00:00:00+00:00".to_string(),
+                    },
+                );
+                map
+            },
+        };
 
-        let css_path = output_dir.join("css").join("style.css");
-        assert!(css_path.exists());
-        let content = fs::read_to_string(&css_path).unwrap();
-        assert!(content.contains("--primary-color:"));
-        assert!(content.contains("/* Tachyon Base Styles */"));
+        let current = BuildManifest {
+            build_time: "2026-04-07T00:00:00+00:00".to_string(),
+            commit_hash: None,
+            documents: BTreeMap::new(),
+        };
+
+        let removed = remove_stale(&output, &Some(prev), &current, false).unwrap();
+        assert_eq!(removed, 1);
+        assert!(!output.join("docs").join("old-doc").exists());
     }
 
     #[test]
-    fn test_generate_js() {
-        let dir = tempdir().unwrap();
-        let output_dir = dir.path().join("dist");
-        let options = BuildOptions::default();
-        let cmd = BuildCommand::new(options);
-
-        cmd.generate_js(&output_dir).unwrap();
-
-        let js_path = output_dir.join("js").join("app.js");
-        assert!(js_path.exists());
-        let content = fs::read_to_string(&js_path).unwrap();
-        assert!(content.contains("Tachyon"));
-        assert!(content.contains("init: function()"));
-    }
-
-    #[test]
-    fn test_build_stats_default() {
-        let stats = BuildStats::default();
-        assert_eq!(stats.files_copied, 0);
-        assert_eq!(stats.docs_generated, 0);
-        assert_eq!(stats.assets_bundled, 0);
-        assert_eq!(stats.duration_secs, 0.0);
+    fn test_command_name_and_description() {
+        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false);
+        assert_eq!(cmd.name(), "build");
+        assert!(cmd.description().contains("static site"));
     }
 }

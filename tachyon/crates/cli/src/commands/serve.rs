@@ -6,6 +6,10 @@ use crate::config::{DEFAULT_HOST, DEFAULT_HTTP_PORT, DEFAULT_WS_PORT};
 use crate::error::{CliError, CliResult};
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::mpsc;
+use tachyon_core::{FileChangeEvent, FileWatcher, FileWatcherConfig};
+use tachyon_database::DatabasePool;
+use tachyon_server::sync::{FileSyncService, SyncConfig, SyncResult};
 use tokio::signal;
 use tokio::sync::broadcast;
 
@@ -38,6 +42,12 @@ pub struct ServeOptions {
 
     /// Request timeout in seconds
     pub timeout: Option<u64>,
+
+    /// Enable file watching and auto-sync
+    pub watch: bool,
+
+    /// Path to watch for changes (defaults to --repo-path or current directory)
+    pub watch_path: Option<PathBuf>,
 }
 
 impl Default for ServeOptions {
@@ -52,6 +62,8 @@ impl Default for ServeOptions {
             repo_path: PathBuf::from(".tachyon"),
             max_body_size: None,
             timeout: None,
+            watch: false,
+            watch_path: None,
         }
     }
 }
@@ -107,6 +119,8 @@ impl ServeCommand {
         repo_path: Option<PathBuf>,
         max_body_size: Option<usize>,
         timeout: Option<u64>,
+        watch: bool,
+        watch_path: Option<PathBuf>,
     ) -> Self {
         Self::new(ServeOptions {
             host: host.unwrap_or_else(|| DEFAULT_HOST.to_string()),
@@ -118,6 +132,8 @@ impl ServeCommand {
             repo_path: repo_path.unwrap_or_else(|| PathBuf::from(".tachyon")),
             max_body_size,
             timeout,
+            watch,
+            watch_path,
         })
     }
 
@@ -282,6 +298,130 @@ impl ServeCommand {
             }
         }
     }
+
+    async fn run_file_watcher(
+        watch_path: PathBuf,
+        db_path: PathBuf,
+        shutdown: ShutdownSignal,
+    ) {
+        if !watch_path.exists() {
+            eprintln!("Watch path does not exist: {}", watch_path.display());
+            return;
+        }
+
+        println!("Watching for changes in: {}", watch_path.display());
+
+        let config = FileWatcherConfig {
+            watch_path: watch_path.clone(),
+            watch_extensions: vec![".md".to_string(), ".markdown".to_string()],
+            debounce_ms: 500,
+            recursive: true,
+        };
+
+        let mut watcher = match FileWatcher::new(config) {
+            Ok(w) => w,
+            Err(e) => {
+                eprintln!("Failed to create file watcher: {}", e);
+                return;
+            }
+        };
+
+        let (tx, rx) = mpsc::channel::<FileChangeEvent>();
+
+        if let Err(e) = watcher.start(tx) {
+            eprintln!("Failed to start file watcher: {}", e);
+            return;
+        }
+
+        let (async_tx, mut async_rx) = tokio::sync::mpsc::channel::<FileChangeEvent>(32);
+
+        std::thread::spawn(move || {
+            while let Ok(event) = rx.recv() {
+                if async_tx.blocking_send(event).is_err() {
+                    break;
+                }
+            }
+        });
+
+        let pool = match DatabasePool::new(&format!("sqlite:{}", db_path.join("tachyon.db").display())).await {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("Failed to open database (watch sync disabled): {}", e);
+                let mut shutdown_rx = shutdown.subscribe();
+                let _ = shutdown_rx.recv().await;
+                watcher.stop();
+                return;
+            }
+        };
+
+        let sync_config = SyncConfig::default();
+        let sync_service = FileSyncService::new(pool, sync_config);
+
+        let initial_events = watcher.scan_initial();
+        if !initial_events.is_empty() {
+            println!("Initial scan: found {} markdown files", initial_events.len());
+            for event in &initial_events {
+                Self::sync_and_report(&sync_service, event).await;
+            }
+        }
+
+        let mut shutdown_rx = shutdown.subscribe();
+
+        loop {
+            tokio::select! {
+                _ = shutdown_rx.recv() => {
+                    println!("Stopping file watcher...");
+                    watcher.stop();
+                    break;
+                }
+                event = async_rx.recv() => {
+                    match event {
+                        Some(event) => {
+                            Self::sync_and_report(&sync_service, &event).await;
+                        }
+                        None => {
+                            println!("File watcher channel closed.");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    async fn sync_and_report(sync_service: &FileSyncService, event: &FileChangeEvent) {
+        let kind_str = match event.kind {
+            tachyon_core::FileChangeKind::Created => "created",
+            tachyon_core::FileChangeKind::Modified => "modified",
+            tachyon_core::FileChangeKind::Deleted => "deleted",
+        };
+        println!("[watch] {} {}", kind_str, event.path.display());
+
+        match sync_service.sync_file(event).await {
+            SyncResult::Created { id, slug } => {
+                println!("[watch]   -> created document: {} (slug: {})", id, slug);
+            }
+            SyncResult::Updated { id, slug, hash_changed, conflict } => {
+                let mut msg = format!("[watch]   -> updated document: {} (slug: {})", id, slug);
+                if !hash_changed {
+                    msg.push_str(" (no content change)");
+                }
+                if conflict {
+                    msg.push_str(" (conflict detected)");
+                }
+                println!("{}", msg);
+            }
+            SyncResult::Deleted { id, slug } => {
+                println!("[watch]   -> deleted document: {} (slug: {})", id, slug);
+            }
+            SyncResult::Skipped { path, reason } => {
+                println!("[watch]   -> skipped {}: {}", path.display(), reason);
+            }
+            SyncResult::Error { path, message } => {
+                eprintln!("[watch]   -> error syncing {}: {}", path.display(), message);
+            }
+        }
+    }
 }
 
 impl Command for ServeCommand {
@@ -318,6 +458,8 @@ impl Command for ServeCommand {
         let host = self.options.host.clone();
         let repo_path = self.options.repo_path.clone();
         let shutdown = self.shutdown.clone();
+        let watch = self.options.watch;
+        let watch_path = self.options.watch_path.clone();
 
         rt.block_on(async move {
             let cmd = ServeCommand {
@@ -328,9 +470,11 @@ impl Command for ServeCommand {
                     tls_enabled: false,
                     tls_cert: None,
                     tls_key: None,
-                    repo_path,
+                    repo_path: repo_path.clone(),
                     max_body_size: None,
                     timeout: None,
+                    watch,
+                    watch_path: watch_path.clone(),
                 },
                 shutdown: shutdown.clone(),
             };
@@ -351,6 +495,19 @@ impl Command for ServeCommand {
                 }
             });
 
+            // Start file watcher if --watch is enabled
+            let watch_handle = if watch {
+                let effective_watch_path = watch_path.unwrap_or_else(|| repo_path.clone());
+                let db_path = repo_path.join("db");
+                let shutdown_for_watch = shutdown.clone();
+
+                Some(tokio::spawn(async move {
+                    Self::run_file_watcher(effective_watch_path, db_path, shutdown_for_watch).await;
+                }))
+            } else {
+                None
+            };
+
             // Wait for shutdown signal
             cmd.wait_for_shutdown().await;
 
@@ -358,7 +515,13 @@ impl Command for ServeCommand {
             cmd.shutdown.shutdown();
 
             // Wait for servers to shut down
-            let _ = tokio::try_join!(http_handle, ws_handle);
+            let mut handles: Vec<tokio::task::JoinHandle<()>> = vec![http_handle, ws_handle];
+            if let Some(h) = watch_handle {
+                handles.push(h);
+            }
+            for h in handles {
+                let _ = h.await;
+            }
 
             Ok::<(), CliError>(())
         })?;
@@ -388,6 +551,8 @@ mod tests {
         assert_eq!(options.http_port, DEFAULT_HTTP_PORT);
         assert_eq!(options.ws_port, DEFAULT_WS_PORT);
         assert!(!options.tls_enabled);
+        assert!(!options.watch);
+        assert!(options.watch_path.is_none());
     }
 
     #[test]
@@ -402,6 +567,8 @@ mod tests {
             Some(PathBuf::from("/tmp/test")),
             Some(1024),
             Some(60),
+            true,
+            Some(PathBuf::from("/tmp/watch")),
         );
 
         assert_eq!(cmd.options.host, "0.0.0.0");
@@ -410,6 +577,8 @@ mod tests {
         assert_eq!(cmd.options.repo_path, PathBuf::from("/tmp/test"));
         assert_eq!(cmd.options.max_body_size, Some(1024));
         assert_eq!(cmd.options.timeout, Some(60));
+        assert!(cmd.options.watch);
+        assert_eq!(cmd.options.watch_path, Some(PathBuf::from("/tmp/watch")));
     }
 
     #[test]
