@@ -151,7 +151,7 @@ async fn init_state(config: &ServerConfig) -> Result<(DocumentState, UserState, 
     );
     let session_state = SessionState::new(pool.clone(), config.jwt.expiration_secs);
     let repository_state = RepositoryState::new();
-    let node_state = NodeState::new();
+    let node_state = NodeState::new(pool.clone());
     let catalog_state = CatalogState::new(pool.clone());
     let connection_manager = ConnectionManager::new();
 

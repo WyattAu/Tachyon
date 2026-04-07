@@ -1,0 +1,836 @@
+use crate::error::{DatabaseError, DatabaseResult};
+use crate::schema::DatabasePool;
+use crate::types::{GraphEdge, GraphNode};
+use serde_json::json;
+use sqlx::{query, query_as, Row};
+use std::collections::{HashMap, HashSet, VecDeque};
+use tachyon_core::types::edge::Edge;
+use tachyon_core::types::node::Node;
+use tracing::{info, instrument, warn};
+
+// ============================================================================
+// Type Conversions
+// ============================================================================
+
+impl From<&Node> for GraphNode {
+    fn from(node: &Node) -> Self {
+        let mut props = serde_json::Map::new();
+        if !node.metadata.tags.is_empty() {
+            props.insert("tags".to_string(), json!(node.metadata.tags));
+        }
+        for (k, v) in &node.metadata.custom_metadata {
+            props.insert(k.clone(), v.clone());
+        }
+        if let Some(ref parent_id) = node.metadata.parent_id {
+            props.insert("parent_id".to_string(), json!(parent_id.as_str()));
+        }
+
+        Self {
+            id: node.id.as_str().to_string(),
+            node_type: serde_json::to_value(node.node_type)
+                .ok()
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
+                .unwrap_or_else(|| format!("{:?}", node.node_type).to_lowercase()),
+            name: node.metadata.title.clone(),
+            slug: node.metadata.slug.clone(),
+            description: node.metadata.description.clone(),
+            content: None,
+            visibility: serde_json::to_value(node.visibility)
+                .ok()
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
+                .unwrap_or_else(|| "private".to_string()),
+            weight: 1.0,
+            properties: serde_json::Value::Object(props),
+            project_id: None,
+            document_id: node.metadata.document_id.map(|id| id.as_str().to_string()),
+            created_by: Some(node.metadata.created_by.as_str().to_string()),
+            is_active: true,
+            created_at: node.metadata.created_at,
+            updated_at: node.metadata.updated_at,
+        }
+    }
+}
+
+impl From<&Edge> for GraphEdge {
+    fn from(edge: &Edge) -> Self {
+        let (weight, confidence) = edge
+            .weight
+            .map(|w| (w.weight, Some(w.confidence)))
+            .unwrap_or((1.0, None));
+
+        Self {
+            id: edge.id.as_str().to_string(),
+            source_id: edge.source_id.as_str().to_string(),
+            target_id: edge.target_id.as_str().to_string(),
+            edge_type: serde_json::to_value(edge.edge_type)
+                .ok()
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
+                .unwrap_or_else(|| format!("{:?}", edge.edge_type).to_lowercase()),
+            label: edge.metadata.label.clone(),
+            description: edge.metadata.description.clone(),
+            weight,
+            confidence,
+            properties: json!({}),
+            project_id: None,
+            created_by: Some(edge.metadata.created_by.as_str().to_string()),
+            is_active: true,
+            created_at: edge.metadata.created_at,
+            updated_at: edge.metadata.updated_at,
+        }
+    }
+}
+
+// ============================================================================
+// Graph Repository
+// ============================================================================
+
+pub struct GraphRepository {
+    pool: DatabasePool,
+}
+
+impl GraphRepository {
+    pub fn new(pool: DatabasePool) -> Self {
+        Self { pool }
+    }
+
+    // ========================================================================
+    // Node CRUD
+    // ========================================================================
+
+    #[instrument(skip(self, node), fields(node_name = %node.name))]
+    pub async fn create_node(&self, node: &GraphNode) -> DatabaseResult<GraphNode> {
+        let sql = r#"
+            INSERT INTO knowledge_graph_nodes
+                (node_type, name, slug, description, content, visibility, weight, properties, project_id, document_id, created_by, is_active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            RETURNING id, node_type, name, slug, description, content, visibility, weight, properties, project_id, document_id, created_by, is_active, created_at, updated_at
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let record = query_as::<_, GraphNode>(sql)
+            .bind(&node.node_type)
+            .bind(&node.name)
+            .bind(&node.slug)
+            .bind(&node.description)
+            .bind(&node.content)
+            .bind(&node.visibility)
+            .bind(node.weight)
+            .bind(&node.properties)
+            .bind(&node.project_id.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
+            .bind(&node.document_id.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
+            .bind(&node.created_by.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
+            .bind(node.is_active)
+            .bind(node.created_at)
+            .bind(node.updated_at)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| {
+                let msg = e.to_string();
+                if msg.contains("unique") || msg.contains("duplicate") || msg.contains("idx_kg_nodes_slug") {
+                    DatabaseError::duplicate("node", format!("Slug already exists: {:?}", node.slug))
+                } else {
+                    DatabaseError::QueryError(msg)
+                }
+            })?;
+
+        info!("Node created: {} ({})", record.name, record.id);
+        Ok(record)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn get_node_by_id(&self, id: &str) -> DatabaseResult<GraphNode> {
+        let sql = "SELECT * FROM knowledge_graph_nodes WHERE id = $1 AND is_active = true";
+        let mut conn = self.pool.acquire().await?;
+        let record = query_as::<_, GraphNode>(sql)
+            .bind(uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?
+            .ok_or_else(|| DatabaseError::not_found("node", id))?;
+        Ok(record)
+    }
+
+    #[instrument(skip(self), fields(slug = %slug))]
+    pub async fn get_node_by_slug(&self, slug: &str) -> DatabaseResult<GraphNode> {
+        let sql = "SELECT * FROM knowledge_graph_nodes WHERE slug = $1 AND is_active = true";
+        let mut conn = self.pool.acquire().await?;
+        let record = query_as::<_, GraphNode>(sql)
+            .bind(slug)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?
+            .ok_or_else(|| DatabaseError::not_found("node", slug))?;
+        Ok(record)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn update_node(
+        &self,
+        id: &str,
+        name: Option<&str>,
+        slug: Option<&str>,
+        description: Option<&str>,
+        content: Option<&str>,
+        visibility: Option<&str>,
+        weight: Option<f64>,
+        properties: Option<&serde_json::Value>,
+    ) -> DatabaseResult<GraphNode> {
+        let sql = r#"
+            UPDATE knowledge_graph_nodes SET
+                name = COALESCE($2, name),
+                slug = COALESCE($3, slug),
+                description = COALESCE($4, description),
+                content = COALESCE($5, content),
+                visibility = COALESCE($6, visibility),
+                weight = COALESCE($7, weight),
+                properties = COALESCE($8, properties),
+                updated_at = NOW()
+            WHERE id = $1 AND is_active = true
+            RETURNING id, node_type, name, slug, description, content, visibility, weight, properties, project_id, document_id, created_by, is_active, created_at, updated_at
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let record = query_as::<_, GraphNode>(sql)
+            .bind(uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
+            .bind(name)
+            .bind(slug)
+            .bind(description)
+            .bind(content)
+            .bind(visibility)
+            .bind(weight)
+            .bind(properties)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| {
+                let msg = e.to_string();
+                if msg.contains("unique") || msg.contains("duplicate") || msg.contains("idx_kg_nodes_slug") {
+                    DatabaseError::duplicate("node", format!("Slug already exists: {:?}", slug))
+                } else {
+                    DatabaseError::QueryError(msg)
+                }
+            })?
+            .ok_or_else(|| DatabaseError::not_found("node", id))?;
+
+        info!("Node updated: {}", id);
+        Ok(record)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn deactivate_node(&self, id: &str) -> DatabaseResult<()> {
+        let sql = "UPDATE knowledge_graph_nodes SET is_active = false, updated_at = NOW() WHERE id = $1";
+        let mut conn = self.pool.acquire().await?;
+        let result = query(sql)
+            .bind(uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::not_found("node", id));
+        }
+        info!("Node deactivated: {}", id);
+        Ok(())
+    }
+
+    #[instrument(skip(self))]
+    pub async fn delete_node(&self, id: &str) -> DatabaseResult<()> {
+        let sql = "DELETE FROM knowledge_graph_nodes WHERE id = $1";
+        let mut conn = self.pool.acquire().await?;
+        let result = query(sql)
+            .bind(uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::not_found("node", id));
+        }
+        warn!("Node hard-deleted: {}", id);
+        Ok(())
+    }
+
+    pub async fn list_nodes(
+        &self,
+        node_type: Option<&str>,
+        project_id: Option<&str>,
+        search: Option<&str>,
+        page: usize,
+        page_size: usize,
+    ) -> DatabaseResult<(Vec<GraphNode>, i64)> {
+        let offset = ((page.max(1) - 1) * page_size.min(100)) as i64;
+        let limit = page_size.min(100) as i64;
+
+        let mut where_clauses = vec!("is_active = true".to_string());
+        let mut bind_idx = 0u32;
+
+        if node_type.is_some() {
+            bind_idx += 1;
+            where_clauses.push(format!("node_type = ${}", bind_idx));
+        }
+        if project_id.is_some() {
+            bind_idx += 1;
+            where_clauses.push(format!("project_id = ${}", bind_idx));
+        }
+        if search.is_some() {
+            bind_idx += 1;
+            where_clauses.push(format!("(name ILIKE ${} OR description ILIKE ${})", bind_idx, bind_idx));
+        }
+
+        let where_sql = where_clauses.join(" AND ");
+        let count_sql = format!("SELECT COUNT(*) as count FROM knowledge_graph_nodes WHERE {}", where_sql);
+        let data_sql = format!(
+            "SELECT * FROM knowledge_graph_nodes WHERE {} ORDER BY updated_at DESC LIMIT ${} OFFSET ${}",
+            where_sql, bind_idx + 1, bind_idx + 2
+        );
+
+        let mut conn = self.pool.acquire().await?;
+        let mut count_query = sqlx::query(&count_sql);
+        let mut data_query = query_as::<_, GraphNode>(&data_sql);
+
+        if let Some(nt) = node_type {
+            count_query = count_query.bind(nt);
+            data_query = data_query.bind(nt);
+        }
+        if let Some(pid) = project_id {
+            let uuid = uuid::Uuid::parse_str(pid).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?;
+            count_query = count_query.bind(uuid);
+            data_query = data_query.bind(uuid);
+        }
+        if let Some(s) = search {
+            let pattern = format!("%{}%", s);
+            count_query = count_query.bind(pattern.clone());
+            data_query = data_query.bind(pattern);
+        }
+
+        let count_row = count_query
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        let total: i64 = count_row.get("count");
+
+        let records = data_query
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        Ok((records, total))
+    }
+
+    pub async fn count_nodes(&self) -> DatabaseResult<i64> {
+        let sql = "SELECT COUNT(*) as count FROM knowledge_graph_nodes WHERE is_active = true";
+        let mut conn = self.pool.acquire().await?;
+        let row = sqlx::query(sql)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        Ok(row.get("count"))
+    }
+
+    // ========================================================================
+    // Edge CRUD
+    // ========================================================================
+
+    #[instrument(skip(self, edge), fields(edge_type = %edge.edge_type))]
+    pub async fn create_edge(&self, edge: &GraphEdge) -> DatabaseResult<GraphEdge> {
+        let sql = r#"
+            INSERT INTO knowledge_graph_edges
+                (source_id, target_id, edge_type, label, description, weight, confidence, properties, project_id, created_by, is_active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            RETURNING id, source_id, target_id, edge_type, label, description, weight, confidence, properties, project_id, created_by, is_active, created_at, updated_at
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let record = query_as::<_, GraphEdge>(sql)
+            .bind(uuid::Uuid::parse_str(&edge.source_id).map_err(|e| DatabaseError::ValidationError(format!("Invalid source UUID: {}", e)))?)
+            .bind(uuid::Uuid::parse_str(&edge.target_id).map_err(|e| DatabaseError::ValidationError(format!("Invalid target UUID: {}", e)))?)
+            .bind(&edge.edge_type)
+            .bind(&edge.label)
+            .bind(&edge.description)
+            .bind(edge.weight)
+            .bind(edge.confidence)
+            .bind(&edge.properties)
+            .bind(&edge.project_id.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
+            .bind(&edge.created_by.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
+            .bind(edge.is_active)
+            .bind(edge.created_at)
+            .bind(edge.updated_at)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| {
+                let msg = e.to_string();
+                if msg.contains("unique") || msg.contains("duplicate") || msg.contains("idx_kg_edges_unique") {
+                    DatabaseError::duplicate("edge", format!("Edge already exists: {} -> {} ({})", edge.source_id, edge.target_id, edge.edge_type))
+                } else if msg.contains("foreign key") || msg.contains("references") {
+                    DatabaseError::constraint_violation(format!("Source or target node does not exist"))
+                } else {
+                    DatabaseError::QueryError(msg)
+                }
+            })?;
+
+        info!("Edge created: {} ({})", record.id, record.edge_type);
+        Ok(record)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn get_edge_by_id(&self, id: &str) -> DatabaseResult<GraphEdge> {
+        let sql = "SELECT * FROM knowledge_graph_edges WHERE id = $1 AND is_active = true";
+        let mut conn = self.pool.acquire().await?;
+        let record = query_as::<_, GraphEdge>(sql)
+            .bind(uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?
+            .ok_or_else(|| DatabaseError::not_found("edge", id))?;
+        Ok(record)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn update_edge(
+        &self,
+        id: &str,
+        edge_type: Option<&str>,
+        label: Option<&str>,
+        description: Option<&str>,
+        weight: Option<f64>,
+        confidence: Option<f64>,
+        properties: Option<&serde_json::Value>,
+    ) -> DatabaseResult<GraphEdge> {
+        let sql = r#"
+            UPDATE knowledge_graph_edges SET
+                edge_type = COALESCE($2, edge_type),
+                label = COALESCE($3, label),
+                description = COALESCE($4, description),
+                weight = COALESCE($5, weight),
+                confidence = COALESCE($6, confidence),
+                properties = COALESCE($7, properties),
+                updated_at = NOW()
+            WHERE id = $1 AND is_active = true
+            RETURNING id, source_id, target_id, edge_type, label, description, weight, confidence, properties, project_id, created_by, is_active, created_at, updated_at
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let record = query_as::<_, GraphEdge>(sql)
+            .bind(uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
+            .bind(edge_type)
+            .bind(label)
+            .bind(description)
+            .bind(weight)
+            .bind(confidence)
+            .bind(properties)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?
+            .ok_or_else(|| DatabaseError::not_found("edge", id))?;
+
+        info!("Edge updated: {}", id);
+        Ok(record)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn deactivate_edge(&self, id: &str) -> DatabaseResult<()> {
+        let sql = "UPDATE knowledge_graph_edges SET is_active = false, updated_at = NOW() WHERE id = $1";
+        let mut conn = self.pool.acquire().await?;
+        let result = query(sql)
+            .bind(uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::not_found("edge", id));
+        }
+        info!("Edge deactivated: {}", id);
+        Ok(())
+    }
+
+    #[instrument(skip(self))]
+    pub async fn delete_edge(&self, id: &str) -> DatabaseResult<()> {
+        let sql = "DELETE FROM knowledge_graph_edges WHERE id = $1";
+        let mut conn = self.pool.acquire().await?;
+        let result = query(sql)
+            .bind(uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::not_found("edge", id));
+        }
+        warn!("Edge hard-deleted: {}", id);
+        Ok(())
+    }
+
+    pub async fn list_edges(
+        &self,
+        source_id: Option<&str>,
+        target_id: Option<&str>,
+        edge_type: Option<&str>,
+        project_id: Option<&str>,
+    ) -> DatabaseResult<Vec<GraphEdge>> {
+        let mut where_clauses = vec!("is_active = true".to_string());
+        let mut bind_idx = 0u32;
+
+        if source_id.is_some() {
+            bind_idx += 1;
+            where_clauses.push(format!("source_id = ${}", bind_idx));
+        }
+        if target_id.is_some() {
+            bind_idx += 1;
+            where_clauses.push(format!("target_id = ${}", bind_idx));
+        }
+        if edge_type.is_some() {
+            bind_idx += 1;
+            where_clauses.push(format!("edge_type = ${}", bind_idx));
+        }
+        if project_id.is_some() {
+            bind_idx += 1;
+            where_clauses.push(format!("project_id = ${}", bind_idx));
+        }
+
+        let where_sql = where_clauses.join(" AND ");
+        let sql = format!(
+            "SELECT * FROM knowledge_graph_edges WHERE {} ORDER BY created_at DESC",
+            where_sql
+        );
+
+        let mut conn = self.pool.acquire().await?;
+        let mut query = query_as::<_, GraphEdge>(&sql);
+
+        if let Some(sid) = source_id {
+            let uuid = uuid::Uuid::parse_str(sid).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?;
+            query = query.bind(uuid);
+        }
+        if let Some(tid) = target_id {
+            let uuid = uuid::Uuid::parse_str(tid).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?;
+            query = query.bind(uuid);
+        }
+        if let Some(et) = edge_type {
+            query = query.bind(et);
+        }
+        if let Some(pid) = project_id {
+            let uuid = uuid::Uuid::parse_str(pid).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?;
+            query = query.bind(uuid);
+        }
+
+        let records = query
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        Ok(records)
+    }
+
+    // ========================================================================
+    // Graph Queries
+    // ========================================================================
+
+    pub async fn get_neighbors(
+        &self,
+        node_id: &str,
+        direction: &str,
+        edge_type: Option<&str>,
+        depth: u32,
+    ) -> DatabaseResult<Vec<GraphEdge>> {
+        let depth = depth.min(5);
+        let uuid = uuid::Uuid::parse_str(node_id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?;
+
+        let sql = match direction {
+            "outgoing" => {
+                if edge_type.is_some() {
+                    r#"
+                        WITH RECURSIVE neighbors AS (
+                            SELECT *, 1 AS depth FROM knowledge_graph_edges WHERE source_id = $1 AND edge_type = $2 AND is_active = true
+                            UNION ALL
+                            SELECT e.*, n.depth + 1
+                            FROM knowledge_graph_edges e
+                            JOIN neighbors n ON e.source_id = n.target_id
+                            WHERE e.is_active = true AND n.depth < $3
+                        )
+                        SELECT DISTINCT id, source_id, target_id, edge_type, label, description, weight, confidence, properties, project_id, created_by, is_active, created_at, updated_at
+                        FROM neighbors ORDER BY depth, created_at
+                    "#
+                } else {
+                    r#"
+                        WITH RECURSIVE neighbors AS (
+                            SELECT *, 1 AS depth FROM knowledge_graph_edges WHERE source_id = $1 AND is_active = true
+                            UNION ALL
+                            SELECT e.*, n.depth + 1
+                            FROM knowledge_graph_edges e
+                            JOIN neighbors n ON e.source_id = n.target_id
+                            WHERE e.is_active = true AND n.depth < $2
+                        )
+                        SELECT DISTINCT id, source_id, target_id, edge_type, label, description, weight, confidence, properties, project_id, created_by, is_active, created_at, updated_at
+                        FROM neighbors ORDER BY depth, created_at
+                    "#
+                }
+            }
+            "incoming" => {
+                if edge_type.is_some() {
+                    r#"
+                        WITH RECURSIVE neighbors AS (
+                            SELECT *, 1 AS depth FROM knowledge_graph_edges WHERE target_id = $1 AND edge_type = $2 AND is_active = true
+                            UNION ALL
+                            SELECT e.*, n.depth + 1
+                            FROM knowledge_graph_edges e
+                            JOIN neighbors n ON e.target_id = n.source_id
+                            WHERE e.is_active = true AND n.depth < $3
+                        )
+                        SELECT DISTINCT id, source_id, target_id, edge_type, label, description, weight, confidence, properties, project_id, created_by, is_active, created_at, updated_at
+                        FROM neighbors ORDER BY depth, created_at
+                    "#
+                } else {
+                    r#"
+                        WITH RECURSIVE neighbors AS (
+                            SELECT *, 1 AS depth FROM knowledge_graph_edges WHERE target_id = $1 AND is_active = true
+                            UNION ALL
+                            SELECT e.*, n.depth + 1
+                            FROM knowledge_graph_edges e
+                            JOIN neighbors n ON e.target_id = n.source_id
+                            WHERE e.is_active = true AND n.depth < $2
+                        )
+                        SELECT DISTINCT id, source_id, target_id, edge_type, label, description, weight, confidence, properties, project_id, created_by, is_active, created_at, updated_at
+                        FROM neighbors ORDER BY depth, created_at
+                    "#
+                }
+            }
+            _ => {
+                if edge_type.is_some() {
+                    r#"
+                        WITH RECURSIVE neighbors AS (
+                            SELECT *, 1 AS depth FROM knowledge_graph_edges WHERE (source_id = $1 OR target_id = $1) AND edge_type = $2 AND is_active = true
+                            UNION ALL
+                            SELECT e.*, n.depth + 1
+                            FROM knowledge_graph_edges e
+                            JOIN neighbors n ON (e.source_id = n.target_id OR e.target_id = n.source_id)
+                            WHERE e.is_active = true AND n.depth < $3
+                        )
+                        SELECT DISTINCT id, source_id, target_id, edge_type, label, description, weight, confidence, properties, project_id, created_by, is_active, created_at, updated_at
+                        FROM neighbors ORDER BY depth, created_at
+                    "#
+                } else {
+                    r#"
+                        WITH RECURSIVE neighbors AS (
+                            SELECT *, 1 AS depth FROM knowledge_graph_edges WHERE (source_id = $1 OR target_id = $1) AND is_active = true
+                            UNION ALL
+                            SELECT e.*, n.depth + 1
+                            FROM knowledge_graph_edges e
+                            JOIN neighbors n ON (e.source_id = n.target_id OR e.target_id = n.source_id)
+                            WHERE e.is_active = true AND n.depth < $2
+                        )
+                        SELECT DISTINCT id, source_id, target_id, edge_type, label, description, weight, confidence, properties, project_id, created_by, is_active, created_at, updated_at
+                        FROM neighbors ORDER BY depth, created_at
+                    "#
+                }
+            }
+        };
+
+        let mut conn = self.pool.acquire().await?;
+
+        let records = if edge_type.is_some() {
+            query_as::<_, GraphEdge>(sql)
+                .bind(uuid)
+                .bind(edge_type.unwrap())
+                .bind(depth as i32)
+                .fetch_all(&mut *conn)
+                .await
+        } else {
+            query_as::<_, GraphEdge>(sql)
+                .bind(uuid)
+                .bind(depth as i32)
+                .fetch_all(&mut *conn)
+                .await
+        }
+        .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        Ok(records)
+    }
+
+    #[instrument(skip(self))]
+    pub async fn get_shortest_path(&self, source_id: &str, target_id: &str, max_depth: u32) -> DatabaseResult<Vec<String>> {
+        let max_depth = max_depth.min(5);
+        let source = uuid::Uuid::parse_str(source_id).map_err(|e| DatabaseError::ValidationError(format!("Invalid source UUID: {}", e)))?;
+        let target = uuid::Uuid::parse_str(target_id).map_err(|e| DatabaseError::ValidationError(format!("Invalid target UUID: {}", e)))?;
+
+        if source == target {
+            return Ok(vec![source_id.to_string()]);
+        }
+
+        let mut visited: HashSet<String> = HashSet::new();
+        let mut queue: VecDeque<(String, Vec<String>)> = VecDeque::new();
+        queue.push_back((source_id.to_string(), vec![source_id.to_string()]));
+        visited.insert(source_id.to_string());
+
+        let mut conn = self.pool.acquire().await?;
+
+        while let Some((current_id, path)) = queue.pop_front() {
+            if path.len() as u32 > max_depth {
+                continue;
+            }
+
+            let next_sql = "SELECT target_id FROM knowledge_graph_edges WHERE source_id = $1 AND is_active = true
+                            UNION
+                            SELECT source_id FROM knowledge_graph_edges WHERE target_id = $1 AND is_active = true";
+
+            let rows = sqlx::query(next_sql)
+                .bind(uuid::Uuid::parse_str(&current_id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+            for row in rows {
+                let neighbor_id: uuid::Uuid = row.get(0);
+                let neighbor_str = neighbor_id.to_string();
+
+                if neighbor_str == target_id {
+                    let mut result = path.clone();
+                    result.push(neighbor_str);
+                    return Ok(result);
+                }
+
+                if !visited.contains(&neighbor_str) {
+                    visited.insert(neighbor_str.clone());
+                    let mut new_path = path.clone();
+                    new_path.push(neighbor_str.clone());
+                    queue.push_back((neighbor_str, new_path));
+                }
+            }
+        }
+
+        Ok(vec![])
+    }
+
+    pub async fn get_node_edges(&self, node_id: &str) -> DatabaseResult<Vec<GraphEdge>> {
+        let sql = "SELECT * FROM knowledge_graph_edges WHERE (source_id = $1 OR target_id = $1) AND is_active = true ORDER BY created_at DESC";
+        let mut conn = self.pool.acquire().await?;
+        let records = query_as::<_, GraphEdge>(sql)
+            .bind(uuid::Uuid::parse_str(node_id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        Ok(records)
+    }
+
+    pub async fn get_connected_components(&self) -> DatabaseResult<Vec<Vec<String>>> {
+        let sql = "SELECT id FROM knowledge_graph_nodes WHERE is_active = true ORDER BY id";
+        let mut conn = self.pool.acquire().await?;
+        let node_rows = sqlx::query(sql)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        let node_ids: Vec<String> = node_rows.iter().map(|r| r.get::<uuid::Uuid, _>(0).to_string()).collect();
+
+        if node_ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let edge_sql = "SELECT source_id, target_id FROM knowledge_graph_edges WHERE is_active = true";
+        let edge_rows = sqlx::query(edge_sql)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        let mut adj: HashMap<String, Vec<String>> = HashMap::new();
+        for id in &node_ids {
+            adj.insert(id.clone(), vec![]);
+        }
+        for row in edge_rows {
+            let s: String = row.get::<uuid::Uuid, _>(0).to_string();
+            let t: String = row.get::<uuid::Uuid, _>(1).to_string();
+            adj.entry(s.clone()).or_default().push(t.clone());
+            adj.entry(t.clone()).or_default().push(s.clone());
+        }
+
+        let mut visited: HashSet<String> = HashSet::new();
+        let mut components: Vec<Vec<String>> = vec![];
+
+        for node_id in &node_ids {
+            if visited.contains(node_id) {
+                continue;
+            }
+            let mut component = vec![];
+            let mut queue = VecDeque::new();
+            queue.push_back(node_id.clone());
+            visited.insert(node_id.clone());
+
+            while let Some(current) = queue.pop_front() {
+                component.push(current.clone());
+                if let Some(neighbors) = adj.get(&current) {
+                    for neighbor in neighbors {
+                        if !visited.contains(neighbor) {
+                            visited.insert(neighbor.clone());
+                            queue.push_back(neighbor.clone());
+                        }
+                    }
+                }
+            }
+            components.push(component);
+        }
+
+        Ok(components)
+    }
+
+    // ========================================================================
+    // Graph Stats
+    // ========================================================================
+
+    pub async fn get_graph_stats(&self) -> DatabaseResult<serde_json::Value> {
+        let mut conn = self.pool.acquire().await?;
+
+        let node_count_row = sqlx::query("SELECT COUNT(*) as count FROM knowledge_graph_nodes WHERE is_active = true")
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        let node_count: i64 = node_count_row.get("count");
+
+        let edge_count_row = sqlx::query("SELECT COUNT(*) as count FROM knowledge_graph_edges WHERE is_active = true")
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        let edge_count: i64 = edge_count_row.get("count");
+
+        let nodes_by_type_rows = sqlx::query(
+            "SELECT node_type, COUNT(*) as count FROM knowledge_graph_nodes WHERE is_active = true GROUP BY node_type ORDER BY count DESC"
+        )
+        .fetch_all(&mut *conn)
+        .await
+        .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        let mut nodes_by_type = serde_json::Map::new();
+        for row in nodes_by_type_rows {
+            let nt: String = row.get("node_type");
+            let cnt: i64 = row.get("count");
+            nodes_by_type.insert(nt, json!(cnt));
+        }
+
+        let edges_by_type_rows = sqlx::query(
+            "SELECT edge_type, COUNT(*) as count FROM knowledge_graph_edges WHERE is_active = true GROUP BY edge_type ORDER BY count DESC"
+        )
+        .fetch_all(&mut *conn)
+        .await
+        .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        let mut edges_by_type = serde_json::Map::new();
+        for row in edges_by_type_rows {
+            let et: String = row.get("edge_type");
+            let cnt: i64 = row.get("count");
+            edges_by_type.insert(et, json!(cnt));
+        }
+
+        let avg_degree = if node_count > 0 {
+            (edge_count as f64 * 2.0) / node_count as f64
+        } else {
+            0.0
+        };
+
+        Ok(json!({
+            "node_count": node_count,
+            "edge_count": edge_count,
+            "nodes_by_type": nodes_by_type,
+            "edges_by_type": edges_by_type,
+            "avg_degree": avg_degree,
+        }))
+    }
+}

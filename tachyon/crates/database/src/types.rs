@@ -486,18 +486,30 @@ pub struct ApiSpec {
 pub struct GraphNode {
     /// Node ID
     pub id: String,
-    /// Node type (concept, entity, document, person, etc.)
+    /// Node type (concept, document, reference, media)
     pub node_type: String,
     /// Display name
     pub name: String,
+    /// URL-friendly slug
+    pub slug: Option<String>,
     /// Description
     pub description: Option<String>,
+    /// Full content (for document/concept nodes)
+    pub content: Option<String>,
+    /// Visibility (public, private, restricted)
+    pub visibility: String,
+    /// Node weight for ranking
+    pub weight: f64,
     /// Properties (JSON)
     pub properties: serde_json::Value,
     /// Project ID (optional, for scoping)
     pub project_id: Option<String>,
+    /// Associated document ID
+    pub document_id: Option<String>,
     /// Created by user ID
     pub created_by: Option<String>,
+    /// Soft delete flag
+    pub is_active: bool,
     /// Created timestamp
     pub created_at: DateTime<Utc>,
     /// Updated timestamp
@@ -513,16 +525,28 @@ pub struct GraphEdge {
     pub source_id: String,
     /// Target node ID
     pub target_id: String,
-    /// Edge type (relates_to, depends_on, contains, implements, etc.)
+    /// Edge type (references, depends_on, similar_to, part_of, related_to, tagged_with)
     pub edge_type: String,
+    /// Display label
+    pub label: Option<String>,
+    /// Description
+    pub description: Option<String>,
+    /// Edge weight for scoring
+    pub weight: f64,
+    /// Confidence score (0.0 to 1.0)
+    pub confidence: Option<f64>,
     /// Properties (JSON)
     pub properties: serde_json::Value,
     /// Project ID (optional, for scoping)
     pub project_id: Option<String>,
     /// Created by user ID
     pub created_by: Option<String>,
+    /// Soft delete flag
+    pub is_active: bool,
     /// Created timestamp
     pub created_at: DateTime<Utc>,
+    /// Updated timestamp
+    pub updated_at: DateTime<Utc>,
 }
 
 // ============================================================================

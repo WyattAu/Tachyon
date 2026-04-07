@@ -52,7 +52,7 @@ pub async fn create_router() -> Router {
     );
     let session_state = SessionState::new(pool.clone(), 3600);
     let repository_state = RepositoryState::new();
-    let node_state = NodeState::new();
+    let node_state = NodeState::new(pool.clone());
     let catalog_state = CatalogState::new(pool);
     let _connection_manager = ConnectionManager::new();
 
@@ -90,9 +90,9 @@ pub use document::{
 
 // Node exports
 pub use node::{
-    create_edge, create_node, create_node_router, delete_edge, delete_node, get_node,
-    get_node_edges, list_nodes, query_graph, update_node, EdgeResponse, NodeData, NodeQuery,
-    NodeResponse, NodeState,
+    create_edge, create_node, create_node_router, delete_edge, delete_node, get_graph_stats,
+    get_node, get_node_edges, list_nodes, query_graph, update_node, CreateEdgeRequest,
+    CreateNodeRequest, GraphQueryRequest, NodeQuery, NodeState, UpdateNodeRequest,
 };
 
 // Repository exports

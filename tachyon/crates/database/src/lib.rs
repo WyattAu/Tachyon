@@ -5,6 +5,7 @@ pub mod attachment;
 pub mod catalog;
 pub mod document_version;
 pub mod error;
+pub mod graph;
 pub mod migrations;
 pub mod permissions;
 pub mod rbac;
@@ -39,6 +40,7 @@ pub use search::{
 };
 pub use session::SessionRepository;
 pub use team::{RoleRecord, RoleRepository, Team, TeamMember, TeamRepository};
+pub use graph::GraphRepository;
 pub use user::{UserRecord, UserRepository};
 pub use types::*;
 
