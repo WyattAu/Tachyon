@@ -4,9 +4,9 @@
 use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use crate::types::*;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, Row};
+use sqlx::{query, Row};
 use tracing::{debug, info, instrument};
 
 /// Project catalog repository
@@ -208,11 +208,11 @@ impl CatalogRepository {
 
         sql.push_str(" ORDER BY updated_at DESC");
 
-        if let Some(lim) = limit {
+        if let Some(_lim) = limit {
             param_count += 1;
             sql.push_str(&format!(" LIMIT ${}", param_count));
         }
-        if let Some(off) = offset {
+        if let Some(_off) = offset {
             param_count += 1;
             sql.push_str(&format!(" OFFSET ${}", param_count));
         }

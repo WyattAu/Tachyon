@@ -39,6 +39,7 @@ impl std::error::Error for WebSocketUpgradeError {}
 
 #[derive(Debug, Clone)]
 struct ConnectedClient {
+    #[allow(dead_code)]
     client_id: String,
     user_id: Option<String>,
     user_name: Option<String>,
@@ -419,7 +420,7 @@ async fn handle_client_message(manager: &ConnectionManager, client_id: &str, msg
                             EditOperation::Delete { position, length } => {
                                 Operation::delete(position, length)
                             }
-                            EditOperation::Replace { position, length, text } => {
+                            EditOperation::Replace { position, length: _, text } => {
                                 Operation::insert(position, text)
                             }
                         };

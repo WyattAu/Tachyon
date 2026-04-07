@@ -5,31 +5,6 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 // Import all route types for documentation
-use crate::routes::catalog::{
-    AddMemberRequest, ApiResponse, PaginationParams, ProjectFilters, ProjectListParams,
-};
-use crate::routes::document::{
-    AttachmentResponse, CreateDocumentRequest, CreateTemplateBody, CreateVersionBody,
-    DocumentQuery, DocumentResponse, DocumentSearchResponse,
-    ErrorResponse as DocumentErrorResponse, TemplateQuery, TemplateResponse, UpdateDocumentRequest,
-    UpdateTemplateBody, VersionResponse,
-};
-use crate::routes::node::{
-    CreateEdgeRequest, CreateNodeRequest, EdgeListResponse, EdgeResponse, GraphQueryRequest,
-    GraphQueryResponse, NodeErrorResponse, NodeListResponse, NodeQuery, NodeResponse,
-    UpdateNodeRequest,
-};
-use crate::routes::repository::{
-    CloneRepositoryRequest, CommitRequest, InitRepositoryRequest, PushRequest,
-    RepositoryErrorResponse, RepositoryListResponse, RepositoryResponse, RepositoryStatus,
-};
-use crate::routes::session::{
-    CreateSessionRequest, SessionErrorResponse, SessionListResponse, SessionResponse,
-};
-use crate::routes::user::{
-    AuthenticateRequest, AuthenticateResponse, CreateUserRequest, UpdateUserRequest,
-    UserErrorResponse, UserListResponse, UserQuery, UserResponse,
-};
 
 #[derive(OpenApi)]
 #[openapi(

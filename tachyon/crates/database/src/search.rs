@@ -6,9 +6,10 @@ use crate::schema::DatabasePool;
 use crate::types::DocumentMetadata;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, Row};
+use sqlx::{query, Row};
 use tracing::{debug, info, instrument};
 
+#[allow(dead_code)]
 const DOCUMENT_SELECT_SQL: &str = r#"
     SELECT 
         id::text as id,
@@ -145,23 +146,23 @@ impl SearchRepository {
         let mut conditions: Vec<String> = vec![];
         let mut param_count = 1;
 
-        if let Some(ref content_type) = filters.content_type {
+        if let Some(ref _content_type) = filters.content_type {
             conditions.push(format!("content_type = ${}", param_count));
             param_count += 1;
         }
-        if let Some(ref status) = filters.status {
+        if let Some(ref _status) = filters.status {
             conditions.push(format!("status = ${}", param_count));
             param_count += 1;
         }
-        if let Some(ref visibility) = filters.visibility {
+        if let Some(ref _visibility) = filters.visibility {
             conditions.push(format!("visibility = ${}", param_count));
             param_count += 1;
         }
-        if let Some(ref project_id) = filters.project_id {
+        if let Some(ref _project_id) = filters.project_id {
             conditions.push(format!("project_id = ${}::uuid", param_count));
             param_count += 1;
         }
-        if let Some(ref author_id) = filters.author_id {
+        if let Some(ref _author_id) = filters.author_id {
             conditions.push(format!("author_id = ${}::uuid", param_count));
             param_count += 1;
         }
@@ -171,11 +172,11 @@ impl SearchRepository {
                 param_count += 1;
             }
         }
-        if let Some(date_from) = filters.date_from {
+        if let Some(_date_from) = filters.date_from {
             conditions.push(format!("created_at >= ${}", param_count));
             param_count += 1;
         }
-        if let Some(date_to) = filters.date_to {
+        if let Some(_date_to) = filters.date_to {
             conditions.push(format!("created_at <= ${}", param_count));
             param_count += 1;
         }
@@ -332,7 +333,7 @@ impl SearchRepository {
     async fn get_facets(
         &self,
         query_text: &str,
-        filters: &SearchFilters,
+        _filters: &SearchFilters,
     ) -> DatabaseResult<SearchFacets> {
         let mut conn = self.pool.acquire().await?;
 

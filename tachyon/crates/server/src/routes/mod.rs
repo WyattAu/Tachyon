@@ -54,7 +54,7 @@ pub async fn create_router() -> Router {
     let repository_state = RepositoryState::new();
     let node_state = NodeState::new();
     let catalog_state = CatalogState::new(pool);
-    let connection_manager = ConnectionManager::new();
+    let _connection_manager = ConnectionManager::new();
 
     let document_router = create_document_router().with_state(document_state);
     let user_router = create_user_router().with_state(user_state);

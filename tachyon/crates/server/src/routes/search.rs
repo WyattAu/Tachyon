@@ -4,16 +4,15 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    response::{IntoResponse, Json},
+    response::Json,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use tachyon_database::{
     DatabasePool, SearchRepository, SavedSearchRepository,
     CreateSavedSearchRequest, UpdateSavedSearchRequest, SavedSearch,
-    SearchFilters, GlobalSearchResponse,
+    SearchFilters,
 };
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 #[derive(Clone)]
 pub struct SearchState {

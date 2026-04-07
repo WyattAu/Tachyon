@@ -117,6 +117,7 @@ pub mod websocket;
 
 pub use api_docs::*;
 pub use audit::*;
+#[allow(ambiguous_glob_reexports)]
 pub use config::*;
 pub use middleware::*;
 pub use validation::*;

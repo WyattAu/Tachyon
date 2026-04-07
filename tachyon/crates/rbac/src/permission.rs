@@ -1,7 +1,7 @@
 // Permission Checking Module
 // Fine-grained permission system with inheritance, composition, and caching
 
-use crate::error::{RbacError, RbacResult};
+use crate::error::RbacResult;
 use crate::types::{Action, Effect, Resource, Subject};
 use dashmap::DashMap;
 use regex::Regex;
@@ -649,16 +649,12 @@ mod tests {
         let action_write = Action::new("write");
         let subject = Subject::new("user", "user123");
 
-        assert!(
-            checker
-                .check_permission(&subject, &resource, &action_read)
-                .unwrap()
-        );
-        assert!(
-            !checker
-                .check_permission(&subject, &resource, &action_write)
-                .unwrap()
-        );
+        assert!(checker
+            .check_permission(&subject, &resource, &action_read)
+            .unwrap());
+        assert!(!checker
+            .check_permission(&subject, &resource, &action_write)
+            .unwrap());
     }
 
     #[test]

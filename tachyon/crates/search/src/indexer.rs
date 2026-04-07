@@ -480,7 +480,7 @@ impl IndexManager {
                 SearchError::index("WRITER_ERROR", format!("Failed to get writer: {}", e))
             })?;
 
-        writer.delete_all_documents();
+        let _ = writer.delete_all_documents();
 
         writer
             .commit()

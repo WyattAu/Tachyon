@@ -72,6 +72,7 @@ pub fn provide_auth_context() {
 }
 
 /// Logout helper: clear token and navigate to login.
+#[allow(dead_code)]
 pub fn logout() {
     if let Some(window) = web_sys::window() {
         if let Ok(Some(storage)) = window.local_storage() {

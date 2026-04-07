@@ -5,7 +5,7 @@ use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use crate::types::*;
 use chrono::{DateTime, Utc};
-use sqlx::{query, query_as, Row};
+use sqlx::{query, query_as};
 use tachyon_core::id::UserId;
 use tracing::{debug, info, instrument};
 
@@ -687,7 +687,7 @@ impl AuditLogRepository {
     ) -> DatabaseResult<Vec<PermissionAuditLog>> {
         let limit = limit.unwrap_or(50);
 
-        let (select_sql, has_user_param) = if user_id.is_some() {
+        let (select_sql, _has_user_param) = if user_id.is_some() {
             (
                 "SELECT * FROM permission_audit_log WHERE user_id = $1 AND effect = 'deny' ORDER BY timestamp DESC LIMIT $2",
                 true,

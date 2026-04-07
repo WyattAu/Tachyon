@@ -7,7 +7,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, FromRow, Row};
 use tracing::{debug, info, instrument};
-use uuid::Uuid;
 
 const TEMPLATE_SELECT_SQL: &str = r#"
     SELECT 
@@ -149,7 +148,7 @@ impl TemplateRepository {
         let offset = offset.unwrap_or(0);
 
         let (select_sql, has_category) = match category {
-            Some(cat) => (format!("{} WHERE category = $1 ORDER BY name ASC LIMIT $2 OFFSET $3", TEMPLATE_SELECT_SQL), true),
+            Some(_cat) => (format!("{} WHERE category = $1 ORDER BY name ASC LIMIT $2 OFFSET $3", TEMPLATE_SELECT_SQL), true),
             None => (format!("{} ORDER BY name ASC LIMIT $1 OFFSET $2", TEMPLATE_SELECT_SQL), false),
         };
 

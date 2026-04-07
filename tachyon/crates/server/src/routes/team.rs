@@ -8,7 +8,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tachyon_database::{
-    DatabasePool, Team, TeamMember, TeamRepository, RoleRepository, RoleRecord,
+    DatabasePool, Team, TeamMember, TeamRepository, RoleRepository,
 };
 use tracing::{debug, info, warn};
 

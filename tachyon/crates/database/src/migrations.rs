@@ -2,8 +2,6 @@
 // SQLx-based database migrations for Tachyon
 
 use sqlx::migrate::Migrator;
-use sqlx::postgres::PgPoolOptions;
-use std::path::Path;
 
 use crate::error::DatabaseResult;
 use crate::schema::DatabasePool;

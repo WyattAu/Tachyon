@@ -2,9 +2,8 @@
 // Adds comprehensive security headers to all responses
 
 use axum::{
-    body::Body,
     extract::Request,
-    http::{header, HeaderMap, HeaderValue},
+    http::{header, HeaderValue},
     middleware::Next,
     response::Response,
 };
@@ -370,6 +369,7 @@ impl CrossOriginResourcePolicy {
 
 #[derive(Clone)]
 pub struct SecurityHeadersState {
+    #[allow(dead_code)]
     config: Arc<SecurityHeadersConfig>,
 }
 

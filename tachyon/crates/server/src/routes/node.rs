@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 /// Node data structure
@@ -436,7 +436,7 @@ pub async fn list_nodes(
     
     // Paginate
     let start = (page - 1) * page_size;
-    let end = start + page_size;
+    let _end = start + page_size;
     let paginated: Vec<NodeResponse> = filtered
         .into_iter()
         .skip(start)

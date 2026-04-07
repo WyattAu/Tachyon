@@ -2,11 +2,10 @@
 // Supports per-IP and per-user rate limiting with Redis backend for distributed systems
 
 use axum::{
-    body::Body,
     extract::{Request, State},
     http::{HeaderMap, StatusCode, Uri},
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::Response,
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -153,8 +152,10 @@ pub struct RateLimitInfo {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct InMemoryStore {
     buckets: RwLock<HashMap<String, TokenBucket>>,
+    #[allow(dead_code)]
     last_cleanup: RwLock<Instant>,
 }
 
@@ -195,6 +196,7 @@ impl InMemoryStore {
         }
     }
     
+    #[allow(dead_code)]
     async fn cleanup_expired(&self, max_age_secs: u64) {
         let mut last_cleanup = self.last_cleanup.write().await;
         let now = Instant::now();
@@ -218,6 +220,7 @@ impl InMemoryStore {
 
 #[derive(Clone)]
 pub enum RateLimitStore {
+    #[allow(private_interfaces)]
     InMemory(Arc<InMemoryStore>),
     #[allow(dead_code)]
     Redis {
@@ -245,6 +248,7 @@ impl RateLimitStore {
         }
     }
     
+    #[allow(dead_code)]
     async fn cleanup(&self, max_age_secs: u64) {
         match self {
             RateLimitStore::InMemory(store) => store.cleanup_expired(max_age_secs).await,

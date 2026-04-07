@@ -49,7 +49,7 @@ pub fn init() -> RbacResult<Enforcer> {
 ///
 /// # Errors
 /// Returns error if initialization fails or policy config is invalid
-pub fn init_with_config(policy_config: &str) -> RbacResult<Enforcer> {
+pub fn init_with_config(_policy_config: &str) -> RbacResult<Enforcer> {
     Ok(Enforcer::with_config(EnforcerConfig::default()))
 }
 

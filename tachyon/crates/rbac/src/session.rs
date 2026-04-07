@@ -6,15 +6,14 @@ use crate::{SessionId, UserId};
 use chrono::{DateTime, Duration, Utc};
 use dashmap::DashMap;
 use sqlx::{Pool, Row, Sqlite};
-use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 
 // ============================================================================
 // Session Store
 // ============================================================================
 
 /// Session record for database storage
+#[allow(dead_code, private_interfaces)]
 #[derive(Debug, Clone)]
 struct SessionRecord {
     /// Session ID
@@ -256,6 +255,7 @@ impl SessionManager {
     ///
     /// # Returns
     /// Result containing the session record or error
+    #[allow(private_interfaces)]
     pub async fn get_session(&self, session_id: &SessionId) -> RbacResult<SessionRecord> {
         // Check cache first
         if let Some(cached) = self.cache.get(session_id) {
@@ -287,6 +287,7 @@ impl SessionManager {
     ///
     /// # Returns
     /// Result containing the session records or error
+    #[allow(private_interfaces)]
     pub async fn get_user_sessions(&self, user_id: &UserId) -> RbacResult<Vec<SessionRecord>> {
         let records = sqlx::query_as::<_, SessionRecord>(
             "SELECT * FROM sessions WHERE user_id = ? ORDER BY created_at DESC",
@@ -486,6 +487,7 @@ impl SessionManager {
 
 /// Trait for session storage backends
 #[async_trait::async_trait]
+#[allow(private_interfaces)]
 pub trait SessionStore: Send + Sync {
     /// Create a session
     async fn create_session(&self, session: SessionRecord) -> RbacResult<()>;

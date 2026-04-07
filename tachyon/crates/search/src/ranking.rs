@@ -360,6 +360,7 @@ impl Default for FieldWeights {
 /// Aggregates multiple search results from different queries
 pub struct ResultAggregator {
     /// Field weights for scoring
+    #[allow(dead_code)]
     weights: FieldWeights,
 }
 

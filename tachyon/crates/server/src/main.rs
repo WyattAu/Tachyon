@@ -4,7 +4,7 @@
 use anyhow::{Context, Result};
 use axum::{
     Router,
-    routing::{delete, get, post, put},
+    routing::get,
     http::{HeaderValue, Method},
 };
 use std::backtrace::Backtrace;
@@ -14,7 +14,7 @@ use tachyon_database::init_with_migrations;
 use tachyon_server::api_docs::create_swagger_ui;
 use tachyon_server::config::ServerConfig;
 use tachyon_server::middleware::{
-    RateLimitConfig, RateLimitState, AuthState, cache_control_middleware, security_headers_middleware,
+    RateLimitConfig, RateLimitState, AuthState, cache_control_middleware,
 };
 use tachyon_server::routes::catalog::{CatalogState, create_catalog_router};
 use tachyon_server::routes::document::{DocumentState, create_document_router};
@@ -30,7 +30,7 @@ use tachyon_server::websocket::{ConnectionManager, handle_websocket_upgrade};
 use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer, 
-    cors::{CorsLayer, Any, AllowOrigin},
+    cors::{CorsLayer, AllowOrigin},
     limit::RequestBodyLimitLayer, 
     trace::TraceLayer,
 };
@@ -375,7 +375,7 @@ async fn run_with_graceful_shutdown(config: ServerConfig) -> Result<()> {
 
     server_task.abort();
 
-    tokio::time::timeout(std::time::Duration::from_secs(30), server_task)
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(30), server_task)
         .await
         .context("Server shutdown timeout")??;
 

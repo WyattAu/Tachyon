@@ -2,12 +2,16 @@
 // Centralized enforcer for authorization decisions with caching and audit logging
 
 use crate::cache::AuthorizationCache;
-use crate::error::{RbacError, RbacResult};
+use crate::error::RbacResult;
 use crate::permission::PermissionChecker;
 use crate::policy::PolicyEngine;
 use crate::session::SessionManager;
-use crate::types::{AccessDecision, AccessRequest, Action, AuthContext, Effect, Resource, Subject};
-use crate::{SessionId, UserId};
+use crate::types::{AccessDecision, AccessRequest, Effect, Resource, Subject};
+#[cfg(test)]
+use crate::types::{Action, AuthContext};
+use crate::SessionId;
+#[cfg(test)]
+use crate::UserId;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use tracing::{debug, error, info, instrument, warn};
@@ -61,6 +65,7 @@ pub struct Enforcer {
 }
 
 /// Audit log entry for authorization events
+#[allow(dead_code, private_interfaces)]
 #[derive(Debug, Clone)]
 struct AuditEntry {
     /// Timestamp
@@ -160,7 +165,7 @@ impl Enforcer {
         }
 
         // Validate session if session manager is available
-        if let Some(ref session_manager) = self.session_manager {
+        if let Some(ref _session_manager) = self.session_manager {
             // Note: This is a synchronous wrapper around async session validation
             // In production, you'd use a different approach or make the enforcer async
         }
@@ -348,6 +353,7 @@ impl Enforcer {
     ///
     /// # Returns
     /// Vector of audit entries
+    #[allow(private_interfaces)]
     pub fn get_audit_log(&self, limit: Option<usize>) -> Vec<AuditEntry> {
         let limit = limit.unwrap_or(self.audit_log.len());
         self.audit_log.iter().rev().take(limit).cloned().collect()

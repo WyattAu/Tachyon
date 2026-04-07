@@ -299,6 +299,7 @@ pub async fn websocket_search_handler(
 ///
 /// # Errors
 /// Returns error if authorization check fails
+#[allow(dead_code)]
 fn check_search_permission(
     enforcer: &Arc<Enforcer>,
     resource: Resource,

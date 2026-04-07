@@ -4,7 +4,7 @@
 use crate::error::{DatabaseError, DatabaseResult};
 use crate::types::DatabaseConfig;
 use sqlx::postgres::{PgPool, PgPoolOptions};
-use sqlx::{Postgres, Row};
+use sqlx::Postgres;
 use tracing::{debug, info, instrument};
 
 /// Database pool for PostgreSQL connections

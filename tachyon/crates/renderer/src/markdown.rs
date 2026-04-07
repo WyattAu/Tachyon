@@ -12,6 +12,7 @@ use tracing::{debug, instrument};
 /// Markdown parser for parsing and rendering markdown documents
 pub struct MarkdownParser {
     /// Parsing options
+    #[allow(dead_code)]
     options: MarkdownOptions,
     /// Compiled pulldown-cmark options
     cmark_options: Options,
@@ -231,17 +232,17 @@ impl MarkdownParser {
         let mut char_count = 0;
         let mut heading_count = 0;
         let mut code_block_count = 0;
-        let mut in_code_block = false;
+        let mut _in_code_block = false;
         let mut first_heading: Option<String> = None;
 
         for event in Parser::new_ext(markdown, self.cmark_options) {
             match &event {
                 Event::Start(Tag::CodeBlock(_)) => {
                     code_block_count += 1;
-                    in_code_block = true;
+                    _in_code_block = true;
                 }
                 Event::End(Tag::CodeBlock(_)) => {
-                    in_code_block = false;
+                    _in_code_block = false;
                 }
                 Event::Start(Tag::Heading(level, _, _)) => {
                     heading_count += 1;

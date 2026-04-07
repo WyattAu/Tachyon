@@ -17,6 +17,7 @@ use tachyon_database::Permission;
 use tracing::{debug, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 struct Claims {
     sub: String,
     iss: String,
@@ -148,6 +149,7 @@ impl AuthState {
         .map_err(|e| AuthError::InternalError(format!("JWT encoding error: {}", e)))
     }
 
+    #[allow(private_interfaces)]
     pub fn validate_jwt(&self, token: &str) -> Result<Claims, AuthError> {
         let issuer = self.config.jwt.issuer.as_str();
         let audience = self.config.jwt.audience.as_str();
@@ -227,7 +229,7 @@ impl AuthState {
     }
 }
 
-pub async fn auth_middleware<B>(
+pub async fn auth_middleware(
     State(state): State<AuthState>,
     request: Request,
     next: Next,

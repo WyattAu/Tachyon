@@ -33,6 +33,7 @@ pub struct TeamMember {
     #[allow(dead_code)]
     pub role_id: i64,
     pub role_name: String,
+    #[allow(dead_code)]
     pub joined_at: String,
     #[allow(dead_code)]
     pub invited_by: Option<String>,

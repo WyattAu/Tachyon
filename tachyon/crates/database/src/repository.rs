@@ -4,7 +4,7 @@
 use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use crate::types::*;
-use sqlx::{Row, query, query_as};
+use sqlx::{Row, query};
 use tachyon_core::id::{DocumentId, RepositoryId};
 use tracing::{debug, info, instrument};
 

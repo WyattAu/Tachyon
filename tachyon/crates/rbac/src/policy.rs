@@ -348,6 +348,7 @@ pub struct PolicyEngine {
     /// Policy cache
     cache: DashMap<String, Vec<String>>,
     /// Maximum cache size
+    #[allow(dead_code)]
     max_cache_size: usize,
     /// Current cache size
     current_cache_size: Arc<RwLock<usize>>,

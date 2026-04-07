@@ -1,10 +1,8 @@
 // Authorization Cache Module
 // High-performance authorization caching with TTL support
 
-use crate::error::{RbacError, RbacResult};
-use crate::types::{AccessDecision, Effect, Resource, Subject};
+use crate::types::{AccessDecision, Resource, Subject};
 use dashmap::DashMap;
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -72,6 +70,7 @@ pub struct AuthorizationCache {
 }
 
 /// Cache statistics
+#[allow(dead_code, private_interfaces)]
 #[derive(Debug, Clone, Default)]
 struct CacheStats {
     /// Total cache hits
@@ -263,6 +262,7 @@ impl AuthorizationCache {
     ///
     /// # Returns
     /// Cache statistics
+    #[allow(private_interfaces)]
     pub fn get_stats(&self) -> CacheStats {
         self.stats.blocking_read().clone()
     }
@@ -290,7 +290,7 @@ impl AuthorizationCache {
 
                 // Keep if: not expired AND (we've evicted enough OR entry is new)
                 let should_evict = is_expired || evicted < target_evictions;
-                
+
                 if should_evict {
                     evicted += 1;
                     false // remove this entry
@@ -356,7 +356,7 @@ impl Default for AuthorizationCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::Action;
+    use crate::types::{Action, Effect};
 
     #[test]
     fn test_cache_entry_creation() {
@@ -492,7 +492,10 @@ mod tests {
         // Key format: "subject:resource_type:resource_id:action"
         for subject in &[&subject1, &subject2] {
             let decision = AccessDecision::new(Effect::Allow, "Test decision");
-            let key = format!("{}:{}:{}:{}", subject, resource.resource_type, resource.resource_id, action.action_name);
+            let key = format!(
+                "{}:{}:{}:{}",
+                subject, resource.resource_type, resource.resource_id, action.action_name
+            );
             cache.insert(key, decision);
         }
 
