@@ -7770,6 +7770,7 @@ dependencies = [
  "tachyon-database",
  "tachyon-rbac",
  "tachyon-renderer",
+ "tachyon-search",
  "tokio",
  "tokio-test",
  "tokio-tungstenite 0.26.2",

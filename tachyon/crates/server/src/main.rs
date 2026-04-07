@@ -4,12 +4,14 @@
 use anyhow::{Context, Result};
 use axum::{
     Router,
+    extract::State,
     routing::get,
     http::{HeaderValue, Method},
 };
 use std::backtrace::Backtrace;
 use std::net::SocketAddr;
 use std::sync::OnceLock;
+use std::time::Instant;
 use tachyon_database::init_with_migrations;
 use tachyon_server::api_docs::create_swagger_ui;
 use tachyon_server::config::ServerConfig;
@@ -27,6 +29,7 @@ use tachyon_server::routes::seo::{SeoState, create_seo_router};
 use tachyon_server::routes::team::{TeamState, create_team_router};
 use tachyon_server::routes::user::{UserState, create_user_router};
 use tachyon_server::websocket::{ConnectionManager, handle_websocket_upgrade};
+use tachyon_search::{IndexConfig, IndexManager};
 use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer, 
@@ -39,6 +42,15 @@ use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberI
 
 /// Global panic information storage for debugging
 static PANIC_INFO: OnceLock<String> = OnceLock::new();
+
+/// Server start time for uptime tracking
+static START_TIME: OnceLock<Instant> = OnceLock::new();
+
+/// Application state for health and metrics endpoints
+#[derive(Clone)]
+struct AppState {
+    pool: tachyon_database::DatabasePool,
+}
 
 /// Setup custom panic handler for better error reporting
 fn setup_panic_handler() {
@@ -169,6 +181,7 @@ fn build_router(
     connection_manager: ConnectionManager,
     pool: tachyon_database::DatabasePool,
     config: &ServerConfig,
+    tantivy_index: Option<std::sync::Arc<tokio::sync::Mutex<IndexManager>>>,
 ) -> Router {
     let cors = build_cors_layer(config);
 
@@ -186,7 +199,12 @@ fn build_router(
 
     let team_router = create_team_router().with_state(TeamState::new(pool.clone()));
     let role_router = create_role_router().with_state(RoleState::new(pool.clone()));
-    let search_router = create_search_router().with_state(SearchState::new(pool.clone()));
+    let search_router = create_search_router().with_state(
+        match &tantivy_index {
+            Some(mgr) => SearchState::new(pool.clone()).with_index_manager(mgr.clone()),
+            None => SearchState::new(pool.clone()),
+        }
+    );
 
     let seo_router = create_seo_router().with_state(SeoState {
         pool: pool.clone(),
@@ -220,10 +238,14 @@ fn build_router(
             .collect(),
     });
 
-    let mut router = Router::new()
-        .route("/", get(root_handler))
+    let health_router = Router::new()
         .route("/health", get(health_handler))
         .route("/metrics", get(metrics_handler))
+        .with_state(AppState { pool: pool.clone() });
+
+    let mut router = Router::new()
+        .route("/", get(root_handler))
+        .merge(health_router)
         .merge(seo_router)
         .merge(ws_router)
         .nest("/api/v1", api_v1)
@@ -315,32 +337,93 @@ async fn root_handler() -> &'static str {
     "Tachyon Knowledge Management System - Server"
 }
 
-/// Health check handler - returns detailed health status
-async fn health_handler() -> axum::Json<serde_json::Value> {
+async fn check_db_health(pool: &tachyon_database::DatabasePool) -> &'static str {
+    match pool.execute("SELECT 1").await {
+        Ok(_) => "healthy",
+        Err(_) => "unhealthy",
+    }
+}
+
+fn format_uptime() -> String {
+    let elapsed = START_TIME.get().map(|t| t.elapsed()).unwrap_or_default();
+    let secs = elapsed.as_secs();
+    let days = secs / 86400;
+    let hours = (secs % 86400) / 3600;
+    let minutes = (secs % 3600) / 60;
+    let seconds = secs % 60;
+    if days > 0 {
+        format!("{}d {}h {}m {}s", days, hours, minutes, seconds)
+    } else if hours > 0 {
+        format!("{}h {}m {}s", hours, minutes, seconds)
+    } else if minutes > 0 {
+        format!("{}m {}s", minutes, seconds)
+    } else {
+        format!("{}s", seconds)
+    }
+}
+
+async fn health_handler(State(state): State<AppState>) -> axum::Json<serde_json::Value> {
     let has_panic = get_last_panic_info().is_some();
-    
+    let db_status = check_db_health(&state.pool).await;
+
+    let overall_status = match (has_panic, db_status) {
+        (false, "healthy") => "healthy",
+        (false, "degraded") | (_, "unhealthy") => "unhealthy",
+        _ => "degraded",
+    };
+
+    let mut components = serde_json::Map::new();
+    components.insert("database".to_string(), serde_json::json!(db_status));
+    components.insert("server".to_string(), serde_json::json!(if has_panic { "degraded" } else { "healthy" }));
+
     axum::Json(serde_json::json!({
-        "status": if has_panic { "degraded" } else { "healthy" },
+        "status": overall_status,
         "timestamp": chrono::Utc::now().to_rfc3339(),
         "version": env!("CARGO_PKG_VERSION"),
+        "uptime": format_uptime(),
+        "components": components,
         "panic_detected": has_panic,
     }))
 }
 
-/// Metrics handler - returns basic metrics and panic info if available
-async fn metrics_handler() -> axum::Json<serde_json::Value> {
+async fn metrics_handler(State(state): State<AppState>) -> axum::Json<serde_json::Value> {
     let panic_info = get_last_panic_info();
-    
+    let db_stats = state.pool.statistics().await.unwrap_or(serde_json::json!({}));
+
     axum::Json(serde_json::json!({
         "metrics": {
-            "requests_total": 0,  // TODO: Implement request counting
-            "active_connections": 0,  // TODO: Implement connection tracking
+            "requests_total": 0,
+            "active_connections": db_stats.get("pool_size").and_then(|v| v.as_u64()).unwrap_or(0),
+            "idle_connections": db_stats.get("idle_connections").and_then(|v| v.as_u64()).unwrap_or(0),
         },
+        "uptime": format_uptime(),
         "panic_info": panic_info,
     }))
 }
 
 /// Run the HTTP server
+async fn init_tantivy_index() -> Option<std::sync::Arc<tokio::sync::Mutex<IndexManager>>> {
+    let index_path = std::path::PathBuf::from(".tachyon/search_index");
+    if let Err(e) = std::fs::create_dir_all(&index_path) {
+        warn!("Failed to create search index directory: {}", e);
+        return None;
+    }
+
+    let index_config = IndexConfig::new("tachyon")
+        .with_index_path(".tachyon/search_index");
+
+    match IndexManager::with_config(index_path, index_config).await {
+        Ok(mgr) => {
+            info!("Tantivy search index initialized at .tachyon/search_index");
+            Some(std::sync::Arc::new(tokio::sync::Mutex::new(mgr)))
+        }
+        Err(e) => {
+            warn!("Failed to initialize Tantivy search index: {}", e);
+            None
+        }
+    }
+}
+
 async fn run_server(config: ServerConfig) -> Result<()> {
     let addr: SocketAddr = config
         .bind_address()
@@ -348,6 +431,14 @@ async fn run_server(config: ServerConfig) -> Result<()> {
         .context("Invalid server address")?;
 
     let (document_state, user_state, session_state, repository_state, node_state, catalog_state, connection_manager, pool) = init_state(&config).await?;
+
+    let tantivy_index = init_tantivy_index().await;
+
+    let document_state = match &tantivy_index {
+        Some(mgr) => document_state.with_index_manager(mgr.clone()),
+        None => document_state,
+    };
+
     let app = build_router(
         document_state, 
         user_state, 
@@ -358,6 +449,7 @@ async fn run_server(config: ServerConfig) -> Result<()> {
         connection_manager,
         pool,
         &config,
+        tantivy_index,
     );
 
     let listener = tokio::net::TcpListener::bind(&addr)
@@ -431,6 +523,7 @@ fn init_tracing() {
 async fn main() -> Result<()> {
     // Setup panic handler FIRST before any other initialization
     setup_panic_handler();
+    START_TIME.get_or_init(Instant::now);
     
     init_tracing();
 

@@ -8,51 +8,75 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tachyon_core::{compute_content_hash, Document, DocumentContent, DocumentId, DocumentStatus, DocumentVisibility};
+use tachyon_core::id::{RepositoryId, UserId};
 use tachyon_database::{
     AttachmentRepository, CreateAttachmentRequest, CreateTemplateRequest,
     CreateVersionRequest, DocumentVersionRepository, DatabasePool, DocumentRepository,
     TemplateRepository, UpdateTemplateRequest,
 };
 use tachyon_renderer::{RenderConfig, Renderer};
+use tachyon_search::{IndexManager, SearchDocument};
 use tracing::{debug, info, warn};
 use crate::config::GuestConfig;
 
 /// Application state for document routes
 #[derive(Clone)]
 pub struct DocumentState {
-    /// Database pool
     pub pool: DatabasePool,
-    /// Document repository
     pub repository: DocumentRepository,
-    /// Guest configuration for public access
     pub guest_config: GuestConfig,
+    pub index_manager: Option<Arc<Mutex<IndexManager>>>,
 }
 
 impl DocumentState {
-    /// Create a new document state
     pub fn new(pool: DatabasePool) -> Self {
         let repository = DocumentRepository::new(pool.clone());
         Self {
             pool,
             repository,
             guest_config: GuestConfig::default(),
+            index_manager: None,
         }
     }
 
-    /// Create a new document state with guest config
     pub fn with_guest_config(pool: DatabasePool, guest_config: GuestConfig) -> Self {
         let repository = DocumentRepository::new(pool.clone());
         Self {
             pool,
             repository,
             guest_config,
+            index_manager: None,
         }
     }
 
-    /// Check if public access is allowed
+    pub fn with_index_manager(mut self, index_manager: Arc<Mutex<IndexManager>>) -> Self {
+        self.index_manager = Some(index_manager);
+        self
+    }
+
     pub fn is_public_access_enabled(&self) -> bool {
         self.guest_config.public_notes_enabled
+    }
+
+    async fn index_in_tantivy(&self, search_doc: SearchDocument) {
+        if let Some(ref mgr) = self.index_manager {
+            let guard = mgr.lock().await;
+            if let Err(e) = guard.index_document(&search_doc).await {
+                warn!("Failed to index document in Tantivy: {}", e);
+            }
+        }
+    }
+
+    async fn delete_from_tantivy(&self, doc_id: &str) {
+        if let Some(ref mgr) = self.index_manager {
+            let guard = mgr.lock().await;
+            if let Err(e) = guard.delete_document(doc_id).await {
+                warn!("Failed to delete document from Tantivy: {}", e);
+            }
+        }
     }
 }
 
@@ -349,6 +373,18 @@ pub async fn create_document(
         warn!("Failed to update search index for document {}: {}", doc.id, e);
     }
 
+    state.index_in_tantivy(SearchDocument {
+        id: doc.id.clone(),
+        title: doc.metadata.title.clone(),
+        content: doc.content.as_text().unwrap_or("").to_string(),
+        author_id: author_id.clone(),
+        repository_id: doc.repository_id.clone(),
+        tags: doc.metadata.tags.clone(),
+        created_at: doc.metadata.created_at,
+        updated_at: doc.metadata.updated_at,
+        custom_fields: HashMap::new(),
+    }).await;
+
     // Render markdown to HTML (create renderer on demand due to katex thread-safety issues)
     // Note: Renderer is not Send, so we create it after all await points
     let html_content = {
@@ -509,6 +545,18 @@ pub async fn update_document(
         warn!("Failed to update search index for document {}: {}", doc_id, e);
     }
 
+    state.index_in_tantivy(SearchDocument {
+        id: doc_id.clone(),
+        title: metadata.title.clone(),
+        content: metadata.content.clone().unwrap_or_default(),
+        author_id: UserId::parse_str(&metadata.author_id).unwrap_or_default(),
+        repository_id: metadata.project_id.as_ref().and_then(|id| RepositoryId::parse_str(id).ok()),
+        tags: metadata.parse_tags().unwrap_or_default(),
+        created_at: metadata.created_at,
+        updated_at: metadata.updated_at,
+        custom_fields: HashMap::new(),
+    }).await;
+
     let tags = metadata.parse_tags().unwrap_or_default();
     let response = DocumentResponse {
         id: metadata.id,
@@ -555,6 +603,7 @@ pub async fn delete_document(
     // Try to delete from database
     match state.repository.delete(&doc_id).await {
         Ok(()) => {
+            state.delete_from_tantivy(&document_id).await;
             info!("Document deleted: {}", document_id);
             Ok(StatusCode::NO_CONTENT)
         }

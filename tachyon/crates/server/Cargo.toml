@@ -14,6 +14,7 @@ tachyon-core = { path = "../core" }
 tachyon-rbac = { path = "../rbac" }
 tachyon-database = { path = "../database" }
 tachyon-renderer = { path = "../renderer" }
+tachyon-search = { path = "../search" }
 
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "json"] }

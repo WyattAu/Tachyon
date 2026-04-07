@@ -7,11 +7,16 @@ use axum::{
     response::Json,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tachyon_core::id::{DocumentId, RepositoryId, UserId};
 use tachyon_database::{
-    DatabasePool, SearchRepository, SavedSearchRepository,
+    DatabasePool, DocumentRepository, SearchRepository, SavedSearchRepository,
     CreateSavedSearchRequest, UpdateSavedSearchRequest, SavedSearch,
     SearchFilters,
 };
+use tachyon_search::{IndexManager, QueryEngine, ResultAggregator, SearchDocument, SearchRequest, SearchResponseItem};
 use tracing::{info, warn};
 
 #[derive(Clone)]
@@ -19,6 +24,7 @@ pub struct SearchState {
     pub pool: DatabasePool,
     pub search_repo: SearchRepository,
     pub saved_search_repo: SavedSearchRepository,
+    pub index_manager: Option<Arc<Mutex<IndexManager>>>,
 }
 
 impl SearchState {
@@ -27,6 +33,30 @@ impl SearchState {
             search_repo: SearchRepository::new(pool.clone()),
             saved_search_repo: SavedSearchRepository::new(pool.clone()),
             pool,
+            index_manager: None,
+        }
+    }
+
+    pub fn with_index_manager(mut self, index_manager: Arc<Mutex<IndexManager>>) -> Self {
+        self.index_manager = Some(index_manager);
+        self
+    }
+
+    pub async fn index_document(&self, doc: SearchDocument) {
+        if let Some(ref mgr) = self.index_manager {
+            let guard = mgr.lock().await;
+            if let Err(e) = guard.index_document(&doc).await {
+                warn!("Failed to index document in Tantivy: {}", e);
+            }
+        }
+    }
+
+    pub async fn delete_from_index(&self, doc_id: &str) {
+        if let Some(ref mgr) = self.index_manager {
+            let guard = mgr.lock().await;
+            if let Err(e) = guard.delete_document(doc_id).await {
+                warn!("Failed to delete document from Tantivy: {}", e);
+            }
         }
     }
 }
@@ -160,6 +190,29 @@ pub struct ErrorResponse {
     pub message: String,
 }
 
+async fn search_tantivy(
+    state: &SearchState,
+    query: &str,
+    page: usize,
+    page_size: usize,
+) -> Option<Vec<SearchResponseItem>> {
+    let mgr_arc = state.index_manager.as_ref()?;
+    let guard = mgr_arc.lock().await;
+    let engine = QueryEngine::new(guard.clone());
+    drop(guard);
+
+    let request = SearchRequest::new(query)
+        .with_pagination(page, page_size);
+
+    match engine.search(&request).await {
+        Ok(response) => Some(response.results),
+        Err(e) => {
+            warn!("Tantivy search failed: {}", e);
+            None
+        }
+    }
+}
+
 pub async fn search(
     Query(query): Query<SearchQuery>,
     State(state): State<SearchState>,
@@ -179,45 +232,97 @@ pub async fn search(
 
     let page = query.page.max(1);
     let page_size = query.page_size.min(100).max(1);
+    let fetch_limit = (page_size * 3).min(300) as i64;
 
-    match state.search_repo.search(&query.q, &filters, page, page_size).await {
-        Ok(response) => {
-            let results: Vec<SearchResultItem> = response
-                .results
-                .into_iter()
-                .map(|r| {
-                    let tags = r.document.parse_tags().unwrap_or_default();
+    match state.search_repo.search(&query.q, &filters, 1, fetch_limit).await {
+        Ok(pg_response) => {
+            let total = pg_response.total;
+            let facets_source = pg_response.facets;
+            let pg_results = pg_response.results;
+
+            let pg_metadata_map: HashMap<String, &_> = pg_results.iter()
+                .map(|r| (r.document.id.clone(), r))
+                .collect();
+
+            let pg_items: Vec<SearchResponseItem> = pg_results.iter().map(|r| {
+                SearchResponseItem {
+                    document_id: DocumentId::parse_str(&r.document.id).unwrap_or_default(),
+                    title: r.document.title.clone(),
+                    snippet: r.headline.clone().unwrap_or_default(),
+                    score: r.rank as f32,
+                    highlights: Vec::new(),
+                    author_id: UserId::parse_str(&r.document.author_id).unwrap_or_default(),
+                    repository_id: r.document.project_id.as_ref()
+                        .and_then(|id| RepositoryId::parse_str(id).ok()),
+                    tags: r.document.parse_tags().unwrap_or_default(),
+                    created_at: r.document.created_at,
+                }
+            }).collect();
+
+            let tantivy_items = search_tantivy(&state, &query.q, 1, fetch_limit as usize).await
+                .unwrap_or_default();
+
+            let aggregator = ResultAggregator::default();
+            let fused = aggregator.fuse_results(vec![pg_items, tantivy_items]);
+
+            let results: Vec<SearchResultItem> = fused.into_iter().map(|item| {
+                let id_str = item.document_id.to_string();
+                if let Some(pg_r) = pg_metadata_map.get(&id_str) {
+                    let tags = pg_r.document.parse_tags().unwrap_or_default();
                     SearchResultItem {
-                        id: r.document.id,
-                        title: r.document.title,
-                        slug: r.document.slug,
-                        description: r.document.description,
-                        status: r.document.status,
-                        visibility: r.document.visibility,
+                        id: pg_r.document.id.clone(),
+                        title: pg_r.document.title.clone(),
+                        slug: pg_r.document.slug.clone(),
+                        description: pg_r.document.description.clone(),
+                        status: pg_r.document.status.clone(),
+                        visibility: pg_r.document.visibility.clone(),
                         tags,
-                        author_id: r.document.author_id,
-                        project_id: r.document.project_id,
-                        word_count: r.document.word_count,
-                        rank: r.rank,
-                        headline: r.headline,
-                        created_at: r.document.created_at.to_rfc3339(),
-                        updated_at: r.document.updated_at.to_rfc3339(),
+                        author_id: pg_r.document.author_id.clone(),
+                        project_id: pg_r.document.project_id.clone(),
+                        word_count: pg_r.document.word_count,
+                        rank: item.score as f64,
+                        headline: pg_r.headline.clone(),
+                        created_at: pg_r.document.created_at.to_rfc3339(),
+                        updated_at: pg_r.document.updated_at.to_rfc3339(),
                     }
-                })
+                } else {
+                    SearchResultItem {
+                        id: id_str,
+                        title: item.title,
+                        slug: None,
+                        description: if item.snippet.is_empty() { None } else { Some(item.snippet) },
+                        status: "draft".to_string(),
+                        visibility: "private".to_string(),
+                        tags: item.tags,
+                        author_id: item.author_id.to_string(),
+                        project_id: item.repository_id.map(|id| id.to_string()),
+                        word_count: 0,
+                        rank: item.score as f64,
+                        headline: if item.highlights.is_empty() { None } else { Some(item.highlights.join(" ")) },
+                        created_at: item.created_at.to_rfc3339(),
+                        updated_at: item.created_at.to_rfc3339(),
+                    }
+                }
+            }).collect();
+
+            let start = ((page - 1) * page_size) as usize;
+            let paginated: Vec<SearchResultItem> = results.into_iter()
+                .skip(start)
+                .take(page_size as usize)
                 .collect();
 
             let facets = SearchFacetsResponse {
-                content_types: response.facets.content_types.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
-                statuses: response.facets.statuses.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
-                visibilities: response.facets.visibilities.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
-                tags: response.facets.tags.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
+                content_types: facets_source.content_types.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
+                statuses: facets_source.statuses.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
+                visibilities: facets_source.visibilities.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
+                tags: facets_source.tags.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
             };
 
             Ok(Json(SearchResultsResponse {
-                results,
-                total: response.total,
-                page: response.page,
-                page_size: response.page_size,
+                results: paginated,
+                total,
+                page,
+                page_size,
                 facets,
             }))
         }
@@ -447,12 +552,81 @@ pub async fn delete_saved_search(
     }
 }
 
+pub async fn reindex_tantivy(
+    State(state): State<SearchState>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    info!("Starting Tantivy reindex");
+
+    let mgr_arc = state.index_manager.as_ref().ok_or_else(|| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ErrorResponse {
+                code: "NO_INDEX".to_string(),
+                message: "Tantivy search index is not available".to_string(),
+            }),
+        )
+    })?;
+
+    let doc_repo = DocumentRepository::new(state.pool.clone());
+    let documents = doc_repo.list_all(None, None).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "DB_ERROR".to_string(),
+                message: format!("Failed to fetch documents: {}", e),
+            }),
+        )
+    })?;
+
+    let search_docs: Vec<SearchDocument> = documents.iter().filter_map(|m| {
+        let doc_id = DocumentId::parse_str(&m.id).ok()?;
+        let author_id = UserId::parse_str(&m.author_id).ok()?;
+        Some(SearchDocument {
+            id: doc_id,
+            title: m.title.clone(),
+            content: m.content.clone().unwrap_or_default(),
+            author_id,
+            repository_id: m.project_id.as_ref().and_then(|id| RepositoryId::parse_str(id).ok()),
+            tags: m.parse_tags().unwrap_or_default(),
+            created_at: m.created_at,
+            updated_at: m.updated_at,
+            custom_fields: HashMap::new(),
+        })
+    }).collect();
+
+    let total = search_docs.len();
+
+    let guard = mgr_arc.lock().await;
+    if let Err(e) = guard.clear_index().await {
+        warn!("Failed to clear Tantivy index: {}", e);
+    }
+
+    let indexed = guard.batch_index(&search_docs).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "INDEX_ERROR".to_string(),
+                message: format!("Failed to reindex documents: {}", e),
+            }),
+        )
+    })?;
+
+    info!("Tantivy reindex complete: {}/{} documents indexed", indexed, total);
+
+    Ok(Json(serde_json::json!({
+        "indexed": indexed,
+        "total": total,
+        "status": "success",
+    })))
+}
+
 pub fn create_search_router() -> axum::Router<SearchState> {
     use axum::routing::{delete, get, post, put};
 
     axum::Router::new()
         .route("/search", get(search))
         .route("/search/global", get(global_search))
+        .route("/search/reindex", post(reindex_tantivy))
         .route("/search/saved", post(create_saved_search))
         .route("/search/saved", get(list_saved_searches))
         .route("/search/saved/{id}", get(get_saved_search))

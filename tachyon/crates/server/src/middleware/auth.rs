@@ -17,6 +17,11 @@ use sqlx::Row;
 use std::sync::Arc;
 use tachyon_core::{UserAction, UserRole};
 use tachyon_database::{DatabasePool, Permission};
+use tachyon_rbac::types::{AccessRequest, Action as RbacAction, Resource as RbacResource, Subject as RbacSubject};
+use tachyon_rbac::AuthContext as RbacAuthContext;
+use tachyon_rbac::{Enforcer, EnforcerConfig as RbacEnforcerConfig};
+use tachyon_rbac::{SessionId, UserId};
+use tokio::sync::RwLock;
 use tracing::{debug, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -111,13 +116,16 @@ impl std::error::Error for AuthError {}
 pub struct AuthState {
     config: Arc<ServerConfig>,
     pool: DatabasePool,
+    enforcer: Arc<RwLock<Enforcer>>,
 }
 
 impl AuthState {
     pub fn new(config: ServerConfig, pool: DatabasePool) -> Self {
+        let enforcer = Enforcer::with_config(RbacEnforcerConfig::default());
         Self {
             config: Arc::new(config),
             pool,
+            enforcer: Arc::new(RwLock::new(enforcer)),
         }
     }
 
@@ -280,6 +288,37 @@ impl AuthState {
 
         Err(AuthError::MissingAuthHeader)
     }
+
+    pub async fn check_rbac_permission(
+        &self,
+        auth_context: &AuthContext,
+        resource_type: &str,
+        resource_id: &str,
+        action: &str,
+    ) -> bool {
+        let subject = RbacSubject::from_role(&auth_context.role.to_string());
+
+        let resource = RbacResource::new(resource_type, resource_id);
+
+        let action = RbacAction::new(action);
+
+        let user_id = UserId::parse_str(&auth_context.user_id).unwrap_or_else(|_| UserId::new());
+        let session_id = SessionId::new();
+        let rbac_context = RbacAuthContext::new(user_id, session_id)
+            .with_role(&auth_context.role.to_string());
+
+        let request = AccessRequest::new(subject, resource, action, rbac_context);
+
+        let mut enforcer = self.enforcer.write().await;
+        match enforcer.authorize(&request) {
+            Ok(decision) => decision.is_allowed(),
+            Err(_) => auth_context.role == UserRole::Admin,
+        }
+    }
+
+    pub fn enforcer(&self) -> &Arc<RwLock<Enforcer>> {
+        &self.enforcer
+    }
 }
 
 pub async fn auth_middleware(
@@ -330,18 +369,22 @@ pub async fn auth_middleware(
 }
 
 pub async fn require_permission_middleware(
+    State(state): State<AuthState>,
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    if let Some(auth_context) = request.extensions().get::<AuthContext>() {
+    if let Some(auth_context) = request.extensions().get::<AuthContext>().cloned() {
         if auth_context.role == UserRole::Admin {
             return Ok(next.run(request).await);
         }
-        
-        if auth_context.has_permission(Permission::Admin) {
+
+        if state
+            .check_rbac_permission(&auth_context, "global", "*", "admin")
+            .await
+        {
             return Ok(next.run(request).await);
         }
-        
+
         Err(StatusCode::FORBIDDEN)
     } else {
         Err(StatusCode::UNAUTHORIZED)
