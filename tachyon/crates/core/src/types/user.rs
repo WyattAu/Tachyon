@@ -4,8 +4,8 @@
 use crate::id::UserId;
 use crate::types::error::TachyonError;
 use argon2::{
-    Algorithm, Argon2, Params, Version,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Algorithm, Argon2, Params, Version,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

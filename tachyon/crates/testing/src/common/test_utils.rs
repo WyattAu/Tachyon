@@ -63,9 +63,11 @@ impl TestDataFactory {
             created_at: now,
             updated_at: now,
             published_at: None,
+            content_hash: None,
+            conflict_detected: None,
         }
     }
-    
+
     pub fn create_document_with_title(title: &str) -> DocumentMetadata {
         let mut doc = Self::create_document();
         doc.title = format!("TEST_{}", title);

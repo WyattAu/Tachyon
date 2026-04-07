@@ -8,7 +8,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tachyon_core::{Document, DocumentContent, DocumentId, DocumentStatus, DocumentVisibility};
+use tachyon_core::{compute_content_hash, Document, DocumentContent, DocumentId, DocumentStatus, DocumentVisibility};
 use tachyon_database::{
     AttachmentRepository, CreateAttachmentRequest, CreateTemplateRequest,
     CreateVersionRequest, DocumentVersionRepository, DatabasePool, DocumentRepository,
@@ -309,7 +309,7 @@ pub async fn create_document(
         description: None,
         tags: serde_json::to_string(&doc.metadata.tags).unwrap_or_else(|_| "[]".to_string()),
         frontmatter: None,
-        project_id: doc.repository_id.map(|id| id.to_string()), // Map repository_id to project_id
+        project_id: doc.repository_id.map(|id| id.to_string()),
         visibility: visibility_str.to_string(),
         status: status_str.to_string(),
         content_type: "markdown".to_string(),
@@ -322,6 +322,8 @@ pub async fn create_document(
         created_at: doc.metadata.created_at,
         updated_at: doc.metadata.updated_at,
         published_at: doc.metadata.published_at,
+        content_hash: Some(compute_content_hash(doc.content.as_text().unwrap_or(""))),
+        conflict_detected: Some(false),
     };
 
     // Persist to database
@@ -460,6 +462,7 @@ pub async fn update_document(
     }
     if let Some(content) = req.content {
         metadata.content = Some(content.clone());
+        metadata.content_hash = Some(compute_content_hash(&content));
         // Render markdown to HTML
         let renderer = Renderer::new(RenderConfig::default());
         match renderer.render(&content, None) {

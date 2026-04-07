@@ -112,6 +112,7 @@ pub mod audit;
 pub mod config;
 pub mod middleware;
 pub mod routes;
+pub mod sync;
 pub mod validation;
 pub mod websocket;
 

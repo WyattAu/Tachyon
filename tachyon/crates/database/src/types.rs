@@ -229,6 +229,12 @@ pub struct DocumentMetadata {
     pub updated_at: DateTime<Utc>,
     /// Published timestamp
     pub published_at: Option<DateTime<Utc>>,
+    /// SHA-256 hash of raw markdown content (for integrity checking)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_hash: Option<String>,
+    /// Whether a sync conflict was detected (content changed in both file and DB)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conflict_detected: Option<bool>,
 }
 
 impl DocumentMetadata {

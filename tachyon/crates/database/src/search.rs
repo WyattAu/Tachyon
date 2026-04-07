@@ -57,6 +57,8 @@ fn row_to_document_metadata(row: sqlx::postgres::PgRow) -> DatabaseResult<Docume
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
         published_at: row.get("published_at"),
+        content_hash: row.get("content_hash"),
+        conflict_detected: row.get("conflict_detected"),
     })
 }
 

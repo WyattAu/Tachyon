@@ -4,7 +4,7 @@
 use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use crate::types::*;
-use sqlx::{Row, query};
+use sqlx::{query, Row};
 use tachyon_core::id::{DocumentId, RepositoryId};
 use tracing::{debug, info, instrument};
 
@@ -30,7 +30,9 @@ const DOCUMENT_SELECT_SQL: &str = r#"
         html,
         created_at,
         updated_at,
-        published_at
+        published_at,
+        content_hash,
+        conflict_detected
     FROM documents
 "#;
 
@@ -86,6 +88,8 @@ fn row_to_document_metadata(row: sqlx::postgres::PgRow) -> DatabaseResult<Docume
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
         published_at: row.get("published_at"),
+        content_hash: row.get("content_hash"),
+        conflict_detected: row.get("conflict_detected"),
     })
 }
 
@@ -155,8 +159,9 @@ impl DocumentRepository {
                 project_id, visibility, status, content_type,
                 word_count, character_count, read_count, edit_count,
                 content, html,
-                created_at, updated_at, published_at
-            ) VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6::jsonb, $7::jsonb, $8::uuid, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+                created_at, updated_at, published_at,
+                content_hash, conflict_detected
+            ) VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6::jsonb, $7::jsonb, $8::uuid, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
         "#;
 
         let mut conn = self.pool.acquire().await?;
@@ -181,6 +186,8 @@ impl DocumentRepository {
             .bind(&metadata.created_at)
             .bind(&metadata.updated_at)
             .bind(&metadata.published_at)
+            .bind(metadata.content_hash.as_deref())
+            .bind(metadata.conflict_detected.unwrap_or(false))
             .execute(&mut *conn)
             .await
             .map_err(|e| {
@@ -241,7 +248,8 @@ impl DocumentRepository {
                 project_id = $6::uuid, visibility = $7, status = $8, content_type = $9,
                 word_count = $10, character_count = $11, read_count = $12, edit_count = $13,
                 content = $16, html = $17,
-                updated_at = $14, published_at = $15
+                updated_at = $14, published_at = $15,
+                content_hash = COALESCE($19, content_hash), conflict_detected = COALESCE($20, conflict_detected)
             WHERE id = $18::uuid
         "#;
 
@@ -265,6 +273,8 @@ impl DocumentRepository {
             .bind(&metadata.content)
             .bind(&metadata.html)
             .bind(&metadata.id)
+            .bind(metadata.content_hash.as_deref())
+            .bind(metadata.conflict_detected)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -546,6 +556,51 @@ impl DocumentRepository {
 
         let document_ids: Vec<String> = results.iter().map(|row| row.get("document_id")).collect();
         Ok(document_ids)
+    }
+
+    /// Find a document by its slug.
+    pub async fn get_by_slug(&self, slug: &str) -> DatabaseResult<Option<DocumentMetadata>> {
+        let select_sql = format!("{} WHERE slug = $1 LIMIT 1", DOCUMENT_SELECT_SQL);
+        let mut conn = self.pool.acquire().await?;
+        let row = query(&select_sql)
+            .bind(slug)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        match row {
+            Some(r) => Ok(Some(row_to_document_metadata(r)?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Find a document by its content hash (for deduplication).
+    pub async fn get_by_content_hash(&self, content_hash: &str) -> DatabaseResult<Option<DocumentMetadata>> {
+        let select_sql = format!("{} WHERE content_hash = $1 LIMIT 1", DOCUMENT_SELECT_SQL);
+        let mut conn = self.pool.acquire().await?;
+        let row = query(&select_sql)
+            .bind(content_hash)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        match row {
+            Some(r) => Ok(Some(row_to_document_metadata(r)?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Clear the conflict_detected flag for a document.
+    pub async fn clear_conflict(&self, id: &DocumentId) -> DatabaseResult<()> {
+        let sql = "UPDATE documents SET conflict_detected = false, updated_at = NOW() WHERE id = $1::uuid";
+        let mut conn = self.pool.acquire().await?;
+        let result = query(sql)
+            .bind(id.as_str())
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::not_found("document", id.as_str()));
+        }
+        Ok(())
     }
 
     /// Count documents by author

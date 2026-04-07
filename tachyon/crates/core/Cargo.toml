@@ -37,6 +37,9 @@ notify = "6.0"
 # Markdown Processing
 pulldown-cmark = { version = "0.9", features = ["simd"] }
 
+# Hashing
+sha2 = "0.10"
+
 # Utilities
 dashmap = "5"
 walkdir = "2"
