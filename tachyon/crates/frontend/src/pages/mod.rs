@@ -1,7 +1,9 @@
 // Pages module - all application pages
 
+pub mod graph;
 pub mod home;
 pub mod documents;
+pub mod register;
 pub mod search;
 pub mod catalog;
 pub mod settings;
@@ -10,8 +12,10 @@ pub mod dashboard;
 pub mod teams;
 pub mod admin;
 
+pub use graph::GraphPage;
 pub use home::HomePage;
 pub use documents::{DocumentsPage, DocumentEditPage};
+pub use register::RegisterPage;
 pub use search::SearchPage;
 pub use catalog::CatalogPage;
 pub use settings::SettingsPage;

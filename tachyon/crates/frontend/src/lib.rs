@@ -57,6 +57,7 @@ pub fn App() -> impl IntoView {
                     // Public routes (no auth required)
                     <Route path=path!("/") view=pages::HomePage />
                     <Route path=path!("/login") view=pages::LoginPage />
+                    <Route path=path!("/register") view=pages::RegisterPage />
 
                     // Protected routes (require authentication)
                     <Route path=path!("/dashboard") view=move || {
@@ -77,6 +78,13 @@ pub fn App() -> impl IntoView {
                         view! {
                             <AuthGuard>
                                 <pages::DocumentEditPage />
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/graph") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::GraphPage />
                             </AuthGuard>
                         }
                     } />

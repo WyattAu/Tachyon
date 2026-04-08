@@ -86,6 +86,17 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
+    /// Register a new account
+    pub async fn register(&self, username: &str, email: &str, password: &str) -> Result<AuthenticateResponse, ApiError> {
+        let url = format!("{}/auth/register", self.base_url);
+        let body = serde_json::json!({
+            "username": username,
+            "email": email,
+            "password": password,
+        });
+        self.post(&url, &body).await
+    }
+
     /// Login as guest user
     pub async fn guest_login(&self) -> Result<AuthenticateResponse, ApiError> {
         let url = format!("{}/auth/guest", self.base_url);
@@ -530,6 +541,70 @@ impl ApiClient {
     pub async fn delete_role(&self, role_id: &str) -> Result<(), ApiError> {
         let url = format!("{}/roles/{}", self.base_url, role_id);
         self.delete(&url).await
+    }
+
+    // ========================================================================
+    // Knowledge Graph API
+    // ========================================================================
+
+    /// List graph nodes with optional filters
+    pub async fn list_graph_nodes(
+        &self,
+        node_type: Option<&str>,
+        search: Option<&str>,
+        page: Option<usize>,
+        page_size: Option<usize>,
+    ) -> Result<serde_json::Value, ApiError> {
+        let mut url = format!("{}/nodes?", self.base_url);
+        if let Some(nt) = node_type {
+            url = format!("{}node_type={}&", url, nt);
+        }
+        if let Some(s) = search {
+            url = format!("{}search={}&", url, s);
+        }
+        if let Some(p) = page {
+            url = format!("{}page={}&", url, p);
+        }
+        if let Some(ps) = page_size {
+            url = format!("{}page_size={}", url, ps);
+        }
+        self.get(&url).await
+    }
+
+    /// Get a graph node by ID
+    pub async fn get_graph_node(&self, node_id: &str) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/nodes/{}", self.base_url, node_id);
+        self.get(&url).await
+    }
+
+    /// Create a graph node
+    pub async fn create_graph_node(&self, data: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/nodes", self.base_url);
+        self.post(&url, data).await
+    }
+
+    /// Get edges connected to a node
+    pub async fn get_node_edges(&self, node_id: &str) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/nodes/{}/edges", self.base_url, node_id);
+        self.get(&url).await
+    }
+
+    /// Create a graph edge
+    pub async fn create_graph_edge(&self, data: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/edges", self.base_url);
+        self.post(&url, data).await
+    }
+
+    /// Query the graph (neighbors, shortest path)
+    pub async fn query_graph(&self, data: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/graph/query", self.base_url);
+        self.post(&url, data).await
+    }
+
+    /// Get graph statistics
+    pub async fn get_graph_stats(&self) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/graph/stats", self.base_url);
+        self.get(&url).await
     }
 
     // ========================================================================
