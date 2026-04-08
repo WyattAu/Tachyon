@@ -253,6 +253,12 @@ impl ApiClient {
         self.put(&url, data).await
     }
 
+    /// Delete a document (soft delete)
+    pub async fn delete_document(&self, document_id: &str) -> Result<(), ApiError> {
+        let url = format!("{}/documents/{}", self.base_url, document_id);
+        self.delete(&url).await
+    }
+
     // ========================================================================
     // Rendering API
     // ========================================================================
