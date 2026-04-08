@@ -316,6 +316,7 @@ impl GraphExtractor {
                     is_active: true,
                     created_at: chrono::Utc::now(),
                     updated_at: chrono::Utc::now(),
+                    deactivated_at: None,
                 };
                 let created = graph_repo.create_node(&node).await?;
                 Ok(created.id)
@@ -542,6 +543,7 @@ impl GraphExtractor {
                     is_active: true,
                     created_at: chrono::Utc::now(),
                     updated_at: chrono::Utc::now(),
+                    deactivated_at: None,
                 };
                 let created = graph_repo.create_node(&node).await?;
                 Ok(created.id)
@@ -576,6 +578,7 @@ impl GraphExtractor {
                     is_active: true,
                     created_at: chrono::Utc::now(),
                     updated_at: chrono::Utc::now(),
+                    deactivated_at: None,
                 };
                 let created = graph_repo.create_node(&node).await?;
                 Ok(created.id)
@@ -616,6 +619,7 @@ impl GraphExtractor {
             is_active: true,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            deactivated_at: None,
         };
 
         graph_repo.create_edge(&edge).await?;

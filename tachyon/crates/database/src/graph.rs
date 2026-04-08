@@ -1,6 +1,8 @@
 use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use crate::types::{GraphEdge, GraphNode};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{query, query_as, Row};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -47,6 +49,7 @@ impl From<&Node> for GraphNode {
             is_active: true,
             created_at: node.metadata.created_at,
             updated_at: node.metadata.updated_at,
+            deactivated_at: None,
         }
     }
 }
@@ -76,6 +79,7 @@ impl From<&Edge> for GraphEdge {
             is_active: true,
             created_at: edge.metadata.created_at,
             updated_at: edge.metadata.updated_at,
+            deactivated_at: edge.metadata.deactivated_at,
         }
     }
 }
@@ -217,7 +221,7 @@ impl GraphRepository {
 
     #[instrument(skip(self))]
     pub async fn deactivate_node(&self, id: &str) -> DatabaseResult<()> {
-        let sql = "UPDATE knowledge_graph_nodes SET is_active = false, updated_at = NOW() WHERE id = $1";
+        let sql = "UPDATE knowledge_graph_nodes SET is_active = false, deactivated_at = NOW(), updated_at = NOW() WHERE id = $1";
         let mut conn = self.pool.acquire().await?;
         let result = query(sql)
             .bind(uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
@@ -430,7 +434,7 @@ impl GraphRepository {
 
     #[instrument(skip(self))]
     pub async fn deactivate_edge(&self, id: &str) -> DatabaseResult<()> {
-        let sql = "UPDATE knowledge_graph_edges SET is_active = false, updated_at = NOW() WHERE id = $1";
+        let sql = "UPDATE knowledge_graph_edges SET is_active = false, deactivated_at = NOW(), updated_at = NOW() WHERE id = $1";
         let mut conn = self.pool.acquire().await?;
         let result = query(sql)
             .bind(uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?)
@@ -833,4 +837,127 @@ impl GraphRepository {
             "avg_degree": avg_degree,
         }))
     }
+
+    // ========================================================================
+    // Temporal Queries
+    // ========================================================================
+
+    /// Query the graph state at a specific point in time.
+    ///
+    /// Returns all nodes and edges that were active at the given timestamp.
+    /// An entity is "active at time T" when: `created_at <= T AND (deactivated_at IS NULL OR deactivated_at > T)`
+    #[instrument(skip(self))]
+    pub async fn get_graph_at_time(
+        &self,
+        at: DateTime<Utc>,
+    ) -> DatabaseResult<(Vec<GraphNode>, Vec<GraphEdge>)> {
+        let mut conn = self.pool.acquire().await?;
+
+        let nodes = query_as::<_, GraphNode>(
+            "SELECT * FROM knowledge_graph_nodes \
+             WHERE created_at <= $1 AND (deactivated_at IS NULL OR deactivated_at > $1) \
+             ORDER BY created_at ASC",
+        )
+        .bind(at)
+        .fetch_all(&mut *conn)
+        .await
+        .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        let edges = query_as::<_, GraphEdge>(
+            "SELECT * FROM knowledge_graph_edges \
+             WHERE created_at <= $1 AND (deactivated_at IS NULL OR deactivated_at > $1) \
+             ORDER BY created_at ASC",
+        )
+        .bind(at)
+        .fetch_all(&mut *conn)
+        .await
+        .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        info!(
+            "Graph at {}: {} nodes, {} edges",
+            at,
+            nodes.len(),
+            edges.len()
+        );
+
+        Ok((nodes, edges))
+    }
+
+    /// Compute the diff of the graph between two timestamps.
+    ///
+    /// Returns four sets:
+    /// - `added_nodes`: nodes active at `to` but not at `from`
+    /// - `removed_nodes`: nodes active at `from` but not at `to`
+    /// - `added_edges`: edges active at `to` but not at `from`
+    /// - `removed_edges`: edges active at `from` but not at `to`
+    #[instrument(skip(self))]
+    pub async fn get_graph_diff(
+        &self,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> DatabaseResult<GraphDiff> {
+        let (nodes_from, edges_from) = self.get_graph_at_time(from).await?;
+        let (nodes_to, edges_to) = self.get_graph_at_time(to).await?;
+
+        let from_node_ids: HashSet<String> = nodes_from.iter().map(|n| n.id.clone()).collect();
+        let to_node_ids: HashSet<String> = nodes_to.iter().map(|n| n.id.clone()).collect();
+        let from_edge_ids: HashSet<String> = edges_from.iter().map(|e| e.id.clone()).collect();
+        let to_edge_ids: HashSet<String> = edges_to.iter().map(|e| e.id.clone()).collect();
+
+        let added_nodes: Vec<GraphNode> = nodes_to
+            .into_iter()
+            .filter(|n| !from_node_ids.contains(&n.id))
+            .collect();
+
+        let removed_nodes: Vec<GraphNode> = nodes_from
+            .into_iter()
+            .filter(|n| !to_node_ids.contains(&n.id))
+            .collect();
+
+        let added_edges: Vec<GraphEdge> = edges_to
+            .into_iter()
+            .filter(|e| !from_edge_ids.contains(&e.id))
+            .collect();
+
+        let removed_edges: Vec<GraphEdge> = edges_from
+            .into_iter()
+            .filter(|e| !to_edge_ids.contains(&e.id))
+            .collect();
+
+        info!(
+            "Graph diff ({} → {}): +{} nodes, -{} nodes, +{} edges, -{} edges",
+            from,
+            to,
+            added_nodes.len(),
+            removed_nodes.len(),
+            added_edges.len(),
+            removed_edges.len(),
+        );
+
+        Ok(GraphDiff {
+            added_nodes,
+            removed_nodes,
+            added_edges,
+            removed_edges,
+            from_timestamp: from,
+            to_timestamp: to,
+        })
+    }
+}
+
+/// Result of a graph diff between two timestamps.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphDiff {
+    /// Nodes that became active between `from` and `to`
+    pub added_nodes: Vec<GraphNode>,
+    /// Nodes that were deactivated between `from` and `to`
+    pub removed_nodes: Vec<GraphNode>,
+    /// Edges that became active between `from` and `to`
+    pub added_edges: Vec<GraphEdge>,
+    /// Edges that were deactivated between `from` and `to`
+    pub removed_edges: Vec<GraphEdge>,
+    /// Start of the diff window
+    pub from_timestamp: DateTime<Utc>,
+    /// End of the diff window
+    pub to_timestamp: DateTime<Utc>,
 }

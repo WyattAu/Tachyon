@@ -132,6 +132,9 @@ pub struct GraphQueryRequest {
     pub edge_type: Option<String>,
     pub depth: Option<u32>,
     pub target_id: Option<String>,
+    /// ISO 8601 timestamp for point-in-time graph query.
+    /// If provided, only nodes/edges active at this time are returned.
+    pub at: Option<String>,
 }
 
 // ============================================================================
@@ -196,6 +199,7 @@ pub async fn create_node(
         is_active: true,
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
+        deactivated_at: None,
     };
 
     let created = state.repo().create_node(&node).await.map_err(|e| db_err(&e))?;
@@ -329,6 +333,7 @@ pub async fn create_edge(
         is_active: true,
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
+        deactivated_at: None,
     };
 
     let created = state.repo().create_edge(&edge).await.map_err(|e| db_err(&e))?;
@@ -458,6 +463,113 @@ pub async fn get_graph_stats(
     Ok(Json(stats))
 }
 
+/// Query the graph state at a specific point in time.
+///
+/// Returns all nodes and edges that were active at the given ISO 8601 timestamp.
+pub async fn get_graph_at_time(
+    Query(params): Query<std::collections::HashMap<String, String>>,
+    State(state): State<NodeState>,
+) -> Result<Json<GraphQueryResponse>, ApiError> {
+    let at_str = params
+        .get("at")
+        .ok_or_else(|| (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "VALIDATION_ERROR".into(),
+                message: "Missing required query parameter: at (ISO 8601 timestamp)".into(),
+            }),
+        ))?;
+
+    let at: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(at_str)
+        .map(|dt| dt.with_timezone(&chrono::Utc))
+        .map_err(|e| (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "VALIDATION_ERROR".into(),
+                message: format!("Invalid timestamp format: {}", e),
+            }),
+        ))?;
+
+    info!("Querying graph state at: {}", at);
+
+    let (nodes, edges) = state
+        .repo()
+        .get_graph_at_time(at)
+        .await
+        .map_err(|e| db_err(&e))?;
+
+    Ok(Json(GraphQueryResponse {
+        node_count: nodes.len(),
+        edge_count: edges.len(),
+        nodes,
+        edges,
+    }))
+}
+
+/// Compute the diff of the graph between two timestamps.
+///
+/// Returns added/removed nodes and edges between `from` and `to` timestamps.
+pub async fn get_graph_diff(
+    Query(params): Query<std::collections::HashMap<String, String>>,
+    State(state): State<NodeState>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let from_str = params.get("from").ok_or_else(|| (
+        StatusCode::BAD_REQUEST,
+        Json(ErrorResponse {
+            code: "VALIDATION_ERROR".into(),
+            message: "Missing required query parameter: from (ISO 8601 timestamp)".into(),
+        }),
+    ))?;
+
+    let to_str = params.get("to").ok_or_else(|| (
+        StatusCode::BAD_REQUEST,
+        Json(ErrorResponse {
+            code: "VALIDATION_ERROR".into(),
+            message: "Missing required query parameter: to (ISO 8601 timestamp)".into(),
+        }),
+    ))?;
+
+    let from: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(from_str)
+        .map(|dt| dt.with_timezone(&chrono::Utc))
+        .map_err(|e| (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "VALIDATION_ERROR".into(),
+                message: format!("Invalid 'from' timestamp: {}", e),
+            }),
+        ))?;
+
+    let to: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(to_str)
+        .map(|dt| dt.with_timezone(&chrono::Utc))
+        .map_err(|e| (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "VALIDATION_ERROR".into(),
+                message: format!("Invalid 'to' timestamp: {}", e),
+            }),
+        ))?;
+
+    if from >= to {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "VALIDATION_ERROR".into(),
+                message: "'from' timestamp must be before 'to' timestamp".into(),
+            }),
+        ));
+    }
+
+    info!("Computing graph diff: {} → {}", from, to);
+
+    let diff = state
+        .repo()
+        .get_graph_diff(from, to)
+        .await
+        .map_err(|e| db_err(&e))?;
+
+    Ok(Json(serde_json::to_value(diff).unwrap_or(serde_json::json!({}))))
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -476,6 +588,8 @@ pub fn create_node_router() -> axum::Router<NodeState> {
         .route("/edges/{edge_id}", delete(delete_edge))
         .route("/graph/query", post(query_graph))
         .route("/graph/stats", get(get_graph_stats))
+        .route("/graph/at", get(get_graph_at_time))
+        .route("/graph/diff", get(get_graph_diff))
 }
 
 // ============================================================================
@@ -544,6 +658,7 @@ mod tests {
             edge_type: None,
             depth: Some(2),
             target_id: Some("node-2".into()),
+            at: None,
         };
         assert_eq!(req.source_id, "node-1");
         assert_eq!(req.depth, Some(2));

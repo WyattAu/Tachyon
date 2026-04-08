@@ -20,7 +20,7 @@
 // - INV-014: Node type capabilities — consistent has_content/can_reference/can_have_media
 // - INV-015: EdgeType serialization round-trip
 
-use super::edge::{Edge, EdgeBuilder, EdgeType, EdgeWeight};
+use super::edge::{Edge, EdgeBuilder, EdgeMetadata, EdgeType, EdgeWeight};
 use super::node::{Node, NodeBuilder, NodeType, RelationshipType};
 use crate::id::{generate_edge_id, generate_node_id, generate_user_id};
 use proptest::prelude::*;
@@ -684,5 +684,150 @@ proptest! {
         let json = serde_json::to_string(&node_type).expect("serialize");
         let deserialized: NodeType = serde_json::from_str(&json).expect("deserialize");
         prop_assert_eq!(node_type, deserialized);
+    }
+}
+
+// ============================================================================
+// INV-021: New edge has no deactivated_at
+// ============================================================================
+
+proptest! {
+    /// A freshly created edge must have deactivated_at = None.
+    #[test]
+    fn inv_021_new_edge_has_no_deactivation_timestamp(edge_type in edge_type_strategy()) {
+        let source_id = generate_node_id();
+        let target_id = generate_node_id();
+        let user_id = generate_user_id();
+        let edge_id = generate_edge_id();
+
+        prop_assume!(source_id != target_id);
+
+        let edge = Edge::new(edge_id, source_id, target_id, edge_type, user_id);
+
+        prop_assert!(edge.metadata.deactivated_at.is_none());
+        prop_assert!(edge.is_active());
+    }
+}
+
+// ============================================================================
+// INV-022: Deactivation sets deactivated_at, activation clears it
+// ============================================================================
+
+proptest! {
+    /// Deactivating an edge must set deactivated_at to Some(non-past).
+    /// Re-activating must clear it back to None.
+    #[test]
+    fn inv_022_deactivation_sets_timestamp(edge_type in edge_type_strategy()) {
+        let source_id = generate_node_id();
+        let target_id = generate_node_id();
+        let user_id = generate_user_id();
+        let edge_id = generate_edge_id();
+
+        prop_assume!(source_id != target_id);
+
+        let mut edge = Edge::new(edge_id, source_id, target_id, edge_type, user_id);
+
+        // Deactivate
+        edge.deactivate();
+        prop_assert!(!edge.is_active());
+        let ts = edge.metadata.deactivated_at.expect("deactivated_at must be set");
+        prop_assert!(ts >= edge.metadata.created_at);
+        prop_assert!(ts <= chrono::Utc::now());
+
+        // Activate clears deactivated_at
+        edge.activate();
+        prop_assert!(edge.is_active());
+        prop_assert!(edge.metadata.deactivated_at.is_none());
+    }
+}
+
+// ============================================================================
+// INV-023: Multiple deactivate-activate cycles preserve monotonic timestamps
+// ============================================================================
+
+proptest! {
+    /// Each deactivation timestamp must be >= the previous deactivation timestamp.
+    #[test]
+    fn inv_023_deactivation_timestamps_monotonic(
+        edge_type in edge_type_strategy(),
+        cycle_count in 1usize..5,
+    ) {
+        let source_id = generate_node_id();
+        let target_id = generate_node_id();
+        let user_id = generate_user_id();
+        let edge_id = generate_edge_id();
+
+        prop_assume!(source_id != target_id);
+
+        let mut edge = Edge::new(edge_id, source_id, target_id, edge_type, user_id);
+
+        let mut last_ts: Option<chrono::DateTime<chrono::Utc>> = None;
+
+        for _ in 0..cycle_count {
+            edge.deactivate();
+            let ts = edge.metadata.deactivated_at.expect("must be set after deactivate");
+            if let Some(prev) = last_ts {
+                prop_assert!(ts >= prev, "deactivation timestamps must be monotonic");
+            }
+            last_ts = Some(ts);
+
+            edge.activate();
+            prop_assert!(edge.metadata.deactivated_at.is_none());
+        }
+    }
+}
+
+// ============================================================================
+// INV-024: Reversed edge preserves deactivated_at
+// ============================================================================
+
+proptest! {
+    /// The reversed() copy must preserve the deactivated_at timestamp.
+    #[test]
+    fn inv_024_reversed_preserves_deactivated_at(edge_type in edge_type_strategy()) {
+        let source_id = generate_node_id();
+        let target_id = generate_node_id();
+        let user_id = generate_user_id();
+        let edge_id = generate_edge_id();
+
+        prop_assume!(source_id != target_id);
+
+        let mut edge = Edge::new(edge_id, source_id, target_id, edge_type, user_id);
+
+        edge.deactivate();
+        let reversed = edge.reversed();
+
+        prop_assert_eq!(
+            edge.metadata.deactivated_at,
+            reversed.metadata.deactivated_at,
+            "reversed edge must preserve deactivated_at"
+        );
+    }
+}
+
+// ============================================================================
+// INV-025: EdgeMetadata serialization round-trip with deactivated_at
+// ============================================================================
+
+proptest! {
+    /// EdgeMetadata with deactivated_at set must round-trip through JSON.
+    #[test]
+    fn inv_025_edge_metadata_serialization_with_deactivation(has_deactivation in proptest::bool::ANY) {
+        let user_id = generate_user_id();
+        let mut meta = EdgeMetadata::new(user_id);
+        meta.label = Some("test-label".to_string());
+        meta.description = Some("test-desc".to_string());
+
+        if has_deactivation {
+            meta.deactivated_at = Some(chrono::Utc::now());
+        }
+
+        let json = serde_json::to_string(&meta).expect("serialize");
+        let deserialized: EdgeMetadata = serde_json::from_str(&json).expect("deserialize");
+
+        prop_assert_eq!(meta.deactivated_at, deserialized.deactivated_at);
+        prop_assert_eq!(meta.label, deserialized.label);
+        prop_assert_eq!(meta.description, deserialized.description);
+        prop_assert_eq!(meta.created_by, deserialized.created_by);
     }
 }

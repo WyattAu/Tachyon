@@ -514,6 +514,8 @@ pub struct GraphNode {
     pub created_at: DateTime<Utc>,
     /// Updated timestamp
     pub updated_at: DateTime<Utc>,
+    /// When the node was deactivated (None if currently active)
+    pub deactivated_at: Option<DateTime<Utc>>,
 }
 
 /// Database model for knowledge graph edges
@@ -547,6 +549,8 @@ pub struct GraphEdge {
     pub created_at: DateTime<Utc>,
     /// Updated timestamp
     pub updated_at: DateTime<Utc>,
+    /// When the edge was deactivated (None if currently active)
+    pub deactivated_at: Option<DateTime<Utc>>,
 }
 
 // ============================================================================

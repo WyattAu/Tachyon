@@ -40,7 +40,7 @@ pub use search::{
 };
 pub use session::SessionRepository;
 pub use team::{RoleRecord, RoleRepository, Team, TeamMember, TeamRepository};
-pub use graph::GraphRepository;
+pub use graph::{GraphDiff, GraphRepository};
 pub use user::{UserRecord, UserRepository};
 pub use types::*;
 

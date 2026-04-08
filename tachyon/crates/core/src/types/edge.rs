@@ -115,6 +115,9 @@ pub struct EdgeMetadata {
     pub created_at: DateTime<Utc>,
     /// Last update timestamp
     pub updated_at: DateTime<Utc>,
+    /// When the edge was deactivated (None if currently active)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deactivated_at: Option<DateTime<Utc>>,
     /// Creator user ID
     pub created_by: UserId,
     /// Edge label (optional display text)
@@ -135,6 +138,7 @@ impl EdgeMetadata {
         Self {
             created_at: now,
             updated_at: now,
+            deactivated_at: None,
             created_by,
             label: None,
             description: None,
@@ -234,6 +238,7 @@ impl Edge {
             metadata: EdgeMetadata {
                 created_at: self.metadata.created_at,
                 updated_at: self.metadata.updated_at,
+                deactivated_at: self.metadata.deactivated_at,
                 created_by: self.metadata.created_by,
                 label: self.metadata.label.clone(),
                 description: self.metadata.description.clone(),
@@ -253,12 +258,14 @@ impl Edge {
     /// Deactivate edge
     pub fn deactivate(&mut self) {
         self.is_active = Some(false);
+        self.metadata.deactivated_at = Some(Utc::now());
         self.metadata.touch();
     }
 
     /// Activate edge
     pub fn activate(&mut self) {
         self.is_active = Some(true);
+        self.metadata.deactivated_at = None;
         self.metadata.touch();
     }
 

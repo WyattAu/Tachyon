@@ -607,6 +607,18 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Get graph state at a specific point in time
+    pub async fn get_graph_at_time(&self, at: &str) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/graph/at?at={}", self.base_url, at);
+        self.get(&url).await
+    }
+
+    /// Get graph diff between two timestamps
+    pub async fn get_graph_diff(&self, from: &str, to: &str) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/graph/diff?from={}&to={}", self.base_url, from, to);
+        self.get(&url).await
+    }
+
     // ========================================================================
     // HTTP Helper Methods
     // ========================================================================
