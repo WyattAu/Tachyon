@@ -5,6 +5,7 @@ pub mod catalog;
 pub mod document;
 pub mod node;
 pub mod repository;
+pub mod review;
 pub mod role;
 pub mod search;
 pub mod seo;
@@ -22,6 +23,7 @@ pub async fn create_router() -> Router {
     use crate::routes::document::{DocumentState, create_document_router};
     use crate::routes::node::{NodeState, create_node_router};
     use crate::routes::repository::{RepositoryState, create_repository_router};
+    use crate::routes::review::{ReviewState, create_review_router};
     use crate::routes::session::{SessionState, create_session_router};
     use crate::routes::user::{UserState, create_user_router};
     use crate::websocket::ConnectionManager;
@@ -53,7 +55,8 @@ pub async fn create_router() -> Router {
     let session_state = SessionState::new(pool.clone(), 3600);
     let repository_state = RepositoryState::new();
     let node_state = NodeState::new(pool.clone());
-    let catalog_state = CatalogState::new(pool);
+    let catalog_state = CatalogState::new(pool.clone());
+    let review_state = ReviewState::new(pool);
     let _connection_manager = ConnectionManager::new();
 
     let document_router = create_document_router().with_state(document_state);
@@ -62,6 +65,7 @@ pub async fn create_router() -> Router {
     let repository_router = create_repository_router().with_state(repository_state);
     let node_router = create_node_router().with_state(node_state);
     let catalog_router = create_catalog_router().with_state(catalog_state);
+    let review_router = create_review_router().with_state(review_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -69,7 +73,8 @@ pub async fn create_router() -> Router {
         .merge(session_router)
         .merge(repository_router)
         .merge(node_router)
-        .merge(catalog_router);
+        .merge(catalog_router)
+        .merge(review_router);
 
     Router::new().nest("/api/v1", api_v1)
 }
@@ -137,3 +142,9 @@ pub use user::{
 
 // SEO exports
 pub use seo::{SeoState, create_seo_router};
+
+// Review exports
+pub use review::{
+    create_review, create_review_router, list_reviews, update_review, create_comment, list_comments,
+    get_review_status, ReviewState, ReviewResponse, ReviewStatusResponse, CommentResponse,
+};

@@ -592,3 +592,60 @@ pub fn url_encode(s: &str) -> String {
         .as_string()
         .unwrap_or_default()
 }
+
+// ============================================================================
+// Review Types
+// ============================================================================
+
+/// Document review
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentReview {
+    pub id: String,
+    pub document_id: String,
+    pub version_number: i32,
+    pub status: String,
+    pub reviewer_id: String,
+    pub summary: Option<String>,
+    pub created_at: String,
+    pub resolved_at: Option<String>,
+}
+
+/// Review comment
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReviewComment {
+    pub id: String,
+    pub review_id: String,
+    pub author_id: String,
+    pub content: String,
+    pub created_at: String,
+}
+
+/// Review status summary
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReviewStatusSummary {
+    pub pending_count: i64,
+    pub latest_status: Option<String>,
+}
+
+/// Server-side diff line
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiffLine {
+    pub content: String,
+    pub line_type: String,
+}
+
+/// Server-side diff response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentDiffResponse {
+    pub old_lines: Vec<DiffLine>,
+    pub new_lines: Vec<DiffLine>,
+    pub stats: DiffStats,
+}
+
+/// Diff statistics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiffStats {
+    pub added: usize,
+    pub removed: usize,
+    pub unchanged: usize,
+}

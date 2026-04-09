@@ -814,3 +814,64 @@ impl std::error::Error for ApiError {}
 /// Note: Reserved for future use when more API methods return Result types
 #[allow(dead_code)]
 pub type ApiResult<T> = Result<T, ApiError>;
+
+// ========================================================================
+// Review API
+// ========================================================================
+
+impl ApiClient {
+    /// Create a review request for a document
+    pub async fn create_review(&self, document_id: &str, reviewer_id: &str, summary: Option<&str>) -> Result<DocumentReview, ApiError> {
+        let url = format!("{}/documents/{}/reviews", self.base_url, document_id);
+        let body = serde_json::json!({
+            "reviewer_id": reviewer_id,
+            "summary": summary,
+        });
+        self.post(&url, &body).await
+    }
+
+    /// List reviews for a document
+    pub async fn list_reviews(&self, document_id: &str) -> Result<Vec<DocumentReview>, ApiError> {
+        let url = format!("{}/documents/{}/reviews", self.base_url, document_id);
+        self.get(&url).await
+    }
+
+    /// Get review status summary for a document
+    pub async fn get_review_status(&self, document_id: &str) -> Result<ReviewStatusSummary, ApiError> {
+        let url = format!("{}/documents/{}/reviews/status", self.base_url, document_id);
+        self.get(&url).await
+    }
+
+    /// Update a review's status (approve, reject, request changes, cancel)
+    pub async fn update_review(&self, document_id: &str, review_id: &str, status: &str, summary: Option<&str>) -> Result<DocumentReview, ApiError> {
+        let url = format!("{}/documents/{}/reviews/{}", self.base_url, document_id, review_id);
+        let body = serde_json::json!({
+            "status": status,
+            "summary": summary,
+        });
+        self.put(&url, &body).await
+    }
+
+    /// Add a comment to a review
+    pub async fn create_review_comment(&self, document_id: &str, review_id: &str, author_id: &str, content: &str) -> Result<ReviewComment, ApiError> {
+        let url = format!("{}/documents/{}/reviews/{}/comments", self.base_url, document_id, review_id);
+        let body = serde_json::json!({
+            "author_id": author_id,
+            "content": content,
+        });
+        self.post(&url, &body).await
+    }
+
+    /// List comments on a review
+    pub async fn list_review_comments(&self, document_id: &str, review_id: &str) -> Result<Vec<ReviewComment>, ApiError> {
+        let url = format!("{}/documents/{}/reviews/{}/comments", self.base_url, document_id, review_id);
+        self.get(&url).await
+    }
+
+    /// Get server-side diff between two versions
+    #[allow(dead_code)] // Will be used when diff UI is wired into version history
+    pub async fn diff_versions(&self, document_id: &str, v1: i32, v2: i32) -> Result<DocumentDiffResponse, ApiError> {
+        let url = format!("{}/documents/{}/versions/{}/diff/{}", self.base_url, document_id, v1, v2);
+        self.get(&url).await
+    }
+}

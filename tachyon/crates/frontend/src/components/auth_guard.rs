@@ -85,3 +85,16 @@ pub fn logout() {
     let client = crate::api::ApiClient::default();
     client.clear_auth_token();
 }
+
+/// Get the current user's ID from localStorage
+pub fn get_user_id() -> Option<String> {
+    if let Some(window) = web_sys::window() {
+        if let Ok(Some(storage)) = window.local_storage() {
+            if let Ok(Some(token)) = storage.get_item("tachyon_token") {
+                // Simple extraction — in production, decode the JWT
+                return Some(format!("user-{}", &token[..token.len().min(8)]));
+            }
+        }
+    }
+    None
+}

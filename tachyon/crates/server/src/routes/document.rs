@@ -497,6 +497,22 @@ pub async fn update_document(
         metadata.title = title;
     }
     if let Some(content) = req.content {
+        // Auto-version: snapshot current content before overwriting
+        if let Some(ref current_content) = metadata.content {
+            if current_content != &content {
+                let version_repo = DocumentVersionRepository::new(state.pool.clone());
+                let user_id = tachyon_core::generate_user_id();
+                if let Err(e) = version_repo.create(CreateVersionRequest {
+                    document_id: document_id.clone(),
+                    content: current_content.clone(),
+                    commit_message: Some("Auto-snapshot before update".to_string()),
+                    created_by: user_id.to_string(),
+                }).await {
+                    warn!("Failed to auto-version document {}: {}", document_id, e);
+                }
+            }
+        }
+
         metadata.content = Some(content.clone());
         metadata.content_hash = Some(compute_content_hash(&content));
         // Render markdown to HTML
@@ -978,6 +994,161 @@ pub async fn create_version(
 }
 
 // ============================================================================
+// Server-Side Diff Endpoint
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+pub struct DiffLine {
+    pub content: String,
+    pub line_type: String, // "unchanged", "added", "removed"
+}
+
+#[derive(Debug, Serialize)]
+pub struct DocumentDiffResponse {
+    pub old_lines: Vec<DiffLine>,
+    pub new_lines: Vec<DiffLine>,
+    pub stats: DiffStats,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DiffStats {
+    pub added: usize,
+    pub removed: usize,
+    pub unchanged: usize,
+}
+
+pub async fn diff_versions(
+    Path((document_id, v1, v2)): Path<(String, i32, i32)>,
+    State(state): State<DocumentState>,
+) -> Result<Json<DocumentDiffResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let repo = DocumentVersionRepository::new(state.pool.clone());
+
+    let ver1 = repo.get_by_version_number(&document_id, v1).await.map_err(|e| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                code: "NOT_FOUND".to_string(),
+                message: format!("Version {} not found: {}", v1, e),
+                details: None,
+            }),
+        )
+    })?;
+
+    let ver2 = repo.get_by_version_number(&document_id, v2).await.map_err(|e| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                code: "NOT_FOUND".to_string(),
+                message: format!("Version {} not found: {}", v2, e),
+                details: None,
+            }),
+        )
+    })?;
+
+    let diff = compute_line_diff(&ver1.content, &ver2.content);
+    Ok(Json(diff))
+}
+
+/// Server-side LCS line diff computation
+fn compute_line_diff(old_content: &str, new_content: &str) -> DocumentDiffResponse {
+    let old_lines: Vec<&str> = old_content.lines().collect();
+    let new_lines: Vec<&str> = new_content.lines().collect();
+
+    let lcs = longest_common_subsequence(&old_lines, &new_lines);
+
+    let mut old_idx = 0usize;
+    let mut new_idx = 0usize;
+    let mut lcs_idx = 0usize;
+    let mut result_old = Vec::new();
+    let mut result_new = Vec::new();
+    let mut added = 0usize;
+    let mut removed = 0usize;
+    let mut unchanged = 0usize;
+
+    while old_idx < old_lines.len() || new_idx < new_lines.len() {
+        if lcs_idx < lcs.len() {
+            let lcs_line = lcs[lcs_idx];
+
+            while old_idx < old_lines.len() && old_lines[old_idx] != lcs_line {
+                result_old.push(DiffLine { content: old_lines[old_idx].to_string(), line_type: "removed".to_string() });
+                result_new.push(DiffLine { content: String::new(), line_type: "unchanged".to_string() });
+                removed += 1;
+                old_idx += 1;
+            }
+
+            while new_idx < new_lines.len() && new_lines[new_idx] != lcs_line {
+                result_old.push(DiffLine { content: String::new(), line_type: "unchanged".to_string() });
+                result_new.push(DiffLine { content: new_lines[new_idx].to_string(), line_type: "added".to_string() });
+                added += 1;
+                new_idx += 1;
+            }
+
+            if old_idx < old_lines.len() && new_idx < new_lines.len() {
+                result_old.push(DiffLine { content: old_lines[old_idx].to_string(), line_type: "unchanged".to_string() });
+                result_new.push(DiffLine { content: new_lines[new_idx].to_string(), line_type: "unchanged".to_string() });
+                unchanged += 1;
+                old_idx += 1;
+                new_idx += 1;
+                lcs_idx += 1;
+            }
+        } else {
+            while old_idx < old_lines.len() {
+                result_old.push(DiffLine { content: old_lines[old_idx].to_string(), line_type: "removed".to_string() });
+                result_new.push(DiffLine { content: String::new(), line_type: "unchanged".to_string() });
+                removed += 1;
+                old_idx += 1;
+            }
+            while new_idx < new_lines.len() {
+                result_old.push(DiffLine { content: String::new(), line_type: "unchanged".to_string() });
+                result_new.push(DiffLine { content: new_lines[new_idx].to_string(), line_type: "added".to_string() });
+                added += 1;
+                new_idx += 1;
+            }
+        }
+    }
+
+    DocumentDiffResponse {
+        old_lines: result_old,
+        new_lines: result_new,
+        stats: DiffStats { added, removed, unchanged },
+    }
+}
+
+fn longest_common_subsequence<'a>(old: &[&'a str], new: &[&'a str]) -> Vec<&'a str> {
+    let m = old.len();
+    let n = new.len();
+    if m == 0 || n == 0 { return Vec::new(); }
+
+    let mut dp = vec![vec![0usize; n + 1]; m + 1];
+    for i in 1..=m {
+        for j in 1..=n {
+            if old[i - 1] == new[j - 1] {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else {
+                dp[i][j] = dp[i - 1][j].max(dp[i][j - 1]);
+            }
+        }
+    }
+
+    let mut result = Vec::new();
+    let mut i = m;
+    let mut j = n;
+    while i > 0 && j > 0 {
+        if old[i - 1] == new[j - 1] {
+            result.push(old[i - 1]);
+            i -= 1;
+            j -= 1;
+        } else if dp[i - 1][j] > dp[i][j - 1] {
+            i -= 1;
+        } else {
+            j -= 1;
+        }
+    }
+    result.reverse();
+    result
+}
+
+// ============================================================================
 // Attachment Endpoints
 // ============================================================================
 
@@ -1315,6 +1486,7 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
         .route("/documents/{document_id}/versions", get(list_versions))
         .route("/documents/{document_id}/versions", post(create_version))
         .route("/documents/{document_id}/versions/{version_number}", get(get_version))
+        .route("/documents/{document_id}/versions/{v1}/diff/{v2}", get(diff_versions))
         .route("/documents/{document_id}/attachments", get(list_attachments))
         .route("/documents/{document_id}/attachments", post(upload_attachment).layer(DefaultBodyLimit::max(50 * 1024 * 1024)))
         .route("/documents/{document_id}/attachments/{attachment_id}", get(download_attachment))

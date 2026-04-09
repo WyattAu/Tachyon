@@ -3,6 +3,7 @@
 
 pub mod attachment;
 pub mod catalog;
+pub mod document_review;
 pub mod document_version;
 pub mod error;
 pub mod graph;
@@ -23,6 +24,10 @@ pub mod user;
 pub use attachment::{Attachment, AttachmentRepository, CreateAttachmentRequest};
 pub use catalog::CatalogRepository;
 pub use catalog::{CatalogStats, CreateComponentRequest, CreateProjectRequest};
+pub use document_review::{
+    CreateCommentRequest, CreateReviewRequest, DocumentReview, DocumentReviewRepository,
+    ReviewComment, ReviewStatus, UpdateReviewRequest,
+};
 pub use document_version::{CreateVersionRequest, DocumentVersion, DocumentVersionRepository};
 pub use error::{DatabaseError, DatabaseResult};
 pub use permissions::{DefaultRoles, Permission, ResourcePermission, Role};
