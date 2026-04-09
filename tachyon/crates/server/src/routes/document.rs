@@ -13,9 +13,9 @@ use tokio::sync::Mutex;
 use tachyon_core::{compute_content_hash, Document, DocumentContent, DocumentId, DocumentStatus, DocumentVisibility};
 use tachyon_core::id::{RepositoryId, UserId};
 use tachyon_database::{
-    AttachmentRepository, CreateAttachmentRequest, CreateTemplateRequest,
-    CreateVersionRequest, DocumentVersionRepository, DatabasePool, DocumentRepository,
-    TemplateRepository, UpdateTemplateRequest,
+    ActivityRepository, AttachmentRepository, CreateActivityEvent, CreateAttachmentRequest,
+    CreateTemplateRequest, CreateVersionRequest, DocumentVersionRepository, DatabasePool,
+    DocumentRepository, TemplateRepository, UpdateTemplateRequest,
 };
 use tachyon_renderer::{RenderConfig, Renderer};
 use tachyon_search::{IndexManager, SearchDocument};
@@ -385,6 +385,17 @@ pub async fn create_document(
         custom_fields: HashMap::new(),
     }).await;
 
+    if let Err(e) = ActivityRepository::create(&state.pool, CreateActivityEvent {
+        actor_id: uuid::Uuid::parse_str(&author_id.to_string()).unwrap_or_default(),
+        event_type: "document_created".to_string(),
+        target_type: "document".to_string(),
+        target_id: uuid::Uuid::parse_str(&doc.id.to_string()).unwrap_or_default(),
+        description: format!("Created document: {}", req.title),
+        metadata: None,
+    }).await {
+        warn!("Failed to emit activity event for document creation: {}", e);
+    }
+
     // Render markdown to HTML (create renderer on demand due to katex thread-safety issues)
     // Note: Renderer is not Send, so we create it after all await points
     let html_content = {
@@ -572,6 +583,17 @@ pub async fn update_document(
         updated_at: metadata.updated_at,
         custom_fields: HashMap::new(),
     }).await;
+
+    if let Err(e) = ActivityRepository::create(&state.pool, CreateActivityEvent {
+        actor_id: uuid::Uuid::parse_str(&metadata.author_id).unwrap_or_default(),
+        event_type: "document_updated".to_string(),
+        target_type: "document".to_string(),
+        target_id: uuid::Uuid::parse_str(&document_id).unwrap_or_default(),
+        description: format!("Updated document: {}", metadata.title),
+        metadata: None,
+    }).await {
+        warn!("Failed to emit activity event for document update: {}", e);
+    }
 
     let tags = metadata.parse_tags().unwrap_or_default();
     let response = DocumentResponse {

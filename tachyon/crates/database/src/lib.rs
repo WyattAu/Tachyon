@@ -1,6 +1,7 @@
 // Tachyon Database - PostgreSQL Database Layer
 // Provides metadata storage, session persistence, and RBAC mapping tables
 
+pub mod activity;
 pub mod attachment;
 pub mod catalog;
 pub mod document_review;
@@ -21,6 +22,7 @@ pub mod types;
 pub mod user;
 
 // Re-export common types for convenience
+pub use activity::{ActivityEvent, ActivityRepository, CreateActivityEvent};
 pub use attachment::{Attachment, AttachmentRepository, CreateAttachmentRequest};
 pub use catalog::CatalogRepository;
 pub use catalog::{CatalogStats, CreateComponentRequest, CreateProjectRequest};

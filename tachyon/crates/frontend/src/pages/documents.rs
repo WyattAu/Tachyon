@@ -5,7 +5,7 @@ use leptos_router::hooks::{use_params, use_navigate};
 use leptos_router::params::Params;
 use crate::api::ApiClient;
 use crate::types::{Document, DocumentListResponse, DocumentTemplate};
-use crate::components::{DocumentEditor, ActivityFeed, Activity, ActivityType, VersionHistory, TemplateSelector};
+use crate::components::{DocumentEditor, ActivityFeed, Activity, ActivityType, VersionHistory, TemplateSelector, ReviewPanel, ConflictResolver};
 use crate::websocket::{WebSocketClient, WsMessage};
 use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
@@ -503,22 +503,50 @@ pub fn DocumentEditPage() -> impl IntoView {
                     >
                         "History"
                     </button>
+                    <button
+                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
+                        on:click=move |_| set_sidebar_tab.set("review".to_string())
+                    >
+                        "Review"
+                    </button>
+                    <button
+                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
+                        on:click=move |_| set_sidebar_tab.set("conflicts".to_string())
+                    >
+                        "Conflicts"
+                    </button>
                 </div>
-                {move || if sidebar_tab.get() == "history" {
-                    view! {
-                        <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
-                            <VersionHistory document_id={document_id()} on_rollback=None />
-                        </div>
-                    }.into_any()
-                } else {
-                    view! {
-                        <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
-                            <ActivityFeed
-                                activities={activities.get()}
-                                max_items=20
-                            />
-                        </div>
-                    }.into_any()
+                {move || {
+                    let tab = sidebar_tab.get();
+                    let doc_id = document_id();
+                    if tab == "history" {
+                        view! {
+                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                                <VersionHistory document_id={doc_id} on_rollback=None />
+                            </div>
+                        }.into_any()
+                    } else if tab == "review" {
+                        view! {
+                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                                <ReviewPanel document_id={doc_id} />
+                            </div>
+                        }.into_any()
+                    } else if tab == "conflicts" {
+                        view! {
+                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                                <ConflictResolver document_id={doc_id} />
+                            </div>
+                        }.into_any()
+                    } else {
+                        view! {
+                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                                <ActivityFeed
+                                    activities={activities.get()}
+                                    max_items=20
+                                />
+                            </div>
+                        }.into_any()
+                    }
                 }}
             </div>
         </div>

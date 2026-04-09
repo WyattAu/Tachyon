@@ -13,10 +13,8 @@ pub mod version_history;
 pub use activity_feed::{Activity, ActivityFeed, ActivityType};
 pub use app_shell::AppShell;
 pub use auth_guard::{AuthGuard, provide_auth_context};
-#[allow(unused_imports)]
 pub use conflict_resolver::ConflictResolver;
 pub use document_editor::DocumentEditor;
-#[allow(unused_imports)] // Will be wired into documents page
 pub use review_panel::ReviewPanel;
 pub use template_selector::TemplateSelector;
 pub use version_history::VersionHistory;

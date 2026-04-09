@@ -4,9 +4,23 @@
 use crate::api::ApiClient;
 use crate::types::{CatalogStats, Document, Project};
 use leptos::prelude::*;
+use leptos_router::hooks::use_navigate;
 
 #[component]
 pub fn DashboardPage() -> impl IntoView {
+    let navigate = use_navigate();
+    let nav_for_project = navigate.clone();
+    let nav_for_document = navigate.clone();
+    let on_click_new_project = Callback::new(move |_: leptos::ev::MouseEvent| {
+        let _ = nav_for_project("/catalog", Default::default());
+    });
+    let on_click_new_document = Callback::new(move |_: leptos::ev::MouseEvent| {
+        let _ = nav_for_document("/documents", Default::default());
+    });
+    let on_click_search = Callback::new(move |_: leptos::ev::MouseEvent| {
+        let _ = navigate("/search", Default::default());
+    });
+
     let api_client = ApiClient::default();
     let api_client_stats = api_client.clone();
     let api_client_projects = api_client.clone();
@@ -97,9 +111,9 @@ pub fn DashboardPage() -> impl IntoView {
             <div class="mb-8">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Quick Actions"</h2>
                 <div class="flex flex-wrap gap-3">
-                    <QuickActionButton label="New Project" icon="plus" />
-                    <QuickActionButton label="New Document" icon="document" />
-                    <QuickActionButton label="Search" icon="search" />
+                    <QuickActionButton label="New Project" icon="plus" on_click={on_click_new_project} />
+                    <QuickActionButton label="New Document" icon="document" on_click={on_click_new_document} />
+                    <QuickActionButton label="Search" icon="search" on_click={on_click_search} />
                 </div>
             </div>
 
@@ -233,7 +247,7 @@ fn StatsCardSkeleton() -> impl IntoView {
 }
 
 #[component]
-fn QuickActionButton(label: &'static str, icon: &'static str) -> impl IntoView {
+fn QuickActionButton(label: &'static str, icon: &'static str, on_click: Callback<leptos::ev::MouseEvent>) -> impl IntoView {
     let icon_svg = match icon {
         "plus" => r#"<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />"#,
         "document" => r#"<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />"#,
@@ -242,7 +256,7 @@ fn QuickActionButton(label: &'static str, icon: &'static str) -> impl IntoView {
     };
 
     view! {
-        <button class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors shadow-sm">
+        <button on:click={move |ev| on_click.run(ev)} class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors shadow-sm">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {icon_svg}
             </svg>

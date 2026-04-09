@@ -1,6 +1,7 @@
 // API route handlers
 // Defines all HTTP endpoints for the Tachyon server
 
+pub mod activity;
 pub mod catalog;
 pub mod conflict;
 pub mod document;
@@ -20,6 +21,7 @@ use crate::config::GuestConfig;
 /// Create a test router with all routes for integration testing
 pub async fn create_router() -> Router {
     use tachyon_database::init_with_migrations;
+    use crate::routes::activity::{ActivityState, create_activity_router};
     use crate::routes::catalog::{CatalogState, create_catalog_router};
     use crate::routes::document::{DocumentState, create_document_router};
     use crate::routes::node::{NodeState, create_node_router};
@@ -57,7 +59,8 @@ pub async fn create_router() -> Router {
     let repository_state = RepositoryState::new();
     let node_state = NodeState::new(pool.clone());
     let catalog_state = CatalogState::new(pool.clone());
-    let review_state = ReviewState::new(pool);
+    let review_state = ReviewState::new(pool.clone());
+    let activity_state = ActivityState::new(pool);
     let _connection_manager = ConnectionManager::new();
 
     let document_router = create_document_router().with_state(document_state);
@@ -67,6 +70,7 @@ pub async fn create_router() -> Router {
     let node_router = create_node_router().with_state(node_state);
     let catalog_router = create_catalog_router().with_state(catalog_state);
     let review_router = create_review_router().with_state(review_state);
+    let activity_router = create_activity_router().with_state(activity_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -75,7 +79,8 @@ pub async fn create_router() -> Router {
         .merge(repository_router)
         .merge(node_router)
         .merge(catalog_router)
-        .merge(review_router);
+        .merge(review_router)
+        .merge(activity_router);
 
     Router::new().nest("/api/v1", api_v1)
 }
@@ -148,6 +153,12 @@ pub use seo::{SeoState, create_seo_router};
 pub use review::{
     create_review, create_review_router, list_reviews, update_review, create_comment, list_comments,
     get_review_status, ReviewState, ReviewResponse, ReviewStatusResponse, CommentResponse,
+};
+
+// Activity exports
+pub use activity::{
+    create_activity_router, list_activity, create_activity,
+    ActivityState, ListActivityQuery, ActivityListResponse,
 };
 
 // Conflict exports

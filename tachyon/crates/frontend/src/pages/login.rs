@@ -58,7 +58,7 @@ pub fn LoginPage() -> impl IntoView {
                         }
                         
                         // Navigate using stored value
-                        nav.update_value(|n| n("/catalog", Default::default()));
+                        nav.update_value(|n| n("/dashboard", Default::default()));
                     } else {
                         loading.set(false);
                         error.set(response.error);
@@ -86,7 +86,7 @@ pub fn LoginPage() -> impl IntoView {
                         if let Some(token) = &response.access_token {
                             client.set_auth_token(token.clone());
                         }
-                        nav.update_value(|n| n("/catalog", Default::default()));
+                        nav.update_value(|n| n("/dashboard", Default::default()));
                     } else {
                         loading.set(false);
                         error.set(response.error);

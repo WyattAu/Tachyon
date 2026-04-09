@@ -1,6 +1,7 @@
 // App Shell - Main layout with sidebar navigation
 
 use leptos::prelude::*;
+use leptos_router::hooks::use_navigate;
 
 /// App shell component with sidebar and main content area
 #[component]
@@ -8,10 +9,36 @@ pub fn AppShell<F>(theme: ReadSignal<String>, toggle_theme: F, children: Childre
 where
     F: Fn() + 'static,
 {
-    // Theme is applied via toggle_theme which updates document class
-    // Future: Use theme signal to show sun/moon icon based on current theme
     let _ = theme;
     let (sidebar_collapsed, set_sidebar_collapsed) = signal(false);
+
+    let (user_id, set_user_id) = signal(None::<String>);
+    let (show_user_menu, set_show_user_menu) = signal(false);
+
+    Effect::new(move |_| {
+        if let Some(id) = crate::components::auth_guard::get_user_id().filter(|s| !s.is_empty()) {
+            set_user_id.set(Some(id));
+        }
+    });
+
+    let navigate = use_navigate();
+
+    let on_toggle_menu = Callback::new(move |ev: leptos::ev::MouseEvent| {
+        ev.stop_propagation();
+        set_show_user_menu.update(|show| *show = !*show);
+    });
+
+    let on_sign_out = Callback::new(move |_: leptos::ev::MouseEvent| {
+        if let Some(window) = web_sys::window() {
+            let _ = window.local_storage().unwrap().map(|storage| {
+                storage.remove_item("tachyon_token").ok();
+                storage.remove_item("tachyon_remember").ok();
+            });
+        }
+        let client = crate::api::ApiClient::default();
+        client.clear_auth_token();
+        let _ = navigate("/login", Default::default());
+    });
 
     view! {
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -95,9 +122,43 @@ where
                                     <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
                                 </svg>
                             </button>
-                            <a href="/login" class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                                Sign In
-                            </a>
+                            <Show when=move || user_id.get().is_some()>
+                                <div class="relative">
+                                    <button
+                                        on:click={move |ev| on_toggle_menu.run(ev)}
+                                        class="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                            <span class="text-white text-sm font-medium">
+                                                {move || {
+                                                    user_id.get()
+                                                        .map(|id| id.chars().next().unwrap_or('U').to_uppercase().to_string())
+                                                        .unwrap_or_else(|| "U".to_string())
+                                                }}
+                                            </span>
+                                        </div>
+                                    </button>
+                                    <div
+                                        class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
+                                        style={move || if show_user_menu.get() { "" } else { "display: none;" }}
+                                    >
+                                        <a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            "Settings"
+                                        </a>
+                                        <button
+                                            on:click={move |ev| on_sign_out.run(ev)}
+                                            class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                        >
+                                            "Sign Out"
+                                        </button>
+                                    </div>
+                                </div>
+                            </Show>
+                            <Show when=move || user_id.get().is_none()>
+                                <a href="/login" class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                                    Sign In
+                                </a>
+                            </Show>
                         </div>
                     </div>
                 </header>

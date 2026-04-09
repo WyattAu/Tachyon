@@ -8,8 +8,8 @@ use std::time::Instant;
 use tachyon_core::compute_content_hash;
 use tachyon_database::{DocumentRepository, init_with_migrations};
 use tachyon_renderer::context::{RenderContext, RenderMetadata};
-use tachyon_renderer::page::{render_full_page, SiteConfig};
-use tachyon_renderer::{RenderConfig, Renderer};
+use tachyon_renderer::page::{render_full_page, render_full_page_with_template, SiteConfig};
+use tachyon_renderer::{RenderConfig, Renderer, TemplateEngine};
 
 #[derive(Debug, Clone)]
 pub struct BuildCommand {
@@ -208,6 +208,26 @@ impl BuildCommand {
             template_dir: self.template.as_ref().map(|p| p.to_string_lossy().to_string()),
         };
 
+        let template_engine = match &self.template {
+            Some(path) if path.exists() => {
+                match TemplateEngine::from_directory(path) {
+                    Ok(engine) => {
+                        println!("Loaded template engine from: {}", path.display());
+                        Some(engine)
+                    }
+                    Err(e) => {
+                        eprintln!("Warning: Failed to load template engine from '{}': {}. Falling back to hardcoded template.", path.display(), e);
+                        None
+                    }
+                }
+            }
+            Some(path) => {
+                eprintln!("Warning: Template directory '{}' does not exist. Falling back to hardcoded template.", path.display());
+                None
+            }
+            None => None,
+        };
+
         let mut new_manifest = BuildManifest {
             build_time: chrono::Utc::now().to_rfc3339(),
             commit_hash: get_commit_hash(&self.repo_path),
@@ -245,7 +265,7 @@ impl BuildCommand {
                 }
             }
 
-            match render_document(&renderer, &site_config, doc) {
+            match render_document(&renderer, &site_config, doc, template_engine.as_ref()) {
                 Ok(html) => {
                     if let Some(parent) = output_path.parent() {
                         fs::create_dir_all(parent).map_err(|e| {
@@ -277,7 +297,7 @@ impl BuildCommand {
         }
 
         println!("Generating index page...");
-        generate_index(&self.output_dir, &docs, &site_config)?;
+        generate_index(&self.output_dir, &docs, &site_config, template_engine.as_ref())?;
 
         println!("Generating sitemap...");
         generate_sitemap(&self.output_dir, &docs, &self.base_url)?;
@@ -331,6 +351,7 @@ fn render_document(
     renderer: &Renderer,
     site: &SiteConfig,
     doc: &DocInfo,
+    template_engine: Option<&TemplateEngine>,
 ) -> Result<String, CliError> {
     let result = renderer
         .render(&doc.content, None)
@@ -349,7 +370,12 @@ fn render_document(
         navigation: None,
     };
 
-    Ok(render_full_page(&ctx, site))
+    if let Some(engine) = template_engine {
+        render_full_page_with_template(&ctx, site, engine, "document.html")
+            .map_err(|e| CliError::build(format!("Template render failed for '{}': {}", doc.slug, e)))
+    } else {
+        Ok(render_full_page(&ctx, site))
+    }
 }
 
 fn escape_html(s: &str) -> String {
@@ -371,6 +397,7 @@ fn generate_index(
     output_dir: &Path,
     docs: &[DocInfo],
     site: &SiteConfig,
+    template_engine: Option<&TemplateEngine>,
 ) -> CliResult<()> {
     let mut items = String::new();
     for doc in docs {
@@ -436,7 +463,12 @@ document.getElementById('search').addEventListener('input', function() {
     );
 
     let ctx = RenderContext::new(format!("{} - Index", site.site_title), content);
-    let html = render_full_page(&ctx, site);
+    let html = if let Some(engine) = template_engine {
+        render_full_page_with_template(&ctx, site, engine, "index.html")
+            .map_err(|e| CliError::build(format!("Failed to render index template: {}", e)))?
+    } else {
+        render_full_page(&ctx, site)
+    };
 
     let index_path = output_dir.join("index.html");
     fs::write(&index_path, html)
