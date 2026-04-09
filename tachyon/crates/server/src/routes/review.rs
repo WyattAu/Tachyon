@@ -8,8 +8,8 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tachyon_database::{
-    CreateCommentRequest, CreateReviewRequest, DatabasePool, DocumentReviewRepository,
-    ReviewStatus, UpdateReviewRequest,
+    CreateCommentRequest, CreateNotification, CreateReviewRequest, DatabasePool,
+    DocumentReviewRepository, NotificationRepository, ReviewStatus, UpdateReviewRequest,
 };
 use tracing::info;
 
@@ -148,6 +148,19 @@ pub async fn create_review(
         })?;
 
     info!("Review created for document {}: {}", document_id, review.id);
+
+    let _ = NotificationRepository::create(&state.pool, CreateNotification {
+        user_id: review.reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
+        notification_type: "review_requested".to_string(),
+        title: format!("Review requested on {}", document_id),
+        body: None,
+        link: Some(format!("/documents/{}/reviews/{}", document_id, review.id)),
+        metadata: Some(serde_json::json!({
+            "document_id": document_id,
+            "review_id": review.id,
+        })),
+    }).await;
+
     Ok(Json(ReviewResponse::from(review)))
 }
 
@@ -196,6 +209,7 @@ pub async fn update_review(
         }
     };
 
+    let summary = body.summary.clone();
     let review = repo
         .update_review_status(
             &review_id,
@@ -225,6 +239,24 @@ pub async fn update_review(
         })?;
 
     info!("Review {} updated to {}", review_id, body.status);
+
+    let notification_type = match body.status.as_str() {
+        "approved" => "review_approved",
+        "rejected" => "review_rejected",
+        _ => "review_updated",
+    };
+    let _ = NotificationRepository::create(&state.pool, CreateNotification {
+        user_id: review.reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
+        notification_type: notification_type.to_string(),
+        title: format!("Review {} for document", body.status),
+        body: summary,
+        link: Some(format!("/reviews/{}", review_id)),
+        metadata: Some(serde_json::json!({
+            "review_id": review_id,
+            "status": body.status,
+        })),
+    }).await;
+
     Ok(Json(ReviewResponse::from(review)))
 }
 
@@ -236,6 +268,8 @@ pub async fn create_comment(
 ) -> Result<Json<CommentResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = DocumentReviewRepository::new(state.pool.clone());
 
+    let author_id = body.author_id.clone();
+    let content = body.content.clone();
     let comment = repo
         .create_comment(CreateCommentRequest {
             review_id: review_id.clone(),
@@ -253,6 +287,18 @@ pub async fn create_comment(
                 }),
             )
         })?;
+
+    let _ = NotificationRepository::create(&state.pool, CreateNotification {
+        user_id: author_id.parse().unwrap_or(uuid::Uuid::nil()),
+        notification_type: "review_commented".to_string(),
+        title: format!("New comment on review {}", review_id),
+        body: Some(content),
+        link: Some(format!("/reviews/{}/comments", review_id)),
+        metadata: Some(serde_json::json!({
+            "review_id": review_id,
+            "comment_id": comment.id,
+        })),
+    }).await;
 
     Ok(Json(CommentResponse::from(comment)))
 }

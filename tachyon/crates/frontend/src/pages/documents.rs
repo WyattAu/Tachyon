@@ -348,11 +348,200 @@ fn DocumentCard(document: Document) -> impl IntoView {
 /// Single document page
 #[component]
 pub fn DocumentPage() -> impl IntoView {
+    let params = use_params::<DocumentViewParams>();
+    let document_id = move || {
+        params.with(|p| p.as_ref().map(|p| p.id.clone()).unwrap_or_default())
+    };
+
+    let api_client = ApiClient::default();
+    let doc_id = document_id();
+    let (loading, set_loading) = signal(true);
+    let (load_error, set_load_error) = signal::<Option<String>>(None);
+    let (doc, set_doc) = signal::<Option<Document>>(None);
+
+    let set_ld = set_loading.clone();
+    let set_le = set_load_error.clone();
+    let set_d = set_doc.clone();
+
+    Effect::new(move || {
+        let did = doc_id.clone();
+        if did.is_empty() {
+            set_ld.set(false);
+            return;
+        }
+        set_ld.set(true);
+        set_le.set(None);
+        let api = api_client.clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            match api.get_document(&did).await {
+                Ok(document) => {
+                    set_d.set(Some(document));
+                    set_ld.set(false);
+                }
+                Err(e) => {
+                    set_le.set(Some(format!("Failed to load document: {}", e)));
+                    set_ld.set(false);
+                }
+            }
+        });
+    });
+
+    let navigate = use_navigate();
+    let doc_id_for_edit = document_id();
+
     view! {
-        <div class="p-4">
-            <h1 class="text-2xl font-bold">Document</h1>
+        <div class="max-w-4xl mx-auto">
+            // Back link
+            <a href="/documents" class="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline mb-6">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                "Back to Documents"
+            </a>
+
+            {move || {
+                let did = document_id();
+                if did.is_empty() {
+                    view! {
+                        <div class="p-8 text-center">
+                            <p class="text-gray-500 dark:text-gray-400">"No document ID specified"</p>
+                        </div>
+                    }.into_any()
+                } else if loading.get() {
+                    view! {
+                        <div class="flex items-center justify-center py-12">
+                            <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                                <div class="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                                <span>"Loading document..."</span>
+                            </div>
+                        </div>
+                    }.into_any()
+                } else if let Some(err) = load_error.get() {
+                    view! {
+                        <div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-700 dark:text-red-300">
+                            {err}
+                        </div>
+                    }.into_any()
+                } else if let Some(document) = doc.get() {
+                    let title = document.title.clone();
+                    let tags = document.tags.clone();
+                    let word_count = document.word_count;
+                    let created_at = document.created_at.clone();
+                    let updated_at = document.updated_at.clone();
+                    let content = document.content.clone();
+                    let status = document.status.clone();
+                    let visibility = document.visibility.clone();
+                    let edit_id = doc_id_for_edit.clone();
+
+                    let status_class = match status.as_str() {
+                        "published" => "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300",
+                        "archived" => "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
+                        "deleted" => "bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300",
+                        _ => "bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-300",
+                    };
+                    let status_text = match status.as_str() {
+                        "published" => "Published",
+                        "archived" => "Archived",
+                        "deleted" => "Deleted",
+                        _ => "Draft",
+                    };
+                    let visibility_text = match visibility.as_str() {
+                        "public" => "Public",
+                        "restricted" => "Restricted",
+                        _ => "Private",
+                    };
+                    let word_count_text = if word_count == 1 { "1 word".to_string() } else { format!("{} words", word_count) };
+
+                    let nav = navigate.clone();
+                    let edit_id_clone = edit_id.clone();
+                    let on_edit = Callback::new(move |_: leptos::ev::MouseEvent| {
+                        let _ = nav(&format!("/documents/{}/edit", edit_id_clone), Default::default());
+                    });
+
+                    view! {
+                        <div>
+                            // Title and actions
+                            <div class="flex items-start justify-between mb-6">
+                                <div>
+                                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{title}</h1>
+                                    <div class="flex gap-2">
+                                        <span class={format!("px-2 py-0.5 text-xs rounded {}", status_class)}>{status_text}</span>
+                                        <span class="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{visibility_text}</span>
+                                    </div>
+                                </div>
+                                <button
+                                    on:click={move |ev| on_edit.run(ev)}
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    "Edit"
+                                </button>
+                            </div>
+
+                            // Metadata
+                            <div class="flex flex-wrap gap-4 mb-6 text-sm text-gray-500 dark:text-gray-400">
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    "Created: "{created_at.split('T').next().unwrap_or("Unknown")}
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    "Updated: "{updated_at.split('T').next().unwrap_or("Unknown")}
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    {word_count_text}
+                                </span>
+                            </div>
+
+                            // Tags
+                            {if !tags.is_empty() {
+                                view! {
+                                    <div class="flex flex-wrap gap-2 mb-6">
+                                        {tags.into_iter().map(|tag| {
+                                            view! {
+                                                <span class="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 rounded">
+                                                    {tag}
+                                                </span>
+                                            }
+                                        }).collect::<Vec<_>>()}
+                                    </div>
+                                }.into_any()
+                            } else {
+                                view! { <div class="mb-6"></div> }.into_any()
+                            }}
+
+                            // Content
+                            <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+                                <div class="prose dark:prose-invert max-w-none">
+                                    <pre class="whitespace-pre-wrap font-sans text-gray-900 dark:text-white bg-transparent p-0 m-0">{content}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    }.into_any()
+                } else {
+                    view! {
+                        <div class="p-8 text-center">
+                            <p class="text-gray-500 dark:text-gray-400">"Document not found"</p>
+                        </div>
+                    }.into_any()
+                }
+            }}
         </div>
     }
+}
+
+#[derive(Params, PartialEq, Clone)]
+struct DocumentViewParams {
+    id: String,
 }
 
 /// Document edit page with real-time collaboration

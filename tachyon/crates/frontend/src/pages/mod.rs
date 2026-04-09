@@ -14,7 +14,7 @@ pub mod admin;
 
 pub use graph::GraphPage;
 pub use home::HomePage;
-pub use documents::{DocumentsPage, DocumentEditPage};
+pub use documents::{DocumentsPage, DocumentEditPage, DocumentPage};
 pub use register::RegisterPage;
 pub use search::SearchPage;
 pub use catalog::CatalogPage;

@@ -620,12 +620,56 @@ pub async fn reindex_tantivy(
     })))
 }
 
+#[derive(Debug, Serialize)]
+pub struct SuggestResponse {
+    pub query: String,
+    pub suggestions: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SuggestQuery {
+    pub q: String,
+    #[serde(default = "default_suggest_limit")]
+    pub limit: usize,
+}
+
+fn default_suggest_limit() -> usize {
+    10
+}
+
+pub async fn suggest(
+    Query(query): Query<SuggestQuery>,
+    State(state): State<SearchState>,
+) -> Result<Json<SuggestResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let mgr_arc = state.index_manager.as_ref().ok_or_else(|| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ErrorResponse {
+                code: "NO_INDEX".to_string(),
+                message: "Tantivy search index is not available".to_string(),
+            }),
+        )
+    })?;
+
+    let guard = mgr_arc.lock().await;
+    let engine = QueryEngine::new(guard.clone());
+    drop(guard);
+
+    let suggestions = engine.suggest(&query.q, query.limit).await.unwrap_or_default();
+
+    Ok(Json(SuggestResponse {
+        query: query.q,
+        suggestions,
+    }))
+}
+
 pub fn create_search_router() -> axum::Router<SearchState> {
     use axum::routing::{delete, get, post, put};
 
     axum::Router::new()
         .route("/search", get(search))
         .route("/search/global", get(global_search))
+        .route("/search/suggest", get(suggest))
         .route("/search/reindex", post(reindex_tantivy))
         .route("/search/saved", post(create_saved_search))
         .route("/search/saved", get(list_saved_searches))

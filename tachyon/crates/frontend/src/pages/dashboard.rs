@@ -2,9 +2,44 @@
 // Main dashboard with stats, quick actions, and recent items
 
 use crate::api::ApiClient;
-use crate::types::{CatalogStats, Document, Project};
+use crate::types::{ActivityEvent, ActivityListResponse, CatalogStats, Document, Project};
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
+
+fn format_relative_time(timestamp: &str) -> String {
+    let dt = chrono::DateTime::parse_from_rfc3339(timestamp);
+    let Ok(past) = dt else {
+        return timestamp.split('T').next().unwrap_or("Unknown").to_string();
+    };
+    let now = chrono::Utc::now();
+    let duration = now.signed_duration_since(past.with_timezone(&chrono::Utc));
+
+    if duration.num_seconds() < 60 {
+        "just now".to_string()
+    } else if duration.num_minutes() < 60 {
+        format!("{}m ago", duration.num_minutes())
+    } else if duration.num_hours() < 24 {
+        format!("{}h ago", duration.num_hours())
+    } else if duration.num_days() < 7 {
+        format!("{}d ago", duration.num_days())
+    } else {
+        past.format("%b %d").to_string()
+    }
+}
+
+fn event_type_dot_color(event_type: &str) -> &'static str {
+    if event_type.contains("created") {
+        "bg-green-500"
+    } else if event_type.contains("updated") || event_type.contains("edited") {
+        "bg-blue-500"
+    } else if event_type.contains("deleted") || event_type.contains("removed") {
+        "bg-red-500"
+    } else if event_type.contains("published") {
+        "bg-emerald-500"
+    } else {
+        "bg-gray-400"
+    }
+}
 
 #[component]
 pub fn DashboardPage() -> impl IntoView {
@@ -25,6 +60,7 @@ pub fn DashboardPage() -> impl IntoView {
     let api_client_stats = api_client.clone();
     let api_client_projects = api_client.clone();
     let api_client_documents = api_client.clone();
+    let api_client_activity = api_client.clone();
 
     let stats_resource = LocalResource::new(move || {
         let client = api_client_stats.clone();
@@ -52,6 +88,13 @@ pub fn DashboardPage() -> impl IntoView {
                 .await
                 .map(|r| r.results)
                 .unwrap_or_default()
+        }
+    });
+
+    let activity_resource = LocalResource::new(move || {
+        let client = api_client_activity.clone();
+        async move {
+            client.list_activity(Some(20), None).await.unwrap_or(ActivityListResponse::default())
         }
     });
 
@@ -120,18 +163,30 @@ pub fn DashboardPage() -> impl IntoView {
             // Recent Activity
             <div class="mb-8">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Recent Activity"</h2>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-center py-8">
-                        <div class="text-center">
-                            <div class="text-gray-400 dark:text-gray-500 mb-2">
-                                <svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
-                            <p class="text-gray-500 dark:text-gray-400">"Real-time activity coming soon"</p>
-                            <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">"Activity feed will be available in Phase 2"</p>
-                        </div>
-                    </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+                    <Suspense fallback={view! { <ActivityListSkeleton /> }}>
+                        {move || {
+                            activity_resource.get().map(|activity| {
+                                if activity.events.is_empty() {
+                                    view! {
+                                        <div class="p-6 text-center">
+                                            <p class="text-gray-500 dark:text-gray-400">"No recent activity"</p>
+                                        </div>
+                                    }.into_any()
+                                } else {
+                                    view! {
+                                        <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                                            {activity.events.into_iter().map(|event| {
+                                                view! {
+                                                    <ActivityEventRow event=event />
+                                                }
+                                            }).collect::<Vec<_>>()}
+                                        </div>
+                                    }.into_any()
+                                }
+                            })
+                        }}
+                    </Suspense>
                 </div>
             </div>
 
@@ -199,6 +254,39 @@ pub fn DashboardPage() -> impl IntoView {
                     </Suspense>
                 </div>
             </div>
+        </div>
+    }
+}
+
+#[component]
+fn ActivityEventRow(event: ActivityEvent) -> impl IntoView {
+    let dot_color = event_type_dot_color(&event.event_type);
+    let relative_time = format_relative_time(&event.created_at);
+
+    view! {
+        <div class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <span class={format!("flex-shrink-0 w-2.5 h-2.5 rounded-full {}", dot_color)}></span>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm text-gray-900 dark:text-white truncate">{event.description}</p>
+            </div>
+            <span class="flex-shrink-0 text-xs text-gray-400 dark:text-gray-500">{relative_time}</span>
+        </div>
+    }
+}
+
+#[component]
+fn ActivityListSkeleton() -> impl IntoView {
+    view! {
+        <div class="divide-y divide-gray-200 dark:divide-gray-700">
+            {(0..5).map(|_| {
+                view! {
+                    <div class="flex items-center gap-3 px-4 py-3 animate-pulse">
+                        <div class="flex-shrink-0 w-2.5 h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                        <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                        <div class="flex-shrink-0 h-3 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+                    </div>
+                }
+            }).collect::<Vec<_>>()}
         </div>
     }
 }

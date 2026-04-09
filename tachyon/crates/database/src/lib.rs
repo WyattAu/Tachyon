@@ -9,6 +9,7 @@ pub mod document_version;
 pub mod error;
 pub mod graph;
 pub mod migrations;
+pub mod notification;
 pub mod permissions;
 pub mod rbac;
 pub mod repository;
@@ -32,6 +33,7 @@ pub use document_review::{
 };
 pub use document_version::{CreateVersionRequest, DocumentVersion, DocumentVersionRepository};
 pub use error::{DatabaseError, DatabaseResult};
+pub use notification::{CreateNotification, Notification, NotificationRepository};
 pub use permissions::{DefaultRoles, Permission, ResourcePermission, Role};
 pub use template::{CreateTemplateRequest, DocumentTemplate, TemplateRepository, UpdateTemplateRequest};
 pub use types::{Component, Project, ProjectMember};

@@ -672,3 +672,49 @@ pub struct MergeResultInfo {
     pub content: String,
     pub conflict_count: usize,
 }
+
+// ============================================================================
+// Activity Types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ActivityEvent {
+    pub id: String,
+    pub actor_id: String,
+    pub event_type: String,
+    pub target_type: String,
+    pub target_id: String,
+    pub description: String,
+    pub metadata: serde_json::Value,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ActivityListResponse {
+    pub events: Vec<ActivityEvent>,
+    pub count: usize,
+}
+
+// ============================================================================
+// Notification Types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Notification {
+    pub id: String,
+    pub user_id: String,
+    #[serde(rename = "type")]
+    pub notification_type: String,
+    pub title: String,
+    pub body: Option<String>,
+    pub link: Option<String>,
+    pub read: bool,
+    pub metadata: serde_json::Value,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NotificationListResponse {
+    pub notifications: Vec<Notification>,
+    pub count: usize,
+}

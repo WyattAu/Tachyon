@@ -81,6 +81,13 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/documents/:id") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::DocumentPage />
+                            </AuthGuard>
+                        }
+                    } />
                     <Route path=path!("/graph") view=move || {
                         view! {
                             <AuthGuard>

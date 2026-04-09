@@ -6,6 +6,7 @@ pub mod catalog;
 pub mod conflict;
 pub mod document;
 pub mod node;
+pub mod notification;
 pub mod repository;
 pub mod review;
 pub mod role;
@@ -25,6 +26,7 @@ pub async fn create_router() -> Router {
     use crate::routes::catalog::{CatalogState, create_catalog_router};
     use crate::routes::document::{DocumentState, create_document_router};
     use crate::routes::node::{NodeState, create_node_router};
+    use crate::routes::notification::{NotificationState, create_notification_router};
     use crate::routes::repository::{RepositoryState, create_repository_router};
     use crate::routes::review::{ReviewState, create_review_router};
     use crate::routes::session::{SessionState, create_session_router};
@@ -60,7 +62,8 @@ pub async fn create_router() -> Router {
     let node_state = NodeState::new(pool.clone());
     let catalog_state = CatalogState::new(pool.clone());
     let review_state = ReviewState::new(pool.clone());
-    let activity_state = ActivityState::new(pool);
+    let activity_state = ActivityState::new(pool.clone());
+    let notification_state = NotificationState::new(pool);
     let _connection_manager = ConnectionManager::new();
 
     let document_router = create_document_router().with_state(document_state);
@@ -71,6 +74,7 @@ pub async fn create_router() -> Router {
     let catalog_router = create_catalog_router().with_state(catalog_state);
     let review_router = create_review_router().with_state(review_state);
     let activity_router = create_activity_router().with_state(activity_state);
+    let notification_router = create_notification_router().with_state(notification_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -80,7 +84,8 @@ pub async fn create_router() -> Router {
         .merge(node_router)
         .merge(catalog_router)
         .merge(review_router)
-        .merge(activity_router);
+        .merge(activity_router)
+        .merge(notification_router);
 
     Router::new().nest("/api/v1", api_v1)
 }
@@ -159,6 +164,14 @@ pub use review::{
 pub use activity::{
     create_activity_router, list_activity, create_activity,
     ActivityState, ListActivityQuery, ActivityListResponse,
+};
+
+// Notification exports
+pub use notification::{
+    create_notification_router, list_notifications, unread_count,
+    mark_notification_read, mark_all_read,
+    NotificationState, ListNotificationsQuery, NotificationListResponse,
+    UnreadCountResponse, MarkReadResponse, MarkAllReadResponse,
 };
 
 // Conflict exports
