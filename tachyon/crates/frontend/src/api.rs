@@ -140,6 +140,25 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Get current user profile
+    pub async fn get_current_user(&self) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/auth/me", self.base_url);
+        self.get(&url).await
+    }
+
+    /// Update current user profile
+    pub async fn update_profile(&self, display_name: Option<&str>, email: Option<&str>) -> Result<serde_json::Value, ApiError> {
+        let mut body = serde_json::Map::new();
+        if let Some(name) = display_name {
+            body.insert("display_name".to_string(), serde_json::json!(name));
+        }
+        if let Some(email) = email {
+            body.insert("email".to_string(), serde_json::json!(email));
+        }
+        let url = format!("{}/auth/me", self.base_url);
+        self.put(&url, &body).await
+    }
+
     /// Logout current user
     pub async fn logout(&self) -> Result<(), ApiError> {
         let url = format!("{}/auth/logout", self.base_url);
@@ -421,6 +440,18 @@ impl ApiClient {
             url = format!("{}&page_size={}", url, ps);
         }
 
+        self.get(&url).await
+    }
+
+    /// Search autocomplete suggestions
+    pub async fn search_suggest(&self, query: &str, limit: Option<u32>) -> Result<Vec<String>, ApiError> {
+        let limit = limit.unwrap_or(10);
+        let url = format!(
+            "{}/search/suggest?q={}&limit={}",
+            self.base_url,
+            crate::types::url_encode(query),
+            limit
+        );
         self.get(&url).await
     }
 

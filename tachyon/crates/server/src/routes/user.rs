@@ -185,6 +185,15 @@ pub struct UpdateUserRequest {
     pub is_active: Option<bool>,
 }
 
+/// Request to update the current user's own profile.
+#[derive(Debug, Deserialize)]
+pub struct UpdateProfileRequest {
+    /// Display name
+    pub display_name: Option<String>,
+    /// Email address
+    pub email: Option<String>,
+}
+
 /// Request to change password.
 #[derive(Debug, Deserialize)]
 pub struct ChangePasswordRequest {
@@ -610,6 +619,150 @@ pub async fn list_users(
     }
 }
 
+/// GET /auth/me — return the current user's profile from the JWT token.
+///
+/// This endpoint sits under `/auth/` so the middleware bypasses it.
+/// We manually extract and validate the JWT from the Authorization header.
+pub async fn get_me(
+    State(state): State<UserState>,
+    headers: HeaderMap,
+) -> Result<Json<UserResponse>, (StatusCode, Json<UserErrorResponse>)> {
+    let auth_header = headers
+        .get("authorization")
+        .and_then(|h| h.to_str().ok());
+
+    let token = match auth_header {
+        Some(h) if h.starts_with("Bearer ") => &h[7..],
+        _ => {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(UserErrorResponse {
+                    code: "UNAUTHORIZED".into(),
+                    message: "Missing or invalid Authorization header".into(),
+                }),
+            ));
+        }
+    };
+
+    let claims = match state.validate_jwt(token) {
+        Ok(c) => c,
+        Err(e) => {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(UserErrorResponse {
+                    code: "UNAUTHORIZED".into(),
+                    message: format!("Invalid token: {}", e),
+                }),
+            ));
+        }
+    };
+
+    let user_id = match uuid::Uuid::parse_str(&claims.sub) {
+        Ok(id) => id,
+        Err(_) => {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(UserErrorResponse {
+                    code: "UNAUTHORIZED".into(),
+                    message: "Invalid user ID in token".into(),
+                }),
+            ));
+        }
+    };
+
+    let uid = tachyon_core::UserId::from_uuid(user_id);
+    let repo = state.user_repo();
+    match repo.get_by_id(&uid).await {
+        Ok(user) => Ok(Json(UserResponse::from(user))),
+        Err(_) => Err((
+            StatusCode::NOT_FOUND,
+            Json(UserErrorResponse {
+                code: "NOT_FOUND".into(),
+                message: "User not found".into(),
+            }),
+        )),
+    }
+}
+
+/// PUT /auth/me — update the current user's profile.
+pub async fn update_me(
+    State(state): State<UserState>,
+    headers: HeaderMap,
+    Json(req): Json<UpdateProfileRequest>,
+) -> Result<Json<UserResponse>, (StatusCode, Json<UserErrorResponse>)> {
+    let auth_header = headers
+        .get("authorization")
+        .and_then(|h| h.to_str().ok());
+
+    let token = match auth_header {
+        Some(h) if h.starts_with("Bearer ") => &h[7..],
+        _ => {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(UserErrorResponse {
+                    code: "UNAUTHORIZED".into(),
+                    message: "Missing or invalid Authorization header".into(),
+                }),
+            ));
+        }
+    };
+
+    let claims = match state.validate_jwt(token) {
+        Ok(c) => c,
+        Err(e) => {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(UserErrorResponse {
+                    code: "UNAUTHORIZED".into(),
+                    message: format!("Invalid token: {}", e),
+                }),
+            ));
+        }
+    };
+
+    let user_id = match uuid::Uuid::parse_str(&claims.sub) {
+        Ok(id) => id,
+        Err(_) => {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(UserErrorResponse {
+                    code: "UNAUTHORIZED".into(),
+                    message: "Invalid user ID in token".into(),
+                }),
+            ));
+        }
+    };
+
+    let uid = tachyon_core::UserId::from_uuid(user_id);
+    let repo = state.user_repo();
+    match repo
+        .update(&uid, req.display_name.as_deref(), req.email.as_deref(), None, None)
+        .await
+    {
+        Ok(user) => Ok(Json(UserResponse::from(user))),
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("unique") || msg.contains("duplicate") {
+                Err((
+                    StatusCode::CONFLICT,
+                    Json(UserErrorResponse {
+                        code: "CONFLICT".into(),
+                        message: "Email already in use".into(),
+                    }),
+                ))
+            } else {
+                Err((
+                    StatusCode::NOT_FOUND,
+                    Json(UserErrorResponse {
+                        code: "NOT_FOUND".into(),
+                        message: "User not found".into(),
+                    }),
+                ))
+            }
+        }
+    }
+}
+
 /// Authenticate user (login).
 ///
 /// Looks up the user by username or email in the database, verifies the
@@ -865,6 +1018,8 @@ pub async fn guest_status(
 /// - `POST /auth/guest` — guest login (when enabled)
 /// - `GET  /auth/status` — check JWT validity
 /// - `POST /auth/logout` — logout (no-op for JWT)
+/// - `GET  /auth/me` — get current user profile
+/// - `PUT  /auth/me` — update current user profile
 /// - `GET  /auth/guest-status` — guest config (public)
 /// - `GET  /users` — list users (paginated)
 /// - `POST /users` — create user (admin, can set role)
@@ -882,6 +1037,8 @@ pub fn create_user_router() -> axum::Router<UserState> {
         .route("/auth/status", get(auth_status))
         .route("/auth/logout", post(logout))
         .route("/auth/guest-status", get(guest_status))
+        .route("/auth/me", get(get_me))
+        .route("/auth/me", put(update_me))
         // User management routes
         .route("/users", get(list_users))
         .route("/users", post(create_user))
@@ -953,5 +1110,15 @@ mod tests {
         };
         let json = serde_json::to_string(&resp).unwrap();
         assert!(json.contains("\"total\":0"));
+    }
+
+    #[test]
+    fn test_update_profile_request_construction() {
+        let req = UpdateProfileRequest {
+            display_name: Some("New Name".to_string()),
+            email: None,
+        };
+        assert_eq!(req.display_name.as_deref(), Some("New Name"));
+        assert!(req.email.is_none());
     }
 }

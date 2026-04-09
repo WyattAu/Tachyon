@@ -21,6 +21,7 @@ pub mod team;
 pub mod template;
 pub mod types;
 pub mod user;
+pub mod user_preferences;
 
 // Re-export common types for convenience
 pub use activity::{ActivityEvent, ActivityRepository, CreateActivityEvent};
@@ -51,6 +52,7 @@ pub use session::SessionRepository;
 pub use team::{RoleRecord, RoleRepository, Team, TeamMember, TeamRepository};
 pub use graph::{GraphDiff, GraphRepository};
 pub use user::{UserRecord, UserRepository};
+pub use user_preferences::UserPreferencesRepository;
 pub use types::*;
 
 // Re-export tachyon-core types

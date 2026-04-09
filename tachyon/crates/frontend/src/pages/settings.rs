@@ -3,6 +3,7 @@
 
 use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
+use crate::api::ApiClient;
 
 #[wasm_bindgen]
 extern "C" {
@@ -24,6 +25,62 @@ pub fn SettingsPage() -> impl IntoView {
     let (theme, set_theme) = signal(get_stored_theme());
     let (notifications_enabled, set_notifications_enabled) = signal(true);
     let (language, set_language) = signal("en".to_string());
+
+    let (display_name, set_display_name) = signal(String::new());
+    let (email, set_email) = signal(String::new());
+    let (profile_loaded, set_profile_loaded) = signal(false);
+    let (save_message, set_save_message) = signal(String::new());
+    let (saving, set_saving) = signal(false);
+
+    let api_client = ApiClient::default();
+    let api_client_for_load = api_client.clone();
+
+    Effect::new(move |_| {
+        let client = api_client_for_load.clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            match client.get_current_user().await {
+                Ok(user) => {
+                    let name = user.get("display_name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let mail = user.get("email")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    set_display_name.set(name);
+                    set_email.set(mail);
+                    set_profile_loaded.set(true);
+                }
+                Err(_) => {
+                    set_display_name.set(String::new());
+                    set_email.set(String::new());
+                    set_profile_loaded.set(true);
+                }
+            }
+        });
+    });
+
+    let on_save_profile = move |_| {
+        let client = api_client.clone();
+        let name = display_name.get();
+        let mail = email.get();
+        set_saving.set(true);
+        set_save_message.set(String::new());
+        wasm_bindgen_futures::spawn_local(async move {
+            let dn = if name.is_empty() { None } else { Some(name.as_str()) };
+            let em = if mail.is_empty() { None } else { Some(mail.as_str()) };
+            match client.update_profile(dn, em).await {
+                Ok(_) => {
+                    set_save_message.set("Profile saved successfully.".to_string());
+                }
+                Err(e) => {
+                    set_save_message.set(format!("Failed to save: {}", e));
+                }
+            }
+            set_saving.set(false);
+        });
+    };
 
     let on_theme_change = move |new_theme: String| {
         set_theme.set(new_theme.clone());
@@ -50,9 +107,10 @@ pub fn SettingsPage() -> impl IntoView {
                         </label>
                         <input
                             type="text"
-                            value="User"
-                            readonly=true
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-not-allowed"
+                            prop:value=move || display_name.get()
+                            on:input=move |ev| set_display_name.set(event_target_value(&ev))
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            disabled=move || !profile_loaded.get()
                         />
                     </div>
                     <div>
@@ -61,14 +119,31 @@ pub fn SettingsPage() -> impl IntoView {
                         </label>
                         <input
                             type="email"
-                            value="user@example.com"
-                            readonly=true
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-not-allowed"
+                            prop:value=move || email.get()
+                            on:input=move |ev| set_email.set(event_target_value(&ev))
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            disabled=move || !profile_loaded.get()
                         />
                     </div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                        "Profile editing will be available in a future update."
-                    </p>
+                    <div class="flex items-center gap-3">
+                        <button
+                            on:click=on_save_profile
+                            disabled=move || saving.get() || !profile_loaded.get()
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
+                        >
+                            {move || if saving.get() { "Saving..." } else { "Save" }}
+                        </button>
+                        <span class=move || {
+                            let msg = save_message.get();
+                            if msg.is_empty() {
+                                "hidden".to_string()
+                            } else {
+                                "text-sm text-gray-600 dark:text-gray-400".to_string()
+                            }
+                        }>
+                            {move || save_message.get()}
+                        </span>
+                    </div>
                 </div>
             </SettingsSection>
 
@@ -145,7 +220,7 @@ pub fn SettingsPage() -> impl IntoView {
                 <div class="space-y-3">
                     <div class="flex justify-between items-center">
                         <span class="text-sm text-gray-600 dark:text-gray-400">"Version"</span>
-                        <span class="text-sm font-medium text-gray-900 dark:text-white">"0.1.0"</span>
+                        <span class="text-sm font-medium text-gray-900 dark:text-white">"0.14.0"</span>
                     </div>
                     <div class="flex gap-4 pt-2">
                         <a

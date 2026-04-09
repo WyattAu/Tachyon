@@ -136,46 +136,51 @@ impl BuildCommand {
             println!("Database URL: {}", database_url);
         }
 
-        println!("Initializing database...");
-        let pool = init_with_migrations(&database_url)
-            .await
-            .map_err(|e| CliError::database(format!("Failed to initialize database: {}", e)))?;
+        let docs = if database_url.starts_with("postgres://") || database_url.starts_with("postgresql://") {
+            println!("Initializing database...");
+            let pool = init_with_migrations(&database_url)
+                .await
+                .map_err(|e| CliError::database(format!("Failed to initialize database: {}", e)))?;
 
-        let prev_manifest = load_manifest(&self.output_dir);
+            println!("Fetching documents...");
+            let repo = DocumentRepository::new(pool);
+            let documents = repo
+                .list_all(Some(100_000), None)
+                .await
+                .map_err(|e| CliError::database(format!("Failed to fetch documents: {}", e)))?;
 
-        println!("Fetching documents...");
-        let repo = DocumentRepository::new(pool);
-        let documents = repo
-            .list_all(Some(100_000), None)
-            .await
-            .map_err(|e| CliError::database(format!("Failed to fetch documents: {}", e)))?;
-
-        let mut docs: Vec<DocInfo> = documents
-            .into_iter()
-            .filter(|d| {
-                if self.published_only {
-                    d.status == "published" && d.visibility == "public"
-                } else {
-                    true
-                }
-            })
-            .filter_map(|d| {
-                let slug = d.slug.clone()?;
-                let tags = d.parse_tags().ok().unwrap_or_default();
-                let content = d.content.clone()?;
-                Some(DocInfo {
-                    slug,
-                    title: d.title,
-                    content,
-                    description: d.description,
-                    tags,
-                    updated_at: d.updated_at.to_rfc3339(),
-                    created_at: d.created_at.to_rfc3339(),
+            let mut docs: Vec<DocInfo> = documents
+                .into_iter()
+                .filter(|d| {
+                    if self.published_only {
+                        d.status == "published" && d.visibility == "public"
+                    } else {
+                        true
+                    }
                 })
-            })
-            .collect();
+                .filter_map(|d| {
+                    let slug = d.slug.clone()?;
+                    let tags = d.parse_tags().ok().unwrap_or_default();
+                    let content = d.content.clone()?;
+                    Some(DocInfo {
+                        slug,
+                        title: d.title,
+                        content,
+                        description: d.description,
+                        tags,
+                        updated_at: d.updated_at.to_rfc3339(),
+                        created_at: d.created_at.to_rfc3339(),
+                    })
+                })
+                .collect();
 
-        docs.sort_by(|a, b| a.slug.as_str().cmp(b.slug.as_str()));
+            docs.sort_by(|a, b| a.slug.as_str().cmp(b.slug.as_str()));
+            docs
+        } else {
+            println!("Scanning repository for markdown files...");
+            self.scan_markdown_files()?
+        };
+
         println!("Found {} document(s).", docs.len());
 
         if self.clean && self.output_dir.exists() {
@@ -245,7 +250,7 @@ impl BuildCommand {
             let output_file = format!("docs/{}/index.html", doc.slug);
             let output_path = self.output_dir.join(&output_file);
 
-            if let Some(ref prev) = prev_manifest {
+            if let Some(ref prev) = load_manifest(&self.output_dir) {
                 if let Some(entry) = prev.documents.get(&doc.slug) {
                     if entry.content_hash == content_hash && output_path.exists() {
                         if self.verbose {
@@ -305,7 +310,7 @@ impl BuildCommand {
         println!("Writing build manifest...");
         write_manifest(&self.output_dir, &new_manifest)?;
 
-        let removed = remove_stale(&self.output_dir, &prev_manifest, &new_manifest, self.verbose)?;
+        let removed = remove_stale(&self.output_dir, &load_manifest(&self.output_dir), &new_manifest, self.verbose)?;
 
         let elapsed = start.elapsed();
 
@@ -335,16 +340,127 @@ impl BuildCommand {
         if let Some(ref url) = self.database_url {
             Ok(url.clone())
         } else {
+            if let Ok(url) = std::env::var("DATABASE_URL") {
+                return Ok(url);
+            }
+
             let db_path = self.repo_path.join(".tachyon").join("db").join("tachyon.db");
-            Err(CliError::database(format!(
-                "No database URL provided. SQLite is not yet supported.\n\
-                 Use --database-url to specify a PostgreSQL connection string.\n\
-                 Example: --database-url postgres://user:pass@localhost/db\n\
-                 Expected SQLite path would be: {}",
-                db_path.display()
-            )))
+
+            if let Some(parent) = db_path.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| {
+                    CliError::database(format!("Failed to create database directory: {}", e))
+                })?;
+            }
+
+            let sqlite_url = format!("sqlite:{}", db_path.display());
+            eprintln!("Using SQLite database: {}", db_path.display());
+            Ok(sqlite_url)
         }
     }
+
+    fn scan_markdown_files(&self) -> CliResult<Vec<DocInfo>> {
+        let mut docs: Vec<DocInfo> = Vec::new();
+        self.collect_markdown_files(&self.repo_path, &mut docs)?;
+        docs.sort_by(|a, b| a.slug.as_str().cmp(b.slug.as_str()));
+        if self.verbose {
+            println!("  Scanned {} markdown files from {}", docs.len(), self.repo_path.display());
+        }
+        Ok(docs)
+    }
+
+    fn collect_markdown_files(&self, dir: &Path, docs: &mut Vec<DocInfo>) -> CliResult<()> {
+        let entries = fs::read_dir(dir).map_err(|e| {
+            CliError::io(dir, format!("Failed to read directory: {}", e))
+        })?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| {
+                CliError::io(dir, format!("Failed to read directory entry: {}", e))
+            })?;
+            let path = entry.path();
+
+            if path.is_dir() {
+                let name = path.file_name().map(|n| n.to_string_lossy().to_string());
+                if let Some(ref name) = name {
+                    if name.starts_with('.') || name == "node_modules" || name == "target" || name == "dist" {
+                        continue;
+                    }
+                }
+                self.collect_markdown_files(&path, docs)?;
+            } else if path.extension().and_then(|e| e.to_str()) == Some("md") {
+                if let Some(doc) = self.parse_markdown_file(&path) {
+                    docs.push(doc);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn parse_markdown_file(&self, path: &Path) -> Option<DocInfo> {
+        let content = fs::read_to_string(path).ok()?;
+        let relative = path.strip_prefix(&self.repo_path).ok()?;
+        let slug = relative
+            .with_extension("")
+            .to_string_lossy()
+            .to_string()
+            .replace('\\', "/");
+
+        let (title, description, tags) = parse_frontmatter(&content);
+
+        let title = if title.is_empty() {
+            path.file_stem()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| slug.clone())
+        } else {
+            title
+        };
+
+        let now = chrono::Utc::now().to_rfc3339();
+
+        Some(DocInfo {
+            slug,
+            title,
+            content,
+            description: if description.is_empty() { None } else { Some(description) },
+            tags,
+            updated_at: now.clone(),
+            created_at: now,
+        })
+    }
+}
+
+fn parse_frontmatter(content: &str) -> (String, String, Vec<String>) {
+    let mut title = String::new();
+    let mut description = String::new();
+    let mut tags = Vec::new();
+
+    if !content.starts_with("---") {
+        return (title, description, tags);
+    }
+
+    let rest = &content[3..];
+    if let Some(end) = rest.find("---") {
+        let frontmatter = &rest[..end];
+        for line in frontmatter.lines() {
+            if let Some(val) = line.strip_prefix("title:") {
+                title = val.trim().trim_matches('"').trim_matches('\'').to_string();
+            } else if let Some(val) = line.strip_prefix("description:") {
+                description = val.trim().trim_matches('"').trim_matches('\'').to_string();
+            } else if let Some(val) = line.strip_prefix("tags:") {
+                let trimmed = val.trim();
+                if trimmed.starts_with('[') {
+                    let inner = trimmed.trim_start_matches('[').trim_end_matches(']');
+                    tags = inner
+                        .split(',')
+                        .map(|t| t.trim().trim_matches('"').trim_matches('\'').to_string())
+                        .filter(|t| !t.is_empty())
+                        .collect();
+                }
+            }
+        }
+    }
+
+    (title, description, tags)
 }
 
 fn render_document(
@@ -638,13 +754,127 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_database_url_missing() {
-        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false, None);
-        let result = cmd.resolve_database_url();
-        assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
-        assert!(err.contains("No database URL provided"));
-        assert!(err.contains("SQLite is not yet supported"));
+    fn test_resolve_database_url_sqlite_fallback() {
+        let dir = tempdir().unwrap();
+        let cmd = BuildCommand::from_args(
+            Some(dir.path().to_path_buf()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+            false,
+            false,
+            None,
+        );
+        let url = cmd.resolve_database_url().unwrap();
+        assert!(url.starts_with("sqlite:"));
+        assert!(url.contains("tachyon.db"));
+    }
+
+    #[test]
+    fn test_resolve_database_url_with_env_var() {
+        let dir = tempdir().unwrap();
+        std::env::set_var("DATABASE_URL", "postgres://env:pass@host/db");
+        let cmd = BuildCommand::from_args(
+            Some(dir.path().to_path_buf()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+            false,
+            false,
+            None,
+        );
+        let url = cmd.resolve_database_url().unwrap();
+        assert_eq!(url, "postgres://env:pass@host/db");
+        std::env::remove_var("DATABASE_URL");
+    }
+
+    #[test]
+    fn test_parse_frontmatter() {
+        let content = "---\ntitle: \"Hello World\"\ndescription: 'A test doc'\ntags: [\"foo\", \"bar\"]\n---\n\n# Body\n";
+        let (title, desc, tags) = parse_frontmatter(content);
+        assert_eq!(title, "Hello World");
+        assert_eq!(desc, "A test doc");
+        assert_eq!(tags, vec!["foo", "bar"]);
+    }
+
+    #[test]
+    fn test_parse_frontmatter_no_frontmatter() {
+        let content = "# Just markdown\n\nNo frontmatter here.";
+        let (title, desc, tags) = parse_frontmatter(content);
+        assert!(title.is_empty());
+        assert!(desc.is_empty());
+        assert!(tags.is_empty());
+    }
+
+    #[test]
+    fn test_parse_frontmatter_empty_tags() {
+        let content = "---\ntitle: Test\ntags: []\n---\n\nContent";
+        let (title, desc, tags) = parse_frontmatter(content);
+        assert_eq!(title, "Test");
+        assert!(tags.is_empty());
+        assert!(desc.is_empty());
+    }
+
+    #[test]
+    fn test_scan_markdown_files() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("README.md"), "# Readme\n").unwrap();
+        fs::create_dir_all(dir.path().join("sub")).unwrap();
+        fs::write(dir.path().join("sub").join("guide.md"), "---\ntitle: Guide\n---\n\nGuide content").unwrap();
+
+        let cmd = BuildCommand::from_args(
+            Some(dir.path().to_path_buf()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+            false,
+            false,
+            None,
+        );
+        let docs = cmd.scan_markdown_files().unwrap();
+        assert_eq!(docs.len(), 2);
+
+        let slugs: Vec<&str> = docs.iter().map(|d| d.slug.as_str()).collect();
+        assert!(slugs.contains(&"README"));
+        assert!(slugs.contains(&"sub/guide"));
+
+        let guide = docs.iter().find(|d| d.slug == "sub/guide").unwrap();
+        assert_eq!(guide.title, "Guide");
+    }
+
+    #[test]
+    fn test_scan_skips_hidden_dirs() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("visible.md"), "# Visible\n").unwrap();
+        fs::create_dir_all(dir.path().join(".git")).unwrap();
+        fs::write(dir.path().join(".git").join("config.md"), "# Hidden\n").unwrap();
+        fs::create_dir_all(dir.path().join("node_modules")).unwrap();
+        fs::write(dir.path().join("node_modules").join("pkg.md"), "# Hidden\n").unwrap();
+
+        let cmd = BuildCommand::from_args(
+            Some(dir.path().to_path_buf()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+            false,
+            false,
+            None,
+        );
+        let docs = cmd.scan_markdown_files().unwrap();
+        assert_eq!(docs.len(), 1);
+        assert_eq!(docs[0].slug, "visible");
     }
 
     #[test]

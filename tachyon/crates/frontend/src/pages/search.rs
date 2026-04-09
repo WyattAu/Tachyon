@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 use leptos::prelude::*;
+use wasm_bindgen::JsCast;
 use crate::api::ApiClient;
 use crate::types::{
     GlobalSearchResponse, SearchResultItem, ProjectSearchResultItem,
@@ -45,6 +46,9 @@ pub fn SearchPage() -> impl IntoView {
     let api_client = ApiClient::default();
     let api_client_search = api_client.clone();
     let api_client_saved = api_client.clone();
+
+    let suggestions = RwSignal::new(Vec::<String>::new());
+    let show_suggestions = RwSignal::new(false);
 
     let search_resource = LocalResource::new(move || {
         let client = api_client_search.clone();
@@ -130,6 +134,51 @@ pub fn SearchPage() -> impl IntoView {
         update_filters();
     });
 
+    let api_client_for_input = api_client.clone();
+    let on_input = move |ev| {
+        let val = event_target_value(&ev);
+        query.set(val.clone());
+
+        let client = api_client_for_input.clone();
+        let show_sugg = show_suggestions.clone();
+        let suggs = suggestions.clone();
+
+        let cb = wasm_bindgen::prelude::Closure::<dyn Fn()>::new(move || {
+            let q = val.clone();
+            let client_inner = client.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                if q.len() < 2 {
+                    suggs.set(Vec::new());
+                    return;
+                }
+                match client_inner.search_suggest(&q, Some(5)).await {
+                    Ok(items) => {
+                        suggs.set(items);
+                        show_sugg.set(true);
+                    }
+                    Err(_) => {
+                        suggs.set(Vec::new());
+                    }
+                }
+            });
+        });
+        if let Some(window) = web_sys::window() {
+            let fn_ref: &js_sys::Function = cb.as_ref().unchecked_ref();
+            let _ = window.set_timeout_with_callback(fn_ref);
+        }
+        cb.forget();
+    };
+
+    let select_suggestion = move |suggestion: String| {
+        query.set(suggestion.clone());
+        show_suggestions.set(false);
+        suggestions.set(Vec::new());
+    };
+
+    let close_suggestions = move |_| {
+        show_suggestions.set(false);
+    };
+
     let save_search: Arc<dyn Fn() + Send + Sync> = {
         let api_client = api_client.clone();
         let query = query.clone();
@@ -156,7 +205,7 @@ pub fn SearchPage() -> impl IntoView {
     };
 
     view! {
-        <div class="flex gap-6">
+        <div class="flex gap-6" on:click=close_suggestions>
             // Saved Searches Sidebar
             {move || {
                 if show_saved.get() {
@@ -230,18 +279,46 @@ pub fn SearchPage() -> impl IntoView {
                     </button>
                 </div>
 
-                // Search Input
-                <div class="mb-4">
+                // Search Input with autocomplete
+                <div class="mb-4 relative">
                     <div class="flex gap-2">
-                        <input
-                            type="text"
-                            placeholder="Search documents and projects..."
-                            class="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            on:input=move |ev| {
-                                query.set(event_target_value(&ev));
-                            }
-                            prop:value=move || query.get()
-                        />
+                        <div class="flex-1 relative">
+                            <input
+                                type="text"
+                                placeholder="Search documents and projects..."
+                                class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                on:input=on_input
+                                prop:value=move || query.get()
+                            />
+                            // Suggestions dropdown
+                            <div
+                                class=move || {
+                                    if show_suggestions.get() && !suggestions.get().is_empty() {
+                                        "absolute top-full left-0 right-0 z-50 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto"
+                                    } else {
+                                        "hidden"
+                                    }
+                                }
+                                on:click=move |ev| ev.stop_propagation()
+                            >
+                                {move || {
+                                    let suggs = suggestions.get();
+                                    suggs.into_iter().map(|s| {
+                                        let s_clone = s.clone();
+                                        let s_display = s.clone();
+                                        let sel = select_suggestion.clone();
+                                        view! {
+                                            <button
+                                                class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                                on:click=move |_| sel(s_clone.clone())
+                                            >
+                                                {s_display}
+                                            </button>
+                                        }
+                                    }).collect::<Vec<_>>()
+                                }}
+                            </div>
+                        </div>
                         <button
                             class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
                             on:click=move |_| show_filters.update(|f| *f = !*f)

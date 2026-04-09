@@ -146,9 +146,10 @@ pub use team::{
 
 // User exports
 pub use user::{
-    auth_status, authenticate, create_user, create_user_router, delete_user, get_user, list_users,
-    logout, update_user, AuthenticateRequest, AuthenticateResponse, CreateUserRequest,
-    UpdateUserRequest, UserListResponse, UserQuery, UserResponse, UserState,
+    auth_status, authenticate, create_user, create_user_router, delete_user, get_me, get_user,
+    list_users, logout, update_me, update_user, AuthenticateRequest, AuthenticateResponse,
+    CreateUserRequest, UpdateProfileRequest, UpdateUserRequest, UserListResponse, UserQuery,
+    UserResponse, UserState,
 };
 
 // SEO exports
