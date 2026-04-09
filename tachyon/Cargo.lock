@@ -7702,6 +7702,7 @@ dependencies = [
  "serde_yaml",
  "sha2",
  "tachyon-core",
+ "tempfile",
  "thiserror 2.0.18",
  "time",
  "tokio",

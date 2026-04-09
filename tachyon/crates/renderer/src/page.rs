@@ -4,6 +4,8 @@
 //! Open Graph, JSON-LD structured data, and navigation.
 
 use crate::context::RenderContext;
+use crate::template::TemplateEngine;
+use crate::types::TemplateContext;
 
 /// Site-level configuration for page rendering
 #[derive(Debug, Clone)]
@@ -18,6 +20,8 @@ pub struct SiteConfig {
     pub theme_color: String,
     /// OG image URL (default site-wide image)
     pub og_image: Option<String>,
+    /// Custom template directory path (overrides defaults)
+    pub template_dir: Option<String>,
 }
 
 impl Default for SiteConfig {
@@ -29,6 +33,7 @@ impl Default for SiteConfig {
             base_url: "http://localhost:8080".to_string(),
             theme_color: "#2563eb".to_string(),
             og_image: None,
+            template_dir: None,
         }
     }
 }
@@ -249,6 +254,136 @@ pub fn render_full_page(ctx: &RenderContext, site: &SiteConfig) -> String {
     )
 }
 
+pub fn render_full_page_with_template(
+    ctx: &RenderContext,
+    site: &SiteConfig,
+    engine: &TemplateEngine,
+    template_name: &str,
+) -> crate::error::RendererResult<String> {
+    let description = extract_description(&ctx.content);
+    let canonical_url = format!(
+        "{}/docs/{}",
+        site.base_url.trim_end_matches('/'),
+        slugify(&ctx.title)
+    );
+    let base_url = site.base_url.trim_end_matches('/').to_string();
+    let og_image = site.og_image.as_deref().unwrap_or("").to_string();
+
+    let breadcrumbs_json = ctx
+        .navigation
+        .as_ref()
+        .map(|nav| {
+            nav.breadcrumbs
+                .iter()
+                .enumerate()
+                .map(|(i, b)| {
+                    format!(
+                        r#"{{"@type": "ListItem", "position": {}, "name": "{}", "item": "{}{}"}}"#,
+                        i + 2,
+                        escape_html(&b.title),
+                        base_url,
+                        b.url,
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(",\n")
+        })
+        .unwrap_or_default();
+
+    let author_json = ctx
+        .author
+        .as_ref()
+        .map(|a| format!(r#""@type": "Person", "name": "{}""#, escape_html(&a.name)))
+        .unwrap_or_else(|| r#""@type": "Organization", "name": "Tachyon""#.to_string());
+
+    let published_time = ctx
+        .metadata
+        .as_ref()
+        .map(|m| m.updated_at.clone())
+        .unwrap_or_default();
+
+    let article_json_ld = format!(
+        r#"{{
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "{}",
+    "description": "{}",
+    "image": "{}",
+    "author": {},
+    "publisher": {{"@type": "Organization", "name": "{}"}},
+    "datePublished": "{}",
+    "mainEntityOfPage": {{
+        "@type": "WebPage",
+        "@id": "{}"
+    }}
+}}"#,
+        escape_html(&ctx.title),
+        escape_html(&description),
+        og_image,
+        author_json,
+        escape_html(&site.site_title),
+        published_time,
+        canonical_url,
+    );
+
+    let breadcrumb_json_ld = format!(
+        r#"{{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {{"@type": "ListItem", "position": 1, "name": "Home", "item": "{}/"}},
+        {{"@type": "ListItem", "position": 2, "name": "Documents", "item": "{}/docs"}},
+        {}
+    ]
+}}"#,
+        base_url, base_url, breadcrumbs_json,
+    );
+
+    let tags_html = if ctx
+        .metadata
+        .as_ref()
+        .map(|m| m.tags.is_empty())
+        .unwrap_or(true)
+    {
+        String::new()
+    } else {
+        format!(
+            r#"<div class="flex flex-wrap gap-2 mt-3">{}</div>"#,
+            ctx.metadata
+                .as_ref()
+                .map(|m| {
+                    m.tags
+                        .iter()
+                        .map(|t| {
+                            format!(
+                                r#"<span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{}</span>"#,
+                                escape_html(t),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                })
+                .unwrap_or_default()
+        )
+    };
+
+    let mut template_ctx = TemplateContext::new();
+    template_ctx.set("title".to_string(), ctx.title.clone());
+    template_ctx.set("description".to_string(), description);
+    template_ctx.set("canonical_url".to_string(), canonical_url);
+    template_ctx.set("og_image".to_string(), og_image);
+    template_ctx.set("theme_color".to_string(), site.theme_color.clone());
+    template_ctx.set("site_title".to_string(), site.site_title.clone());
+    template_ctx.set("base_url".to_string(), base_url);
+    template_ctx.set("published_time".to_string(), published_time);
+    template_ctx.set("tags_html".to_string(), tags_html);
+    template_ctx.set("content".to_string(), ctx.content.clone());
+    template_ctx.set("article_json_ld".to_string(), article_json_ld);
+    template_ctx.set("breadcrumb_json_ld".to_string(), breadcrumb_json_ld);
+
+    engine.render(template_name, &template_ctx)
+}
+
 /// Escape HTML special characters for safe embedding in attributes.
 fn escape_html(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
@@ -382,5 +517,28 @@ mod tests {
         assert_eq!(slugify("Hello World"), "hello-world");
         assert_eq!(slugify("  Multiple   Spaces  "), "multiple-spaces");
         assert_eq!(slugify("Rust & WASM"), "rust-wasm");
+    }
+
+    #[test]
+    fn test_render_full_page_with_template() {
+        use crate::template::TemplateEngine;
+
+        let engine = TemplateEngine::with_defaults().unwrap();
+        let ctx = RenderContext::new(
+            "Test Document".to_string(),
+            "<p>Hello world</p>".to_string(),
+        );
+        let site = SiteConfig::default();
+
+        let result = render_full_page_with_template(&ctx, &site, &engine, "document.html");
+        assert!(result.is_ok());
+        let html = result.unwrap();
+        assert!(html.contains("<!DOCTYPE html>"));
+        assert!(html.contains("<meta name=\"description\""));
+        assert!(html.contains("Test Document"));
+        assert!(html.contains("<p>Hello world</p>"));
+        assert!(html.contains("\"@type\": \"Article\""));
+        assert!(html.contains("\"@type\": \"BreadcrumbList\""));
+        assert!(html.contains("tailwindcss"));
     }
 }

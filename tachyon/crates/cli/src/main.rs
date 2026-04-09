@@ -163,6 +163,10 @@ enum Commands {
         /// Verbose output
         #[arg(short, long)]
         verbose: bool,
+
+        /// Custom template directory
+        #[arg(long, value_name = "PATH")]
+        template: Option<std::path::PathBuf>,
     },
 }
 
@@ -273,6 +277,7 @@ fn main() {
             published_only,
             clean,
             verbose,
+            template,
         } => {
             let cmd = BuildCommand::from_args(
                 Some(repo_path),
@@ -284,6 +289,7 @@ fn main() {
                 published_only,
                 clean,
                 verbose,
+                template,
             );
             cmd.execute()
         }

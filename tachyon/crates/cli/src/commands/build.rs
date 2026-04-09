@@ -22,6 +22,7 @@ pub struct BuildCommand {
     pub published_only: bool,
     pub clean: bool,
     pub verbose: bool,
+    pub template: Option<PathBuf>,
 }
 
 impl BuildCommand {
@@ -35,6 +36,7 @@ impl BuildCommand {
         published_only: bool,
         clean: bool,
         verbose: bool,
+        template: Option<PathBuf>,
     ) -> Self {
         Self {
             repo_path,
@@ -46,6 +48,7 @@ impl BuildCommand {
             published_only,
             clean,
             verbose,
+            template,
         }
     }
 
@@ -59,6 +62,7 @@ impl BuildCommand {
         published_only: bool,
         clean: bool,
         verbose: bool,
+        template: Option<PathBuf>,
     ) -> Self {
         Self::new(
             repo_path.unwrap_or_else(|| PathBuf::from(".")),
@@ -70,6 +74,7 @@ impl BuildCommand {
             published_only,
             clean,
             verbose,
+            template,
         )
     }
 }
@@ -200,6 +205,7 @@ impl BuildCommand {
             base_url: self.base_url.clone(),
             theme_color: "#2563eb".to_string(),
             og_image: None,
+            template_dir: self.template.as_ref().map(|p| p.to_string_lossy().to_string()),
         };
 
         let mut new_manifest = BuildManifest {
@@ -542,7 +548,7 @@ mod tests {
 
     #[test]
     fn test_build_command_from_args_defaults() {
-        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false);
+        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false, None);
         assert_eq!(cmd.repo_path, PathBuf::from("."));
         assert_eq!(cmd.output_dir, PathBuf::from("dist"));
         assert!(cmd.database_url.is_none());
@@ -552,6 +558,7 @@ mod tests {
         assert!(!cmd.published_only);
         assert!(!cmd.clean);
         assert!(!cmd.verbose);
+        assert!(cmd.template.is_none());
     }
 
     #[test]
@@ -566,6 +573,7 @@ mod tests {
             true,
             true,
             true,
+            Some(PathBuf::from("/templates")),
         );
         assert_eq!(cmd.repo_path, PathBuf::from("/repo"));
         assert_eq!(cmd.output_dir, PathBuf::from("/out"));
@@ -576,6 +584,7 @@ mod tests {
         assert!(cmd.published_only);
         assert!(cmd.clean);
         assert!(cmd.verbose);
+        assert_eq!(cmd.template, Some(PathBuf::from("/templates")));
     }
 
     #[test]
@@ -590,6 +599,7 @@ mod tests {
             false,
             false,
             false,
+            None,
         );
         let url = cmd.resolve_database_url().unwrap();
         assert_eq!(url, "postgres://user:pass@host/db");
@@ -597,7 +607,7 @@ mod tests {
 
     #[test]
     fn test_resolve_database_url_missing() {
-        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false);
+        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false, None);
         let result = cmd.resolve_database_url();
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
@@ -690,7 +700,7 @@ mod tests {
 
     #[test]
     fn test_command_name_and_description() {
-        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false);
+        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false, None);
         assert_eq!(cmd.name(), "build");
         assert!(cmd.description().contains("static site"));
     }

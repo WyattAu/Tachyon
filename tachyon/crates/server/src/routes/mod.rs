@@ -2,6 +2,7 @@
 // Defines all HTTP endpoints for the Tachyon server
 
 pub mod catalog;
+pub mod conflict;
 pub mod document;
 pub mod node;
 pub mod repository;
@@ -147,4 +148,10 @@ pub use seo::{SeoState, create_seo_router};
 pub use review::{
     create_review, create_review_router, list_reviews, update_review, create_comment, list_comments,
     get_review_status, ReviewState, ReviewResponse, ReviewStatusResponse, CommentResponse,
+};
+
+// Conflict exports
+pub use conflict::{
+    create_conflict_router, get_conflict_info, resolve_conflict, ConflictState,
+    ConflictInfo, MergeResultInfo, ResolveConflictRequest,
 };

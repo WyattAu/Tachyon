@@ -110,6 +110,7 @@
 pub mod api_docs;
 pub mod audit;
 pub mod config;
+pub mod conflict;
 pub mod graph_extractor;
 pub mod middleware;
 pub mod routes;

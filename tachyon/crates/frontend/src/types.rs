@@ -649,3 +649,26 @@ pub struct DiffStats {
     pub removed: usize,
     pub unchanged: usize,
 }
+
+// ============================================================================
+// Conflict Types
+// ============================================================================
+
+/// Conflict information for a document
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConflictInfo {
+    pub document_id: String,
+    pub has_conflict: bool,
+    pub base_content: Option<String>,
+    pub current_content: Option<String>,
+    pub incoming_content: Option<String>,
+    pub merge_result: Option<MergeResultInfo>,
+}
+
+/// Merge result information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MergeResultInfo {
+    pub status: String,
+    pub content: String,
+    pub conflict_count: usize,
+}

@@ -180,6 +180,9 @@ pub struct SiteConfig {
     /// OG image URL (default site-wide image)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub og_image: Option<String>,
+    /// Custom template directory path (overrides defaults)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub template_dir: Option<String>,
 }
 
 impl Default for ServerConfig {
@@ -336,6 +339,7 @@ impl Default for SiteConfig {
             base_url: "http://localhost:8080".to_string(),
             theme_color: "#2563eb".to_string(),
             og_image: None,
+            template_dir: None,
         }
     }
 }
@@ -497,6 +501,10 @@ impl ServerConfig {
 
         if let Ok(base_url) = std::env::var("TACHYON_BASE_URL") {
             config.site.base_url = base_url;
+        }
+
+        if let Ok(template_dir) = std::env::var("TACHYON_TEMPLATE_DIR") {
+            config.site.template_dir = Some(template_dir);
         }
 
         config

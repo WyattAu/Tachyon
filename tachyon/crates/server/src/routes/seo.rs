@@ -205,6 +205,7 @@ pub async fn serve_document_page(
         base_url: state.site_config.base_url.clone(),
         theme_color: state.site_config.theme_color.clone(),
         og_image: state.site_config.og_image.clone(),
+        template_dir: state.site_config.template_dir.clone(),
     };
 
     let full_html = render_full_page(&ctx, &site);

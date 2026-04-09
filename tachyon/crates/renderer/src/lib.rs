@@ -25,7 +25,7 @@ pub use cache::RenderCache;
 pub use error::{RendererError, RendererResult};
 pub use latex::{LatexDocumentRenderer, LatexRenderer};
 pub use markdown::MarkdownParser;
-pub use page::{render_full_page, SiteConfig};
+pub use page::{render_full_page, render_full_page_with_template, SiteConfig};
 pub use syntax::SyntaxHighlighter;
 pub use template::TemplateEngine;
 pub use types::{

@@ -413,26 +413,40 @@ async fn handle_client_message(manager: &ConnectionManager, client_id: &str, msg
             if let Some(doc_id) = &msg.document_id {
                 if let Some(data) = &msg.data {
                     if let Ok(edit) = serde_json::from_value::<DocumentEdit>(data.clone()) {
-                        let operation = match edit.operation {
+                        let operations = match edit.operation {
                             EditOperation::Insert { position, text } => {
-                                Operation::insert(position, text)
+                                vec![Operation::insert(position, text)]
                             }
                             EditOperation::Delete { position, length } => {
-                                Operation::delete(position, length)
+                                vec![Operation::delete(position, length)]
                             }
-                            EditOperation::Replace { position, length: _, text } => {
-                                Operation::insert(position, text)
+                            EditOperation::Replace { position, length, text } => {
+                                vec![Operation::delete(position, length), Operation::insert(position, text)]
                             }
                         };
                         
-                        if let Some(new_version) = manager.apply_edit(doc_id, operation, edit.version).await {
-                            let mut response_msg = msg.clone();
-                            if let Some(ref mut data) = response_msg.data {
-                                if let Some(obj) = data.as_object_mut() {
-                                    obj.insert("version".to_string(), serde_json::json!(new_version));
+                        if let Some(first_op) = operations.first() {
+                            let new_version = if operations.len() == 1 {
+                                manager.apply_edit(doc_id, first_op.clone(), edit.version).await
+                            } else {
+                                let v1 = manager.apply_edit(doc_id, first_op.clone(), edit.version).await;
+                                let mut result = v1;
+                                for op in operations.iter().skip(1) {
+                                    let next_v = v1.unwrap_or(edit.version);
+                                    result = manager.apply_edit(doc_id, op.clone(), next_v).await;
                                 }
+                                result
+                            };
+                            
+                            if let Some(new_version) = new_version {
+                                let mut response_msg = msg.clone();
+                                if let Some(ref mut data) = response_msg.data {
+                                    if let Some(obj) = data.as_object_mut() {
+                                        obj.insert("version".to_string(), serde_json::json!(new_version));
+                                    }
+                                }
+                                manager.broadcast_to_room(&format!("doc:{}", doc_id), response_msg).await;
                             }
-                            manager.broadcast_to_room(&format!("doc:{}", doc_id), response_msg).await;
                         }
                     }
                 }

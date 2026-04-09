@@ -874,4 +874,24 @@ impl ApiClient {
         let url = format!("{}/documents/{}/versions/{}/diff/{}", self.base_url, document_id, v1, v2);
         self.get(&url).await
     }
+
+    // ========================================================================
+    // Conflict API
+    // ========================================================================
+
+    /// Get conflict information for a document
+    pub async fn get_conflict_info(&self, document_id: &str) -> Result<ConflictInfo, ApiError> {
+        let url = format!("{}/documents/{}/conflict", self.base_url, document_id);
+        self.get(&url).await
+    }
+
+    /// Resolve a document conflict
+    pub async fn resolve_conflict(&self, document_id: &str, resolution: &str, content: Option<&str>) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/documents/{}/conflict/resolve", self.base_url, document_id);
+        let body = serde_json::json!({
+            "resolution": resolution,
+            "content": content,
+        });
+        self.post(&url, &body).await
+    }
 }
