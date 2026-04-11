@@ -68,7 +68,7 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: tachyon-frontend
     ports:
-      - "8080:80"
+      - "3000:80"
     depends_on:
       - backend
     networks:

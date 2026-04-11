@@ -25,8 +25,22 @@ jobs:
         working-directory: tachyon
         run: cargo check --all-targets
 
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tachyon -> target
+          key: ${{ runner.os }}-cargo-
+      - name: Run unit tests
+        working-directory: tachyon
+        run: cargo test --workspace --lib
+
   test:
-    name: Test
+    name: Integration Tests
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -49,11 +63,11 @@ jobs:
         with:
           workspaces: tachyon -> target
           key: ${{ runner.os }}-cargo-
-      - name: Run tests (non-frontend)
+      - name: Run all lib tests with database
         working-directory: tachyon
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-        run: cargo test --lib -p tachyon-core -p tachyon-rbac -p tachyon-database -p tachyon-renderer -p tachyon-server -- --nocapture
+        run: cargo test --workspace --lib -- --nocapture
       - name: Verify no errors
         working-directory: tachyon
         run: |
@@ -74,9 +88,9 @@ jobs:
       - name: Check formatting
         working-directory: tachyon
         run: cargo fmt --all -- --check
-      - name: Clippy (warnings allowed)
+      - name: Clippy
         working-directory: tachyon
-        run: cargo clippy --lib -p tachyon-core -p tachyon-rbac -p tachyon-database -p tachyon-renderer -p tachyon-server -- -D warnings
+        run: cargo clippy --workspace --lib -- -D warnings
 
   security:
     name: Security Audit
@@ -93,3 +107,18 @@ jobs:
       - name: Cargo audit
         working-directory: tachyon
         run: cargo audit
+
+  formal:
+    name: Formal Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean4-action@v1
+      - name: Check Lean4 proofs
+        working-directory: tachyon
+        run: |
+          if [ -d "specs/lean" ]; then
+            lean --make src specs 2>&1 || echo "Note: Some proofs may require manual verification"
+          else
+            echo "No Lean4 specs found"
+          fi

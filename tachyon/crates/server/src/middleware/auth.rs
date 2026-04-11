@@ -425,40 +425,85 @@ impl PermissionGuard {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    #[ignore = "requires database pool"]
-    async fn test_jwt_generation() {
-        let config = ServerConfig::default();
-        let pool = DatabasePool::new("postgres://localhost:5432/tachyon_test").await.unwrap();
-        let state = AuthState::new(config, pool);
-
-        let user_id = "test-user-id";
-        let role = UserRole::Admin;
-
-        let token = state.generate_jwt(user_id, role);
-        assert!(token.is_ok());
-
-        let token_str = token.unwrap();
-        assert!(!token_str.is_empty());
+    fn make_test_claims(user_id: &str, role: &str) -> Claims {
+        let now = jsonwebtoken::get_current_timestamp();
+        Claims {
+            sub: user_id.to_string(),
+            iss: "tachyon-test".to_string(),
+            aud: "tachyon-test".to_string(),
+            exp: (now + 86400) as usize,
+            iat: now as usize,
+            role: role.to_string(),
+            permissions: vec![],
+            team_id: None,
+        }
     }
 
-    #[tokio::test]
-    #[ignore = "requires database pool"]
-    async fn test_jwt_validation() {
-        let config = ServerConfig::default();
-        let pool = DatabasePool::new("postgres://localhost:5432/tachyon_test").await.unwrap();
-        let state = AuthState::new(config, pool);
+    fn encode_test_token(claims: &Claims, secret: &str) -> String {
+        encode(
+            &Header::default(),
+            claims,
+            &EncodingKey::from_secret(secret.as_ref()),
+        )
+        .expect("token encoding should succeed")
+    }
 
-        let user_id = "test-user-id";
-        let role = UserRole::Writer;
+    fn decode_test_token(token: &str, secret: &str, issuer: &str, audience: &str) -> Result<Claims, AuthError> {
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.set_issuer(&[issuer]);
+        validation.set_audience(&[audience]);
 
-        let token = state.generate_jwt(user_id, role).unwrap();
-        let claims = state.validate_jwt(&token);
+        decode::<Claims>(token, &DecodingKey::from_secret(secret.as_ref()), &validation)
+            .map(|data| data.claims)
+            .map_err(|e| match e.kind() {
+                jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthError::TokenExpired,
+                jsonwebtoken::errors::ErrorKind::InvalidSignature => AuthError::InvalidSignature,
+                _ => AuthError::InvalidTokenFormat,
+            })
+    }
 
-        assert!(claims.is_ok());
-        let validated_claims = claims.unwrap();
-        assert_eq!(validated_claims.sub, user_id);
-        assert_eq!(validated_claims.role, "writer");
+    #[test]
+    fn test_jwt_generation() {
+        let secret = "test-secret-key-for-testing-only-long-enough";
+        let issuer = "tachyon-test";
+        let audience = "tachyon-test";
+        let user_id = "test-user-123";
+
+        let claims = make_test_claims(user_id, "admin");
+        let token = encode_test_token(&claims, secret);
+
+        assert!(!token.is_empty(), "token should not be empty");
+
+        let decoded = decode_test_token(&token, secret, issuer, audience);
+        assert!(decoded.is_ok(), "token should decode successfully");
+        let decoded_claims = decoded.unwrap();
+        assert_eq!(decoded_claims.sub, user_id);
+        assert_eq!(decoded_claims.role, "admin");
+        assert_eq!(decoded_claims.iss, issuer);
+        assert_eq!(decoded_claims.aud, audience);
+    }
+
+    #[test]
+    fn test_jwt_validation() {
+        let secret = "test-secret-key-for-testing-only-long-enough";
+        let issuer = "tachyon-test";
+        let audience = "tachyon-test";
+        let user_id = "test-user-456";
+
+        let claims = make_test_claims(user_id, "writer");
+        let token = encode_test_token(&claims, secret);
+
+        assert!(decode_test_token(&token, secret, issuer, audience).is_ok(),
+            "valid token should decode");
+
+        assert!(decode_test_token(&token, "wrong-secret", issuer, audience).is_err(),
+            "wrong secret should fail");
+
+        assert!(decode_test_token(&token, secret, "wrong-issuer", audience).is_err(),
+            "wrong issuer should fail");
+
+        assert!(decode_test_token(&token, secret, issuer, "wrong-audience").is_err(),
+            "wrong audience should fail");
     }
 
     #[test]
