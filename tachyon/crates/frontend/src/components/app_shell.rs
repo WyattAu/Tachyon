@@ -2,6 +2,7 @@
 
 use crate::api::ApiClient;
 use crate::types::Notification;
+use crate::components::CommandPalette;
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use wasm_bindgen_futures::spawn_local;
@@ -36,6 +37,8 @@ where
 {
     let _ = theme;
     let (sidebar_collapsed, set_sidebar_collapsed) = signal(false);
+    let (mobile_menu_open, set_mobile_menu_open) = signal(false);
+    let (palette_open, set_palette_open) = signal(false);
 
     let (user_id, set_user_id) = signal(None::<String>);
     let (show_user_menu, set_show_user_menu) = signal(false);
@@ -122,12 +125,22 @@ where
         fetch_for_all();
     });
 
+    let on_toggle_mobile_menu = move |_: leptos::ev::MouseEvent| {
+        set_mobile_menu_open.update(|open| *open = !*open);
+    };
+
+    let on_close_mobile_menu = move |_: leptos::ev::MouseEvent| {
+        set_mobile_menu_open.set(false);
+    };
+
     Effect::new(move |_| {
         let set_um = set_show_user_menu.clone();
         let set_notif = set_show_notifications.clone();
+        let set_mm = set_mobile_menu_open.clone();
         let closure = wasm_bindgen::closure::Closure::<dyn Fn(wasm_bindgen::JsValue)>::new(move |_event: wasm_bindgen::JsValue| {
             set_um.set(false);
             set_notif.set(false);
+            set_mm.set(false);
         });
         if let Some(window) = web_sys::window() {
             if let Some(document) = window.document() {
@@ -139,34 +152,52 @@ where
 
     view! {
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <div
+                class="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden transition-opacity duration-200"
+                style={move || if mobile_menu_open.get() { "" } else { "display: none;" }}
+                on:click=on_close_mobile_menu
+            ></div>
+
             {/* Sidebar */}
             <aside class={
                 let collapsed = sidebar_collapsed.get();
                 move || {
-                    if collapsed {
-                        "fixed inset-y-0 left-0 z-30 w-16 transition-all duration-300 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
-                    } else {
-                        "fixed inset-y-0 left-0 z-30 w-64 transition-all duration-300 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
-                    }
+                    let width = if collapsed { "w-16" } else { "w-64" };
+                    let mobile_transform = if mobile_menu_open.get() { "translate-x-0" } else { "-translate-x-full" };
+                    format!(
+                        "fixed inset-y-0 left-0 z-50 {} transform transition-transform duration-200 ease-in-out {} md:translate-x-0 transition-all duration-300 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700",
+                        width,
+                        mobile_transform,
+                    )
                 }
             }>
                 <div class="h-full flex flex-col">
                     {/* Logo */}
                     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                                <span class="text-white font-bold text-lg">T</span>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-lg">T</span>
+                                </div>
+                                <Show when={move || !sidebar_collapsed.get()}>
+                                    <span class="ml-3 text-lg font-semibold text-gray-900 dark:text-white">
+                                        Tachyon
+                                    </span>
+                                </Show>
                             </div>
-                            <Show when={move || !sidebar_collapsed.get()}>
-                                <span class="ml-3 text-lg font-semibold text-gray-900 dark:text-white">
-                                    Tachyon
-                                </span>
-                            </Show>
+                            <button
+                                class="md:hidden p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                                on:click=on_close_mobile_menu
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
 
                     {/* Navigation */}
-                    <nav class="flex-1 p-2 space-y-1 overflow-y-auto">
+                    <nav class="flex-1 p-2 space-y-1 overflow-y-auto no-print">
                         <NavLink href="/" label="Home" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/dashboard" label="Dashboard" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/documents" label="Documents" collapsed={sidebar_collapsed.get()} />
@@ -179,7 +210,7 @@ where
                     </nav>
 
                     {/* Collapse toggle */}
-                    <div class="p-2 border-t border-gray-200 dark:border-gray-700">
+                    <div class="hidden md:block p-2 border-t border-gray-200 dark:border-gray-700 no-print">
                         <button
                             on:click=move |_| set_sidebar_collapsed.update(|c| *c = !*c)
                             class="w-full p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center justify-center"
@@ -197,24 +228,44 @@ where
                 let collapsed = sidebar_collapsed.get();
                 move || {
                     if collapsed {
-                        "ml-16 transition-all duration-300"
+                        "md:ml-16 transition-all duration-300"
                     } else {
-                        "ml-64 transition-all duration-300"
+                        "md:ml-64 transition-all duration-300"
                     }
                 }
             }>
                 {/* Top bar */}
-                <header class="sticky top-0 z-20 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                    <div class="px-6 py-4 flex items-center justify-between">
-                        <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
-                            Tachyon
-                        </h1>
+                <header class="sticky top-0 z-20 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 no-print">
+                    <div class="px-4 md:px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <button
+                                class="md:hidden p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                on:click=on_toggle_mobile_menu
+                            >
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                            </button>
+                            <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
+                                Tachyon
+                            </h1>
+                        </div>
                         <div class="flex items-center space-x-4">
+                            <button
+                                on:click=move |_| set_palette_open.set(true)
+                                class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors"
+                            >
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <span class="hidden md:inline">"Search..."</span>
+                                <kbd class="hidden md:inline text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded px-1.5 py-0.5 font-mono">"\u{2318}K"</kbd>
+                            </button>
                             <a
                                 href="/api/docs"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                                class="hidden sm:inline text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                             >
                                 "API Docs"
                             </a>
@@ -381,10 +432,11 @@ where
                 </header>
 
                 {/* Page content */}
-                <main class="p-6">
+                <main class="p-4 md:p-6">
                     {children()}
                 </main>
             </div>
+            <CommandPalette open=palette_open set_open=set_palette_open />
         </div>
     }
 }

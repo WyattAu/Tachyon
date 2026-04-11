@@ -5,7 +5,7 @@ use leptos_router::hooks::{use_params, use_navigate};
 use leptos_router::params::Params;
 use crate::api::ApiClient;
 use crate::types::{Document, DocumentListResponse, DocumentTemplate, BacklinksResponse};
-use crate::components::{DocumentEditor, ActivityFeed, Activity, ActivityType, VersionHistory, TemplateSelector, ReviewPanel, ConflictResolver};
+use crate::components::{DocumentEditor, ActivityFeed, Activity, ActivityType, VersionHistory, TemplateSelector, ReviewPanel, ConflictResolver, TableOfContents, BreadcrumbItem, Breadcrumbs};
 use crate::websocket::{WebSocketClient, WsMessage};
 use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
@@ -391,6 +391,9 @@ pub fn DocumentPage() -> impl IntoView {
 
     view! {
         <div class="max-w-4xl mx-auto">
+            <Breadcrumbs items={vec![
+                BreadcrumbItem { label: "Documents".into(), href: Some("/documents".into()) },
+            ]}/>
             // Back link
             <a href="/documents" class="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline mb-6">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -561,6 +564,7 @@ pub fn DocumentEditPage() -> impl IntoView {
     let (loading, set_loading) = signal(true);
     let (load_error, set_load_error) = signal::<Option<String>>(None);
     let (sidebar_tab, set_sidebar_tab) = signal("activity".to_string());
+    let (sidebar_open, set_sidebar_open) = signal(true);
 
     let api_client = ApiClient::default();
     let fetch_doc_id = document_id();
@@ -625,8 +629,8 @@ pub fn DocumentEditPage() -> impl IntoView {
     view! {
         <div class="flex h-[calc(100vh-4rem)]">
             <div class="flex-1 flex flex-col overflow-hidden">
-                <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                    <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-3 no-print toolbar">
+                    <h1 class="text-xl font-semibold text-gray-900 dark:text-white min-w-0 truncate">
                         {move || {
                             let title = doc_title.get();
                             if title.is_empty() {
@@ -636,6 +640,15 @@ pub fn DocumentEditPage() -> impl IntoView {
                             }
                         }}
                     </h1>
+                    <button
+                        class="hidden md:flex p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+                        on:click=move |_| set_sidebar_open.update(|o| *o = !*o)
+                        title={move || if sidebar_open.get() { "Hide sidebar" } else { "Show sidebar" }}
+                    >
+                        <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                        </svg>
+                    </button>
                 </div>
                 
                 <div class="flex-1 overflow-hidden">
@@ -678,7 +691,13 @@ pub fn DocumentEditPage() -> impl IntoView {
                 </div>
             </div>
             
-            <div class="w-80 flex-shrink-0 border-l border-gray-200 dark:border-gray-700">
+            <div
+                class={move || if sidebar_open.get() {
+                    "w-80 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 transition-all duration-200 overflow-hidden hidden md:block"
+                } else {
+                    "w-0 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 transition-all duration-200 overflow-hidden"
+                }}
+            >
                 <div class="flex border-b border-gray-200 dark:border-gray-700">
                     <button
                         class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
@@ -710,6 +729,12 @@ pub fn DocumentEditPage() -> impl IntoView {
                     >
                         "Backlinks"
                     </button>
+                    <button
+                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
+                        on:click=move |_| set_sidebar_tab.set("outline".to_string())
+                    >
+                        "Outline"
+                    </button>
                 </div>
                 {move || {
                     let tab = sidebar_tab.get();
@@ -736,6 +761,13 @@ pub fn DocumentEditPage() -> impl IntoView {
                         view! {
                             <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
                                 <BacklinksPanel document_id={doc_id} />
+                            </div>
+                        }.into_any()
+                    } else if tab == "outline" {
+                        let content = doc_content.get();
+                        view! {
+                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                                <TableOfContents markdown_content={content} />
                             </div>
                         }.into_any()
                     } else {

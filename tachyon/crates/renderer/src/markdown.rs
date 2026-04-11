@@ -194,9 +194,13 @@ impl MarkdownParser {
         html::push_html(&mut html_output, parser_with_count);
 
         // Sanitize HTML output to prevent XSS attacks.
-        // Allows safe elements (headings, paragraphs, lists, tables, code blocks, links)
+        // Allows safe elements (headings, paragraphs, lists, tables, code blocks, links, images)
         // while stripping script tags, event handlers, and other dangerous content.
-        html_output = ammonia::clean(&html_output);
+        html_output = ammonia::Builder::default()
+            .add_tags(["img"])
+            .add_tag_attributes("img", ["src", "alt", "title", "width", "height", "loading"])
+            .clean(&html_output)
+            .to_string();
 
         // Count code blocks from original parse
         let parser_for_count = Parser::new_ext(markdown, self.cmark_options);
@@ -468,5 +472,28 @@ Some more text.
         let input = "Link to [[Foo]] and [[Bar|display]]\n```\n[[Ignored]]\n```\n[[After]]";
         let targets = MarkdownParser::extract_wikilinks(input);
         assert_eq!(targets, vec!["Foo", "Bar", "After"]);
+    }
+
+    #[test]
+    fn test_image_rendering() {
+        let parser = MarkdownParser::new();
+        let markdown = "![alt text](https://example.com/image.png)";
+        let result = parser.parse(markdown, OutputFormat::Html).unwrap();
+
+        assert!(
+            result.content.contains("<img"),
+            "Expected HTML to contain <img tag, got: {}",
+            result.content
+        );
+        assert!(
+            result.content.contains("alt=\"alt text\""),
+            "Expected img to preserve alt attribute"
+        );
+        assert!(
+            result
+                .content
+                .contains("src=\"https://example.com/image.png\""),
+            "Expected img to preserve src attribute"
+        );
     }
 }

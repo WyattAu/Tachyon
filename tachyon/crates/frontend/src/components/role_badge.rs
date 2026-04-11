@@ -1,6 +1,8 @@
 // Role Badge Component
 // Displays user roles with badges and controls visibility based on permissions
 
+#![allow(dead_code)]
+
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 

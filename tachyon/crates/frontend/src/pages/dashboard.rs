@@ -3,6 +3,7 @@
 
 use crate::api::ApiClient;
 use crate::types::{ActivityEvent, ActivityListResponse, CatalogStats, Document, Project, TagsResponse};
+use crate::components::{BreadcrumbItem, Breadcrumbs};
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 
@@ -108,6 +109,9 @@ pub fn DashboardPage() -> impl IntoView {
 
     view! {
         <div>
+            <Breadcrumbs items={vec![
+                BreadcrumbItem { label: "Dashboard".into(), href: None },
+            ]}/>
             <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">"Dashboard"</h1>
 
             // Stats Overview

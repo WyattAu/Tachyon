@@ -1,6 +1,8 @@
 // Common Components
 // Simple reusable UI components for Leptos 0.8
 
+#![allow(dead_code)]
+
 use leptos::prelude::*;
 
 /// Simple button component

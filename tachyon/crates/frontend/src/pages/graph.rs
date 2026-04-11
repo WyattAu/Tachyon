@@ -5,6 +5,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use wasm_bindgen::JsCast;
 use crate::api::ApiClient;
+use crate::components::{BreadcrumbItem, Breadcrumbs};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -507,6 +508,9 @@ pub fn GraphPage() -> impl IntoView {
 
     view! {
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <Breadcrumbs items={vec![
+                BreadcrumbItem { label: "Graph".into(), href: None },
+            ]}/>
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-white">"Knowledge Graph"</h1>
                 <p class="mt-2 text-gray-600 dark:text-gray-400">
