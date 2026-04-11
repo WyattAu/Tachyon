@@ -1,15 +1,85 @@
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
+use std::time::Duration;
 use tachyon_database::{DatabasePool, WebhookRepository};
 use tracing::{debug, warn};
 
 type HmacSha256 = Hmac<Sha256>;
+
+const MAX_RETRIES: u32 = 3;
+const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
+const MAX_BACKOFF: Duration = Duration::from_secs(60);
 
 fn compute_signature(secret: &str, body: &[u8]) -> String {
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
     mac.update(body);
     let result = mac.finalize();
     hex::encode(result.into_bytes())
+}
+
+async fn try_deliver(
+    client: &reqwest::Client,
+    webhook_url: &str,
+    body: &str,
+    event_type: &str,
+    webhook_id: &str,
+    secret: Option<&str>,
+) -> Result<(), String> {
+    let mut req = client
+        .post(webhook_url)
+        .header("Content-Type", "application/json")
+        .header("X-Tachyon-Event", event_type)
+        .header("X-Tachyon-Delivery", webhook_id);
+
+    if let Some(secret) = secret {
+        let sig = compute_signature(secret, body.as_bytes());
+        debug!("Webhook {}: computed signature", webhook_id);
+        req = req.header("X-Tachyon-Signature", format!("sha256={}", sig));
+    }
+
+    req.body(body.to_string())
+        .send()
+        .await
+        .map_err(|e| format!("HTTP error: {}", e))?
+        .error_for_status()
+        .map(|_| ())
+        .map_err(|e| format!("status error: {}", e))
+}
+
+async fn deliver_with_retry(
+    client: &reqwest::Client,
+    webhook_url: &str,
+    body: &str,
+    event_type: &str,
+    webhook_id: &str,
+    secret: Option<&str>,
+) -> Result<(), String> {
+    let mut backoff = INITIAL_BACKOFF;
+
+    for attempt in 0..MAX_RETRIES {
+        match try_deliver(client, webhook_url, body, event_type, webhook_id, secret).await {
+            Ok(_) => return Ok(()),
+            Err(e) if attempt < MAX_RETRIES - 1 => {
+                warn!(
+                    "Webhook delivery attempt {}/{} failed for {}: {}",
+                    attempt + 1,
+                    MAX_RETRIES,
+                    webhook_url,
+                    e
+                );
+                tokio::time::sleep(backoff).await;
+                backoff = (backoff * 2).min(MAX_BACKOFF);
+            }
+            Err(e) => {
+                warn!(
+                    "Webhook delivery failed after {} attempts for {}: {}",
+                    MAX_RETRIES, webhook_url, e
+                );
+                return Err(e);
+            }
+        }
+    }
+    Ok(())
 }
 
 pub async fn deliver_event(pool: DatabasePool, event_type: &str, payload: &serde_json::Value) {
@@ -33,36 +103,21 @@ pub async fn deliver_event(pool: DatabasePool, event_type: &str, payload: &serde
         let body_clone = body.clone();
         let event_type_clone = event_type_owned.clone();
         let webhook_id = webhook.id;
+        let webhook_url = webhook.url.clone();
+        let webhook_secret = webhook.secret.clone();
 
         tokio::spawn(async move {
-            let client = match reqwest::Client::new()
-                .post(&webhook.url)
-                .header("Content-Type", "application/json")
-                .header("X-Tachyon-Event", &event_type_clone)
-                .header("X-Tachyon-Delivery", webhook_id.to_string())
-            {
-                req => req,
-            };
+            let client = reqwest::Client::new();
 
-            let client = if let Some(ref secret) = webhook.secret {
-                let sig = compute_signature(secret, body_clone.as_bytes());
-                debug!("Webhook {}: computed signature", webhook_id);
-                client.header("X-Tachyon-Signature", format!("sha256={}", sig))
-            } else {
-                client
-            };
-
-            match client.body(body_clone.clone()).send().await {
-                Ok(resp) if resp.status().is_success() => {
-                    debug!("Webhook {} delivered successfully (status {})", webhook_id, resp.status());
-                }
-                Ok(resp) => {
-                    warn!("Webhook {} delivery failed: status {}", webhook_id, resp.status());
-                }
-                Err(e) => {
-                    warn!("Webhook {} delivery error: {}", webhook_id, e);
-                }
-            }
+            let _ = deliver_with_retry(
+                &client,
+                &webhook_url,
+                &body_clone,
+                &event_type_clone,
+                &webhook_id.to_string(),
+                webhook_secret.as_deref(),
+            )
+            .await;
 
             if let Err(e) = WebhookRepository::update_last_triggered(&pool_clone, webhook_id).await {
                 warn!("Failed to update last_triggered_at for webhook {}: {}", webhook_id, e);
@@ -94,5 +149,12 @@ mod tests {
         let sig1 = compute_signature("secret-a", b"data");
         let sig2 = compute_signature("secret-b", b"data");
         assert_ne!(sig1, sig2);
+    }
+
+    #[test]
+    fn test_backoff_constants() {
+        assert_eq!(MAX_RETRIES, 3);
+        assert_eq!(INITIAL_BACKOFF, Duration::from_secs(1));
+        assert_eq!(MAX_BACKOFF, Duration::from_secs(60));
     }
 }

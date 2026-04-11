@@ -38,7 +38,7 @@ pub fn ReviewPanel(
         let document_id = document_id.clone();
         move || {
             let _ = refresh_counter.get();
-            let client = api_client.lock().unwrap().clone();
+            let client = api_client.lock().ok().map(|g| g.clone()).unwrap_or_default();
             let doc_id = document_id.clone();
             async move {
                 client.list_reviews(&doc_id).await.unwrap_or_default()
@@ -51,7 +51,7 @@ pub fn ReviewPanel(
         let document_id = document_id.clone();
         move || {
             let _ = refresh_counter.get();
-            let client = api_client.lock().unwrap().clone();
+            let client = api_client.lock().ok().map(|g| g.clone()).unwrap_or_default();
             let doc_id = document_id.clone();
             async move {
                 client.get_review_status(&doc_id).await.ok()
@@ -66,7 +66,10 @@ pub fn ReviewPanel(
         ev.prevent_default();
         let doc_id = doc_id_for_new.clone();
         let set_rc = set_rc_for_new.clone();
-        let client = api_client_for_submit.lock().unwrap().clone();
+        let client = match api_client_for_submit.lock().ok() {
+            Some(guard) => guard.clone(),
+            None => return,
+        };
 
         wasm_bindgen_futures::spawn_local(async move {
             // Use the author from localStorage or a default
@@ -217,7 +220,10 @@ fn ReviewItem(
         }
         let doc_id = doc_id_approve.clone();
         let rid = review_id_approve.clone();
-        let api = api_approve.lock().unwrap().clone();
+        let api = match api_approve.lock().ok() {
+            Some(guard) => guard.clone(),
+            None => return,
+        };
         let set_rc = set_rc_approve.clone();
         wasm_bindgen_futures::spawn_local(async move {
             let _ = api.update_review(&doc_id, &rid, "approved", Some("Approved")).await;
@@ -238,7 +244,10 @@ fn ReviewItem(
         }
         let doc_id = doc_id_reject.clone();
         let rid = review_id_reject.clone();
-        let api = api_reject.lock().unwrap().clone();
+        let api = match api_reject.lock().ok() {
+            Some(guard) => guard.clone(),
+            None => return,
+        };
         let set_rc = set_rc_reject.clone();
         wasm_bindgen_futures::spawn_local(async move {
             let _ = api.update_review(&doc_id, &rid, "rejected", Some("Rejected")).await;
@@ -259,7 +268,10 @@ fn ReviewItem(
         }
         let doc_id = doc_id_changes.clone();
         let rid = review_id_changes.clone();
-        let api = api_changes.lock().unwrap().clone();
+        let api = match api_changes.lock().ok() {
+            Some(guard) => guard.clone(),
+            None => return,
+        };
         let set_rc = set_rc_changes.clone();
         wasm_bindgen_futures::spawn_local(async move {
             let _ = api.update_review(&doc_id, &rid, "changes_requested", Some("Changes requested")).await;
@@ -286,7 +298,10 @@ fn ReviewItem(
         }
         let doc_id = doc_id_post.clone();
         let rid = review_id_post.clone();
-        let api = api_post.lock().unwrap().clone();
+        let api = match api_post.lock().ok() {
+            Some(guard) => guard.clone(),
+            None => return,
+        };
         let set_rc = set_rc_post.clone();
         let set_c = set_comments.clone();
         let content = text;
@@ -354,7 +369,10 @@ fn ReviewItem(
                         if new_show {
                             let doc_id = doc_id_comments.clone();
                             let rid = review_id_comments.clone();
-                            let api = api_comments.lock().unwrap().clone();
+                            let api = match api_comments.lock().ok() {
+                                Some(guard) => guard.clone(),
+                                None => return,
+                            };
                             let set_c = set_comments_clone.clone();
                             wasm_bindgen_futures::spawn_local(async move {
                                 if let Ok(coms) = api.list_review_comments(&doc_id, &rid).await {
@@ -395,7 +413,10 @@ fn ReviewItem(
                                     class="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     prop:value={move || comment_text.get()}
                                     on:input=move |ev: leptos::ev::Event| {
-                                        let target: web_sys::HtmlInputElement = ev.target().unwrap().unchecked_into();
+                                        let target: web_sys::HtmlInputElement = match ev.target() {
+                                            Some(t) => t.unchecked_into(),
+                                            None => return,
+                                        };
                                         set_comment_text.set(target.value());
                                     }
                                 />

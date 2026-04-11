@@ -282,7 +282,10 @@ pub fn DocumentEditor(
     let auto_save_debounce_for_save_ks = auto_save_debounce.clone();
 
     let handle_input = move |ev: Event| {
-        let target: HtmlTextAreaElement = ev.target().unwrap().unchecked_into();
+        let target: HtmlTextAreaElement = match ev.target() {
+            Some(t) => t.unchecked_into(),
+            None => return,
+        };
         let new_content = target.value();
         let old_content = document_content.get();
 
@@ -512,8 +515,9 @@ pub fn DocumentEditor(
                     let _ = ta.set_selection_end(Some(new_end as u32));
 
                     // Dispatch input event so Leptos picks up the change
-                    let event = web_sys::Event::new("input").unwrap();
-                    let _ = ta.dispatch_event(&event);
+                    if let Ok(event) = web_sys::Event::new("input") {
+                        let _ = ta.dispatch_event(&event);
+                    }
                 }
             }
         }
@@ -543,8 +547,9 @@ pub fn DocumentEditor(
                     let _ = ta.set_selection_start(Some(new_cursor as u32));
                     let _ = ta.set_selection_end(Some(new_cursor as u32));
 
-                    let event = web_sys::Event::new("input").unwrap();
-                    let _ = ta.dispatch_event(&event);
+                    if let Ok(event) = web_sys::Event::new("input") {
+                        let _ = ta.dispatch_event(&event);
+                    }
                 }
             }
         }
@@ -605,20 +610,20 @@ pub fn DocumentEditor(
 
     // --- Keyboard shortcut handler ---
     {
-        let window = web_sys::window().unwrap();
-        let closure = Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |e: web_sys::KeyboardEvent| {
-            let key = e.key();
-            let ctrl = e.ctrl_key() || e.meta_key();
+        if let Some(window) = web_sys::window() {
+            let closure = Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |e: web_sys::KeyboardEvent| {
+                let key = e.key();
+                let ctrl = e.ctrl_key() || e.meta_key();
 
-            if ctrl && key == "s" {
-                e.prevent_default();
-                save_document_ks();
-            }
-        });
-        window
-            .add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref())
-            .unwrap();
-        closure.forget();
+                if ctrl && key == "s" {
+                    e.prevent_default();
+                    save_document_ks();
+                }
+            });
+            let _ = window
+                .add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref());
+            closure.forget();
+        }
     }
 
     // --- Connection indicator ---

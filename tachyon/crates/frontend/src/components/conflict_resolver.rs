@@ -31,7 +31,14 @@ pub fn ConflictResolver(
     let set_er = set_error_msg.clone();
 
     wasm_bindgen_futures::spawn_local(async move {
-        let client = api_load.lock().unwrap().clone();
+        let client = match api_load.lock().ok() {
+            Some(guard) => guard.clone(),
+            None => {
+                set_er.set(Some("Failed to acquire API client".to_string()));
+                set_ld.set(false);
+                return;
+            }
+        };
         match client.get_conflict_info(&doc_id_load).await {
             Ok(info) => {
                 set_ci.set(Some(info));
@@ -69,7 +76,10 @@ pub fn ConflictResolver(
         let set_er = set_error_msg.clone();
         move |_: leptos::ev::MouseEvent| {
             let doc_id = doc_id.clone();
-            let api = api.lock().unwrap().clone();
+            let api = match api.lock().ok() {
+                Some(guard) => guard.clone(),
+                None => return,
+            };
             let on_resolved_cb = on_resolved_cb.clone();
             let set_rs = set_rs.clone();
             let set_er = set_er.clone();
@@ -99,7 +109,10 @@ pub fn ConflictResolver(
         let set_er = set_error_msg.clone();
         move |_: leptos::ev::MouseEvent| {
             let doc_id = doc_id.clone();
-            let api = api.lock().unwrap().clone();
+            let api = match api.lock().ok() {
+                Some(guard) => guard.clone(),
+                None => return,
+            };
             let on_resolved_cb = on_resolved_cb.clone();
             let set_rs = set_rs.clone();
             let set_er = set_er.clone();
@@ -130,7 +143,10 @@ pub fn ConflictResolver(
         move |_: leptos::ev::MouseEvent| {
             let doc_id = doc_id.clone();
             let content = doc_id.clone();
-            let api = api.lock().unwrap().clone();
+            let api = match api.lock().ok() {
+                Some(guard) => guard.clone(),
+                None => return,
+            };
             let on_resolved_cb = on_resolved_cb.clone();
             let set_rs = set_rs.clone();
             let set_er = set_er.clone();
