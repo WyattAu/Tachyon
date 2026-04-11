@@ -1,0 +1,39 @@
+[package]
+name = "tachyon-import-export"
+version = "0.1.0"
+description = "Import/export functionality for Tachyon knowledge management system"
+edition = "2021"
+
+[lib]
+name = "tachyon_import_export"
+path = "src/lib.rs"
+
+[dependencies]
+# Core
+tachyon-core = { path = "../core" }
+tachyon-renderer = { path = "../renderer" }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# Archive handling
+zip = "2"
+
+# File system
+walkdir = "2"
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+
+# Utilities
+regex = "1"
+uuid = { version = "1", features = ["v4", "v7"] }

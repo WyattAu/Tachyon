@@ -23,6 +23,7 @@ tachyon-renderer = { path = "../renderer" }
 tachyon-rbac = { path = "../rbac" }
 tachyon-search = { path = "../search" }
 tachyon-database = { path = "../database" }
+tachyon-import-export = { path = "../import-export" }
 
 # CLI framework
 clap = { workspace = true }
