@@ -17,7 +17,7 @@ use tachyon_database::{
     CreateTemplateRequest, CreateVersionRequest, DocumentVersionRepository, DatabasePool,
     DocumentRepository, TemplateRepository, UpdateTemplateRequest,
 };
-use tachyon_renderer::{RenderConfig, Renderer};
+use tachyon_renderer::{RenderConfig, Renderer, MarkdownParser};
 use tachyon_search::{IndexManager, SearchDocument};
 use tracing::{debug, info, warn};
 use crate::config::GuestConfig;
@@ -363,6 +363,22 @@ pub async fn create_document(
         ));
     }
 
+    // Extract and store outgoing wikilinks
+    {
+        let outgoing_links = MarkdownParser::extract_wikilinks(&req.content);
+        let links_json = serde_json::to_value(&outgoing_links).unwrap_or(serde_json::json!([]));
+        if let Ok(mut conn) = state.pool.acquire().await {
+            if let Err(e) = sqlx::query("UPDATE documents SET outgoing_links = $1 WHERE id = $2")
+                .bind(&links_json)
+                .bind(&doc.id.to_string())
+                .execute(&mut *conn)
+                .await
+            {
+                warn!("Failed to update outgoing links for document {}: {}", doc.id, e);
+            }
+        }
+    }
+
     // Update search index for full-text search
     if let Err(e) = state.repository.update_search_index(
         &doc.id,
@@ -411,6 +427,11 @@ pub async fn create_document(
     response.html = Some(html_content);
 
     info!("Document created successfully: {}", response.id);
+
+    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), "document_created", &serde_json::json!({
+        "document_id": response.id.clone(),
+        "title": response.title.clone(),
+    }));
 
     Ok(Json(response))
 }
@@ -562,6 +583,23 @@ pub async fn update_document(
         )
     })?;
 
+    // Extract and store outgoing wikilinks
+    {
+        let content = metadata.content.as_deref().unwrap_or("");
+        let outgoing_links = MarkdownParser::extract_wikilinks(content);
+        let links_json = serde_json::to_value(&outgoing_links).unwrap_or(serde_json::json!([]));
+        if let Ok(mut conn) = state.pool.acquire().await {
+            if let Err(e) = sqlx::query("UPDATE documents SET outgoing_links = $1 WHERE id = $2")
+                .bind(&links_json)
+                .bind(&document_id)
+                .execute(&mut *conn)
+                .await
+            {
+                warn!("Failed to update outgoing links for document {}: {}", document_id, e);
+            }
+        }
+    }
+
     // Update search index for full-text search
     if let Err(e) = state.repository.update_search_index(
         &doc_id,
@@ -616,6 +654,11 @@ pub async fn update_document(
 
     info!("Document updated successfully: {}", document_id);
 
+    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), "document_updated", &serde_json::json!({
+        "document_id": document_id.clone(),
+        "title": response.title.clone(),
+    }));
+
     Ok(Json(response))
 }
 
@@ -643,6 +686,11 @@ pub async fn delete_document(
         Ok(()) => {
             state.delete_from_tantivy(&document_id).await;
             info!("Document deleted: {}", document_id);
+
+            let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), "document_deleted", &serde_json::json!({
+                "document_id": document_id.clone(),
+            }));
+
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
@@ -1490,6 +1538,96 @@ pub async fn delete_template(
     Ok(StatusCode::NO_CONTENT)
 }
 
+// ============================================================================
+// Backlinks Endpoint
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+pub struct BacklinksResponse {
+    pub backlinks: Vec<BacklinkItem>,
+    pub count: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BacklinkItem {
+    pub id: String,
+    pub title: String,
+    pub slug: String,
+    pub updated_at: String,
+}
+
+pub async fn get_backlinks(
+    Path(document_id): Path<String>,
+    State(state): State<DocumentState>,
+) -> Result<Json<BacklinksResponse>, (StatusCode, Json<ErrorResponse>)> {
+    debug!("Getting backlinks for document: {}", document_id);
+
+    let doc_id = DocumentId::parse_str(&document_id).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "INVALID_ID".to_string(),
+                message: format!("Invalid document ID: {}", e),
+                details: None,
+            }),
+        )
+    })?;
+
+    let metadata = state.repository.get_by_id(&doc_id).await.map_err(|e| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                code: "NOT_FOUND".to_string(),
+                message: format!("Document {} not found: {}", document_id, e),
+                details: None,
+            }),
+        )
+    })?;
+
+    let search_json = serde_json::json!([metadata.title]);
+    let mut conn = state.pool.acquire().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "QUERY_ERROR".to_string(),
+                message: format!("Failed to query backlinks: {}", e),
+                details: None,
+            }),
+        )
+    })?;
+    let rows: Vec<(String, String, Option<String>, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT id, title, slug, updated_at FROM documents WHERE outgoing_links @> $1::jsonb AND id != $2 ORDER BY updated_at DESC LIMIT 50"
+    )
+    .bind(&search_json)
+    .bind(&document_id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "QUERY_ERROR".to_string(),
+                message: format!("Failed to query backlinks: {}", e),
+                details: None,
+            }),
+        )
+    })?;
+
+    let backlinks: Vec<BacklinkItem> = rows
+        .into_iter()
+        .map(|(id, title, slug, updated_at)| BacklinkItem {
+            id,
+            title,
+            slug: slug.unwrap_or_default(),
+            updated_at: updated_at.to_string(),
+        })
+        .collect();
+
+    let count = backlinks.len();
+
+    Ok(Json(BacklinksResponse { backlinks, count }))
+}
+
 /// Create the document router (without state - caller must use .with_state())
 pub fn create_document_router() -> axum::Router<DocumentState> {
     use axum::routing::{delete, get, post, put};
@@ -1511,8 +1649,8 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
         .route("/documents/{document_id}/versions/{v1}/diff/{v2}", get(diff_versions))
         .route("/documents/{document_id}/attachments", get(list_attachments))
         .route("/documents/{document_id}/attachments", post(upload_attachment).layer(DefaultBodyLimit::max(50 * 1024 * 1024)))
-        .route("/documents/{document_id}/attachments/{attachment_id}", get(download_attachment))
         .route("/documents/{document_id}/attachments/{attachment_id}", delete(delete_attachment))
+        .route("/documents/{document_id}/backlinks", get(get_backlinks))
         .route("/templates", get(list_templates))
         .route("/templates", post(create_template))
         .route("/templates/{template_id}", get(get_template))
@@ -1555,5 +1693,34 @@ mod tests {
 
         assert_eq!(query.page, Some(1));
         assert_eq!(query.search, Some("test".to_string()));
+    }
+
+    #[test]
+    fn test_backlink_item_serialization() {
+        let item = BacklinkItem {
+            id: "123e4567-e89b-12d3-a456-426614174000".to_string(),
+            title: "Test Doc".to_string(),
+            slug: "test-doc".to_string(),
+            updated_at: "2026-01-01T00:00:00+00:00".to_string(),
+        };
+        let json = serde_json::to_string(&item).unwrap();
+        assert!(json.contains("Test Doc"));
+        assert!(json.contains("test-doc"));
+    }
+
+    #[test]
+    fn test_backlinks_response_serialization() {
+        let response = BacklinksResponse {
+            backlinks: vec![BacklinkItem {
+                id: "1".to_string(),
+                title: "Doc A".to_string(),
+                slug: "doc-a".to_string(),
+                updated_at: "2026-01-01T00:00:00+00:00".to_string(),
+            }],
+            count: 1,
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("\"count\":1"));
+        assert!(json.contains("Doc A"));
     }
 }

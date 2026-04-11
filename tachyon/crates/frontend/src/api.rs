@@ -969,4 +969,56 @@ impl ApiClient {
         let url = format!("{}/notifications/read-all", self.base_url);
         self.post_empty(&url).await
     }
+
+    // ========================================================================
+    // Backlinks API
+    // ========================================================================
+
+    /// Get backlinks for a document
+    pub async fn get_backlinks(&self, document_id: &str) -> Result<crate::types::BacklinksResponse, ApiError> {
+        let url = format!("{}/documents/{}/backlinks", self.base_url, document_id);
+        self.get(&url).await
+    }
+
+    // ========================================================================
+    // Tags API
+    // ========================================================================
+
+    /// List all tags with document counts
+    pub async fn list_tags(&self) -> Result<crate::types::TagsResponse, ApiError> {
+        let url = format!("{}/tags", self.base_url);
+        self.get(&url).await
+    }
+
+    // ========================================================================
+    // Webhooks API
+    // ========================================================================
+
+    /// List all webhooks
+    pub async fn list_webhooks(&self) -> Result<Vec<crate::types::WebhookInfo>, ApiError> {
+        let url = format!("{}/webhooks", self.base_url);
+        self.get(&url).await
+    }
+
+    /// Create a new webhook
+    pub async fn create_webhook(
+        &self,
+        webhook_url: &str,
+        events: Vec<&str>,
+        secret: Option<&str>,
+    ) -> Result<crate::types::WebhookInfo, ApiError> {
+        let url = format!("{}/webhooks", self.base_url);
+        let body = serde_json::json!({
+            "url": webhook_url,
+            "events": events,
+            "secret": secret,
+        });
+        self.post(&url, &body).await
+    }
+
+    /// Delete a webhook
+    pub async fn delete_webhook(&self, id: &str) -> Result<(), ApiError> {
+        let url = format!("{}/webhooks/{}", self.base_url, id);
+        self.delete(&url).await
+    }
 }

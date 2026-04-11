@@ -2,7 +2,7 @@
 // Main dashboard with stats, quick actions, and recent items
 
 use crate::api::ApiClient;
-use crate::types::{ActivityEvent, ActivityListResponse, CatalogStats, Document, Project};
+use crate::types::{ActivityEvent, ActivityListResponse, CatalogStats, Document, Project, TagsResponse};
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 
@@ -61,6 +61,7 @@ pub fn DashboardPage() -> impl IntoView {
     let api_client_projects = api_client.clone();
     let api_client_documents = api_client.clone();
     let api_client_activity = api_client.clone();
+    let api_client_tags = api_client.clone();
 
     let stats_resource = LocalResource::new(move || {
         let client = api_client_stats.clone();
@@ -95,6 +96,13 @@ pub fn DashboardPage() -> impl IntoView {
         let client = api_client_activity.clone();
         async move {
             client.list_activity(Some(20), None).await.unwrap_or(ActivityListResponse::default())
+        }
+    });
+
+    let tags_resource = LocalResource::new(move || {
+        let client = api_client_tags.clone();
+        async move {
+            client.list_tags().await.unwrap_or(TagsResponse::default())
         }
     });
 
@@ -158,6 +166,33 @@ pub fn DashboardPage() -> impl IntoView {
                     <QuickActionButton label="New Document" icon="document" on_click={on_click_new_document} />
                     <QuickActionButton label="Search" icon="search" on_click={on_click_search} />
                 </div>
+            </div>
+
+            // Popular Tags
+            <div class="mb-8">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Popular Tags"</h2>
+                <Suspense fallback={view! { <div class="animate-pulse h-8 bg-gray-200 dark:bg-gray-700 rounded w-64"></div> }}>
+                    {move || tags_resource.get().map(|tags_response| {
+                        if tags_response.tags.is_empty() {
+                            view! {
+                                <p class="text-sm text-gray-500 dark:text-gray-400">"No tags yet"</p>
+                            }.into_any()
+                        } else {
+                            view! {
+                                <div class="flex flex-wrap gap-2">
+                                    {tags_response.tags.into_iter().map(|tag_info| {
+                                        view! {
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer transition-colors">
+                                                {tag_info.tag}
+                                                <span class="ml-1.5 text-xs text-gray-400">{tag_info.count}</span>
+                                            </span>
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </div>
+                            }.into_any()
+                        }
+                    })}
+                </Suspense>
             </div>
 
             // Recent Activity

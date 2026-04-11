@@ -210,6 +210,14 @@ where
                             Tachyon
                         </h1>
                         <div class="flex items-center space-x-4">
+                            <a
+                                href="/api/docs"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                            >
+                                "API Docs"
+                            </a>
                             {/* Theme toggle button - simplified */}
                             <button
                                 on:click=move |_| toggle_theme()

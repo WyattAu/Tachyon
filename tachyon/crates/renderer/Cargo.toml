@@ -58,6 +58,9 @@ katex = { version = "0.2", default-features = false }
 # HTML sanitization
 ammonia = "4"
 
+# Wikilink parsing
+regex = "1"
+
 # Caching
 lru = "0.12"
 parking_lot = "0.12"

@@ -718,3 +718,51 @@ pub struct NotificationListResponse {
     pub notifications: Vec<Notification>,
     pub count: usize,
 }
+
+// ============================================================================
+// Backlink Types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct BacklinksResponse {
+    pub backlinks: Vec<BacklinkItem>,
+    pub count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct BacklinkItem {
+    pub id: String,
+    pub title: String,
+    pub slug: String,
+    pub updated_at: String,
+}
+
+// ============================================================================
+// Tag Types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TagInfo {
+    pub tag: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct TagsResponse {
+    pub tags: Vec<TagInfo>,
+    pub total: usize,
+}
+
+// ============================================================================
+// Webhook Types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct WebhookInfo {
+    pub id: String,
+    pub url: String,
+    pub events: Vec<String>,
+    pub active: bool,
+    pub created_at: String,
+    pub last_triggered_at: Option<String>,
+}

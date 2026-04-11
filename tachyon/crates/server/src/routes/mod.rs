@@ -13,8 +13,10 @@ pub mod role;
 pub mod search;
 pub mod seo;
 pub mod session;
+pub mod tags;
 pub mod team;
 pub mod user;
+pub mod webhook;
 
 use axum::Router;
 use crate::config::GuestConfig;
@@ -30,7 +32,9 @@ pub async fn create_router() -> Router {
     use crate::routes::repository::{RepositoryState, create_repository_router};
     use crate::routes::review::{ReviewState, create_review_router};
     use crate::routes::session::{SessionState, create_session_router};
+    use crate::routes::tags::{TagsState, create_tags_router};
     use crate::routes::user::{UserState, create_user_router};
+    use crate::routes::webhook::{WebhookState, create_webhook_router};
     use crate::websocket::ConnectionManager;
 
     // Use test database URL or default
@@ -63,7 +67,9 @@ pub async fn create_router() -> Router {
     let catalog_state = CatalogState::new(pool.clone());
     let review_state = ReviewState::new(pool.clone());
     let activity_state = ActivityState::new(pool.clone());
-    let notification_state = NotificationState::new(pool);
+    let notification_state = NotificationState::new(pool.clone());
+    let tags_state = TagsState { pool: pool.clone() };
+    let webhook_state = WebhookState { pool: pool.clone() };
     let _connection_manager = ConnectionManager::new();
 
     let document_router = create_document_router().with_state(document_state);
@@ -75,6 +81,8 @@ pub async fn create_router() -> Router {
     let review_router = create_review_router().with_state(review_state);
     let activity_router = create_activity_router().with_state(activity_state);
     let notification_router = create_notification_router().with_state(notification_state);
+    let tags_router = create_tags_router().with_state(tags_state);
+    let webhook_router = create_webhook_router().with_state(webhook_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -85,7 +93,9 @@ pub async fn create_router() -> Router {
         .merge(catalog_router)
         .merge(review_router)
         .merge(activity_router)
-        .merge(notification_router);
+        .merge(notification_router)
+        .merge(tags_router)
+        .merge(webhook_router);
 
     Router::new().nest("/api/v1", api_v1)
 }
@@ -179,4 +189,15 @@ pub use notification::{
 pub use conflict::{
     create_conflict_router, get_conflict_info, resolve_conflict, ConflictState,
     ConflictInfo, MergeResultInfo, ResolveConflictRequest,
+};
+
+// Tags exports
+pub use tags::{
+    create_tags_router, list_tags, TagsState, TagsResponse, TagInfo,
+};
+
+// Webhook exports
+pub use webhook::{
+    create_webhook_router, create_webhook, list_webhooks, delete_webhook,
+    WebhookState, WebhookResponse, CreateWebhookBody,
 };

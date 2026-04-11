@@ -22,6 +22,7 @@ pub mod template;
 pub mod types;
 pub mod user;
 pub mod user_preferences;
+pub mod webhook;
 
 // Re-export common types for convenience
 pub use activity::{ActivityEvent, ActivityRepository, CreateActivityEvent};
@@ -53,6 +54,7 @@ pub use team::{RoleRecord, RoleRepository, Team, TeamMember, TeamRepository};
 pub use graph::{GraphDiff, GraphRepository};
 pub use user::{UserRecord, UserRepository};
 pub use user_preferences::UserPreferencesRepository;
+pub use webhook::{CreateWebhook, Webhook, WebhookRepository};
 pub use types::*;
 
 // Re-export tachyon-core types

@@ -10,7 +10,7 @@ pub mod websocket;
 use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
-use components::{AppShell, AuthGuard, provide_auth_context};
+use components::{AppShell, AuthGuard, provide_auth_context, AppErrorBoundary};
 
 /// Not found page component
 #[component]
@@ -50,9 +50,10 @@ pub fn App() -> impl IntoView {
     };
 
     view! {
-        <GlobalStyles />
-        <Router>
-            <AppShell theme=theme toggle_theme=toggle_theme>
+        <AppErrorBoundary>
+            <GlobalStyles />
+            <Router>
+                <AppShell theme=theme toggle_theme=toggle_theme>
                 <Routes fallback=NotFound>
                     // Public routes (no auth required)
                     <Route path=path!("/") view=pages::HomePage />
@@ -133,6 +134,7 @@ pub fn App() -> impl IntoView {
                 </Routes>
             </AppShell>
         </Router>
+        </AppErrorBoundary>
     }
 }
 

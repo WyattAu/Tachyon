@@ -220,11 +220,11 @@ pub fn SettingsPage() -> impl IntoView {
                 <div class="space-y-3">
                     <div class="flex justify-between items-center">
                         <span class="text-sm text-gray-600 dark:text-gray-400">"Version"</span>
-                        <span class="text-sm font-medium text-gray-900 dark:text-white">"0.14.0"</span>
+                        <span class="text-sm font-medium text-gray-900 dark:text-white">"0.16.0"</span>
                     </div>
                     <div class="flex gap-4 pt-2">
                         <a
-                            href="https://github.com/example/tachyon"
+                            href="https://github.com/WyattAu/Tachyon"
                             target="_blank"
                             rel="noopener noreferrer"
                             class="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -233,7 +233,7 @@ pub fn SettingsPage() -> impl IntoView {
                             "GitHub"
                         </a>
                         <a
-                            href="https://docs.tachyon.example.com"
+                            href="/api/docs"
                             target="_blank"
                             rel="noopener noreferrer"
                             class="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -244,6 +244,9 @@ pub fn SettingsPage() -> impl IntoView {
                     </div>
                 </div>
             </SettingsSection>
+
+            // Webhooks Section
+            <WebhooksSection />
 
             // Account Actions
             <SettingsSection title="Account" description="Manage your account">
@@ -410,4 +413,220 @@ fn get_system_theme() -> String {
         }
     }
     "light".to_string()
+}
+
+#[component]
+fn WebhooksSection() -> impl IntoView {
+    let (webhooks, set_webhooks) = signal(Vec::<crate::types::WebhookInfo>::new());
+    let (new_url, set_new_url) = signal(String::new());
+    let (new_secret, set_new_secret) = signal(String::new());
+    let (new_events, set_new_events) = signal(Vec::<String>::new());
+    let (message, set_message) = signal(String::new());
+
+    let event_options = vec![
+        "document_created",
+        "document_updated",
+        "document_deleted",
+        "review_created",
+        "review_approved",
+        "review_rejected",
+    ];
+
+    let api_client = ApiClient::default();
+
+    Effect::new({
+        let api = api_client.clone();
+        let set_w = set_webhooks.clone();
+        let set_m = set_message.clone();
+        move |_| {
+            let api = api.clone();
+            let set_w = set_w.clone();
+            let set_m = set_m.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                match api.list_webhooks().await {
+                    Ok(hooks) => set_w.set(hooks),
+                    Err(e) => set_m.set(format!("Failed to load webhooks: {}", e)),
+                }
+            });
+        }
+    });
+
+    let on_toggle_event = move |event: String| {
+        set_new_events.update(|events| {
+            if let Some(pos) = events.iter().position(|e| e == &event) {
+                events.remove(pos);
+            } else {
+                events.push(event);
+            }
+        });
+    };
+
+    let api_client_for_delete = api_client.clone();
+    let on_add_webhook = move |_: leptos::ev::MouseEvent| {
+        let api = api_client.clone();
+        let url = new_url.get();
+        let secret = new_secret.get();
+        let events = new_events.get();
+        let set_m = set_message.clone();
+        let set_u = set_new_url.clone();
+        let set_s = set_new_secret.clone();
+        let set_e = set_new_events.clone();
+        let set_w = set_webhooks.clone();
+
+        if url.is_empty() || events.is_empty() {
+            set_m.set("URL and at least one event are required.".to_string());
+            return;
+        }
+
+        wasm_bindgen_futures::spawn_local(async move {
+            let events_ref: Vec<&str> = events.iter().map(|s| s.as_str()).collect();
+            let secret_ref = if secret.is_empty() { None } else { Some(secret.as_str()) };
+            match api.create_webhook(&url, events_ref, secret_ref).await {
+                Ok(_) => {
+                    set_m.set("Webhook created.".to_string());
+                    set_u.set(String::new());
+                    set_s.set(String::new());
+                    set_e.set(Vec::new());
+                    match api.list_webhooks().await {
+                        Ok(hooks) => set_w.set(hooks),
+                        Err(e) => set_m.set(format!("Reload failed: {}", e)),
+                    }
+                }
+                Err(e) => set_m.set(format!("Failed to create webhook: {}", e)),
+            }
+        });
+    };
+
+    let on_delete_webhook = move |id: String| {
+        let api = api_client_for_delete.clone();
+        let set_m = set_message.clone();
+        let set_w = set_webhooks.clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            match api.delete_webhook(&id).await {
+                Ok(_) => {
+                    set_m.set("Webhook deleted.".to_string());
+                    match api.list_webhooks().await {
+                        Ok(hooks) => set_w.set(hooks),
+                        Err(e) => set_m.set(format!("Reload failed: {}", e)),
+                    }
+                }
+                Err(e) => set_m.set(format!("Failed to delete webhook: {}", e)),
+            }
+        });
+    };
+
+    view! {
+        <SettingsSection title="Webhooks" description="Manage webhook endpoints for event notifications">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Webhook URL"</label>
+                    <input
+                        type="url"
+                        prop:value=move || new_url.get()
+                        on:input=move |ev| set_new_url.set(event_target_value(&ev))
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        placeholder="https://example.com/webhook"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Secret (optional)"</label>
+                    <input
+                        type="text"
+                        prop:value=move || new_secret.get()
+                        on:input=move |ev| set_new_secret.set(event_target_value(&ev))
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        placeholder="HMAC signing secret"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">"Events"</label>
+                    <div class="flex flex-wrap gap-2">
+                        {event_options.into_iter().map(|event| {
+                            let event_str = event.to_string();
+                            let is_checked = {
+                                let evts = new_events.get();
+                                evts.contains(&event_str)
+                            };
+                            let on_toggle = on_toggle_event.clone();
+                            let event_label = event.to_string();
+                            let event_for_toggle = event.to_string();
+                            view! {
+                                <label
+                                    class=move || {
+                                        let base = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors";
+                                        if is_checked {
+                                            format!("{} border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300", base)
+                                        } else {
+                                            format!("{} border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-400", base)
+                                        }
+                                    }>
+                                    <input
+                                        type="checkbox"
+                                        class="sr-only"
+                                        checked=is_checked
+                                        on:change=move |_| on_toggle(event_for_toggle.clone())
+                                    />
+                                    {event_label}
+                                </label>
+                            }
+                        }).collect::<Vec<_>>()}
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button
+                        on:click=on_add_webhook
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    >
+                        "Add Webhook"
+                    </button>
+                    {move || {
+                        let msg = message.get();
+                        if msg.is_empty() {
+                            view! { <span></span> }.into_any()
+                        } else {
+                            view! { <span class="text-sm text-gray-600 dark:text-gray-400">{msg}</span> }.into_any()
+                        }
+                    }}
+                </div>
+
+                // Existing webhooks list
+                <div class="mt-4">
+                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">"Active Webhooks"</h3>
+                    {move || {
+                        let hooks = webhooks.get();
+                        if hooks.is_empty() {
+                            view! {
+                                <p class="text-sm text-gray-500 dark:text-gray-400">"No webhooks configured"</p>
+                            }.into_any()
+                        } else {
+                            view! {
+                                <div class="space-y-2">
+                                    {hooks.into_iter().map(|hook| {
+                                        let hook_id = hook.id.clone();
+                                        let on_del = on_delete_webhook.clone();
+                                        view! {
+                                            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{hook.url}</p>
+                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                        {hook.events.join(", ")}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    on:click=move |_| on_del(hook_id.clone())
+                                                    class="ml-3 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                                >
+                                                    "Delete"
+                                                </button>
+                                            </div>
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </div>
+                            }.into_any()
+                        }
+                    }}
+                </div>
+            </div>
+        </SettingsSection>
+    }
 }

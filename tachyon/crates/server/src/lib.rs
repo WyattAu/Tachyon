@@ -116,6 +116,7 @@ pub mod middleware;
 pub mod routes;
 pub mod sync;
 pub mod validation;
+pub mod webhook_delivery;
 pub mod websocket;
 
 pub use api_docs::*;

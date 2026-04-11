@@ -6,6 +6,7 @@
 use crate::error::{RendererError, RendererResult};
 use crate::types::{MarkdownOptions, OutputFormat, RenderMetadata, RenderResult, RenderStats};
 use pulldown_cmark::{html, Event, HeadingLevel, Options, Parser, Tag};
+use regex::Regex;
 use std::time::Instant;
 use tracing::{debug, instrument};
 
@@ -70,6 +71,64 @@ impl MarkdownParser {
         options
     }
 
+    /// Pre-process wikilinks [[target]] and [[target|display]] into markdown links
+    fn preprocess_wikilinks(content: &str) -> String {
+        let re = Regex::new(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]").unwrap();
+        let mut result = String::with_capacity(content.len());
+        let mut in_code_block = false;
+
+        for line in content.lines() {
+            if line.trim_start().starts_with("```") {
+                in_code_block = !in_code_block;
+                result.push_str(line);
+                result.push('\n');
+                continue;
+            }
+
+            if in_code_block {
+                result.push_str(line);
+                result.push('\n');
+            } else {
+                let replaced = re.replace_all(line, |caps: &regex::Captures| {
+                    let target: &str = &caps[1];
+                    let display: &str = match caps.get(2) {
+                        Some(m) => m.as_str(),
+                        None => target,
+                    };
+                    let slug = target.to_lowercase().replace(' ', "-");
+                    format!("[{}]({})", display, slug)
+                });
+                result.push_str(&replaced);
+                result.push('\n');
+            }
+        }
+
+        result.pop();
+        result
+    }
+
+    /// Extract all wikilink targets from content (without converting)
+    pub fn extract_wikilinks(content: &str) -> Vec<String> {
+        let re = Regex::new(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]").unwrap();
+        let mut in_code_block = false;
+        let mut targets = Vec::new();
+
+        for line in content.lines() {
+            if line.trim_start().starts_with("```") {
+                in_code_block = !in_code_block;
+                continue;
+            }
+
+            if !in_code_block {
+                for caps in re.captures_iter(line) {
+                    targets.push(caps[1].to_string());
+                }
+            }
+        }
+
+        targets
+    }
+
     /// Parse markdown content
     #[instrument(skip(self, markdown), fields(format = ?format))]
     pub fn parse<S: AsRef<str>>(
@@ -78,21 +137,21 @@ impl MarkdownParser {
         format: OutputFormat,
     ) -> RendererResult<RenderResult> {
         let markdown = markdown.as_ref();
+        let markdown_str = Self::preprocess_wikilinks(markdown);
         let start_time = Instant::now();
 
-        debug!("Parsing markdown content ({} bytes)", markdown.len());
+        debug!("Parsing markdown content ({} bytes)", markdown_str.len());
 
         let (content, metadata, stats) = match format {
-            OutputFormat::Html => self.parse_to_html(markdown)?,
-            OutputFormat::PlainText => self.parse_to_plain_text(markdown)?,
-            OutputFormat::Ast => self.parse_to_ast(markdown)?,
+            OutputFormat::Html => self.parse_to_html(&markdown_str)?,
+            OutputFormat::PlainText => self.parse_to_plain_text(&markdown_str)?,
+            OutputFormat::Ast => self.parse_to_ast(&markdown_str)?,
             OutputFormat::Markdown => {
-                // Pass-through with metadata extraction
-                let metadata = self.extract_metadata(markdown);
+                let metadata = self.extract_metadata(&markdown_str);
                 let stats = RenderStats::new()
                     .with_render_time(start_time.elapsed())
-                    .with_output_size(markdown.len());
-                (markdown.to_string(), metadata, stats)
+                    .with_output_size(markdown_str.len());
+                (markdown_str.to_string(), metadata, stats)
             }
         };
 
@@ -366,5 +425,48 @@ Some more text.
         let result = parser.parse(markdown, OutputFormat::Markdown).unwrap();
 
         assert_eq!(result.content, markdown);
+    }
+
+    #[test]
+    fn test_preprocess_wikilinks_basic() {
+        let result = MarkdownParser::preprocess_wikilinks("See [[Hello]] for details");
+        assert_eq!(result, "See [Hello](hello) for details");
+    }
+
+    #[test]
+    fn test_preprocess_wikilinks_with_display() {
+        let result = MarkdownParser::preprocess_wikilinks("Click [[Hello|Click here]] now");
+        assert_eq!(result, "Click [Click here](hello) now");
+    }
+
+    #[test]
+    fn test_preprocess_wikilinks_in_code_block() {
+        let input = "Before\n```\n[[Hello]]\n```\nAfter [[World]]";
+        let result = MarkdownParser::preprocess_wikilinks(input);
+        assert!(
+            result.contains("[[Hello]]"),
+            "wikilink inside code block should NOT be converted"
+        );
+        assert!(
+            result.contains("[World](world)"),
+            "wikilink outside code block should be converted"
+        );
+    }
+
+    #[test]
+    fn test_preprocess_wikilinks_multiple() {
+        let input = "Check [[Alpha]], [[Beta|the beta doc]], and [[Gamma]]";
+        let result = MarkdownParser::preprocess_wikilinks(input);
+        assert_eq!(
+            result,
+            "Check [Alpha](alpha), [the beta doc](beta), and [Gamma](gamma)"
+        );
+    }
+
+    #[test]
+    fn test_extract_wikilinks() {
+        let input = "Link to [[Foo]] and [[Bar|display]]\n```\n[[Ignored]]\n```\n[[After]]";
+        let targets = MarkdownParser::extract_wikilinks(input);
+        assert_eq!(targets, vec!["Foo", "Bar", "After"]);
     }
 }

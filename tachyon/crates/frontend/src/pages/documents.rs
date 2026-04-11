@@ -4,7 +4,7 @@ use leptos::prelude::*;
 use leptos_router::hooks::{use_params, use_navigate};
 use leptos_router::params::Params;
 use crate::api::ApiClient;
-use crate::types::{Document, DocumentListResponse, DocumentTemplate};
+use crate::types::{Document, DocumentListResponse, DocumentTemplate, BacklinksResponse};
 use crate::components::{DocumentEditor, ActivityFeed, Activity, ActivityType, VersionHistory, TemplateSelector, ReviewPanel, ConflictResolver};
 use crate::websocket::{WebSocketClient, WsMessage};
 use std::rc::Rc;
@@ -704,6 +704,12 @@ pub fn DocumentEditPage() -> impl IntoView {
                     >
                         "Conflicts"
                     </button>
+                    <button
+                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
+                        on:click=move |_| set_sidebar_tab.set("backlinks".to_string())
+                    >
+                        "Backlinks"
+                    </button>
                 </div>
                 {move || {
                     let tab = sidebar_tab.get();
@@ -724,6 +730,12 @@ pub fn DocumentEditPage() -> impl IntoView {
                         view! {
                             <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
                                 <ConflictResolver document_id={doc_id} />
+                            </div>
+                        }.into_any()
+                    } else if tab == "backlinks" {
+                        view! {
+                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                                <BacklinksPanel document_id={doc_id} />
                             </div>
                         }.into_any()
                     } else {
@@ -753,4 +765,65 @@ struct ActivityData {
     user_id: String,
     user_name: String,
     description: String,
+}
+
+#[component]
+fn BacklinksPanel(document_id: String) -> impl IntoView {
+    let api_client = ApiClient::default();
+    let doc_id_for_fetch = document_id.clone();
+
+    let backlinks_resource = LocalResource::new(move || {
+        let client = api_client.clone();
+        let did = doc_id_for_fetch.clone();
+        async move {
+            client
+                .get_backlinks(&did)
+                .await
+                .unwrap_or(BacklinksResponse {
+                    backlinks: vec![],
+                    count: 0,
+                })
+        }
+    });
+
+    let navigate = use_navigate();
+
+    view! {
+        <div>
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">"Backlinks"</h3>
+            <Suspense fallback={view! { <div class="flex items-center justify-center py-4"><div class="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div></div> }}>
+                {move || {
+                    backlinks_resource.get().map(|response| {
+                        if response.backlinks.is_empty() {
+                            view! {
+                                <p class="text-sm text-gray-500 dark:text-gray-400">"No documents link here yet"</p>
+                            }.into_any()
+                        } else {
+                            view! {
+                                <div class="space-y-2">
+                                    {response.backlinks.into_iter().map(|item| {
+                                        let link_id = item.id.clone();
+                                        let nav = navigate.clone();
+                                        let on_click = move |_: leptos::ev::MouseEvent| {
+                                            nav(&format!("/documents/{}", link_id), Default::default());
+                                        };
+                                        let updated = item.updated_at.split('T').next().unwrap_or("Unknown").to_string();
+                                        view! {
+                                            <div
+                                                class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                                                on:click={on_click}
+                                            >
+                                                <div class="text-sm font-medium text-gray-900 dark:text-white">{item.title}</div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">"Updated: "{updated}</div>
+                                            </div>
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </div>
+                            }.into_any()
+                        }
+                    })
+                }}
+            </Suspense>
+        </div>
+    }
 }

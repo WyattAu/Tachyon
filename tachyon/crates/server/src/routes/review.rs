@@ -149,6 +149,11 @@ pub async fn create_review(
 
     info!("Review created for document {}: {}", document_id, review.id);
 
+    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), "review_created", &serde_json::json!({
+        "review_id": review.id.clone(),
+        "document_id": document_id.clone(),
+    }));
+
     let _ = NotificationRepository::create(&state.pool, CreateNotification {
         user_id: review.reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
         notification_type: "review_requested".to_string(),
@@ -245,6 +250,12 @@ pub async fn update_review(
         "rejected" => "review_rejected",
         _ => "review_updated",
     };
+
+    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), notification_type, &serde_json::json!({
+        "review_id": review_id.clone(),
+        "status": body.status.clone(),
+    }));
+
     let _ = NotificationRepository::create(&state.pool, CreateNotification {
         user_id: review.reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
         notification_type: notification_type.to_string(),
