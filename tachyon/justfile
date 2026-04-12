@@ -44,6 +44,20 @@ watch-backend:
 run-frontend:
     cd crates/frontend && trunk serve --open
 
+# Run frontend development server on Tauri-compatible port
+run-frontend-tauri:
+    cd crates/frontend && trunk serve --port 1420
+
+# Build desktop app (Tauri)
+# This runs beforeBuildCommand (trunk build) automatically via tauri.conf.json
+build-desktop:
+    cd crates/desktop/src-tauri && cargo tauri build
+
+# Run desktop app in development mode
+# Requires: trunk serve --port 1420 (run-frontend-tauri) in another terminal
+run-desktop:
+    cd crates/desktop/src-tauri && cargo tauri dev
+
 # Run all tests
 test:
     cargo test --workspace --exclude {{frontend}} --exclude tachyon-testing
@@ -69,6 +83,7 @@ audit:
 clean:
     cargo clean
     rm -rf crates/frontend/dist
+    rm -rf crates/desktop/dist
 
 # Docker commands
 # Build Docker images

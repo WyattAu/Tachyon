@@ -36,3 +36,7 @@ deploy/
 
 # Proptest regression files (auto-generated)
 **/proptest-regressions/
+
+# Frontend build artifacts (Trunk, Tauri)
+tachyon/crates/frontend/dist/
+tachyon/crates/desktop/dist/

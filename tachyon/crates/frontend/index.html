@@ -105,6 +105,23 @@
     </style>
     <link data-trunk rel="rust" data-target-name="tachyon_frontend" data-wasm-opt="z">
     <base data-trunk-public-url>
+    <script>
+        // Tauri desktop detection and API URL configuration.
+        // When running inside Tauri, the __TAURI__ global is injected.
+        // The frontend's ApiClient reads window.tachyonApiUrl to determine
+        // the backend API base URL. In desktop mode, we default to the
+        // local server but allow configuration via Tauri's IPC commands.
+        (function() {
+            if (window.__TAURI__) {
+                window.__TACHYON_DESKTOP__ = true;
+                // In desktop mode, the user runs `tachyon serve` on the default port.
+                // If not set by the user, default to the local server.
+                if (!window.tachyonApiUrl) {
+                    window.tachyonApiUrl = 'http://localhost:8080/api/v1';
+                }
+            }
+        })();
+    </script>
 </head>
 <body>
     <div id="app"></div>

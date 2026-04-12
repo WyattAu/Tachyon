@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.tachyon.desktop",
   "build": {
-    "frontendDist": "../dist",
-    "devUrl": "http://localhost:3000"
+    "beforeBuildCommand": "cd ../../frontend && trunk build --release",
+    "frontendDist": "../../frontend/dist",
+    "devUrl": "http://localhost:1420"
   },
   "app": {
     "windows": [
@@ -21,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://*.github.com https://api.github.com; frame-src 'none'; object-src 'none'",
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://*.github.com https://api.github.com; frame-src 'none'; object-src 'none'; wasm-unsafe-eval",
       "assetProtocol": {
         "enable": true,
         "scope": ["$APPDATA/**", "$APPCONFIG/**", "$RESOURCE/**"]

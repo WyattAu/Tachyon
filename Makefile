@@ -62,10 +62,15 @@ build-cli: ## Build only the CLI binary
 	cd tachyon && $(CARGO) build --release -p tachyon-cli
 	@echo "$(GREEN)✓ CLI built$(NC)"
 
-build-desktop: ## Build desktop application (requires Tauri dependencies)
+build-desktop: ## Build desktop application (Tauri builds frontend via beforeBuildCommand)
 	@echo "$(BLUE)Building desktop application...$(NC)"
-	cd tachyon/crates/desktop && $(CARGO) tauri build
+	cd tachyon/crates/desktop/src-tauri && $(CARGO) tauri build
 	@echo "$(GREEN)✓ Desktop app built$(NC)"
+
+build-frontend: ## Build Leptos frontend WASM via Trunk
+	@echo "$(BLUE)Building frontend WASM...$(NC)"
+	cd tachyon/crates/frontend && trunk build --release
+	@echo "$(GREEN)✓ Frontend built$(NC)"
 
 # ============================================================================
 # Test Targets
@@ -347,11 +352,11 @@ quickstart-clean: ## Clean all build artifacts
 
 quickstart: quickstart-setup quickstart-start ## Full quickstart (setup + start)
 
-web-build: ## Build web frontend
-	cd tachyon/web && npm ci && npm run build
+web-build: ## Build Leptos frontend WASM (alias for build-frontend)
+	$(MAKE) build-frontend
 
-web-dev: ## Start web development server
-	cd tachyon/web && npm run dev
+web-dev: ## Start Leptos frontend dev server
+	cd tachyon/crates/frontend && trunk serve --open
 
 # ============================================================================
 # Maintenance Targets
