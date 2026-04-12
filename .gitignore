@@ -40,3 +40,7 @@ deploy/
 # Frontend build artifacts (Trunk, Tauri)
 tachyon/crates/frontend/dist/
 tachyon/crates/desktop/dist/
+
+# Editor JS dependencies (npm)
+tachyon/crates/frontend/editor/node_modules/
+tachyon/crates/frontend/editor/package-lock.json

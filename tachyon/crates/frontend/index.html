@@ -105,6 +105,8 @@
     </style>
     <link data-trunk rel="rust" data-target-name="tachyon_frontend" data-wasm-opt="z">
     <base data-trunk-public-url>
+    <!-- ProseMirror editor bundle (built from editor/ via `npm run build`) -->
+    <script src="editor.js"></script>
     <script>
         // Tauri desktop detection and API URL configuration.
         // When running inside Tauri, the __TAURI__ global is injected.

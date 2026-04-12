@@ -17,10 +17,22 @@ pub use file_dialog::{FileDialogManager, FileDialogOptions, FileDialogResult, Fi
 pub use sync::{AutoSyncManager, SyncConfig, SyncResult, CommitQueueEntry};
 
 use tauri::Manager;
+use std::sync::{Arc, Mutex};
+
+/// Embedded server state shared between Tauri and the frontend.
+#[derive(Default)]
+struct EmbeddedServerState {
+    /// Port the embedded server is listening on (0 if not started).
+    port: u16,
+    /// Whether the server has started successfully.
+    started: bool,
+}
 
 /// Run the Tauri application
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let embedded_server = Arc::new(Mutex::new(EmbeddedServerState::default()));
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -70,8 +82,13 @@ pub fn run() {
             import_export::import_markdown_zip,
             import_export::export_markdown_zip,
             import_export::export_html,
+            // Embedded server
+            commands::get_embedded_server_port,
+            commands::start_embedded_server,
+            commands::stop_embedded_server,
         ])
-        .setup(|app| {
+        .manage(embedded_server)
+        .setup(move |app| {
             // Initialize state manager
             let state_manager = DesktopStateManager::new(DesktopState::default());
             let sync_manager = AutoSyncManager::new(SyncConfig::default());

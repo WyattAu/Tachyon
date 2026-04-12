@@ -7910,6 +7910,7 @@ name = "tachyon-desktop-app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "chrono",
  "git2",
  "hex",
@@ -7919,6 +7920,7 @@ dependencies = [
  "sha2",
  "tachyon-core",
  "tachyon-import-export",
+ "tachyon-server",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -7928,6 +7930,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "uuid",
  "walkdir",
 ]

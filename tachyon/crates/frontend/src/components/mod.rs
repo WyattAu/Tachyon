@@ -12,6 +12,7 @@ pub mod conflict_resolver;
 pub mod document_editor;
 pub mod error_boundary;
 pub mod layout;
+pub mod prose_mirror_editor;
 pub mod review_panel;
 pub mod role_badge;
 pub mod table_of_contents;

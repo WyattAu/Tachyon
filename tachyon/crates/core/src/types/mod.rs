@@ -9,6 +9,7 @@ mod graph_invariants;
 pub mod node;
 pub mod repository;
 pub mod session;
+pub mod storage;
 pub mod user;
 
 pub use document::*;
@@ -17,4 +18,5 @@ pub use error::*;
 pub use node::*;
 pub use repository::*;
 pub use session::*;
+pub use storage::*;
 pub use user::*;

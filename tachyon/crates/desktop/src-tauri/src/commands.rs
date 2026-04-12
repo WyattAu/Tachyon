@@ -2,6 +2,7 @@
 // Implements IPC commands that can be invoked from the WebView
 
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 use tauri::{State, AppHandle};
 use tachyon_core::TachyonError;
 
@@ -9,6 +10,7 @@ use crate::state::{DesktopStateManager, DesktopState, ConnectionStatus};
 use crate::events::EventEmitter;
 use crate::file_dialog::{FileDialogManager, FileDialogOptions, FileContent, FileWriteResult};
 use crate::sync::{AutoSyncManager, SyncResult};
+use crate::EmbeddedServerState;
 
 /// Authentication request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -716,4 +718,126 @@ mod tests {
         assert_eq!(request.remote_name, Some("origin".to_string()));
         assert_eq!(request.branch_name, Some("main".to_string()));
     }
+}
+
+// ============================================================================
+// Embedded Server Commands (v0.23.0)
+// ============================================================================
+
+/// Get the port of the embedded server, if it's running.
+///
+/// Returns 0 if the server has not been started.
+#[tauri::command]
+pub fn get_embedded_server_port(
+    state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>,
+) -> u16 {
+    match state.lock() {
+        Ok(s) => s.port,
+        Err(e) => {
+            eprintln!("Failed to lock embedded server state: {}", e);
+            0
+        }
+    }
+}
+
+/// Start the embedded Axum server on a random port.
+///
+/// This runs the full Tachyon server (API, WebSocket, renderer)
+/// in-process alongside the Tauri application. The server binds to
+/// 127.0.0.1:0 and the assigned port is stored in state.
+///
+/// Returns the port number on success, or 0 on failure.
+#[tauri::command]
+pub async fn start_embedded_server(
+    state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>,
+    database_url: Option<String>,
+) -> Result<u16, String> {
+    // Prevent double-start
+    {
+        let s = state.lock().map_err(|e| {
+            format!("Failed to lock embedded server state: {}", e)
+        })?;
+        if s.started {
+            return Ok(s.port);
+        }
+    }
+
+    // Build server config from environment, with optional database URL override
+    let mut config = tachyon_server::ServerConfig::from_env();
+
+    // Override database URL if provided (for custom database paths)
+    if let Some(url) = database_url {
+        config.database_url = url;
+    }
+
+    // Force bind to localhost only for security
+    config.host = "127.0.0.1".to_string();
+
+    // Start the server
+    let app = match tachyon_server::build_server(&config).await {
+        Ok(app) => app,
+        Err(e) => {
+            return Err(format!("Failed to build server: {}", e));
+        }
+    };
+
+    // Bind to port 0 (OS assigns an available port)
+    let listener = match tokio::net::TcpListener::bind("127.0.0.1:0").await {
+        Ok(l) => l,
+        Err(e) => {
+            return Err(format!("Failed to bind to port: {}", e));
+        }
+    };
+
+    let port = listener
+        .local_addr()
+        .map(|a| a.port())
+        .unwrap_or(0);
+
+    // Update state
+    {
+        let mut s = state.lock().map_err(|e| {
+            format!("Failed to lock embedded server state: {}", e)
+        })?;
+        s.port = port;
+        s.started = true;
+    }
+
+    tracing::info!("Embedded Tachyon server started on 127.0.0.1:{}", port);
+
+    // Spawn the server in the background
+    tauri::async_runtime::spawn(async move {
+        match axum::serve(listener, app).await {
+            Ok(()) => {
+                tracing::info!("Embedded server shut down gracefully");
+            }
+            Err(e) => {
+                tracing::error!("Embedded server error: {}", e);
+            }
+        }
+    });
+
+    Ok(port)
+}
+
+/// Stop the embedded server.
+///
+/// Note: This does not gracefully shut down the server — it just marks
+/// the state as not started. The actual server task will terminate
+/// when the Tauri app exits.
+#[tauri::command]
+pub fn stop_embedded_server(
+    state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>,
+) -> bool {
+    let mut s = match state.lock() {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Failed to lock embedded server state: {}", e);
+            return false;
+        }
+    };
+    let was_started = s.started;
+    s.started = false;
+    s.port = 0;
+    was_started
 }

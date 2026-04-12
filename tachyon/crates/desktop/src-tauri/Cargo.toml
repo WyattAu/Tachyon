@@ -27,6 +27,7 @@ tauri-plugin-notification = "2"
 # Workspace dependencies
 tachyon-core = { path = "../../core" }
 tachyon-import-export = { path = "../../import-export" }
+tachyon-server = { path = "../../server" }
 
 # Serialization
 serde = { workspace = true }
@@ -35,9 +36,13 @@ serde_json = { workspace = true }
 # Async Runtime
 tokio = { workspace = true }
 
+# Axum (needed for embedded server's axum::serve)
+axum = "0.8"
+
 # Error Handling & Logging
 anyhow = { workspace = true }
 tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 # HTTP client
 reqwest = { version = "0.12", features = ["json"] }
