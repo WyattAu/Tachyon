@@ -17,14 +17,16 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # Tauri framework
-tauri = { version = "2.10.0", features = ["protocol-asset"] }
+tauri = { version = "2.10.0", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-log = "2"
+tauri-plugin-notification = "2"
 
 # Workspace dependencies
 tachyon-core = { path = "../../core" }
+tachyon-import-export = { path = "../../import-export" }
 
 # Serialization
 serde = { workspace = true }

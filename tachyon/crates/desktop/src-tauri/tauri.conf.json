@@ -26,6 +26,10 @@
         "enable": true,
         "scope": ["$APPDATA/**", "$APPCONFIG/**", "$RESOURCE/**"]
       }
+    },
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
     }
   },
   "bundle": {

@@ -16,8 +16,8 @@ pub mod obsidian;
 // Re-export commonly used types
 pub use error::{ImportExportError, ImportExportResult};
 pub use frontmatter::Frontmatter;
-pub use html_export::HtmlExporter;
-pub use markdown_zip::{MarkdownZipExporter, MarkdownZipImporter};
+pub use html_export::{HtmlExportConfig, HtmlExportDocument, HtmlExporter};
+pub use markdown_zip::{ExportDocument, MarkdownZipExporter, MarkdownZipImporter};
 pub use obsidian::ObsidianImporter;
 
 use serde::{Deserialize, Serialize};

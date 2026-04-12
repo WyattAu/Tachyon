@@ -77,6 +77,7 @@ impl Default for SyncConfig {
 }
 
 /// Auto-sync manager
+#[derive(Clone)]
 pub struct AutoSyncManager {
     repository_path: Option<PathBuf>,
     config: SyncConfig,
@@ -432,6 +433,131 @@ impl AutoSyncManager {
     /// Clear the commit queue
     pub async fn clear_queue(&self) {
         self.commit_queue.write().await.clear();
+    }
+
+    /// Start a file watcher on the configured repository path.
+    ///
+    /// Spawns a background task that watches for file changes using a
+    /// polling approach (compatible with all platforms including those
+    /// where `notify` crate may not be available in Tauri context).
+    ///
+    /// # Arguments
+    /// * `interval_secs` - Polling interval in seconds (default: 5)
+    ///
+    /// # Returns
+    /// AbortHandle for the spawned task, or error if no repository is configured.
+    pub fn start_file_watcher(
+        &self,
+        interval_secs: Option<u64>,
+    ) -> ErrorResult<tokio::task::AbortHandle> {
+        let repo_path = self.repository_path
+            .clone()
+            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?;
+
+        let commit_queue = self.commit_queue.clone();
+        let interval = interval_secs.unwrap_or(5);
+        let commit_template = self.config.commit_message_template.clone();
+
+        let handle = tokio::spawn(async move {
+            let mut last_snapshots: std::collections::HashMap<String, u64> =
+                std::collections::HashMap::new();
+
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
+
+                // Walk the repository and detect changes by comparing modification times
+                let mut changed_files = Vec::new();
+                if let Ok(entries) = std::fs::read_dir(&repo_path) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if !path.is_file() {
+                            continue;
+                        }
+                        // Only watch markdown files
+                        let ext = path.extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| e.to_lowercase());
+                        match ext.as_deref() {
+                            Some("md") | Some("markdown") => {}
+                            _ => continue,
+                        }
+
+                        let path_str = path.to_string_lossy().to_string();
+                        let mtime = entry.metadata()
+                            .ok()
+                            .and_then(|m| m.modified().ok())
+                            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
+                            .unwrap_or(0);
+
+                        match last_snapshots.get(&path_str) {
+                            Some(&prev) if prev == mtime => {} // Unchanged
+                            _ => {
+                                // New or modified file
+                                last_snapshots.insert(path_str.clone(), mtime);
+                                changed_files.push(path_str);
+                            }
+                        }
+                    }
+                }
+
+                // Queue changed files for commit
+                for file_path in changed_files {
+                    let filename = Path::new(&file_path)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("file");
+
+                    let message = commit_template
+                        .replace("{filename}", filename)
+                        .replace("{path}", &file_path);
+
+                    let entry = CommitQueueEntry {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        path: file_path,
+                        message,
+                        timestamp: chrono::Utc::now(),
+                        committed: false,
+                    };
+
+                    let mut queue = commit_queue.write().await;
+                    if queue.len() >= 100 {
+                        queue.pop_front();
+                    }
+                    queue.push_back(entry);
+                }
+            }
+        });
+
+        let abort_handle = handle.abort_handle();
+
+        // Store the abort handle
+        {
+            let mut sync_handle = self.sync_handle.lock()
+                .map_err(|e| TachyonError::internal("LOCK_ERROR", format!("Failed to acquire lock: {}", e)))?;
+            // We don't store JoinHandle in sync_handle anymore since it's not Clone.
+            // Instead, we track whether a watcher is active via the is_watching flag.
+            *sync_handle = Some(handle);
+        }
+
+        Ok(abort_handle)
+    }
+
+    /// Stop the file watcher if running.
+    pub fn stop_file_watcher(&self) -> ErrorResult<()> {
+        let mut sync_handle = self.sync_handle.lock()
+            .map_err(|e| TachyonError::internal("LOCK_ERROR", format!("Failed to acquire lock: {}", e)))?;
+
+        if let Some(handle) = sync_handle.take() {
+            handle.abort();
+        }
+        Ok(())
+    }
+
+    /// Check if the file watcher is running.
+    pub fn is_watching(&self) -> bool {
+        self.sync_handle.lock()
+            .map(|h| h.is_some())
+            .unwrap_or(false)
     }
 }
 

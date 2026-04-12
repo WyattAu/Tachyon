@@ -607,6 +607,53 @@ pub async fn has_repository(
         .map_err(|e| e.to_string())
 }
 
+/// Start the file watcher for automatic change detection
+#[tauri::command]
+pub async fn start_file_watcher(
+    interval_secs: Option<u64>,
+    sync_manager: State<'_, AutoSyncManager>,
+    app: AppHandle,
+) -> Result<(), String> {
+    sync_manager.start_file_watcher(interval_secs)
+        .map_err(|e| e.to_string())?;
+
+    let emitter = EventEmitter::new(app);
+    emitter.emit_notification(
+        crate::events::NotificationLevel::Info,
+        "File Watcher Started",
+        "Watching repository for changes",
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Stop the file watcher
+#[tauri::command]
+pub async fn stop_file_watcher(
+    sync_manager: State<'_, AutoSyncManager>,
+    app: AppHandle,
+) -> Result<(), String> {
+    sync_manager.stop_file_watcher()
+        .map_err(|e| e.to_string())?;
+
+    let emitter = EventEmitter::new(app);
+    emitter.emit_notification(
+        crate::events::NotificationLevel::Info,
+        "File Watcher Stopped",
+        "No longer watching for file changes",
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Check if the file watcher is running
+#[tauri::command]
+pub async fn is_file_watching(
+    sync_manager: State<'_, AutoSyncManager>,
+) -> Result<bool, String> {
+    Ok(sync_manager.is_watching())
+}
+
 // ============================================================================
 // Tests
 // ============================================================================

@@ -7,6 +7,8 @@ mod events;
 mod file_dialog;
 mod sync;
 mod commands;
+mod import_export;
+mod tray;
 
 // Re-export public API
 pub use state::{DesktopState, DesktopStateManager, ConnectionStatus};
@@ -24,6 +26,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_log::Builder::default().build())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             // State & Auth
             commands::get_state,
@@ -54,10 +57,19 @@ pub fn run() {
             commands::queue_file_change,
             commands::enable_auto_sync,
             commands::disable_auto_sync,
+            // File watcher
+            commands::start_file_watcher,
+            commands::stop_file_watcher,
+            commands::is_file_watching,
             // Dialogs
             commands::show_error_dialog,
             commands::show_warning_dialog,
             commands::show_info_dialog,
+            // Import/Export
+            import_export::import_obsidian_vault,
+            import_export::import_markdown_zip,
+            import_export::export_markdown_zip,
+            import_export::export_html,
         ])
         .setup(|app| {
             // Initialize state manager
@@ -66,6 +78,12 @@ pub fn run() {
             
             app.manage(state_manager);
             app.manage(sync_manager);
+            
+            // Set up system tray
+            if let Err(e) = tray::setup_tray(app) {
+                tracing::warn!("Failed to set up system tray: {}", e);
+                // Non-fatal: tray is optional
+            }
             
             Ok(())
         })
