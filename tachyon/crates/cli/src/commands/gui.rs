@@ -1,9 +1,13 @@
 // GUI command for Tachyon CLI
+//
+// Launches the Tauri desktop application by spawning `cargo tauri dev`
+// (development) or the built binary (release).
 
 use crate::commands::Command;
 use crate::config::TachyonConfig;
 use crate::error::{CliError, CliResult};
 use std::path::PathBuf;
+use std::process::Command as ProcessCommand;
 
 /// Options for GUI command
 #[derive(Debug, Clone)]
@@ -31,6 +35,9 @@ pub struct GuiOptions {
 
     /// Server port to connect to
     pub server_port: Option<u16>,
+
+    /// Release mode (use built binary instead of cargo tauri dev)
+    pub release: bool,
 }
 
 impl Default for GuiOptions {
@@ -44,6 +51,7 @@ impl Default for GuiOptions {
             start_minimized: false,
             server_host: None,
             server_port: None,
+            release: false,
         }
     }
 }
@@ -61,7 +69,6 @@ impl GuiCommand {
 
     /// Create from clap arguments
     pub fn from_args(
-        repo_path: Option<PathBuf>,
         dev_tools: bool,
         window_width: Option<u32>,
         window_height: Option<u32>,
@@ -69,9 +76,10 @@ impl GuiCommand {
         start_minimized: bool,
         server_host: Option<String>,
         server_port: Option<u16>,
+        release: bool,
     ) -> Self {
         Self::new(GuiOptions {
-            repo_path: repo_path.unwrap_or_else(|| PathBuf::from(".tachyon")),
+            repo_path: PathBuf::from(".tachyon"),
             dev_tools,
             window_width,
             window_height,
@@ -79,6 +87,7 @@ impl GuiCommand {
             start_minimized,
             server_host,
             server_port,
+            release,
         })
     }
 
@@ -91,45 +100,6 @@ impl GuiCommand {
         } else {
             Ok(TachyonConfig::default())
         }
-    }
-
-    /// Validate repository path
-    fn validate_repo_path(&self) -> CliResult<()> {
-        if !self.options.repo_path.exists() {
-            return Err(CliError::init_failed(format!(
-                "Repository path does not exist: {}. Run 'tachyon init' first.",
-                self.options.repo_path.display()
-            )));
-        }
-
-        let db_path = self.options.repo_path.join("db");
-        if !db_path.exists() {
-            return Err(CliError::init_failed(format!(
-                "Database directory does not exist: {}. Run 'tachyon init' first.",
-                db_path.display()
-            )));
-        }
-
-        Ok(())
-    }
-
-    /// Get effective window width
-    fn get_window_width(&self, config: &TachyonConfig) -> u32 {
-        self.options
-            .window_width
-            .unwrap_or(config.desktop.window_width)
-    }
-
-    /// Get effective window height
-    fn get_window_height(&self, config: &TachyonConfig) -> u32 {
-        self.options
-            .window_height
-            .unwrap_or(config.desktop.window_height)
-    }
-
-    /// Get effective dev tools setting
-    fn get_dev_tools(&self, config: &TachyonConfig) -> bool {
-        self.options.dev_tools || config.desktop.dev_tools
     }
 
     /// Get effective server host
@@ -145,41 +115,113 @@ impl GuiCommand {
         self.options.server_port.unwrap_or(config.server.http_port)
     }
 
+    /// Locate the Tauri project directory.
+    ///
+    /// The desktop crate lives at `tachyon/crates/desktop/src-tauri/`.
+    /// We resolve it relative to the current executable or the CARGO_MANIFEST_DIR.
+    fn find_tauri_dir() -> CliResult<PathBuf> {
+        // Try CARGO_MANIFEST_DIR first (set during `cargo run`)
+        if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+            let tauri_dir = PathBuf::from(&manifest_dir)
+                .join("..")
+                .join("desktop")
+                .join("src-tauri");
+            if tauri_dir.exists() {
+                return Ok(tauri_dir);
+            }
+        }
+
+        // Try relative to current directory (for local development)
+        let local = PathBuf::from("crates/desktop/src-tauri");
+        if local.exists() {
+            return Ok(local);
+        }
+
+        Err(CliError::server(
+            "Cannot locate Tauri project directory. Run from the tachyon/ workspace root.",
+        ))
+    }
+
     /// Launch Tauri desktop application
     fn launch_tauri(&self, config: &TachyonConfig) -> CliResult<()> {
-        // Note: This is a placeholder for actual Tauri integration
-        // In a full implementation, this would spawn the Tauri application
-        // as a separate process or use the Tauri API directly
+        let tauri_dir = Self::find_tauri_dir()?;
 
-        println!("Launching Tauri desktop application...");
+        let server_host = self.get_server_host(config);
+        let server_port = self.get_server_port(config);
+
+        // Set environment variables so the Tauri app can configure itself
+        let api_url = format!("http://{}:{}/api/v1", server_host, server_port);
+
+        println!("Launching Tachyon Desktop...");
         println!("");
         println!("Configuration:");
-        println!("  Repository: {}", self.options.repo_path.display());
+        println!("  Tauri project: {}", tauri_dir.display());
+        println!("  API URL: {}", api_url);
         println!(
-            "  Server: {}:{}",
-            self.get_server_host(config),
-            self.get_server_port(config)
+            "  Dev tools: {}",
+            self.options.dev_tools || config.desktop.dev_tools
         );
         println!(
-            "  Window size: {}x{}",
-            self.get_window_width(config),
-            self.get_window_height(config)
+            "  Mode: {}",
+            if self.options.release {
+                "release"
+            } else {
+                "development"
+            }
         );
-        println!("  Dev tools: {}", self.get_dev_tools(config));
-        println!("  Maximized: {}", self.options.start_maximized);
-        println!("  Minimized: {}", self.options.start_minimized);
         println!("");
 
-        // In production, we would:
-        // 1. Build the Tauri app if needed
-        // 2. Launch the Tauri application with the specified configuration
-        // 3. Handle the application lifecycle
+        let mut cmd = ProcessCommand::new("cargo");
 
-        // For now, we'll simulate the launch
-        println!("Desktop application launched successfully!");
+        if self.options.release {
+            // In release mode, run the built binary directly
+            // The binary is at target/release/tachyon-desktop-app
+            let bin_path = tauri_dir.join("../../target/release/tachyon-desktop-app");
+            if !bin_path.exists() {
+                println!(
+                    "Release binary not found at {}. Building...",
+                    bin_path.display()
+                );
+                let build_status = ProcessCommand::new("cargo")
+                    .args(["tauri", "build"])
+                    .current_dir(&tauri_dir)
+                    .status()
+                    .map_err(|e| {
+                        CliError::server(format!("Failed to spawn cargo tauri build: {}", e))
+                    })?;
+
+                if !build_status.success() {
+                    return Err(CliError::server("cargo tauri build failed".to_string()));
+                }
+            }
+
+            cmd = ProcessCommand::new(&bin_path);
+        } else {
+            // Development mode: `cargo tauri dev`
+            cmd.args(["tauri", "dev"]);
+            if self.options.dev_tools || config.desktop.dev_tools {
+                cmd.args(["--", "--devtools"]);
+            }
+        }
+
+        cmd.current_dir(&tauri_dir)
+            .env("TACHYON_API_URL", &api_url)
+            .env("TACHYON_SERVER_HOST", &server_host)
+            .env("TACHYON_SERVER_PORT", server_port.to_string());
+
+        println!("Starting Tauri application...");
+        println!("(Press Ctrl+C in the Tauri window to exit)");
         println!("");
-        println!("Note: This is a stub implementation.");
-        println!("Full Tauri integration requires building the desktop crate separately.");
+
+        let status = cmd
+            .status()
+            .map_err(|e| CliError::server(format!("Failed to launch Tauri: {}", e)))?;
+
+        if status.success() {
+            println!("Desktop application exited normally.");
+        } else {
+            eprintln!("Desktop application exited with code: {:?}", status.code());
+        }
 
         Ok(())
     }
@@ -187,9 +229,6 @@ impl GuiCommand {
 
 impl Command for GuiCommand {
     fn execute(&self) -> CliResult<()> {
-        // Validate repository path
-        self.validate_repo_path()?;
-
         // Load configuration
         let config = self.load_config()?;
 
@@ -224,12 +263,12 @@ mod tests {
         assert!(!options.dev_tools);
         assert!(!options.start_maximized);
         assert!(!options.start_minimized);
+        assert!(!options.release);
     }
 
     #[test]
     fn test_gui_command_from_args() {
         let cmd = GuiCommand::from_args(
-            Some(PathBuf::from("/tmp/test")),
             true,
             Some(1920),
             Some(1080),
@@ -237,9 +276,10 @@ mod tests {
             false,
             Some("localhost".to_string()),
             Some(9000),
+            true,
         );
 
-        assert_eq!(cmd.options.repo_path, PathBuf::from("/tmp/test"));
+        assert_eq!(cmd.options.repo_path, PathBuf::from(".tachyon"));
         assert!(cmd.options.dev_tools);
         assert_eq!(cmd.options.window_width, Some(1920));
         assert_eq!(cmd.options.window_height, Some(1080));
@@ -247,73 +287,7 @@ mod tests {
         assert!(!cmd.options.start_minimized);
         assert_eq!(cmd.options.server_host, Some("localhost".to_string()));
         assert_eq!(cmd.options.server_port, Some(9000));
-    }
-
-    #[test]
-    fn test_validate_repo_path_not_exists() {
-        let options = GuiOptions {
-            repo_path: PathBuf::from("/nonexistent/path"),
-            ..Default::default()
-        };
-        let cmd = GuiCommand::new(options);
-
-        let result = cmd.validate_repo_path();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_get_window_width_from_options() {
-        let options = GuiOptions {
-            window_width: Some(2000),
-            ..Default::default()
-        };
-        let config = TachyonConfig::default();
-        let cmd = GuiCommand::new(options);
-
-        assert_eq!(cmd.get_window_width(&config), 2000);
-    }
-
-    #[test]
-    fn test_get_window_width_from_config() {
-        let options = GuiOptions::default();
-        let config = TachyonConfig::default();
-        let cmd = GuiCommand::new(options);
-
-        assert_eq!(cmd.get_window_width(&config), config.desktop.window_width);
-    }
-
-    #[test]
-    fn test_get_window_height_from_options() {
-        let options = GuiOptions {
-            window_height: Some(1200),
-            ..Default::default()
-        };
-        let config = TachyonConfig::default();
-        let cmd = GuiCommand::new(options);
-
-        assert_eq!(cmd.get_window_height(&config), 1200);
-    }
-
-    #[test]
-    fn test_get_dev_tools_from_options() {
-        let options = GuiOptions {
-            dev_tools: true,
-            ..Default::default()
-        };
-        let config = TachyonConfig::default();
-        let cmd = GuiCommand::new(options);
-
-        assert!(cmd.get_dev_tools(&config));
-    }
-
-    #[test]
-    fn test_get_dev_tools_from_config() {
-        let options = GuiOptions::default();
-        let mut config = TachyonConfig::default();
-        config.desktop.dev_tools = true;
-        let cmd = GuiCommand::new(options);
-
-        assert!(cmd.get_dev_tools(&config));
+        assert!(cmd.options.release);
     }
 
     #[test]

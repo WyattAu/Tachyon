@@ -44,19 +44,15 @@ enum Commands {
         interactive: bool,
     },
 
-    /// Start HTTP/2 and WebSocket servers
+    /// Start the Tachyon server (HTTP + WebSocket)
     Serve {
         /// Host address to bind to
         #[arg(short, long, value_name = "HOST", default_value = "127.0.0.1")]
         host: String,
 
-        /// HTTP port
+        /// Port (HTTP and WebSocket share this port)
         #[arg(short = 'p', long, value_name = "PORT", default_value = "8080")]
-        http_port: u16,
-
-        /// WebSocket port
-        #[arg(long, value_name = "PORT", default_value = "8081")]
-        ws_port: u16,
+        port: u16,
 
         /// Enable TLS
         #[arg(long)]
@@ -70,9 +66,9 @@ enum Commands {
         #[arg(long, value_name = "PATH")]
         tls_key: Option<String>,
 
-        /// Repository path
-        #[arg(short, long, value_name = "PATH", default_value = ".tachyon")]
-        repo_path: std::path::PathBuf,
+        /// Database URL (PostgreSQL connection string)
+        #[arg(long, value_name = "URL")]
+        database_url: Option<String>,
 
         /// Maximum request body size in bytes
         #[arg(long, value_name = "SIZE")]
@@ -86,17 +82,13 @@ enum Commands {
         #[arg(long)]
         watch: bool,
 
-        /// Path to watch for changes (defaults to --repo-path or current directory)
+        /// Path to watch for changes (defaults to current directory)
         #[arg(long, value_name = "PATH")]
         watch_path: Option<std::path::PathBuf>,
     },
 
     /// Launch Tauri desktop application
     Gui {
-        /// Repository path
-        #[arg(short, long, value_name = "PATH", default_value = ".tachyon")]
-        repo_path: std::path::PathBuf,
-
         /// Enable dev tools
         #[arg(long)]
         dev_tools: bool,
@@ -124,6 +116,10 @@ enum Commands {
         /// Server port to connect to
         #[arg(long, value_name = "PORT")]
         server_port: Option<u16>,
+
+        /// Release mode (use built binary instead of cargo tauri dev)
+        #[arg(long)]
+        release: bool,
     },
 
     /// Build static site from database documents
@@ -217,12 +213,11 @@ fn main() {
 
         Commands::Serve {
             host,
-            http_port,
-            ws_port,
+            port,
             tls_enabled,
             tls_cert,
             tls_key,
-            repo_path,
+            database_url,
             max_body_size,
             timeout,
             watch,
@@ -230,12 +225,11 @@ fn main() {
         } => {
             let cmd = ServeCommand::from_args(
                 Some(host),
-                Some(http_port),
-                Some(ws_port),
+                Some(port),
                 tls_enabled,
                 tls_cert,
                 tls_key,
-                Some(repo_path),
+                database_url,
                 max_body_size,
                 timeout,
                 watch,
@@ -245,7 +239,6 @@ fn main() {
         }
 
         Commands::Gui {
-            repo_path,
             dev_tools,
             window_width,
             window_height,
@@ -253,9 +246,9 @@ fn main() {
             start_minimized,
             server_host,
             server_port,
+            release,
         } => {
             let cmd = GuiCommand::from_args(
-                Some(repo_path),
                 dev_tools,
                 window_width,
                 window_height,
@@ -263,6 +256,7 @@ fn main() {
                 start_minimized,
                 server_host,
                 server_port,
+                release,
             );
             cmd.execute()
         }

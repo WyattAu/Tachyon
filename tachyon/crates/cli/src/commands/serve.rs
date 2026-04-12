@@ -1,14 +1,16 @@
 // Serve command for Tachyon CLI
+//
+// Starts the full Tachyon server (HTTP + WebSocket) using the shared
+// server library. Delegates to `tachyon_server::build_server()` for
+// all routing, middleware, and state initialization.
 
 use crate::commands::Command;
-use crate::config::TachyonConfig;
-use crate::config::{DEFAULT_HOST, DEFAULT_HTTP_PORT, DEFAULT_WS_PORT};
 use crate::error::{CliError, CliResult};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::mpsc;
 use tachyon_core::{FileChangeEvent, FileWatcher, FileWatcherConfig};
-use tachyon_database::DatabasePool;
+use tachyon_server::config::ServerConfig;
 use tachyon_server::sync::{FileSyncService, SyncConfig, SyncResult};
 use tokio::signal;
 use tokio::sync::broadcast;
@@ -19,11 +21,8 @@ pub struct ServeOptions {
     /// Host address to bind to
     pub host: String,
 
-    /// HTTP port
-    pub http_port: u16,
-
-    /// WebSocket port
-    pub ws_port: u16,
+    /// HTTP port (WebSocket shares this port)
+    pub port: u16,
 
     /// Enable TLS
     pub tls_enabled: bool,
@@ -34,8 +33,8 @@ pub struct ServeOptions {
     /// TLS key path
     pub tls_key: Option<String>,
 
-    /// Repository path
-    pub repo_path: PathBuf,
+    /// Database URL (PostgreSQL connection string)
+    pub database_url: Option<String>,
 
     /// Maximum request body size
     pub max_body_size: Option<usize>,
@@ -46,20 +45,19 @@ pub struct ServeOptions {
     /// Enable file watching and auto-sync
     pub watch: bool,
 
-    /// Path to watch for changes (defaults to --repo-path or current directory)
+    /// Path to watch for changes (defaults to current directory)
     pub watch_path: Option<PathBuf>,
 }
 
 impl Default for ServeOptions {
     fn default() -> Self {
         Self {
-            host: DEFAULT_HOST.to_string(),
-            http_port: DEFAULT_HTTP_PORT,
-            ws_port: DEFAULT_WS_PORT,
+            host: "127.0.0.1".to_string(),
+            port: 8080,
             tls_enabled: false,
             tls_cert: None,
             tls_key: None,
-            repo_path: PathBuf::from(".tachyon"),
+            database_url: None,
             max_body_size: None,
             timeout: None,
             watch: false,
@@ -111,25 +109,23 @@ impl ServeCommand {
     /// Create from clap arguments
     pub fn from_args(
         host: Option<String>,
-        http_port: Option<u16>,
-        ws_port: Option<u16>,
+        port: Option<u16>,
         tls_enabled: bool,
         tls_cert: Option<String>,
         tls_key: Option<String>,
-        repo_path: Option<PathBuf>,
+        database_url: Option<String>,
         max_body_size: Option<usize>,
         timeout: Option<u64>,
         watch: bool,
         watch_path: Option<PathBuf>,
     ) -> Self {
         Self::new(ServeOptions {
-            host: host.unwrap_or_else(|| DEFAULT_HOST.to_string()),
-            http_port: http_port.unwrap_or(DEFAULT_HTTP_PORT),
-            ws_port: ws_port.unwrap_or(DEFAULT_WS_PORT),
+            host: host.unwrap_or_else(|| "127.0.0.1".to_string()),
+            port: port.unwrap_or(8080),
             tls_enabled,
             tls_cert,
             tls_key,
-            repo_path: repo_path.unwrap_or_else(|| PathBuf::from(".tachyon")),
+            database_url,
             max_body_size,
             timeout,
             watch,
@@ -137,140 +133,30 @@ impl ServeCommand {
         })
     }
 
-    /// Load configuration from file
-    fn load_config(&self) -> CliResult<TachyonConfig> {
-        let config_path = self.options.repo_path.join("tachyon.toml");
+    /// Build a `tachyon_server::config::ServerConfig` from CLI options + env vars.
+    ///
+    /// CLI options take precedence over environment variables for host/port.
+    /// Environment variables (DATABASE_URL, TACHYON_JWT_SECRET, etc.) are
+    /// still respected for values not specified via CLI.
+    fn build_server_config(&self) -> ServerConfig {
+        let mut config = ServerConfig::from_env();
 
-        if config_path.exists() {
-            TachyonConfig::load_from_file(&config_path)
-        } else {
-            Ok(TachyonConfig::default())
-        }
-    }
+        // CLI options override env vars
+        config.host = self.options.host.clone();
+        config.port = self.options.port;
+        config.enable_tls = self.options.tls_enabled;
+        config.tls_cert_path = self.options.tls_cert.clone();
+        config.tls_key_path = self.options.tls_key.clone();
 
-    /// Validate repository path
-    fn validate_repo_path(&self) -> CliResult<()> {
-        if !self.options.repo_path.exists() {
-            return Err(CliError::init_failed(format!(
-                "Repository path does not exist: {}. Run 'tachyon init' first.",
-                self.options.repo_path.display()
-            )));
-        }
-
-        let db_path = self.options.repo_path.join("db");
-        if !db_path.exists() {
-            return Err(CliError::init_failed(format!(
-                "Database directory does not exist: {}. Run 'tachyon init' first.",
-                db_path.display()
-            )));
+        if let Some(ref db_url) = self.options.database_url {
+            config.database_url = db_url.clone();
         }
 
-        Ok(())
+        config
     }
 
-    /// Parse socket address
-    fn parse_address(&self, host: &str, port: u16) -> CliResult<SocketAddr> {
-        let addr_str = format!("{}:{}", host, port);
-        addr_str
-            .parse()
-            .map_err(|e| CliError::invalid_argument(format!("Invalid address {}: {}", addr_str, e)))
-    }
-
-    /// Start HTTP server
-    async fn start_http_server(&self) -> CliResult<()> {
-        let addr = self.parse_address(&self.options.host, self.options.http_port)?;
-
-        println!(
-            "Starting HTTP/2 server on http://{}:{}...",
-            self.options.host, self.options.http_port
-        );
-
-        // Create axum router with routes
-        let app = axum::Router::new()
-            .route(
-                "/health",
-                axum::routing::get(|| async { axum::Json(serde_json::json!({"status": "ok"})) }),
-            )
-            .route(
-                "/api",
-                axum::routing::get(|| async {
-                    axum::Json(serde_json::json!({"message": "Tachyon API"}))
-                }),
-            );
-
-        // Bind to address
-        let listener = tokio::net::TcpListener::bind(addr)
-            .await
-            .map_err(|e| CliError::server(format!("Failed to bind to {}: {}", addr, e)))?;
-
-        println!("HTTP server listening on {}", addr);
-
-        // Start server with graceful shutdown
-        let mut shutdown_rx = self.shutdown.subscribe();
-
-        axum::serve(listener, app)
-            .with_graceful_shutdown(async move {
-                shutdown_rx.recv().await.ok();
-                println!("Shutting down HTTP server...");
-            })
-            .await
-            .map_err(|e| CliError::server(format!("HTTP server error: {}", e)))?;
-
-        Ok(())
-    }
-
-    /// Start WebSocket server
-    async fn start_ws_server(&self) -> CliResult<()> {
-        let addr = self.parse_address(&self.options.host, self.options.ws_port)?;
-
-        println!(
-            "Starting WebSocket server on ws://{}:{}...",
-            self.options.host, self.options.ws_port
-        );
-
-        // Create axum router with WebSocket route
-        let app = axum::Router::new().route(
-            "/ws",
-            axum::routing::get(|ws: axum::extract::WebSocketUpgrade| async {
-                ws.on_upgrade(|mut socket| async move {
-                    while let Some(Ok(msg)) = socket.recv().await {
-                        if let axum::extract::ws::Message::Text(text) = msg {
-                            if let Err(e) = socket
-                                .send(axum::extract::ws::Message::Text(format!("Echo: {}", text).into()))
-                                .await
-                            {
-                                eprintln!("WebSocket error: {}", e);
-                                break;
-                            }
-                        }
-                    }
-                })
-            }),
-        );
-
-        // Bind to address
-        let listener = tokio::net::TcpListener::bind(addr)
-            .await
-            .map_err(|e| CliError::server(format!("Failed to bind to {}: {}", addr, e)))?;
-
-        println!("WebSocket server listening on {}", addr);
-
-        // Start server with graceful shutdown
-        let mut shutdown_rx = self.shutdown.subscribe();
-
-        axum::serve(listener, app)
-            .with_graceful_shutdown(async move {
-                shutdown_rx.recv().await.ok();
-                println!("Shutting down WebSocket server...");
-            })
-            .await
-            .map_err(|e| CliError::server(format!("WebSocket server error: {}", e)))?;
-
-        Ok(())
-    }
-
-    /// Wait for shutdown signal
-    async fn wait_for_shutdown(&self) {
+    /// Wait for shutdown signal (Ctrl+C or SIGTERM)
+    async fn wait_for_shutdown() {
         let ctrl_c = async {
             signal::ctrl_c()
                 .await
@@ -283,7 +169,6 @@ impl ServeCommand {
                 .expect("failed to install SIGTERM handler")
                 .recv()
                 .await;
-            Some(())
         };
 
         #[cfg(not(unix))]
@@ -291,17 +176,18 @@ impl ServeCommand {
 
         tokio::select! {
             _ = ctrl_c => {
-                println!("Received CTRL+C, shutting down...");
+                tracing::info!("Received CTRL+C, shutting down...");
             }
             _ = terminate => {
-                println!("Received SIGTERM, shutting down...");
+                tracing::info!("Received SIGTERM, shutting down...");
             }
         }
     }
 
+    /// Run file watcher for auto-sync (optional, gated behind --watch).
     async fn run_file_watcher(
         watch_path: PathBuf,
-        db_path: PathBuf,
+        database_url: String,
         shutdown: ShutdownSignal,
     ) {
         if !watch_path.exists() {
@@ -343,10 +229,10 @@ impl ServeCommand {
             }
         });
 
-        let pool = match DatabasePool::new(&format!("sqlite:{}", db_path.join("tachyon.db").display())).await {
+        let pool = match tachyon_database::DatabasePool::new(&database_url).await {
             Ok(p) => p,
             Err(e) => {
-                eprintln!("Failed to open database (watch sync disabled): {}", e);
+                eprintln!("Failed to connect to database (watch sync disabled): {}", e);
                 let mut shutdown_rx = shutdown.subscribe();
                 let _ = shutdown_rx.recv().await;
                 watcher.stop();
@@ -426,107 +312,98 @@ impl ServeCommand {
 
 impl Command for ServeCommand {
     fn execute(&self) -> CliResult<()> {
-        // Validate repository path
-        self.validate_repo_path()?;
-
-        // Load configuration
-        let _config = self.load_config()?;
+        let server_config = self.build_server_config();
 
         println!("");
-        println!("Tachyon Server");
-        println!("==============");
-        println!("Repository: {}", self.options.repo_path.display());
-        println!(
-            "HTTP: http://{}:{}",
-            self.options.host, self.options.http_port
-        );
-        println!(
-            "WebSocket: ws://{}:{}",
-            self.options.host, self.options.ws_port
-        );
+        println!("Tachyon Server (via CLI)");
+        println!("========================");
+        println!("Host: {}", server_config.host);
+        println!("Port: {}", server_config.port);
+        println!("Database: {}", if server_config.database_url.is_empty() {
+            server_config.database_path.as_deref().unwrap_or("not configured")
+        } else {
+            // Don't log the full URL with password
+            server_config.database_url.split('@').last().unwrap_or("configured")
+        });
+        if self.options.watch {
+            let watch_path = self.options.watch_path.clone()
+                .unwrap_or_else(|| PathBuf::from("."));
+            println!("Watch: {}", watch_path.display());
+        }
         println!("");
         println!("Press CTRL+C to stop");
         println!("");
 
-        // Create runtime for async execution
         let rt = tokio::runtime::Runtime::new()
             .map_err(|e| CliError::server(format!("Failed to create runtime: {}", e)))?;
 
-        // Clone necessary data for async block
-        let http_port = self.options.http_port;
-        let ws_port = self.options.ws_port;
-        let host = self.options.host.clone();
-        let repo_path = self.options.repo_path.clone();
-        let shutdown = self.shutdown.clone();
+        let config = server_config;
+        let port = config.port;
+        let host = config.host.clone();
         let watch = self.options.watch;
         let watch_path = self.options.watch_path.clone();
+        let database_url = config.database_url.clone();
+        let shutdown = self.shutdown.clone();
 
         rt.block_on(async move {
-            let cmd = ServeCommand {
-                options: ServeOptions {
-                    host: host.clone(),
-                    http_port,
-                    ws_port,
-                    tls_enabled: false,
-                    tls_cert: None,
-                    tls_key: None,
-                    repo_path: repo_path.clone(),
-                    max_body_size: None,
-                    timeout: None,
-                    watch,
-                    watch_path: watch_path.clone(),
-                },
-                shutdown: shutdown.clone(),
-            };
+            let addr: SocketAddr = format!("{}:{}", host, port)
+                .parse()
+                .map_err(|e| CliError::invalid_argument(format!("Invalid address: {}", e)))?;
 
-            // Start HTTP server
-            let cmd_http = cmd.clone();
-            let http_handle = tokio::spawn(async move {
-                if let Err(e) = cmd_http.start_http_server().await {
-                    eprintln!("HTTP server error: {}", e);
-                }
-            });
+            // Build the full server (all routes, middleware, state)
+            let app = tachyon_server::build_server(&config)
+                .await
+                .map_err(|e| CliError::server(format!("Failed to initialize server: {}", e)))?;
 
-            // Start WebSocket server
-            let cmd_ws = cmd.clone();
-            let ws_handle = tokio::spawn(async move {
-                if let Err(e) = cmd_ws.start_ws_server().await {
-                    eprintln!("WebSocket server error: {}", e);
-                }
+            let listener = tokio::net::TcpListener::bind(addr)
+                .await
+                .map_err(|e| CliError::server(format!("Failed to bind to {}: {}", addr, e)))?;
+
+            println!("Server listening on http://{}/", addr);
+            println!("API:     http://{}/api/v1/", addr);
+            println!("Docs:    http://{}/api/docs", addr);
+
+            // Start the HTTP server
+            let server_handle = tokio::spawn(async move {
+                axum::serve(listener, app)
+                    .with_graceful_shutdown(async {
+                        // This future resolves when the CLI receives Ctrl+C/SIGTERM.
+                        // We use a separate task for the signal.
+                        std::future::pending::<()>().await;
+                    })
+                    .await
             });
 
             // Start file watcher if --watch is enabled
             let watch_handle = if watch {
-                let effective_watch_path = watch_path.unwrap_or_else(|| repo_path.clone());
-                let db_path = repo_path.join("db");
+                let effective_watch_path = watch_path.unwrap_or_else(|| PathBuf::from("."));
                 let shutdown_for_watch = shutdown.clone();
-
                 Some(tokio::spawn(async move {
-                    Self::run_file_watcher(effective_watch_path, db_path, shutdown_for_watch).await;
+                    Self::run_file_watcher(effective_watch_path, database_url, shutdown_for_watch).await;
                 }))
             } else {
                 None
             };
 
             // Wait for shutdown signal
-            cmd.wait_for_shutdown().await;
+            Self::wait_for_shutdown().await;
 
-            // Trigger shutdown
-            cmd.shutdown.shutdown();
+            // Trigger shutdown for file watcher
+            shutdown.shutdown();
 
-            // Wait for servers to shut down
-            let mut handles: Vec<tokio::task::JoinHandle<()>> = vec![http_handle, ws_handle];
+            // Abort server
+            server_handle.abort();
+
+            // Wait for tasks to finish
+            let _ = server_handle.await;
             if let Some(h) = watch_handle {
-                handles.push(h);
-            }
-            for h in handles {
                 let _ = h.await;
             }
 
+            println!("Server stopped.");
+
             Ok::<(), CliError>(())
         })?;
-
-        println!("Server stopped.");
 
         Ok(())
     }
@@ -536,7 +413,7 @@ impl Command for ServeCommand {
     }
 
     fn description(&self) -> &str {
-        "Start HTTP/2 and WebSocket servers"
+        "Start the Tachyon server (HTTP + WebSocket)"
     }
 }
 
@@ -547,12 +424,12 @@ mod tests {
     #[test]
     fn test_serve_options_default() {
         let options = ServeOptions::default();
-        assert_eq!(options.host, DEFAULT_HOST);
-        assert_eq!(options.http_port, DEFAULT_HTTP_PORT);
-        assert_eq!(options.ws_port, DEFAULT_WS_PORT);
+        assert_eq!(options.host, "127.0.0.1");
+        assert_eq!(options.port, 8080);
         assert!(!options.tls_enabled);
         assert!(!options.watch);
         assert!(options.watch_path.is_none());
+        assert!(options.database_url.is_none());
     }
 
     #[test]
@@ -560,11 +437,10 @@ mod tests {
         let cmd = ServeCommand::from_args(
             Some("0.0.0.0".to_string()),
             Some(9000),
-            Some(9001),
             false,
             None,
             None,
-            Some(PathBuf::from("/tmp/test")),
+            Some("postgres://localhost/test".to_string()),
             Some(1024),
             Some(60),
             true,
@@ -572,9 +448,8 @@ mod tests {
         );
 
         assert_eq!(cmd.options.host, "0.0.0.0");
-        assert_eq!(cmd.options.http_port, 9000);
-        assert_eq!(cmd.options.ws_port, 9001);
-        assert_eq!(cmd.options.repo_path, PathBuf::from("/tmp/test"));
+        assert_eq!(cmd.options.port, 9000);
+        assert_eq!(cmd.options.database_url, Some("postgres://localhost/test".to_string()));
         assert_eq!(cmd.options.max_body_size, Some(1024));
         assert_eq!(cmd.options.timeout, Some(60));
         assert!(cmd.options.watch);
@@ -582,34 +457,34 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_address_valid() {
-        let options = ServeOptions::default();
-        let cmd = ServeCommand::new(options);
+    fn test_build_server_config_defaults() {
+        let cmd = ServeCommand::new(ServeOptions::default());
+        let config = cmd.build_server_config();
 
-        let addr = cmd.parse_address("127.0.0.1", 8080).unwrap();
-        assert_eq!(addr.port(), 8080);
-        assert_eq!(addr.ip().to_string(), "127.0.0.1");
+        assert_eq!(config.host, "127.0.0.1");
+        assert_eq!(config.port, 8080);
+        assert!(!config.enable_tls);
     }
 
     #[test]
-    fn test_parse_address_invalid() {
-        let options = ServeOptions::default();
-        let cmd = ServeCommand::new(options);
-
-        let result = cmd.parse_address("invalid", 8080);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validate_repo_path_not_exists() {
-        let options = ServeOptions {
-            repo_path: PathBuf::from("/nonexistent/path"),
+    fn test_build_server_config_overrides() {
+        let cmd = ServeCommand::new(ServeOptions {
+            host: "0.0.0.0".to_string(),
+            port: 3000,
+            database_url: Some("postgres://user:pass@db:5432/mydb".to_string()),
+            tls_enabled: true,
+            tls_cert: Some("/cert.pem".to_string()),
+            tls_key: Some("/key.pem".to_string()),
             ..Default::default()
-        };
-        let cmd = ServeCommand::new(options);
+        });
+        let config = cmd.build_server_config();
 
-        let result = cmd.validate_repo_path();
-        assert!(result.is_err());
+        assert_eq!(config.host, "0.0.0.0");
+        assert_eq!(config.port, 3000);
+        assert_eq!(config.database_url, "postgres://user:pass@db:5432/mydb");
+        assert!(config.enable_tls);
+        assert_eq!(config.tls_cert_path, Some("/cert.pem".to_string()));
+        assert_eq!(config.tls_key_path, Some("/key.pem".to_string()));
     }
 
     #[test]
