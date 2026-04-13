@@ -1,0 +1,40 @@
+[package]
+name = "tachyon-storage"
+version = "0.1.0"
+description = "Pluggable storage backends for Tachyon — SQLite, Memory"
+edition = "2021"
+
+[lib]
+name = "tachyon_storage"
+path = "src/lib.rs"
+
+[dependencies]
+# Core types & DocumentStore trait
+tachyon-core = { path = "../core" }
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# SQLite via sqlx (avoids rusqlite/sqlx libsqlite3-sys version conflict)
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "json"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+tracing = "0.1"
+
+# Concurrency
+parking_lot = "0.12"
+
+[dev-dependencies]
+tempfile = "3"
