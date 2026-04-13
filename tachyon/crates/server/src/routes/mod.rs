@@ -7,6 +7,7 @@ pub mod conflict;
 pub mod document;
 pub mod node;
 pub mod notification;
+pub mod oauth2;
 pub mod repository;
 pub mod review;
 pub mod role;

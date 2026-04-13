@@ -9,7 +9,7 @@ use std::time::Instant;
 use tachyon_server::config::ServerConfig;
 use tachyon_search::{IndexConfig, IndexManager};
 use tracing::{error, info, warn};
-use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt, Layer};
 
 /// Global panic information storage for debugging
 static PANIC_INFO: OnceLock<String> = OnceLock::new();
@@ -67,14 +67,27 @@ fn setup_panic_handler() {
     }));
 }
 
-/// Initialize tracing subscriber
-fn init_tracing() {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("tachyon_server=info,tower_http=debug,axum=debug"));
+/// Initialize tracing subscriber with configurable format.
+///
+/// Supports two formats:
+/// - "text" (default): Human-readable plain text output
+/// - "json": Structured JSON for production log aggregation (ELK, Datadog, etc.)
+fn init_tracing(config: &ServerConfig) {
+    let env_filter = if let Some(ref level) = config.log.level {
+        // Use the explicit log level from config
+        let filter_str = format!("tachyon_server={},tower_http=debug,axum=debug", level);
+        EnvFilter::new(filter_str)
+    } else {
+        EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| EnvFilter::new("tachyon_server=info,tower_http=debug,axum=debug"))
+    };
 
     tracing_subscriber::registry()
         .with(env_filter)
-        .with(fmt::layer())
+        .with(match config.log.format.as_str() {
+            "json" => fmt::layer().json().boxed(),
+            _ => fmt::layer().boxed(),
+        })
         .init();
 }
 
@@ -194,12 +207,20 @@ async fn main() -> Result<()> {
     setup_panic_handler();
     START_TIME.get_or_init(Instant::now);
 
-    init_tracing();
-
     // Load configuration from environment variables
     let config = ServerConfig::from_env();
 
+    // Initialize tracing with config-driven format
+    init_tracing(&config);
+
+    // Install Prometheus metrics exporter (must be before server starts)
+    tachyon_server::install_metrics();
+
     info!("Starting Tachyon server");
+    info!(
+        log_format = %config.log.format,
+        "Logging initialized"
+    );
     info!("Database URL: {}", if config.database_url.is_empty() {
         config.database_path.as_deref().unwrap_or("not configured")
     } else {

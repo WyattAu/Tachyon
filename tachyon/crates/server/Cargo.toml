@@ -43,7 +43,7 @@ jsonwebtoken = "9"
 # Error Handling & Logging
 anyhow = "1"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 # Time
 chrono = { version = "0.4", features = ["serde"] }
@@ -63,9 +63,16 @@ hex = "0.4"
 # HTTP Client (for webhook delivery)
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 
+# URL encoding (for OAuth2)
+urlencoding = "2"
+
 # OpenAPI Documentation
 utoipa = "5"
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
+# Metrics
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
 
 [dev-dependencies]
 tokio-test = { workspace = true }

@@ -293,6 +293,7 @@ pub fn build_app(
     use crate::routes::tags::create_tags_router;
     use crate::routes::webhook::create_webhook_router;
     use crate::routes::conflict::create_conflict_router;
+    use crate::routes::oauth2::{create_oauth2_router, OAuth2State};
     use crate::websocket::handle_websocket_upgrade;
     use crate::websocket::handle_crdt_websocket_upgrade;
     use axum::{Router, routing::get};
@@ -320,6 +321,17 @@ pub fn build_app(
     let webhook_router = create_webhook_router().with_state(webhook_state);
     let conflict_router = create_conflict_router().with_state(conflict_state);
 
+    // OAuth2 router (only enabled when providers are configured)
+    let oauth2_state = OAuth2State {
+        jwt_secret: config.jwt.secret.clone(),
+        jwt_expiration_secs: config.jwt.expiration_secs,
+        jwt_issuer: config.jwt.issuer.clone(),
+        jwt_audience: config.jwt.audience.clone(),
+        config: config.oauth2.clone(),
+        pool: pool.clone(),
+    };
+    let oauth2_router = create_oauth2_router().with_state(oauth2_state);
+
     let api_v1 = Router::new()
         .merge(document_router)
         .merge(user_router)
@@ -335,7 +347,8 @@ pub fn build_app(
         .merge(notification_router)
         .merge(tags_router)
         .merge(webhook_router)
-        .merge(conflict_router);
+        .merge(conflict_router)
+        .merge(oauth2_router);
 
     let ws_router = Router::new()
         .route("/ws", get(handle_websocket_upgrade))
@@ -361,6 +374,7 @@ pub fn build_app(
     let health_router = Router::new()
         .route("/health", get(health_handler))
         .route("/metrics", get(metrics_handler))
+        .route("/metrics/prometheus", get(prometheus_metrics_handler))
         .with_state(HealthState { pool: pool.clone() });
 
     let mut router = Router::new()
@@ -505,6 +519,44 @@ async fn metrics_handler(
             "idle_connections": db_stats.get("idle_connections").and_then(|v: &serde_json::Value| v.as_u64()).unwrap_or(0),
         },
     }))
+}
+
+/// Prometheus-format metrics endpoint.
+///
+/// Returns metrics in the Prometheus exposition format for scraping by
+/// Prometheus, Grafana, or any compatible monitoring system.
+///
+/// To add custom metrics, use the `metrics` crate in your handlers:
+/// ```rust,ignore
+/// metrics::counter!("requests_total", "method" => "GET", "path" => "/api/v1/documents").increment(1);
+/// metrics::histogram!("request_duration_seconds").record(duration.as_secs_f64());
+/// ```
+async fn prometheus_metrics_handler() -> String {
+    // The global Prometheus exporter is installed in `install_metrics()`.
+    // We render the current metrics as a string.
+    let renderer = metrics_exporter_prometheus::PrometheusBuilder::new()
+        .install_recorder()
+        .expect("failed to install Prometheus recorder");
+
+    renderer.render()
+}
+
+/// Install the Prometheus metrics exporter.
+///
+/// Call this once at server startup. It installs a global metrics recorder
+/// that can be queried via the `/metrics/prometheus` endpoint.
+pub fn install_metrics() -> &'static metrics_exporter_prometheus::PrometheusHandle {
+    // Use a lazy static to ensure we only install once
+    use std::sync::OnceLock;
+    static HANDLE: OnceLock<metrics_exporter_prometheus::PrometheusHandle> = OnceLock::new();
+
+    HANDLE.get_or_init(|| {
+        let handle = metrics_exporter_prometheus::PrometheusBuilder::new()
+            .install_recorder()
+            .expect("failed to install Prometheus metrics recorder");
+        tracing::info!("Prometheus metrics exporter installed");
+        handle
+    })
 }
 
 async fn root_handler() -> &'static str {

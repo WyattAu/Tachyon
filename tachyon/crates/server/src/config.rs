@@ -43,6 +43,10 @@ pub struct ServerConfig {
     pub security: SecurityConfig,
     /// Site configuration for SEO and SSR
     pub site: SiteConfig,
+    /// Logging configuration
+    pub log: LogConfig,
+    /// OAuth2 configuration
+    pub oauth2: OAuth2Config,
 }
 
 /// JWT configuration for token-based authentication
@@ -185,6 +189,38 @@ pub struct SiteConfig {
     pub template_dir: Option<String>,
 }
 
+/// Logging configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogConfig {
+    /// Log format: "text" (default) or "json" (for production)
+    pub format: String,
+    /// Log level override (e.g., "info", "debug", "warn")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level: Option<String>,
+}
+
+/// OAuth2 provider configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OAuth2Config {
+    /// Enable OAuth2 authentication
+    pub enabled: bool,
+    /// Google OAuth2 client ID
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub google_client_id: Option<String>,
+    /// Google OAuth2 client secret
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub google_client_secret: Option<String>,
+    /// GitHub OAuth2 client ID
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub github_client_id: Option<String>,
+    /// GitHub OAuth2 client secret
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub github_client_secret: Option<String>,
+    /// OAuth2 redirect base URL (e.g., "http://localhost:8080")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub redirect_base_url: Option<String>,
+}
+
 impl Default for ServerConfig {
     fn default() -> Self {
         Self {
@@ -205,6 +241,8 @@ impl Default for ServerConfig {
             rate_limit: RateLimitConfig::default(),
             security: SecurityConfig::default(),
             site: SiteConfig::default(),
+            log: LogConfig::default(),
+            oauth2: OAuth2Config::default(),
         }
     }
 }
@@ -340,6 +378,28 @@ impl Default for SiteConfig {
             theme_color: "#2563eb".to_string(),
             og_image: None,
             template_dir: None,
+        }
+    }
+}
+
+impl Default for LogConfig {
+    fn default() -> Self {
+        Self {
+            format: "text".to_string(),
+            level: None,
+        }
+    }
+}
+
+impl Default for OAuth2Config {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            google_client_id: None,
+            google_client_secret: None,
+            github_client_id: None,
+            github_client_secret: None,
+            redirect_base_url: None,
         }
     }
 }
@@ -505,6 +565,34 @@ impl ServerConfig {
 
         if let Ok(template_dir) = std::env::var("TACHYON_TEMPLATE_DIR") {
             config.site.template_dir = Some(template_dir);
+        }
+
+        // Logging configuration
+        if let Ok(log_format) = std::env::var("LOG_FORMAT") {
+            config.log.format = log_format;
+        }
+        if let Ok(log_level) = std::env::var("TACHYON_LOG_LEVEL") {
+            config.log.level = Some(log_level);
+        }
+
+        // OAuth2 configuration
+        if let Ok(enabled) = std::env::var("TACHYON_OAUTH2_ENABLED") {
+            config.oauth2.enabled = enabled == "1" || enabled == "true";
+        }
+        if let Ok(id) = std::env::var("TACHYON_GOOGLE_CLIENT_ID") {
+            config.oauth2.google_client_id = Some(id);
+        }
+        if let Ok(secret) = std::env::var("TACHYON_GOOGLE_CLIENT_SECRET") {
+            config.oauth2.google_client_secret = Some(secret);
+        }
+        if let Ok(id) = std::env::var("TACHYON_GITHUB_CLIENT_ID") {
+            config.oauth2.github_client_id = Some(id);
+        }
+        if let Ok(secret) = std::env::var("TACHYON_GITHUB_CLIENT_SECRET") {
+            config.oauth2.github_client_secret = Some(secret);
+        }
+        if let Ok(url) = std::env::var("TACHYON_OAUTH2_REDIRECT_BASE_URL") {
+            config.oauth2.redirect_base_url = Some(url);
         }
 
         config
