@@ -145,6 +145,13 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/plugins") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::PluginsPage />
+                            </AuthGuard>
+                        }
+                    } />
                 </Routes>
             </AppShell>
         </Router>

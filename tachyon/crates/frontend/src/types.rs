@@ -489,6 +489,60 @@ pub struct UpdateTemplateRequest {
 }
 
 // ============================================================================
+// Plugin Types
+// ============================================================================
+
+/// Plugin record from the server
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Plugin {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub version: String,
+    pub author: Option<String>,
+    pub homepage: Option<String>,
+    pub license: Option<String>,
+    pub extension_points: Vec<String>,
+    pub manifest: Option<serde_json::Value>,
+    pub runtime_type: String,
+    pub entry_point: Option<String>,
+    pub enabled: bool,
+    pub installed_at: String,
+    pub updated_at: String,
+    pub installed_by: Option<String>,
+}
+
+/// Create plugin request
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreatePluginRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub version: String,
+    pub author: Option<String>,
+    pub homepage: Option<String>,
+    pub license: Option<String>,
+    pub extension_points: Option<Vec<String>>,
+    pub manifest: Option<serde_json::Value>,
+    pub runtime_type: Option<String>,
+    pub entry_point: Option<String>,
+    pub enabled: Option<bool>,
+}
+
+/// Update plugin request
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UpdatePluginRequest {
+    pub description: Option<String>,
+    pub version: Option<String>,
+    pub author: Option<String>,
+    pub homepage: Option<String>,
+    pub license: Option<String>,
+    pub extension_points: Option<Vec<String>>,
+    pub manifest: Option<serde_json::Value>,
+    pub entry_point: Option<String>,
+    pub enabled: Option<bool>,
+}
+
+// ============================================================================
 // Search Types
 // ============================================================================
 

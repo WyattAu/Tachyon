@@ -11,6 +11,7 @@ pub mod graph;
 pub mod migrations;
 pub mod notification;
 pub mod permissions;
+pub mod plugin;
 pub mod rbac;
 pub mod repository;
 pub mod saved_search;
@@ -55,6 +56,7 @@ pub use graph::{GraphDiff, GraphRepository};
 pub use user::{UserRecord, UserRepository};
 pub use user_preferences::UserPreferencesRepository;
 pub use webhook::{CreateWebhook, Webhook, WebhookRepository};
+pub use plugin::{CreatePluginRequest, Plugin, PluginRepository, UpdatePluginRequest};
 pub use types::*;
 
 // Re-export tachyon-core types

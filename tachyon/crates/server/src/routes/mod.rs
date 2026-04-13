@@ -8,6 +8,7 @@ pub mod document;
 pub mod node;
 pub mod notification;
 pub mod oauth2;
+pub mod plugin;
 pub mod repository;
 pub mod review;
 pub mod role;
@@ -36,6 +37,7 @@ pub async fn create_router() -> Router {
     use crate::routes::tags::{TagsState, create_tags_router};
     use crate::routes::user::{UserState, create_user_router};
     use crate::routes::webhook::{WebhookState, create_webhook_router};
+    use crate::routes::plugin::{PluginState, create_plugin_router};
     use crate::websocket::ConnectionManager;
 
     // Use test database URL or default
@@ -71,6 +73,7 @@ pub async fn create_router() -> Router {
     let notification_state = NotificationState::new(pool.clone());
     let tags_state = TagsState { pool: pool.clone() };
     let webhook_state = WebhookState { pool: pool.clone() };
+    let plugin_state = PluginState { pool: pool.clone() };
     let _connection_manager = ConnectionManager::new();
 
     let document_router = create_document_router().with_state(document_state);
@@ -84,6 +87,7 @@ pub async fn create_router() -> Router {
     let notification_router = create_notification_router().with_state(notification_state);
     let tags_router = create_tags_router().with_state(tags_state);
     let webhook_router = create_webhook_router().with_state(webhook_state);
+    let plugin_router = create_plugin_router().with_state(plugin_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -96,7 +100,8 @@ pub async fn create_router() -> Router {
         .merge(activity_router)
         .merge(notification_router)
         .merge(tags_router)
-        .merge(webhook_router);
+        .merge(webhook_router)
+        .merge(plugin_router);
 
     Router::new().nest("/api/v1", api_v1)
 }
@@ -201,4 +206,10 @@ pub use tags::{
 pub use webhook::{
     create_webhook_router, create_webhook, list_webhooks, delete_webhook,
     WebhookState, WebhookResponse, CreateWebhookBody,
+};
+
+// Plugin exports
+pub use plugin::{
+    create_plugin_router, list_plugins, get_plugin, create_plugin, update_plugin, delete_plugin,
+    PluginState, PluginResponse, CreatePluginBody, UpdatePluginBody,
 };

@@ -220,6 +220,7 @@ where
                         <NavLink href="/search" label="Search" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/catalog" label="Catalog" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/templates" label="Templates" collapsed={sidebar_collapsed.get()} />
+                        <NavLink href="/plugins" label="Plugins" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/admin/roles" label="Admin" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/settings" label="Settings" collapsed={sidebar_collapsed.get()} />
                     </nav>
