@@ -1005,3 +1005,236 @@ pub async fn search_local_documents(
 
     serde_json::to_value(&result).map_err(|e| format!("Failed to serialize results: {}", e))
 }
+
+// ============================================================================
+// Sync Queue Commands (offline→online reconciliation)
+// ============================================================================
+
+/// Enqueue a document mutation for later sync to the remote server.
+///
+/// The frontend should call this whenever it writes to the local SQLite
+/// database while offline. When connectivity is restored, the entries are
+/// replayed against the remote server.
+#[tauri::command]
+pub async fn sync_enqueue(
+    state: State<'_, DesktopStateManager>,
+    operation: String,       // "create" | "update_content" | "update_metadata" | "delete" | "permanent_delete"
+    document_id: String,
+    payload: Option<String>, // JSON: full metadata+content for create, partial for updates
+) -> Result<String, String> {
+    let desktop_state = state.get_state().map_err(|e| e.to_string())?;
+    let path = match &desktop_state.database_path {
+        Some(p) => p.clone(),
+        None => return Err("No local database configured".to_string()),
+    };
+
+    let queue = tachyon_storage::SyncQueue::open(&path)
+        .await
+        .map_err(|e| format!("Failed to open sync queue: {}", e))?;
+
+    let op = match operation.as_str() {
+        "create" => tachyon_storage::SyncOperation::Create,
+        "update_content" => tachyon_storage::SyncOperation::UpdateContent,
+        "update_metadata" => tachyon_storage::SyncOperation::UpdateMetadata,
+        "delete" => tachyon_storage::SyncOperation::Delete,
+        "permanent_delete" => tachyon_storage::SyncOperation::PermanentDelete,
+        _ => return Err(format!("Unknown sync operation: {}", operation)),
+    };
+
+    let entry_id = queue.enqueue(op, &document_id, payload)
+        .await
+        .map_err(|e| format!("Failed to enqueue sync entry: {}", e))?;
+
+    tracing::info!("Enqueued sync entry {} ({} on {})", entry_id, operation, document_id);
+    Ok(entry_id)
+}
+
+/// Get the sync queue summary (pending/in-flight/synced/failed counts).
+#[tauri::command]
+pub async fn sync_queue_summary(
+    state: State<'_, DesktopStateManager>,
+) -> Result<tachyon_storage::SyncQueueSummary, String> {
+    let desktop_state = state.get_state().map_err(|e| e.to_string())?;
+    let path = match &desktop_state.database_path {
+        Some(p) => p.clone(),
+        None => return Ok(tachyon_storage::SyncQueueSummary::default()),
+    };
+
+    let queue = tachyon_storage::SyncQueue::open(&path)
+        .await
+        .map_err(|e| format!("Failed to open sync queue: {}", e))?;
+
+    queue.summary().await.map_err(|e| format!("Failed to get sync queue summary: {}", e))
+}
+
+/// Get pending sync entries (oldest first).
+#[tauri::command]
+pub async fn sync_queue_pending(
+    state: State<'_, DesktopStateManager>,
+    limit: Option<usize>,
+) -> Result<Vec<tachyon_storage::SyncQueueEntry>, String> {
+    let desktop_state = state.get_state().map_err(|e| e.to_string())?;
+    let path = match &desktop_state.database_path {
+        Some(p) => p.clone(),
+        None => return Ok(vec![]),
+    };
+
+    let queue = tachyon_storage::SyncQueue::open(&path)
+        .await
+        .map_err(|e| format!("Failed to open sync queue: {}", e))?;
+
+    queue.pending_entries(limit.unwrap_or(50))
+        .await
+        .map_err(|e| format!("Failed to get pending entries: {}", e))
+}
+
+/// Mark a sync queue entry as successfully synced.
+#[tauri::command]
+pub async fn sync_mark_synced(
+    state: State<'_, DesktopStateManager>,
+    entry_id: String,
+) -> Result<(), String> {
+    let desktop_state = state.get_state().map_err(|e| e.to_string())?;
+    let path = match &desktop_state.database_path {
+        Some(p) => p.clone(),
+        None => return Err("No local database configured".to_string()),
+    };
+
+    let queue = tachyon_storage::SyncQueue::open(&path)
+        .await
+        .map_err(|e| format!("Failed to open sync queue: {}", e))?;
+
+    queue.mark_synced(&entry_id)
+        .await
+        .map_err(|e| format!("Failed to mark entry synced: {}", e))
+}
+
+/// Mark a sync queue entry as failed (will be retried).
+#[tauri::command]
+pub async fn sync_mark_failed(
+    state: State<'_, DesktopStateManager>,
+    entry_id: String,
+    error: String,
+) -> Result<(), String> {
+    let desktop_state = state.get_state().map_err(|e| e.to_string())?;
+    let path = match &desktop_state.database_path {
+        Some(p) => p.clone(),
+        None => return Err("No local database configured".to_string()),
+    };
+
+    let queue = tachyon_storage::SyncQueue::open(&path)
+        .await
+        .map_err(|e| format!("Failed to open sync queue: {}", e))?;
+
+    queue.mark_failed(&entry_id, &error)
+        .await
+        .map_err(|e| format!("Failed to mark entry failed: {}", e))
+}
+
+/// Purge successfully synced entries from the queue.
+#[tauri::command]
+pub async fn sync_purge_synced(
+    state: State<'_, DesktopStateManager>,
+) -> Result<u64, String> {
+    let desktop_state = state.get_state().map_err(|e| e.to_string())?;
+    let path = match &desktop_state.database_path {
+        Some(p) => p.clone(),
+        None => return Ok(0),
+    };
+
+    let queue = tachyon_storage::SyncQueue::open(&path)
+        .await
+        .map_err(|e| format!("Failed to open sync queue: {}", e))?;
+
+    queue.purge_synced().await.map_err(|e| format!("Failed to purge synced entries: {}", e))
+}
+
+// ============================================================================
+// Offline/Online Detection Commands
+// ============================================================================
+
+/// Update the connection status. Called by the frontend when it detects
+/// a connectivity change via `navigator.onLine` or failed HTTP requests.
+#[tauri::command]
+pub async fn set_connection_status(
+    state: State<'_, DesktopStateManager>,
+    status: String, // "connected" | "disconnected" | "error"
+) -> Result<bool, String> {
+    let conn_status = match status.as_str() {
+        "connected" => ConnectionStatus::Connected,
+        "disconnected" => ConnectionStatus::Disconnected,
+        "error" => ConnectionStatus::Error,
+        _ => return Err(format!("Unknown connection status: {}", status)),
+    };
+
+    state.set_connection_status(conn_status)
+        .map_err(|e| e.to_string())?;
+
+    tracing::info!("Connection status changed to: {}", status);
+    Ok(true)
+}
+
+/// Check if the app is currently online (has a connected status).
+#[tauri::command]
+pub async fn is_online(
+    state: State<'_, DesktopStateManager>,
+) -> Result<bool, String> {
+    state.is_connected().map_err(|e| e.to_string())
+}
+
+// ============================================================================
+// Local-First Authentication Commands
+// ============================================================================
+
+/// Authenticate in local-first (offline) mode.
+///
+/// Creates a local session without requiring server connectivity.
+/// The user can work offline and sync later when the server is available.
+#[tauri::command]
+pub async fn authenticate_offline(
+    username: String,
+    state: State<'_, DesktopStateManager>,
+    app: AppHandle,
+) -> Result<AuthResponse, String> {
+    if username.is_empty() {
+        return Ok(AuthResponse {
+            success: false,
+            token: None,
+            user_id: None,
+            error: Some("Username cannot be empty".to_string()),
+        });
+    }
+
+    // Generate deterministic local user identity
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(username.as_bytes());
+    hasher.update(b"tachyon-local-user");
+    let hash = hasher.finalize();
+    let user_id = format!("local_{}", hex::encode(&hash[..16]));
+
+    // Generate a local session token
+    let token = format!("local_{}", uuid::Uuid::new_v4());
+
+    // Update state with local auth
+    state.set_auth_token(Some(token.clone()))
+        .map_err(|e| e.to_string())?;
+    state.set_user_id(Some(user_id.clone()))
+        .map_err(|e| e.to_string())?;
+    state.set_connection_status(ConnectionStatus::Disconnected)
+        .map_err(|e| e.to_string())?;
+
+    // Emit auth status changed event
+    let emitter = EventEmitter::new(app);
+    emitter.emit_auth_status_changed(true, Some(user_id.clone()))
+        .map_err(|e| e.to_string())?;
+
+    tracing::info!("Created local-first session for user: {}", username);
+
+    Ok(AuthResponse {
+        success: true,
+        token: Some(token),
+        user_id: Some(user_id),
+        error: None,
+    })
+}

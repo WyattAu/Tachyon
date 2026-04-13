@@ -91,6 +91,18 @@ pub fn run() {
             commands::init_local_database,
             commands::get_local_tags,
             commands::search_local_documents,
+            // Sync queue (offline→online reconciliation)
+            commands::sync_enqueue,
+            commands::sync_queue_summary,
+            commands::sync_queue_pending,
+            commands::sync_mark_synced,
+            commands::sync_mark_failed,
+            commands::sync_purge_synced,
+            // Offline/online detection
+            commands::set_connection_status,
+            commands::is_online,
+            // Local-first authentication
+            commands::authenticate_offline,
         ])
         .manage(embedded_server)
         .setup(move |app| {
