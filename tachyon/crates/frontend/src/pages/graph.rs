@@ -49,6 +49,8 @@ pub struct GraphNode {
     pub created_at: String,
     #[serde(default)]
     pub updated_at: String,
+    #[serde(default)]
+    pub document_id: Option<String>,
 }
 
 impl Default for GraphNode {
@@ -64,6 +66,7 @@ impl Default for GraphNode {
             is_active: false,
             created_at: String::new(),
             updated_at: String::new(),
+            document_id: None,
         }
     }
 }
@@ -107,6 +110,7 @@ struct SimNode {
     label: String,
     node_type: String,
     description: Option<String>,
+    document_id: Option<String>,
     x: f64,
     y: f64,
     vx: f64,
@@ -434,6 +438,7 @@ pub fn GraphPage() -> impl IntoView {
                         label: n.name.clone(),
                         node_type: n.node_type.clone(),
                         description: n.description.clone(),
+                        document_id: n.document_id.clone(),
                         x: 500.0 + radius * angle.cos(),
                         y: 350.0 + radius * angle.sin(),
                         vx: 0.0,
@@ -785,6 +790,26 @@ pub fn GraphPage() -> impl IntoView {
                                                     format!("{} connection{}", count, if count == 1 { "" } else { "s" })
                                                 }}
                                             </div>
+                                            // "View Document" link if node has a document_id
+                                            <Show when=move || {
+                                                selected_node.get()
+                                                    .and_then(|i| sim_nodes.with(|ns| ns.get(i).and_then(|n| n.document_id.clone())))
+                                                    .is_some()
+                                            }>
+                                                <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                                                    <a
+                                                        class="block w-full text-center px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors no-underline"
+                                                        href=move || {
+                                                            selected_node.get()
+                                                                .and_then(|i| sim_nodes.with(|ns| ns.get(i).and_then(|n| n.document_id.clone())))
+                                                                .map(|id| format!("/documents/{}", id))
+                                                                .unwrap_or_default()
+                                                        }
+                                                    >
+                                                        "View Document"
+                                                    </a>
+                                                </div>
+                                            </Show>
                                         </div>
                                     </div>
                                 }

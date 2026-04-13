@@ -117,6 +117,13 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/tags") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::TagsPage />
+                            </AuthGuard>
+                        }
+                    } />
                     <Route path=path!("/settings") view=move || {
                         view! {
                             <AuthGuard>

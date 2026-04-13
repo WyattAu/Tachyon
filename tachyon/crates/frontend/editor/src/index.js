@@ -331,6 +331,7 @@ function createPlugins(options = {}) {
     tableEditing(),
     tachyonInputRules,
     createOnChangePlugin(options.onChange || null),
+    createWikilinkPlugin(),
   ];
 }
 
@@ -461,6 +462,209 @@ function destroy(view) {
     _activeEditorView = null;
   }
   view.destroy();
+}
+
+// ─── Wikilink Autocomplete Plugin ────────────────────────────────────
+// Triggers on [[ and shows a dropdown of document suggestions.
+
+const wikilinkKey = new PluginKey('wikilink');
+
+function createWikilinkPlugin() {
+  let open = false;
+  let query = '';
+  let selectedIndex = 0;
+  let suggestions = [];
+  let dropdown = null;
+  let debounceTimer = null;
+
+  function getApiBaseUrl() {
+    // Derive from current page location
+    const loc = window.location;
+    const origin = loc.origin;
+    // If running in Tauri embedded mode, use the embedded server port
+    return origin + '/api/v1';
+  }
+
+  async function fetchSuggestions(q) {
+    if (!q || q.length < 1) {
+      suggestions = [];
+      return;
+    }
+    try {
+      const base = getApiBaseUrl();
+      const url = `${base}/search/suggest?q=${encodeURIComponent(q)}&limit=8`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        suggestions = await resp.json();
+      } else {
+        suggestions = [];
+      }
+    } catch (e) {
+      // Silently fail — autocomplete is a nice-to-have
+      suggestions = [];
+    }
+  }
+
+  function createDropdown(view) {
+    removeDropdown();
+    dropdown = document.createElement('div');
+    dropdown.className = 'tachyon-wikilink-dropdown';
+    dropdown.style.cssText = 'position:absolute;z-index:100;min-width:220px;max-width:350px;max-height:240px;overflow-y:auto;background:white;border:1px solid #d1d5db;border-radius:0.5rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:14px;display:none;';
+    document.body.appendChild(dropdown);
+  }
+
+  function removeDropdown() {
+    if (dropdown) {
+      dropdown.remove();
+      dropdown = null;
+    }
+    open = false;
+    selectedIndex = 0;
+  }
+
+  function renderDropdown() {
+    if (!dropdown) return;
+    if (!open || suggestions.length === 0) {
+      dropdown.style.display = 'none';
+      return;
+    }
+    dropdown.style.display = 'block';
+    dropdown.innerHTML = suggestions.map((title, i) => {
+      const cls = i === selectedIndex
+        ? 'background:#eff6ff;color:#1d4ed8;cursor:pointer;padding:6px 12px;'
+        : 'background:white;color:#374151;cursor:pointer;padding:6px 12px;';
+      return `<div class="tachyon-wl-item" data-index="${i}" style="${cls}">${escapeHtml(title)}</div>`;
+    }).join('');
+
+    // Attach click handlers
+    dropdown.querySelectorAll('.tachyon-wl-item').forEach(el => {
+      el.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = parseInt(el.dataset.index, 10);
+        selectSuggestion(view, suggestions[idx]);
+      });
+    });
+  }
+
+  function positionDropdown(view) {
+    if (!dropdown || !open) return;
+    // Get the cursor position in the editor
+    const { from } = view.state.selection;
+    const coords = view.coordsAtPos(from);
+    dropdown.style.left = coords.left + 'px';
+    dropdown.style.top = (coords.bottom + 4) + 'px';
+  }
+
+  function selectSuggestion(view, title) {
+    // Find the [[ marker position
+    const { from } = view.state.selection;
+    const $head = view.state.selection.$head;
+    let bracketStart = from;
+    // Search backwards for [[
+    for (let i = from - 1; i >= 0; i--) {
+      const ch = view.state.doc.textBetween(i, i + 1);
+      if (ch === '[' && i > 0 && view.state.doc.textBetween(i - 1, i) === '[') {
+        bracketStart = i - 1;
+        break;
+      }
+      if (ch === '\n' || ch === undefined) break;
+    }
+
+    // Insert the wikilink: [[Document Title]]
+    const tr = view.state.tr
+      .delete(bracketStart, from)
+      .insertText(`[[${title}]]`, bracketStart);
+    view.dispatch(tr);
+    removeDropdown();
+    view.focus();
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  return new Plugin({
+    key: wikilinkKey,
+    view() {
+      return {
+        update(view, prevState) {
+          // Check if we're inside a [[ ... ]] pattern
+          const { from } = view.state.selection;
+          const $head = view.state.selection.$head;
+          const textBefore = $head.parent.textContent.slice(0, $head.parentOffset);
+
+          // Find last [[ in the current text node
+          const lastBracket = textBefore.lastIndexOf('[[');
+          if (lastBracket === -1) {
+            if (open) removeDropdown();
+            return;
+          }
+
+          // Extract query after [[
+          const afterBracket = textBefore.slice(lastBracket + 2);
+          // If there's a ]] after [[, we're not in a wikilink
+          if (afterBracket.includes(']]')) {
+            if (open) removeDropdown();
+            return;
+          }
+
+          query = afterBracket.trim();
+          open = true;
+
+          // Debounce suggestion fetch
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            fetchSuggestions(query).then(() => {
+              selectedIndex = 0;
+              createDropdown(view);
+              renderDropdown();
+              positionDropdown(view);
+            });
+          }, 150);
+        },
+        destroy() {
+          removeDropdown();
+          if (debounceTimer) clearTimeout(debounceTimer);
+        },
+      };
+    },
+    props: {
+      handleKeyDown(view, event) {
+        if (!open) return false;
+
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+          renderDropdown();
+          return true;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          selectedIndex = Math.max(selectedIndex - 1, 0);
+          renderDropdown();
+          return true;
+        }
+        if (event.key === 'Enter' && suggestions.length > 0) {
+          event.preventDefault();
+          selectSuggestion(view, suggestions[selectedIndex]);
+          return true;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          removeDropdown();
+          return true;
+        }
+        if (event.key === 'Tab' && suggestions.length > 0) {
+          event.preventDefault();
+          selectSuggestion(view, suggestions[selectedIndex]);
+          return true;
+        }
+
+        return false;
+      },
+    },
+  });
 }
 
 // ─── Global editor reference ──────────────────────────────────────────

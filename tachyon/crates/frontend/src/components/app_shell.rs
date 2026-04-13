@@ -202,6 +202,7 @@ where
                         <NavLink href="/dashboard" label="Dashboard" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/documents" label="Documents" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/graph" label="Graph" collapsed={sidebar_collapsed.get()} />
+                        <NavLink href="/tags" label="Tags" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/teams" label="Teams" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/search" label="Search" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/catalog" label="Catalog" collapsed={sidebar_collapsed.get()} />

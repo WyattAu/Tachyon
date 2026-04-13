@@ -970,6 +970,15 @@ impl ApiClient {
         self.post_empty(&url).await
     }
 
+    /// List documents filtered by a specific tag
+    pub async fn list_documents_by_tag(&self, tag: &str, page: Option<i64>, page_size: Option<i64>) -> Result<crate::types::SearchResultsResponse, ApiError> {
+        let filters = crate::types::SearchFilters {
+            tags: Some(vec![tag.to_string()]),
+            ..Default::default()
+        };
+        self.search("", Some(&filters), page, page_size).await
+    }
+
     // ========================================================================
     // Backlinks API
     // ========================================================================
