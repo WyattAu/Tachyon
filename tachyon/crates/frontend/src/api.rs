@@ -386,6 +386,18 @@ impl ApiClient {
         self.post(&url, request).await
     }
 
+    /// Update a template
+    pub async fn update_template(&self, template_id: &str, request: &UpdateTemplateRequest) -> Result<DocumentTemplate, ApiError> {
+        let url = format!("{}/templates/{}", self.base_url, template_id);
+        self.put(&url, request).await
+    }
+
+    /// Delete a template
+    pub async fn delete_template(&self, template_id: &str) -> Result<(), ApiError> {
+        let url = format!("{}/templates/{}", self.base_url, template_id);
+        self.delete(&url).await
+    }
+
     /// List template categories
     pub async fn list_template_categories(&self) -> Result<Vec<String>, ApiError> {
         let url = format!("{}/templates/categories", self.base_url);

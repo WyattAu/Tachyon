@@ -12,6 +12,7 @@ pub mod dashboard;
 pub mod teams;
 pub mod tags;
 pub mod admin;
+pub mod templates;
 
 pub use graph::GraphPage;
 pub use home::HomePage;
@@ -25,3 +26,4 @@ pub use dashboard::DashboardPage;
 pub use teams::TeamsPage;
 pub use tags::TagsPage;
 pub use admin::roles::RolesPage;
+pub use templates::TemplatesPage;

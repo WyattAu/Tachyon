@@ -138,6 +138,13 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/templates") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::TemplatesPage />
+                            </AuthGuard>
+                        }
+                    } />
                 </Routes>
             </AppShell>
         </Router>

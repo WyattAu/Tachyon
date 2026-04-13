@@ -478,6 +478,16 @@ pub struct CreateTemplateRequest {
     pub tags: Option<Vec<String>>,
 }
 
+/// Update template request
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UpdateTemplateRequest {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub content: Option<String>,
+    pub category: Option<String>,
+    pub tags: Option<Vec<String>>,
+}
+
 // ============================================================================
 // Search Types
 // ============================================================================
