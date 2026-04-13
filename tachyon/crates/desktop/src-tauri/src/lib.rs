@@ -86,6 +86,11 @@ pub fn run() {
             commands::get_embedded_server_port,
             commands::start_embedded_server,
             commands::stop_embedded_server,
+            // Local storage (offline-first)
+            commands::get_local_db_stats,
+            commands::init_local_database,
+            commands::get_local_tags,
+            commands::search_local_documents,
         ])
         .manage(embedded_server)
         .setup(move |app| {

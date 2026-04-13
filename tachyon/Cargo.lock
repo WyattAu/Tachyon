@@ -7921,6 +7921,7 @@ dependencies = [
  "tachyon-core",
  "tachyon-import-export",
  "tachyon-server",
+ "tachyon-storage",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

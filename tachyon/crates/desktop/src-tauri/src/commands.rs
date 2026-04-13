@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tauri::{State, AppHandle};
-use tachyon_core::TachyonError;
+use tachyon_core::{DocumentStore, TachyonError};
 
 use crate::state::{DesktopStateManager, DesktopState, ConnectionStatus};
 use crate::events::EventEmitter;
@@ -840,4 +840,168 @@ pub fn stop_embedded_server(
     s.started = false;
     s.port = 0;
     was_started
+}
+
+// ============================================================================
+// Local Storage Commands (SQLite for offline-first mode)
+// ============================================================================
+
+/// Local database statistics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocalDbStats {
+    pub is_available: bool,
+    pub total_documents: usize,
+    pub draft_count: usize,
+    pub published_count: usize,
+    pub archived_count: usize,
+    pub total_word_count: usize,
+    pub total_tags: usize,
+    pub database_path: Option<String>,
+}
+
+/// Get local database statistics
+#[tauri::command]
+pub async fn get_local_db_stats(
+    state: State<'_, DesktopStateManager>,
+) -> Result<LocalDbStats, String> {
+    let desktop_state = state.get_state().map_err(|e| e.to_string())?;
+    let db_path = desktop_state.database_path.clone();
+
+    let path = match db_path {
+        Some(ref p) => p.clone(),
+        None => return Ok(LocalDbStats {
+            is_available: false,
+            total_documents: 0,
+            draft_count: 0,
+            published_count: 0,
+            archived_count: 0,
+            total_word_count: 0,
+            total_tags: 0,
+            database_path: None,
+        }),
+    };
+
+    let store = tachyon_storage::SqliteStore::open(&path)
+        .await
+        .map_err(|e| format!("Failed to open local database: {}", e))?;
+
+    let available = store.is_available().await.unwrap_or(false);
+
+    let summary = store
+        .get_list_summary()
+        .await
+        .unwrap_or(tachyon_core::types::storage::DocumentListSummary::default());
+
+    Ok(LocalDbStats {
+        is_available: available,
+        total_documents: summary.total_documents,
+        draft_count: summary.draft_count,
+        published_count: summary.published_count,
+        archived_count: summary.archived_count,
+        total_word_count: summary.total_word_count,
+        total_tags: summary.total_tags,
+        database_path: Some(path.to_string_lossy().to_string()),
+    })
+}
+
+/// Initialize local database at the given path
+#[tauri::command]
+pub async fn init_local_database(
+    state: State<'_, DesktopStateManager>,
+    path: String,
+) -> Result<LocalDbStats, String> {
+    // Update state with the new database path
+    state
+        .set_database_path(Some(std::path::PathBuf::from(&path)))
+        .map_err(|e| e.to_string())?;
+
+    // Open (or create) the database
+    let store = tachyon_storage::SqliteStore::open(&path)
+        .await
+        .map_err(|e| format!("Failed to initialize local database: {}", e))?;
+
+    // Verify it's available
+    let available = store.is_available().await.unwrap_or(false);
+    if !available {
+        return Err("Database initialized but not available".to_string());
+    }
+
+    let summary = store
+        .get_list_summary()
+        .await
+        .unwrap_or(tachyon_core::types::storage::DocumentListSummary::default());
+
+    tracing::info!(
+        "Local SQLite database initialized at: {} ({} documents)",
+        path,
+        summary.total_documents
+    );
+
+    Ok(LocalDbStats {
+        is_available: true,
+        total_documents: summary.total_documents,
+        draft_count: summary.draft_count,
+        published_count: summary.published_count,
+        archived_count: summary.archived_count,
+        total_word_count: summary.total_word_count,
+        total_tags: summary.total_tags,
+        database_path: Some(path),
+    })
+}
+
+/// Get all tags from the local database
+#[tauri::command]
+pub async fn get_local_tags(
+    state: State<'_, DesktopStateManager>,
+) -> Result<Vec<String>, String> {
+    let desktop_state = state.get_state().map_err(|e| e.to_string())?;
+
+    let path = match &desktop_state.database_path {
+        Some(p) => p.clone(),
+        None => return Ok(vec![]),
+    };
+
+    let store = tachyon_storage::SqliteStore::open(&path)
+        .await
+        .map_err(|e| format!("Failed to open local database: {}", e))?;
+
+    store.get_all_tags().await.map_err(|e| format!("Failed to get tags: {}", e))
+}
+
+/// Search local documents
+#[tauri::command]
+pub async fn search_local_documents(
+    state: State<'_, DesktopStateManager>,
+    query: String,
+    page: Option<usize>,
+    page_size: Option<usize>,
+) -> Result<serde_json::Value, String> {
+    let desktop_state = state.get_state().map_err(|e| e.to_string())?;
+
+    let path = match &desktop_state.database_path {
+        Some(p) => p.clone(),
+        None => {
+            return Ok(serde_json::json!({
+                "items": [],
+                "total": 0,
+                "page": 1,
+                "page_size": 20,
+            }));
+        }
+    };
+
+    let store = tachyon_storage::SqliteStore::open(&path)
+        .await
+        .map_err(|e| format!("Failed to open local database: {}", e))?;
+
+    let result = store
+        .search_documents(
+            &query,
+            page.unwrap_or(1),
+            page_size.unwrap_or(20),
+        )
+        .await
+        .map_err(|e| format!("Failed to search local documents: {}", e))?;
+
+    serde_json::to_value(&result).map_err(|e| format!("Failed to serialize results: {}", e))
 }

@@ -28,6 +28,7 @@ tauri-plugin-notification = "2"
 tachyon-core = { path = "../../core" }
 tachyon-import-export = { path = "../../import-export" }
 tachyon-server = { path = "../../server" }
+tachyon-storage = { path = "../../storage" }
 
 # Serialization
 serde = { workspace = true }

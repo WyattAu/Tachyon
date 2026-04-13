@@ -1,11 +1,11 @@
 // Desktop state management
 // Provides shared state for the Tauri application
 
-use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
-use std::path::PathBuf;
-use tachyon_core::{TachyonError, ErrorResult};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use tachyon_core::{ErrorResult, TachyonError};
 
 /// Desktop application state
 /// Manages the shared state across the Tauri application
@@ -27,6 +27,8 @@ pub struct DesktopState {
     pub connection_status: ConnectionStatus,
     /// Auto-sync enabled
     pub auto_sync_enabled: bool,
+    /// Local SQLite database path (for offline-first mode)
+    pub database_path: Option<PathBuf>,
 }
 
 /// Connection status for the desktop client
@@ -70,6 +72,7 @@ impl Default for DesktopState {
             last_sync: None,
             connection_status: ConnectionStatus::default(),
             auto_sync_enabled: true,
+            database_path: None,
         }
     }
 }
@@ -174,10 +177,12 @@ impl DesktopStateManager {
 
     /// Get a copy of the current state
     pub fn get_state(&self) -> ErrorResult<DesktopState> {
-        self.state
-            .lock()
-            .map(|guard| guard.clone())
-            .map_err(|e| TachyonError::internal("STATE_LOCK_ERROR", format!("Failed to acquire state lock: {}", e)))
+        self.state.lock().map(|guard| guard.clone()).map_err(|e| {
+            TachyonError::internal(
+                "STATE_LOCK_ERROR",
+                format!("Failed to acquire state lock: {}", e),
+            )
+        })
     }
 
     /// Update the state with a function
@@ -191,7 +196,12 @@ impl DesktopStateManager {
         self.state
             .lock()
             .map(|mut guard| f(&mut guard))
-            .map_err(|e| TachyonError::internal("STATE_LOCK_ERROR", format!("Failed to acquire state lock: {}", e)))
+            .map_err(|e| {
+                TachyonError::internal(
+                    "STATE_LOCK_ERROR",
+                    format!("Failed to acquire state lock: {}", e),
+                )
+            })
     }
 
     /// Set the server URL
@@ -255,6 +265,14 @@ impl DesktopStateManager {
         self.update_state(|state| state.set_auto_sync(enabled))
     }
 
+    /// Set the local database path
+    ///
+    /// # Arguments
+    /// * `path` - Path to the SQLite database file
+    pub fn set_database_path(&self, path: Option<PathBuf>) -> ErrorResult<()> {
+        self.update_state(|state| state.database_path = path)
+    }
+
     /// Check if the client is authenticated
     pub fn is_authenticated(&self) -> ErrorResult<bool> {
         self.get_state().map(|state| state.is_authenticated())
@@ -313,10 +331,10 @@ mod tests {
     fn test_is_authenticated() {
         let mut state = DesktopState::default();
         assert!(!state.is_authenticated());
-        
+
         state.set_auth_token(Some("test-token".to_string()));
         assert!(!state.is_authenticated());
-        
+
         state.set_user_id(Some("user-123".to_string()));
         assert!(state.is_authenticated());
     }
@@ -326,7 +344,7 @@ mod tests {
         let mut state = DesktopState::default();
         assert_eq!(state.connection_status, ConnectionStatus::Disconnected);
         assert!(!state.is_connected());
-        
+
         state.set_connection_status(ConnectionStatus::Connected);
         assert_eq!(state.connection_status, ConnectionStatus::Connected);
         assert!(state.is_connected());
@@ -335,7 +353,7 @@ mod tests {
     #[test]
     fn test_desktop_state_manager() {
         let manager = DesktopStateManager::new(DesktopState::default());
-        
+
         manager.set_server_url("https://api.tachyon.io").unwrap();
         let state = manager.get_state().unwrap();
         assert_eq!(state.server_url, "https://api.tachyon.io");
@@ -344,10 +362,12 @@ mod tests {
     #[test]
     fn test_desktop_state_manager_update() {
         let manager = DesktopStateManager::new(DesktopState::default());
-        
-        manager.set_auth_token(Some("test-token".to_string())).unwrap();
+
+        manager
+            .set_auth_token(Some("test-token".to_string()))
+            .unwrap();
         manager.set_user_id(Some("user-123".to_string())).unwrap();
-        
+
         assert!(manager.is_authenticated().unwrap());
     }
 
@@ -355,7 +375,7 @@ mod tests {
     fn test_update_last_sync() {
         let mut state = DesktopState::default();
         assert!(state.last_sync.is_none());
-        
+
         state.update_last_sync();
         assert!(state.last_sync.is_some());
     }
