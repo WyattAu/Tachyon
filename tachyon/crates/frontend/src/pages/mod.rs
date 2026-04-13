@@ -14,6 +14,7 @@ pub mod tags;
 pub mod admin;
 pub mod templates;
 pub mod plugins;
+pub mod spaces;
 
 pub use graph::GraphPage;
 pub use home::HomePage;
@@ -29,3 +30,4 @@ pub use tags::TagsPage;
 pub use admin::roles::RolesPage;
 pub use templates::TemplatesPage;
 pub use plugins::PluginsPage;
+pub use spaces::SpacesPage;

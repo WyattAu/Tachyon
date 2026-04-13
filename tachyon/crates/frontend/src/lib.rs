@@ -152,6 +152,13 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/spaces") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <pages::SpacesPage />
+                            </AuthGuard>
+                        }
+                    } />
                 </Routes>
             </AppShell>
         </Router>

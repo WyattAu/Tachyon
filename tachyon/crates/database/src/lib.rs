@@ -18,6 +18,7 @@ pub mod saved_search;
 pub mod schema;
 pub mod search;
 pub mod session;
+pub mod space;
 pub mod team;
 pub mod template;
 pub mod types;
@@ -57,6 +58,10 @@ pub use user::{UserRecord, UserRepository};
 pub use user_preferences::UserPreferencesRepository;
 pub use webhook::{CreateWebhook, Webhook, WebhookRepository};
 pub use plugin::{CreatePluginRequest, Plugin, PluginRepository, UpdatePluginRequest};
+pub use space::{
+    AddSpaceMemberRequest, CreateSpaceRequest, Space, SpaceMember, SpaceRepository,
+    UpdateSpaceMemberRequest, UpdateSpaceRequest,
+};
 pub use types::*;
 
 // Re-export tachyon-core types

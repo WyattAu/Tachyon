@@ -1079,4 +1079,90 @@ impl ApiClient {
         let url = format!("{}/webhooks/{}", self.base_url, id);
         self.delete(&url).await
     }
+
+    // ========================================================================
+    // Spaces API
+    // ========================================================================
+
+    /// List all spaces accessible to a user
+    pub async fn list_spaces(&self, owner_id: Option<&str>) -> Result<Vec<crate::types::Space>, ApiError> {
+        let mut url = format!("{}/spaces", self.base_url);
+        if let Some(oid) = owner_id {
+            url = format!("{}?owner_id={}", url, oid);
+        }
+        self.get(&url).await
+    }
+
+    /// List root spaces (no parent) for a user
+    pub async fn list_root_spaces(&self, owner_id: &str) -> Result<Vec<crate::types::Space>, ApiError> {
+        let url = format!("{}/spaces/root?owner_id={}", self.base_url, owner_id);
+        self.get(&url).await
+    }
+
+    /// List child spaces of a parent
+    pub async fn list_child_spaces(&self, parent_id: &str, owner_id: &str) -> Result<Vec<crate::types::Space>, ApiError> {
+        let url = format!("{}/spaces/{}/children?owner_id={}", self.base_url, parent_id, owner_id);
+        self.get(&url).await
+    }
+
+    /// Get a single space
+    pub async fn get_space(&self, space_id: &str) -> Result<crate::types::Space, ApiError> {
+        let url = format!("{}/spaces/{}", self.base_url, space_id);
+        self.get(&url).await
+    }
+
+    /// Get the default (personal) space for a user
+    pub async fn get_default_space(&self, owner_id: &str) -> Result<crate::types::Space, ApiError> {
+        let url = format!("{}/spaces/default?owner_id={}", self.base_url, owner_id);
+        self.get(&url).await
+    }
+
+    /// Create a new space
+    pub async fn create_space(&self, req: &crate::types::CreateSpaceRequest) -> Result<crate::types::Space, ApiError> {
+        let url = format!("{}/spaces", self.base_url);
+        self.post(&url, req).await
+    }
+
+    /// Update a space
+    pub async fn update_space(&self, space_id: &str, req: &crate::types::UpdateSpaceRequest) -> Result<crate::types::Space, ApiError> {
+        let url = format!("{}/spaces/{}", self.base_url, space_id);
+        self.put(&url, req).await
+    }
+
+    /// Delete a space
+    pub async fn delete_space(&self, space_id: &str) -> Result<(), ApiError> {
+        let url = format!("{}/spaces/{}", self.base_url, space_id);
+        self.delete(&url).await
+    }
+
+    /// List members of a space
+    pub async fn list_space_members(&self, space_id: &str) -> Result<Vec<crate::types::SpaceMember>, ApiError> {
+        let url = format!("{}/spaces/{}/members", self.base_url, space_id);
+        self.get(&url).await
+    }
+
+    /// Add a member to a space
+    pub async fn add_space_member(&self, space_id: &str, req: &crate::types::AddSpaceMemberRequest) -> Result<crate::types::SpaceMember, ApiError> {
+        let url = format!("{}/spaces/{}/members", self.base_url, space_id);
+        self.post(&url, req).await
+    }
+
+    /// Update a space member's role
+    pub async fn update_space_member(&self, space_id: &str, user_id: &str, req: &crate::types::UpdateSpaceMemberRequest) -> Result<crate::types::SpaceMember, ApiError> {
+        let url = format!("{}/spaces/{}/members/{}", self.base_url, space_id, user_id);
+        self.put(&url, req).await
+    }
+
+    /// Remove a member from a space
+    pub async fn remove_space_member(&self, space_id: &str, user_id: &str) -> Result<(), ApiError> {
+        let url = format!("{}/spaces/{}/members/{}", self.base_url, space_id, user_id);
+        self.delete(&url).await
+    }
+
+    /// Move a document to a space
+    pub async fn move_document_to_space(&self, document_id: &str, space_id: Option<&str>) -> Result<(), ApiError> {
+        let url = format!("{}/spaces/move-document/{}", self.base_url, document_id);
+        let body = serde_json::json!({ "space_id": space_id });
+        self.put(&url, &body).await
+    }
 }

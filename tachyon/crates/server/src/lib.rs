@@ -154,6 +154,7 @@ pub async fn init_app_state(
     crate::routes::tags::TagsState,
     crate::routes::webhook::WebhookState,
     crate::routes::plugin::PluginState,
+    crate::routes::space::SpaceState,
     crate::routes::conflict::ConflictState,
     crate::websocket::ConnectionManager,
     crate::websocket::CrdtConnectionManager,
@@ -165,6 +166,7 @@ pub async fn init_app_state(
     use crate::routes::webhook::WebhookState;
     use crate::routes::conflict::ConflictState;
     use crate::routes::plugin::PluginState;
+    use crate::routes::space::SpaceState;
     use crate::routes::user::UserState;
     use crate::routes::session::SessionState;
     use crate::routes::repository::RepositoryState;
@@ -242,6 +244,7 @@ pub async fn init_app_state(
     let tags_state = TagsState { pool: pool.clone() };
     let webhook_state = WebhookState { pool: pool.clone() };
     let plugin_state = PluginState { pool: pool.clone() };
+    let space_state = SpaceState { pool: pool.clone() };
     let conflict_state = ConflictState { pool: pool.clone() };
     let connection_manager = ConnectionManager::new();
     let crdt_connection_manager = CrdtConnectionManager::new();
@@ -250,7 +253,7 @@ pub async fn init_app_state(
         document_state, user_state, session_state, repository_state, node_state,
         catalog_state, team_state, role_state, search_state, seo_state,
         review_state, activity_state, notification_state, tags_state,
-        webhook_state, plugin_state, conflict_state, connection_manager, crdt_connection_manager, pool,
+        webhook_state, plugin_state, space_state, conflict_state, connection_manager, crdt_connection_manager, pool,
     ))
 }
 
@@ -275,6 +278,7 @@ pub fn build_app(
     tags_state: crate::routes::tags::TagsState,
     webhook_state: crate::routes::webhook::WebhookState,
     plugin_state: crate::routes::plugin::PluginState,
+    space_state: crate::routes::space::SpaceState,
     conflict_state: crate::routes::conflict::ConflictState,
     connection_manager: crate::websocket::ConnectionManager,
     crdt_connection_manager: crate::websocket::CrdtConnectionManager,
@@ -298,6 +302,7 @@ pub fn build_app(
     use crate::routes::webhook::create_webhook_router;
     use crate::routes::conflict::create_conflict_router;
     use crate::routes::plugin::create_plugin_router;
+    use crate::routes::space::create_space_router;
     use crate::routes::oauth2::{create_oauth2_router, OAuth2State};
     use crate::websocket::handle_websocket_upgrade;
     use crate::websocket::handle_crdt_websocket_upgrade;
@@ -326,6 +331,7 @@ pub fn build_app(
     let webhook_router = create_webhook_router().with_state(webhook_state);
     let conflict_router = create_conflict_router().with_state(conflict_state);
     let plugin_router = create_plugin_router().with_state(plugin_state);
+    let space_router = create_space_router().with_state(space_state);
 
     // OAuth2 router (only enabled when providers are configured)
     let oauth2_state = OAuth2State {
@@ -355,6 +361,7 @@ pub fn build_app(
         .merge(webhook_router)
         .merge(conflict_router)
         .merge(plugin_router)
+        .merge(space_router)
         .merge(oauth2_router);
 
     let ws_router = Router::new()
@@ -433,7 +440,7 @@ pub async fn build_server(config: &ServerConfig) -> anyhow::Result<axum::Router>
         state.0, state.1, state.2, state.3, state.4, state.5,
         state.6, state.7, state.8, state.9, state.10, state.11,
         state.12, state.13, state.14, state.15, state.16, state.17,
-        state.18, state.19,
+        state.18, state.19, state.20,
         config,
     ))
 }

@@ -31,6 +31,9 @@ thiserror = { workspace = true }
 # Logging
 tracing = { workspace = true }
 
+# Slug generation
+slug = "0.1"
+
 # OpenAPI schema generation
 utoipa = { version = "5", features = ["chrono"] }
 

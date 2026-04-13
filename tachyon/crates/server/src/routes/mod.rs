@@ -15,6 +15,7 @@ pub mod role;
 pub mod search;
 pub mod seo;
 pub mod session;
+pub mod space;
 pub mod tags;
 pub mod team;
 pub mod user;
@@ -38,6 +39,7 @@ pub async fn create_router() -> Router {
     use crate::routes::user::{UserState, create_user_router};
     use crate::routes::webhook::{WebhookState, create_webhook_router};
     use crate::routes::plugin::{PluginState, create_plugin_router};
+    use crate::routes::space::{SpaceState, create_space_router};
     use crate::websocket::ConnectionManager;
 
     // Use test database URL or default
@@ -74,6 +76,7 @@ pub async fn create_router() -> Router {
     let tags_state = TagsState { pool: pool.clone() };
     let webhook_state = WebhookState { pool: pool.clone() };
     let plugin_state = PluginState { pool: pool.clone() };
+    let space_state = SpaceState { pool: pool.clone() };
     let _connection_manager = ConnectionManager::new();
 
     let document_router = create_document_router().with_state(document_state);
@@ -88,6 +91,7 @@ pub async fn create_router() -> Router {
     let tags_router = create_tags_router().with_state(tags_state);
     let webhook_router = create_webhook_router().with_state(webhook_state);
     let plugin_router = create_plugin_router().with_state(plugin_state);
+    let space_router = create_space_router().with_state(space_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -101,7 +105,8 @@ pub async fn create_router() -> Router {
         .merge(notification_router)
         .merge(tags_router)
         .merge(webhook_router)
-        .merge(plugin_router);
+        .merge(plugin_router)
+        .merge(space_router);
 
     Router::new().nest("/api/v1", api_v1)
 }
@@ -212,4 +217,10 @@ pub use webhook::{
 pub use plugin::{
     create_plugin_router, list_plugins, get_plugin, create_plugin, update_plugin, delete_plugin,
     PluginState, PluginResponse, CreatePluginBody, UpdatePluginBody,
+};
+
+// Space exports
+pub use space::{
+    create_space_router, SpaceState, SpaceResponse, SpaceMemberResponse,
+    CreateSpaceBody, UpdateSpaceBody, SpaceQuery, AddMemberBody, UpdateMemberBody,
 };

@@ -830,3 +830,69 @@ pub struct WebhookInfo {
     pub created_at: String,
     pub last_triggered_at: Option<String>,
 }
+
+// ============================================================================
+// Space Types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Space {
+    pub id: String,
+    pub name: String,
+    pub slug: String,
+    pub description: Option<String>,
+    pub icon: String,
+    pub color: String,
+    pub owner_id: String,
+    pub parent_id: Option<String>,
+    pub visibility: String,
+    pub sort_order: i32,
+    pub is_default: bool,
+    pub document_count: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct CreateSpaceRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub parent_id: Option<String>,
+    pub visibility: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct UpdateSpaceRequest {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub parent_id: Option<Option<String>>,
+    pub visibility: Option<String>,
+    pub sort_order: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SpaceMember {
+    pub id: String,
+    pub space_id: String,
+    pub user_id: String,
+    pub role: String,
+    pub username: Option<String>,
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub joined_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct AddSpaceMemberRequest {
+    pub user_id: String,
+    pub role: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct UpdateSpaceMemberRequest {
+    pub role: String,
+}
