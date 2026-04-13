@@ -8,6 +8,8 @@
 //   setEditable(editorView, editable) → void
 //   focus(editorView) → void
 //   destroy(editorView) → void
+//   connectCollaboration(editorView, options) → { disconnect() }
+//   getCollaborationInfo(editorView) → { connected, users }
 
 import { Schema } from 'prosemirror-model';
 import { EditorState, Plugin, PluginKey } from 'prosemirror-state';
@@ -44,6 +46,11 @@ import {
   defaultMarkdownSerializer,
   schema as markdownSchema,
 } from 'prosemirror-markdown';
+
+// ─── Yjs Collaboration Imports ───────────────────────────────────
+import * as Y from 'yjs';
+import { ySyncPlugin, yCursorPlugin, yUndoPlugin, undo as yUndo, redo as yRedo } from 'y-prosemirror';
+import { WebsocketProvider } from 'y-websocket';
 
 // ─── OnChange plugin key ──────────────────────────────────────────
 const onChangeKey = new PluginKey('onChange');
@@ -275,13 +282,19 @@ const tachyonInputRules = inputRules({
 
 // ─── Keymap ────────────────────────────────────────────────────────
 
-function buildKeymap() {
+function buildKeymap(collaborative = false) {
   const keys = {};
 
-  // Undo/Redo
-  keys['Mod-z'] = undo;
-  keys['Mod-y'] = redo;
-  keys['Mod-Shift-z'] = redo;
+  // Undo/Redo — use Yjs collaborative undo when in collab mode
+  if (collaborative) {
+    keys['Mod-z'] = yUndo;
+    keys['Mod-y'] = yRedo;
+    keys['Mod-Shift-z'] = yRedo;
+  } else {
+    keys['Mod-z'] = undo;
+    keys['Mod-y'] = redo;
+    keys['Mod-Shift-z'] = redo;
+  }
 
   // Lists
   keys['Enter'] = splitListItem(tachyonSchema.nodes.list_item);
@@ -323,16 +336,17 @@ function createOnChangePlugin(callback) {
 // ─── Plugins ───────────────────────────────────────────────────────
 
 function createPlugins(options = {}) {
-  return [
-    buildKeymap(),
+  const plugins = [
+    buildKeymap(false),
     keymap(baseKeymap),
-    history(),
+    history(), // Only used in non-collaborative mode
     gapCursor(),
     tableEditing(),
     tachyonInputRules,
     createOnChangePlugin(options.onChange || null),
     createWikilinkPlugin(),
   ];
+  return plugins;
 }
 
 // ─── Public API ────────────────────────────────────────────────────
@@ -667,6 +681,194 @@ function createWikilinkPlugin() {
   });
 }
 
+// ─── Collaboration State ──────────────────────────────────────────
+// Tracks active collaboration connections keyed by editor instance.
+
+const collabKey = new PluginKey('collaboration');
+
+// Map of editor view -> { ydoc, provider, awareness }
+const _activeCollaborations = new WeakMap();
+
+// ─── Collaboration ────────────────────────────────────────────────
+
+/**
+ * Connect a ProseMirror editor to the CRDT collaboration server.
+ *
+ * @param {EditorView} view - The ProseMirror EditorView instance.
+ * @param {Object} options
+ * @param {string} options.documentId - The document ID to collaborate on.
+ * @param {string} options.userId - The current user's ID.
+ * @param {string} options.userName - The current user's display name.
+ * @param {string} options.serverUrl - WebSocket server URL (e.g., "ws://localhost:8080").
+ * @param {string} [options.color] - User's cursor color (auto-assigned if not provided).
+ * @param {Function} [options.onUsersChange] - Callback fired when active users change: (users: Array) => void.
+ * @returns {{ disconnect: Function, awareness: any }} Handle to disconnect from collaboration.
+ */
+function connectCollaboration(view, options) {
+  const {
+    documentId,
+    userId,
+    userName,
+    serverUrl,
+    color = null,
+    onUsersChange = null,
+  } = options;
+
+  if (!documentId || !userId) {
+    console.warn('TachyonEditor: connectCollaboration requires documentId and userId');
+    return { disconnect: () => {}, awareness: null };
+  }
+
+  // Check if already connected
+  if (_activeCollaborations.has(view)) {
+    console.warn('TachyonEditor: collaboration already connected for this editor');
+    return _activeCollaborations.get(view);
+  }
+
+  // Create a Yjs document for this collaboration session
+  const ydoc = new Y.Doc();
+  const yxml = ydoc.getXmlFragment('prosemirror');
+
+  // Connect to the WebSocket server
+  const wsUrl = `${serverUrl}/ws/crdt`;
+  const provider = new WebsocketProvider(wsUrl, documentId, ydoc, {
+    connect: true,
+    params: { documentId, userId, userName },
+  });
+
+  // Get awareness instance for presence (cursors, selections)
+  const awareness = provider.awareness;
+
+  // Set local user state
+  awareness.setLocalStateField('user', {
+    name: userName,
+    color: color || getUserColor(userId),
+  });
+
+  // Listen for awareness changes (other users joining/leaving)
+  function handleAwarenessChange() {
+    if (onUsersChange) {
+      const states = awareness.getStates();
+      const users = [];
+      states.forEach((state, clientId) => {
+        if (clientId !== awareness.clientID && state.user) {
+          users.push({
+            clientId,
+            name: state.user.name,
+            color: state.user.color,
+          });
+        }
+      });
+      onUsersChange(users);
+    }
+  }
+
+  awareness.on('change', handleAwarenessChange);
+
+  // Reconfigure the editor state with collaboration plugins.
+  // We need to replace the history plugin with yUndoPlugin since
+  // Yjs manages undo/redo collaboratively.
+  const collabPlugins = [
+    ySyncPlugin(yxml),
+    yCursorPlugin(awareness),
+    yUndoPlugin(),
+    // Re-add non-history plugins (history is replaced by yUndo)
+    buildKeymap(true), // true = use yjs undo/redo
+    keymap(baseKeymap),
+    gapCursor(),
+    tableEditing(),
+    tachyonInputRules,
+    createOnChangePlugin(null), // onChange is handled by the collaboration sync
+    createWikilinkPlugin(),
+  ];
+
+  // Store onChange callback from the original state to re-attach
+  const origOnChange = onChangeKey.getState(view.state)?.callback || null;
+
+  const newState = EditorState.create({
+    doc: view.state.doc,
+    plugins: collabPlugins,
+  });
+
+  // Re-attach onChange if there was one
+  if (origOnChange) {
+    setOnChange(view, origOnChange);
+  }
+
+  view.updateState(newState);
+
+  // Create cleanup handle
+  const collabHandle = {
+    awareness,
+    disconnect() {
+      awareness.off('change', handleAwarenessChange);
+      provider.disconnect();
+      _activeCollaborations.delete(view);
+
+      // Reconfigure editor back to non-collaborative state
+      const offlinePlugins = createPlugins({ onChange: origOnChange });
+      const offlineState = EditorState.create({
+        doc: view.state.doc,
+        plugins: offlinePlugins,
+      });
+      view.updateState(offlineState);
+
+      ydoc.destroy();
+    },
+  };
+
+  _activeCollaborations.set(view, collabHandle);
+  return collabHandle;
+}
+
+/**
+ * Get collaboration info for an editor.
+ * @param {EditorView} view
+ * @returns {{ connected: boolean, users: Array, documentId: string|null }}
+ */
+function getCollaborationInfo(view) {
+  const collab = _activeCollaborations.get(view);
+  if (!collab || !collab.awareness) {
+    return { connected: false, users: [], documentId: null };
+  }
+
+  const states = collab.awareness.getStates();
+  const users = [];
+  states.forEach((state, clientId) => {
+    if (state.user) {
+      users.push({
+        clientId,
+        name: state.user.name,
+        color: state.user.color,
+        isLocal: clientId === collab.awareness.clientID,
+      });
+    }
+  });
+
+  return {
+    connected: true,
+    users,
+    documentId: collab.awareness.clientID,
+  };
+}
+
+/**
+ * Generate a consistent color for a user based on their ID.
+ * @param {string} userId
+ * @returns {string} CSS color string
+ */
+function getUserColor(userId) {
+  const colors = [
+    '#f97316', '#ef4444', '#a855f7', '#3b82f6', '#10b981',
+    '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6', '#14b8a6',
+  ];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
 // ─── Global editor reference ──────────────────────────────────────────
 // Track the most recently created editor for toolbar command dispatch.
 let _activeEditorView = null;
@@ -681,6 +883,8 @@ const TachyonEditor = {
   setEditable,
   focus,
   destroy,
+  connectCollaboration,
+  getCollaborationInfo,
   dispatchCommand(view, commandName) {
     // If view is null/undefined, use the active editor
     const v = view || _activeEditorView;

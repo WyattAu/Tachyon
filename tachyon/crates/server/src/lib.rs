@@ -155,6 +155,7 @@ pub async fn init_app_state(
     crate::routes::webhook::WebhookState,
     crate::routes::conflict::ConflictState,
     crate::websocket::ConnectionManager,
+    crate::websocket::CrdtConnectionManager,
     tachyon_database::DatabasePool,
 )> {
     use crate::routes::review::ReviewState;
@@ -173,6 +174,7 @@ pub async fn init_app_state(
     use crate::routes::document::DocumentState;
     use crate::routes::notification::NotificationState;
     use crate::websocket::ConnectionManager;
+    use crate::websocket::CrdtConnectionManager;
     use tachyon_database::init_with_migrations;
 
     let database_url = if config.database_url.is_empty() {
@@ -239,12 +241,13 @@ pub async fn init_app_state(
     let webhook_state = WebhookState { pool: pool.clone() };
     let conflict_state = ConflictState { pool: pool.clone() };
     let connection_manager = ConnectionManager::new();
+    let crdt_connection_manager = CrdtConnectionManager::new();
 
     Ok((
         document_state, user_state, session_state, repository_state, node_state,
         catalog_state, team_state, role_state, search_state, seo_state,
         review_state, activity_state, notification_state, tags_state,
-        webhook_state, conflict_state, connection_manager, pool,
+        webhook_state, conflict_state, connection_manager, crdt_connection_manager, pool,
     ))
 }
 
@@ -270,6 +273,7 @@ pub fn build_app(
     webhook_state: crate::routes::webhook::WebhookState,
     conflict_state: crate::routes::conflict::ConflictState,
     connection_manager: crate::websocket::ConnectionManager,
+    crdt_connection_manager: crate::websocket::CrdtConnectionManager,
     pool: tachyon_database::DatabasePool,
     config: &ServerConfig,
 ) -> axum::Router {
@@ -290,6 +294,7 @@ pub fn build_app(
     use crate::routes::webhook::create_webhook_router;
     use crate::routes::conflict::create_conflict_router;
     use crate::websocket::handle_websocket_upgrade;
+    use crate::websocket::handle_crdt_websocket_upgrade;
     use axum::{Router, routing::get};
     use tower::ServiceBuilder;
     use tower_http::{
@@ -336,6 +341,11 @@ pub fn build_app(
         .route("/ws", get(handle_websocket_upgrade))
         .with_state(connection_manager);
 
+    // CRDT WebSocket needs its own router since it uses different state
+    let crdt_ws_router = Router::new()
+        .route("/ws/crdt", get(handle_crdt_websocket_upgrade))
+        .with_state(crdt_connection_manager);
+
     let swagger_ui = crate::api_docs::create_swagger_ui();
 
     let rate_limit_state = crate::middleware::RateLimitState::new(crate::middleware::RateLimitConfig {
@@ -358,6 +368,7 @@ pub fn build_app(
         .merge(health_router)
         .merge(seo_router)
         .merge(ws_router)
+        .merge(crdt_ws_router)
         .nest("/api/v1", api_v1)
         .layer(
             ServiceBuilder::new()
@@ -400,6 +411,7 @@ pub async fn build_server(config: &ServerConfig) -> anyhow::Result<axum::Router>
         state.0, state.1, state.2, state.3, state.4, state.5,
         state.6, state.7, state.8, state.9, state.10, state.11,
         state.12, state.13, state.14, state.15, state.16, state.17,
+        state.18,
         config,
     ))
 }

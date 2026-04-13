@@ -40,6 +40,9 @@ pulldown-cmark = { version = "0.9", features = ["simd"] }
 # Hashing
 sha2 = "0.10"
 
+# CRDT (base64 encoding for binary Yjs updates)
+base64 = "0.22"
+
 # Utilities
 dashmap = "5"
 walkdir = "2"

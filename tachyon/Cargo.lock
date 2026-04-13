@@ -7850,6 +7850,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "argon2",
+ "base64 0.22.1",
  "chrono",
  "dashmap 5.5.3",
  "git2",
