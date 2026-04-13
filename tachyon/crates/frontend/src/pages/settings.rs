@@ -32,6 +32,11 @@ pub fn SettingsPage() -> impl IntoView {
     let (save_message, set_save_message) = signal(String::new());
     let (saving, set_saving) = signal(false);
 
+    // Collaboration settings
+    let (collaboration_cursor_sharing, set_collaboration_cursor_sharing) = signal(true);
+    let (collaboration_presence, set_collaboration_presence) = signal(true);
+    let (collaboration_auto_connect, set_collaboration_auto_connect) = signal(false);
+
     let api_client = ApiClient::default();
     let api_client_for_load = api_client.clone();
 
@@ -247,6 +252,85 @@ pub fn SettingsPage() -> impl IntoView {
 
             // Webhooks Section
             <WebhooksSection />
+
+            // Collaboration Settings
+            <SettingsSection title="Collaboration" description="Configure real-time collaboration settings">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">"Cursor Sharing"</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">"Show your cursor position to other collaborators"</p>
+                        </div>
+                        <ToggleSwitch
+                            enabled=collaboration_cursor_sharing.get()
+                            on_toggle={move |_| set_collaboration_cursor_sharing.update(|v| *v = !*v)}
+                        />
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">"Presence Indicators"</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">"Show when other users are viewing the same document"</p>
+                        </div>
+                        <ToggleSwitch
+                            enabled=collaboration_presence.get()
+                            on_toggle={move |_| set_collaboration_presence.update(|v| *v = !*v)}
+                        />
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">"Auto-Connect Collaboration"</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">"Automatically start collaboration when opening a shared document"</p>
+                        </div>
+                        <ToggleSwitch
+                            enabled=collaboration_auto_connect.get()
+                            on_toggle={move |_| set_collaboration_auto_connect.update(|v| *v = !*v)}
+                        />
+                    </div>
+                </div>
+            </SettingsSection>
+
+            // OAuth2 / Connected Accounts
+            <SettingsSection title="Connected Accounts" description="Manage third-party authentication providers">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-white dark:bg-gray-700 rounded-lg flex items-center justify-center shadow-sm">
+                                <span class="text-lg font-bold">"G"</span>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">"Google"</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">"Sign in with Google OAuth2"</p>
+                            </div>
+                        </div>
+                        <a
+                            href="/api/auth/google/login"
+                            class="px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                        >
+                            "Connect"
+                        </a>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-white dark:bg-gray-700 rounded-lg flex items-center justify-center shadow-sm">
+                                <span class="text-lg font-bold text-gray-800 dark:text-gray-200">"GH"</span>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">"GitHub"</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">"Sign in with GitHub OAuth2"</p>
+                            </div>
+                        </div>
+                        <a
+                            href="/api/auth/github/login"
+                            class="px-3 py-1 text-xs rounded bg-gray-800 text-white hover:bg-gray-900 dark:bg-gray-600 dark:hover:bg-gray-500 transition-colors"
+                        >
+                            "Connect"
+                        </a>
+                    </div>
+                    <p class="text-xs text-gray-400 dark:text-gray-500">
+                        "OAuth2 providers must be configured on the server. Contact your administrator for setup instructions."
+                    </p>
+                </div>
+            </SettingsSection>
 
             // Account Actions
             <SettingsSection title="Account" description="Manage your account">

@@ -2,6 +2,12 @@
 // Real-time collaborative document editor with markdown preview,
 // formatting toolbar, keyboard shortcuts, auto-save, and file export.
 // Uses ProseMirror for rich text editing via the JS bridge.
+//
+// Collaboration modes:
+// - OT mode (default): Uses the legacy WebSocket OT protocol at /ws
+// - CRDT mode: Uses Yjs CRDT via /ws/crdt with connectCollaboration()
+// CRDT mode is activated when a valid JWT token is present and the user
+// clicks "Start Collaborating" in the toolbar.
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
@@ -48,6 +54,10 @@ pub struct EditorState {
     pub render_error: Option<String>,
     pub auto_save_enabled: bool,
     pub dirty: bool,
+    /// Whether CRDT collaboration mode is active (Yjs-based).
+    pub crdt_active: bool,
+    /// Active collaborators in CRDT mode (from Yjs awareness).
+    pub crdt_collaborators: Vec<CollaboratorInfo>,
 }
 
 pub fn get_user_color(user_id: &str) -> String {
@@ -57,6 +67,15 @@ pub fn get_user_color(user_id: &str) -> String {
     ];
     let hash = user_id.chars().map(|c| c as usize).sum::<usize>();
     colors[hash % colors.len()].to_string()
+}
+
+/// Information about a collaborator in CRDT mode (from Yjs awareness).
+#[derive(Clone, Debug)]
+pub struct CollaboratorInfo {
+    pub client_id: String,
+    pub name: String,
+    pub color: String,
+    pub is_local: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,6 +111,8 @@ pub fn DocumentEditor(
         presence_users: Vec::new(),
         auto_save_enabled: true,
         dirty: false,
+        crdt_active: false,
+        crdt_collaborators: Vec::new(),
     });
 
     let (connection_state, set_connection_state) = signal(ConnectionState::Disconnected);
@@ -535,7 +556,101 @@ pub fn DocumentEditor(
         });
     };
 
-    // --- Toggle auto-save ---
+    // --- Toggle CRDT collaboration mode ---
+    // When enabled, calls TachyonEditor.toggleCollaboration() which handles
+    // the full Yjs connection lifecycle. The JS side dispatches custom
+    // 'tachyon:crdt-users' events for the Rust side to render collaborator avatars.
+    let doc_id_for_crdt = document_id.clone();
+    let user_id_for_crdt = user_id.clone();
+    let user_name_for_crdt = user_name.clone();
+    let toggle_crdt = move |_| {
+        let es = editor_state.get();
+        if es.crdt_active {
+            // Disconnect: call TachyonEditor.disconnectCollaboration()
+            let _ = js_sys::eval(&format!(
+                "if(window.TachyonEditor && window.TachyonEditor.disconnectCollaboration) {{ window.TachyonEditor.disconnectCollaboration(); }}"
+            ));
+            set_editor_state.update(|s| {
+                s.crdt_active = false;
+                s.crdt_collaborators.clear();
+            });
+        } else {
+            // Connect: call TachyonEditor.toggleCollaboration() with config
+            let options = js_sys::Object::new();
+            js_sys::Reflect::set(&options, &"documentId".into(), &doc_id_for_crdt.clone().into()).ok();
+            js_sys::Reflect::set(&options, &"userId".into(), &user_id_for_crdt.clone().into()).ok();
+            js_sys::Reflect::set(&options, &"userName".into(), &user_name_for_crdt.clone().into()).ok();
+            // The JS helper reads documentId/userId/userName from the options
+            // and sets up Yjs + y-websocket + awareness, then dispatches
+            // tachyon:crdt-users events whenever the user list changes.
+            let _ = js_sys::eval(&format!(
+                "if(window.TachyonEditor && window.TachyonEditor.toggleCollaboration) {{ window.TachyonEditor.toggleCollaboration({{documentId: '{}', userId: '{}', userName: '{}'}}); }}",
+                doc_id_for_crdt.clone(),
+                user_id_for_crdt.clone(),
+                user_name_for_crdt.clone(),
+            ));
+            set_editor_state.update(|s| {
+                s.crdt_active = true;
+            });
+        }
+    };
+
+    // --- Listen for CRDT user events from JS bridge ---
+    // The JS toggleCollaboration dispatches CustomEvent('tachyon:crdt-users')
+    // with detail = JSON string of user objects.
+    {
+        if let Some(window) = web_sys::window() {
+            let set_es = set_editor_state.clone();
+            let closure = Closure::<dyn Fn(web_sys::Event)>::new(move |event: web_sys::Event| {
+                if let Some(custom) = event.dyn_ref::<web_sys::CustomEvent>() {
+                    let detail = custom.detail();
+                    if let Some(detail_str) = detail.as_string() {
+                        if let Ok(users_json) = js_sys::JSON::parse(&detail_str) {
+                            if let Some(users_arr) = users_json.dyn_ref::<js_sys::Array>() {
+                                let mut collaborators: Vec<CollaboratorInfo> = Vec::new();
+                                for i in 0..users_arr.length() {
+                                    let user_val = users_arr.get(i);
+                                    if let Some(obj) = user_val.dyn_ref::<js_sys::Object>() {
+                                        let name = js_sys::Reflect::get(obj, &"name".into())
+                                            .ok()
+                                            .and_then(|v| v.as_string())
+                                            .unwrap_or_default();
+                                        let color = js_sys::Reflect::get(obj, &"color".into())
+                                            .ok()
+                                            .and_then(|v| v.as_string())
+                                            .unwrap_or_else(|| get_user_color(&name));
+                                        let is_local = js_sys::Reflect::get(obj, &"isLocal".into())
+                                            .ok()
+                                            .and_then(|v| v.as_bool())
+                                            .unwrap_or(false);
+                                        let client_id = js_sys::Reflect::get(obj, &"clientId".into())
+                                            .ok()
+                                            .and_then(|v| v.as_string())
+                                            .unwrap_or_default();
+
+                                        collaborators.push(CollaboratorInfo {
+                                            client_id,
+                                            name,
+                                            color,
+                                            is_local,
+                                        });
+                                    }
+                                }
+                                set_es.update(|s| {
+                                    s.crdt_collaborators = collaborators;
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+            let _ = window.add_event_listener_with_callback(
+                "tachyon:crdt-users",
+                closure.as_ref().unchecked_ref(),
+            );
+            closure.forget();
+        }
+    }
     let toggle_auto_save = move |_| {
         set_editor_state.update(|s| {
             s.auto_save_enabled = !s.auto_save_enabled;
@@ -605,6 +720,59 @@ pub fn DocumentEditor(
 
     // Get initial content for the ProseMirror editor
     let editor_initial_content = document_content.get_untracked();
+
+    // --- CRDT collaborators view (extracted to avoid nested view! in closure) ---
+    let crdt_collaborators_view = move || {
+        let state = editor_state.get();
+        if state.crdt_active && !state.crdt_collaborators.is_empty() {
+            view! {
+                <div class="flex items-center gap-1 mr-1 pl-2 border-l border-gray-300 dark:border-gray-600">
+                    <span class="text-xs text-green-600 dark:text-green-400 font-medium">
+                        {state.crdt_collaborators.len()}
+                    </span>
+                    {state.crdt_collaborators.iter().map(|collab| {
+                        let initial = collab.name.chars().next().unwrap_or('?').to_uppercase().to_string();
+                        let bg_color = collab.color.clone();
+                        let title = collab.name.clone();
+                        view! {
+                            <div
+                                class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                                style={format!("background-color: {}", bg_color)}
+                                title={title}
+                            >
+                                {initial}
+                            </div>
+                        }
+                    }).collect::<Vec<_>>()}
+                </div>
+            }.into_any()
+        } else {
+            ().into_any()
+        }
+    };
+
+    // --- OT presence view (extracted to avoid nested view! in closure) ---
+    let ot_presence_view = move || {
+        let state = editor_state.get();
+        if !state.crdt_active && !state.presence_users.is_empty() {
+            state.presence_users.iter().map(|user| {
+                let initial = user.user_name.chars().next().unwrap_or('?').to_uppercase().to_string();
+                let bg_color = user.color.clone();
+                let title = user.user_name.clone();
+                view! {
+                    <div
+                        class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                        style={format!("background-color: {}", bg_color)}
+                        title={title}
+                    >
+                        {initial}
+                    </div>
+                }.into_any()
+            }).collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        }
+    };
 
     view! {
         <div class="flex flex-col h-full">
@@ -698,6 +866,22 @@ pub fn DocumentEditor(
                     >
                         "Export .md"
                     </button>
+                    // CRDT collaboration toggle
+                    <button
+                        class="px-2 py-1 text-xs rounded transition-colors"
+                        class=("border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-600 dark:bg-green-900/20 dark:text-green-400",
+                            move || !editor_state.get().crdt_active)
+                        class=("border border-gray-300 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700",
+                            move || editor_state.get().crdt_active)
+                        on:click=toggle_crdt
+                        title="Toggle real-time CRDT collaboration (Yjs)"
+                    >
+                        {move || if editor_state.get().crdt_active {
+                            "Collaborating"
+                        } else {
+                            "Collaborate"
+                        }}
+                    </button>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -712,22 +896,10 @@ pub fn DocumentEditor(
                             "Save"
                         }}
                     </button>
-                    {move || {
-                        editor_state.get().presence_users.iter().map(|user| {
-                            let initial = user.user_name.chars().next().unwrap_or('?').to_uppercase().to_string();
-                            let bg_color = user.color.clone();
-                            let title = user.user_name.clone();
-                            view! {
-                                <div
-                                    class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium"
-                                    style={format!("background-color: {}", bg_color)}
-                                    title={title}
-                                >
-                                    {initial}
-                                </div>
-                            }
-                        }).collect::<Vec<_>>()
-                    }}
+                    // CRDT collaborators (shown when CRDT mode is active)
+                    {crdt_collaborators_view}
+                    // OT presence users (shown in non-CRDT mode)
+                    {ot_presence_view}
                 </div>
             </div>
 

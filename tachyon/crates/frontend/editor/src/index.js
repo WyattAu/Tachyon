@@ -873,6 +873,73 @@ function getUserColor(userId) {
 // Track the most recently created editor for toolbar command dispatch.
 let _activeEditorView = null;
 
+/**
+ * Toggle CRDT collaboration mode for the active editor.
+ * Called from Rust via js_sys::eval when the user clicks "Collaborate".
+ *
+ * This function:
+ * 1. Connects to the CRDT WebSocket at /ws/crdt
+ * 2. Sets up Yjs + y-prosemirror + y-websocket + awareness
+ * 3. Dispatches CustomEvent('tachyon:crdt-users') whenever the user list changes
+ *    so the Rust/Leptos side can update the collaborator avatars.
+ *
+ * @param {Object} options
+ * @param {string} options.documentId - Document ID to collaborate on.
+ * @param {string} options.userId - Current user's ID.
+ * @param {string} options.userName - Current user's display name.
+ */
+function toggleCollaboration(options) {
+  const view = _activeEditorView;
+  if (!view) {
+    console.warn('TachyonEditor: no active editor to collaborate on');
+    return;
+  }
+
+  // Derive server URL from current page origin
+  const serverUrl = window.location.origin || '';
+
+  // Wrap the connectCollaboration with an onUsersChange callback
+  // that dispatches a CustomEvent for the Rust side to listen for.
+  const onUsersChange = (users) => {
+    // Include the local user in the list for display
+    const allUsers = [...users, {
+      clientId: 'local',
+      name: options.userName,
+      color: getUserColor(options.userId),
+      isLocal: true,
+    }];
+    window.dispatchEvent(new CustomEvent('tachyon:crdt-users', {
+      detail: JSON.stringify(allUsers),
+    }));
+  };
+
+  connectCollaboration(view, {
+    documentId: options.documentId,
+    userId: options.userId,
+    userName: options.userName,
+    serverUrl,
+    onUsersChange,
+  });
+}
+
+/**
+ * Disconnect CRDT collaboration for the active editor.
+ * Called from Rust via js_sys::eval when the user disables collaboration.
+ */
+function disconnectCollaboration() {
+  const view = _activeEditorView;
+  if (!view) return;
+
+  const collab = _activeCollaborations.get(view);
+  if (collab) {
+    collab.disconnect();
+    // Notify Rust side that collaborators list is empty
+    window.dispatchEvent(new CustomEvent('tachyon:crdt-users', {
+      detail: JSON.stringify([]),
+    }));
+  }
+}
+
 // ─── Export ────────────────────────────────────────────────────────
 
 const TachyonEditor = {
@@ -884,6 +951,8 @@ const TachyonEditor = {
   focus,
   destroy,
   connectCollaboration,
+  toggleCollaboration,
+  disconnectCollaboration,
   getCollaborationInfo,
   dispatchCommand(view, commandName) {
     // If view is null/undefined, use the active editor

@@ -12,6 +12,7 @@ pub mod conflict_resolver;
 pub mod document_editor;
 pub mod error_boundary;
 pub mod layout;
+pub mod onboarding;
 pub mod prose_mirror_editor;
 pub mod review_panel;
 pub mod role_badge;
@@ -28,6 +29,8 @@ pub use command_palette::{CommandItem, CommandPalette};
 pub use conflict_resolver::ConflictResolver;
 pub use document_editor::DocumentEditor;
 pub use error_boundary::AppErrorBoundary;
+#[allow(unused_imports)]
+pub use onboarding::{should_show_onboarding, OnboardingWizard};
 pub use review_panel::ReviewPanel;
 #[allow(unused_imports)]
 pub use table_of_contents::{Heading, TableOfContents};
