@@ -2,7 +2,7 @@
 
 use crate::api::ApiClient;
 use crate::types::Notification;
-use crate::components::CommandPalette;
+use crate::components::{should_show_onboarding, CommandPalette, OnboardingWizard};
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use wasm_bindgen_futures::spawn_local;
@@ -39,6 +39,19 @@ where
     let (sidebar_collapsed, set_sidebar_collapsed) = signal(false);
     let (mobile_menu_open, set_mobile_menu_open) = signal(false);
     let (palette_open, set_palette_open) = signal(false);
+    let (show_onboarding, set_show_onboarding) = signal(should_show_onboarding());
+
+    // Onboarding wizard view (extracted to avoid nested view! in closure)
+    let onboarding_view = move || {
+        if show_onboarding.get() {
+            let on_finish = Callback::new(move |()| set_show_onboarding.set(false));
+            view! {
+                <OnboardingWizard on_complete={on_finish} />
+            }.into_any()
+        } else {
+            ().into_any()
+        }
+    };
 
     let (user_id, set_user_id) = signal(None::<String>);
     let (show_user_menu, set_show_user_menu) = signal(false);
@@ -438,6 +451,7 @@ where
                 </main>
             </div>
             <CommandPalette open=palette_open set_open=set_palette_open />
+            {onboarding_view}
         </div>
     }
 }

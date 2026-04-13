@@ -355,8 +355,9 @@ pub fn build_app(
         .with_state(connection_manager);
 
     // CRDT WebSocket needs its own router since it uses different state
+    // y-websocket appends room name to URL: ws://host/ws/crdt/{documentId}
     let crdt_ws_router = Router::new()
-        .route("/ws/crdt", get(handle_crdt_websocket_upgrade))
+        .route("/ws/crdt/:room", get(handle_crdt_websocket_upgrade))
         .with_state(crdt_connection_manager);
 
     let swagger_ui = crate::api_docs::create_swagger_ui();

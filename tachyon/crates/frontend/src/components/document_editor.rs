@@ -575,19 +575,16 @@ pub fn DocumentEditor(
                 s.crdt_collaborators.clear();
             });
         } else {
-            // Connect: call TachyonEditor.toggleCollaboration() with config
-            let options = js_sys::Object::new();
-            js_sys::Reflect::set(&options, &"documentId".into(), &doc_id_for_crdt.clone().into()).ok();
-            js_sys::Reflect::set(&options, &"userId".into(), &user_id_for_crdt.clone().into()).ok();
-            js_sys::Reflect::set(&options, &"userName".into(), &user_name_for_crdt.clone().into()).ok();
-            // The JS helper reads documentId/userId/userName from the options
-            // and sets up Yjs + y-websocket + awareness, then dispatches
-            // tachyon:crdt-users events whenever the user list changes.
+            // Connect: call TachyonEditor.toggleCollaboration() with config.
+            // Escape single quotes in values to prevent JS injection.
+            let doc_id_safe = doc_id_for_crdt.replace('\'', "\\'");
+            let user_id_safe = user_id_for_crdt.replace('\'', "\\'");
+            let user_name_safe = user_name_for_crdt.replace('\'', "\\'");
             let _ = js_sys::eval(&format!(
                 "if(window.TachyonEditor && window.TachyonEditor.toggleCollaboration) {{ window.TachyonEditor.toggleCollaboration({{documentId: '{}', userId: '{}', userName: '{}'}}); }}",
-                doc_id_for_crdt.clone(),
-                user_id_for_crdt.clone(),
-                user_name_for_crdt.clone(),
+                doc_id_safe,
+                user_id_safe,
+                user_name_safe,
             ));
             set_editor_state.update(|s| {
                 s.crdt_active = true;

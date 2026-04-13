@@ -790,12 +790,12 @@ function connectCollaboration(view, options) {
     plugins: collabPlugins,
   });
 
-  // Re-attach onChange if there was one
+  view.updateState(newState);
+
+  // Re-attach onChange AFTER updateState so it takes effect on the new state.
   if (origOnChange) {
     setOnChange(view, origOnChange);
   }
-
-  view.updateState(newState);
 
   // Create cleanup handle
   const collabHandle = {
@@ -895,8 +895,13 @@ function toggleCollaboration(options) {
     return;
   }
 
-  // Derive server URL from current page origin
-  const serverUrl = window.location.origin || '';
+  // Derive WebSocket URL from current page origin.
+  // window.location.origin returns "http://host:port" but WebSocket
+  // requires "ws://" or "wss://" protocol.
+  const origin = window.location.origin || '';
+  const serverUrl = origin
+    .replace(/^http:/, 'ws:')
+    .replace(/^https:/, 'wss:');
 
   // Wrap the connectCollaboration with an onUsersChange callback
   // that dispatches a CustomEvent for the Rust side to listen for.
