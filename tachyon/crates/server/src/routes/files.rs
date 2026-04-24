@@ -705,13 +705,14 @@ mod tests {
     #[test]
     fn test_should_show_directories() {
         assert!(should_show("src", true, false));
-        assert!(should_show("docs", false, false));
+        assert!(should_show("docs", true, false));
     }
 
     #[test]
     fn test_should_show_allowed_files() {
-        assert!(should_show("readme.md", false, true));
-        assert!(!should_show("readme.md", false, false));
+        assert!(should_show("readme.md", false, false)); // .md is allowed
+        assert!(should_show("readme.md", false, true));  // show_all also works
+        assert!(!should_show("data.csv", false, false)); // .csv not allowed
     }
 
     #[test]

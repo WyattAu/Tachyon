@@ -658,14 +658,14 @@ mod tests {
         );
         assert!(invalid_doc.validate().is_err());
 
-        // Empty content
-        let invalid_doc = Document::new(
+        // Empty content is allowed (documents start blank)
+        let empty_content_doc = Document::new(
             crate::id::generate_document_id(),
             "Title".to_string(),
             user_id,
             DocumentContent::markdown("".to_string()),
         );
-        assert!(invalid_doc.validate().is_err());
+        assert!(empty_content_doc.validate().is_ok());
     }
 
     #[test]

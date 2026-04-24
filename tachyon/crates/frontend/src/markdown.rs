@@ -45,21 +45,30 @@ fn slugify_wiki_link(text: &str) -> String {
         .join("-")
 }
 
+/// Placeholder prefix used to smuggle wikilink HTML through markdown rendering
+/// without exposing raw HTML (XSS protection).
+const WIKILINK_PREFIX: &str = "\u{200B}WIKILINK";
+
+/// Escape any content that looks like our placeholder prefix to prevent collisions.
+fn escape_wikilink_placeholders(input: &str) -> String {
+    input.replace(WIKILINK_PREFIX, &format!("{}\u{FFFD}", WIKILINK_PREFIX))
+}
+
 fn preprocess_wikilinks(input: &str) -> String {
     let mut result = String::with_capacity(input.len());
     let mut chars = input.char_indices().peekable();
     let mut in_code_block = false;
+    let mut link_index = 0u32;
 
     while let Some(&(i, c)) = chars.peek() {
         if c == '`' {
-            result.push(c);
-            chars.next();
-            let tick_count = 1u32;
+            // Count consecutive backticks
+            let mut tick_count = 0u32;
             while let Some(&(_, next)) = chars.peek() {
                 if next == '`' {
                     result.push(next);
                     chars.next();
-                    break;
+                    tick_count += 1;
                 } else {
                     break;
                 }
@@ -110,10 +119,7 @@ fn preprocess_wikilinks(input: &str) -> String {
                     if found_end {
                         let (target, display) = if let Some(pipe_pos) = link_content.find('|') {
                             let (t, d) = link_content.split_at(pipe_pos);
-                            (t.trim(), &d[1..])
-                        } else if let Some(hash_pos) = link_content.find('#') {
-                            let (t, _h) = link_content.split_at(hash_pos);
-                            (t.trim(), link_content.as_str())
+                            (t.trim(), d[1..].trim())
                         } else {
                             (link_content.as_str(), link_content.as_str())
                         };
@@ -129,11 +135,17 @@ fn preprocess_wikilinks(input: &str) -> String {
                             format!("/documents/{}", slugify_wiki_link(target))
                         };
 
+                        // Use zero-width space + placeholder to avoid markdown processing
+                        // The ZWSP prevents markdown from interpreting this as HTML
                         result.push_str(&format!(
-                            r#"<a class="wikilink" href="{}">{}</a>"#,
+                            "{}{}|{}|{}{}",
+                            WIKILINK_PREFIX,
+                            link_index,
                             href_target,
-                            display
+                            display,
+                            WIKILINK_PREFIX,
                         ));
+                        link_index += 1;
                         continue;
                     } else {
                         result.push_str("[[");
@@ -157,8 +169,49 @@ fn preprocess_wikilinks(input: &str) -> String {
     result
 }
 
+fn restore_wikilinks(html: &str) -> String {
+    let mut result = String::with_capacity(html.len());
+    let mut search_from = 0;
+
+    while let Some(start) = html[search_from..].find(WIKILINK_PREFIX) {
+        let abs_start = search_from + start;
+        let after_open = abs_start + WIKILINK_PREFIX.len();
+
+        // Find the closing WIKILINK_PREFIX after the opening
+        if let Some(end_rel) = html[after_open..].find(WIKILINK_PREFIX) {
+            let abs_end = after_open + end_rel;
+            let inner = &html[after_open..abs_end];
+
+            // Parse: index|href|display
+            if let Some(pipe1) = inner.find('|') {
+                let _idx = &inner[..pipe1];
+                let after_idx = &inner[pipe1 + 1..];
+                if let Some(pipe2) = after_idx.find('|') {
+                    let href = &after_idx[..pipe2];
+                    let display = &after_idx[pipe2 + 1..];
+                    result.push_str(&html[search_from..abs_start]);
+                    result.push_str(&format!(
+                        r#"<a class="wikilink" href="{}">{}</a>"#,
+                        href, display
+                    ));
+                    search_from = abs_end + WIKILINK_PREFIX.len();
+                    continue;
+                }
+            }
+        }
+
+        // Not a valid wikilink placeholder — copy the char and move on
+        result.push_str(&html[search_from..abs_start + 1]);
+        search_from = abs_start + 1;
+    }
+
+    result.push_str(&html[search_from..]);
+    result
+}
+
 pub fn render_markdown_to_html(markdown: &str) -> String {
-    let preprocessed = preprocess_wikilinks(markdown);
+    let escaped = escape_wikilink_placeholders(markdown);
+    let preprocessed = preprocess_wikilinks(&escaped);
 
     let mut options = Options::empty();
     options.insert(Options::ENABLE_TABLES);
@@ -297,6 +350,8 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                 html.push_str("</code>");
             }
             Event::Html(text) => {
+                // Strip raw HTML for XSS protection.
+                // Wikilinks use ZWSP placeholders that survive as text events.
                 let _ = text;
             }
             Event::SoftBreak => html.push('\n'),
@@ -322,14 +377,12 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
         }
     }
 
-    html
+    restore_wikilinks(&html)
 }
 
 pub fn extract_headings(markdown: &str) -> Vec<MarkdownHeading> {
-    let preprocessed = preprocess_wikilinks(markdown);
-
     let options = Options::empty();
-    let parser = Parser::new_ext(&preprocessed, options);
+    let parser = Parser::new_ext(markdown, options);
 
     let mut headings = Vec::new();
     let mut current_heading_level: Option<u8> = None;
