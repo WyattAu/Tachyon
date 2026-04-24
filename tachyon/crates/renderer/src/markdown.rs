@@ -13,7 +13,7 @@ use tracing::{debug, instrument};
 /// Markdown parser for parsing and rendering markdown documents
 pub struct MarkdownParser {
     /// Parsing options
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     options: MarkdownOptions,
     /// Compiled pulldown-cmark options
     cmark_options: Options,
@@ -29,6 +29,7 @@ impl MarkdownParser {
     pub fn with_options(options: MarkdownOptions) -> Self {
         let cmark_options = Self::build_cmark_options(&options);
         Self {
+            #[cfg(feature = "staging")]
             options,
             cmark_options,
         }

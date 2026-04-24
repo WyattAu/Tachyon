@@ -348,7 +348,7 @@ pub struct PolicyEngine {
     /// Policy cache
     cache: DashMap<String, Vec<String>>,
     /// Maximum cache size
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     max_cache_size: usize,
     /// Current cache size
     current_cache_size: Arc<RwLock<usize>>,
@@ -363,6 +363,7 @@ impl PolicyEngine {
         Self {
             policies: DashMap::new(),
             cache: DashMap::new(),
+            #[cfg(feature = "staging")]
             max_cache_size: 1000,
             current_cache_size: Arc::new(RwLock::new(0)),
         }
@@ -379,6 +380,7 @@ impl PolicyEngine {
         Self {
             policies: DashMap::new(),
             cache: DashMap::new(),
+            #[cfg(feature = "staging")]
             max_cache_size: cache_size,
             current_cache_size: Arc::new(RwLock::new(0)),
         }

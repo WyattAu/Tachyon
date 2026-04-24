@@ -25,7 +25,10 @@ impl Default for ApiClient {
         } else {
             "http://localhost:8080/api/v1".to_string()
         };
-        let client = Self::new(&base_url);
+        let client = Self {
+            base_url,
+            auth_token: Arc::new(Mutex::new(None)),
+        };
 
         // Restore auth token from localStorage so every ApiClient instance
         // picks up the session that was persisted by the login page.
@@ -43,9 +46,9 @@ impl Default for ApiClient {
     }
 }
 
-#[allow(dead_code)]
 impl ApiClient {
     /// Create a new API client
+    #[cfg(feature = "staging")]
     pub fn new(base_url: &str) -> Self {
         Self {
             base_url: base_url.to_string(),
@@ -55,17 +58,17 @@ impl ApiClient {
 
     /// Set the authentication token
     pub fn set_auth_token(&self, token: String) {
-        *self.auth_token.lock().unwrap() = Some(token);
+        *self.auth_token.lock().unwrap_or_else(|e| e.into_inner()) = Some(token);
     }
 
     /// Clear the authentication token
     pub fn clear_auth_token(&self) {
-        *self.auth_token.lock().unwrap() = None;
+        *self.auth_token.lock().unwrap_or_else(|e| e.into_inner()) = None;
     }
 
     /// Get the authentication token
     pub fn get_auth_token(&self) -> Option<String> {
-        self.auth_token.lock().unwrap().clone()
+        self.auth_token.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     /// Get WebSocket URL from base URL
@@ -1017,30 +1020,21 @@ impl ApiClient {
 }
 
 /// API Error type
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum ApiError {
+    #[error("Network error: {0}")]
     Network(String),
+    #[error("Serialization error: {0}")]
     Serialization(String),
+    #[error("API error: {0}")]
     Api(String),
+    #[error("Not found: {0}")]
     NotFound(String),
 }
 
-impl std::fmt::Display for ApiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ApiError::Network(s) => write!(f, "Network error: {}", s),
-            ApiError::Serialization(s) => write!(f, "Serialization error: {}", s),
-            ApiError::Api(s) => write!(f, "API error: {}", s),
-            ApiError::NotFound(s) => write!(f, "Not found: {}", s),
-        }
-    }
-}
-
-impl std::error::Error for ApiError {}
-
 /// Result type for API operations
 /// Note: Reserved for future use when more API methods return Result types
-#[allow(dead_code)]
+#[cfg(feature = "staging")]
 pub type ApiResult<T> = Result<T, ApiError>;
 
 // ========================================================================
@@ -1097,7 +1091,7 @@ impl ApiClient {
     }
 
     /// Get server-side diff between two versions
-    #[allow(dead_code)] // Will be used when diff UI is wired into version history
+    #[cfg(feature = "staging")]
     pub async fn diff_versions(&self, document_id: &str, v1: i32, v2: i32) -> Result<DocumentDiffResponse, ApiError> {
         let url = format!("{}/documents/{}/versions/{}/diff/{}", self.base_url, document_id, v1, v2);
         self.get(&url).await
@@ -1242,28 +1236,28 @@ impl ApiClient {
     }
 
     /// List root spaces (no parent) for a user
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     pub async fn list_root_spaces(&self, owner_id: &str) -> Result<Vec<crate::types::Space>, ApiError> {
         let url = format!("{}/spaces/root?owner_id={}", self.base_url, owner_id);
         self.get(&url).await
     }
 
     /// List child spaces of a parent
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     pub async fn list_child_spaces(&self, parent_id: &str, owner_id: &str) -> Result<Vec<crate::types::Space>, ApiError> {
         let url = format!("{}/spaces/{}/children?owner_id={}", self.base_url, parent_id, owner_id);
         self.get(&url).await
     }
 
     /// Get a single space
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     pub async fn get_space(&self, space_id: &str) -> Result<crate::types::Space, ApiError> {
         let url = format!("{}/spaces/{}", self.base_url, space_id);
         self.get(&url).await
     }
 
     /// Get the default (personal) space for a user
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     pub async fn get_default_space(&self, owner_id: &str) -> Result<crate::types::Space, ApiError> {
         let url = format!("{}/spaces/default?owner_id={}", self.base_url, owner_id);
         self.get(&url).await
@@ -1312,7 +1306,7 @@ impl ApiClient {
     }
 
     /// Move a document to a space
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     pub async fn move_document_to_space(&self, document_id: &str, space_id: Option<&str>) -> Result<(), ApiError> {
         let url = format!("{}/spaces/move-document/{}", self.base_url, document_id);
         let body = serde_json::json!({ "space_id": space_id });

@@ -18,11 +18,13 @@ pub use policy::{Policy, PolicyEngine, PolicyRule, PolicyType};
 pub use session::{SessionManager, SessionStore};
 pub use types::{AuthContext, Resource, Subject};
 
-// Re-export tachyon-core types for convenience
+#[doc(hidden)]
 pub use tachyon_core::id::{SessionId, UserId};
+#[doc(hidden)]
 pub use tachyon_core::types::session::{
     Session, SessionStatus, SessionToken, SessionType, TokenType,
 };
+#[doc(hidden)]
 pub use tachyon_core::types::user::{User, UserAction, UserPermissions, UserRole, UserType};
 
 /// RBAC library version

@@ -2,7 +2,7 @@
 // Manages server configuration for HTTP/2, TLS, and authentication
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::time::Duration;
 
 /// Server configuration
@@ -138,7 +138,7 @@ pub struct RateLimitConfig {
     pub cleanup_interval_secs: u64,
     /// Per-endpoint rate limits
     #[serde(default)]
-    pub endpoint_limits: HashMap<String, EndpointRateLimit>,
+    pub endpoint_limits: BTreeMap<String, EndpointRateLimit>,
 }
 
 /// Per-endpoint rate limit
@@ -169,7 +169,7 @@ pub struct SecurityConfig {
     pub csp_report_only: bool,
     /// Custom CSP directives (override defaults)
     #[serde(default)]
-    pub csp_directives: HashMap<String, String>,
+    pub csp_directives: BTreeMap<String, String>,
     /// Enable Content-Security-Policy header
     pub csp_enabled: bool,
     /// Override default CSP with a custom value
@@ -362,7 +362,7 @@ impl Default for GuestConfig {
 
 impl Default for RateLimitConfig {
     fn default() -> Self {
-        let mut endpoint_limits = HashMap::new();
+        let mut endpoint_limits = BTreeMap::new();
 
         endpoint_limits.insert(
             "/api/v1/auth/login".to_string(),
@@ -406,7 +406,7 @@ impl Default for SecurityConfig {
             hsts_include_subdomains: true,
             hsts_preload: false,
             csp_report_only: false,
-            csp_directives: HashMap::new(),
+            csp_directives: BTreeMap::new(),
             csp_enabled: true,
             csp_custom: None,
             permissions_policy: true,

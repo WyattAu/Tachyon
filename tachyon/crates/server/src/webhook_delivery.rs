@@ -11,7 +11,8 @@ const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
 const MAX_BACKOFF: Duration = Duration::from_secs(60);
 
 fn compute_signature(secret: &str, body: &[u8]) -> String {
-    let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
+    let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
+        .unwrap_or_else(|_| HmacSha256::new_from_slice(b"").unwrap());
     mac.update(body);
     let result = mac.finalize();
     hex::encode(result.into_bytes())
@@ -82,7 +83,7 @@ async fn deliver_with_retry(
     Ok(())
 }
 
-pub async fn deliver_event(pool: DatabasePool, event_type: &str, payload: &serde_json::Value) {
+pub async fn deliver_event(pool: DatabasePool, http_client: reqwest::Client, event_type: &str, payload: &serde_json::Value) {
     let webhooks = match WebhookRepository::get_active_by_event(&pool, event_type).await {
         Ok(w) => w,
         Err(e) => {
@@ -106,8 +107,9 @@ pub async fn deliver_event(pool: DatabasePool, event_type: &str, payload: &serde
         let webhook_url = webhook.url.clone();
         let webhook_secret = webhook.secret.clone();
 
+        let http_client = http_client.clone();
         tokio::spawn(async move {
-            let client = reqwest::Client::new();
+            let client = http_client;
 
             let _ = deliver_with_retry(
                 &client,

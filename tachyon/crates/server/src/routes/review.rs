@@ -20,11 +20,12 @@ use tracing::info;
 #[derive(Clone)]
 pub struct ReviewState {
     pub pool: DatabasePool,
+    pub http_client: reqwest::Client,
 }
 
 impl ReviewState {
     pub fn new(pool: DatabasePool) -> Self {
-        Self { pool }
+        Self { pool, http_client: reqwest::Client::new() }
     }
 }
 
@@ -149,7 +150,7 @@ pub async fn create_review(
 
     info!("Review created for document {}: {}", document_id, review.id);
 
-    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), "review_created", &serde_json::json!({
+    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), state.http_client.clone(), "review_created", &serde_json::json!({
         "review_id": review.id.clone(),
         "document_id": document_id.clone(),
     }));
@@ -251,7 +252,7 @@ pub async fn update_review(
         _ => "review_updated",
     };
 
-    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), notification_type, &serde_json::json!({
+    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), state.http_client.clone(), notification_type, &serde_json::json!({
         "review_id": review_id.clone(),
         "status": body.status.clone(),
     }));

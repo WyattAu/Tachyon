@@ -29,6 +29,7 @@ pub struct DocumentState {
     pub repository: DocumentRepository,
     pub guest_config: GuestConfig,
     pub index_manager: Option<Arc<Mutex<IndexManager>>>,
+    pub http_client: reqwest::Client,
 }
 
 impl DocumentState {
@@ -39,6 +40,7 @@ impl DocumentState {
             repository,
             guest_config: GuestConfig::default(),
             index_manager: None,
+            http_client: reqwest::Client::new(),
         }
     }
 
@@ -49,6 +51,7 @@ impl DocumentState {
             repository,
             guest_config,
             index_manager: None,
+            http_client: reqwest::Client::new(),
         }
     }
 
@@ -429,7 +432,7 @@ pub async fn create_document(
 
     info!("Document created successfully: {}", response.id);
 
-    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), "document_created", &serde_json::json!({
+    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), state.http_client.clone(), "document_created", &serde_json::json!({
         "document_id": response.id.clone(),
         "title": response.title.clone(),
     }));
@@ -655,7 +658,7 @@ pub async fn update_document(
 
     info!("Document updated successfully: {}", document_id);
 
-    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), "document_updated", &serde_json::json!({
+    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), state.http_client.clone(), "document_updated", &serde_json::json!({
         "document_id": document_id.clone(),
         "title": response.title.clone(),
     }));
@@ -688,7 +691,7 @@ pub async fn delete_document(
             state.delete_from_tantivy(&document_id).await;
             info!("Document deleted: {}", document_id);
 
-            let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), "document_deleted", &serde_json::json!({
+            let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), state.http_client.clone(), "document_deleted", &serde_json::json!({
                 "document_id": document_id.clone(),
             }));
 

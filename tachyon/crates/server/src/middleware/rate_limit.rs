@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
 use tracing::{debug, warn};
 
 #[derive(Debug, Clone)]
@@ -154,24 +153,21 @@ pub struct RateLimitInfo {
 #[derive(Debug)]
 #[allow(dead_code)]
 struct InMemoryStore {
-    buckets: RwLock<HashMap<String, TokenBucket>>,
+    buckets: dashmap::DashMap<String, TokenBucket>,
     #[allow(dead_code)]
-    last_cleanup: RwLock<Instant>,
+    last_cleanup: std::sync::RwLock<Instant>,
 }
 
 impl InMemoryStore {
     fn new() -> Self {
         Self {
-            buckets: RwLock::new(HashMap::new()),
-            last_cleanup: RwLock::new(Instant::now()),
+            buckets: dashmap::DashMap::new(),
+            last_cleanup: std::sync::RwLock::new(Instant::now()),
         }
     }
     
     async fn check_rate_limit(&self, key: &str, limit: RateLimit) -> Result<RateLimitInfo, ()> {
-        let mut buckets = self.buckets.write().await;
-        
-        let bucket = buckets
-            .entry(key.to_string())
+        let mut bucket = self.buckets.entry(key.to_string())
             .or_insert_with(|| TokenBucket::new(limit.max_requests, limit.window_secs));
         
         if bucket.try_consume(1.0) {
@@ -198,35 +194,18 @@ impl InMemoryStore {
     
     #[allow(dead_code)]
     async fn cleanup_expired(&self, max_age_secs: u64) {
-        let mut last_cleanup = self.last_cleanup.write().await;
-        let now = Instant::now();
+        let cutoff = Instant::now() - Duration::from_secs(max_age_secs);
+        self.buckets.retain(|_, bucket| bucket.last_refill > cutoff);
+        *self.last_cleanup.write().unwrap() = Instant::now();
         
-        if now.duration_since(*last_cleanup).as_secs() < max_age_secs {
-            return;
-        }
-        
-        *last_cleanup = now;
-        drop(last_cleanup);
-        
-        let mut buckets = self.buckets.write().await;
-        buckets.retain(|_, bucket| {
-            bucket.refill();
-            bucket.tokens > 0.0
-        });
-        
-        debug!("Rate limit cleanup completed, {} buckets remaining", buckets.len());
+        debug!("Rate limit cleanup completed, {} buckets remaining", self.buckets.len());
     }
 }
 
 #[derive(Clone)]
-pub enum RateLimitStore {
+pub(crate) enum RateLimitStore {
     #[allow(private_interfaces)]
     InMemory(Arc<InMemoryStore>),
-    #[allow(dead_code)]
-    Redis {
-        #[allow(dead_code)]
-        url: String,
-    },
 }
 
 impl RateLimitStore {
@@ -234,25 +213,15 @@ impl RateLimitStore {
         RateLimitStore::InMemory(Arc::new(InMemoryStore::new()))
     }
     
-    #[allow(dead_code)]
-    pub fn redis(url: String) -> Self {
-        RateLimitStore::Redis { url }
-    }
-    
     async fn check(&self, key: &str, limit: RateLimit) -> Result<RateLimitInfo, ()> {
         match self {
             RateLimitStore::InMemory(store) => store.check_rate_limit(key, limit).await,
-            RateLimitStore::Redis { .. } => {
-                Err(())
-            }
         }
     }
     
-    #[allow(dead_code)]
     async fn cleanup(&self, max_age_secs: u64) {
         match self {
             RateLimitStore::InMemory(store) => store.cleanup_expired(max_age_secs).await,
-            RateLimitStore::Redis { .. } => {}
         }
     }
 }
@@ -265,13 +234,13 @@ pub struct RateLimitState {
 
 impl RateLimitState {
     pub fn new(config: RateLimitConfig) -> Self {
-        let store = if let Some(ref redis_url) = config.redis_url {
-            RateLimitStore::redis(redis_url.clone())
-        } else {
-            RateLimitStore::in_memory()
-        };
-        
-        Self { config, store }
+        if config.redis_url.is_some() {
+            tracing::warn!("Redis rate limiting is not yet implemented; falling back to in-memory");
+        }
+        Self {
+            config,
+            store: RateLimitStore::in_memory(),
+        }
     }
     
     pub fn in_memory() -> Self {
@@ -349,15 +318,18 @@ pub async fn rate_limit_middleware(
             
             headers.insert(
                 "X-RateLimit-Limit",
-                axum::http::HeaderValue::from_str(&info.limit.to_string()).unwrap(),
+                axum::http::HeaderValue::from_str(&info.limit.to_string())
+                    .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
             );
             headers.insert(
                 "X-RateLimit-Remaining",
-                axum::http::HeaderValue::from_str(&info.remaining.to_string()).unwrap(),
+                axum::http::HeaderValue::from_str(&info.remaining.to_string())
+                    .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
             );
             headers.insert(
                 "X-RateLimit-Reset",
-                axum::http::HeaderValue::from_str(&info.reset.to_string()).unwrap(),
+                axum::http::HeaderValue::from_str(&info.reset.to_string())
+                    .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
             );
             
             Ok(response)

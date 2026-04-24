@@ -220,7 +220,7 @@ impl PresenceRepository {
     pub async fn list_by_document(&self, document_id: &str) -> DatabaseResult<Vec<Presence>> {
         let sql = format!(
             "{} WHERE document_id = $1::uuid AND last_seen_at > NOW() - INTERVAL '{} seconds' \
-             ORDER BY last_seen_at DESC",
+             ORDER BY last_seen_at DESC LIMIT 200",
             PRESENCE_SELECT_SQL, PRESENCE_TTL_SECS
         );
 
@@ -238,7 +238,7 @@ impl PresenceRepository {
     pub async fn list_by_user(&self, user_id: &str) -> DatabaseResult<Vec<Presence>> {
         let sql = format!(
             "{} WHERE user_id = $1::uuid AND last_seen_at > NOW() - INTERVAL '{} seconds' \
-             ORDER BY last_seen_at DESC",
+             ORDER BY last_seen_at DESC LIMIT 100",
             PRESENCE_SELECT_SQL, PRESENCE_TTL_SECS
         );
 

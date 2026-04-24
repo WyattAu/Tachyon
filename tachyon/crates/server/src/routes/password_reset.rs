@@ -20,6 +20,7 @@ use crate::middleware::auth::Claims;
 #[derive(Clone)]
 pub struct PasswordResetState {
     pub pool: DatabasePool,
+    pub client: reqwest::Client,
 }
 
 pub fn create_password_reset_router() -> Router<PasswordResetState> {
@@ -80,7 +81,7 @@ fn generate_token() -> String {
     uuid::Uuid::new_v4().to_string().replace('-', "")
 }
 
-async fn send_email_webhook(to: &str, subject: &str, body: &str) {
+async fn send_email_webhook(client: &reqwest::Client, to: &str, subject: &str, body: &str) {
     let webhook_url = std::env::var("TACHYON_EMAIL_WEBHOOK_URL")
         .unwrap_or_else(|_| "/dev/null".to_string());
 
@@ -89,7 +90,6 @@ async fn send_email_webhook(to: &str, subject: &str, body: &str) {
         return;
     }
 
-    let client = reqwest::Client::new();
     let payload = serde_json::json!({
         "to": to,
         "subject": subject,
@@ -155,6 +155,7 @@ pub async fn request_password_reset(
     );
 
     send_email_webhook(
+        &state.client,
         &body.email,
         "Tachyon Password Reset",
         &format!(
@@ -335,6 +336,7 @@ pub async fn request_email_verification(
     );
 
     send_email_webhook(
+        &state.client,
         &body.email,
         "Tachyon Email Verification",
         &format!(

@@ -245,7 +245,7 @@ pub async fn download_site(
 /// Row type for fetching documents from the database.
 #[derive(Debug, sqlx::FromRow)]
 struct DocRow {
-    #[allow(dead_code)]
+#[cfg(feature = "staging")]
     id: String,
     title: String,
     slug: String,

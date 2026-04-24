@@ -923,12 +923,9 @@ fn apply_pagination(
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> (String, Option<i64>, Option<i64>) {
-    match (limit, offset) {
-        (Some(l), Some(o)) => (format!("{} LIMIT ${} OFFSET ${}", base_sql, count_placeholders(base_sql) + 1, count_placeholders(base_sql) + 2), Some(l), Some(o)),
-        (Some(l), None) => (format!("{} LIMIT ${}", base_sql, count_placeholders(base_sql) + 1), Some(l), None),
-        (None, Some(o)) => (format!("{} OFFSET ${}", base_sql, count_placeholders(base_sql) + 1), None, Some(o)),
-        (None, None) => (base_sql.to_string(), None, None),
-    }
+    let effective_limit = limit.unwrap_or(100);
+    let effective_offset = offset.unwrap_or(0);
+    (format!("{} LIMIT ${} OFFSET ${}", base_sql, count_placeholders(base_sql) + 1, count_placeholders(base_sql) + 2), Some(effective_limit), Some(effective_offset))
 }
 
 /// Count the number of $N placeholders in a SQL query

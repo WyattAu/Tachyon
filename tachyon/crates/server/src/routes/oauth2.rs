@@ -37,6 +37,7 @@ pub struct OAuth2State {
     pub jwt_audience: String,
     pub config: OAuth2Config,
     pub pool: tachyon_database::DatabasePool,
+    pub client: reqwest::Client,
 }
 
 pub fn create_oauth2_router() -> Router<OAuth2State> {
@@ -52,7 +53,6 @@ pub fn create_oauth2_router() -> Router<OAuth2State> {
 // ============================================================================
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct CallbackQuery {
     code: String,
     state: Option<String>,
@@ -120,7 +120,7 @@ async fn google_callback(
     let redirect_uri = build_redirect_uri(&state.config, "google");
 
     // Exchange code for token
-    let token_resp = exchange_google_code(&client_id, &client_secret, &redirect_uri, &query.code).await;
+    let token_resp = exchange_google_code(&state.client, &client_id, &client_secret, &redirect_uri, &query.code).await;
     let access_token = match token_resp {
         Ok(data) => data["access_token"].as_str().unwrap_or("").to_string(),
         Err(e) => {
@@ -133,7 +133,7 @@ async fn google_callback(
     };
 
     // Fetch user info from Google
-    let user_info = fetch_google_user_info(&access_token).await;
+    let user_info = fetch_google_user_info(&state.client, &access_token).await;
     let user = match user_info {
         Ok(u) => u,
         Err(e) => {
@@ -157,12 +157,12 @@ async fn google_callback(
 }
 
 async fn exchange_google_code(
+    client: &reqwest::Client,
     client_id: &str,
     client_secret: &str,
     redirect_uri: &str,
     code: &str,
 ) -> Result<serde_json::Value, String> {
-    let client = reqwest::Client::new();
     let resp = client
         .post("https://oauth2.googleapis.com/token")
         .form(&[
@@ -185,8 +185,7 @@ async fn exchange_google_code(
     resp.json().await.map_err(|e| format!("Failed to parse token response: {}", e))
 }
 
-async fn fetch_google_user_info(access_token: &str) -> Result<OAuthUserInfo, String> {
-    let client = reqwest::Client::new();
+async fn fetch_google_user_info(client: &reqwest::Client, access_token: &str) -> Result<OAuthUserInfo, String> {
     let resp = client
         .get("https://www.googleapis.com/oauth2/v2/userinfo")
         .bearer_auth(access_token)
@@ -257,7 +256,7 @@ async fn github_callback(
     let redirect_uri = build_redirect_uri(&state.config, "github");
 
     // Exchange code for token
-    let token_resp = exchange_github_code(&client_id, &client_secret, &redirect_uri, &query.code).await;
+    let token_resp = exchange_github_code(&state.client, &client_id, &client_secret, &redirect_uri, &query.code).await;
     let access_token = match token_resp {
         Ok(token) => token,
         Err(e) => {
@@ -270,7 +269,7 @@ async fn github_callback(
     };
 
     // Fetch user info from GitHub
-    let user_info = fetch_github_user_info(&access_token).await;
+    let user_info = fetch_github_user_info(&state.client, &access_token).await;
     let user = match user_info {
         Ok(u) => u,
         Err(e) => {
@@ -294,12 +293,12 @@ async fn github_callback(
 }
 
 async fn exchange_github_code(
+    client: &reqwest::Client,
     client_id: &str,
     client_secret: &str,
     redirect_uri: &str,
     code: &str,
 ) -> Result<String, String> {
-    let client = reqwest::Client::new();
 
     // GitHub uses JSON accept header for token endpoint
     let resp = client
@@ -330,8 +329,7 @@ async fn exchange_github_code(
         .ok_or_else(|| "No access_token in response".to_string())
 }
 
-async fn fetch_github_user_info(access_token: &str) -> Result<OAuthUserInfo, String> {
-    let client = reqwest::Client::new();
+async fn fetch_github_user_info(client: &reqwest::Client, access_token: &str) -> Result<OAuthUserInfo, String> {
 
     // Fetch user profile
     let resp = client

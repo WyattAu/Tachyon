@@ -82,7 +82,7 @@ impl ConnectedAccountRepository {
             r#"SELECT id, user_id, provider, provider_user_id, provider_email, provider_username, avatar_url, access_token, refresh_token, token_expires_at, connected_at, last_used_at
               FROM connected_accounts
               WHERE user_id = $1
-              ORDER BY connected_at DESC"#
+              ORDER BY connected_at DESC LIMIT 50"#
         )
         .bind(user_id)
         .fetch_all(&mut *conn)

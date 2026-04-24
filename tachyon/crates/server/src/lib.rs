@@ -110,6 +110,7 @@
 pub mod api_docs;
 pub mod audit;
 pub mod config;
+pub mod error;
 pub mod conflict;
 pub mod crdt;
 pub mod graph_extractor;
@@ -121,10 +122,14 @@ pub mod validation;
 pub mod webhook_delivery;
 pub mod websocket;
 
+#[doc(hidden)]
 pub use api_docs::*;
+#[doc(hidden)]
 pub use audit::*;
+#[doc(hidden)]
 #[allow(ambiguous_glob_reexports)]
 pub use config::*;
+#[doc(hidden)]
 pub use middleware::*;
 
 use axum::extract::State;
@@ -163,6 +168,7 @@ pub async fn init_app_state(
     crate::websocket::ConnectionManager,
     crate::websocket::CrdtConnectionManager,
     tachyon_database::DatabasePool,
+    reqwest::Client,
 )> {
     use crate::routes::review::ReviewState;
     use crate::routes::activity::ActivityState;
@@ -258,12 +264,13 @@ pub async fn init_app_state(
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let connection_manager = ConnectionManager::new();
     let crdt_connection_manager = CrdtConnectionManager::new();
+    let http_client = reqwest::Client::new();
 
     Ok((
         document_state, user_state, session_state, repository_state, node_state,
         catalog_state, team_state, role_state, search_state, seo_state,
         review_state, activity_state, notification_state, tags_state,
-        webhook_state, plugin_state, space_state,         conflict_state, onboarding_state, connection_manager, crdt_connection_manager, pool,
+        webhook_state, plugin_state, space_state,         conflict_state, onboarding_state, connection_manager, crdt_connection_manager, pool, http_client,
     ))
 }
 
@@ -294,6 +301,7 @@ pub fn build_app(
     connection_manager: crate::websocket::ConnectionManager,
     crdt_connection_manager: crate::websocket::CrdtConnectionManager,
     pool: tachyon_database::DatabasePool,
+    http_client: reqwest::Client,
     config: &ServerConfig,
 ) -> axum::Router {
     use crate::routes::document::create_document_router;
@@ -385,9 +393,10 @@ pub fn build_app(
         jwt_audience: config.jwt.audience.clone(),
         config: config.oauth2.clone(),
         pool: pool.clone(),
+        client: http_client.clone(),
     };
     let oauth2_router = create_oauth2_router().with_state(oauth2_state);
-    let password_reset_state = PasswordResetState { pool: pool.clone() };
+    let password_reset_state = PasswordResetState { pool: pool.clone(), client: http_client.clone() };
     let password_reset_router = create_password_reset_router().with_state(password_reset_state);
 
     let files_root = std::env::var("TACHYON_FILES_ROOT")
@@ -512,7 +521,7 @@ pub async fn build_server(config: &ServerConfig) -> anyhow::Result<axum::Router>
         state.0, state.1, state.2, state.3, state.4, state.5,
         state.6, state.7, state.8, state.9, state.10, state.11,
         state.12, state.13, state.14, state.15, state.16, state.17,
-        state.18, state.19, state.20, state.21,
+        state.18, state.19, state.20, state.21, state.22,
         config,
     ))
 }
@@ -619,13 +628,9 @@ async fn metrics_handler(
 /// metrics::histogram!("request_duration_seconds").record(duration.as_secs_f64());
 /// ```
 async fn prometheus_metrics_handler() -> String {
-    // The global Prometheus exporter is installed in `install_metrics()`.
-    // We render the current metrics as a string.
-    let renderer = metrics_exporter_prometheus::PrometheusBuilder::new()
-        .install_recorder()
-        .expect("failed to install Prometheus recorder");
-
-    renderer.render()
+    // Use the singleton installed by install_metrics() — calling
+    // install_recorder() here would panic on the 2nd request.
+    install_metrics().render()
 }
 
 /// Install the Prometheus metrics exporter.

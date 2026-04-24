@@ -360,7 +360,7 @@ impl Default for FieldWeights {
 /// Aggregates multiple search results from different queries
 pub struct ResultAggregator {
     /// Field weights for scoring
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     weights: FieldWeights,
 }
 
@@ -370,7 +370,10 @@ impl ResultAggregator {
     /// # Arguments
     /// * `weights` - Field weights
     pub fn new(weights: FieldWeights) -> Self {
-        Self { weights }
+        Self {
+            #[cfg(feature = "staging")]
+            weights,
+        }
     }
 
     /// Create new result aggregator with default weights

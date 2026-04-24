@@ -134,7 +134,7 @@ impl SubscriptionRepository {
     }
 
     pub async fn list_all(&self) -> DatabaseResult<Vec<Subscription>> {
-        let sql = format!("{} ORDER BY created_at DESC", SUB_SELECT);
+        let sql = format!("{} ORDER BY created_at DESC LIMIT 100", SUB_SELECT);
         sqlx::query_as::<_, Subscription>(&sql)
             .fetch_all(self.pool.inner())
             .await
@@ -222,7 +222,7 @@ impl InvoiceRepository {
 
     #[instrument(skip(self))]
     pub async fn list_by_org(&self, organization_id: &str) -> DatabaseResult<Vec<Invoice>> {
-        let sql = format!("{} WHERE organization_id = $1 ORDER BY invoice_date DESC", INV_SELECT);
+        let sql = format!("{} WHERE organization_id = $1 ORDER BY invoice_date DESC LIMIT 100", INV_SELECT);
         sqlx::query_as::<_, Invoice>(&sql)
             .bind(organization_id)
             .fetch_all(self.pool.inner())
@@ -321,7 +321,7 @@ impl NotificationPreferenceRepository {
         let sql = r#"
             SELECT user_id::TEXT, notification_type, enabled, channel, updated_at::TEXT
             FROM notification_preferences WHERE user_id = $1
-            ORDER BY notification_type
+            ORDER BY notification_type LIMIT 50
         "#;
         sqlx::query_as::<_, NotificationPreference>(&sql)
             .bind(user_id)

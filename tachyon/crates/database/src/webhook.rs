@@ -47,7 +47,7 @@ impl WebhookRepository {
         let results = query_as::<_, Webhook>(
             r#"SELECT id, url, events, secret, active, created_at, last_triggered_at
               FROM webhooks
-              ORDER BY created_at DESC"#
+              ORDER BY created_at DESC LIMIT 100"#
         )
         .fetch_all(&mut *conn)
         .await
@@ -70,7 +70,7 @@ impl WebhookRepository {
         let results = query_as::<_, Webhook>(
             r#"SELECT id, url, events, secret, active, created_at, last_triggered_at
               FROM webhooks
-              WHERE active = true AND $1 = ANY(events)"#
+              WHERE active = true AND $1 = ANY(events) LIMIT 50"#
         )
         .bind(event)
         .fetch_all(&mut *conn)

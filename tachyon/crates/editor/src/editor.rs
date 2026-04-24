@@ -24,14 +24,14 @@ pub struct Editor {
     highlighter: Highlighter,
     search: Search,
     is_dirty: bool,
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     word_wrap: bool,
     tab_size: usize,
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     auto_indent: bool,
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     bracket_matching: bool,
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     line_numbers: bool,
     current_search_results: Vec<SearchResult>,
     current_search_index: usize,
@@ -59,10 +59,14 @@ impl Editor {
             highlighter: Highlighter::new(),
             search: Search::new(),
             is_dirty: false,
+            #[cfg(feature = "staging")]
             word_wrap: false,
             tab_size: 2,
+            #[cfg(feature = "staging")]
             auto_indent: true,
+            #[cfg(feature = "staging")]
             bracket_matching: true,
+            #[cfg(feature = "staging")]
             line_numbers: true,
             current_search_results: Vec::new(),
             current_search_index: 0,

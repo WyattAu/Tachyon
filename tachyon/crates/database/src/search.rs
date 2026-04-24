@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query, Row};
 use tracing::{debug, info, instrument};
 
-#[allow(dead_code)]
+#[cfg(feature = "staging")]
 const DOCUMENT_SELECT_SQL: &str = r#"
     SELECT 
         id::text as id,

@@ -25,7 +25,6 @@ use tokio::sync::RwLock;
 use tracing::{debug, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct Claims {
     sub: String,
     iss: String,
@@ -83,34 +82,25 @@ pub enum AuthMethod {
     Bearer,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    #[error("Missing authorization header")]
     MissingAuthHeader,
+    #[error("Invalid token format")]
     InvalidTokenFormat,
+    #[error("Token expired")]
     TokenExpired,
+    #[error("Invalid signature")]
     InvalidSignature,
+    #[error("Invalid API key")]
     InvalidApiKey,
+    #[error("User not found")]
     UserNotFound,
+    #[error("Insufficient permissions")]
     InsufficientPermissions,
+    #[error("Internal error: {0}")]
     InternalError(String),
 }
-
-impl std::fmt::Display for AuthError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::MissingAuthHeader => write!(f, "Missing authentication header"),
-            Self::InvalidTokenFormat => write!(f, "Invalid token format"),
-            Self::TokenExpired => write!(f, "Token expired"),
-            Self::InvalidSignature => write!(f, "Invalid token signature"),
-            Self::InvalidApiKey => write!(f, "Invalid API key"),
-            Self::UserNotFound => write!(f, "User not found"),
-            Self::InsufficientPermissions => write!(f, "Insufficient permissions"),
-            Self::InternalError(msg) => write!(f, "Internal error: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for AuthError {}
 
 #[derive(Clone)]
 pub struct AuthState {
@@ -192,7 +182,7 @@ impl AuthState {
 
         let prefix = &api_key[..12];
         let hash = Sha256::digest(api_key.as_bytes());
-        let hash_hex: String = hash.iter().map(|b| format!("{:02x}", b)).collect();
+        let hash_hex = hex::encode(hash);
 
         let mut conn = self.pool.acquire().await
             .map_err(|e| AuthError::InternalError(format!("Database error: {}", e)))?;
@@ -529,7 +519,7 @@ mod tests {
     fn test_auth_error_display() {
         assert_eq!(
             AuthError::MissingAuthHeader.to_string(),
-            "Missing authentication header"
+            "Missing authorization header"
         );
         assert_eq!(AuthError::TokenExpired.to_string(), "Token expired");
     }

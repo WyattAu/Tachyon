@@ -8,16 +8,17 @@ pub mod auth_guard;
 pub mod breadcrumbs;
 pub mod catalog;
 pub mod collaborative_cursors;
-#[allow(dead_code)]
+#[cfg(feature = "staging")]
 pub mod presence_indicators;
 pub mod command_palette;
 pub mod common;
 pub mod conflict_resolver;
+#[cfg(feature = "staging")]
 pub mod editor_preview;
 pub mod editor_search;
-#[allow(dead_code)]
+#[cfg(feature = "staging")]
 pub mod editor_settings;
-#[allow(dead_code)]
+#[cfg(feature = "staging")]
 pub mod editor_split;
 pub mod editor_toolbar;
 pub mod empty_state;
@@ -35,7 +36,6 @@ pub mod markdown_preview;
 pub mod update_banner;
 pub mod version_history;
 
-#[allow(unused_imports)]
 pub use activity_feed::{Activity, ActivityFeed, ActivityType};
 pub use app_shell::AppShell;
 pub use client_search::ClientSearch;
@@ -45,15 +45,8 @@ pub use breadcrumbs::{BreadcrumbItem, Breadcrumbs};
 pub use collaborative_cursors::{AwarenessState, CollaborativeCursors, RemoteCursor};
 #[allow(unused_imports)]
 pub use command_palette::{CommandItem, CommandPalette};
-#[allow(unused_imports)]
-pub use presence_indicators::{PresenceIndicators as CollabPresenceIndicators, PresenceUser as CollabPresenceUser};
 pub use conflict_resolver::ConflictResolver;
-pub use editor_preview::EditorPreview;
 pub use editor_search::EditorSearch;
-#[allow(unused_imports)]
-pub use editor_settings::{EditorSettings, EditorSettingsData};
-#[allow(unused_imports)]
-pub use editor_split::{EditorSplit, SplitMode};
 pub use editor_toolbar::EditorToolbar;
 #[allow(unused_imports)]
 pub use empty_state::{EmptyDocuments, EmptyNotifications, EmptySearch};
@@ -70,7 +63,14 @@ pub use onboarding::{should_show_onboarding, OnboardingWizard};
 pub use review_panel::ReviewPanel;
 #[allow(unused_imports)]
 pub use skeleton::{SkeletonCard, SkeletonDocumentList, SkeletonEditor, SkeletonTable, SkeletonText};
-#[allow(unused_imports)]
-pub use table_of_contents::{Heading, TableOfContents};
 pub use template_selector::TemplateSelector;
 pub use version_history::VersionHistory;
+#[cfg(feature = "staging")]
+pub use editor_preview::EditorPreview;
+#[cfg(feature = "staging")]
+pub use editor_settings::{EditorSettings, EditorSettingsData};
+#[cfg(feature = "staging")]
+pub use editor_split::{EditorSplit, SplitMode};
+#[cfg(feature = "staging")]
+pub use presence_indicators::{PresenceIndicators as CollabPresenceIndicators, PresenceUser as CollabPresenceUser};
+pub use table_of_contents::{Heading, TableOfContents};

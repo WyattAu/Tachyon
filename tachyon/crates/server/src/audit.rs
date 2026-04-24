@@ -3,7 +3,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
@@ -171,7 +171,7 @@ pub struct AuditEvent {
     pub action: String,
     pub description: String,
     pub context: AuditContext,
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: BTreeMap<String, serde_json::Value>,
     pub outcome: AuditOutcome,
     pub correlation_id: Option<String>,
 }
@@ -205,7 +205,7 @@ impl AuditEvent {
             action: action.into(),
             description: description.into(),
             context: AuditContext::default(),
-            metadata: HashMap::new(),
+            metadata: BTreeMap::new(),
             outcome: AuditOutcome::Success,
             correlation_id: None,
         }

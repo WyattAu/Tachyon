@@ -370,13 +370,14 @@ impl CrossOriginResourcePolicy {
 
 #[derive(Clone)]
 pub struct SecurityHeadersState {
-    #[allow(dead_code)]
+    #[cfg(feature = "staging")]
     config: Arc<SecurityHeadersConfig>,
 }
 
 impl SecurityHeadersState {
     pub fn new(config: SecurityHeadersConfig) -> Self {
         Self {
+            #[cfg(feature = "staging")]
             config: Arc::new(config),
         }
     }
