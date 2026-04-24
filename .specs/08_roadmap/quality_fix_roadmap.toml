@@ -1,0 +1,786 @@
+# Tachyon Quality Fix Roadmap
+# Generated: 2026-04-24
+# Total issues: 18 (5 High, 8 Medium, 5 Low)
+# Estimated total effort: ~3-4 focused sessions
+
+[metadata]
+version = "1.0.0"
+total_phases = 7
+total_tasks = 34
+critical_path = ["T-1.1", "T-2.1", "T-3.1", "T-5.1"]
+
+# ============================================================================
+# PHASE 1: Quick Wins — Zero-risk panic fixes and trivial perf wins
+# Effort: ~30 minutes | Risk: None | Dependencies: None
+# ============================================================================
+
+[[phase]]
+id = "P1"
+name = "Quick Wins"
+effort_minutes = 30
+risk = "none"
+description = "Fix production panics, trivial perf wins, dead stub removal. No architectural changes."
+
+  # --- T-1.1: Prometheus handler (will panic on 2nd request) ---
+  [[phase.task]]
+  id = "T-1.1"
+  title = "Fix prometheus handler double-install panic"
+  severity = "critical"
+  effort_minutes = 2
+  file = "crates/server/src/lib.rs"
+  lines = "621-626"
+  description = """
+    prometheus_metrics_handler() calls PrometheusBuilder::new().install_recorder()
+    on EVERY request. The global recorder can only be installed once — the 2nd
+    request panics via .expect(). Meanwhile, install_metrics() at line 635
+    already uses OnceLock correctly. The handler just needs to call that instead.
+  """
+  fix = """
+    Replace lines 621-626 with:
+      async fn prometheus_metrics_handler() -> String {
+          install_metrics().render()
+      }
+  """
+  verification = "curl /metrics/prometheus twice — second must not panic"
+
+  # --- T-1.2: Mutex unwrap in WASM frontend ---
+  [[phase.task]]
+  id = "T-1.2"
+  title = "Fix mutex poisoning in frontend ApiClient"
+  severity = "high"
+  effort_minutes = 5
+  file = "crates/frontend/src/api.rs"
+  lines = "58, 63, 68"
+  description = """
+    auth_token.lock().unwrap() will panic if a previous lock holder panicked.
+    In WASM there is no recovery from a panic — the entire tab dies.
+  """
+  fix = """
+    Replace .unwrap() with .unwrap_or_else(|e| e.into_inner()) on all 3 calls,
+    OR add parking_lot = "0.12" to frontend Cargo.toml and use
+    parking_lot::Mutex which does not poison.
+  """
+  verification = "cargo check -p tachyon-frontend --lib"
+
+  # --- T-1.3: HeaderValue unwrap in rate_limit middleware ---
+  [[phase.task]]
+  id = "T-1.3"
+  title = "Fix HeaderValue unwrap in rate limit headers"
+  severity = "medium"
+  effort_minutes = 3
+  file = "crates/server/src/middleware/rate_limit.rs"
+  lines = "350-361"
+  description = """
+    HeaderValue::from_str(&u32.to_string()) can theoretically fail if the
+    string contains non-visible ASCII. These are infallible conversions
+    (u32/u64 → decimal string is always valid ASCII) but unwrap() is
+    inappropriate in middleware that runs on every request.
+  """
+  fix = """
+    Create a helper:
+      fn safe_header_int(val: impl ToString) -> HeaderValue {
+          HeaderValue::from_str(&val.to_string()).unwrap_or(HeaderValue::from_static("0"))
+      }
+    Use it for all 3 header inserts.
+  """
+  verification = "cargo clippy -p tachyon-server --lib"
+
+  # --- T-1.4: HMAC expect in webhook_delivery ---
+  [[phase.task]]
+  id = "T-1.4"
+  title = "Fix HMAC expect in webhook signing"
+  severity = "low"
+  effort_minutes = 2
+  file = "crates/server/src/webhook_delivery.rs"
+  lines = "14"
+  description = "new_from_slice().expect() — per docs, only fails on empty key."
+  fix = """
+    Add a guard before the call:
+      assert!(!secret.is_empty(), "webhook secret must not be empty");
+    Or use .unwrap_or_else with a zero-key HMAC (which would fail signature
+    verification downstream, alerting the operator).
+  """
+  verification = "cargo check -p tachyon-server --lib"
+
+  # --- T-1.5: Remove dead Redis rate limiter variant ---
+  [[phase.task]]
+  id = "T-1.5"
+  title = "Remove dead Redis rate limiter stub"
+  severity = "medium"
+  effort_minutes = 5
+  file = "crates/server/src/middleware/rate_limit.rs"
+  lines = "221-257"
+  description = """
+    RateLimitStore::Redis variant exists but check() always returns Err(()).
+    This means if Redis is configured, rate limiting is SILENTLY DISABLED
+    (all requests pass through via the Err branch at line 365).
+  """
+  fix = """
+    Remove the Redis variant entirely from RateLimitStore. If Redis support
+    is needed later, implement it properly with a real redis connection.
+    This removes 7 #[allow(dead_code)] annotations.
+  """
+  verification = "cargo test -p tachyon-server --lib -- rate_limit"
+
+  # --- T-1.6: Fix hex encoding ---
+  [[phase.task]]
+  id = "T-1.6"
+  title = "Use hex::encode instead of format! loop"
+  severity = "low"
+  effort_minutes = 2
+  file = "crates/server/src/middleware/auth.rs"
+  lines = "195"
+  description = "hash.iter().map(|b| format!(\"{:02x}\", b)).collect() — slower than hex::encode"
+  fix = "Replace with hex::encode(hash) — hex crate is already a dependency."
+  verification = "cargo check -p tachyon-server --lib"
+
+# ============================================================================
+# PHASE 2: Shared reqwest::Client — Eliminate per-request client creation
+# Effort: ~45 minutes | Risk: Low | Dependencies: None
+# ============================================================================
+
+[[phase]]
+id = "P2"
+name = "Shared HTTP Client"
+effort_minutes = 45
+risk = "low"
+description = "Create one shared reqwest::Client in AppState, pass to all handlers that make outbound HTTP calls."
+
+  # --- T-2.1: Add reqwest::Client to app state tuple ---
+  [[phase.task]]
+  id = "T-2.1"
+  title = "Add reqwest::Client to init_app_state tuple"
+  severity = "high"
+  effort_minutes = 15
+  file = "crates/server/src/lib.rs"
+  lines = "141-166"
+  description = """
+    State is a 22-element tuple with no shared reqwest::Client. Every handler
+    that needs HTTP creates its own Client::new(). This requires:
+    1. Add reqwest::Client as element 22 in the return type
+    2. Create it once in init_app_state body
+    3. Update build_app and build_server signatures
+  """
+  fix = """
+    In init_app_state (~line 260):
+      let http_client = reqwest::Client::new();
+    Add reqwest::Client to the return tuple.
+    In build_app and build_server, destructure it and pass to sub-states.
+  """
+  depends_on = []
+
+  # --- T-2.2: Thread client into OAuth2State ---
+  [[phase.task]]
+  id = "T-2.2"
+  title = "Thread shared client into OAuth2 handlers"
+  severity = "high"
+  effort_minutes = 10
+  file = "crates/server/src/routes/oauth2.rs"
+  lines = "165, 189, 302, 334"
+  description = "4 reqwest::Client::new() calls — 2 per OAuth provider (token exchange + user info)."
+  fix = """
+    Add client: reqwest::Client to OAuth2State struct.
+    Replace all 4 Client::new() calls with state.client.clone().
+    reqwest::Client internally uses Arc, so clone() is cheap.
+  """
+  depends_on = ["T-2.1"]
+
+  # --- T-2.3: Thread client into webhook_delivery ---
+  [[phase.task]]
+  id = "T-2.3"
+  title = "Thread shared client into webhook delivery"
+  severity = "high"
+  effort_minutes = 5
+  file = "crates/server/src/webhook_delivery.rs"
+  lines = "110"
+  description = "New client created per webhook delivery inside tokio::spawn."
+  fix = """
+    Add client: reqwest::Client parameter to deliver_event().
+    Clone it (cheap Arc clone) when spawning each delivery task.
+  """
+  depends_on = ["T-2.1"]
+
+  # --- T-2.4: Thread client into password_reset ---
+  [[phase.task]]
+  id = "T-2.4"
+  title = "Thread shared client into password reset"
+  severity = "medium"
+  effort_minutes = 5
+  file = "crates/server/src/routes/password_reset.rs"
+  lines = "92"
+  description = "New client per password reset email send."
+  fix = """
+    Add client: reqwest::Client to PasswordResetState.
+    Replace Client::new() with state.client.clone().
+  """
+  depends_on = ["T-2.1"]
+
+  # --- T-2.5: Batch webhook last_triggered_at updates ---
+  [[phase.task]]
+  id = "T-2.5"
+  title = "Batch webhook last_triggered_at updates"
+  severity = "medium"
+  effort_minutes = 10
+  file = "crates/server/src/webhook_delivery.rs"
+  lines = "101-127"
+  description = """
+    Each webhook delivery fires a separate UPDATE query. With N webhooks,
+    this is N sequential DB writes.
+  """
+  fix = """
+    After all deliveries complete (or in a single post-delivery pass),
+    run one batched query:
+      UPDATE webhooks SET last_triggered_at = NOW() WHERE id = ANY($1)
+    Collect successful webhook IDs into a Vec<Uuid> and update them
+    in a single query after the delivery loop.
+  """
+  depends_on = ["T-2.3"]
+
+# ============================================================================
+# PHASE 3: Database Query Safety — Add LIMIT to all list queries
+# Effort: ~30 minutes | Risk: Low | Dependencies: None
+# ============================================================================
+
+[[phase]]
+id = "P3"
+name = "Database Query Safety"
+effort_minutes = 30
+risk = "low"
+description = "Add default LIMIT clauses to all list queries that lack them."
+
+  # --- T-3.1: webhook.rs ---
+  [[phase.task]]
+  id = "T-3.1"
+  title = "Add LIMIT to webhook list queries"
+  severity = "medium"
+  effort_minutes = 5
+  file = "crates/database/src/webhook.rs"
+  lines = "45-56, 68-80"
+  description = "list() and get_active_by_event() have no LIMIT."
+  fix = """
+    list(): Add LIMIT 100.
+    get_active_by_event(): Add LIMIT 50 (typical max webhooks per event type).
+  """
+
+  # --- T-3.2: billing.rs ---
+  [[phase.task]]
+  id = "T-3.2"
+  title = "Add LIMIT to billing list queries"
+  severity = "medium"
+  effort_minutes = 5
+  file = "crates/database/src/billing.rs"
+  lines = "136-142, 224-231, 320-331"
+  description = "list_all(), list_by_org(), list_by_user() have no LIMIT."
+  fix = """
+    list_all(): Add LIMIT 100.
+    list_by_org(): Add LIMIT 100.
+    list_by_user(): Add LIMIT 50 (notification preferences are small, but still).
+  """
+
+  # --- T-3.3: presence.rs ---
+  [[phase.task]]
+  id = "T-3.3"
+  title = "Add LIMIT to presence list queries"
+  severity = "medium"
+  effort_minutes = 5
+  file = "crates/database/src/presence.rs"
+  lines = "220-234, 238-252"
+  description = "list_by_document() and list_by_user() filtered by TTL but no LIMIT."
+  fix = """
+    list_by_document(): Add LIMIT 200 (popular doc could have many viewers).
+    list_by_user(): Add LIMIT 100 (user typically has few docs open).
+  """
+
+  # --- T-3.4: repository.rs ---
+  [[phase.task]]
+  id = "T-3.4"
+  title = "Enforce LIMIT default in document list queries"
+  severity = "high"
+  effort_minutes = 10
+  file = "crates/database/src/repository.rs"
+  lines = "394-417"
+  description = """
+    list_all() accepts Option<i64> for limit. If called with None, no LIMIT
+    is applied. Same for list_by_author() and list_by_project().
+  """
+  fix = """
+    In apply_pagination(), when limit is None, default to LIMIT 100.
+    Alternatively, change the parameter type from Option<i64> to i64
+    with a default of 100.
+    Audit all callers to ensure they pass an explicit limit or rely on default.
+  """
+
+  # --- T-3.5: connected_account.rs ---
+  [[phase.task]]
+  id = "T-3.5"
+  title = "Add LIMIT to connected_account list query"
+  severity = "low"
+  effort_minutes = 3
+  file = "crates/database/src/connected_account.rs"
+  lines = "79-92"
+  description = "list_for_user() has no LIMIT."
+  fix = "Add LIMIT 50."
+
+  # --- T-3.6: search.rs facet parallelization ---
+  [[phase.task]]
+  id = "T-3.6"
+  title = "Parallelize search facet queries"
+  severity = "medium"
+  effort_minutes = 15
+  file = "crates/database/src/search.rs"
+  lines = "335-415"
+  description = """
+    4 facet queries (content_types, statuses, visibilities, tags) run
+    sequentially on the same connection. They are independent.
+  """
+  fix = """
+    Use tokio::join! for the 4 facet queries. Requires acquiring 4
+    separate connections from the pool instead of 1:
+      let conn1 = pool.acquire().await?;
+      let conn2 = pool.acquire().await?;
+      let conn3 = pool.acquire().await?;
+      let conn4 = pool.acquire().await?;
+      let (ct, st, vis, tags) = tokio::join!(
+          fetch_content_type_facets(conn1, ...),
+          fetch_status_facets(conn2, ...),
+          fetch_visibility_facets(conn3, ...),
+          fetch_tag_facets(conn4, ...),
+      );
+    Future optimization: combine into a single CTE query.
+  """
+  depends_on = ["T-3.4"]
+
+# ============================================================================
+# PHASE 4: Dead Code Cleanup — Remove or gate 75 dead_code annotations
+# Effort: ~60 minutes | Risk: Low | Dependencies: None
+# ============================================================================
+
+[[phase]]
+id = "P4"
+name = "Dead Code Cleanup"
+effort_minutes = 60
+risk = "low"
+description = "Remove entirely dead components, gate future-use items behind cfg, clean up stale re-exports."
+
+  # --- T-4.1: Remove entirely dead frontend components ---
+  [[phase.task]]
+  id = "T-4.1"
+  title = "Remove dead frontend components"
+  severity = "medium"
+  effort_minutes = 15
+  files = [
+    "crates/frontend/src/components/editor_split.rs",
+    "crates/frontend/src/components/editor_settings.rs",
+    "crates/frontend/src/components/editor_preview.rs",
+    "crates/frontend/src/components/presence_indicators.rs",
+    "crates/frontend/src/components/table_of_contents.rs",
+    "crates/frontend/src/components/mod.rs",
+  ]
+  description = """
+    5 entire components are dead code — never rendered. They add ~10KB to WASM
+    and clutter the codebase. Each component and its mod.rs declaration have
+    #[allow(dead_code)].
+  """
+  fix = """
+    Option A (recommended): Move to crates/frontend/src/components/staging/
+    and gate behind #[cfg(feature = "staging")] in mod.rs.
+    Option B: Delete entirely and rely on git history if needed later.
+    Also remove the 14 #[allow(unused_imports)] on pub re-exports in mod.rs
+    for the deleted components.
+  """
+
+  # --- T-4.2: Clean up dead API methods ---
+  [[phase.task]]
+  id = "T-4.2"
+  title = "Remove dead API client methods"
+  severity = "low"
+  effort_minutes = 10
+  file = "crates/frontend/src/api.rs"
+  lines = "46, 1043, 1100, 1245, 1252, 1259, 1266, 1315"
+  description = "ApiClient::new() (superseded by default()), ApiResult type alias, and 5 API methods are dead."
+  fix = "Remove all 8 items. Add #[cfg(feature = \"staging\")] if they might be needed."
+
+  # --- T-4.3: Clean up dead Team struct fields ---
+  [[phase.task]]
+  id = "T-4.3"
+  title = "Remove or use dead Team/TeamMember fields"
+  severity = "low"
+  effort_minutes = 5
+  file = "crates/frontend/src/pages/teams.rs"
+  lines = "15, 17, 19, 21, 28, 30, 33, 36, 38"
+  description = "10 fields on Team and TeamMember structs are annotated dead_code. They are deserialized from API but never rendered."
+  fix = """
+    If the API returns these fields and they should be rendered: wire them up.
+    If they are not yet needed: add #[allow(dead_code)] with a TODO comment
+    explaining when they will be used. Remove the generic #[allow(dead_code)]
+    on the struct if possible.
+  """
+
+  # --- T-4.4: Clean up dead editor config fields ---
+  [[phase.task]]
+  id = "T-4.4"
+  title = "Remove or use dead editor config fields"
+  severity = "low"
+  effort_minutes = 5
+  file = "crates/editor/src/editor.rs"
+  lines = "27, 30, 32, 34"
+  description = "word_wrap, auto_indent, bracket_matching, line_numbers stored but never read."
+  fix = "Wire them into the editor's render/config logic, or remove from struct."
+
+  # --- T-4.5: Clean up dead server items ---
+  [[phase.task]]
+  id = "T-4.5"
+  title = "Remove dead server code items"
+  severity = "low"
+  effort_minutes = 10
+  files = [
+    "crates/server/src/websocket/crdt_handler.rs:42,51",
+    "crates/server/src/websocket/handler.rs:42",
+    "crates/server/src/middleware/security_headers.rs:373",
+    "crates/server/src/routes/oauth2.rs:55",
+    "crates/server/src/routes/ssg.rs:248",
+    "crates/server/src/middleware/auth.rs:28",
+    "crates/rbac/src/policy.rs:351",
+    "crates/search/src/ranking.rs:363",
+    "crates/search/src/api.rs:302",
+    "crates/renderer/src/markdown.rs:16",
+    "crates/cli/src/commands/init.rs:223",
+    "crates/desktop/src-tauri/src/commands.rs:39,228,256",
+    "crates/desktop/src-tauri/src/sync.rs:85",
+    "crates/database/src/search.rs:12",
+  ]
+  description = "14 remaining dead items across server, rbac, search, renderer, cli, desktop crates."
+  fix = """
+    For each: either remove, gate behind #[cfg(feature = ...)], or wire up
+    if the functionality is needed. The stale Claims #[allow(dead_code)]
+    in auth.rs should be removed (Claims IS used).
+  """
+
+  # --- T-4.6: Replace glob re-exports with explicit ones ---
+  [[phase.task]]
+  id = "T-4.6"
+  title = "Replace glob re-exports with explicit exports"
+  severity = "medium"
+  effort_minutes = 15
+  file = "crates/server/src/lib.rs"
+  lines = "124-128"
+  description = """
+    pub use api_docs::*, audit::*, config::*, middleware::* exposes every
+    public item from these modules. The #[allow(ambiguous_glob_reexports)]
+    indicates a known collision.
+  """
+  fix = """
+    Replace glob re-exports with explicit item lists:
+      pub use api_docs::{ApiDocs, generate_openapi_spec};
+      pub use audit::{AuditLogger, AuditEvent};
+      pub use config::ServerConfig;
+      pub use middleware::auth::{AuthMiddleware, Claims};
+    Mark internal types in re-exported modules as pub(crate).
+  """
+  depends_on = ["T-4.5"]
+
+# ============================================================================
+# PHASE 5: Rate Limiter Rewrite — DashMap for lock-free concurrency
+# Effort: ~60 minutes | Risk: Medium | Dependencies: P1 (T-1.5 removes Redis stub)
+# ============================================================================
+
+[[phase]]
+id = "P5"
+name = "Rate Limiter Rewrite"
+effort_minutes = 60
+risk = "medium"
+description = "Replace RwLock<HashMap> with DashMap for per-key concurrency without global write lock."
+
+  # --- T-5.1: Replace InMemoryStore with DashMap ---
+  [[phase.task]]
+  id = "T-5.1"
+  title = "Replace InMemoryStore with DashMap"
+  severity = "high"
+  effort_minutes = 30
+  file = "crates/server/src/middleware/rate_limit.rs"
+  lines = "154-260"
+  description = """
+    InMemoryStore uses RwLock<HashMap<String, TokenBucket>>. The check_rate_limit
+    method takes a write lock on every request, serializing all rate limit checks
+    under a single lock. Under high concurrency this is a bottleneck.
+  """
+  fix = """
+    1. Add dashmap = "6" to server Cargo.toml (may already be a transitive dep).
+    2. Replace InMemoryStore internals:
+         struct InMemoryStore {
+             buckets: DashMap<String, TokenBucket>,
+             last_cleanup: AtomicInstant, // or just Instant + RwLock for cleanup only
+         }
+    3. check_rate_limit becomes:
+         let mut bucket = self.buckets.entry(key.to_string())
+             .or_insert_with(|| TokenBucket::new(limit));
+         // check/update bucket inline — no global lock needed
+    4. Cleanup: iterate DashMap (retains write lock briefly per shard).
+    5. Remove the RwLock import if no longer needed.
+  """
+  depends_on = ["T-1.5"]
+
+  # --- T-5.2: Add unit tests for concurrent access ---
+  [[phase.task]]
+  id = "T-5.2"
+  title = "Add concurrent rate limiter tests"
+  severity = "medium"
+  effort_minutes = 15
+  file = "crates/server/src/middleware/rate_limit.rs"
+  description = "Verify no deadlocks under concurrent access after DashMap migration."
+  fix = """
+    Add #[cfg(test)] tests:
+    1. test_concurrent_requests: spawn 100 tasks hitting same key, verify
+       limit is enforced.
+    2. test_different_keys_parallel: verify different keys don't block each other.
+    3. test_bucket_expiry: verify expired buckets are cleaned up.
+    4. test_global_limit_vs_endpoint_limit: verify precedence rules.
+  """
+  depends_on = ["T-5.1"]
+
+  # --- T-5.3: CRDT data cloning optimization ---
+  [[phase.task]]
+  id = "T-5.3"
+  title = "Reduce CRDT data cloning"
+  severity = "medium"
+  effort_minutes = 15
+  file = "crates/server/src/websocket/crdt_handler.rs"
+  lines = "127-130, 271-296"
+  description = """
+    get_document_update_log() clones entire update log. recv_task clones
+    every incoming binary message.
+  """
+  fix = """
+    1. get_document_update_log: return Arc<Vec<u8>> instead of Vec<u8>,
+       or use Bytes from bytes crate.
+    2. recv_task: use bytes::Bytes for zero-copy broadcasting.
+       tokio_tungstenite::Message::Binary already contains Vec<u8> —
+       wrap in Bytes::from() for cheap cloning (Arc increment).
+    3. Room/sender strings: use Arc<str> or &str references where possible.
+  """
+  depends_on = []
+
+# ============================================================================
+# PHASE 6: Error Unification — Single ServerError with From impls
+# Effort: ~90 minutes | Risk: Medium | Dependencies: P3 (some DB methods change signatures)
+# ============================================================================
+
+[[phase]]
+id = "P6"
+name = "Error Unification"
+effort_minutes = 90
+risk = "medium"
+description = "Create a unified ServerError type that converts from all sub-crate error types."
+
+  # --- T-6.1: Create ServerError ---
+  [[phase.task]]
+  id = "T-6.1"
+  title = "Create unified ServerError type"
+  severity = "medium"
+  effort_minutes = 20
+  file = "crates/server/src/error.rs"  # new file
+  description = """
+    Currently 8+ error types across crates with no unified conversion.
+    Server routes use ad-hoc .map_err closures.
+  """
+  fix = """
+    Create crates/server/src/error.rs:
+      use axum::response::{IntoResponse, Response};
+      use axum::http::StatusCode;
+
+      #[derive(Debug, thiserror::Error)]
+      pub enum ServerError {
+          #[error("Database error: {0}")]
+          Database(#[from] tachyon_database::DatabaseError),
+          #[error("Auth error: {0}")]
+          Auth(#[from] AuthError),
+          #[error("RBAC error: {0}")]
+          Rbac(#[from] tachyon_rbac::RbacError),
+          #[error("Search error: {0}")]
+          Search(#[from] tachyon_search::SearchError),
+          #[error("Not found: {0}")]
+          NotFound(String),
+          #[error("Validation: {0}")]
+          Validation(String),
+          #[error("Internal: {0}")]
+          Internal(String),
+      }
+
+      impl IntoResponse for ServerError {
+          fn into_response(self) -> Response {
+              let (status, message) = match &self {
+                  Self::NotFound(_) => (StatusCode::NOT_FOUND, ...),
+                  Self::Validation(_) => (StatusCode::BAD_REQUEST, ...),
+                  Self::Auth(_) => (StatusCode::UNAUTHORIZED, ...),
+                  _ => (StatusCode::INTERNAL_SERVER_ERROR, ...),
+              };
+              (status, Json(json!({"error": message}))).into_response()
+          }
+      }
+  """
+
+  # --- T-6.2: Convert auth.rs to use thiserror ---
+  [[phase.task]]
+  id = "T-6.2"
+  title = "Convert AuthError to thiserror"
+  severity = "low"
+  effort_minutes = 10
+  file = "crates/server/src/middleware/auth.rs"
+  lines = "86-113"
+  description = "AuthError has manual Display and Error impls."
+  fix = """
+    Replace with #[derive(thiserror::Error)].
+    Add #[error("...")] on each variant.
+    Remove the manual Display impl.
+    Keep the status_code() method.
+  """
+  depends_on = ["T-6.1"]
+
+  # --- T-6.3: Convert route handlers to use ServerError ---
+  [[phase.task]]
+  id = "T-6.3"
+  title = "Migrate route handlers to ServerError"
+  severity = "medium"
+  effort_minutes = 45
+  files = [
+    "crates/server/src/routes/document.rs",
+    "crates/server/src/routes/user.rs",
+    "crates/server/src/routes/session.rs",
+    "crates/server/src/routes/repository.rs",
+    "crates/server/src/routes/activity.rs",
+    "crates/server/src/routes/notification.rs",
+    "crates/server/src/routes/search.rs",
+  ]
+  description = """
+    Each route handler uses ad-hoc .map_err closures to convert errors.
+    With ServerError + From impls, the ? operator handles conversion.
+  """
+  fix = """
+    Change handler return types from:
+      Result<Json<T>, (StatusCode, Json<Value>)>
+    to:
+      Result<Json<T>, ServerError>
+    Replace .map_err(|e| error("CODE", e.to_string()))? with just ?.
+    For custom error codes, add ServerError variants or use .map_err().
+    Do this incrementally — one route file at a time, test after each.
+  """
+  depends_on = ["T-6.1", "T-6.2"]
+
+  # --- T-6.4: Convert frontend ApiError to thiserror ---
+  [[phase.task]]
+  id = "T-6.4"
+  title = "Convert frontend ApiError to thiserror"
+  severity = "low"
+  effort_minutes = 5
+  file = "crates/frontend/src/api.rs"
+  lines = "1021-1039"
+  description = "ApiError has manual Display and Error impls."
+  fix = "Replace with #[derive(thiserror::Error)] and #[error(\"...\")] annotations."
+  depends_on = []
+
+  # --- T-6.5: Fix inconsistent error conversion patterns ---
+  [[phase.task]]
+  id = "T-6.5"
+  title = "Fix error chain preservation"
+  severity = "medium"
+  effort_minutes = 10
+  files = [
+    "crates/database/src/search.rs",
+    "crates/server/src/middleware/auth.rs",
+  ]
+  description = """
+    Database errors are wrapped with .map_err(|e| DatabaseError::QueryError(e.to_string()))
+    losing the original source. Auth errors similarly lose chain.
+  """
+  fix = """
+    In DatabaseError, add a source field:
+      QueryError(#[source] Box<dyn std::error::Error + Send + Sync>)
+    Or use thiserror's #[source] attribute:
+      #[error("Query error: {0}")]
+      QueryError(#[from] sqlx::Error)
+    This preserves the full error chain for debugging.
+  """
+  depends_on = ["T-6.1"]
+
+# ============================================================================
+# PHASE 7: API Surface Hardening — pub(crate) and #[doc(hidden)]
+# Effort: ~45 minutes | Risk: Low | Dependencies: P4, P6
+# ============================================================================
+
+[[phase]]
+id = "P7"
+name = "API Surface Hardening"
+effort_minutes = 45
+risk = "low"
+description = "Tighten visibility, add doc(hidden), add HashMap→BTreeMap where needed."
+
+  # --- T-7.1: Downgrade pub to pub(crate) on server internals ---
+  [[phase.task]]
+  id = "T-7.1"
+  title = "Downgrade unnecessary pub items to pub(crate)"
+  severity = "low"
+  effort_minutes = 20
+  files = [
+    "crates/server/src/middleware/rate_limit.rs",
+    "crates/server/src/middleware/auth.rs",
+    "crates/server/src/websocket/crdt_handler.rs",
+    "crates/server/src/websocket/handler.rs",
+  ]
+  description = "TokenBucket, InMemoryStore, RateLimitKey, RateLimitInfo, ConnectedClient, RelayEvent are all pub but only used within the server crate."
+  fix = """
+    Change pub → pub(crate) on:
+    - TokenBucket, InMemoryStore (after P5 rewrite)
+    - RateLimitKey, RateLimitInfo
+    - ConnectedClient, RelayEvent
+    - PermissionGuard (if only used in server routes)
+    Verify with cargo check --workspace after each batch.
+  """
+  depends_on = ["T-5.1", "T-4.6"]
+
+  # --- T-7.2: Add #[doc(hidden)] to re-exported internals ---
+  [[phase.task]]
+  id = "T-7.2"
+  title = "Add #[doc(hidden)] to internal re-exports"
+  severity = "low"
+  effort_minutes = 10
+  file = "crates/server/src/lib.rs"
+  description = "After replacing glob re-exports (T-4.6), some types still need to be public for internal use but shouldn't appear in docs."
+  fix = """
+    Add #[doc(hidden)] to any remaining re-exports that are only needed
+    for crate-internal wiring but not part of the public API.
+  """
+  depends_on = ["T-4.6"]
+
+  # --- T-7.3: HashMap → BTreeMap for deterministic serialization ---
+  [[phase.task]]
+  id = "T-7.3"
+  title = "Switch HashMap to BTreeMap where ordering matters"
+  severity = "low"
+  effort_minutes = 10
+  files = [
+    "crates/server/src/config.rs",
+    "crates/server/src/audit.rs",
+  ]
+  description = "Config and audit use HashMap — serialized to JSON with non-deterministic key order. Can cause flaky tests."
+  fix = """
+    Switch HashMap → BTreeMap in:
+    - ServerConfig fields that are serialized to JSON
+    - AuditEntry metadata
+    Check for serde tests that compare JSON output (they may need updating).
+  """
+  depends_on = []
+
+  # --- T-7.4: Remove RBAC re-exports of core types ---
+  [[phase.task]]
+  id = "T-7.4"
+  title = "Remove RBAC re-exports of tachyon-core types"
+  severity = "low"
+  effort_minutes = 5
+  file = "crates/rbac/src/lib.rs"
+  lines = "21-26"
+  description = "tachyon-rbac re-exports SessionId, UserId, and session/user types from tachyon-core."
+  fix = """
+    Remove the pub use tachyon_core::* lines.
+    Update consumers to import directly from tachyon-core.
+  """
+  depends_on = []
