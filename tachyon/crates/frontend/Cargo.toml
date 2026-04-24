@@ -19,14 +19,13 @@ crate-type = ["cdylib", "rlib"]
 # Workspace dependencies
 serde = { workspace = true }
 serde_json = { workspace = true }
-anyhow = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true, features = ["wasmbind"] }
 
 # Leptos framework - CSR (Client-Side Rendering) mode
 leptos = { version = "0.8", features = ["csr"] }
 leptos_router = { version = "0.8" }
-leptos_meta = { version = "0.8" }
+# NOTE: leptos_meta removed — zero imports in the codebase
 
 # HTTP client for API calls
 gloo-net = { version = "0.6", features = ["json", "websocket"] }
@@ -43,6 +42,7 @@ web-sys = { version = "0.3", features = [
     "HtmlDivElement",
     "HtmlAnchorElement",
     "HtmlButtonElement",
+    "HtmlPreElement",
     "Navigator",
     "Window",
     "Storage",
@@ -54,7 +54,28 @@ web-sys = { version = "0.3", features = [
     "DragEvent",
     "KeyboardEvent",
     "MouseEvent",
+    "ClipboardEvent",
+    "InputEvent",
+    "CompositionEvent",
     "Url",
+    "Selection",
+    "Range",
+    "DomRect",
+    "ScrollIntoViewOptions",
+    "ScrollBehavior",
+    "ScrollLogicalPosition",
+    "IdbFactory",
+    "IdbDatabase",
+    "IdbObjectStore",
+    "IdbTransaction",
+    "IdbRequest",
+    "IdbCursor",
+    "IdbCursorWithValue",
+    "IdbOpenDbRequest",
+    "IdbVersionChangeEvent",
+    "IdbIndex",
+    "IdbKeyRange",
+    "IdbTransactionMode",
 ] }
 js-sys = "0.3"
 
@@ -66,8 +87,14 @@ wasm-logger = "0.2"
 # UUID - with js feature for WASM support
 uuid = { version = "1.11", features = ["v4", "serde", "js"] }
 
-# WASM-compatible time
-time = { version = "0.3", features = ["wasm-bindgen"] }
+# Thread safety for WASM (wrapping non-Send types)
+send_wrapper = "0.6"
+
+# Native editor engine
+tachyon-editor = { path = "../editor" }
+
+# Markdown rendering (WASM-compatible, no SIMD)
+pulldown-cmark = { version = "0.9", default-features = false }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"

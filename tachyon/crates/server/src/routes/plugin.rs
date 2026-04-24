@@ -8,11 +8,13 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tachyon_database::{CreatePluginRequest, DatabasePool, PluginRepository, UpdatePluginRequest};
+use tachyon_plugin_runtime::{HookResult, PluginRuntime};
 use tracing::info;
 
 #[derive(Clone)]
 pub struct PluginState {
     pub pool: DatabasePool,
+    pub runtime: PluginRuntime,
 }
 
 // ============================================================================
@@ -252,16 +254,61 @@ pub async fn delete_plugin(
 }
 
 // ============================================================================
+// Invoke Hook
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct InvokeHookRequest {
+    pub hook: String,
+    pub input: serde_json::Value,
+    #[serde(default = "default_timeout")]
+    pub timeout_ms: u64,
+}
+
+fn default_timeout() -> u64 {
+    5000
+}
+
+#[derive(Debug, Serialize)]
+pub struct InvokeHookResponse {
+    pub results: Vec<HookResult>,
+    pub hook: String,
+    pub plugins_invoked: usize,
+}
+
+/// POST /api/v1/plugins/invoke — Invoke a hook across all enabled plugins
+pub async fn invoke_hook(
+    State(state): State<PluginState>,
+    Json(req): Json<InvokeHookRequest>,
+) -> Result<Json<InvokeHookResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let results = state.runtime.invoke_hook(&req.hook, req.input, req.timeout_ms);
+
+    let plugins_invoked = results.len();
+    info!(
+        "Hook '{}' invoked across {} plugins",
+        req.hook, plugins_invoked
+    );
+
+    Ok(Json(InvokeHookResponse {
+        results,
+        hook: req.hook,
+        plugins_invoked,
+    }))
+}
+
+// ============================================================================
 // Router
 // ============================================================================
 
-pub fn create_plugin_router() -> axum::Router<PluginState> {
+pub fn create_plugin_router_with_state(state: PluginState) -> axum::Router {
     axum::Router::new()
         .route("/plugins", axum::routing::get(list_plugins))
         .route("/plugins", axum::routing::post(create_plugin))
+        .route("/plugins/invoke", axum::routing::post(invoke_hook))
         .route("/plugins/{plugin_id}", axum::routing::get(get_plugin))
         .route("/plugins/{plugin_id}", axum::routing::put(update_plugin))
         .route("/plugins/{plugin_id}", axum::routing::delete(delete_plugin))
+        .with_state(state)
 }
 
 #[cfg(test)]

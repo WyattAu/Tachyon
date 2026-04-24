@@ -6,9 +6,10 @@ use std::sync::{Arc, Mutex};
 use tauri::{State, AppHandle};
 use tachyon_core::{DocumentStore, TachyonError};
 
-use crate::state::{DesktopStateManager, DesktopState, ConnectionStatus};
+use crate::state::{DesktopStateManager, DesktopState, ConnectionStatus, DesktopAppState};
 use crate::events::EventEmitter;
 use crate::file_dialog::{FileDialogManager, FileDialogOptions, FileContent, FileWriteResult};
+use crate::filesystem;
 use crate::sync::{AutoSyncManager, SyncResult};
 use crate::EmbeddedServerState;
 
@@ -718,6 +719,114 @@ mod tests {
         assert_eq!(request.remote_name, Some("origin".to_string()));
         assert_eq!(request.branch_name, Some("main".to_string()));
     }
+}
+
+// ============================================================================
+// Filesystem Commands (v2 — vault browsing, file watching, Obsidian import)
+// ============================================================================
+
+/// List entries in a vault directory.
+///
+/// Returns markdown files and subdirectories, filtering out hidden files
+/// and common non-document directories.
+#[tauri::command]
+pub async fn read_vault(path: String) -> Result<Vec<filesystem::VaultEntry>, String> {
+    let dir = std::path::PathBuf::from(path);
+    tokio::task::spawn_blocking(move || filesystem::list_vault_entries(&dir))
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?
+}
+
+/// Read a markdown file from disk.
+#[tauri::command]
+pub async fn read_markdown_file(path: String) -> Result<filesystem::MarkdownFile, String> {
+    let p = std::path::PathBuf::from(path);
+    tokio::task::spawn_blocking(move || filesystem::read_markdown_file(&p))
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?
+}
+
+/// Write a markdown file to disk.
+#[tauri::command]
+pub async fn write_markdown_file(path: String, content: String) -> Result<(), String> {
+    let p = std::path::PathBuf::from(path);
+    tokio::task::spawn_blocking(move || filesystem::write_markdown_file(&p, &content))
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?
+}
+
+/// List all markdown files recursively in a vault directory.
+#[tauri::command]
+pub async fn list_vault_files(path: String) -> Result<Vec<filesystem::VaultEntry>, String> {
+    let dir = std::path::PathBuf::from(path);
+    tokio::task::spawn_blocking(move || filesystem::list_vault_markdown_files(&dir))
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?
+}
+
+/// Start a file watcher using tachyon-core's notify-based FileWatcher.
+///
+/// Watches the given directory for markdown file changes and emits
+/// `file-changed` events to the WebView.
+#[tauri::command]
+pub async fn watch_directory(
+    path: String,
+    app: AppHandle,
+    app_state: tauri::State<'_, DesktopAppState>,
+) -> Result<(), String> {
+    let watch_path = std::path::PathBuf::from(&path);
+
+    if !watch_path.exists() {
+        return Err(format!("Path does not exist: {}", path));
+    }
+    if !watch_path.is_dir() {
+        return Err(format!("Path is not a directory: {}", path));
+    }
+
+    // Stop any existing watcher first
+    filesystem::stop_file_watch(app_state.file_watcher.clone())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    filesystem::start_file_watch(watch_path, app, app_state.file_watcher.clone())
+}
+
+/// Stop the file watcher.
+#[tauri::command]
+pub async fn stop_directory_watch(
+    app_state: tauri::State<'_, DesktopAppState>,
+) -> Result<(), String> {
+    filesystem::stop_file_watch(app_state.file_watcher.clone()).await
+}
+
+/// Check if a file watcher is currently active.
+#[tauri::command]
+pub async fn is_directory_watched(
+    app_state: tauri::State<'_, DesktopAppState>,
+) -> Result<bool, String> {
+    Ok(filesystem::is_file_watch_active(app_state.file_watcher.clone()).await)
+}
+
+/// Get the application data directory path.
+#[tauri::command]
+pub async fn get_app_data_dir(app: AppHandle) -> Result<String, String> {
+    use tauri::Manager;
+    let path_resolver = app.path();
+    path_resolver
+        .app_data_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| format!("Failed to get app data dir: {}", e))
+}
+
+/// Open a file or directory in the system file manager.
+#[tauri::command]
+pub async fn open_path(path: String) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    if !p.exists() {
+        return Err(format!("Path does not exist: {}", path));
+    }
+
+    open::that(p).map_err(|e| format!("Failed to open path: {}", e))
 }
 
 // ============================================================================

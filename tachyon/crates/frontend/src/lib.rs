@@ -2,7 +2,10 @@
 
 mod api;
 mod components;
+mod i18n;
+mod markdown;
 mod pages;
+mod storage;
 mod types;
 mod styles;
 pub mod websocket;
@@ -11,6 +14,16 @@ use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
 use components::{AppShell, AuthGuard, provide_auth_context, AppErrorBoundary};
+use crate::api::ApiClient;
+use storage::{BrowserStore, sync::SyncEngine};
+
+// Mount the Leptos app to the browser DOM.
+// wasm-bindgen calls this automatically when the WASM module loads.
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn mount_app() {
+    console_error_panic_hook::set_once();
+    mount_to_body(App);
+}
 
 /// Not found page component
 #[component]
@@ -29,6 +42,13 @@ fn NotFound() -> impl IntoView {
 pub fn App() -> impl IntoView {
     // Restore auth token from localStorage on app startup
     provide_auth_context();
+
+    let store = BrowserStore::new();
+    provide_context(store.clone());
+
+    let api = ApiClient::default();
+    let sync_engine = SyncEngine::new(api, store);
+    provide_context(sync_engine);
 
     // Theme signal - "light" or "dark"
     let (theme, set_theme) = signal("light".to_string());
@@ -64,98 +84,153 @@ pub fn App() -> impl IntoView {
                     <Route path=path!("/dashboard") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::DashboardPage />
+                                <AppErrorBoundary>
+                                    <pages::DashboardPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/documents") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::DocumentsPage />
+                                <AppErrorBoundary>
+                                    <pages::DocumentsPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/documents/:id/edit") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::DocumentEditPage />
+                                <AppErrorBoundary>
+                                    <pages::DocumentEditPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/documents/:id") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::DocumentPage />
+                                <AppErrorBoundary>
+                                    <pages::DocumentPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/graph") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::GraphPage />
+                                <AppErrorBoundary>
+                                    <pages::GraphPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/teams") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::TeamsPage />
+                                <AppErrorBoundary>
+                                    <pages::TeamsPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/search") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::SearchPage />
+                                <AppErrorBoundary>
+                                    <pages::SearchPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/catalog") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::CatalogPage />
+                                <AppErrorBoundary>
+                                    <pages::CatalogPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/tags") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::TagsPage />
+                                <AppErrorBoundary>
+                                    <pages::TagsPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/settings") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::SettingsPage />
+                                <AppErrorBoundary>
+                                    <pages::SettingsPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/admin/roles") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::RolesPage />
+                                <AppErrorBoundary>
+                                    <pages::RolesPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/templates") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::TemplatesPage />
+                                <AppErrorBoundary>
+                                    <pages::TemplatesPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/plugins") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::PluginsPage />
+                                <AppErrorBoundary>
+                                    <pages::PluginsPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />
                     <Route path=path!("/spaces") view=move || {
                         view! {
                             <AuthGuard>
-                                <pages::SpacesPage />
+                                <AppErrorBoundary>
+                                    <pages::SpacesPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/ssg") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::SsgPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/billing") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::BillingPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/audit") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::AuditPage />
+                                </AppErrorBoundary>
                             </AuthGuard>
                         }
                     } />

@@ -896,3 +896,193 @@ pub struct AddSpaceMemberRequest {
 pub struct UpdateSpaceMemberRequest {
     pub role: String,
 }
+
+// ============================================================================
+// SSG Types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SsgBuildRequest {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub base_url: Option<String>,
+    pub theme: Option<String>,
+    pub custom_css: Option<String>,
+    pub nav_links: Option<Vec<SsgNavLink>>,
+    pub group_by_tag: Option<bool>,
+    pub project_id: Option<String>,
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SsgNavLink {
+    pub label: String,
+    pub href: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SsgBuildResponse {
+    pub success: bool,
+    pub result: SsgBuildResult,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SsgBuildResult {
+    pub pages: usize,
+    pub category_pages: usize,
+    pub total_files: usize,
+    pub build_time_ms: u64,
+    pub output_size_bytes: u64,
+    pub generated_pages: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct SsgConfig {
+    pub title: String,
+    pub description: String,
+    pub base_url: String,
+    pub theme: String,
+    pub custom_css: Option<String>,
+    pub nav_links: Vec<SsgNavLink>,
+    pub group_by_tag: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct SsgStatus {
+    pub last_build: Option<SsgBuildResult>,
+    pub available: bool,
+}
+
+// ============================================================================
+// Billing Types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct BillingPlanInfo {
+    pub name: String,
+    pub price_monthly_cents: u64,
+    pub max_documents: usize,
+    pub max_members: usize,
+    pub features: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct BillingPlansResponse {
+    pub plans: Vec<BillingPlanInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SubscriptionInfo {
+    pub id: String,
+    pub organization_id: String,
+    pub plan: String,
+    pub status: String,
+    pub payment_method_id: Option<String>,
+    pub cancel_at_period_end: bool,
+    pub current_period_start: String,
+    pub current_period_end: String,
+    pub trial_end: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PlanDetails {
+    pub name: String,
+    pub price_monthly_cents: u64,
+    pub max_documents: usize,
+    pub max_members: usize,
+    pub features: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SubscriptionResponse {
+    pub subscription: SubscriptionInfo,
+    pub plan_details: PlanDetails,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct InvoiceInfo {
+    pub id: String,
+    pub subscription_id: String,
+    pub organization_id: String,
+    pub amount_cents: i64,
+    pub currency: String,
+    pub description: String,
+    pub status: String,
+    pub paid_at: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct InvoicesResponse {
+    pub invoices: Vec<InvoiceInfo>,
+    pub total: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct UsageMetrics {
+    pub organization_id: String,
+    pub period_start: String,
+    pub period_end: String,
+    pub documents_created: usize,
+    pub documents_total: usize,
+    pub members_total: usize,
+    pub storage_bytes: u64,
+    pub plan: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct UsageResponse {
+    pub usage: UsageMetrics,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MandateResponse {
+    pub mandate_id: String,
+    pub authorization_url: Option<String>,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MandateStatusResponse {
+    pub mandate_id: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PaymentResponse {
+    pub payment_id: String,
+    pub status: String,
+    pub amount: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PaymentStatusResponse {
+    pub payment_id: String,
+    pub status: String,
+}
+
+// ============================================================================
+// Audit Log Types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AuditLogEntry {
+    pub id: String,
+    pub action: String,
+    pub actor_id: String,
+    pub actor_name: Option<String>,
+    pub target_type: String,
+    pub target_id: String,
+    pub details: Option<String>,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct AuditLogResponse {
+    pub entries: Vec<AuditLogEntry>,
+    pub total: usize,
+    pub page: u32,
+    pub page_size: u32,
+}

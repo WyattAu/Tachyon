@@ -1,0 +1,16 @@
+[package]
+name = "tachyon-plugin-runtime"
+version = "0.1.0"
+description = "WASM plugin runtime for Tachyon"
+edition = "2021"
+
+[dependencies]
+wasmtime = "18"
+wasmtime-wasi = "18"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }

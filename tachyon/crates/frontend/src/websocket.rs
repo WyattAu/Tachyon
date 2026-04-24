@@ -97,6 +97,7 @@ pub struct SelectionRange {
 }
 
 pub type MessageCallback = Rc<dyn Fn(WsMessage)>;
+pub type BinaryCallback = Rc<dyn Fn(Vec<u8>)>;
 pub type StateCallback = Rc<dyn Fn(ConnectionState)>;
 
 /// Configuration for heartbeat and reconnection behavior.
@@ -127,12 +128,15 @@ struct WebSocketInner {
     ws: Option<SysWebSocket>,
     state: ConnectionState,
     on_message: Option<MessageCallback>,
+    on_binary: Option<BinaryCallback>,
     on_state_change: Option<StateCallback>,
     reconnect_attempts: u32,
     config: WsConfig,
     base_url: String,
     /// Queue of messages to send once reconnected
     message_queue: Vec<String>,
+    /// Queue of binary messages to send once reconnected
+    binary_queue: Vec<Vec<u8>>,
     /// Handle to the heartbeat interval timer
     heartbeat_handle: Option<i32>,
     /// Handle to the reconnect timeout timer
@@ -159,11 +163,13 @@ impl WebSocketClient {
                 ws: None,
                 state: ConnectionState::Disconnected,
                 on_message: None,
+                on_binary: None,
                 on_state_change: None,
                 reconnect_attempts: 0,
                 config: WsConfig::default(),
                 base_url: ws_url,
                 message_queue: Vec::new(),
+                binary_queue: Vec::new(),
                 heartbeat_handle: None,
                 reconnect_handle: None,
             })),
@@ -196,6 +202,10 @@ impl WebSocketClient {
 
     pub fn on_message(&self, callback: MessageCallback) {
         self.inner.borrow_mut().on_message = Some(callback);
+    }
+
+    pub fn on_binary(&self, callback: BinaryCallback) {
+        self.inner.borrow_mut().on_binary = Some(callback);
     }
 
     pub fn on_state_change(&self, callback: StateCallback) {
@@ -328,13 +338,22 @@ impl WebSocketClient {
     fn flush_message_queue(&self) {
         let mut inner = self.inner.borrow_mut();
         let queue: Vec<String> = inner.message_queue.drain(..).collect();
+        let binary_queue: Vec<Vec<u8>> = inner.binary_queue.drain(..).collect();
         drop(inner);
 
         for msg_json in queue {
             if let Some(ws) = &self.inner.borrow().ws {
                 if ws.send_with_str(&msg_json).is_err() {
-                    // Re-queue on failure
                     self.inner.borrow_mut().message_queue.push(msg_json);
+                    break;
+                }
+            }
+        }
+        for binary_data in binary_queue {
+            if let Some(ws) = &self.inner.borrow().ws {
+                let js_bytes = unsafe { js_sys::Uint8Array::view(&binary_data) };
+                if ws.send_with_array_buffer(&js_bytes.buffer()).is_err() {
+                    self.inner.borrow_mut().binary_queue.push(binary_data);
                     break;
                 }
             }
@@ -364,6 +383,7 @@ impl WebSocketClient {
 
         let base_url = inner.base_url.clone();
         let on_message = inner.on_message.clone();
+        let on_binary = inner.on_binary.clone();
         drop(inner);
 
         let state_label = if is_reconnect {
@@ -426,7 +446,10 @@ impl WebSocketClient {
                 // === onmessage ===
                 let onmessage_closure =
                     Closure::<dyn Fn(MessageEvent)>::new(move |event: MessageEvent| {
-                        if let Some(txt) = event.data().as_string() {
+                        let data = event.data();
+
+                        // Handle text (JSON) messages
+                        if let Some(txt) = data.as_string() {
                             // Ignore pong/ping messages
                             if txt == r#"{"type":"ping"}"# || txt == r#"{"type":"pong"}"# {
                                 return;
@@ -435,6 +458,17 @@ impl WebSocketClient {
                                 if let Some(callback) = &on_message {
                                     callback(msg);
                                 }
+                            }
+                            return;
+                        }
+
+                        // Handle binary (CRDT update) messages
+                        if let Some(array_buffer) = data.dyn_ref::<js_sys::ArrayBuffer>() {
+                            let bytes = js_sys::Uint8Array::new(array_buffer);
+                            let mut vec = Vec::with_capacity(bytes.length() as usize);
+                            bytes.copy_to(&mut vec);
+                            if let Some(callback) = &on_binary {
+                                callback(vec);
                             }
                         }
                     });
@@ -464,6 +498,7 @@ impl WebSocketClient {
         }
         inner.state = ConnectionState::Disconnected;
         inner.message_queue.clear();
+        inner.binary_queue.clear();
         drop(inner);
 
         self.set_state(ConnectionState::Disconnected);
@@ -522,6 +557,21 @@ impl WebSocketClient {
     ) -> Result<(), String> {
         let msg = WsMessage::activity(document_id.to_string(), user_id.to_string(), activity);
         self.send(&msg)
+    }
+
+    /// Send binary data (e.g., CRDT updates) over the WebSocket.
+    pub fn send_binary(&self, data: &[u8]) -> Result<(), String> {
+        let mut inner = self.inner.borrow_mut();
+        if inner.state == ConnectionState::Connected {
+            if let Some(ws) = &inner.ws {
+                let js_bytes = unsafe { js_sys::Uint8Array::view(data) };
+                ws.send_with_array_buffer(&js_bytes.buffer())
+                    .map_err(|e| format!("{:?}", e))?;
+                return Ok(());
+            }
+        }
+        inner.binary_queue.push(data.to_vec());
+        Err("Not connected — binary message queued".to_string())
     }
 }
 

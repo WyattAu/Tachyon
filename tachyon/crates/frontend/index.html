@@ -103,10 +103,13 @@
             }
         }
     </style>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#3B82F6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tachyon">
     <link data-trunk rel="rust" data-target-name="tachyon_frontend" data-wasm-opt="z">
     <base data-trunk-public-url>
-    <!-- ProseMirror editor bundle (built from editor/ via `npm run build`) -->
-    <script src="editor.js"></script>
     <script>
         // Tauri desktop detection and API URL configuration.
         // When running inside Tauri, the __TAURI__ global is injected.
@@ -126,6 +129,35 @@
     </script>
 </head>
 <body>
-    <div id="app"></div>
+    <div id="app">
+        <noscript>
+            <div style="max-width:800px;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;">
+                <h1 style="font-size:2rem;font-weight:700;margin-bottom:0.5rem;">Tachyon</h1>
+                <p style="color:#666;margin-bottom:1.5rem;">A high-performance knowledge management platform</p>
+                <nav style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+                    <a href="/documents" style="display:block;padding:1.5rem;border:1px solid #e5e7eb;border-radius:0.5rem;text-decoration:none;color:inherit;">
+                        <h2 style="font-size:1.1rem;margin-bottom:0.25rem;">Documents</h2>
+                        <p style="color:#666;font-size:0.875rem;">View and manage your documents</p>
+                    </a>
+                    <a href="/search" style="display:block;padding:1.5rem;border:1px solid #e5e7eb;border-radius:0.5rem;text-decoration:none;color:inherit;">
+                        <h2 style="font-size:1.1rem;margin-bottom:0.25rem;">Search</h2>
+                        <p style="color:#666;font-size:0.875rem;">Search across all content</p>
+                    </a>
+                    <a href="/catalog" style="display:block;padding:1.5rem;border:1px solid #e5e7eb;border-radius:0.5rem;text-decoration:none;color:inherit;">
+                        <h2 style="font-size:1.1rem;margin-bottom:0.25rem;">Catalog</h2>
+                        <p style="color:#666;font-size:0.875rem;">Browse the project catalog</p>
+                    </a>
+                </nav>
+                <p style="margin-top:2rem;color:#999;font-size:0.875rem;">JavaScript is required for the full interactive experience.</p>
+            </div>
+        </noscript>
+    </div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
 </body>
 </html>

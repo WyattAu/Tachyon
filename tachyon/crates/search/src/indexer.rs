@@ -127,6 +127,29 @@ impl IndexManager {
         })
     }
 
+    /// Open an existing index at the given path
+    pub async fn open(index_path: PathBuf) -> SearchResult<Self> {
+        let index = Index::open_in_dir(&index_path).map_err(|e| {
+            SearchError::index(
+                "INDEX_OPEN_ERROR",
+                format!("Failed to open index: {}", e),
+            )
+        })?;
+        let schema = index.schema();
+        let config = IndexConfig::new("tachyon").with_index_path(
+            index_path.to_string_lossy().to_string(),
+        );
+        let default_fields = DefaultFields::new();
+        let field_mappings = HashMap::new();
+        Ok(Self {
+            index: Arc::new(index),
+            schema,
+            field_mappings,
+            config,
+            default_fields,
+        })
+    }
+
     /// Add a field to the schema based on field definition
     ///
     /// # Arguments

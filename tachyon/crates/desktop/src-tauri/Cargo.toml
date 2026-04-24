@@ -54,6 +54,9 @@ git2 = { workspace = true }
 # File system operations
 walkdir = { workspace = true }
 
+# Open files/URLs in system default app
+open = "5"
+
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.6", features = ["v4", "serde"] }

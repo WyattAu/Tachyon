@@ -6,6 +6,7 @@ use leptos::ev;
 use leptos_router::hooks::use_navigate;
 use leptos::task::spawn_local;
 use crate::api::ApiClient;
+use crate::components::ButtonSpinner;
 
 /// Register page component
 #[component]
@@ -144,10 +145,14 @@ pub fn RegisterPage() -> impl IntoView {
 
                         <button
                             type="submit"
-                            class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                             disabled=move || loading.get()
                         >
-                            {move || if loading.get() { "Creating account..." } else { "Create Account" }}
+                            {move || if loading.get() {
+                                view! { <span class="flex items-center justify-center"><ButtonSpinner />"Creating account..."</span> }.into_any()
+                            } else {
+                                view! { "Create Account" }.into_any()
+                            }}
                         </button>
                     </form>
                 </div>

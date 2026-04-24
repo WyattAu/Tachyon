@@ -43,22 +43,22 @@ fn row_to_document_metadata(row: sqlx::postgres::PgRow) -> DatabaseResult<Docume
         author_id: row.get("author_id"),
         description: row.get("description"),
         tags: row.get("tags"),
-        frontmatter: row.get("frontmatter"),
-        project_id: row.get("project_id"),
+        frontmatter: row.try_get("frontmatter").unwrap_or(None),
+        project_id: row.try_get("project_id").unwrap_or(None),
         visibility: row.get("visibility"),
         status: row.get("status"),
-        content_type: row.get("content_type"),
-        word_count: row.get("word_count"),
-        character_count: row.get("character_count"),
-        read_count: row.get("read_count"),
-        edit_count: row.get("edit_count"),
-        content: row.get("content"),
-        html: row.get("html"),
+        content_type: row.try_get("content_type").unwrap_or_default(),
+        word_count: row.try_get("word_count").unwrap_or(0),
+        character_count: row.try_get("character_count").unwrap_or(0),
+        read_count: row.try_get("read_count").unwrap_or(0),
+        edit_count: row.try_get("edit_count").unwrap_or(0),
+        content: row.try_get("content").unwrap_or(None),
+        html: row.try_get("html").unwrap_or(None),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
-        published_at: row.get("published_at"),
-        content_hash: row.get("content_hash"),
-        conflict_detected: row.get("conflict_detected"),
+        published_at: row.try_get("published_at").unwrap_or(None),
+        content_hash: row.try_get("content_hash").unwrap_or(None),
+        conflict_detected: row.try_get("conflict_detected").unwrap_or(None),
     })
 }
 
@@ -146,7 +146,7 @@ impl SearchRepository {
     ) -> DatabaseResult<SearchResponse> {
         let offset = (page - 1) * page_size;
         let mut conditions: Vec<String> = vec![];
-        let mut param_count = 1;
+        let mut param_count = 2;
 
         if let Some(ref _content_type) = filters.content_type {
             conditions.push(format!("content_type = ${}", param_count));
@@ -210,7 +210,7 @@ impl SearchRepository {
                 d.created_at,
                 d.updated_at,
                 d.published_at,
-                ts_rank(d.search_vector, websearch_to_tsquery('english', $1)) as rank,
+                ts_rank(d.search_vector, websearch_to_tsquery('english', $1))::float8 as rank,
                 ts_headline('english', d.title || ' ' || COALESCE(d.description, ''), websearch_to_tsquery('english', $1), 'StartSel=<mark>, StopSel=</mark>, MaxWords=35, MinWords=15') as headline
             FROM documents d
             WHERE d.search_vector @@ websearch_to_tsquery('english', $1)
@@ -449,7 +449,7 @@ impl SearchRepository {
                     setweight(to_tsvector('english', name), 'A') ||
                     setweight(to_tsvector('english', COALESCE(description, '')), 'B'),
                     websearch_to_tsquery('english', $1)
-                ) as rank
+                )::float8 as rank
             FROM projects
             WHERE 
                 setweight(to_tsvector('english', name), 'A') ||

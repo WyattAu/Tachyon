@@ -101,6 +101,7 @@ pub struct CreateDocumentRequest {
     /// Document title
     pub title: String,
     /// Document content (markdown)
+    #[serde(default)]
     pub content: String,
     /// Project ID
     pub project_id: Option<String>,

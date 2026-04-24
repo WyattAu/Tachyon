@@ -393,6 +393,14 @@ impl PolicyEngine {
         self.invalidate_cache();
     }
 
+    /// Add a policy without invalidating the cache.
+    ///
+    /// Use this during initialization when the cache is known to be empty
+    /// and calling `invalidate_cache()` would panic inside an async runtime.
+    pub fn add_policy_no_invalidate(&self, policy: Policy) {
+        self.policies.insert(policy.id.clone(), policy);
+    }
+
     /// Get a policy by ID
     ///
     /// # Arguments

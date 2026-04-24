@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/server", "crates/desktop", "crates/desktop/src-tauri", "crates/renderer", "crates/rbac", "crates/search", "crates/database", "crates/storage", "crates/testing", "crates/cli", "crates/frontend", "crates/import-export"]
+members = ["crates/core", "crates/server", "crates/desktop", "crates/desktop/src-tauri", "crates/renderer", "crates/rbac", "crates/search", "crates/database", "crates/storage", "crates/testing", "crates/cli", "crates/frontend", "crates/import-export", "crates/ssg", "crates/plugin-runtime", "crates/editor"]
 resolver = "2"
 package.version = "0.1.0"
 package.edition = "2021"
@@ -35,6 +35,9 @@ pulldown-cmark = { version = "0.9", features = ["simd"] }
 dashmap = "5"
 walkdir = "2"
 
+# CRDT
+yrs = "0.25"
+
 # Server Logic
 axum = { version = "0.8", features = ["macros", "ws"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "compression-full", "limit"] }
@@ -59,3 +62,11 @@ criterion = "0.5"
 cargo-fuzz = "0.11"
 rand = "0.8"
 quickcheck = "1.0"
+
+# Release profile optimized for WASM bundle size
+[profile.release]
+opt-level = "z"       # Optimize for size
+lto = true            # Link-Time Optimization (15-30% reduction)
+codegen-units = 1     # Better optimization (slower compile)
+panic = "abort"       # Remove unwinding code
+strip = true          # Strip debug symbols

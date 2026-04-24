@@ -461,10 +461,7 @@ impl Document {
         }
 
         if self.content.is_empty() {
-            return Err(TachyonError::field_validation(
-                "content",
-                "Content cannot be empty",
-            ));
+            // Empty content is allowed for new documents; they start blank
         }
 
         for tag in &self.metadata.tags {

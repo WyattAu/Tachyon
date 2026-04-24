@@ -8,6 +8,7 @@ use axum::{
     response::Response,
 };
 use std::sync::Arc;
+use crate::config::SecurityConfig as ServerSecurityConfig;
 
 #[derive(Debug, Clone)]
 pub struct SecurityHeadersConfig {
@@ -66,15 +67,15 @@ impl Default for ContentSecurityPolicy {
     fn default() -> Self {
         Self {
             default_src: vec!["'self'".to_string()],
-            script_src: vec!["'self'".to_string()],
-            style_src: vec!["'self'".to_string(), "'unsafe-inline'".to_string()],
+            script_src: vec!["'self'".to_string(), "'wasm-unsafe-eval'".to_string()],
+            style_src: vec!["'self'".to_string(), "'unsafe-inline'".to_string(), "https://cdn.tailwindcss.com".to_string()],
             img_src: vec!["'self'".to_string(), "data:".to_string(), "https:".to_string()],
             font_src: vec!["'self'".to_string()],
-            connect_src: vec!["'self'".to_string()],
+            connect_src: vec!["'self'".to_string(), "wss:".to_string()],
             media_src: vec!["'self'".to_string()],
             object_src: vec!["'none'".to_string()],
             frame_src: vec!["'self'".to_string()],
-            frame_ancestors: vec!["'self'".to_string()],
+            frame_ancestors: vec!["'none'".to_string()],
             base_uri: vec!["'self'".to_string()],
             form_action: vec!["'self'".to_string()],
             upgrade_insecure_requests: true,
@@ -408,14 +409,30 @@ pub async fn security_headers_middleware(
     add_security_headers(response)
 }
 
-pub fn add_security_headers(mut response: Response) -> Response {
+pub fn add_security_headers(response: Response) -> Response {
+    add_security_headers_with_config_opts(response, &Default::default())
+}
+
+pub fn add_security_headers_from_config(response: Response, config: &ServerSecurityConfig) -> Response {
+    add_security_headers_with_config_opts(response, config)
+}
+
+fn add_security_headers_with_config_opts(mut response: Response, config: &ServerSecurityConfig) -> Response {
     let headers = response.headers_mut();
     
-    let csp = ContentSecurityPolicy::default();
-    headers.insert(
-        header::CONTENT_SECURITY_POLICY,
-        HeaderValue::from_str(&csp.to_header_value()).unwrap(),
-    );
+    if config.csp_enabled {
+        let csp_value = config.csp_custom.as_deref()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| {
+                ContentSecurityPolicy::default().to_header_value()
+            });
+        if let Ok(value) = HeaderValue::from_str(&csp_value) {
+            headers.insert(
+                header::CONTENT_SECURITY_POLICY,
+                value,
+            );
+        }
+    }
     
     headers.insert(
         header::X_FRAME_OPTIONS,
@@ -442,15 +459,19 @@ pub fn add_security_headers(mut response: Response) -> Response {
         HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
     );
     
-    let permissions = PermissionsPolicy::default();
-    if let Ok(value) = HeaderValue::from_str(&permissions.to_header_value()) {
-        headers.insert("Permissions-Policy", value);
+    if config.permissions_policy {
+        let permissions = PermissionsPolicy::default();
+        if let Ok(value) = HeaderValue::from_str(&permissions.to_header_value()) {
+            headers.insert("Permissions-Policy", value);
+        }
     }
     
-    headers.insert(
-        "Cross-Origin-Embedder-Policy",
-        HeaderValue::from_static("require-corp"),
-    );
+    if config.coep_enabled {
+        headers.insert(
+            "Cross-Origin-Embedder-Policy",
+            HeaderValue::from_static("require-corp"),
+        );
+    }
     
     headers.insert(
         "Cross-Origin-Opener-Policy",

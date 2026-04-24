@@ -320,7 +320,7 @@ pub struct UserErrorResponse {
 pub async fn register(
     State(state): State<UserState>,
     Json(req): Json<RegisterRequest>,
-) -> Result<Json<UserResponse>, (StatusCode, Json<UserErrorResponse>)> {
+) -> Result<Json<AuthenticateResponse>, (StatusCode, Json<UserErrorResponse>)> {
     info!("User registration: {}", req.username);
 
     // Validate input
@@ -388,7 +388,30 @@ pub async fn register(
     match repo.create(&user).await {
         Ok(created) => {
             info!("User registered: {} ({})", created.username, created.id);
-            Ok(Json(UserResponse::from(created)))
+
+            let token = match state.generate_jwt(&created.id.to_string(), created.permissions.role) {
+                Ok(t) => t,
+                Err(e) => {
+                    warn!("Failed to generate JWT after registration: {}", e);
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(UserErrorResponse {
+                            code: "TOKEN_ERROR".into(),
+                            message: "Failed to generate authentication token".into(),
+                        }),
+                    ));
+                }
+            };
+
+            Ok(Json(AuthenticateResponse {
+                success: true,
+                user_id: Some(created.id.to_string()),
+                access_token: Some(token),
+                token_type: "Bearer".into(),
+                expires_in: state.token_expiration_secs,
+                error: None,
+                user: Some(UserResponse::from(created)),
+            }))
         }
         Err(e) => {
             let msg = e.to_string();
@@ -1042,6 +1065,7 @@ pub fn create_user_router() -> axum::Router<UserState> {
         // User management routes
         .route("/users", get(list_users))
         .route("/users", post(create_user))
+        .route("/users/me", get(get_me))
         .route("/users/{user_id}", get(get_user))
         .route("/users/{user_id}", put(update_user))
         .route("/users/{user_id}", delete(delete_user))

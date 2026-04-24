@@ -26,7 +26,7 @@ use tracing::{debug, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
-struct Claims {
+pub struct Claims {
     sub: String,
     iss: String,
     aud: String,
@@ -329,7 +329,11 @@ pub async fn auth_middleware(
     let headers = request.headers();
     let path = request.uri().path();
 
-    if path == "/health" || path == "/metrics" || path.starts_with("/api/v1/auth/") {
+    if request.method() == axum::http::Method::OPTIONS {
+        return Ok(next.run(request).await);
+    }
+
+    if path == "/health" || path == "/metrics" || path == "/" || path.starts_with("/api/v1/auth/") || path.starts_with("/api/docs") {
         return Ok(next.run(request).await);
     }
 

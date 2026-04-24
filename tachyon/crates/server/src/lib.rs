@@ -111,10 +111,12 @@ pub mod api_docs;
 pub mod audit;
 pub mod config;
 pub mod conflict;
+pub mod crdt;
 pub mod graph_extractor;
 pub mod middleware;
 pub mod routes;
 pub mod sync;
+pub mod truelayer;
 pub mod validation;
 pub mod webhook_delivery;
 pub mod websocket;
@@ -126,6 +128,7 @@ pub use config::*;
 pub use middleware::*;
 
 use axum::extract::State;
+use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
 /// Initialize application state from a [`ServerConfig`].
@@ -156,6 +159,7 @@ pub async fn init_app_state(
     crate::routes::plugin::PluginState,
     crate::routes::space::SpaceState,
     crate::routes::conflict::ConflictState,
+    crate::routes::onboarding::OnboardingState,
     crate::websocket::ConnectionManager,
     crate::websocket::CrdtConnectionManager,
     tachyon_database::DatabasePool,
@@ -165,6 +169,7 @@ pub async fn init_app_state(
     use crate::routes::tags::TagsState;
     use crate::routes::webhook::WebhookState;
     use crate::routes::conflict::ConflictState;
+    use crate::routes::onboarding::OnboardingState;
     use crate::routes::plugin::PluginState;
     use crate::routes::space::SpaceState;
     use crate::routes::user::UserState;
@@ -243,9 +248,14 @@ pub async fn init_app_state(
     let notification_state = NotificationState::new(pool.clone());
     let tags_state = TagsState { pool: pool.clone() };
     let webhook_state = WebhookState { pool: pool.clone() };
-    let plugin_state = PluginState { pool: pool.clone() };
+    let plugins_dir = std::env::current_dir()
+        .unwrap_or_else(|_| std::env::temp_dir())
+        .join("plugins");
+    let plugin_runtime = tachyon_plugin_runtime::PluginRuntime::new(plugins_dir);
+    let plugin_state = PluginState { pool: pool.clone(), runtime: plugin_runtime };
     let space_state = SpaceState { pool: pool.clone() };
     let conflict_state = ConflictState { pool: pool.clone() };
+    let onboarding_state = OnboardingState { pool: pool.clone() };
     let connection_manager = ConnectionManager::new();
     let crdt_connection_manager = CrdtConnectionManager::new();
 
@@ -253,7 +263,7 @@ pub async fn init_app_state(
         document_state, user_state, session_state, repository_state, node_state,
         catalog_state, team_state, role_state, search_state, seo_state,
         review_state, activity_state, notification_state, tags_state,
-        webhook_state, plugin_state, space_state, conflict_state, connection_manager, crdt_connection_manager, pool,
+        webhook_state, plugin_state, space_state,         conflict_state, onboarding_state, connection_manager, crdt_connection_manager, pool,
     ))
 }
 
@@ -280,6 +290,7 @@ pub fn build_app(
     plugin_state: crate::routes::plugin::PluginState,
     space_state: crate::routes::space::SpaceState,
     conflict_state: crate::routes::conflict::ConflictState,
+    onboarding_state: crate::routes::onboarding::OnboardingState,
     connection_manager: crate::websocket::ConnectionManager,
     crdt_connection_manager: crate::websocket::CrdtConnectionManager,
     pool: tachyon_database::DatabasePool,
@@ -301,9 +312,17 @@ pub fn build_app(
     use crate::routes::tags::create_tags_router;
     use crate::routes::webhook::create_webhook_router;
     use crate::routes::conflict::create_conflict_router;
-    use crate::routes::plugin::create_plugin_router;
+    use crate::routes::onboarding::create_onboarding_router;
+    use crate::routes::plugin::create_plugin_router_with_state;
     use crate::routes::space::create_space_router;
+    use crate::routes::collaboration::{CollaborationState, create_collaboration_router};
+    use crate::routes::ecosystem::{EcosystemState, create_ecosystem_router};
+    use crate::routes::billing::{BillingState, create_billing_router};
+    use crate::routes::organization::{OrganizationState, create_organization_router};
+    use crate::routes::ssg::{SsgState, create_ssg_router};
     use crate::routes::oauth2::{create_oauth2_router, OAuth2State};
+    use crate::routes::password_reset::{create_password_reset_router, PasswordResetState};
+    use crate::routes::files::{create_files_router, FilesState};
     use crate::websocket::handle_websocket_upgrade;
     use crate::websocket::handle_crdt_websocket_upgrade;
     use axum::{Router, routing::get};
@@ -330,8 +349,33 @@ pub fn build_app(
     let tags_router = create_tags_router().with_state(tags_state);
     let webhook_router = create_webhook_router().with_state(webhook_state);
     let conflict_router = create_conflict_router().with_state(conflict_state);
-    let plugin_router = create_plugin_router().with_state(plugin_state);
+    let plugin_router = create_plugin_router_with_state(plugin_state);
     let space_router = create_space_router().with_state(space_state);
+    let onboarding_router = create_onboarding_router().with_state(onboarding_state);
+    let collaboration_state = CollaborationState::new(pool.clone(), connection_manager.clone());
+    let collaboration_router = create_collaboration_router().with_state(collaboration_state);
+    let ecosystem_state = EcosystemState::new(pool.clone());
+    let ecosystem_router = create_ecosystem_router().with_state(ecosystem_state);
+
+    // Billing, Organization, SSG routers (pool-backed, created inline)
+    let truelayer_client = if config.truelayer.enabled {
+        let client = crate::truelayer::TrueLayerClient::new(&config.truelayer);
+        if client.is_enabled() {
+            tracing::info!("TrueLayer payment processing enabled");
+            Some(client)
+        } else {
+            tracing::warn!("TrueLayer enabled but missing configuration");
+            None
+        }
+    } else {
+        None
+    };
+    let billing_state = BillingState::new(pool.clone(), truelayer_client);
+    let billing_router = create_billing_router().with_state(billing_state);
+    let organization_state = OrganizationState { pool: pool.clone() };
+    let organization_router = create_organization_router().with_state(organization_state);
+    let ssg_state = SsgState::new(pool.clone());
+    let ssg_router = create_ssg_router().with_state(ssg_state);
 
     // OAuth2 router (only enabled when providers are configured)
     let oauth2_state = OAuth2State {
@@ -343,6 +387,13 @@ pub fn build_app(
         pool: pool.clone(),
     };
     let oauth2_router = create_oauth2_router().with_state(oauth2_state);
+    let password_reset_state = PasswordResetState { pool: pool.clone() };
+    let password_reset_router = create_password_reset_router().with_state(password_reset_state);
+
+    let files_root = std::env::var("TACHYON_FILES_ROOT")
+        .unwrap_or_else(|_| "./content".to_string());
+    let files_state = FilesState { root_path: std::path::PathBuf::from(&files_root) };
+    let files_router = create_files_router().with_state(files_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -362,17 +413,34 @@ pub fn build_app(
         .merge(conflict_router)
         .merge(plugin_router)
         .merge(space_router)
-        .merge(oauth2_router);
+        .merge(onboarding_router)
+        .merge(collaboration_router)
+        .merge(ecosystem_router)
+        .merge(billing_router)
+        .merge(organization_router)
+        .merge(password_reset_router)
+        .merge(files_router)
+        .layer(RequestBodyLimitLayer::new(1 * 1024 * 1024))
+        .merge(
+            ssg_router
+                .layer(RequestBodyLimitLayer::new(1 * 1024 * 1024)),
+        )
+        .merge(
+            oauth2_router
+                .layer(RequestBodyLimitLayer::new(1 * 1024 * 1024)),
+        );
 
     let ws_router = Router::new()
         .route("/ws", get(handle_websocket_upgrade))
-        .with_state(connection_manager);
+        .with_state(connection_manager)
+        .layer(RequestBodyLimitLayer::new(1024 * 1024 * 1024));
 
     // CRDT WebSocket needs its own router since it uses different state
     // y-websocket appends room name to URL: ws://host/ws/crdt/{documentId}
     let crdt_ws_router = Router::new()
-        .route("/ws/crdt/:room", get(handle_crdt_websocket_upgrade))
-        .with_state(crdt_connection_manager);
+        .route("/ws/crdt/{room}", get(handle_crdt_websocket_upgrade))
+        .with_state(crdt_connection_manager)
+        .layer(RequestBodyLimitLayer::new(1024 * 1024 * 1024));
 
     let swagger_ui = crate::api_docs::create_swagger_ui();
 
@@ -392,6 +460,8 @@ pub fn build_app(
         .route("/metrics/prometheus", get(prometheus_metrics_handler))
         .with_state(HealthState { pool: pool.clone() });
 
+    let security_config = Arc::new(config.security.clone());
+
     let mut router = Router::new()
         .route("/", get(root_handler))
         .merge(health_router)
@@ -402,11 +472,13 @@ pub fn build_app(
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
+                .layer(axum::middleware::from_fn(audit_middleware))
+                .layer(axum::middleware::from_fn(request_id_middleware))
                 .layer(axum::middleware::from_fn(cache_control_middleware))
                 .layer(CompressionLayer::new())
                 .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
                 .layer(build_cors_layer(config))
-                .map_response(add_security_headers),
+                .map_response(move |response| add_security_headers_from_config(response, &security_config)),
         );
 
     router = router.merge(swagger_ui);
@@ -440,7 +512,7 @@ pub async fn build_server(config: &ServerConfig) -> anyhow::Result<axum::Router>
         state.0, state.1, state.2, state.3, state.4, state.5,
         state.6, state.7, state.8, state.9, state.10, state.11,
         state.12, state.13, state.14, state.15, state.16, state.17,
-        state.18, state.19, state.20,
+        state.18, state.19, state.20, state.21,
         config,
     ))
 }
@@ -574,6 +646,21 @@ pub fn install_metrics() -> &'static metrics_exporter_prometheus::PrometheusHand
     })
 }
 
-async fn root_handler() -> &'static str {
-    "Tachyon Knowledge Management System"
+async fn root_handler() -> axum::response::Html<&'static str> {
+    axum::response::Html(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tachyon - A deterministic, high-performance knowledge management system with sub-15ms rendering and real-time collaboration.">
+    <title>Tachyon - Knowledge Management System</title>
+</head>
+<body>
+    <h1>Tachyon Knowledge Management System</h1>
+    <p>A deterministic, high-performance knowledge management system with sub-15ms rendering and real-time collaboration.</p>
+    <p><a href="/api/docs">API Documentation</a></p>
+</body>
+</html>"#,
+    )
 }

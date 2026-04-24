@@ -3,15 +3,21 @@
 
 pub mod activity;
 pub mod attachment;
+pub mod billing;
 pub mod catalog;
+pub mod comment;
 pub mod document_review;
 pub mod document_version;
 pub mod error;
 pub mod graph;
 pub mod migrations;
 pub mod notification;
+pub mod onboarding;
+pub mod organization;
+pub mod password_reset;
 pub mod permissions;
 pub mod plugin;
+pub mod presence;
 pub mod rbac;
 pub mod repository;
 pub mod saved_search;
@@ -38,6 +44,11 @@ pub use document_review::{
 pub use document_version::{CreateVersionRequest, DocumentVersion, DocumentVersionRepository};
 pub use error::{DatabaseError, DatabaseResult};
 pub use notification::{CreateNotification, Notification, NotificationRepository};
+pub use organization::{
+    Organization, OrganizationMember, OrganizationRepository,
+    CreateOrganizationRequest, UpdateOrganizationRequest,
+    AddOrganizationMemberRequest, UpdateOrganizationMemberRequest,
+};
 pub use permissions::{DefaultRoles, Permission, ResourcePermission, Role};
 pub use template::{CreateTemplateRequest, DocumentTemplate, TemplateRepository, UpdateTemplateRequest};
 pub use types::{Component, Project, ProjectMember};
@@ -58,6 +69,21 @@ pub use user::{UserRecord, UserRepository};
 pub use user_preferences::UserPreferencesRepository;
 pub use webhook::{CreateWebhook, Webhook, WebhookRepository};
 pub use plugin::{CreatePluginRequest, Plugin, PluginRepository, UpdatePluginRequest};
+pub use comment::{
+    Comment, CommentRepository,
+    CreateCommentRequest as CreateDocumentCommentRequest,
+    UpdateCommentRequest as UpdateDocumentCommentRequest,
+};
+pub use billing::{
+    Subscription, SubscriptionRepository, CreateSubscriptionRequest, UpdateSubscriptionRequest,
+    Invoice, InvoiceRepository, CreateInvoiceRequest, UpdateInvoiceRequest,
+    NotificationPreference, NotificationPreferenceRepository, UpsertNotificationPrefRequest,
+};
+pub use password_reset::{
+    PasswordResetRepository, PasswordResetToken, EmailVerificationToken,
+};
+pub use onboarding::{OnboardingRepository, OnboardingStatus, OnboardingStep};
+pub use presence::{Presence, PresenceRepository, UpsertPresenceRequest, UpdatePresenceRequest, PRESENCE_TTL_SECS};
 pub use space::{
     AddSpaceMemberRequest, CreateSpaceRequest, Space, SpaceMember, SpaceRepository,
     UpdateSpaceMemberRequest, UpdateSpaceRequest,

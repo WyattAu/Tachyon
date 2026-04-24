@@ -33,6 +33,11 @@ COPY crates/desktop/src-tauri/Cargo.toml ./crates/desktop/src-tauri/
 COPY crates/testing/Cargo.toml ./crates/testing/
 COPY crates/cli/Cargo.toml ./crates/cli/
 COPY crates/frontend/Cargo.toml ./crates/frontend/
+COPY crates/storage/Cargo.toml ./crates/storage/
+COPY crates/import-export/Cargo.toml ./crates/import-export/
+COPY crates/ssg/Cargo.toml ./crates/ssg/
+COPY crates/plugin-runtime/Cargo.toml ./crates/plugin-runtime/
+COPY crates/editor/Cargo.toml ./crates/editor/
 
 # Create dummy source files for ALL workspace members
 # Must match the module structure expected by each crate's Cargo.toml
@@ -51,6 +56,16 @@ RUN mkdir -p crates/server/src && \
     echo "pub fn dummy() {}" > crates/rbac/src/lib.rs && \
     mkdir -p crates/search/src && \
     echo "pub fn dummy() {}" > crates/search/src/lib.rs && \
+    mkdir -p crates/storage/src && \
+    echo "pub fn dummy() {}" > crates/storage/src/lib.rs && \
+    mkdir -p crates/import-export/src && \
+    echo "pub fn dummy() {}" > crates/import-export/src/lib.rs && \
+    mkdir -p crates/ssg/src && \
+    echo "pub fn dummy() {}" > crates/ssg/src/lib.rs && \
+    mkdir -p crates/plugin-runtime/src && \
+    echo "pub fn dummy() {}" > crates/plugin-runtime/src/lib.rs && \
+    mkdir -p crates/editor/src && \
+    echo "pub fn dummy() {}" > crates/editor/src/lib.rs && \
     mkdir -p crates/desktop/src && \
     echo "pub fn dummy() {}" > crates/desktop/src/lib.rs && \
     mkdir -p crates/desktop/src-tauri/src && \

@@ -1,0 +1,6 @@
+title = "Tachyon Documentation"
+description = "A fast, offline-first knowledge management platform built with Rust"
+base_url = "https://wyattau.github.io/Tachyon"
+footer = "Built with Tachyon"
+theme = "auto"
+group_by_tag = true

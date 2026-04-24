@@ -6,6 +6,7 @@ use leptos::ev;
 use leptos_router::hooks::use_navigate;
 use leptos::task::spawn_local;
 use crate::api::ApiClient;
+use crate::components::ButtonSpinner;
 
 /// Login page component
 #[component]
@@ -45,12 +46,19 @@ pub fn LoginPage() -> impl IntoView {
                 Ok(response) => {
                     if response.success {
                         if let Some(token) = &response.access_token {
+                            // Always persist the token to localStorage so that
+                            // ApiClient::default() picks it up on page reload.
+                            if let Some(window) = web_sys::window() {
+                                if let Ok(Some(storage)) = window.local_storage() {
+                                    let _ = storage.set_item("tachyon_token", token);
+                                }
+                            }
+                            // Also set it on this in-memory client instance
                             client.set_auth_token(token.clone());
-                            
+
                             if remember_val {
                                 if let Some(window) = web_sys::window() {
                                     if let Ok(Some(storage)) = window.local_storage() {
-                                        let _ = storage.set_item("tachyon_token", token);
                                         let _ = storage.set_item("tachyon_remember", "true");
                                     }
                                 }
@@ -84,6 +92,11 @@ pub fn LoginPage() -> impl IntoView {
                 Ok(response) => {
                     if response.success {
                         if let Some(token) = &response.access_token {
+                            if let Some(window) = web_sys::window() {
+                                if let Ok(Some(storage)) = window.local_storage() {
+                                    let _ = storage.set_item("tachyon_token", token);
+                                }
+                            }
                             client.set_auth_token(token.clone());
                         }
                         nav.update_value(|n| n("/dashboard", Default::default()));
@@ -155,10 +168,14 @@ pub fn LoginPage() -> impl IntoView {
                         
                         <button
                             type="submit"
-                            class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                             disabled=move || loading.get()
                         >
-                            {move || if loading.get() { "Signing in..." } else { "Sign in" }}
+                            {move || if loading.get() {
+                                view! { <span class="flex items-center justify-center"><ButtonSpinner />"Signing in..."</span> }.into_any()
+                            } else {
+                                view! { "Sign in" }.into_any()
+                            }}
                         </button>
                     </form>
                     
@@ -177,13 +194,19 @@ pub fn LoginPage() -> impl IntoView {
                                 <button
                                     type="button"
                                     on:click=on_guest_login
-                                    class="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
+                                    class="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center"
                                     disabled=move || loading.get()
                                 >
                                     <span class="flex items-center justify-center">
-                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                        </svg>
+                                        {move || if loading.get() {
+                                            view! { <ButtonSpinner /> }.into_any()
+                                        } else {
+                                            view! {
+                                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                                </svg>
+                                            }.into_any()
+                                        }}
                                         "Continue as Guest"
                                     </span>
                                 </button>

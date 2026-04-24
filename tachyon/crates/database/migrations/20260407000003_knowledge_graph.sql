@@ -1,4 +1,3 @@
-BEGIN;
 
 -- Knowledge graph nodes
 CREATE TABLE IF NOT EXISTS knowledge_graph_nodes (
@@ -52,5 +51,3 @@ CREATE INDEX IF NOT EXISTS idx_kg_edges_active ON knowledge_graph_edges(is_activ
 
 -- Prevent duplicate edges (same source+target+type)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_kg_edges_unique ON knowledge_graph_edges(source_id, target_id, edge_type) WHERE is_active = true;
-
-COMMIT;

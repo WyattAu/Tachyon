@@ -25,7 +25,21 @@ impl Default for ApiClient {
         } else {
             "http://localhost:8080/api/v1".to_string()
         };
-        Self::new(&base_url)
+        let client = Self::new(&base_url);
+
+        // Restore auth token from localStorage so every ApiClient instance
+        // picks up the session that was persisted by the login page.
+        if let Some(window) = web_sys::window() {
+            if let Ok(Some(storage)) = window.local_storage() {
+                if let Ok(Some(token)) = storage.get_item("tachyon_token") {
+                    if !token.is_empty() {
+                        client.set_auth_token(token);
+                    }
+                }
+            }
+        }
+
+        client
     }
 }
 
@@ -91,6 +105,7 @@ impl ApiClient {
         let url = format!("{}/auth/register", self.base_url);
         let body = serde_json::json!({
             "username": username,
+            "display_name": username,
             "email": email,
             "password": password,
         });
@@ -607,6 +622,113 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Invite a member to a team
+    pub async fn invite_team_member(&self, team_id: &str, email: &str, role: &str) -> Result<(), ApiError> {
+        let url = format!("{}/teams/{}/members/invite", self.base_url, team_id);
+        let body = serde_json::json!({ "email": email, "role": role });
+        self.post_empty_json_accept_any(&url, &body).await
+    }
+
+    /// Remove a member from a team
+    pub async fn remove_team_member(&self, team_id: &str, user_id: &str) -> Result<(), ApiError> {
+        let url = format!("{}/teams/{}/members/{}", self.base_url, team_id, user_id);
+        self.delete(&url).await
+    }
+
+    /// Update a team
+    pub async fn update_team(&self, team_id: &str, request: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/teams/{}", self.base_url, team_id);
+        self.put(&url, request).await
+    }
+
+    /// Delete a team
+    pub async fn delete_team(&self, team_id: &str) -> Result<(), ApiError> {
+        let url = format!("{}/teams/{}", self.base_url, team_id);
+        self.delete(&url).await
+    }
+
+    // ========================================================================
+    // Billing API
+    // ========================================================================
+
+    /// List available billing plans
+    pub async fn get_billing_plans(&self) -> Result<crate::types::BillingPlansResponse, ApiError> {
+        let url = format!("{}/billing/plans", self.base_url);
+        self.get(&url).await
+    }
+
+    /// Get current subscription for an organization
+    pub async fn get_subscription(&self, org_id: &str) -> Result<crate::types::SubscriptionResponse, ApiError> {
+        let url = format!("{}/billing/subscriptions/{}", self.base_url, org_id);
+        self.get(&url).await
+    }
+
+    /// Create a subscription
+    pub async fn create_subscription(&self, org_id: &str, plan: &str) -> Result<crate::types::SubscriptionResponse, ApiError> {
+        let url = format!("{}/billing/subscriptions", self.base_url);
+        let body = serde_json::json!({ "organization_id": org_id, "plan": plan });
+        self.post(&url, &body).await
+    }
+
+    /// Cancel subscription
+    pub async fn cancel_subscription(&self, org_id: &str) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/billing/subscriptions/{}/cancel", self.base_url, org_id);
+        self.post_empty_json(&url).await
+    }
+
+    /// Get invoices for an organization
+    pub async fn get_invoices(&self, org_id: &str) -> Result<crate::types::InvoicesResponse, ApiError> {
+        let url = format!("{}/billing/invoices/{}", self.base_url, org_id);
+        self.get(&url).await
+    }
+
+    /// Get usage metrics for an organization
+    pub async fn get_usage(&self, org_id: &str) -> Result<crate::types::UsageResponse, ApiError> {
+        let url = format!("{}/billing/usage/{}", self.base_url, org_id);
+        self.get(&url).await
+    }
+
+    /// Create a payment mandate (TrueLayer)
+    pub async fn create_mandate(&self, org_id: &str, return_url: &str) -> Result<crate::types::MandateResponse, ApiError> {
+        let url = format!("{}/billing/mandates", self.base_url);
+        let body = serde_json::json!({ "organization_id": org_id, "return_url": return_url });
+        self.post(&url, &body).await
+    }
+
+    /// Get mandate status
+    pub async fn get_mandate_status(&self, mandate_id: &str) -> Result<crate::types::MandateStatusResponse, ApiError> {
+        let url = format!("{}/billing/mandates/{}", self.base_url, mandate_id);
+        self.get(&url).await
+    }
+
+    /// Get payment status
+    pub async fn get_payment_status(&self, payment_id: &str) -> Result<crate::types::PaymentStatusResponse, ApiError> {
+        let url = format!("{}/billing/payments/{}", self.base_url, payment_id);
+        self.get(&url).await
+    }
+
+    // ========================================================================
+    // Audit Log API
+    // ========================================================================
+
+    /// List audit log entries
+    pub async fn list_audit_logs(
+        &self,
+        page: Option<u32>,
+        page_size: Option<u32>,
+        action: Option<&str>,
+        actor_id: Option<&str>,
+    ) -> Result<serde_json::Value, ApiError> {
+        let mut params = vec![];
+        if let Some(p) = page { params.push(format!("page={}", p)); }
+        if let Some(ps) = page_size { params.push(format!("page_size={}", ps)); }
+        if let Some(a) = action { params.push(format!("action={}", a)); }
+        if let Some(aid) = actor_id { params.push(format!("actor_id={}", aid)); }
+        let query = if params.is_empty() { String::new() } else { format!("?{}", params.join("&")) };
+        let url = format!("{}/audit{}", self.base_url, query);
+        self.get(&url).await
+    }
+
     // ========================================================================
     // Roles API
     // ========================================================================
@@ -866,6 +988,32 @@ impl ApiClient {
             Err(ApiError::Api(format!("HTTP {}: {}", status, text)))
         }
     }
+
+    async fn post_empty_json_accept_any(&self, url: &str, body: &impl Serialize) -> Result<(), ApiError> {
+        use gloo_net::http::Request;
+
+        let mut builder = Request::post(url)
+            .header("Content-Type", "application/json");
+        
+        if let Some(token) = self.get_auth_token() {
+            builder = builder.header("Authorization", &format!("Bearer {}", token));
+        }
+
+        let response = builder
+            .json(body)
+            .map_err(|e| ApiError::Serialization(e.to_string()))?
+            .send()
+            .await
+            .map_err(|e| ApiError::Network(e.to_string()))?;
+
+        if response.ok() {
+            Ok(())
+        } else {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            Err(ApiError::Api(format!("HTTP {}: {}", status, text)))
+        }
+    }
 }
 
 /// API Error type
@@ -1094,24 +1242,28 @@ impl ApiClient {
     }
 
     /// List root spaces (no parent) for a user
+    #[allow(dead_code)]
     pub async fn list_root_spaces(&self, owner_id: &str) -> Result<Vec<crate::types::Space>, ApiError> {
         let url = format!("{}/spaces/root?owner_id={}", self.base_url, owner_id);
         self.get(&url).await
     }
 
     /// List child spaces of a parent
+    #[allow(dead_code)]
     pub async fn list_child_spaces(&self, parent_id: &str, owner_id: &str) -> Result<Vec<crate::types::Space>, ApiError> {
         let url = format!("{}/spaces/{}/children?owner_id={}", self.base_url, parent_id, owner_id);
         self.get(&url).await
     }
 
     /// Get a single space
+    #[allow(dead_code)]
     pub async fn get_space(&self, space_id: &str) -> Result<crate::types::Space, ApiError> {
         let url = format!("{}/spaces/{}", self.base_url, space_id);
         self.get(&url).await
     }
 
     /// Get the default (personal) space for a user
+    #[allow(dead_code)]
     pub async fn get_default_space(&self, owner_id: &str) -> Result<crate::types::Space, ApiError> {
         let url = format!("{}/spaces/default?owner_id={}", self.base_url, owner_id);
         self.get(&url).await
@@ -1160,9 +1312,80 @@ impl ApiClient {
     }
 
     /// Move a document to a space
+    #[allow(dead_code)]
     pub async fn move_document_to_space(&self, document_id: &str, space_id: Option<&str>) -> Result<(), ApiError> {
         let url = format!("{}/spaces/move-document/{}", self.base_url, document_id);
         let body = serde_json::json!({ "space_id": space_id });
         self.put(&url, &body).await
+    }
+
+    // ========================================================================
+    // SSG API
+    // ========================================================================
+
+    /// Build a static site
+    pub async fn build_site(&self, config: &SsgBuildRequest) -> Result<SsgBuildResponse, ApiError> {
+        let url = format!("{}/ssg/build", self.base_url);
+        self.post(&url, config).await
+    }
+
+    /// Download the generated site as ZIP
+    pub async fn download_ssg_build(&self) -> Result<(), ApiError> {
+        use gloo_net::http::Request;
+        use wasm_bindgen::JsCast;
+
+        let url = format!("{}/ssg/download", self.base_url);
+        let mut builder = Request::get(&url);
+
+        if let Some(token) = self.get_auth_token() {
+            builder = builder.header("Authorization", &format!("Bearer {}", token));
+        }
+
+        let response = builder
+            .send()
+            .await
+            .map_err(|e| ApiError::Network(e.to_string()))?;
+
+        if response.ok() {
+            let blob = response
+                .binary()
+                .await
+                .map_err(|e| ApiError::Serialization(e.to_string()))?;
+
+            if let Some(window) = web_sys::window() {
+                let js_bytes = js_sys::Uint8Array::new_with_length(blob.len() as u32);
+                js_bytes.copy_from(&blob);
+
+                let parts = js_sys::Array::new();
+                parts.push(&js_bytes.buffer());
+
+                let bag = web_sys::BlobPropertyBag::new();
+                bag.set_type("application/zip");
+                let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(
+                    &parts,
+                    &bag,
+                ).map_err(|e| ApiError::Api(format!("Failed to create blob: {:?}", e)))?;
+
+                let url = web_sys::Url::create_object_url_with_blob(&blob)
+                    .map_err(|e| ApiError::Api(format!("Failed to create object URL: {:?}", e)))?;
+
+                let document = window.document().unwrap();
+                let a = document.create_element("a").unwrap();
+                a.set_attribute("href", &url).unwrap();
+                a.set_attribute("download", "tachyon-site.zip").unwrap();
+
+                let body = document.body().unwrap();
+                body.append_child(&a).unwrap();
+                a.dyn_ref::<web_sys::HtmlElement>().unwrap().click();
+                body.remove_child(&a).unwrap();
+                web_sys::Url::revoke_object_url(&url).unwrap();
+            }
+
+            Ok(())
+        } else {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            Err(ApiError::Api(format!("HTTP {}: {}", status, text)))
+        }
     }
 }

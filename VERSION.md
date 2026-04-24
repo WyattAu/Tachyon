@@ -14,7 +14,7 @@
 | **Type** | Knowledge Management System |
 | **Deployment Modes** | Desktop, Server, Static |
 | **Primary Languages** | Rust, Leptos |
-| **Current Version** | 1.5.0 |
+| **Current Version** | 4.1.0 |
 | **Project Status** | PRODUCTION READY |
 
 ---
@@ -286,7 +286,72 @@ bun run dev
 | **Deployment** | **Production Deployment Testing** | **COMPLETE** | **2026-02-18** |
 | **Performance** | **API Benchmarking** | **COMPLETE** | **2026-02-19** |
 | **Security** | **Penetration Testing** | **COMPLETE** | **2026-02-19** |
-| **CI/CD** | **Pipeline Configuration** | **COMPLETE** | **2026-02-19** |
+## Go Deep: Database Persistence & Real Implementations (2026-04-18)
+
+### Summary
+Replaced all remaining in-memory/placeholder endpoints with real PostgreSQL-backed implementations.
+
+### Completed Items
+
+| Item | Status | Details |
+|------|--------|---------|
+| Comments → PostgreSQL | ✅ | Migration, repository with full CRUD, server handlers updated |
+| Billing → PostgreSQL | ✅ | Subscriptions, invoices, notification preferences tables and repositories |
+| Presence → PostgreSQL | ✅ | UPSERT-based presence with TTL cleanup, replaces in-memory HashMap |
+| SSG Color Theme → CSS Variables | ✅ | `ColorTheme` wired into all templates via CSS custom properties |
+| SSG Multi-Language Generation | ✅ | Per-language subdirectories, language switcher, RTL support, root redirect |
+| Plugin WASM Execution | ✅ | `POST /plugins/invoke` endpoint wired to real `PluginRuntime` |
+| Collaboration WebSocket Broadcast | ✅ | REST presence/comment changes broadcast to WebSocket clients |
+| Collaboration & Ecosystem Routes | ✅ | Registered in production router (were previously missing) |
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `crates/database/migrations/20260418000002_presence.sql` | Presence table with UPSERT, TTL, and indexes |
+| `crates/database/src/presence.rs` | PresenceRepository with upsert, touch, list, purge, count |
+| `crates/database/src/billing.rs` | Subscription, Invoice, NotificationPreference repositories |
+| `crates/database/src/comment.rs` | CommentRepository with full CRUD |
+
+### Files Modified
+| File | Changes |
+|------|---------|
+| `crates/database/src/lib.rs` | Added billing, comment, presence modules and re-exports |
+| `crates/server/src/routes/collaboration.rs` | DB-backed presence + comment handlers, WebSocket broadcasts |
+| `crates/server/src/routes/plugin.rs` | Added `invoke_hook` endpoint, PluginRuntime integration |
+| `crates/server/src/routes/mod.rs` | Added collaboration/ecosystem modules, registered plugin runtime |
+| `crates/server/src/lib.rs` | Wired collaboration, ecosystem, plugin routers into build_app |
+| `crates/ssg/src/lib.rs` | Multi-language build_to_dir/zip, ColorTheme wiring, i18n |
+| `crates/ssg/src/templates.rs` | CSS custom properties, language switcher, RTL support |
+| `crates/plugin-runtime/src/lib.rs` | Added Clone derive to PluginRuntime |
+| `Cargo.toml` | Added ssg and plugin-runtime to workspace members |
+
+### Database Migrations Added
+| Migration | Tables |
+|-----------|--------|
+| `20260418000000_comments.sql` | `document_comments` with anchors, threading, mentions |
+| `20260418000001_billing.sql` | `subscriptions`, `invoices`, `notification_preferences` |
+| `20260418000002_presence.sql` | `document_presence` with UPSERT, TTL indexes |
+
+### SSG Improvements
+- **Color Theme**: CSS custom properties (`--tachyon-primary`, `--tachyon-secondary`, etc.) injected from `ColorTheme` config
+- **Multi-Language**: Documents partitioned by language, per-language subdirectories (`/en/`, `/zh/`)
+- **Language Switcher**: Auto-generated nav links with active language highlighting
+- **RTL Support**: Arabic/Hebrew/Farsi documents get `dir="rtl"` attribute
+- **Root Redirect**: `index.html` redirects to default language subdirectory
+- **Sitemap**: Per-language sitemaps with `xhtml:link` alternates
+- **RSS**: Per-language feeds with correct language tag
+- **Backward Compatible**: Single-language builds remain flat (no subdirectories)
+
+### Tests
+| Test Suite | Tests | Status |
+|------------|-------|--------|
+| SSG Tests | 11 | ✅ ALL PASSED (including new multi-language test) |
+
+### Architecture Notes
+- **Presence**: Uses `ON CONFLICT (user_id, document_id)` for atomic upsert, `last_seen_at > NOW() - 5min` for TTL
+- **Plugin Runtime**: Fire-and-forget broadcast to WebSocket via `broadcast_to_room` (async, not awaited)
+- **SSG**: `collect_languages()` aggregates from config + translations + document language fields
+| **Go Deep** | **DB Persistence & Real Implementations** | **COMPLETE** | **2026-04-18** |
 
 ---
 

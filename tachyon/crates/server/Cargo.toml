@@ -16,6 +16,8 @@ tachyon-database = { path = "../database" }
 tachyon-renderer = { path = "../renderer" }
 tachyon-search = { path = "../search" }
 tachyon-import-export = { path = "../import-export" }
+tachyon-plugin-runtime = { path = "../plugin-runtime" }
+tachyon-ssg = { path = "../ssg" }
 
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "json"] }
@@ -74,6 +76,13 @@ utoipa-swagger-ui = { version = "9", features = ["axum"] }
 metrics = "0.24"
 metrics-exporter-prometheus = "0.16"
 
+# CRDT
+yrs = { workspace = true }
+dashmap = { workspace = true }
+
+# Error types
+thiserror = { workspace = true }
+
 [dev-dependencies]
 tokio-test = { workspace = true }
 wiremock = { workspace = true }
@@ -84,6 +93,10 @@ jsonwebtoken = "9"
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde_json = "1"
+hyper = "1"
+http-body-util = "0.1"
+bytes = "1"
+tower = { version = "0.5", features = ["util"] }
 
 [[test]]
 name = "integration"

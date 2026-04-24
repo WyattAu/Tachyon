@@ -3,15 +3,16 @@ target = "index.html"
 dist = "dist"
 public_url = "/"
 
+[tools]
+# wasm-opt is handled by a wrapper in ~/.cache/trunk/wasm-opt-version_123/bin/wasm-opt
+# that strips DWARF debug info. Do NOT set wasm_opt here — trunk 0.21.14 treats
+# the value as a version string and attempts to re-download, which fails.
+
 [watch]
 watch = ["src/", "public/"]
 ignore = ["dist/"]
 
 [serve]
-address = "127.0.0.1"
+addresses = ["127.0.0.1"]
 port = 8080
 no-error-on-404 = true
-
-[clean]
-dist = "dist"
-cargo = false

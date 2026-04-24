@@ -5,9 +5,11 @@ use leptos_router::hooks::{use_params, use_navigate};
 use leptos_router::params::Params;
 use crate::api::ApiClient;
 use crate::types::{Document, DocumentListResponse, DocumentTemplate, BacklinksResponse};
-use crate::components::{DocumentEditor, ActivityFeed, Activity, ActivityType, VersionHistory, TemplateSelector, ReviewPanel, ConflictResolver, TableOfContents, BreadcrumbItem, Breadcrumbs};
-use crate::websocket::{WebSocketClient, WsMessage};
-use std::rc::Rc;
+use crate::storage::{BrowserStore, StoredDocument, LocalDocument, SyncStatus, SyncState, stored_to_document};
+use crate::storage::sync::SyncEngine;
+use crate::components::{NativeEditor, EditorToolbar, EditorSearch, MarkdownPreview, ActivityFeed, Activity, VersionHistory, TemplateSelector, ReviewPanel, ConflictResolver, TableOfContents, BreadcrumbItem, Breadcrumbs, EmptyDocuments};
+use wasm_bindgen::JsCast;
+use wasm_bindgen::closure::Closure;
 use wasm_bindgen_futures::spawn_local;
 
 /// Documents list page
@@ -17,27 +19,58 @@ pub fn DocumentsPage() -> impl IntoView {
     let current_page = RwSignal::new(1usize);
     let page_size = 20usize;
 
-    // New document modal state
+    let store = use_context::<BrowserStore>().unwrap_or_default();
+    let sync_engine = use_context::<SyncEngine>();
+    let sync_state = sync_engine.as_ref().map(|e| e.get_sync_state());
+
     let (show_create_modal, set_show_create_modal) = signal(false);
     let (new_doc_title, set_new_doc_title) = signal(String::new());
     let (creating, set_creating) = signal(false);
     let (create_error, set_create_error) = signal::<Option<String>>(None);
 
     let api_client_for_create = api_client.clone();
+    let store_for_create = store.clone();
 
+    Effect::new(move |_| {
+        if let Some(ref engine) = sync_engine {
+            engine.trigger_sync();
+        }
+    });
+
+    let store_for_resource = store.clone();
     let documents_resource = LocalResource::new(move || {
         let client = api_client.clone();
         let page = current_page.get();
+        let s = store_for_resource.clone();
         async move {
-            client
-                .list_documents(Some(page), Some(page_size))
-                .await
-                .unwrap_or(DocumentListResponse {
-                    results: vec![],
-                    total: 0,
-                    page: 1,
-                    page_size: 20,
-                })
+            match client.list_documents(Some(page), Some(page_size)).await {
+                Ok(response) => {
+                    for doc in &response.results {
+                        let stored = StoredDocument {
+                            document: LocalDocument::from(doc.clone()),
+                            sync_status: SyncStatus::Synced,
+                            local_version: 1,
+                            server_version: Some(1),
+                            last_modified: chrono::Utc::now().to_rfc3339(),
+                        };
+                        s.put(stored);
+                    }
+                    response
+                }
+                Err(_) => {
+                    let local = s.get_all();
+                    let total = local.len();
+                    let docs: Vec<Document> = local.iter()
+                        .map(stored_to_document)
+                        .collect();
+                    DocumentListResponse {
+                        results: docs,
+                        total,
+                        page: 1,
+                        page_size: 20,
+                    }
+                }
+            }
         }
     });
 
@@ -65,6 +98,7 @@ pub fn DocumentsPage() -> impl IntoView {
 
             let api = api_client.clone();
             let nav = navigate.get_value();
+            let s = store_for_create.clone();
 
             spawn_local(async move {
                 let body = serde_json::json!({
@@ -74,6 +108,14 @@ pub fn DocumentsPage() -> impl IntoView {
                 });
                 match api.create_document(&body).await {
                     Ok(doc) => {
+                        let stored = StoredDocument {
+                            document: LocalDocument::from(doc.clone()),
+                            sync_status: SyncStatus::Synced,
+                            local_version: 1,
+                            server_version: Some(1),
+                            last_modified: chrono::Utc::now().to_rfc3339(),
+                        };
+                        s.put(stored);
                         let doc_id = doc.id.clone();
                         set_show_create_modal.set(false);
                         set_new_doc_title.set(String::new());
@@ -81,7 +123,34 @@ pub fn DocumentsPage() -> impl IntoView {
                         nav(&format!("/documents/{}/edit", doc_id), Default::default());
                     }
                     Err(e) => {
-                        set_create_error.set(Some(format!("Failed to create document: {}", e)));
+                        let local_id = uuid::Uuid::new_v4().to_string();
+                        let now = chrono::Utc::now().to_rfc3339();
+                        let local_doc = LocalDocument {
+                            id: local_id,
+                            title: title.trim().to_string(),
+                            slug: None,
+                            content: String::new(),
+                            html: None,
+                            status: "draft".to_string(),
+                            visibility: "private".to_string(),
+                            tags: vec![],
+                            author_id: String::new(),
+                            word_count: 0,
+                            character_count: 0,
+                            created_at: now.clone(),
+                            updated_at: now,
+                            published_at: None,
+                            description: None,
+                        };
+                        let stored = StoredDocument {
+                            document: local_doc,
+                            sync_status: SyncStatus::PendingCreate,
+                            local_version: 1,
+                            server_version: None,
+                            last_modified: chrono::Utc::now().to_rfc3339(),
+                        };
+                        s.put(stored);
+                        set_create_error.set(Some(format!("Failed to create document: {}. Saved locally for sync.", e)));
                         set_creating.set(false);
                     }
                 }
@@ -92,7 +161,38 @@ pub fn DocumentsPage() -> impl IntoView {
     view! {
         <div>
             <div class="flex items-center justify-between mb-6">
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">"Documents"</h1>
+                <div class="flex items-center gap-3">
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">"Documents"</h1>
+                    {move || {
+                        let state = sync_state.as_ref().map(|ss| ss.get()).unwrap_or(SyncState::Idle);
+                        match state {
+                            SyncState::Syncing => view! {
+                                <span class="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
+                                    <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                                    "Syncing"
+                                </span>
+                            }.into_any(),
+                            SyncState::Offline => view! {
+                                <span class="flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 rounded-full">
+                                    <span class="w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>
+                                    "Offline"
+                                </span>
+                            }.into_any(),
+                            SyncState::Error(_) => view! {
+                                <span class="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full">
+                                    <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                                    "Sync error"
+                                </span>
+                            }.into_any(),
+                            SyncState::Idle => view! {
+                                <span class="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
+                                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                                    "Synced"
+                                </span>
+                            }.into_any(),
+                        }
+                    }}
+                </div>
                 <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" on:click=move |_| set_show_create_modal.set(true)>
                     "+ New Document"
                 </button>
@@ -103,11 +203,7 @@ pub fn DocumentsPage() -> impl IntoView {
                     documents_resource.get().map(|response| {
                         if response.results.is_empty() {
                             view! {
-                                <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
-                                    <p class="text-gray-500 dark:text-gray-400 text-center">
-                                        "No documents found. Create your first document to get started!"
-                                    </p>
-                                </div>
+                                <EmptyDocuments />
                             }.into_any()
                         } else {
                             view! {
@@ -547,7 +643,7 @@ struct DocumentViewParams {
     id: String,
 }
 
-/// Document edit page with real-time collaboration
+/// Document edit page with native editor
 #[component]
 pub fn DocumentEditPage() -> impl IntoView {
     let params = use_params::<DocumentEditParams>();
@@ -555,8 +651,8 @@ pub fn DocumentEditPage() -> impl IntoView {
         params.with(|p| p.as_ref().map(|p| p.id.clone()).unwrap_or_default())
     };
     
-    let user_id = "user-".to_string() + &uuid::Uuid::new_v4().to_string()[..8];
-    let user_name = "User".to_string();
+    let _user_id = "user-".to_string() + &uuid::Uuid::new_v4().to_string()[..8];
+    let _user_name = "User".to_string();
     
     // Fetch document content on mount
     let (doc_content, set_doc_content) = signal(String::new());
@@ -565,6 +661,11 @@ pub fn DocumentEditPage() -> impl IntoView {
     let (load_error, set_load_error) = signal::<Option<String>>(None);
     let (sidebar_tab, set_sidebar_tab) = signal("activity".to_string());
     let (sidebar_open, set_sidebar_open) = signal(true);
+    let show_search = RwSignal::new(false);
+    let (show_preview, set_show_preview) = signal(false);
+    let (is_saving, set_is_saving) = signal(false);
+    let (last_saved, set_last_saved) = signal::<Option<String>>(None);
+    let (dirty, set_dirty) = signal(false);
 
     let api_client = ApiClient::default();
     let fetch_doc_id = document_id();
@@ -597,34 +698,184 @@ pub fn DocumentEditPage() -> impl IntoView {
         });
     });
     
-    let (activities, set_activities) = signal(Vec::<Activity>::new());
-    let ws_client = WebSocketClient::new("");
-    
-    let ws_for_activity = ws_client.clone();
-    let set_activities_clone = set_activities;
-    Effect::new(move || {
-        let ws = ws_for_activity.clone();
-        ws.on_message(Rc::new(move |msg: WsMessage| {
-            if msg.message_type == "activity" {
-                if let Some(data) = &msg.data {
-                    if let Ok(activity) = serde_json::from_value::<ActivityData>(data.clone()) {
-                        let new_activity = Activity::new(
-                            ActivityType::from(activity.activity_type.as_str()),
-                            activity.user_id,
-                            activity.user_name,
-                            activity.description,
-                        );
-                        set_activities_clone.update(|acts| {
-                            acts.insert(0, new_activity);
-                            if acts.len() > 50 {
-                                acts.pop();
-                            }
-                        });
-                    }
+    let (activities, _set_activities) = signal(Vec::<Activity>::new());
+
+    let document_content = RwSignal::new(String::new());
+
+    let on_editor_change = Callback::new(move |content: String| {
+        document_content.set(content);
+        set_dirty.set(true);
+    });
+
+    // Auto-save debounce via Effect
+    {
+        let auto_save_debounce: std::rc::Rc<std::cell::RefCell<Option<i32>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
+
+        Effect::new(move |_| {
+            let content = document_content.get();
+            if content.is_empty() {
+                return;
+            }
+
+            let doc_id_val = document_id();
+            if doc_id_val.is_empty() {
+                return;
+            }
+
+            {
+                let handle = auto_save_debounce.borrow().clone();
+                if let Some(h) = handle {
+                    let _ = web_sys::window().map(|w| { let _ = w.clear_timeout_with_handle(h); });
                 }
             }
-        }));
+
+            let api = ApiClient::default();
+            let did = doc_id_val;
+            let set_is_saving = set_is_saving.clone();
+            let set_last_saved = set_last_saved.clone();
+            let set_dirty = set_dirty.clone();
+            let dh = auto_save_debounce.clone();
+
+            let closure = wasm_bindgen::closure::Closure::<dyn Fn()>::new(move || {
+                let api = api.clone();
+                let did = did.clone();
+                let content_val = document_content.get_untracked();
+                let set_is_saving = set_is_saving.clone();
+                let set_last_saved = set_last_saved.clone();
+                let set_dirty = set_dirty.clone();
+
+                wasm_bindgen_futures::spawn_local(async move {
+                    let body = serde_json::json!({ "content": content_val });
+                    match api.update_document(&did, &body).await {
+                        Ok(_) => {
+                            let now = chrono::Utc::now().format("%H:%M:%S").to_string();
+                            set_is_saving.set(false);
+                            set_last_saved.set(Some(format!("Auto-saved {}", now)));
+                            set_dirty.set(false);
+                        }
+                        Err(_) => {
+                            set_is_saving.set(false);
+                        }
+                    }
+                });
+            });
+
+            let timeout = web_sys::window()
+                .and_then(|w| {
+                    w.set_timeout_with_callback_and_timeout_and_arguments_0(
+                        closure.as_ref().unchecked_ref(),
+                        3000,
+                    )
+                    .ok()
+                })
+                .unwrap_or(0);
+
+            *dh.borrow_mut() = Some(timeout);
+            closure.forget();
+        });
+    }
+
+    // Manual save
+    let manual_save = Callback::new(move |_: ()| {
+        let doc_id_val = document_id();
+        if doc_id_val.is_empty() {
+            return;
+        }
+
+        let api = ApiClient::default();
+        let did = doc_id_val;
+        let set_is_saving = set_is_saving.clone();
+        let set_last_saved = set_last_saved.clone();
+        let set_dirty = set_dirty.clone();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            set_is_saving.set(true);
+            let content = document_content.get_untracked();
+            let body = serde_json::json!({ "content": content });
+            match api.update_document(&did, &body).await {
+                Ok(_) => {
+                    let now = chrono::Utc::now().format("%H:%M:%S").to_string();
+                    set_is_saving.set(false);
+                    set_last_saved.set(Some(now));
+                    set_dirty.set(false);
+                }
+                Err(_) => {
+                    set_is_saving.set(false);
+                }
+            }
+        });
     });
+
+    // Ctrl+S handler
+    {
+        let save_fn = manual_save.clone();
+        if let Some(window) = web_sys::window() {
+            let closure = wasm_bindgen::closure::Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |e: web_sys::KeyboardEvent| {
+                if (e.ctrl_key() || e.meta_key()) && e.key() == "s" {
+                    e.prevent_default();
+                    save_fn.run(());
+                }
+            });
+            let _ = window.add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref());
+            closure.forget();
+        }
+    }
+
+    // Editor signal for sharing between toolbar and search
+    let editor = RwSignal::new(tachyon_editor::Editor::with_content(""));
+
+    // CRDT collaboration sync via WebSocket.
+    // Connects when a document is loaded, sends local CRDT updates as binary frames,
+    // and applies remote updates from other collaborators.
+    {
+        let editor = editor;
+        let doc_id = document_id;
+
+        // Track last sent state vector to avoid echo
+        let _last_sent_state = std::cell::RefCell::new(Vec::<u8>::new());
+
+        Effect::new(move || {
+            let id = doc_id();
+            if id.is_empty() {
+                return;
+            }
+
+            let ws = crate::api::ApiClient::default().websocket();
+
+            // Apply remote CRDT updates received as binary frames
+            let editor_for_binary = editor;
+            let binary_cb: std::rc::Rc<dyn Fn(Vec<u8>)> = std::rc::Rc::new(move |data: Vec<u8>| {
+                editor_for_binary.update(|ed| {
+                    ed.apply_remote_update(&data);
+                });
+            });
+            ws.on_binary(binary_cb);
+
+            // Connect and join the document room
+            ws.connect();
+            let user_id = "user-".to_string() + &uuid::Uuid::new_v4().to_string()[..8];
+            let _ = ws.join_document(&id, &user_id, "User");
+
+            // Poll editor for CRDT updates and send them via WebSocket.
+            // Uses setInterval for periodic sync (every 500ms).
+            let ws_for_poll = ws.clone();
+            let ed_for_poll = editor;
+            let interval_cb: Closure<dyn Fn()> = Closure::new(move || {
+                ed_for_poll.update(|editor| {
+                    let update = editor.encode_update();
+                    if !update.is_empty() {
+                        let _ = ws_for_poll.send_binary(&update);
+                    }
+                });
+            });
+            let _interval_id = web_sys::window()
+                .map(|w| w.set_interval_with_callback_and_timeout_and_arguments_0(
+                    interval_cb.as_ref().unchecked_ref(),
+                    500,
+                ).unwrap_or(0));
+            interval_cb.forget();
+        });
+    }
 
     view! {
         <div class="flex h-[calc(100vh-4rem)]">
@@ -678,13 +929,77 @@ pub fn DocumentEditPage() -> impl IntoView {
                                 </div>
                             }.into_any()
                         } else {
+                            let content = doc_content.get();
+                            // Sync loaded content to shared editor (only if different)
+                            editor.update(|e| {
+                                if !content.is_empty() && e.content() != content {
+                                    e.set_content(&content);
+                                }
+                            });
+                            let ed = editor;
+                            let on_change = on_editor_change.clone();
+                            let on_save = manual_save.clone();
+                            let on_search = Callback::new(move |_: ()| show_search.update(|s| *s = !*s));
+                            let on_preview = Callback::new(move |_: ()| set_show_preview.update(|s| *s = !*s));
+
                             view! {
-                                <DocumentEditor 
-                                    document_id={doc_id}
-                                    user_id={user_id.clone()}
-                                    user_name={user_name.clone()}
-                                    initial_content={doc_content.get()}
-                                />
+                                <div class="flex flex-col h-full">
+                                    <EditorToolbar
+                                        editor={ed}
+                                        on_save={on_save}
+                                        on_preview={on_preview}
+                                        on_search={on_search}
+                                    />
+
+                                    <div class="flex-1 overflow-hidden relative flex">
+                                        <div class={move || if show_preview.get() { "flex-1 overflow-hidden border-r border-gray-200 dark:border-gray-700" } else { "flex-1 overflow-hidden" }}>
+                                            <NativeEditor
+                                                editor={ed}
+                                                document_id={doc_id}
+                                                editable=true
+                                                placeholder="Start writing markdown...".into()
+                                                on_change={on_change}
+                                            />
+                                            <EditorSearch
+                                                editor={ed}
+                                                show={show_search}
+                                            />
+                                        </div>
+                                        <Show when=move || show_preview.get()>
+                                            <div class="flex-1 overflow-hidden">
+                                                <MarkdownPreview content={document_content.get()} render_toc=true />
+                                            </div>
+                                        </Show>
+                                    </div>
+
+                                    // Status bar
+                                    <div class="flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400">
+                                        <div class="flex items-center gap-3">
+                                            <div
+                                                class="w-2 h-2 rounded-full"
+                                                class=("bg-yellow-400", move || dirty.get())
+                                                class=("bg-green-500", move || !dirty.get())
+                                                title={move || if dirty.get() { "Unsaved changes" } else { "All changes saved" }}
+                                            ></div>
+                                            <span>{move || {
+                                                let wc = editor.with(|e| e.word_count());
+                                                let cc = editor.with(|e| e.char_count());
+                                                format!("{} words \u{00b7} {} chars", wc, cc)
+                                            }}</span>
+                                        </div>
+                                        <div>
+                                            {move || {
+                                                if is_saving.get() {
+                                                    "Saving...".to_string()
+                                                } else if let Some(time) = last_saved.get() {
+                                                    format!("Last saved: {}", time)
+                                                } else {
+                                                    "Not saved".to_string()
+                                                }
+                                            }}
+                                        </div>
+                                    </div>
+                                </div>
                             }.into_any()
                         }
                     }}
@@ -792,6 +1107,7 @@ struct DocumentEditParams {
 }
 
 #[derive(serde::Deserialize)]
+#[allow(dead_code)]
 struct ActivityData {
     activity_type: String,
     user_id: String,

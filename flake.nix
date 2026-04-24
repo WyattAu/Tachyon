@@ -78,6 +78,7 @@
           jq
           bat
           eza
+          postgresql_16
         ];
 
         # Rust development tools

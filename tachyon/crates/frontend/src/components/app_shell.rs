@@ -2,7 +2,7 @@
 
 use crate::api::ApiClient;
 use crate::types::Notification;
-use crate::components::{should_show_onboarding, CommandPalette, OnboardingWizard};
+use crate::components::{should_show_onboarding, CommandPalette, OnboardingWizard, ClientSearch};
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use wasm_bindgen_futures::spawn_local;
@@ -39,7 +39,36 @@ where
     let (sidebar_collapsed, set_sidebar_collapsed) = signal(false);
     let (mobile_menu_open, set_mobile_menu_open) = signal(false);
     let (palette_open, set_palette_open) = signal(false);
+    let (search_open, set_search_open) = signal(false);
     let (show_onboarding, set_show_onboarding) = signal(should_show_onboarding());
+
+    Effect::new(move |_| {
+        let set_so = set_search_open.clone();
+        let set_po = set_palette_open.clone();
+        let cb = wasm_bindgen::closure::Closure::<dyn Fn(wasm_bindgen::JsValue)>::new(
+            move |event: wasm_bindgen::JsValue| {
+                let ev = event.unchecked_into::<web_sys::KeyboardEvent>();
+                let target_tag = ev
+                    .target()
+                    .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+                    .map(|el| el.tag_name().to_lowercase())
+                    .unwrap_or_default();
+                if target_tag == "input" || target_tag == "textarea" || target_tag == "select" {
+                    return;
+                }
+                if (ev.meta_key() || ev.ctrl_key()) && ev.key() == "k" {
+                    ev.stop_immediate_propagation();
+                    ev.prevent_default();
+                    set_po.set(false);
+                    set_so.set(true);
+                }
+            },
+        );
+        if let Some(window) = web_sys::window() {
+            let _ = window.add_event_listener_with_callback("keydown", cb.as_ref().unchecked_ref());
+            cb.forget();
+        }
+    });
 
     // Onboarding wizard view (extracted to avoid nested view! in closure)
     let onboarding_view = move || {
@@ -165,6 +194,14 @@ where
 
     view! {
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+            // Skip navigation link for accessibility
+            <a
+                href="#main-content"
+                class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm focus:font-medium"
+            >
+                Skip to main content
+            </a>
+
             <div
                 class="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden transition-opacity duration-200"
                 style={move || if mobile_menu_open.get() { "" } else { "display: none;" }}
@@ -172,7 +209,10 @@ where
             ></div>
 
             {/* Sidebar */}
-            <aside class={
+            <aside
+                role="navigation"
+                aria-label="Main navigation"
+                class={
                 let collapsed = sidebar_collapsed.get();
                 move || {
                     let width = if collapsed { "w-16" } else { "w-64" };
@@ -222,6 +262,9 @@ where
                         <NavLink href="/catalog" label="Catalog" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/templates" label="Templates" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/plugins" label="Plugins" collapsed={sidebar_collapsed.get()} />
+                        <NavLink href="/ssg" label="Static Site" collapsed={sidebar_collapsed.get()} />
+                        <NavLink href="/billing" label="Billing" collapsed={sidebar_collapsed.get()} />
+                        <NavLink href="/audit" label="Audit Log" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/admin/roles" label="Admin" collapsed={sidebar_collapsed.get()} />
                         <NavLink href="/settings" label="Settings" collapsed={sidebar_collapsed.get()} />
                     </nav>
@@ -252,7 +295,7 @@ where
                 }
             }>
                 {/* Top bar */}
-                <header class="sticky top-0 z-20 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 no-print">
+                <header class="sticky top-0 z-20 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 no-print" role="banner">
                     <div class="px-4 md:px-6 py-4 flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <button
@@ -269,8 +312,19 @@ where
                         </div>
                         <div class="flex items-center space-x-4">
                             <button
+                                on:click=move |_| set_search_open.set(true)
+                                class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors"
+                            >
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span class="hidden md:inline">"Local Docs"</span>
+                                <kbd class="hidden md:inline text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded px-1.5 py-0.5 font-mono">"Ctrl+K"</kbd>
+                            </button>
+                            <button
                                 on:click=move |_| set_palette_open.set(true)
                                 class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors"
+                                aria-label="Open search (Cmd+K)"
                             >
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -449,11 +503,12 @@ where
                 </header>
 
                 {/* Page content */}
-                <main class="p-4 md:p-6">
+                <main id="main-content" class="p-4 md:p-6" role="main" tabindex="-1">
                     {children()}
                 </main>
             </div>
             <CommandPalette open=palette_open set_open=set_palette_open />
+            <ClientSearch open=search_open set_open=set_search_open />
             {onboarding_view}
         </div>
     }

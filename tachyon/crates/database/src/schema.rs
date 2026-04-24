@@ -42,14 +42,29 @@ impl DatabasePool {
             .test_before_acquire(config.enable_query_logging)
             .connect(database_url);
 
-        // Apply explicit timeout to connection
+        // Apply explicit timeout to connection (uses config.connection_timeout)
         let pool = tokio::time::timeout(
-            std::time::Duration::from_secs(10),
+            std::time::Duration::from_secs(config.connection_timeout),
             connect_future
         )
         .await
-        .map_err(|_| DatabaseError::ConnectionError(sqlx::Error::PoolTimedOut))?
-        .map_err(|e| DatabaseError::ConnectionError(e))?;
+        .map_err(|_| {
+            tracing::error!(
+                timeout_secs = config.connection_timeout,
+                url = database_url,
+                "Database connection timed out after {}s. Check that PostgreSQL is running and the URL is correct.",
+                config.connection_timeout
+            );
+            DatabaseError::ConnectionError(sqlx::Error::PoolTimedOut)
+        })?
+        .map_err(|e| {
+            tracing::error!(
+                error = %e,
+                url = database_url,
+                "Database connection failed: {}", e
+            );
+            DatabaseError::ConnectionError(e)
+        })?;
 
         info!("PostgreSQL pool initialized successfully");
 

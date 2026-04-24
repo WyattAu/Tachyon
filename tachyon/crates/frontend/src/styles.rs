@@ -341,6 +341,538 @@ pub fn GlobalStyles() -> impl IntoView {
                     background-color: #1e3a8a;
                     color: #bfdbfe;
                 }
+
+                /* ====================================================================
+                   Native Editor Styles
+                   ==================================================================== */
+
+                .native-editor {{
+                    position: relative;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+                    font-size: 14px;
+                    line-height: 22px;
+                    color: #1f2937;
+                    background-color: #ffffff;
+                    tab-size: 2;
+                }}
+
+                .dark .native-editor {{
+                    color: #e5e7eb;
+                    background-color: #111827;
+                }}
+
+                .native-editor:focus {{
+                    outline: none;
+                }}
+
+                .editor-line {{
+                    display: flex;
+                    position: absolute;
+                    left: 0;
+                    right: 0;
+                    white-space: pre;
+                }}
+
+                .editor-line.active-line {{
+                    background: rgba(0, 0, 0, 0.04);
+                }}
+
+                .dark .editor-line.active-line {{
+                    background: rgba(255, 255, 255, 0.04);
+                }}
+
+                .line-number {{
+                    width: 50px;
+                    min-width: 50px;
+                    text-align: right;
+                    padding-right: 12px;
+                    color: #9ca3af;
+                    user-select: none;
+                    flex-shrink: 0;
+                }}
+
+                .dark .line-number {{
+                    color: #4b5563;
+                }}
+
+                .line-content {{
+                    flex: 1;
+                    white-space: pre;
+                    min-width: 0;
+                }}
+
+                .line-content.word-wrap {{
+                    white-space: pre-wrap;
+                    word-break: break-all;
+                }}
+
+                .editor-cursor {{
+                    position: absolute;
+                    width: 2px;
+                    background: #1f2937;
+                    animation: editor-cursor-blink 1s step-end infinite;
+                    z-index: 10;
+                    pointer-events: none;
+                }}
+
+                .dark .editor-cursor {{
+                    background: #e5e7eb;
+                }}
+
+                @keyframes editor-cursor-blink {{
+                    0%, 100% {{ opacity: 1; }}
+                    50% {{ opacity: 0; }}
+                }}
+
+                .editor-selection {{
+                    background: rgba(0, 120, 215, 0.2);
+                    position: absolute;
+                    z-index: 5;
+                    pointer-events: none;
+                    border-radius: 1px;
+                }}
+
+                .dark .editor-selection {{
+                    background: rgba(96, 165, 250, 0.25);
+                }}
+
+                .editor-placeholder {{
+                    position: absolute;
+                    top: 0;
+                    left: 62px;
+                    color: #9ca3af;
+                    pointer-events: none;
+                    user-select: none;
+                }}
+
+                .dark .editor-placeholder {{
+                    color: #4b5563;
+                }}
+
+                .editor-scroll-spacer {{
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 1px;
+                    pointer-events: none;
+                }}
+
+                /* ====================================================================
+                   Editor Highlight Token Styles
+                   ==================================================================== */
+
+                .ed-text {{ color: inherit; }}
+                .ed-whitespace {{ color: transparent; }}
+
+                .ed-h1 {{ font-weight: 700; font-size: 1.4em; color: #1e40af; }}
+                .ed-h2 {{ font-weight: 700; font-size: 1.25em; color: #1e40af; }}
+                .ed-h3 {{ font-weight: 700; font-size: 1.1em; color: #1e40af; }}
+                .ed-h4 {{ font-weight: 700; font-size: 1em; color: #374151; }}
+                .ed-h5 {{ font-weight: 700; font-size: 0.95em; color: #374151; }}
+                .ed-h6 {{ font-weight: 700; font-size: 0.9em; color: #6b7280; }}
+
+                .dark .ed-h1 {{ color: #60a5fa; }}
+                .dark .ed-h2 {{ color: #60a5fa; }}
+                .dark .ed-h3 {{ color: #93c5fd; }}
+                .dark .ed-h4 {{ color: #d1d5db; }}
+                .dark .ed-h5 {{ color: #d1d5db; }}
+                .dark .ed-h6 {{ color: #9ca3af; }}
+
+                .ed-bold {{ font-weight: 700; }}
+                .ed-italic {{ font-style: italic; }}
+                .ed-bold-italic {{ font-weight: 700; font-style: italic; }}
+                .ed-strikethrough {{ text-decoration: line-through; color: #6b7280; }}
+                .dark .ed-strikethrough {{ color: #9ca3af; }}
+
+                .ed-code-inline {{
+                    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+                    background: rgba(0, 0, 0, 0.06);
+                    padding: 1px 4px;
+                    border-radius: 3px;
+                    font-size: 0.9em;
+                    color: #be185d;
+                }}
+                .dark .ed-code-inline {{
+                    background: rgba(255, 255, 255, 0.08);
+                    color: #f472b6;
+                }}
+
+                .ed-code-block {{
+                    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+                    background: #f3f4f6;
+                    color: #374151;
+                }}
+                .dark .ed-code-block {{
+                    background: #1f2937;
+                    color: #d1d5db;
+                }}
+
+                .ed-link {{ color: #2563eb; text-decoration: underline; }}
+                .dark .ed-link {{ color: #60a5fa; }}
+                .ed-link-url {{ color: #6b7280; font-style: italic; }}
+                .dark .ed-link-url {{ color: #9ca3af; }}
+                .ed-link-text {{ color: #2563eb; text-decoration: underline; }}
+                .dark .ed-link-text {{ color: #60a5fa; }}
+
+                .ed-image {{ color: #059669; }}
+                .ed-image-url {{ color: #6b7280; font-style: italic; }}
+                .ed-image-alt {{ color: #059669; }}
+
+                .ed-wiki-link {{ color: #7c3aed; text-decoration: underline; }}
+                .dark .ed-wiki-link {{ color: #a78bfa; }}
+
+                .ed-blockquote {{
+                    border-left: 3px solid #d1d5db;
+                    padding-left: 8px;
+                    color: #6b7280;
+                }}
+                .dark .ed-blockquote {{
+                    border-left-color: #4b5563;
+                    color: #9ca3af;
+                }}
+
+                .ed-list-marker {{ color: #059669; font-weight: 600; }}
+                .dark .ed-list-marker {{ color: #34d399; }}
+
+                .ed-task-marker {{ color: #059669; font-weight: 600; }}
+                .dark .ed-task-marker {{ color: #34d399; }}
+
+                .ed-list-item {{ color: inherit; }}
+
+                .ed-hr {{ color: #d1d5db; }}
+                .dark .ed-hr {{ color: #4b5563; }}
+
+                .ed-table-header {{ font-weight: 700; color: #374151; }}
+                .dark .ed-table-header {{ color: #d1d5db; }}
+                .ed-table-cell {{ color: inherit; }}
+                .ed-table-border {{ color: #d1d5db; }}
+                .dark .ed-table-border {{ color: #4b5563; }}
+
+                .ed-frontmatter {{ color: #6b7280; font-style: italic; }}
+                .dark .ed-frontmatter {{ color: #9ca3af; }}
+
+                .ed-tag {{ color: #2563eb; }}
+                .dark .ed-tag {{ color: #60a5fa; }}
+
+                /* ====================================================================
+                   Editor Toolbar Styles
+                   ==================================================================== */
+
+                .editor-toolbar {{
+                    display: flex;
+                    align-items: center;
+                    gap: 2px;
+                    padding: 4px 8px;
+                    border-bottom: 1px solid #e5e7eb;
+                    background: #f9fafb;
+                    overflow-x: auto;
+                    flex-shrink: 0;
+                    flex-wrap: wrap;
+                }}
+
+                .dark .editor-toolbar {{
+                    border-bottom-color: #374151;
+                    background: #1f2937;
+                }}
+
+                .editor-toolbar-btn {{
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-width: 28px;
+                    height: 28px;
+                    padding: 2px 6px;
+                    border: none;
+                    border-radius: 4px;
+                    background: transparent;
+                    color: #374151;
+                    font-size: 12px;
+                    cursor: pointer;
+                    transition: background-color 100ms ease;
+                    white-space: nowrap;
+                }}
+
+                .editor-toolbar-btn:hover:not(:disabled) {{
+                    background: #e5e7eb;
+                }}
+
+                .dark .editor-toolbar-btn {{
+                    color: #d1d5db;
+                }}
+
+                .dark .editor-toolbar-btn:hover:not(:disabled) {{
+                    background: #374151;
+                }}
+
+                .editor-toolbar-btn:disabled {{
+                    opacity: 0.4;
+                    cursor: not-allowed;
+                }}
+
+                .editor-toolbar-sep {{
+                    width: 1px;
+                    height: 20px;
+                    background: #d1d5db;
+                    margin: 0 4px;
+                    flex-shrink: 0;
+                }}
+
+                .dark .editor-toolbar-sep {{
+                    background: #4b5563;
+                }}
+
+                /* ====================================================================
+                   Editor Search Styles
+                   ==================================================================== */
+
+                .editor-search {{
+                    position: absolute;
+                    top: 8px;
+                    right: 8px;
+                    background: white;
+                    border: 1px solid #d1d5db;
+                    border-radius: 8px;
+                    padding: 10px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    z-index: 50;
+                    min-width: 340px;
+                }}
+
+                .dark .editor-search {{
+                    background: #1f2937;
+                    border-color: #4b5563;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                }}
+
+                .editor-search-input {{
+                    flex: 1;
+                    padding: 4px 8px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 4px;
+                    font-size: 13px;
+                    outline: none;
+                    min-width: 0;
+                }}
+
+                .dark .editor-search-input {{
+                    background: #111827;
+                    border-color: #4b5563;
+                    color: #e5e7eb;
+                }}
+
+                .editor-search-input:focus {{
+                    border-color: #2563eb;
+                    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+                }}
+
+                .editor-search-count {{
+                    font-size: 11px;
+                    color: #6b7280;
+                    white-space: nowrap;
+                    min-width: 60px;
+                    text-align: center;
+                }}
+
+                .dark .editor-search-count {{
+                    color: #9ca3af;
+                }}
+
+                .editor-search-btn {{
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 26px;
+                    height: 26px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 4px;
+                    background: transparent;
+                    cursor: pointer;
+                    font-size: 12px;
+                    color: #374151;
+                }}
+
+                .dark .editor-search-btn {{
+                    border-color: #4b5563;
+                    color: #d1d5db;
+                }}
+
+                .editor-search-btn:hover {{
+                    background: #f3f4f6;
+                }}
+
+                .dark .editor-search-btn:hover {{
+                    background: #374151;
+                }}
+
+                .editor-search-toggle {{
+                    display: flex;
+                    align-items: center;
+                    gap: 2px;
+                    font-size: 11px;
+                    color: #6b7280;
+                    cursor: pointer;
+                    user-select: none;
+                }}
+
+                .dark .editor-search-toggle {{
+                    color: #9ca3af;
+                }}
+
+                .editor-search-toggle input[type="checkbox"] {{
+                    margin: 0;
+                    width: 14px;
+                    height: 14px;
+                    cursor: pointer;
+                }}
+
+                .editor-search-action-btn {{
+                    padding: 4px 10px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 4px;
+                    background: transparent;
+                    cursor: pointer;
+                    font-size: 12px;
+                    color: #374151;
+                    white-space: nowrap;
+                }}
+
+                .dark .editor-search-action-btn {{
+                    border-color: #4b5563;
+                    color: #d1d5db;
+                }}
+
+                .editor-search-action-btn:hover {{
+                    background: #f3f4f6;
+                }}
+
+                .dark .editor-search-action-btn:hover {{
+                    background: #374151;
+                }}
+
+                /* ====================================================================
+                   Editor Preview Styles
+                   ==================================================================== */
+
+                .editor-preview {{
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 24px;
+                    background: white;
+                }}
+
+                .dark .editor-preview {{
+                    background: #111827;
+                }}
+
+                /* ====================================================================
+                   Editor Split View Styles
+                   ==================================================================== */
+
+                .editor-split-container {{
+                    display: flex;
+                    flex-direction: column;
+                    height: 100%;
+                }}
+
+                .editor-split-controls {{
+                    display: flex;
+                    align-items: center;
+                    gap: 2px;
+                    padding: 4px 8px;
+                    border-bottom: 1px solid #e5e7eb;
+                    background: #f9fafb;
+                }}
+
+                .dark .editor-split-controls {{
+                    border-bottom-color: #374151;
+                    background: #1f2937;
+                }}
+
+                .editor-split-btn {{
+                    padding: 4px 10px;
+                    border: 1px solid transparent;
+                    border-radius: 4px;
+                    background: transparent;
+                    font-size: 12px;
+                    color: #6b7280;
+                    cursor: pointer;
+                    transition: all 100ms ease;
+                }}
+
+                .editor-split-btn:hover {{
+                    background: #e5e7eb;
+                    color: #374151;
+                }}
+
+                .editor-split-btn.active {{
+                    background: #dbeafe;
+                    color: #1d4ed8;
+                    border-color: #93c5fd;
+                }}
+
+                .dark .editor-split-btn {{
+                    color: #9ca3af;
+                }}
+
+                .dark .editor-split-btn:hover {{
+                    background: #374151;
+                    color: #d1d5db;
+                }}
+
+                .dark .editor-split-btn.active {{
+                    background: #1e3a8a;
+                    color: #60a5fa;
+                    border-color: #2563eb;
+                }}
+
+                .editor-split-content {{
+                    display: flex;
+                    flex: 1;
+                    overflow: hidden;
+                }}
+
+                .editor-split-content.split-edit .editor-pane {{
+                    flex: 1;
+                }}
+
+                .editor-split-content.split-preview .editor-pane {{
+                    flex: 1;
+                }}
+
+                .editor-split-content.split-both .editor-pane {{
+                    flex: 1;
+                    min-width: 0;
+                }}
+
+                .editor-split-divider {{
+                    width: 1px;
+                    background: #e5e7eb;
+                    flex-shrink: 0;
+                }}
+
+                .dark .editor-split-divider {{
+                    background: #374151;
+                }}
+
+                .editor-pane {{
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                }}
+
+                .editor-pane-full {{
+                    width: 100%;
+                }}
+
+                .editor-pane-left {{
+                    border-right: none;
+                }}
+
+                .editor-pane-right {{
+                    border-left: none;
+                }}
             "#}
         </style>
     }

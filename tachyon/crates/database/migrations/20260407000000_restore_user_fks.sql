@@ -7,8 +7,6 @@
 -- does not cascade-delete their documents, versions, or attachments.
 -- ON DELETE CASCADE is used for sessions.user_id so sessions are cleaned up.
 
-BEGIN;
-
 -- documents.author_id -> users(id)
 -- Original schema had NOT NULL; keep nullable for system-generated documents.
 DO $$ BEGIN
@@ -24,9 +22,9 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- attachments.created_by -> users(id)
+-- document_attachments.created_by -> users(id)
 DO $$ BEGIN
-    ALTER TABLE attachments ADD CONSTRAINT attachments_created_by_fkey
+    ALTER TABLE document_attachments ADD CONSTRAINT document_attachments_created_by_fkey
         FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
@@ -40,5 +38,3 @@ END $$;
 
 -- Index on sessions.user_id (should already exist from 20260403000000)
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-
-COMMIT;

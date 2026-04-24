@@ -47,6 +47,8 @@ pub struct ServerConfig {
     pub log: LogConfig,
     /// OAuth2 configuration
     pub oauth2: OAuth2Config,
+    /// TrueLayer payment configuration
+    pub truelayer: TrueLayerConfig,
 }
 
 /// JWT configuration for token-based authentication
@@ -168,6 +170,15 @@ pub struct SecurityConfig {
     /// Custom CSP directives (override defaults)
     #[serde(default)]
     pub csp_directives: HashMap<String, String>,
+    /// Enable Content-Security-Policy header
+    pub csp_enabled: bool,
+    /// Override default CSP with a custom value
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub csp_custom: Option<String>,
+    /// Enable Permissions-Policy header
+    pub permissions_policy: bool,
+    /// Enable Cross-Origin-Embedder-Policy header
+    pub coep_enabled: bool,
 }
 
 /// Site configuration for SEO and server-side rendering
@@ -199,6 +210,36 @@ pub struct LogConfig {
     pub level: Option<String>,
 }
 
+/// TrueLayer configuration for open banking payments
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrueLayerConfig {
+    /// Enable TrueLayer payment processing
+    pub enabled: bool,
+    /// TrueLayer client ID
+    pub client_id: String,
+    /// TrueLayer client secret
+    pub client_secret: String,
+    /// Environment: "sandbox" or "production"
+    pub environment: String,
+    /// TrueLayer merchant account ID
+    pub merchant_account_id: String,
+    /// Webhook secret for signature verification
+    pub webhook_secret: String,
+}
+
+impl Default for TrueLayerConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            client_id: String::new(),
+            client_secret: String::new(),
+            environment: "sandbox".to_string(),
+            merchant_account_id: String::new(),
+            webhook_secret: String::new(),
+        }
+    }
+}
+
 /// OAuth2 provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OAuth2Config {
@@ -226,7 +267,7 @@ impl Default for ServerConfig {
         Self {
             host: "0.0.0.0".to_string(),
             port: 8080,
-            database_url: "postgres://tachyon:tachyon_dev_password@127.0.0.1:5433/tachyon"
+            database_url: "postgres://tachyon:tachyon@127.0.0.1:5433/tachyon"
                 .to_string(),
             database_path: None,
             cache_size_mb: 256,
@@ -243,6 +284,7 @@ impl Default for ServerConfig {
             site: SiteConfig::default(),
             log: LogConfig::default(),
             oauth2: OAuth2Config::default(),
+            truelayer: TrueLayerConfig::default(),
         }
     }
 }
@@ -284,6 +326,7 @@ impl Default for CorsConfig {
             allowed_headers: vec![
                 "Content-Type".to_string(),
                 "Authorization".to_string(),
+                "Accept".to_string(),
                 "X-API-Key".to_string(),
                 "X-Request-ID".to_string(),
             ],
@@ -364,6 +407,10 @@ impl Default for SecurityConfig {
             hsts_preload: false,
             csp_report_only: false,
             csp_directives: HashMap::new(),
+            csp_enabled: true,
+            csp_custom: None,
+            permissions_policy: true,
+            coep_enabled: false,
         }
     }
 }
@@ -593,6 +640,40 @@ impl ServerConfig {
         }
         if let Ok(url) = std::env::var("TACHYON_OAUTH2_REDIRECT_BASE_URL") {
             config.oauth2.redirect_base_url = Some(url);
+        }
+
+        // TrueLayer configuration
+        if let Ok(enabled) = std::env::var("TRUELAYER_ENABLED") {
+            config.truelayer.enabled = enabled == "1" || enabled == "true";
+        }
+        if let Ok(id) = std::env::var("TRUELAYER_CLIENT_ID") {
+            config.truelayer.client_id = id;
+        }
+        if let Ok(secret) = std::env::var("TRUELAYER_CLIENT_SECRET") {
+            config.truelayer.client_secret = secret;
+        }
+        if let Ok(env) = std::env::var("TRUELAYER_ENV") {
+            config.truelayer.environment = env;
+        }
+        if let Ok(id) = std::env::var("TRUELAYER_MERCHANT_ACCOUNT_ID") {
+            config.truelayer.merchant_account_id = id;
+        }
+        if let Ok(secret) = std::env::var("TRUELAYER_WEBHOOK_SECRET") {
+            config.truelayer.webhook_secret = secret;
+        }
+
+        // Security configuration
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_CSP_ENABLED") {
+            config.security.csp_enabled = val != "0" && val != "false";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_CSP_CUSTOM") {
+            config.security.csp_custom = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_PERMISSIONS_POLICY") {
+            config.security.permissions_policy = val != "0" && val != "false";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_COEP_ENABLED") {
+            config.security.coep_enabled = val == "1" || val == "true";
         }
 
         config

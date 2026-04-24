@@ -1,20 +1,21 @@
-// CRDT Sync Handler — y-websocket Binary Relay
+// CRDT Sync Handler — y-websocket Binary Relay with Server-side Yrs State
 //
-// Implements a dumb binary relay for y-websocket (Yjs) collaboration.
-// The server does NOT run Yjs or understand the protocol. It simply:
+// Implements a binary relay for y-websocket (Yjs) collaboration with
+// server-side document state management using Yrs.
+//
+// The server:
 // 1. Extracts the room name from the URL path (/ws/crdt/{room})
 // 2. Joins the client to that room
-// 3. Forwards all binary messages to other clients in the same room
-// 4. Removes the client on disconnect
-//
-// Yjs CRDT guarantees convergence — the server just needs reliable
-// message delivery between peers.
+// 3. Applies updates to a server-side Yrs document
+// 4. Sends the current document state to newly connected clients
+// 5. Forwards all binary messages to other clients in the same room
+// 6. Removes the client on disconnect
 //
 // The y-websocket protocol uses binary messages where:
 // - Byte 0 = message type (0=sync, 1=awareness, 2=awareness query, 3=broadcast)
 // - Remaining bytes = lib0-encoded payload
 //
-// We don't parse these — we just relay them.
+// We relay awareness messages unchanged but track document state via Yrs.
 
 use axum::{
     extract::{
@@ -29,6 +30,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, info, warn};
 
+use crate::crdt::CrdtDocumentManager;
 use tachyon_core::types::crdt::{CollaborationInfo, CrdtDocumentState};
 
 // ============================================================================
@@ -60,6 +62,7 @@ enum RelayEvent {
 ///
 /// Tracks room membership and provides introspection methods.
 /// The actual message relay is handled by per-connection tasks.
+/// Includes a CrdtDocumentManager for server-side document state.
 #[derive(Clone)]
 pub struct CrdtConnectionManager {
     clients: Arc<RwLock<HashMap<String, ConnectedClient>>>,
@@ -68,6 +71,8 @@ pub struct CrdtConnectionManager {
     /// The relay itself does not use this for message routing.
     documents: Arc<RwLock<HashMap<String, CrdtDocumentState>>>,
     broadcast_tx: broadcast::Sender<RelayEvent>,
+    /// Server-side Yrs document manager for applying and storing CRDT state.
+    crdt_manager: Arc<CrdtDocumentManager>,
 }
 
 impl CrdtConnectionManager {
@@ -78,7 +83,13 @@ impl CrdtConnectionManager {
             room_clients: Arc::new(RwLock::new(HashMap::new())),
             documents: Arc::new(RwLock::new(HashMap::new())),
             broadcast_tx,
+            crdt_manager: Arc::new(CrdtDocumentManager::new()),
         }
+    }
+
+    /// Get a reference to the server-side CRDT document manager.
+    pub fn crdt_manager(&self) -> &Arc<CrdtDocumentManager> {
+        &self.crdt_manager
     }
 
     /// Number of currently connected clients.
@@ -195,6 +206,18 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // Subscribe to relay events.
     let mut relay_rx = manager.subscribe();
 
+    // Send the current document state to the newly connected client.
+    // This is the Yrs-encoded state vector + updates, which the client
+    // uses to sync its local document.
+    if let Ok(state) = manager.crdt_manager().get_state(&room) {
+        if !state.is_empty() {
+            let sync_msg = encode_sync_step1(&state);
+            if let Err(e) = ws_sender.send(Message::Binary(sync_msg.into())).await {
+                warn!(client_id = %client_id, error = %e, "Failed to send initial document state");
+            }
+        }
+    }
+
     // Forward relay events to this client's WebSocket.
     let room_for_send = room.clone();
     let client_id_for_send = client_id.clone();
@@ -241,12 +264,31 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     let room_for_recv = room.clone();
     let client_id_for_recv = client_id.clone();
     let broadcast_tx = manager.broadcast_tx.clone();
+    let crdt_manager = manager.crdt_manager().clone();
     let recv_task = async move {
         while let Some(msg) = ws_receiver.next().await {
             match msg {
                 Ok(Message::Binary(data)) => {
-                    // Forward binary messages to other clients in the room.
                     let data_vec: Vec<u8> = data.to_vec();
+
+                    // Apply sync updates (message type 0) to the server-side Yrs document.
+                    // y-websocket protocol: byte 0 is the message type.
+                    // 0 = sync, 1 = awareness, 2 = awareness query.
+                    if !data_vec.is_empty() && data_vec[0] == 0 {
+                        // Strip the message type byte to get the raw Yrs update.
+                        if data_vec.len() > 1 {
+                            if let Err(e) = crdt_manager.apply_update(&room_for_recv, &data_vec[1..]) {
+                                warn!(
+                                    client_id = %client_id_for_recv,
+                                    room = %room_for_recv,
+                                    error = %e,
+                                    "Failed to apply CRDT update"
+                                );
+                            }
+                        }
+                    }
+
+                    // Forward binary messages to other clients in the room.
                     if let Err(e) = broadcast_tx.send(RelayEvent::Binary {
                         room: room_for_recv.clone(),
                         sender: client_id_for_recv.clone(),
@@ -304,6 +346,24 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
             client_id: client_id.clone(),
         });
     }
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/// Encode a Yrs sync step 1 message.
+///
+/// The y-websocket protocol uses:
+/// - Byte 0: message type (0 = sync)
+/// - Byte 1: sync step (1 = state request/response)
+/// - Remaining: lib0-encoded payload
+fn encode_sync_step1(update: &[u8]) -> Vec<u8> {
+    let mut msg = Vec::with_capacity(2 + update.len());
+    msg.push(0); // message type: sync
+    msg.push(1); // sync step 1
+    msg.extend_from_slice(update);
+    msg
 }
 
 // ============================================================================

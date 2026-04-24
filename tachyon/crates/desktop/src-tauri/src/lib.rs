@@ -5,16 +5,18 @@
 mod state;
 mod events;
 mod file_dialog;
+mod filesystem;
 mod sync;
 mod commands;
 mod import_export;
 mod tray;
 
 // Re-export public API
-pub use state::{DesktopState, DesktopStateManager, ConnectionStatus};
-pub use events::{DesktopEvent, EventEmitter, SyncStatus, RepositoryStatus, FileChangeKind, NotificationLevel};
+pub use state::{DesktopState, DesktopStateManager, ConnectionStatus, DesktopAppState, SyncStatus};
+pub use events::{DesktopEvent, EventEmitter, SyncStatus as EventSyncStatus, RepositoryStatus, FileChangeKind, NotificationLevel};
 pub use file_dialog::{FileDialogManager, FileDialogOptions, FileDialogResult, FileContent, FileWriteResult};
 pub use sync::{AutoSyncManager, SyncConfig, SyncResult, CommitQueueEntry};
+pub use filesystem::{VaultEntry, MarkdownFile, FileWatchHandle};
 
 use tauri::Manager;
 use std::sync::{Arc, Mutex};
@@ -103,15 +105,27 @@ pub fn run() {
             commands::is_online,
             // Local-first authentication
             commands::authenticate_offline,
+            // Filesystem (v2 — vault browsing, file watching)
+            commands::read_vault,
+            commands::read_markdown_file,
+            commands::write_markdown_file,
+            commands::list_vault_files,
+            commands::watch_directory,
+            commands::stop_directory_watch,
+            commands::is_directory_watched,
+            commands::get_app_data_dir,
+            commands::open_path,
         ])
         .manage(embedded_server)
         .setup(move |app| {
             // Initialize state manager
             let state_manager = DesktopStateManager::new(DesktopState::default());
             let sync_manager = AutoSyncManager::new(SyncConfig::default());
+            let app_state = DesktopAppState::new();
             
             app.manage(state_manager);
             app.manage(sync_manager);
+            app.manage(app_state);
             
             // Set up system tray
             if let Err(e) = tray::setup_tray(app) {

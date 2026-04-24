@@ -1,0 +1,36 @@
+[package]
+name = "tachyon-ssg"
+version = "0.1.0"
+description = "Static site generator for Tachyon knowledge base"
+edition = "2021"
+
+[[bin]]
+name = "tachyon-ssg-cli"
+path = "src/bin/ssg_cli.rs"
+
+[dependencies]
+tachyon-core = { path = "../core" }
+tachyon-renderer = { path = "../renderer" }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Date/Time
+chrono = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utilities
+uuid = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+walkdir = "2"
+
+# ZIP archive support
+zip = "2"

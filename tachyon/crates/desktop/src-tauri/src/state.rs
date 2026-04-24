@@ -7,6 +7,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tachyon_core::{ErrorResult, TachyonError};
 
+use crate::filesystem::FileWatchHandle;
+use tokio::sync::RwLock;
+
 /// Desktop application state
 /// Manages the shared state across the Tauri application
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -292,6 +295,46 @@ impl DesktopStateManager {
 impl Default for DesktopStateManager {
     fn default() -> Self {
         Self::new(DesktopState::default())
+    }
+}
+
+/// Sync status for the application.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum SyncStatus {
+    #[default]
+    Idle,
+    Syncing,
+    Success,
+    Failed,
+}
+
+/// Shared Tauri state for filesystem watching and local database.
+///
+/// This state is managed by Tauri and shared across commands.
+/// Unlike `DesktopStateManager` which uses `Mutex`, this uses
+/// `tokio::RwLock` for async-safe access from Tauri commands.
+pub struct DesktopAppState {
+    /// Handle to the active file watcher (if running)
+    pub file_watcher: Arc<RwLock<Option<FileWatchHandle>>>,
+    /// Path to the local SQLite database
+    pub local_db_path: Arc<RwLock<Option<PathBuf>>>,
+    /// Current sync status
+    pub sync_status: Arc<RwLock<SyncStatus>>,
+}
+
+impl DesktopAppState {
+    pub fn new() -> Self {
+        Self {
+            file_watcher: Arc::new(RwLock::new(None)),
+            local_db_path: Arc::new(RwLock::new(None)),
+            sync_status: Arc::new(RwLock::new(SyncStatus::default())),
+        }
+    }
+}
+
+impl Default for DesktopAppState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

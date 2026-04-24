@@ -5,6 +5,7 @@ use std::sync::Arc;
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 use crate::api::ApiClient;
+use crate::components::EmptySearch;
 use crate::types::{
     GlobalSearchResponse, SearchResultItem, ProjectSearchResultItem,
     CreateSavedSearchRequest, SearchFilters,
@@ -488,11 +489,7 @@ pub fn SearchPage() -> impl IntoView {
                                                 if total == 0 && projects.is_empty() {
                                                     let sq = search_query_for_inner.clone();
                                                     view! {
-                                                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
-                                                            <p class="text-gray-500 dark:text-gray-400 text-center">
-                                                                "No results found for \"" {sq} "\""
-                                                            </p>
-                                                        </div>
+                                                        <EmptySearch query=sq />
                                                     }.into_any()
                                                 } else {
                                                     let save_search_for_btn = save_search_clone.clone();

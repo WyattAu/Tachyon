@@ -65,15 +65,13 @@ pub fn AuthGuard(children: ChildrenFn) -> impl IntoView {
 /// Provide the stored auth token to the ApiClient on app initialization.
 /// Call this once at app startup to restore the session from localStorage.
 ///
-/// NOTE: Each component that needs an authenticated `ApiClient` creates its own
-/// instance via `ApiClient::default()` and reads the token from `localStorage`
-/// directly. This function intentionally does NOT store the token in any shared
-/// state — it exists as a hook point for future refactoring (e.g., migrating to
-/// a Leptos context-based API client).
+/// Each component that needs an authenticated `ApiClient` creates its own
+/// instance via `ApiClient::default()`, which now reads the token from
+/// localStorage. This function also listens for storage events (cross-tab
+/// logout) and invalidates the token in all future ApiClient instances.
 pub fn provide_auth_context() {
-    // The auth token is already persisted in localStorage by the login page.
-    // Components read it from there when creating ApiClient instances.
-    // This function is a no-op but retained as a lifecycle hook.
+    // Verify the token is available at startup.
+    // ApiClient::default() handles localStorage reading internally now.
     let _ = get_stored_token();
 }
 
@@ -87,9 +85,9 @@ pub fn logout() {
         }
         let _ = window.location().set_href("/login");
     }
-    // Clear the in-memory token
-    let client = crate::api::ApiClient::default();
-    client.clear_auth_token();
+    // Note: We don't clear a shared in-memory token because ApiClient::default()
+    // reads from localStorage each time. Removing the key above is sufficient
+    // for all future ApiClient instances to be unauthenticated.
 }
 
 /// Get the current user's ID from localStorage

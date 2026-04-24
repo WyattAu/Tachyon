@@ -1,4 +1,3 @@
-BEGIN;
 
 -- ============================================================================
 -- Spaces & Document Hierarchy
@@ -91,5 +90,3 @@ CREATE TRIGGER trg_ensure_personal_space
     AFTER INSERT ON users
     FOR EACH ROW
     EXECUTE FUNCTION ensure_personal_space();
-
-COMMIT;

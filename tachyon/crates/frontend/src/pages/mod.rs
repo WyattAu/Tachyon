@@ -15,6 +15,9 @@ pub mod admin;
 pub mod templates;
 pub mod plugins;
 pub mod spaces;
+pub mod ssg;
+pub mod billing;
+pub mod audit;
 
 pub use graph::GraphPage;
 pub use home::HomePage;
@@ -31,3 +34,6 @@ pub use admin::roles::RolesPage;
 pub use templates::TemplatesPage;
 pub use plugins::PluginsPage;
 pub use spaces::SpacesPage;
+pub use ssg::SsgPage;
+pub use billing::BillingPage;
+pub use audit::AuditPage;

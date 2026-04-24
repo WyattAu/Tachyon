@@ -1,0 +1,14 @@
+[package]
+name = "tachyon-editor"
+version = "0.1.0"
+edition = "2021"
+description = "Native Rust text editor engine for Tachyon"
+
+[dependencies]
+ropey = "1.6"
+unicode-segmentation = "1.12"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+tracing = "0.1"
+yrs = "0.25"

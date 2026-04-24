@@ -102,10 +102,20 @@ async fn init_tantivy_index() -> Option<std::sync::Arc<tokio::sync::Mutex<IndexM
     let index_config = IndexConfig::new("tachyon")
         .with_index_path(".tachyon/search_index");
 
-    match IndexManager::with_config(index_path, index_config).await {
+    match IndexManager::with_config(index_path.clone(), index_config).await {
         Ok(mgr) => {
             info!("Tantivy search index initialized at .tachyon/search_index");
             Some(std::sync::Arc::new(tokio::sync::Mutex::new(mgr)))
+        }
+        Err(e) if e.to_string().contains("Index already exists") => {
+            info!("Tantivy search index already exists, opening: .tachyon/search_index");
+            match IndexManager::open(index_path).await {
+                Ok(mgr) => Some(std::sync::Arc::new(tokio::sync::Mutex::new(mgr))),
+                Err(e2) => {
+                    warn!("Failed to open existing Tantivy search index: {}", e2);
+                    None
+                }
+            }
         }
         Err(e) => {
             warn!("Failed to initialize Tantivy search index: {}", e);
@@ -141,7 +151,7 @@ async fn run_server(config: ServerConfig) -> Result<()> {
         document_state, state.1, state.2, state.3, state.4, state.5,
         state.6, state.7, search_state, state.9, state.10, state.11,
         state.12, state.13, state.14, state.15, state.16, state.17,
-        state.18, state.19, state.20,
+        state.18, state.19, state.20, state.21,
         &config,
     );
 
