@@ -1,6 +1,3 @@
-// Register Page
-// Account creation page
-
 use leptos::prelude::*;
 use leptos::ev;
 use leptos_router::hooks::use_navigate;
@@ -8,13 +5,78 @@ use leptos::task::spawn_local;
 use crate::api::ApiClient;
 use crate::components::ButtonSpinner;
 
-/// Register page component
+fn is_valid_email(email: &str) -> bool {
+    (|| {
+        let at = email.find('@')?;
+        let domain = email.get(at + 1..)?;
+        let dot = domain.find('.')?;
+        Some(dot > 0 && dot < domain.len() - 1 && at > 0)
+    })()
+    .unwrap_or(false)
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum PasswordStrength {
+    Weak,
+    Medium,
+    Strong,
+}
+
+impl PasswordStrength {
+    fn label(&self) -> &'static str {
+        match self {
+            PasswordStrength::Weak => "Weak",
+            PasswordStrength::Medium => "Medium",
+            PasswordStrength::Strong => "Strong",
+        }
+    }
+
+    fn color_class(&self) -> &'static str {
+        match self {
+            PasswordStrength::Weak => "bg-red-500",
+            PasswordStrength::Medium => "bg-yellow-500",
+            PasswordStrength::Strong => "bg-green-500",
+        }
+    }
+
+    fn text_color(&self) -> &'static str {
+        match self {
+            PasswordStrength::Weak => "text-red-500",
+            PasswordStrength::Medium => "text-yellow-500",
+            PasswordStrength::Strong => "text-green-500",
+        }
+    }
+
+    fn width_pct(&self) -> &'static str {
+        match self {
+            PasswordStrength::Weak => "w-1/3",
+            PasswordStrength::Medium => "w-2/3",
+            PasswordStrength::Strong => "w-full",
+        }
+    }
+}
+
+fn calc_password_strength(password: &str) -> PasswordStrength {
+    let mut score = 0u8;
+    if password.len() >= 8 { score += 1; }
+    if password.len() >= 12 { score += 1; }
+    if password.chars().any(|c| c.is_uppercase()) { score += 1; }
+    if password.chars().any(|c| c.is_ascii_digit()) { score += 1; }
+    if password.chars().any(|c| !c.is_alphanumeric()) { score += 1; }
+    match score {
+        0..=2 => PasswordStrength::Weak,
+        3 => PasswordStrength::Medium,
+        _ => PasswordStrength::Strong,
+    }
+}
+
 #[component]
 pub fn RegisterPage() -> impl IntoView {
     let username = RwSignal::new(String::new());
     let email = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
     let confirm_password = RwSignal::new(String::new());
+    let terms_accepted = RwSignal::new(false);
     let error = RwSignal::new(None::<String>);
     let loading = RwSignal::new(false);
 
@@ -27,18 +89,26 @@ pub fn RegisterPage() -> impl IntoView {
         let email_val = email.get();
         let password_val = password.get();
         let confirm_val = confirm_password.get();
+        let terms = terms_accepted.get();
 
-        // Client-side validation
-        if password_val != confirm_val {
-            error.set(Some("Passwords do not match".to_string()));
-            return;
+        let mut errs = Vec::new();
+        if username_val.trim().len() < 3 {
+            errs.push("Username must be at least 3 characters".to_string());
+        }
+        if !is_valid_email(&email_val) {
+            errs.push("Please enter a valid email address".to_string());
         }
         if password_val.len() < 8 {
-            error.set(Some("Password must be at least 8 characters".to_string()));
-            return;
+            errs.push("Password must be at least 8 characters".to_string());
         }
-        if username_val.len() < 3 {
-            error.set(Some("Username must be at least 3 characters".to_string()));
+        if password_val != confirm_val {
+            errs.push("Passwords do not match".to_string());
+        }
+        if !terms {
+            errs.push("You must accept the terms of service".to_string());
+        }
+        if !errs.is_empty() {
+            error.set(Some(errs.join("\n")));
             return;
         }
 
@@ -82,7 +152,7 @@ pub fn RegisterPage() -> impl IntoView {
 
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
                     <Show when=move || error.get().is_some()>
-                        <div class="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded">
+                        <div class="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded whitespace-pre-line">
                             {move || error.get().unwrap_or_default()}
                         </div>
                     </Show>
@@ -127,6 +197,28 @@ pub fn RegisterPage() -> impl IntoView {
                                 minlength="8"
                                 required
                             />
+                            {move || {
+                                let pw = password.get();
+                                if pw.is_empty() {
+                                    return ().into_any();
+                                }
+                                let s = calc_password_strength(&pw);
+                                view! {
+                                    <div class="mt-2">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">"Password strength"</span>
+                                            <span class={format!("text-xs font-medium {}", s.text_color())}>
+                                                {s.label()}
+                                            </span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
+                                            <div
+                                                class={format!("h-1.5 rounded-full transition-all duration-200 {} {}", s.color_class(), s.width_pct())}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                }.into_any()
+                            }}
                         </div>
 
                         <div>
@@ -141,6 +233,22 @@ pub fn RegisterPage() -> impl IntoView {
                                 minlength="8"
                                 required
                             />
+                        </div>
+
+                        <div class="flex items-start">
+                            <input
+                                id="reg-terms"
+                                type="checkbox"
+                                class="h-4 w-4 mt-0.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                on:change=move |ev| terms_accepted.set(event_target_checked(&ev))
+                                prop:checked=move || terms_accepted.get()
+                            />
+                            <label for="reg-terms" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                "I agree to the "
+                                <a href="/terms" class="text-blue-600 hover:underline dark:text-blue-400">"Terms of Service"</a>
+                                " and "
+                                <a href="/privacy" class="text-blue-600 hover:underline dark:text-blue-400">"Privacy Policy"</a>
+                            </label>
                         </div>
 
                         <button

@@ -12,12 +12,21 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen_futures::spawn_local;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ViewMode {
+    Grid,
+    List,
+}
+
 /// Documents list page
 #[component]
 pub fn DocumentsPage() -> impl IntoView {
     let api_client = ApiClient::default();
     let current_page = RwSignal::new(1usize);
     let page_size = 20usize;
+    let view_mode = RwSignal::new(ViewMode::Grid);
+    let search_text = RwSignal::new(String::new());
+    let status_filter = RwSignal::new(String::new());
 
     let store = use_context::<BrowserStore>().unwrap_or_default();
     let sync_engine = use_context::<SyncEngine>();
@@ -60,15 +69,8 @@ pub fn DocumentsPage() -> impl IntoView {
                 Err(_) => {
                     let local = s.get_all();
                     let total = local.len();
-                    let docs: Vec<Document> = local.iter()
-                        .map(stored_to_document)
-                        .collect();
-                    DocumentListResponse {
-                        results: docs,
-                        total,
-                        page: 1,
-                        page_size: 20,
-                    }
+                    let docs: Vec<Document> = local.iter().map(stored_to_document).collect();
+                    DocumentListResponse { results: docs, total, page: 1, page_size: 20 }
                 }
             }
         }
@@ -76,12 +78,23 @@ pub fn DocumentsPage() -> impl IntoView {
 
     let total_pages = move || {
         documents_resource.get().map(|d| {
-            if d.page_size > 0 {
-                (d.total as f64 / d.page_size as f64).ceil() as usize
-            } else {
-                1
-            }
+            if d.page_size > 0 { (d.total as f64 / d.page_size as f64).ceil() as usize } else { 1 }
         }).unwrap_or(1)
+    };
+
+    let filtered_docs = move || {
+        let response = documents_resource.get().unwrap_or(DocumentListResponse {
+            results: vec![], total: 0, page: 1, page_size: 20,
+        });
+        let search = search_text.get().to_lowercase();
+        let status = status_filter.get();
+        let filtered: Vec<Document> = response.results.into_iter().filter(|doc| {
+            let matches_search = search.is_empty() || doc.title.to_lowercase().contains(&search)
+                || doc.tags.iter().any(|t| t.to_lowercase().contains(&search));
+            let matches_status = status.is_empty() || doc.status == status;
+            matches_search && matches_status
+        }).collect();
+        filtered
     };
 
     let navigate = StoredValue::new(use_navigate());
@@ -95,24 +108,17 @@ pub fn DocumentsPage() -> impl IntoView {
             }
             set_create_error.set(None);
             set_creating.set(true);
-
             let api = api_client.clone();
             let nav = navigate.get_value();
             let s = store_for_create.clone();
-
             spawn_local(async move {
-                let body = serde_json::json!({
-                    "title": title.trim(),
-                    "content": "",
-                    "tags": [],
-                });
+                let body = serde_json::json!({ "title": title.trim(), "content": "", "tags": [] });
                 match api.create_document(&body).await {
                     Ok(doc) => {
                         let stored = StoredDocument {
                             document: LocalDocument::from(doc.clone()),
                             sync_status: SyncStatus::Synced,
-                            local_version: 1,
-                            server_version: Some(1),
+                            local_version: 1, server_version: Some(1),
                             last_modified: chrono::Utc::now().to_rfc3339(),
                         };
                         s.put(stored);
@@ -126,31 +132,19 @@ pub fn DocumentsPage() -> impl IntoView {
                         let local_id = uuid::Uuid::new_v4().to_string();
                         let now = chrono::Utc::now().to_rfc3339();
                         let local_doc = LocalDocument {
-                            id: local_id,
-                            title: title.trim().to_string(),
-                            slug: None,
-                            content: String::new(),
-                            html: None,
-                            status: "draft".to_string(),
-                            visibility: "private".to_string(),
-                            tags: vec![],
-                            author_id: String::new(),
-                            word_count: 0,
-                            character_count: 0,
-                            created_at: now.clone(),
-                            updated_at: now,
-                            published_at: None,
-                            description: None,
+                            id: local_id, title: title.trim().to_string(), slug: None,
+                            content: String::new(), html: None, status: "draft".to_string(),
+                            visibility: "private".to_string(), tags: vec![], author_id: String::new(),
+                            word_count: 0, character_count: 0, created_at: now.clone(),
+                            updated_at: now, published_at: None, description: None,
                         };
                         let stored = StoredDocument {
-                            document: local_doc,
-                            sync_status: SyncStatus::PendingCreate,
-                            local_version: 1,
-                            server_version: None,
+                            document: local_doc, sync_status: SyncStatus::PendingCreate,
+                            local_version: 1, server_version: None,
                             last_modified: chrono::Utc::now().to_rfc3339(),
                         };
                         s.put(stored);
-                        set_create_error.set(Some(format!("Failed to create document: {}. Saved locally for sync.", e)));
+                        set_create_error.set(Some(format!("Failed to create: {}. Saved locally.", e)));
                         set_creating.set(false);
                     }
                 }
@@ -158,170 +152,191 @@ pub fn DocumentsPage() -> impl IntoView {
         }
     });
 
+    let sync_badge = move || {
+        let state = sync_state.as_ref().map(|ss| ss.get()).unwrap_or(SyncState::Idle);
+        match state {
+            SyncState::Syncing => view! {
+                <span class="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
+                    <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>"Syncing"
+                </span>
+            }.into_any(),
+            SyncState::Offline => view! {
+                <span class="flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 rounded-full">
+                    <span class="w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>"Offline"
+                </span>
+            }.into_any(),
+            SyncState::Error(_) => view! {
+                <span class="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full">
+                    <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>"Sync error"
+                </span>
+            }.into_any(),
+            SyncState::Idle => view! {
+                <span class="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>"Synced"
+                </span>
+            }.into_any(),
+        }
+    };
+
     view! {
         <div>
-            <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">"Documents"</h1>
-                    {move || {
-                        let state = sync_state.as_ref().map(|ss| ss.get()).unwrap_or(SyncState::Idle);
-                        match state {
-                            SyncState::Syncing => view! {
-                                <span class="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
-                                    <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
-                                    "Syncing"
-                                </span>
-                            }.into_any(),
-                            SyncState::Offline => view! {
-                                <span class="flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 rounded-full">
-                                    <span class="w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>
-                                    "Offline"
-                                </span>
-                            }.into_any(),
-                            SyncState::Error(_) => view! {
-                                <span class="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full">
-                                    <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                                    "Sync error"
-                                </span>
-                            }.into_any(),
-                            SyncState::Idle => view! {
-                                <span class="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
-                                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                                    "Synced"
-                                </span>
-                            }.into_any(),
-                        }
-                    }}
+                    {sync_badge}
                 </div>
-                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" on:click=move |_| set_show_create_modal.set(true)>
-                    "+ New Document"
-                </button>
+                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    on:click=move |_| set_show_create_modal.set(true)>"+ New Document"</button>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                <div class="flex-1 relative">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" placeholder="Search documents..."
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        prop:value={move || search_text.get()}
+                        on:input=move |ev| search_text.set(event_target_value(&ev)) />
+                </div>
+                <select class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    on:change=move |ev| status_filter.set(event_target_value(&ev))>
+                    <option value="">"All Status"</option>
+                    <option value="draft">"Draft"</option>
+                    <option value="published">"Published"</option>
+                    <option value="archived">"Archived"</option>
+                </select>
+                <div class="flex border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                    <button class={move || if view_mode.get() == ViewMode::Grid { "px-3 py-2 bg-blue-600 text-white" } else { "px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" }}
+                        on:click=move |_| view_mode.set(ViewMode::Grid)>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                    </button>
+                    <button class={move || if view_mode.get() == ViewMode::List { "px-3 py-2 bg-blue-600 text-white" } else { "px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" }}
+                        on:click=move |_| view_mode.set(ViewMode::List)>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                    </button>
+                </div>
             </div>
 
             <Suspense fallback={view! { <DocumentsGridSkeleton /> }}>
                 {move || {
-                    documents_resource.get().map(|response| {
-                        if response.results.is_empty() {
-                            view! {
-                                <EmptyDocuments />
-                            }.into_any()
-                        } else {
-                            view! {
-                                <div>
-                                    <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                                        {format!("Showing {} of {} documents", response.results.len(), response.total)}
-                                    </div>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {response.results.into_iter().map(|doc| {
-                                            view! {
-                                                <DocumentCard document={doc} />
-                                            }
-                                        }).collect::<Vec<_>>()}
-                                    </div>
+                    let docs = filtered_docs();
+                    if docs.is_empty() {
+                        view! { <EmptyDocuments /> }.into_any()
+                    } else {
+                        let mode = view_mode.get();
+                        view! {
+                            <div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                                    {format!("{} documents", docs.len())}
                                 </div>
-                            }.into_any()
-                        }
-                    })
+                                {if mode == ViewMode::Grid {
+                                    view! {
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {docs.into_iter().map(|doc| view! { <DocumentCard document={doc} /> }).collect::<Vec<_>>()}
+                                        </div>
+                                    }.into_any()
+                                } else {
+                                    view! {
+                                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
+                                            {docs.into_iter().map(|doc| view! { <DocumentRow document={doc} /> }).collect::<Vec<_>>()}
+                                        </div>
+                                    }.into_any()
+                                }}
+                            </div>
+                        }.into_any()
+                    }
                 }}
             </Suspense>
 
             <div class="flex items-center justify-center gap-2 mt-6">
-                <button
-                    class="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                <button class="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
                     disabled={move || current_page.get() <= 1}
-                    on:click={move |_| {
-                        let current = current_page.get();
-                        if current > 1 {
-                            current_page.set(current - 1);
-                        }
-                    }}
-                >
-                    "Previous"
-                </button>
-
-                <span class="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
-                    {move || format!("Page {} of {}", current_page.get(), total_pages())}
-                </span>
-
-                <button
-                    class="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                    on:click=move |_| { let c = current_page.get(); if c > 1 { current_page.set(c - 1); } }>"Previous"</button>
+                <span class="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">{move || format!("Page {} of {}", current_page.get(), total_pages())}</span>
+                <button class="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
                     disabled={move || current_page.get() >= total_pages()}
-                    on:click={move |_| {
-                        let current = current_page.get();
-                        if current < total_pages() {
-                            current_page.set(current + 1);
-                        }
-                    }}
-                >
-                    "Next"
-                </button>
+                    on:click=move |_| { let c = current_page.get(); if c < total_pages() { current_page.set(c + 1); } }>"Next"</button>
             </div>
 
-            // Create document modal
             {move || if show_create_modal.get() {
                 Some(view! {
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
                             <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">"New Document"</h2>
-
                             {move || create_error.get().map(|e| view! {
-                                <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">
-                                    {e}
-                                </div>
+                                <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">{e}</div>
                             })}
-
                             <div class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        "Start from template"
-                                    </label>
-                                    <TemplateSelector
-                                        on_select={Callback::new(move |template: DocumentTemplate| {
-                                            let title = template.name.clone();
-                                            set_new_doc_title.set(title);
-                                        })}
-                                        category={None}
-                                    />
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Start from template"</label>
+                                    <TemplateSelector on_select={Callback::new(move |t: DocumentTemplate| set_new_doc_title.set(t.name))} category={None} />
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        "Title"
-                                    </label>
-                                    <input
-                                        type="text"
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                        placeholder="Enter document title"
-                                        prop:value={move || new_doc_title.get()}
-                                        on:input=move |ev| set_new_doc_title.set(event_target_value(&ev))
-                                    />
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Title"</label>
+                                    <input type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                        placeholder="Enter document title" prop:value={move || new_doc_title.get()}
+                                        on:input=move |ev| set_new_doc_title.set(event_target_value(&ev)) />
                                 </div>
                             </div>
-
                             <div class="mt-6 flex justify-end gap-3">
-                                <button
-                                    class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-                                    on:click=move |_| {
-                                        set_show_create_modal.set(false);
-                                        set_new_doc_title.set(String::new());
-                                        set_create_error.set(None);
-                                    }
-                                >
-                                    "Cancel"
-                                </button>
-                                <button
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                                    on:click=move |_| { set_show_create_modal.set(false); set_new_doc_title.set(String::new()); set_create_error.set(None); }>"Cancel"</button>
+                                <button class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
                                     disabled={move || creating.get()}
-                                    on:click=move |ev| handle_create_document.get_value()(ev)
-                                >
+                                    on:click=move |ev| handle_create_document.get_value()(ev)>
                                     {move || if creating.get() { "Creating..." } else { "Create" }}
                                 </button>
                             </div>
                         </div>
                     </div>
                 })
-            } else {
-                None
-            }}
+            } else { None }}
+        </div>
+    }
+}
+
+#[component]
+fn DocumentRow(document: Document) -> impl IntoView {
+    let navigate = use_navigate();
+    let doc_id = document.id.clone();
+    let title = document.title;
+    let status = document.status.clone();
+    let visibility = document.visibility.clone();
+    let word_count = document.word_count;
+    let tags = document.tags;
+    let updated = document.updated_at.split('T').next().unwrap_or("Unknown").to_string();
+
+    let status_class = match status.as_str() {
+        "published" => "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300",
+        "archived" => "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
+        _ => "bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-300",
+    };
+    let status_text = match status.as_str() { "published" => "Published", "archived" => "Archived", _ => "Draft" };
+    let vis_text = match visibility.as_str() { "public" => "Public", "restricted" => "Restricted", _ => "Private" };
+
+    let wc_text = if word_count == 1 { "1 word".to_string() } else { format!("{} words", word_count) };
+
+    view! {
+        <div class="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+            on:click=move |_| navigate(&format!("/documents/{}/edit", doc_id), Default::default())>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-sm font-medium text-gray-900 dark:text-white truncate">{title}</h3>
+                    <span class={format!("px-2 py-0.5 text-xs rounded {}", status_class)}>{status_text}</span>
+                    <span class="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{vis_text}</span>
+                </div>
+                <div class="flex items-center gap-3 mt-1">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{wc_text}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{updated}</span>
+                    {tags.into_iter().take(3).map(|tag| {
+                        view! { <span class="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 rounded">{tag}</span> }
+                    }).collect::<Vec<_>>()}
+                </div>
+            </div>
+            <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
         </div>
     }
 }

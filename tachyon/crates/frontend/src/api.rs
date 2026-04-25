@@ -177,6 +177,22 @@ impl ApiClient {
         self.put(&url, &body).await
     }
 
+    /// Change password
+    pub async fn change_password(&self, old_password: &str, new_password: &str) -> Result<(), ApiError> {
+        let url = format!("{}/auth/change-password", self.base_url);
+        let body = serde_json::json!({
+            "old_password": old_password,
+            "new_password": new_password,
+        });
+        self.post_empty_json_accept_any(&url, &body).await
+    }
+
+    /// Delete current user account
+    pub async fn delete_account(&self) -> Result<(), ApiError> {
+        let url = format!("{}/auth/me", self.base_url);
+        self.delete(&url).await
+    }
+
     /// Logout current user
     pub async fn logout(&self) -> Result<(), ApiError> {
         let url = format!("{}/auth/logout", self.base_url);

@@ -42,7 +42,7 @@ pub use client_search::ClientSearch;
 pub use auth_guard::{AuthGuard, provide_auth_context};
 pub use breadcrumbs::{BreadcrumbItem, Breadcrumbs};
 #[allow(unused_imports)]
-pub use collaborative_cursors::{AwarenessState, CollaborativeCursors, RemoteCursor};
+pub use collaborative_cursors::{AwarenessState, CollaborationStatusBar, CollaborativeCursors, RemoteCursor};
 #[allow(unused_imports)]
 pub use command_palette::{CommandItem, CommandPalette};
 pub use conflict_resolver::ConflictResolver;

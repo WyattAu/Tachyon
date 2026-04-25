@@ -83,11 +83,24 @@ where
     };
 
     let (user_id, set_user_id) = signal(None::<String>);
+    let (user_display_name, set_user_display_name) = signal(None::<String>);
     let (show_user_menu, set_show_user_menu) = signal(false);
 
     Effect::new(move |_| {
         if let Some(id) = crate::components::auth_guard::get_user_id().filter(|s| !s.is_empty()) {
             set_user_id.set(Some(id));
+            let set_name = set_user_display_name.clone();
+            let api = ApiClient::default();
+            spawn_local(async move {
+                if let Ok(user) = api.get_current_user().await {
+                    let name = user
+                        .get("display_name")
+                        .or_else(|| user.get("username"))
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    set_name.set(name);
+                }
+            });
         }
     });
 
@@ -470,8 +483,10 @@ where
                                         <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                                             <span class="text-white text-sm font-medium">
                                                 {move || {
-                                                    user_id.get()
-                                                        .map(|id| id.chars().next().unwrap_or('U').to_uppercase().to_string())
+                                                    user_display_name.get()
+                                                        .as_ref()
+                                                        .map(|n| n.chars().next().unwrap_or('U').to_uppercase().to_string())
+                                                        .or_else(|| user_id.get().map(|id| id.chars().next().unwrap_or('U').to_uppercase().to_string()))
                                                         .unwrap_or_else(|| "U".to_string())
                                                 }}
                                             </span>
@@ -481,6 +496,11 @@ where
                                         class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
                                         style={move || if show_user_menu.get() { "" } else { "display: none;" }}
                                     >
+                                        <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                {move || user_display_name.get().unwrap_or_default()}
+                                            </p>
+                                        </div>
                                         <a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                             "Settings"
                                         </a>
