@@ -8,6 +8,7 @@ use axum::{
     response::Response,
     Json,
 };
+use deadpool_redis::{redis::AsyncCommands, Pool as RedisPool, Runtime};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -190,20 +191,91 @@ impl InMemoryStore {
     
 }
 
+#[derive(Debug)]
+struct RedisStore {
+    pool: RedisPool,
+}
+
+impl RedisStore {
+    fn new(redis_url: &str) -> Result<Self, deadpool_redis::CreatePoolError> {
+        let cfg = deadpool_redis::Config::from_url(redis_url);
+        let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
+        Ok(Self { pool })
+    }
+
+    async fn check_rate_limit(&self, key: &str, limit: RateLimit) -> Result<RateLimitInfo, ()> {
+        let window_start = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            / limit.window_secs)
+            * limit.window_secs;
+        let redis_key = format!("rate_limit:{}:{}", key, window_start);
+        let ttl = limit.window_secs as i64;
+
+        let mut conn = self.pool.get().await.map_err(|_| ())?;
+
+        let count: i64 = conn.incr(&redis_key, 1).await.map_err(|_| ())?;
+
+        if count == 1 {
+            let _: () = conn.expire(&redis_key, ttl).await.map_err(|_| ())?;
+        }
+
+        let remaining = if count > limit.max_requests as i64 {
+            0
+        } else {
+            limit.max_requests as i64 - count
+        };
+
+        if count <= limit.max_requests as i64 {
+            let reset = limit.window_secs - (std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                - window_start);
+            Ok(RateLimitInfo {
+                limit: limit.max_requests,
+                remaining: remaining as u32,
+                reset,
+                retry_after: None,
+            })
+        } else {
+            let retry_after = limit.window_secs - (std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                - window_start);
+            Ok(RateLimitInfo {
+                limit: limit.max_requests,
+                remaining: 0,
+                reset: retry_after,
+                retry_after: Some(retry_after),
+            })
+        }
+    }
+}
+
 #[derive(Clone)]
 pub(crate) enum RateLimitStore {
     #[allow(private_interfaces)]
     InMemory(Arc<InMemoryStore>),
+    #[allow(private_interfaces)]
+    Redis(Arc<RedisStore>),
 }
 
 impl RateLimitStore {
     pub fn in_memory() -> Self {
         RateLimitStore::InMemory(Arc::new(InMemoryStore::new()))
     }
-    
+
+    pub fn redis(redis_url: &str) -> Result<Self, deadpool_redis::CreatePoolError> {
+        Ok(RateLimitStore::Redis(Arc::new(RedisStore::new(redis_url)?)))
+    }
+
     async fn check(&self, key: &str, limit: RateLimit) -> Result<RateLimitInfo, ()> {
         match self {
             RateLimitStore::InMemory(store) => store.check_rate_limit(key, limit).await,
+            RateLimitStore::Redis(store) => store.check_rate_limit(key, limit).await,
         }
     }
 }
@@ -216,13 +288,18 @@ pub struct RateLimitState {
 
 impl RateLimitState {
     pub fn new(config: RateLimitConfig) -> Self {
-        if config.redis_url.is_some() {
-            tracing::warn!("Redis rate limiting is not yet implemented; falling back to in-memory");
-        }
-        Self {
-            config,
-            store: RateLimitStore::in_memory(),
-        }
+        let store = if let Some(redis_url) = &config.redis_url {
+            match RateLimitStore::redis(redis_url) {
+                Ok(store) => store,
+                Err(e) => {
+                    tracing::warn!("Failed to create Redis rate limiter pool: {}, falling back to in-memory", e);
+                    RateLimitStore::in_memory()
+                }
+            }
+        } else {
+            RateLimitStore::in_memory()
+        };
+        Self { config, store }
     }
     
     pub fn in_memory() -> Self {

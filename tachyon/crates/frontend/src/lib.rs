@@ -135,6 +135,15 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/teams/:team_id") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::TeamDetailPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
                     <Route path=path!("/search") view=move || {
                         view! {
                             <AuthGuard>

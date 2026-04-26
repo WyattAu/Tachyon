@@ -4,6 +4,8 @@
 use leptos::prelude::*;
 use serde::Deserialize;
 use leptos::task::spawn_local;
+use leptos_router::hooks::use_params;
+use leptos_router::params::Params;
 use crate::api::ApiClient;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -357,24 +359,37 @@ pub fn TeamCard(team: Team) -> impl IntoView {
     }
 }
 
+#[derive(Params, PartialEq, Clone)]
+struct TeamDetailParams {
+    team_id: String,
+}
+
 #[component]
 pub fn TeamDetailPage() -> impl IntoView {
+    let params = use_params::<TeamDetailParams>();
+    let team_id = move || {
+        params.with(|p| p.as_ref().map(|p| p.team_id.clone()).unwrap_or_default())
+    };
+
     let (team, set_team) = signal(None::<Team>);
     let (members, set_members) = signal(Vec::<TeamMember>::new());
     let (loading, set_loading) = signal(true);
     let (_error, set_error) = signal(None::<String>);
 
     Effect::new(move |_| {
+        let tid = team_id();
+        if tid.is_empty() {
+            set_loading.set(false);
+            return;
+        }
         spawn_local(async move {
             set_loading.set(true);
-            // TODO: Get team ID from route params
             match fetch_teams().await {
                 Ok(teams) => {
-                    if let Some(first_team) = teams.into_iter().next() {
-                        let team_id = first_team.id.clone();
-                        set_team.set(Some(first_team));
+                    if let Some(found) = teams.into_iter().find(|t| t.id == tid) {
+                        set_team.set(Some(found));
 
-                        match fetch_team_members(&team_id).await {
+                        match fetch_team_members(&tid).await {
                             Ok(m) => set_members.set(m),
                             Err(e) => set_error.set(Some(e)),
                         }

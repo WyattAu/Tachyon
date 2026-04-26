@@ -151,12 +151,11 @@ pub async fn get_organization(
 
 /// Create a new organization
 pub async fn create_organization(
+    Extension(auth): Extension<AuthContext>,
     State(state): State<OrganizationState>,
     Json(body): Json<CreateOrganizationBody>,
 ) -> Result<Json<OrganizationResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from auth context (currently using a placeholder)
-    // In a real implementation this would come from the JWT claims
-    let owner_id = "00000000-0000-0000-0000-000000000000";
+    let owner_id = &auth.user_id;
 
     let repo = OrganizationRepository::new(state.pool.clone());
     let org = repo

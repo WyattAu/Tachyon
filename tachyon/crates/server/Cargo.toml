@@ -77,6 +77,9 @@ utoipa-swagger-ui = { version = "9", features = ["axum"] }
 metrics = "0.24"
 metrics-exporter-prometheus = "0.16"
 
+# Redis
+deadpool-redis = "0.18"
+
 # CRDT
 yrs = { workspace = true }
 dashmap = { workspace = true }

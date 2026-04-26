@@ -1,4 +1,4 @@
 pub mod mod_common;
+pub mod setup;
 
-// Re-export all common test helpers for convenient access
 pub use mod_common::*;

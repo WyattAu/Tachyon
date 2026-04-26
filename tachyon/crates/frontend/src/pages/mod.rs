@@ -29,6 +29,7 @@ pub use settings::SettingsPage;
 pub use login::LoginPage;
 pub use dashboard::DashboardPage;
 pub use teams::TeamsPage;
+pub use teams::TeamDetailPage;
 pub use tags::TagsPage;
 pub use admin::roles::RolesPage;
 pub use templates::TemplatesPage;
