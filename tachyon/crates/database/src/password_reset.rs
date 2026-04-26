@@ -205,3 +205,68 @@ impl PasswordResetRepository {
         Ok(Some(token))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_password_reset_token_struct_fields() {
+        let token = PasswordResetToken {
+            id: "1".into(),
+            user_id: "user-1".into(),
+            token_hash: "hash123".into(),
+            expires_at: "2024-01-02T00:00:00Z".into(),
+            used_at: None,
+            created_at: "2024-01-01T00:00:00Z".into(),
+        };
+        assert_eq!(token.user_id, "user-1");
+        assert_eq!(token.token_hash, "hash123");
+        assert!(token.used_at.is_none());
+    }
+
+    #[test]
+    fn test_password_reset_token_used() {
+        let token = PasswordResetToken {
+            id: "1".into(),
+            user_id: "user-1".into(),
+            token_hash: "hash123".into(),
+            expires_at: "2024-01-02T00:00:00Z".into(),
+            used_at: Some("2024-01-01T12:00:00Z".into()),
+            created_at: "2024-01-01T00:00:00Z".into(),
+        };
+        assert!(token.used_at.is_some());
+        assert_eq!(token.used_at.as_deref(), Some("2024-01-01T12:00:00Z"));
+    }
+
+    #[test]
+    fn test_email_verification_token_struct_fields() {
+        let token = EmailVerificationToken {
+            id: "1".into(),
+            user_id: "user-1".into(),
+            email: "user@example.com".into(),
+            token_hash: "hash456".into(),
+            expires_at: "2024-01-02T00:00:00Z".into(),
+            used_at: None,
+            created_at: "2024-01-01T00:00:00Z".into(),
+        };
+        assert_eq!(token.email, "user@example.com");
+        assert_eq!(token.token_hash, "hash456");
+        assert!(token.used_at.is_none());
+    }
+
+    #[test]
+    fn test_email_verification_token_used() {
+        let token = EmailVerificationToken {
+            id: "1".into(),
+            user_id: "user-1".into(),
+            email: "user@example.com".into(),
+            token_hash: "hash456".into(),
+            expires_at: "2024-01-02T00:00:00Z".into(),
+            used_at: Some("2024-01-01T12:00:00Z".into()),
+            created_at: "2024-01-01T00:00:00Z".into(),
+        };
+        assert!(token.used_at.is_some());
+    }
+}

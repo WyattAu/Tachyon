@@ -188,3 +188,63 @@ impl DocumentVersionRepository {
         Ok(row.get("count"))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_document_version_struct_fields() {
+        let version = DocumentVersion {
+            id: "1".into(),
+            document_id: "doc-1".into(),
+            version_number: 1,
+            content: "# Hello".into(),
+            commit_message: Some("Initial commit".into()),
+            created_at: chrono::Utc::now(),
+            created_by: "user-1".into(),
+        };
+        assert_eq!(version.version_number, 1);
+        assert_eq!(version.document_id, "doc-1");
+        assert_eq!(version.commit_message.as_deref(), Some("Initial commit"));
+    }
+
+    #[test]
+    fn test_document_version_no_commit_message() {
+        let version = DocumentVersion {
+            id: "1".into(),
+            document_id: "doc-1".into(),
+            version_number: 2,
+            content: "# Updated".into(),
+            commit_message: None,
+            created_at: chrono::Utc::now(),
+            created_by: "user-1".into(),
+        };
+        assert!(version.commit_message.is_none());
+        assert_eq!(version.version_number, 2);
+    }
+
+    #[test]
+    fn test_create_version_request_fields() {
+        let req = CreateVersionRequest {
+            document_id: "doc-1".into(),
+            content: "content".into(),
+            commit_message: Some("save".into()),
+            created_by: "user-1".into(),
+        };
+        assert_eq!(req.document_id, "doc-1");
+        assert_eq!(req.commit_message.as_deref(), Some("save"));
+    }
+
+    #[test]
+    fn test_create_version_request_no_message() {
+        let req = CreateVersionRequest {
+            document_id: "doc-1".into(),
+            content: "content".into(),
+            commit_message: None,
+            created_by: "user-1".into(),
+        };
+        assert!(req.commit_message.is_none());
+    }
+}

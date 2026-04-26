@@ -269,3 +269,92 @@ impl TemplateRepository {
         Ok(row.get("count"))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn make_test_template(tags: &str) -> DocumentTemplate {
+        DocumentTemplate {
+            id: "test-id".into(),
+            name: "Test Template".into(),
+            description: None,
+            content: "# Hello".into(),
+            category: Some("productivity".into()),
+            tags: tags.into(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            created_by: "user-1".into(),
+        }
+    }
+
+    #[test]
+    fn test_serialize_tags() {
+        let tags = vec!["meeting".to_string(), "notes".to_string()];
+        let json = DocumentTemplate::serialize_tags(&tags).unwrap();
+        assert_eq!(json, r#"["meeting","notes"]"#);
+    }
+
+    #[test]
+    fn test_serialize_tags_empty() {
+        let tags: Vec<String> = vec![];
+        let json = DocumentTemplate::serialize_tags(&tags).unwrap();
+        assert_eq!(json, "[]");
+    }
+
+    #[test]
+    fn test_parse_tags_valid() {
+        let template = make_test_template(r#"["meeting","notes"]"#);
+        let tags = template.parse_tags().unwrap();
+        assert_eq!(tags, vec!["meeting", "notes"]);
+    }
+
+    #[test]
+    fn test_parse_tags_empty_array() {
+        let template = make_test_template("[]");
+        let tags = template.parse_tags().unwrap();
+        assert!(tags.is_empty());
+    }
+
+    #[test]
+    fn test_parse_tags_invalid_json() {
+        let template = make_test_template("not json");
+        assert!(template.parse_tags().is_err());
+    }
+
+    #[test]
+    fn test_template_struct_fields() {
+        let template = make_test_template(r#"["tag1"]"#);
+        assert_eq!(template.name, "Test Template");
+        assert_eq!(template.category.as_deref(), Some("productivity"));
+        assert_eq!(template.created_by, "user-1");
+    }
+
+    #[test]
+    fn test_create_template_request_fields() {
+        let req = CreateTemplateRequest {
+            name: "My Template".into(),
+            description: Some("A template".into()),
+            content: "# Title".into(),
+            category: Some("general".into()),
+            tags: Some(vec!["doc".into()]),
+            created_by: "user-1".into(),
+        };
+        assert_eq!(req.name, "My Template");
+        assert_eq!(req.tags.as_deref(), Some(["doc".to_string()].as_slice()));
+    }
+
+    #[test]
+    fn test_update_template_request_all_none() {
+        let req = UpdateTemplateRequest {
+            name: None,
+            description: None,
+            content: None,
+            category: None,
+            tags: None,
+        };
+        assert!(req.name.is_none());
+        assert!(req.tags.is_none());
+    }
+}

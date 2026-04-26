@@ -210,3 +210,95 @@ impl SavedSearchRepository {
         Ok(count)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::super::search::SearchFilters;
+    use pretty_assertions::assert_eq;
+
+    fn make_saved_search(filters: Option<&str>) -> SavedSearch {
+        SavedSearch {
+            id: "1".into(),
+            user_id: "user-1".into(),
+            name: "My Search".into(),
+            query: "test query".into(),
+            filters: filters.map(String::from),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_serialize_filters_none() {
+        let result = SavedSearch::serialize_filters(&None).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_serialize_filters_some() {
+        let filters = SearchFilters {
+            content_type: Some("markdown".into()),
+            status: Some("published".into()),
+            ..Default::default()
+        };
+        let result = SavedSearch::serialize_filters(&Some(filters)).unwrap();
+        assert!(result.is_some());
+        let json = result.unwrap();
+        assert!(json.contains("markdown"));
+        assert!(json.contains("published"));
+    }
+
+    #[test]
+    fn test_parse_filters_none() {
+        let search = make_saved_search(None);
+        let result = search.parse_filters().unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_filters_valid() {
+        let filters = SearchFilters::default();
+        let json = serde_json::to_string(&filters).unwrap();
+        let search = make_saved_search(Some(&json));
+        let result = search.parse_filters().unwrap();
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_parse_filters_invalid_json() {
+        let search = make_saved_search(Some("not json"));
+        assert!(search.parse_filters().is_err());
+    }
+
+    #[test]
+    fn test_saved_search_struct_fields() {
+        let search = make_saved_search(None);
+        assert_eq!(search.name, "My Search");
+        assert_eq!(search.query, "test query");
+        assert_eq!(search.user_id, "user-1");
+    }
+
+    #[test]
+    fn test_create_saved_search_request_fields() {
+        let req = CreateSavedSearchRequest {
+            user_id: "user-1".into(),
+            name: "Search".into(),
+            query: "hello".into(),
+            filters: None,
+        };
+        assert_eq!(req.name, "Search");
+        assert!(req.filters.is_none());
+    }
+
+    #[test]
+    fn test_update_saved_search_request_all_none() {
+        let req = UpdateSavedSearchRequest {
+            name: None,
+            query: None,
+            filters: None,
+        };
+        assert!(req.name.is_none());
+        assert!(req.query.is_none());
+    }
+}

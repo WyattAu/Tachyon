@@ -308,3 +308,119 @@ impl CommentRepository {
         Ok(count)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn extract_mentions(content: &str) -> Vec<String> {
+        content
+            .split_whitespace()
+            .filter(|w| w.starts_with('@'))
+            .map(|w| w.trim_start_matches('@').to_string())
+            .collect()
+    }
+
+    #[test]
+    fn test_extract_mentions_from_content() {
+        let content = "Hello @alice and @bob check this out";
+        let mentions = extract_mentions(content);
+        assert_eq!(mentions, vec!["alice", "bob"]);
+    }
+
+    #[test]
+    fn test_extract_mentions_no_mentions() {
+        let content = "Hello world, no mentions here";
+        let mentions = extract_mentions(content);
+        assert!(mentions.is_empty());
+    }
+
+    #[test]
+    fn test_extract_mentions_single() {
+        let content = "Hey @carol look at this";
+        let mentions = extract_mentions(content);
+        assert_eq!(mentions, vec!["carol"]);
+    }
+
+    #[test]
+    fn test_comment_struct_open_status() {
+        let comment = Comment {
+            id: "1".into(),
+            document_id: "doc-1".into(),
+            author_id: "user-1".into(),
+            author_name: "Alice".into(),
+            content: "Hello".into(),
+            anchor_section: Some("intro".into()),
+            anchor_line_start: Some(1),
+            anchor_line_end: Some(5),
+            anchor_selection: None,
+            status: "open".into(),
+            parent_id: None,
+            mentions: r#"["bob"]"#.into(),
+            created_at: "2024-01-01T00:00:00Z".into(),
+            updated_at: "2024-01-01T00:00:00Z".into(),
+            resolved_at: None,
+            resolved_by: None,
+        };
+        assert_eq!(comment.status, "open");
+        assert_eq!(comment.anchor_line_start, Some(1));
+        assert!(comment.parent_id.is_none());
+        assert!(comment.resolved_at.is_none());
+    }
+
+    #[test]
+    fn test_comment_struct_resolved_state() {
+        let comment = Comment {
+            id: "1".into(),
+            document_id: "doc-1".into(),
+            author_id: "user-1".into(),
+            author_name: "Alice".into(),
+            content: "Fixed".into(),
+            anchor_section: None,
+            anchor_line_start: None,
+            anchor_line_end: None,
+            anchor_selection: None,
+            status: "resolved".into(),
+            parent_id: None,
+            mentions: "[]".into(),
+            created_at: "2024-01-01T00:00:00Z".into(),
+            updated_at: "2024-01-01T00:01:00Z".into(),
+            resolved_at: Some("2024-01-01T00:01:00Z".into()),
+            resolved_by: Some("user-2".into()),
+        };
+        assert_eq!(comment.status, "resolved");
+        assert!(comment.resolved_at.is_some());
+        assert_eq!(comment.resolved_by.as_deref(), Some("user-2"));
+    }
+
+    #[test]
+    fn test_create_comment_request_fields() {
+        let req = CreateCommentRequest {
+            document_id: "doc-1".into(),
+            author_id: "user-1".into(),
+            author_name: "Alice".into(),
+            content: "Great work @bob".into(),
+            anchor_section: Some("body".into()),
+            anchor_line_start: Some(10),
+            anchor_line_end: Some(20),
+            anchor_selection: None,
+            parent_id: Some("parent-1".into()),
+            mentions: Some(vec!["bob".into()]),
+        };
+        assert_eq!(req.document_id, "doc-1");
+        assert_eq!(req.mentions.as_deref(), Some(["bob".to_string()].as_slice()));
+        assert_eq!(req.parent_id.as_deref(), Some("parent-1"));
+    }
+
+    #[test]
+    fn test_update_comment_request_all_none() {
+        let req = UpdateCommentRequest {
+            content: None,
+            status: None,
+            resolved_by: None,
+        };
+        assert!(req.content.is_none());
+        assert!(req.status.is_none());
+    }
+}

@@ -587,3 +587,170 @@ impl OrganizationRepository {
         Ok(rows.into_iter().collect())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_organization_request_defaults() {
+        let req = CreateOrganizationRequest {
+            name: "Test Org".to_string(),
+            description: None,
+            icon: None,
+            logo_url: None,
+            default_role: None,
+            max_members: None,
+        };
+        assert_eq!(req.name, "Test Org");
+        assert!(req.description.is_none());
+        assert!(req.icon.is_none());
+        assert!(req.logo_url.is_none());
+        assert!(req.default_role.is_none());
+        assert!(req.max_members.is_none());
+    }
+
+    #[test]
+    fn test_create_organization_request_with_all_fields() {
+        let req = CreateOrganizationRequest {
+            name: "Acme Corp".to_string(),
+            description: Some("A company".to_string()),
+            icon: Some("building".to_string()),
+            logo_url: Some("https://example.com/logo.png".to_string()),
+            default_role: Some("admin".to_string()),
+            max_members: Some(100),
+        };
+        assert_eq!(req.name, "Acme Corp");
+        assert_eq!(req.description.as_deref(), Some("A company"));
+        assert_eq!(req.icon.as_deref(), Some("building"));
+        assert_eq!(req.default_role.as_deref(), Some("admin"));
+        assert_eq!(req.max_members, Some(100));
+    }
+
+    #[test]
+    fn test_update_organization_request_all_none() {
+        let req = UpdateOrganizationRequest {
+            name: None,
+            description: None,
+            icon: None,
+            logo_url: None,
+            default_role: None,
+            max_members: None,
+            settings: None,
+        };
+        assert!(req.name.is_none());
+        assert!(req.description.is_none());
+        assert!(req.icon.is_none());
+        assert!(req.logo_url.is_none());
+        assert!(req.default_role.is_none());
+        assert!(req.max_members.is_none());
+        assert!(req.settings.is_none());
+    }
+
+    #[test]
+    fn test_update_organization_request_with_settings() {
+        let settings = serde_json::json!({"theme": "dark", "notifications": true});
+        let req = UpdateOrganizationRequest {
+            name: Some("Updated Org".to_string()),
+            description: Some("Updated desc".to_string()),
+            icon: None,
+            logo_url: None,
+            default_role: Some("editor".to_string()),
+            max_members: Some(50),
+            settings: Some(settings),
+        };
+        assert_eq!(req.name.as_deref(), Some("Updated Org"));
+        assert_eq!(req.default_role.as_deref(), Some("editor"));
+        assert!(req.settings.is_some());
+    }
+
+    #[test]
+    fn test_add_member_request_defaults() {
+        let req = AddOrganizationMemberRequest {
+            user_id: "user-123".to_string(),
+            role: None,
+        };
+        assert_eq!(req.user_id, "user-123");
+        assert!(req.role.is_none());
+    }
+
+    #[test]
+    fn test_add_member_request_with_role() {
+        let req = AddOrganizationMemberRequest {
+            user_id: "user-456".to_string(),
+            role: Some("admin".to_string()),
+        };
+        assert_eq!(req.user_id, "user-456");
+        assert_eq!(req.role.as_deref(), Some("admin"));
+    }
+
+    #[test]
+    fn test_update_member_request() {
+        let req = UpdateOrganizationMemberRequest {
+            role: "viewer".to_string(),
+        };
+        assert_eq!(req.role, "viewer");
+    }
+
+    #[test]
+    fn test_organization_parse_settings_valid() {
+        let org = Organization {
+            id: "1".to_string(),
+            name: "Test".to_string(),
+            slug: "test".to_string(),
+            description: None,
+            icon: "building".to_string(),
+            logo_url: None,
+            owner_id: "owner-1".to_string(),
+            default_role: "viewer".to_string(),
+            max_members: 100,
+            is_personal: false,
+            settings: r#"{"theme": "dark"}"#.to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+        let settings = org.parse_settings().unwrap();
+        assert_eq!(settings["theme"], "dark");
+    }
+
+    #[test]
+    fn test_organization_parse_settings_invalid() {
+        let org = Organization {
+            id: "1".to_string(),
+            name: "Test".to_string(),
+            slug: "test".to_string(),
+            description: None,
+            icon: "building".to_string(),
+            logo_url: None,
+            owner_id: "owner-1".to_string(),
+            default_role: "viewer".to_string(),
+            max_members: 100,
+            is_personal: false,
+            settings: "not-json".to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+        assert!(org.parse_settings().is_err());
+    }
+
+    #[test]
+    fn test_organization_parse_settings_empty() {
+        let org = Organization {
+            id: "1".to_string(),
+            name: "Test".to_string(),
+            slug: "test".to_string(),
+            description: None,
+            icon: "building".to_string(),
+            logo_url: None,
+            owner_id: "owner-1".to_string(),
+            default_role: "viewer".to_string(),
+            max_members: 100,
+            is_personal: false,
+            settings: "{}".to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+        let settings = org.parse_settings().unwrap();
+        assert_eq!(settings.as_object().unwrap().len(), 0);
+    }
+}

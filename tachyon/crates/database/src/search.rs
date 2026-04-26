@@ -548,3 +548,113 @@ pub struct GlobalSearchResponse {
     pub documents: SearchResponse,
     pub projects: Vec<ProjectSearchResult>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_search_filters_default() {
+        let filters = SearchFilters::default();
+        assert!(filters.content_type.is_none());
+        assert!(filters.status.is_none());
+        assert!(filters.visibility.is_none());
+        assert!(filters.project_id.is_none());
+        assert!(filters.author_id.is_none());
+        assert!(filters.tags.is_none());
+        assert!(filters.date_from.is_none());
+        assert!(filters.date_to.is_none());
+    }
+
+    #[test]
+    fn test_search_filters_with_fields() {
+        let filters = SearchFilters {
+            content_type: Some("markdown".to_string()),
+            status: Some("published".to_string()),
+            visibility: Some("public".to_string()),
+            project_id: Some("proj-1".to_string()),
+            author_id: Some("user-1".to_string()),
+            tags: Some(vec!["rust".to_string(), "database".to_string()]),
+            date_from: None,
+            date_to: None,
+        };
+        assert_eq!(filters.content_type.as_deref(), Some("markdown"));
+        assert_eq!(filters.status.as_deref(), Some("published"));
+        assert_eq!(filters.tags.as_ref().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_search_response_default() {
+        let response = SearchResponse {
+            results: vec![],
+            total: 0,
+            page: 1,
+            page_size: 20,
+            facets: SearchFacets::default(),
+        };
+        assert!(response.results.is_empty());
+        assert_eq!(response.total, 0);
+        assert_eq!(response.page, 1);
+    }
+
+    #[test]
+    fn test_search_facets_default() {
+        let facets = SearchFacets::default();
+        assert!(facets.content_types.is_empty());
+        assert!(facets.statuses.is_empty());
+        assert!(facets.visibilities.is_empty());
+        assert!(facets.tags.is_empty());
+    }
+
+    #[test]
+    fn test_facet_count() {
+        let fc = FacetCount {
+            value: "markdown".to_string(),
+            count: 42,
+        };
+        assert_eq!(fc.value, "markdown");
+        assert_eq!(fc.count, 42);
+    }
+
+    #[test]
+    fn test_search_highlight() {
+        let highlight = SearchHighlight {
+            field: "title".to_string(),
+            snippet: "<mark>rust</mark> database".to_string(),
+        };
+        assert_eq!(highlight.field, "title");
+        assert!(highlight.snippet.contains("<mark>"));
+    }
+
+    #[test]
+    fn test_project_search_result_fields() {
+        let result = ProjectSearchResult {
+            id: "proj-1".to_string(),
+            name: "Tachyon".to_string(),
+            slug: "tachyon".to_string(),
+            description: Some("A fast tool".to_string()),
+            project_type: "service".to_string(),
+            status: "active".to_string(),
+            rank: 0.95,
+        };
+        assert_eq!(result.id, "proj-1");
+        assert_eq!(result.name, "Tachyon");
+        assert!((result.rank - 0.95).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_global_search_response() {
+        let response = GlobalSearchResponse {
+            documents: SearchResponse {
+                results: vec![],
+                total: 0,
+                page: 1,
+                page_size: 10,
+                facets: SearchFacets::default(),
+            },
+            projects: vec![],
+        };
+        assert!(response.documents.results.is_empty());
+        assert!(response.projects.is_empty());
+    }
+}

@@ -396,3 +396,112 @@ impl PluginRepository {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn make_test_plugin(extension_points: &str, manifest: Option<&str>) -> Plugin {
+        Plugin {
+            id: "test-id".into(),
+            name: "test-plugin".into(),
+            description: None,
+            version: "1.0.0".into(),
+            author: None,
+            homepage: None,
+            license: None,
+            extension_points: extension_points.into(),
+            manifest: manifest.map(String::from),
+            runtime_type: "wasm".into(),
+            entry_point: None,
+            enabled: true,
+            installed_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            installed_by: None,
+        }
+    }
+
+    #[test]
+    fn test_serialize_extension_points() {
+        let points = vec!["editor".to_string(), "toolbar".to_string()];
+        let json = Plugin::serialize_extension_points(&points).unwrap();
+        assert_eq!(json, r#"["editor","toolbar"]"#);
+    }
+
+    #[test]
+    fn test_serialize_extension_points_empty() {
+        let points: Vec<String> = vec![];
+        let json = Plugin::serialize_extension_points(&points).unwrap();
+        assert_eq!(json, "[]");
+    }
+
+    #[test]
+    fn test_parse_extension_points_valid() {
+        let plugin = make_test_plugin(r#"["editor","toolbar"]"#, None);
+        let points = plugin.parse_extension_points().unwrap();
+        assert_eq!(points, vec!["editor", "toolbar"]);
+    }
+
+    #[test]
+    fn test_parse_extension_points_invalid_json() {
+        let plugin = make_test_plugin("not json", None);
+        assert!(plugin.parse_extension_points().is_err());
+    }
+
+    #[test]
+    fn test_parse_extension_points_empty_array() {
+        let plugin = make_test_plugin("[]", None);
+        let points = plugin.parse_extension_points().unwrap();
+        assert!(points.is_empty());
+    }
+
+    #[test]
+    fn test_parse_manifest_some() {
+        let plugin = make_test_plugin("[]", Some(r#"{"key":"value"}"#));
+        let manifest = plugin.parse_manifest().unwrap();
+        assert!(manifest.is_some());
+        assert_eq!(manifest.unwrap().get("key").unwrap(), "value");
+    }
+
+    #[test]
+    fn test_parse_manifest_none() {
+        let plugin = make_test_plugin("[]", None);
+        let manifest = plugin.parse_manifest().unwrap();
+        assert!(manifest.is_none());
+    }
+
+    #[test]
+    fn test_parse_manifest_invalid_json() {
+        let plugin = make_test_plugin("[]", Some("invalid"));
+        assert!(plugin.parse_manifest().is_err());
+    }
+
+    #[test]
+    fn test_create_plugin_request_defaults() {
+        let req = CreatePluginRequest {
+            name: "test".into(),
+            description: None,
+            version: "1.0".into(),
+            author: None,
+            homepage: None,
+            license: None,
+            extension_points: None,
+            manifest: None,
+            runtime_type: None,
+            entry_point: None,
+            enabled: None,
+            installed_by: None,
+        };
+        assert_eq!(req.extension_points, None);
+        assert_eq!(req.enabled, None);
+    }
+
+    #[test]
+    fn test_update_plugin_request_default() {
+        let req = UpdatePluginRequest::default();
+        assert!(req.description.is_none());
+        assert!(req.version.is_none());
+        assert!(req.enabled.is_none());
+    }
+}
+

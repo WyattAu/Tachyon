@@ -183,3 +183,85 @@ impl OnboardingRepository {
         Ok(status.completed)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_onboarding_steps_count() {
+        assert_eq!(ONBOARDING_STEPS.len(), 4);
+    }
+
+    #[test]
+    fn test_onboarding_step_ids() {
+        let ids: Vec<&str> = ONBOARDING_STEPS.iter().map(|(id, _)| *id).collect();
+        assert!(ids.contains(&"create_first_document"));
+        assert!(ids.contains(&"invite_team"));
+        assert!(ids.contains(&"configure_profile"));
+        assert!(ids.contains(&"explore_features"));
+    }
+
+    #[test]
+    fn test_onboarding_step_names() {
+        let step = ONBOARDING_STEPS
+            .iter()
+            .find(|(id, _)| *id == "create_first_document");
+        assert_eq!(step.map(|(_, name)| *name), Some("Create Your First Document"));
+
+        let step = ONBOARDING_STEPS
+            .iter()
+            .find(|(id, _)| *id == "invite_team");
+        assert_eq!(step.map(|(_, name)| *name), Some("Invite Your Team"));
+    }
+
+    #[test]
+    fn test_onboarding_status_incomplete() {
+        let status = OnboardingStatus {
+            completed: false,
+            steps: vec![
+                OnboardingStep { id: "s1".into(), name: "Step 1".into(), completed: false },
+                OnboardingStep { id: "s2".into(), name: "Step 2".into(), completed: true },
+            ],
+            current_step: 0,
+        };
+        assert!(!status.completed);
+        assert_eq!(status.current_step, 0);
+        assert_eq!(status.steps.len(), 2);
+    }
+
+    #[test]
+    fn test_onboarding_status_all_completed() {
+        let status = OnboardingStatus {
+            completed: true,
+            steps: vec![
+                OnboardingStep { id: "s1".into(), name: "Step 1".into(), completed: true },
+                OnboardingStep { id: "s2".into(), name: "Step 2".into(), completed: true },
+            ],
+            current_step: 2,
+        };
+        assert!(status.completed);
+        assert_eq!(status.current_step, 2);
+    }
+
+    #[test]
+    fn test_onboarding_step_struct() {
+        let step = OnboardingStep {
+            id: "create_first_document".into(),
+            name: "Create Your First Document".into(),
+            completed: true,
+        };
+        assert_eq!(step.id, "create_first_document");
+        assert!(step.completed);
+    }
+
+    #[test]
+    fn test_onboarding_invalid_step_id() {
+        let invalid_id = "nonexistent_step";
+        let valid = ONBOARDING_STEPS
+            .iter()
+            .any(|(id, _)| *id == invalid_id);
+        assert!(!valid);
+    }
+}

@@ -500,3 +500,88 @@ impl SessionRepository {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_session_record(status: &str, expires_at: DateTime<Utc>) -> SessionRecord {
+        SessionRecord {
+            id: "sess-1".to_string(),
+            user_id: "user-1".to_string(),
+            session_type: "web".to_string(),
+            status: status.to_string(),
+            token_value: "token-abc".to_string(),
+            token_type: "jwt".to_string(),
+            ip_address: Some("127.0.0.1".to_string()),
+            user_agent: Some("test-agent".to_string()),
+            device_info: None,
+            created_at: Utc::now() - Duration::hours(1),
+            expires_at,
+            last_activity: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_session_record_is_expired_true() {
+        let record = make_session_record("Active", Utc::now() - Duration::hours(1));
+        assert!(record.is_expired());
+    }
+
+    #[test]
+    fn test_session_record_is_expired_false() {
+        let record = make_session_record("Active", Utc::now() + Duration::hours(1));
+        assert!(!record.is_expired());
+    }
+
+    #[test]
+    fn test_session_record_is_valid_active_and_not_expired() {
+        let record = make_session_record("Active", Utc::now() + Duration::hours(1));
+        assert!(record.is_valid());
+    }
+
+    #[test]
+    fn test_session_record_is_invalid_when_expired() {
+        let record = make_session_record("Active", Utc::now() - Duration::seconds(1));
+        assert!(!record.is_valid());
+    }
+
+    #[test]
+    fn test_session_record_is_invalid_when_revoked() {
+        let record = make_session_record("Revoked", Utc::now() + Duration::hours(1));
+        assert!(!record.is_valid());
+    }
+
+    #[test]
+    fn test_session_record_is_invalid_when_status_not_active() {
+        let record = make_session_record("Expired", Utc::now() + Duration::hours(1));
+        assert!(!record.is_valid());
+    }
+
+    #[test]
+    fn test_session_record_fields() {
+        let record = make_session_record("Active", Utc::now() + Duration::hours(1));
+        assert_eq!(record.id, "sess-1");
+        assert_eq!(record.user_id, "user-1");
+        assert_eq!(record.session_type, "web");
+        assert_eq!(record.token_value, "token-abc");
+        assert_eq!(record.ip_address.as_deref(), Some("127.0.0.1"));
+        assert!(record.device_info.is_none());
+    }
+
+    #[test]
+    fn test_database_error_session_expired() {
+        let err = DatabaseError::session_expired("sess-123");
+        let msg = err.to_string();
+        assert!(msg.contains("sess-123"));
+        assert!(msg.contains("expired"));
+    }
+
+    #[test]
+    fn test_database_error_session_not_found() {
+        let err = DatabaseError::session_not_found("sess-456");
+        let msg = err.to_string();
+        assert!(msg.contains("sess-456"));
+        assert!(msg.contains("not found"));
+    }
+}

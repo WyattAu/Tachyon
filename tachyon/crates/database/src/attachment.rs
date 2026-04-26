@@ -236,3 +236,74 @@ fn sanitize_filename(filename: &str) -> String {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_sanitize_filename_alphanumeric() {
+        assert_eq!(sanitize_filename("hello.txt"), "hello.txt");
+    }
+
+    #[test]
+    fn test_sanitize_filename_spaces() {
+        assert_eq!(sanitize_filename("my document.pdf"), "my_document.pdf");
+    }
+
+    #[test]
+    fn test_sanitize_filename_path_traversal() {
+        assert_eq!(sanitize_filename("../../../etc/passwd"), ".._.._.._etc_passwd");
+    }
+
+    #[test]
+    fn test_sanitize_filename_allowed_special_chars() {
+        assert_eq!(sanitize_filename("file-name_v2.txt"), "file-name_v2.txt");
+    }
+
+    #[test]
+    fn test_sanitize_filename_all_special() {
+        assert_eq!(sanitize_filename("@#$%^&*()"), "_________");
+    }
+
+    #[test]
+    fn test_sanitize_filename_empty() {
+        assert_eq!(sanitize_filename(""), "");
+    }
+
+    #[test]
+    fn test_sanitize_filename_dots_and_dashes() {
+        assert_eq!(sanitize_filename(".hidden-file.tar.gz"), ".hidden-file.tar.gz");
+    }
+
+    #[test]
+    fn test_attachment_struct_fields() {
+        let attachment = Attachment {
+            id: "1".into(),
+            document_id: "doc-1".into(),
+            filename: "test.pdf".into(),
+            mime_type: "application/pdf".into(),
+            size: 1024,
+            storage_path: "/uploads/doc-1_test.pdf".into(),
+            created_at: chrono::Utc::now(),
+            created_by: "user-1".into(),
+        };
+        assert_eq!(attachment.filename, "test.pdf");
+        assert_eq!(attachment.size, 1024);
+        assert_eq!(attachment.mime_type, "application/pdf");
+    }
+
+    #[test]
+    fn test_create_attachment_request_fields() {
+        let req = CreateAttachmentRequest {
+            document_id: "doc-1".into(),
+            filename: "image.png".into(),
+            mime_type: "image/png".into(),
+            content: vec![0x89, 0x50],
+            created_by: "user-1".into(),
+        };
+        assert_eq!(req.filename, "image.png");
+        assert_eq!(req.content.len(), 2);
+    }
+}

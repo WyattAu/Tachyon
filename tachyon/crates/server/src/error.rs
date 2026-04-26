@@ -74,3 +74,45 @@ impl From<crate::middleware::auth::AuthError> for ServerError {
         }
     }
 }
+
+impl From<tachyon_search::SearchError> for ServerError {
+    fn from(e: tachyon_search::SearchError) -> Self {
+        Self::Search(e.to_string())
+    }
+}
+
+impl From<tachyon_renderer::RendererError> for ServerError {
+    fn from(e: tachyon_renderer::RendererError) -> Self {
+        Self::Internal(e.to_string())
+    }
+}
+
+impl From<tachyon_rbac::RbacError> for ServerError {
+    fn from(e: tachyon_rbac::RbacError) -> Self {
+        Self::Rbac(e.to_string())
+    }
+}
+
+impl From<tachyon_ssg::SsgError> for ServerError {
+    fn from(e: tachyon_ssg::SsgError) -> Self {
+        Self::Internal(e.to_string())
+    }
+}
+
+impl From<tachyon_import_export::ImportExportError> for ServerError {
+    fn from(e: tachyon_import_export::ImportExportError) -> Self {
+        Self::Internal(e.to_string())
+    }
+}
+
+impl From<tachyon_plugin_runtime::PluginRuntimeError> for ServerError {
+    fn from(e: tachyon_plugin_runtime::PluginRuntimeError) -> Self {
+        Self::Internal(e.to_string())
+    }
+}
+
+impl From<sqlx::Error> for ServerError {
+    fn from(e: sqlx::Error) -> Self {
+        Self::Database(e.to_string())
+    }
+}

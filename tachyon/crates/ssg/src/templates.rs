@@ -8,13 +8,14 @@
 //! - Customizable via ColorTheme CSS custom properties
 //! - Accessible (semantic HTML, ARIA labels)
 
-use super::{CategoryContext, DocCard, IndexContext, PageContext};
+use crate::render::{CategoryContext, DocCard, IndexContext, NavItem, PageContext};
+use crate::manifest::{ColorTheme, SiteConfig};
 
 /// Generate CSS custom properties from a ColorTheme.
 ///
 /// When a custom theme is provided, these override the default hardcoded values.
 /// When no theme is set, returns an empty string (defaults in CSS take effect).
-fn color_theme_css(theme: Option<&super::ColorTheme>) -> String {
+fn color_theme_css(theme: Option<&ColorTheme>) -> String {
     let Some(t) = theme else {
         return String::new();
     };
@@ -56,7 +57,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         "light" => "",
         _ => "", // auto handled by CSS media query
     };
-    let dir = super::text_direction(ctx.language);
+    let dir = crate::i18n::text_direction(ctx.language);
 
     let author_html = match ctx.author {
         Some(author) => format!(
@@ -208,7 +209,7 @@ pub fn render_index_page(ctx: &IndexContext) -> String {
         .join("\n");
 
     let theme_vars = color_theme_css(ctx.site.color_theme.as_ref());
-    let dir = super::text_direction(ctx.language);
+    let dir = crate::i18n::text_direction(ctx.language);
 
     format!(
         r#"<!DOCTYPE html>
@@ -346,8 +347,8 @@ pub fn render_category_page(ctx: &CategoryContext) -> String {
 
 /// Render the navigation bar.
 fn render_nav(
-    site: &super::SiteConfig,
-    _items: &[super::NavItem],
+    site: &SiteConfig,
+    _items: &[NavItem],
     _current: Option<&str>,
     _lang: &str,
     language_switcher: &str,

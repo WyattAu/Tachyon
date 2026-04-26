@@ -318,3 +318,87 @@ impl PresenceRepository {
         Ok(count)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_presence_ttl_is_five_minutes() {
+        assert_eq!(PRESENCE_TTL_SECS, 300);
+    }
+
+    #[test]
+    fn test_upsert_presence_request_default_status() {
+        let req = UpsertPresenceRequest {
+            user_id: "user-1".into(),
+            user_name: "Alice".into(),
+            document_id: "doc-1".into(),
+            status: None,
+            cursor_section: None,
+            cursor_line: None,
+            cursor_selection: None,
+        };
+        let status = req.status.unwrap_or_else(|| "active".to_string());
+        assert_eq!(status, "active");
+    }
+
+    #[test]
+    fn test_upsert_presence_request_explicit_status() {
+        let req = UpsertPresenceRequest {
+            user_id: "user-1".into(),
+            user_name: "Alice".into(),
+            document_id: "doc-1".into(),
+            status: Some("idle".into()),
+            cursor_section: None,
+            cursor_line: None,
+            cursor_selection: None,
+        };
+        assert_eq!(req.status.as_deref(), Some("idle"));
+    }
+
+    #[test]
+    fn test_presence_struct_fields() {
+        let presence = Presence {
+            id: "1".into(),
+            user_id: "user-1".into(),
+            user_name: "Alice".into(),
+            document_id: "doc-1".into(),
+            status: "active".into(),
+            cursor_section: Some("intro".into()),
+            cursor_line: Some(42),
+            cursor_selection: None,
+            connected_at: "2024-01-01T00:00:00Z".into(),
+            last_seen_at: "2024-01-01T00:01:00Z".into(),
+        };
+        assert_eq!(presence.user_id, "user-1");
+        assert_eq!(presence.status, "active");
+        assert_eq!(presence.cursor_line, Some(42));
+        assert!(presence.cursor_selection.is_none());
+    }
+
+    #[test]
+    fn test_update_presence_request_all_none() {
+        let req = UpdatePresenceRequest {
+            status: None,
+            cursor_section: None,
+            cursor_line: None,
+            cursor_selection: None,
+        };
+        assert!(req.status.is_none());
+        assert!(req.cursor_line.is_none());
+    }
+
+    #[test]
+    fn test_update_presence_request_with_cursor() {
+        let req = UpdatePresenceRequest {
+            status: Some("editing".into()),
+            cursor_section: Some("body".into()),
+            cursor_line: Some(10),
+            cursor_selection: Some("line".into()),
+        };
+        assert_eq!(req.status.as_deref(), Some("editing"));
+        assert_eq!(req.cursor_line, Some(10));
+    }
+}

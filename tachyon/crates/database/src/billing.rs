@@ -330,3 +330,153 @@ impl NotificationPreferenceRepository {
             .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_subscription_request() {
+        let req = CreateSubscriptionRequest {
+            organization_id: "org-1".to_string(),
+            plan: "pro".to_string(),
+        };
+        assert_eq!(req.organization_id, "org-1");
+        assert_eq!(req.plan, "pro");
+    }
+
+    #[test]
+    fn test_update_subscription_request_all_none() {
+        let req = UpdateSubscriptionRequest {
+            plan: None,
+            status: None,
+            cancel_at_period_end: None,
+            payment_method_id: None,
+        };
+        assert!(req.plan.is_none());
+        assert!(req.status.is_none());
+        assert!(req.cancel_at_period_end.is_none());
+        assert!(req.payment_method_id.is_none());
+    }
+
+    #[test]
+    fn test_update_subscription_request_with_fields() {
+        let req = UpdateSubscriptionRequest {
+            plan: Some("enterprise".to_string()),
+            status: Some("active".to_string()),
+            cancel_at_period_end: Some(true),
+            payment_method_id: Some("pm-123".to_string()),
+        };
+        assert_eq!(req.plan.as_deref(), Some("enterprise"));
+        assert_eq!(req.status.as_deref(), Some("active"));
+        assert!(req.cancel_at_period_end.unwrap());
+        assert_eq!(req.payment_method_id.as_deref(), Some("pm-123"));
+    }
+
+    #[test]
+    fn test_create_invoice_request() {
+        let req = CreateInvoiceRequest {
+            subscription_id: "sub-1".to_string(),
+            organization_id: "org-1".to_string(),
+            amount_cents: 999,
+            currency: "usd".to_string(),
+            description: "Pro plan monthly".to_string(),
+        };
+        assert_eq!(req.amount_cents, 999);
+        assert_eq!(req.currency, "usd");
+        assert_eq!(req.description, "Pro plan monthly");
+    }
+
+    #[test]
+    fn test_update_invoice_request_all_none() {
+        let req = UpdateInvoiceRequest {
+            status: None,
+            paid_at: None,
+            payment_url: None,
+        };
+        assert!(req.status.is_none());
+        assert!(req.paid_at.is_none());
+        assert!(req.payment_url.is_none());
+    }
+
+    #[test]
+    fn test_update_invoice_request_with_fields() {
+        let now = Utc::now();
+        let req = UpdateInvoiceRequest {
+            status: Some("paid".to_string()),
+            paid_at: Some(now),
+            payment_url: Some("https://pay.example.com/inv-1".to_string()),
+        };
+        assert_eq!(req.status.as_deref(), Some("paid"));
+        assert!(req.paid_at.is_some());
+        assert!(req.payment_url.is_some());
+    }
+
+    #[test]
+    fn test_upsert_notification_pref_request() {
+        let req = UpsertNotificationPrefRequest {
+            notification_type: "billing_reminder".to_string(),
+            enabled: true,
+            channel: "email".to_string(),
+        };
+        assert_eq!(req.notification_type, "billing_reminder");
+        assert!(req.enabled);
+        assert_eq!(req.channel, "email");
+    }
+
+    #[test]
+    fn test_subscription_fields() {
+        let sub = Subscription {
+            id: "sub-1".to_string(),
+            organization_id: "org-1".to_string(),
+            plan: "pro".to_string(),
+            status: "active".to_string(),
+            current_period_start: Utc::now(),
+            current_period_end: Utc::now() + chrono::Duration::days(30),
+            cancel_at_period_end: false,
+            payment_method_id: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+        assert_eq!(sub.plan, "pro");
+        assert_eq!(sub.status, "active");
+        assert!(!sub.cancel_at_period_end);
+        assert!(sub.payment_method_id.is_none());
+    }
+
+    #[test]
+    fn test_invoice_fields() {
+        let inv = Invoice {
+            id: "inv-1".to_string(),
+            subscription_id: "sub-1".to_string(),
+            organization_id: "org-1".to_string(),
+            amount_cents: 2999,
+            currency: "usd".to_string(),
+            status: "pending".to_string(),
+            description: "Pro plan".to_string(),
+            invoice_date: Utc::now(),
+            due_date: Utc::now() + chrono::Duration::days(30),
+            payment_url: None,
+            paid_at: None,
+            created_at: Utc::now(),
+        };
+        assert_eq!(inv.amount_cents, 2999);
+        assert_eq!(inv.currency, "usd");
+        assert_eq!(inv.status, "pending");
+        assert!(inv.paid_at.is_none());
+    }
+
+    #[test]
+    fn test_notification_preference_fields() {
+        let pref = NotificationPreference {
+            user_id: "user-1".to_string(),
+            notification_type: "invoice_paid".to_string(),
+            enabled: false,
+            channel: "slack".to_string(),
+            updated_at: Utc::now(),
+        };
+        assert_eq!(pref.user_id, "user-1");
+        assert!(!pref.enabled);
+        assert_eq!(pref.channel, "slack");
+    }
+}
