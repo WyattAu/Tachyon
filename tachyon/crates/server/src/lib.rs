@@ -278,6 +278,7 @@ pub async fn init_app_state(
 ///
 /// This is the single entry point for creating the Tachyon HTTP/WebSocket
 /// application, used by both `tachyon-server` (binary) and `tachyon serve` (CLI).
+#[allow(clippy::too_many_arguments)]
 pub fn build_app(
     document_state: crate::routes::document::DocumentState,
     user_state: crate::routes::user::UserState,
@@ -429,14 +430,14 @@ pub fn build_app(
         .merge(organization_router)
         .merge(password_reset_router)
         .merge(files_router)
-        .layer(RequestBodyLimitLayer::new(1 * 1024 * 1024))
+        .layer(RequestBodyLimitLayer::new(1024 * 1024))
         .merge(
             ssg_router
-                .layer(RequestBodyLimitLayer::new(1 * 1024 * 1024)),
+                .layer(RequestBodyLimitLayer::new(1024 * 1024)),
         )
         .merge(
             oauth2_router
-                .layer(RequestBodyLimitLayer::new(1 * 1024 * 1024)),
+                .layer(RequestBodyLimitLayer::new(1024 * 1024)),
         );
 
     let ws_router = Router::new()

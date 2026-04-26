@@ -402,10 +402,12 @@ pub async fn list_repositories(
 
     let repos = state.repositories.read().await;
     
-    let repo_list: Vec<RepositoryResponse> = repos
+    let mut repo_list: Vec<RepositoryResponse> = repos
         .values()
         .map(|r| RepositoryResponse::from(r.clone()))
         .collect();
+
+    repo_list.sort_by(|a, b| a.name.cmp(&b.name));
 
     let total = repo_list.len();
 

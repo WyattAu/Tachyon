@@ -194,7 +194,7 @@ impl HtmlExporter {
 
             // Write to ZIP
             let path = format!("{}.html", doc.slug);
-            zip.start_file(&path, options.clone())
+            zip.start_file(&path, options)
                 .map_err(|e| ImportExportError::zip(e.to_string()))?;
             zip.write_all(html.as_bytes())
                 .map_err(|e| ImportExportError::zip(e.to_string()))?;

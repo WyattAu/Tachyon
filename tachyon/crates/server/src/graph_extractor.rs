@@ -199,7 +199,7 @@ impl GraphExtractor {
 
     fn extract_tags_from_frontmatter(frontmatter: &serde_yaml::Value) -> Vec<String> {
         let tags_val = match frontmatter {
-            serde_yaml::Value::Mapping(m) => m.get(&serde_yaml::Value::String("tags".to_string())),
+            serde_yaml::Value::Mapping(m) => m.get(serde_yaml::Value::String("tags".to_string())),
             _ => None,
         };
         match tags_val {

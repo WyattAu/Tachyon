@@ -264,55 +264,43 @@ async fn fetch_documents_for_ssg(
 ) -> Result<Vec<SsgDocument>, String> {
     let limit_val = if limit > 0 { limit as i64 } else { 10000i64 };
 
-    let (sql, _params): (String, Vec<String>) = if let Some(pid) = project_id {
-        (
-            format!(
-                "SELECT id::text, title, slug, content, description, tags, created_at, updated_at \
-                 FROM documents \
-                 WHERE status = 'published' AND project_id = '{}'::uuid \
-                 ORDER BY updated_at DESC \
-                 LIMIT {}",
-                pid, limit_val,
-            ),
-            vec![],
-        )
-    } else {
-        (
-            format!(
-                "SELECT id::text, title, slug, content, description, tags, created_at, updated_at \
-                 FROM documents \
-                 WHERE status = 'published' \
-                 ORDER BY updated_at DESC \
-                 LIMIT {}",
-                limit_val,
-            ),
-            vec![],
-        )
-    };
-
     let mut conn = pool.acquire().await.map_err(|e| format!("Failed to acquire connection: {}", e))?;
 
-    let rows: Vec<DocRow> = sqlx::query_as(&sql)
+    let rows: Vec<DocRow> = if let Some(pid) = project_id {
+        let pid_uuid = uuid::Uuid::parse_str(pid).map_err(|e| format!("Invalid project_id: {}", e))?;
+        sqlx::query_as::<_, DocRow>(
+            "SELECT id::text, title, slug, content, description, tags, created_at, updated_at \
+             FROM documents \
+             WHERE status = 'published' AND project_id = $1 \
+             ORDER BY updated_at DESC \
+             LIMIT $2"
+        )
+        .bind(pid_uuid)
+        .bind(limit_val)
         .fetch_all(&mut *conn)
         .await
-        .map_err(|e| format!("Query failed: {}", e))?;
+    } else {
+        sqlx::query_as::<_, DocRow>(
+            "SELECT id::text, title, slug, content, description, tags, created_at, updated_at \
+             FROM documents \
+             WHERE status = 'published' \
+             ORDER BY updated_at DESC \
+             LIMIT $1"
+        )
+        .bind(limit_val)
+        .fetch_all(&mut *conn)
+        .await
+    }
+    .map_err(|e| format!("Query failed: {}", e))?;
 
     let mut docs = Vec::new();
-    let mut order = 0i32;
-
-    for row in rows {
+    for (order, row) in rows.into_iter().enumerate() {
         let tags: Vec<String> = row
             .tags
             .and_then(|t| {
-                if let Some(arr) = t.as_array() {
-                    Some(
-                        arr.iter()
+                t.as_array().map(|arr| arr.iter()
                             .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect(),
-                    )
-                } else {
-                    None
-                }
+                            .collect())
             })
             .unwrap_or_default();
 
@@ -328,10 +316,9 @@ async fn fetch_documents_for_ssg(
             tags,
             created_at,
             updated_at,
-            order,
+            order: order as i32,
             language: "en".to_string(),
         });
-        order += 1;
     }
 
     Ok(docs)

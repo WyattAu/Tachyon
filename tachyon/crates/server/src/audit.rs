@@ -79,6 +79,7 @@ pub enum AuditSeverity {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct AuditContext {
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
@@ -88,18 +89,6 @@ pub struct AuditContext {
     pub geo_location: Option<String>,
 }
 
-impl Default for AuditContext {
-    fn default() -> Self {
-        Self {
-            ip_address: None,
-            user_agent: None,
-            request_id: None,
-            session_id: None,
-            device_id: None,
-            geo_location: None,
-        }
-    }
-}
 
 impl AuditContext {
     pub fn new() -> Self {

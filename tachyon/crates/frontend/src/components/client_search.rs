@@ -37,8 +37,8 @@ pub fn ClientSearch(
         set_searching.set(true);
 
         let store = store.clone();
-        let set_r = set_results.clone();
-        let set_s = set_searching.clone();
+        let set_r = set_results;
+        let set_s = set_searching;
         let handle = timeout_handle.clone();
         let handle_for_cb = timeout_handle.clone();
 
@@ -189,14 +189,14 @@ pub fn ClientSearch(
                                             };
                                             let tags = doc.document.tags.clone();
                                             let date = doc.document.updated_at.split('T').next().unwrap_or("").to_string();
-                                            let set_o = set_open.clone();
+                                            let set_o = set_open;
                                             view! {
                                                 <button
                                                     class="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                                                     on:click=move |_| {
                                                         let navigate = use_navigate();
                                                         set_o.set(false);
-                                                        let _ = navigate(&format!("/documents/{}", id), Default::default());
+                                                        navigate(&format!("/documents/{}", id), Default::default());
                                                     }
                                                 >
                                                     <p class="text-sm font-medium text-gray-900 dark:text-white truncate">

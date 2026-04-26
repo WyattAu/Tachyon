@@ -79,7 +79,7 @@ fn extract_resource_type(path: &str) -> String {
     if segments.len() >= 3 {
         return segments[2].to_string();
     }
-    if segments.len() >= 1 {
+    if !segments.is_empty() {
         return segments[0].to_string();
     }
     "unknown".to_string()

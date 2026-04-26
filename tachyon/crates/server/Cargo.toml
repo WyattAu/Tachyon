@@ -83,6 +83,9 @@ dashmap = { workspace = true }
 # Error types
 thiserror = { workspace = true }
 
+[features]
+staging = []
+
 [dev-dependencies]
 tokio-test = { workspace = true }
 wiremock = { workspace = true }

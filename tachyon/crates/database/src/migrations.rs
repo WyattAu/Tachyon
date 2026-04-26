@@ -19,7 +19,7 @@ pub static MIGRATOR: Migrator = sqlx::migrate!();
 ///
 /// # Errors
 /// Returns error if migration fails
-pub async fn run_migrations(pool: &DatabasePool) -> DatabaseResult<()> {
+pub(crate) async fn run_migrations(pool: &DatabasePool) -> DatabaseResult<()> {
     MIGRATOR.run(pool.inner()).await?;
     Ok(())
 }

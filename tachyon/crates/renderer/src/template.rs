@@ -147,7 +147,7 @@ impl TemplateEngine {
 
     pub fn from_directory(path: &Path) -> RendererResult<Self> {
         let mut env = Environment::new();
-        env.set_loader(minijinja::path_loader(path.to_path_buf()));
+        env.set_loader(minijinja::path_loader(path));
         env.set_auto_escape_callback(|name| {
             if name.ends_with(".html") {
                 minijinja::AutoEscape::Html
@@ -242,6 +242,7 @@ impl Default for TemplateEngine {
     }
 }
 
+#[derive(Default)]
 pub struct TemplateBuilder {
     auto_escape: bool,
 }
@@ -265,11 +266,6 @@ impl TemplateBuilder {
     }
 }
 
-impl Default for TemplateBuilder {
-    fn default() -> Self {
-        Self { auto_escape: false }
-    }
-}
 
 #[cfg(test)]
 mod tests {

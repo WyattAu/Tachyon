@@ -150,10 +150,17 @@ pub async fn create_review(
 
     info!("Review created for document {}: {}", document_id, review.id);
 
-    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), state.http_client.clone(), "review_created", &serde_json::json!({
-        "review_id": review.id.clone(),
-        "document_id": document_id.clone(),
-    }));
+    {
+        let pool = state.pool.clone();
+        let client = state.http_client.clone();
+        let payload = serde_json::json!({
+            "review_id": review.id.clone(),
+            "document_id": document_id.clone(),
+        });
+        tokio::spawn(async move {
+            crate::webhook_delivery::deliver_event(pool, client, "review_created", &payload).await;
+        });
+    }
 
     let _ = NotificationRepository::create(&state.pool, CreateNotification {
         user_id: review.reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
@@ -252,10 +259,18 @@ pub async fn update_review(
         _ => "review_updated",
     };
 
-    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), state.http_client.clone(), notification_type, &serde_json::json!({
-        "review_id": review_id.clone(),
-        "status": body.status.clone(),
-    }));
+    {
+        let pool = state.pool.clone();
+        let client = state.http_client.clone();
+        let event_type = notification_type.to_string();
+        let payload = serde_json::json!({
+            "review_id": review_id.clone(),
+            "status": body.status.clone(),
+        });
+        tokio::spawn(async move {
+            crate::webhook_delivery::deliver_event(pool, client, &event_type, &payload).await;
+        });
+    }
 
     let _ = NotificationRepository::create(&state.pool, CreateNotification {
         user_id: review.reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),

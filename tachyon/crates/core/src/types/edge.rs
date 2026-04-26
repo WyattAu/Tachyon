@@ -231,9 +231,9 @@ impl Edge {
     /// Get reversed edge (swap source and target)
     pub fn reversed(&self) -> Self {
         Self {
-            id: self.id.clone(),
-            source_id: self.target_id.clone(),
-            target_id: self.source_id.clone(),
+            id: self.id,
+            source_id: self.target_id,
+            target_id: self.source_id,
             edge_type: self.edge_type,
             metadata: EdgeMetadata {
                 created_at: self.metadata.created_at,
@@ -377,7 +377,7 @@ impl EdgeBuilder {
     pub fn build(self) -> Result<Edge, TachyonError> {
         let id = self.id.unwrap_or_else(crate::id::generate_edge_id);
         let mut edge = Edge::new(
-            id.clone(),
+            id,
             self.source_id,
             self.target_id,
             self.edge_type,

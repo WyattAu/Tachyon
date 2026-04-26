@@ -1,6 +1,6 @@
 use chrono::Utc;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use tachyon_core::id::{DocumentId, UserId};
 use tachyon_search::types::SearchDocument;
 
@@ -22,7 +22,7 @@ fn generate_search_doc(i: usize) -> SearchDocument {
         ],
         created_at: Utc::now(),
         updated_at: Utc::now(),
-        custom_fields: HashMap::new(),
+        custom_fields: BTreeMap::new(),
     }
 }
 

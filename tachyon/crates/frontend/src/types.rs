@@ -126,8 +126,10 @@ pub struct GuestStatusResponse {
 
 /// Project lifecycle stages
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum Lifecycle {
     #[serde(rename = "experimental")]
+    #[default]
     Experimental,
     #[serde(rename = "development")]
     Development,
@@ -137,11 +139,6 @@ pub enum Lifecycle {
     Deprecated,
 }
 
-impl Default for Lifecycle {
-    fn default() -> Self {
-        Self::Experimental
-    }
-}
 
 impl std::fmt::Display for Lifecycle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -156,8 +153,10 @@ impl std::fmt::Display for Lifecycle {
 
 /// Project visibility
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum Visibility {
     #[serde(rename = "private")]
+    #[default]
     Private,
     #[serde(rename = "internal")]
     Internal,
@@ -165,16 +164,13 @@ pub enum Visibility {
     Public,
 }
 
-impl Default for Visibility {
-    fn default() -> Self {
-        Self::Private
-    }
-}
 
 /// Project status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum ProjectStatus {
     #[serde(rename = "active")]
+    #[default]
     Active,
     #[serde(rename = "archived")]
     Archived,
@@ -182,11 +178,6 @@ pub enum ProjectStatus {
     Suspended,
 }
 
-impl Default for ProjectStatus {
-    fn default() -> Self {
-        Self::Active
-    }
-}
 
 // ============================================================================
 // Catalog Types
@@ -307,8 +298,10 @@ pub struct ProjectFilters {
 
 /// Document status lifecycle
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum DocumentStatus {
     #[serde(rename = "draft")]
+    #[default]
     Draft,
     #[serde(rename = "published")]
     Published,
@@ -318,11 +311,6 @@ pub enum DocumentStatus {
     Deleted,
 }
 
-impl Default for DocumentStatus {
-    fn default() -> Self {
-        Self::Draft
-    }
-}
 
 impl std::fmt::Display for DocumentStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -337,20 +325,17 @@ impl std::fmt::Display for DocumentStatus {
 
 /// Document visibility settings
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum DocumentVisibility {
     #[serde(rename = "public")]
     Public,
     #[serde(rename = "private")]
+    #[default]
     Private,
     #[serde(rename = "restricted")]
     Restricted,
 }
 
-impl Default for DocumentVisibility {
-    fn default() -> Self {
-        Self::Private
-    }
-}
 
 impl std::fmt::Display for DocumentVisibility {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

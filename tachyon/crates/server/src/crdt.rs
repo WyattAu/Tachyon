@@ -21,6 +21,7 @@ impl CrdtDocumentManager {
         }
     }
 
+    #[allow(private_interfaces)]
     pub fn get_or_create(&self, document_id: &str) -> Arc<CrdtDocument> {
         self.documents
             .entry(document_id.to_string())

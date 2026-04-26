@@ -102,9 +102,9 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
         set_selected.set(0);
     });
 
-    let set_open_for_listener = set_open.clone();
-    let set_query_for_listener = set_query.clone();
-    let set_selected_for_listener = set_selected.clone();
+    let set_open_for_listener = set_open;
+    let set_query_for_listener = set_query;
+    let set_selected_for_listener = set_selected;
 
     Effect::new(move |_| {
         let cb = wasm_bindgen::closure::Closure::<dyn Fn(wasm_bindgen::JsValue)>::new(
@@ -137,7 +137,7 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
         match cmd.action_type.as_str() {
             "navigate" => {
                 let navigate = use_navigate();
-                let _ = navigate(&cmd.action_value, Default::default());
+                navigate(&cmd.action_value, Default::default());
             }
             "toggle_theme" => {
                 if let Some(window) = web_sys::window() {
@@ -148,7 +148,7 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
                             .flatten()
                             .unwrap_or_else(|| "light".to_string());
                         let new_theme = if current == "dark" { "light" } else { "dark" };
-                        let _ = storage.set_item("tachyon-theme", &new_theme);
+                        let _ = storage.set_item("tachyon-theme", new_theme);
                         if let Some(document) = window.document() {
                             if let Some(html) = document.document_element() {
                                 if new_theme == "dark" {
@@ -169,7 +169,7 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
                     });
                 }
                 let navigate = use_navigate();
-                let _ = navigate("/login", Default::default());
+                navigate("/login", Default::default());
             }
             _ => {}
         }

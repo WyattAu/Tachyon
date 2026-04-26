@@ -25,6 +25,7 @@ impl Permission {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "read" => Some(Self::Read),
@@ -166,18 +167,6 @@ impl DefaultRoles {
         Role::new("owner".to_string(), perms)
             .with_description("Full ownership with all permissions".to_string())
     }
-}
-
-pub fn check_permission(role: &Role, permission: Permission) -> bool {
-    role.has_permission(&permission)
-}
-
-pub fn check_any_permission(role: &Role, permissions: &[Permission]) -> bool {
-    permissions.iter().any(|p| role.has_permission(p))
-}
-
-pub fn check_all_permissions(role: &Role, permissions: &[Permission]) -> bool {
-    permissions.iter().all(|p| role.has_permission(p))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

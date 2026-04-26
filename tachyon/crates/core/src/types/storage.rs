@@ -83,7 +83,7 @@ impl From<StorageError> for TachyonError {
                 actual_version,
             } => TachyonError::storage(
                 "conflict",
-                &format!(
+                format!(
                     "document {}: expected version {}, got {}",
                     id, expected_version, actual_version
                 ),

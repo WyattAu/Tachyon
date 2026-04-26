@@ -14,7 +14,7 @@ use anyhow::Result;
 /// 
 /// # Errors
 /// Returns an error if template rendering fails
-pub fn render_html(template: &str, data: &serde_json::Value) -> Result<String> {
+pub(crate) fn render_html(template: &str, data: &serde_json::Value) -> Result<String> {
     // Simple template substitution (for production, use handlebars)
     let mut result = template.to_string();
     
@@ -41,7 +41,7 @@ pub fn render_html(template: &str, data: &serde_json::Value) -> Result<String> {
 /// 
 /// # Returns
 /// The minified HTML string
-pub fn minify_html(html: &str) -> String {
+pub(crate) fn minify_html(html: &str) -> String {
     // Remove whitespace between tags
     let result = regex::Regex::new(r">\s+<")
         .map(|re| re.replace_all(html, "><"))

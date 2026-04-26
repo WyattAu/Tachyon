@@ -42,7 +42,8 @@ fn default_page_size() -> usize {
 
 /// Search parameters from URL query
 #[derive(Debug, Deserialize)]
-pub struct SearchParams {
+#[allow(dead_code)]
+pub(crate) struct SearchParams {
     /// Query string
     pub query: String,
     /// Page number
@@ -64,7 +65,7 @@ pub struct SearchParams {
 
 /// Health check response
 #[derive(Debug, Serialize)]
-pub struct HealthResponse {
+pub(crate) struct HealthResponse {
     /// Service status
     pub status: String,
     /// Index path
@@ -75,7 +76,7 @@ pub struct HealthResponse {
 
 /// Suggestions response
 #[derive(Debug, Serialize)]
-pub struct SuggestionsResponse {
+pub(crate) struct SuggestionsResponse {
     /// Query string
     pub query: String,
     /// Suggestions
@@ -84,7 +85,8 @@ pub struct SuggestionsResponse {
 
 /// WebSocket search request
 #[derive(Debug, Deserialize)]
-pub struct WebSocketSearchRequest {
+#[allow(dead_code)]
+pub(crate) struct WebSocketSearchRequest {
     /// Query string
     pub query: String,
     /// Session ID
@@ -95,7 +97,7 @@ pub struct WebSocketSearchRequest {
 
 /// WebSocket search response
 #[derive(Debug, Serialize)]
-pub struct WebSocketSearchResponse {
+pub(crate) struct WebSocketSearchResponse {
     /// Request ID
     pub request_id: Option<String>,
     /// Search results
@@ -115,7 +117,7 @@ pub struct WebSocketSearchResponse {
 ///
 /// # Errors
 /// Returns error if search execution fails
-pub async fn search_handler(
+pub(crate) async fn search_handler(
     State(state): State<Arc<SearchApiState>>,
     Path(query): Path<String>,
 ) -> Result<Json<SearchResponse>, (StatusCode, Json<SearchError>)> {
@@ -157,7 +159,7 @@ pub async fn search_handler(
 ///
 /// # Errors
 /// Returns error if indexing fails
-pub async fn batch_index_handler(
+pub(crate) async fn batch_index_handler(
     State(state): State<Arc<SearchApiState>>,
     Json(request): Json<BatchIndexRequest>,
 ) -> Result<Json<BatchIndexResponse>, (StatusCode, Json<SearchError>)> {
@@ -184,7 +186,7 @@ pub async fn batch_index_handler(
 ///
 /// # Returns
 /// Result containing health response or error
-pub async fn health_handler(
+pub(crate) async fn health_handler(
     State(state): State<Arc<SearchApiState>>,
 ) -> Result<Json<HealthResponse>, (StatusCode, Json<SearchError>)> {
     let index_manager = state.index_manager.lock().await;
@@ -216,7 +218,7 @@ pub async fn health_handler(
 ///
 /// # Errors
 /// Returns error if suggestion generation fails
-pub async fn suggest_handler(
+pub(crate) async fn suggest_handler(
     State(state): State<Arc<SearchApiState>>,
     Path(query): Path<String>,
 ) -> Result<Json<SuggestionsResponse>, (StatusCode, Json<SearchError>)> {
@@ -239,7 +241,7 @@ pub async fn suggest_handler(
 ///
 /// # Returns
 /// WebSocket connection
-pub async fn websocket_search_handler(
+pub(crate) async fn websocket_search_handler(
     State(state): State<Arc<SearchApiState>>,
     ws: WebSocketUpgrade,
     Path(_query): Path<String>,
@@ -350,7 +352,8 @@ fn check_search_permission(
 ///
 /// # Errors
 /// Returns error if authorization check fails
-pub async fn check_search_permission_async(
+#[allow(dead_code)]
+pub(crate) async fn check_search_permission_async(
     enforcer: &mut Enforcer,
     resource: &Resource,
     user_id: &str,
@@ -368,7 +371,7 @@ pub async fn check_search_permission_async(
     })?;
 
     // Create authorization context
-    let context = AuthContext::new(user.clone(), session.clone());
+    let context = AuthContext::new(user, session);
     let subject = Subject::from_user(&user);
     let action = Action::new("search");
 

@@ -125,12 +125,18 @@ pub async fn list_spaces(
         .await
         .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to list spaces: {}", e)))?;
 
-    // Enrich with document counts
-    let mut responses = Vec::with_capacity(spaces.len());
-    for space in spaces {
-        let doc_count = repo.count_documents(&space.id).await.unwrap_or(0);
-        responses.push(SpaceResponse::from_space(space, doc_count));
-    }
+    let doc_counts = repo
+        .count_documents_batch(&spaces.iter().map(|s| s.id.clone()).collect::<Vec<_>>())
+        .await
+        .unwrap_or_default();
+
+    let responses: Vec<SpaceResponse> = spaces
+        .into_iter()
+        .map(|space| {
+            let doc_count = doc_counts.get(&space.id).copied().unwrap_or(0);
+            SpaceResponse::from_space(space, doc_count)
+        })
+        .collect();
 
     Ok(Json(responses))
 }
@@ -146,11 +152,18 @@ pub async fn list_root_spaces(
         .await
         .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to list root spaces: {}", e)))?;
 
-    let mut responses = Vec::with_capacity(spaces.len());
-    for space in spaces {
-        let doc_count = repo.count_documents(&space.id).await.unwrap_or(0);
-        responses.push(SpaceResponse::from_space(space, doc_count));
-    }
+    let doc_counts = repo
+        .count_documents_batch(&spaces.iter().map(|s| s.id.clone()).collect::<Vec<_>>())
+        .await
+        .unwrap_or_default();
+
+    let responses: Vec<SpaceResponse> = spaces
+        .into_iter()
+        .map(|space| {
+            let doc_count = doc_counts.get(&space.id).copied().unwrap_or(0);
+            SpaceResponse::from_space(space, doc_count)
+        })
+        .collect();
 
     Ok(Json(responses))
 }
@@ -167,11 +180,18 @@ pub async fn list_child_spaces(
         .await
         .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to list child spaces: {}", e)))?;
 
-    let mut responses = Vec::with_capacity(spaces.len());
-    for space in spaces {
-        let doc_count = repo.count_documents(&space.id).await.unwrap_or(0);
-        responses.push(SpaceResponse::from_space(space, doc_count));
-    }
+    let doc_counts = repo
+        .count_documents_batch(&spaces.iter().map(|s| s.id.clone()).collect::<Vec<_>>())
+        .await
+        .unwrap_or_default();
+
+    let responses: Vec<SpaceResponse> = spaces
+        .into_iter()
+        .map(|space| {
+            let doc_count = doc_counts.get(&space.id).copied().unwrap_or(0);
+            SpaceResponse::from_space(space, doc_count)
+        })
+        .collect();
 
     Ok(Json(responses))
 }

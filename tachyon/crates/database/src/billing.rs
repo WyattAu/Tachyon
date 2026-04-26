@@ -71,12 +71,12 @@ impl SubscriptionRepository {
                 created_at::TEXT, updated_at::TEXT
         "#;
 
-        sqlx::query_as::<_, Subscription>(&sql)
+        sqlx::query_as::<_, Subscription>(sql)
             .bind(&req.organization_id)
             .bind(&req.plan)
             .fetch_one(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
     #[instrument(skip(self))]
@@ -111,16 +111,16 @@ impl SubscriptionRepository {
                 created_at::TEXT, updated_at::TEXT
         "#;
 
-        sqlx::query_as::<_, Subscription>(&sql)
+        sqlx::query_as::<_, Subscription>(sql)
             .bind(&plan)
             .bind(&status)
-            .bind(&cancel)
+            .bind(cancel)
             .bind(&payment)
             .bind(now)
             .bind(id)
             .fetch_one(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
     #[instrument(skip(self))]
@@ -138,7 +138,7 @@ impl SubscriptionRepository {
         sqlx::query_as::<_, Subscription>(&sql)
             .fetch_all(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 }
 
@@ -209,7 +209,7 @@ impl InvoiceRepository {
                 created_at::TEXT
         "#;
 
-        sqlx::query_as::<_, Invoice>(&sql)
+        sqlx::query_as::<_, Invoice>(sql)
             .bind(&req.subscription_id)
             .bind(&req.organization_id)
             .bind(req.amount_cents)
@@ -217,7 +217,7 @@ impl InvoiceRepository {
             .bind(&req.description)
             .fetch_one(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
     #[instrument(skip(self))]
@@ -227,7 +227,7 @@ impl InvoiceRepository {
             .bind(organization_id)
             .fetch_all(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
     #[instrument(skip(self))]
@@ -247,14 +247,14 @@ impl InvoiceRepository {
                 created_at::TEXT
         "#;
 
-        sqlx::query_as::<_, Invoice>(&sql)
+        sqlx::query_as::<_, Invoice>(sql)
             .bind(&status)
-            .bind(&paid_at)
+            .bind(paid_at)
             .bind(&payment_url)
             .bind(id)
             .fetch_one(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<Invoice> {
@@ -307,14 +307,14 @@ impl NotificationPreferenceRepository {
             RETURNING user_id::TEXT, notification_type, enabled, channel, updated_at::TEXT
         "#;
 
-        sqlx::query_as::<_, NotificationPreference>(&sql)
+        sqlx::query_as::<_, NotificationPreference>(sql)
             .bind(user_id)
             .bind(&req.notification_type)
-            .bind(&req.enabled)
+            .bind(req.enabled)
             .bind(&req.channel)
             .fetch_one(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
     pub async fn list_by_user(&self, user_id: &str) -> DatabaseResult<Vec<NotificationPreference>> {
@@ -323,10 +323,10 @@ impl NotificationPreferenceRepository {
             FROM notification_preferences WHERE user_id = $1
             ORDER BY notification_type LIMIT 50
         "#;
-        sqlx::query_as::<_, NotificationPreference>(&sql)
+        sqlx::query_as::<_, NotificationPreference>(sql)
             .bind(user_id)
             .fetch_all(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 }

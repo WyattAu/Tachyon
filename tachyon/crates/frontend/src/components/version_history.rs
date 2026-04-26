@@ -9,7 +9,8 @@
 use leptos::prelude::*;
 use crate::api::ApiClient;
 use crate::types::DocumentVersion;
-use std::sync::{Arc, Mutex};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 /// Version History component - displays list of document versions with diff view
 #[component]
@@ -17,7 +18,7 @@ pub fn VersionHistory(
     document_id: String,
     on_rollback: Option<Callback<String>>,
 ) -> impl IntoView {
-    let api_client = Arc::new(Mutex::new(ApiClient::default()));
+    let api_client = Rc::new(RefCell::new(ApiClient::default()));
     let (selected_version, set_selected_version) = signal(None::<i32>);
     let (compare_version, set_compare_version) = signal(None::<i32>);
     let (show_diff, set_show_diff) = signal(false);
@@ -26,7 +27,7 @@ pub fn VersionHistory(
         let api_client = api_client.clone();
         let document_id = document_id.clone();
         move || {
-            let client = api_client.lock().unwrap().clone();
+            let client = api_client.borrow().clone();
             let doc_id = document_id.clone();
             async move {
                 client.list_versions(&doc_id).await.unwrap_or_default()
@@ -252,13 +253,13 @@ pub fn VersionDiffView(
     version1: i32,
     version2: i32,
 ) -> impl IntoView {
-    let api_client = Arc::new(Mutex::new(ApiClient::default()));
+    let api_client = Rc::new(RefCell::new(ApiClient::default()));
     
     let diff_resource = LocalResource::new({
         let api_client = api_client.clone();
         let document_id = document_id.clone();
         move || {
-            let client = api_client.lock().unwrap().clone();
+            let client = api_client.borrow().clone();
             let doc_id = document_id.clone();
             let v1 = version1;
             let v2 = version2;

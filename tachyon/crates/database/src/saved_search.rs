@@ -87,8 +87,8 @@ impl SavedSearchRepository {
             .bind(&request.name)
             .bind(&request.query)
             .bind(&filters_json)
-            .bind(&now)
-            .bind(&now)
+            .bind(now)
+            .bind(now)
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| {
@@ -167,7 +167,7 @@ impl SavedSearchRepository {
             .bind(&name)
             .bind(&query)
             .bind(&filters)
-            .bind(&now)
+            .bind(now)
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;

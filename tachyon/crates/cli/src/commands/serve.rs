@@ -72,6 +72,12 @@ pub struct ShutdownSignal {
     tx: broadcast::Sender<()>,
 }
 
+impl Default for ShutdownSignal {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ShutdownSignal {
     /// Create a new shutdown signal
     pub fn new() -> Self {
@@ -107,6 +113,7 @@ impl ServeCommand {
     }
 
     /// Create from clap arguments
+    #[allow(clippy::too_many_arguments)]
     pub fn from_args(
         host: Option<String>,
         port: Option<u16>,
@@ -314,7 +321,7 @@ impl Command for ServeCommand {
     fn execute(&self) -> CliResult<()> {
         let server_config = self.build_server_config();
 
-        println!("");
+        println!();
         println!("Tachyon Server (via CLI)");
         println!("========================");
         println!("Host: {}", server_config.host);
@@ -323,16 +330,16 @@ impl Command for ServeCommand {
             server_config.database_path.as_deref().unwrap_or("not configured")
         } else {
             // Don't log the full URL with password
-            server_config.database_url.split('@').last().unwrap_or("configured")
+            server_config.database_url.split('@').next_back().unwrap_or("configured")
         });
         if self.options.watch {
             let watch_path = self.options.watch_path.clone()
                 .unwrap_or_else(|| PathBuf::from("."));
             println!("Watch: {}", watch_path.display());
         }
-        println!("");
+        println!();
         println!("Press CTRL+C to stop");
-        println!("");
+        println!();
 
         let rt = tokio::runtime::Runtime::new()
             .map_err(|e| CliError::server(format!("Failed to create runtime: {}", e)))?;

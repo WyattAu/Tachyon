@@ -59,12 +59,12 @@ pub fn App() -> impl IntoView {
         set_theme.set(new_theme.to_string());
 
         // Apply theme to html element
-        apply_theme_to_document(&new_theme);
+        apply_theme_to_document(new_theme);
 
         // Also save to localStorage
         if let Some(window) = web_sys::window() {
             if let Ok(Some(storage)) = window.local_storage() {
-                let _ = storage.set_item("tachyon-theme", &new_theme);
+                let _ = storage.set_item("tachyon-theme", new_theme);
             }
         }
     };

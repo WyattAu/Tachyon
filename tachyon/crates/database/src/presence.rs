@@ -113,11 +113,11 @@ impl PresenceRepository {
             .bind(&req.document_id)
             .bind(&status)
             .bind(&req.cursor_section)
-            .bind(&req.cursor_line)
+            .bind(req.cursor_line)
             .bind(&req.cursor_selection)
             .fetch_one(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
     /// Touch a presence record — update only `last_seen_at` to keep it alive.
@@ -135,7 +135,7 @@ impl PresenceRepository {
             .bind(document_id)
             .execute(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(())
     }
@@ -185,11 +185,11 @@ impl PresenceRepository {
             .bind(document_id)
             .bind(&status)
             .bind(&cursor_section)
-            .bind(&cursor_line)
+            .bind(cursor_line)
             .bind(&cursor_selection)
             .fetch_one(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
     /// Get a single presence record by user + document
@@ -228,7 +228,7 @@ impl PresenceRepository {
             .bind(document_id)
             .fetch_all(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(rows)
     }
@@ -246,7 +246,7 @@ impl PresenceRepository {
             .bind(user_id)
             .fetch_all(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(rows)
     }
@@ -262,7 +262,7 @@ impl PresenceRepository {
             .bind(document_id)
             .execute(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(result.rows_affected() > 0)
     }
@@ -277,7 +277,7 @@ impl PresenceRepository {
             .bind(user_id)
             .execute(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(result.rows_affected())
     }
@@ -295,7 +295,7 @@ impl PresenceRepository {
         let result = sqlx::query(&sql)
             .execute(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(result.rows_affected())
     }
@@ -313,7 +313,7 @@ impl PresenceRepository {
             .bind(document_id)
             .fetch_one(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(count)
     }

@@ -193,15 +193,13 @@ impl FileSyncService {
             };
         }
 
-        let file_mtime = std::fs::metadata(path)
+        let file_mtime = tokio::fs::metadata(path)
+            .await
             .ok()
             .and_then(|m| m.modified().ok())
-            .map(|t| chrono::DateTime::<Utc>::from(t));
+            .map(chrono::DateTime::<Utc>::from);
 
-        let conflict = match file_mtime {
-            Some(file_time) if existing.updated_at > file_time => true,
-            _ => false,
-        };
+        let conflict = matches!(file_mtime, Some(file_time) if existing.updated_at > file_time);
 
         if conflict {
             warn!(
@@ -365,7 +363,7 @@ impl FileSyncService {
         path.file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("Untitled")
-            .split(|c: char| c == '-' || c == '_')
+            .split(['-', '_'])
             .filter(|s| !s.is_empty())
             .map(|word| {
                 let mut chars = word.chars();
@@ -405,8 +403,8 @@ impl FileSyncService {
         let mut stack = vec![dir.to_path_buf()];
 
         while let Some(current) = stack.pop() {
-            let entries = match std::fs::read_dir(&current) {
-                Ok(e) => e,
+            let mut dir = match tokio::fs::read_dir(&current).await {
+                Ok(d) => d,
                 Err(e) => {
                     results.push(SyncResult::Error {
                         path: current,
@@ -416,11 +414,25 @@ impl FileSyncService {
                 }
             };
 
-            for entry in entries.flatten() {
+            while let Some(entry) = dir.next_entry().await.unwrap_or_else(|e| {
+                results.push(SyncResult::Error {
+                    path: current.clone(),
+                    message: format!("Failed to read directory entry: {}", e),
+                });
+                None
+            }) {
                 let path = entry.path();
-                if path.is_dir() {
+                let is_dir = tokio::fs::metadata(&path)
+                    .await
+                    .map(|m| m.is_dir())
+                    .unwrap_or(false);
+                let is_file = tokio::fs::metadata(&path)
+                    .await
+                    .map(|m| m.is_file())
+                    .unwrap_or(false);
+                if is_dir {
                     stack.push(path);
-                } else if path.is_file() && is_markdown_file(&path) {
+                } else if is_file && is_markdown_file(&path) {
                     let event = FileChangeEvent {
                         path: path.clone(),
                         kind: FileChangeKind::Created,

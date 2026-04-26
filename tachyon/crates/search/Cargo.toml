@@ -39,6 +39,9 @@ futures-util = "0.3"
 # Async support
 async-trait = "0.1"
 
+[features]
+staging = []
+
 [dev-dependencies]
 tokio-test = "0.4"
 tempfile = "3"

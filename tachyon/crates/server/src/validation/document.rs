@@ -192,6 +192,7 @@ pub enum DocumentVisibilityValue {
 }
 
 impl DocumentVisibilityValue {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> ValidationResult<Self> {
         match s.to_lowercase().as_str() {
             "public" => Ok(Self::Public),
@@ -221,6 +222,7 @@ pub enum DocumentStatusValue {
 }
 
 impl DocumentStatusValue {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> ValidationResult<Self> {
         match s.to_lowercase().as_str() {
             "draft" => Ok(Self::Draft),

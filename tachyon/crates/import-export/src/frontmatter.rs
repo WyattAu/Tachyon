@@ -5,7 +5,7 @@
 //! static site generators.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Parsed YAML frontmatter from a markdown file.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -38,7 +38,7 @@ pub struct Frontmatter {
     pub visibility: Option<String>,
     /// Any additional fields not explicitly mapped
     #[serde(flatten)]
-    pub extra: HashMap<String, serde_yaml::Value>,
+    pub extra: BTreeMap<String, serde_yaml::Value>,
 }
 
 impl Frontmatter {

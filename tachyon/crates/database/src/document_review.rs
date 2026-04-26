@@ -141,7 +141,7 @@ impl DocumentReviewRepository {
         let mut conn = self.pool.acquire().await?;
 
         // Check for existing pending review by this reviewer on this document
-        let existing: Option<DocumentReview> = query_as(&*format!(
+        let existing: Option<DocumentReview> = query_as(&format!(
             "{} WHERE document_id = $1::uuid AND reviewer_id = $2::uuid AND status = 'pending'",
             REVIEW_SELECT_SQL
         ))

@@ -139,8 +139,8 @@ impl TeamRepository {
             .bind(&team.owner_id)
             .bind(&team.avatar_url)
             .bind(&team.settings)
-            .bind(&team.created_at)
-            .bind(&team.updated_at)
+            .bind(team.created_at)
+            .bind(team.updated_at)
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))
@@ -211,7 +211,7 @@ impl TeamRepository {
             .bind(&team.description)
             .bind(&team.avatar_url)
             .bind(&team.settings)
-            .bind(&team.updated_at)
+            .bind(team.updated_at)
             .fetch_optional(&mut *conn)
             .await?
             .ok_or_else(|| DatabaseError::not_found("team", &team.id))
@@ -245,9 +245,9 @@ impl TeamRepository {
         query_as::<_, TeamMember>(insert_sql)
             .bind(&member.team_id)
             .bind(&member.user_id)
-            .bind(&member.role_id)
+            .bind(member.role_id)
             .bind(&member.role_name)
-            .bind(&member.joined_at)
+            .bind(member.joined_at)
             .bind(&member.invited_by)
             .fetch_one(&mut *conn)
             .await
@@ -353,8 +353,8 @@ impl RoleRepository {
             .bind(&role.description)
             .bind(&role.permissions)
             .bind(role.is_system)
-            .bind(&role.created_at)
-            .bind(&role.updated_at)
+            .bind(role.created_at)
+            .bind(role.updated_at)
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))
@@ -406,7 +406,7 @@ impl RoleRepository {
             .bind(&role.name)
             .bind(&role.description)
             .bind(&role.permissions)
-            .bind(&role.updated_at)
+            .bind(role.updated_at)
             .fetch_optional(&mut *conn)
             .await?
             .ok_or_else(|| DatabaseError::ValidationError("Cannot update system role".to_string()))

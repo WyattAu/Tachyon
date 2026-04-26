@@ -26,6 +26,7 @@ pub struct BuildCommand {
 }
 
 impl BuildCommand {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         repo_path: PathBuf,
         output_dir: PathBuf,
@@ -52,6 +53,7 @@ impl BuildCommand {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn from_args(
         repo_path: Option<PathBuf>,
         output_dir: Option<PathBuf>,
@@ -123,12 +125,12 @@ impl BuildCommand {
     async fn run(&self) -> CliResult<()> {
         let start = Instant::now();
 
-        println!("");
+        println!();
         println!("Tachyon Build");
         println!("===============");
         println!("Repository: {}", self.repo_path.display());
         println!("Output:     {}", self.output_dir.display());
-        println!("");
+        println!();
 
         let database_url = self.resolve_database_url()?;
 
@@ -314,7 +316,7 @@ impl BuildCommand {
 
         let elapsed = start.elapsed();
 
-        println!("");
+        println!();
         println!("Build completed in {:.2}s", elapsed.as_secs_f64());
         println!("  Built:   {}", built);
         println!("  Cached:  {}", skipped);
@@ -322,7 +324,7 @@ impl BuildCommand {
         println!("  Errors:  {}", errors.len());
 
         if !errors.is_empty() {
-            println!("");
+            println!();
             println!("Failed documents:");
             for (slug, err) in &errors {
                 println!("  {}: {}", slug, err);
@@ -369,14 +371,17 @@ impl BuildCommand {
     }
 
     fn collect_markdown_files(&self, dir: &Path, docs: &mut Vec<DocInfo>) -> CliResult<()> {
-        let entries = fs::read_dir(dir).map_err(|e| {
+        let mut entries: Vec<_> = fs::read_dir(dir).map_err(|e| {
             CliError::io(dir, format!("Failed to read directory: {}", e))
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            CliError::io(dir, format!("Failed to read directory entry: {}", e))
         })?;
 
+        entries.sort_by_key(|e| e.file_name());
+
         for entry in entries {
-            let entry = entry.map_err(|e| {
-                CliError::io(dir, format!("Failed to read directory entry: {}", e))
-            })?;
             let path = entry.path();
 
             if path.is_dir() {

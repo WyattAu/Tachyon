@@ -23,7 +23,7 @@ pub fn OnboardingWizard(
                 let _ = storage.set_item("tachyon_onboarding_complete", "true");
             }
         }
-        if let Some(cb) = on_complete.clone() {
+        if let Some(cb) = on_complete {
             cb.run(());
         }
     };
@@ -34,7 +34,7 @@ pub fn OnboardingWizard(
                 let _ = storage.set_item("tachyon_onboarding_complete", "true");
             }
         }
-        if let Some(cb) = on_complete.clone() {
+        if let Some(cb) = on_complete {
             cb.run(());
         }
     };

@@ -268,7 +268,8 @@ impl Default for Highlighter {
     }
 }
 
-pub fn css_class(token: &HighlightToken) -> &'static str {
+#[allow(dead_code)]
+pub(crate) fn css_class(token: &HighlightToken) -> &'static str {
     match token {
         HighlightToken::Heading1 => "ed-h1",
         HighlightToken::Heading2 => "ed-h2",

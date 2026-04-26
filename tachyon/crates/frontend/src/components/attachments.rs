@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, clippy::redundant_locals)]
 
 use leptos::prelude::*;
 use crate::api::ApiClient;
@@ -79,7 +79,7 @@ pub fn AttachmentManager(
         let file_input_ref = file_input_ref;
         move |_| {
             if let Some(input) = file_input_ref.get() {
-                let _ = input.click();
+                input.click();
             }
         }
     };

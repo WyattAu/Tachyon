@@ -12,12 +12,14 @@ impl TextBuffer {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(text: &str) -> Self {
         Self {
             rope: Rope::from_str(text),
         }
     }
 
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         self.rope.to_string()
     }
@@ -117,7 +119,7 @@ impl Default for TextBuffer {
 
 impl PartialEq for TextBuffer {
     fn eq(&self, other: &Self) -> bool {
-        self.rope.to_string() == other.rope.to_string()
+        self.rope == other.rope
     }
 }
 

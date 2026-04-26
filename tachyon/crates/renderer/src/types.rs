@@ -5,7 +5,7 @@
 
 use crate::error::RendererResult;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::time::Duration;
 use tachyon_core::id::DocumentId;
 
@@ -53,9 +53,10 @@ impl Default for MarkdownOptions {
 }
 
 /// Output format for rendering
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum OutputFormat {
     /// HTML output
+    #[default]
     Html,
 
     /// Plain text output
@@ -68,11 +69,6 @@ pub enum OutputFormat {
     Markdown,
 }
 
-impl Default for OutputFormat {
-    fn default() -> Self {
-        OutputFormat::Html
-    }
-}
 
 /// Render result containing the rendered content and metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,7 +126,7 @@ pub struct RenderMetadata {
     pub tags: Vec<String>,
 
     /// Custom metadata key-value pairs
-    pub custom: HashMap<String, String>,
+    pub custom: BTreeMap<String, String>,
 
     /// Word count
     pub word_count: usize,
@@ -449,12 +445,13 @@ impl CacheStats {
 }
 
 /// Syntax highlighting theme
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum SyntaxTheme {
     /// Light theme
     Light,
 
     /// Dark theme
+    #[default]
     Dark,
 
     /// High contrast theme
@@ -464,11 +461,6 @@ pub enum SyntaxTheme {
     Custom,
 }
 
-impl Default for SyntaxTheme {
-    fn default() -> Self {
-        SyntaxTheme::Dark
-    }
-}
 
 /// Supported programming languages for syntax highlighting
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -507,7 +499,7 @@ impl Language {
     }
 
     /// Parse language from string
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_name(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "rust" => Some(Language::Rust),
             "rs" => Some(Language::Rust),
@@ -557,7 +549,7 @@ impl Language {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TemplateContext {
     /// Variables available in the template
-    pub variables: HashMap<String, serde_json::Value>,
+    pub variables: BTreeMap<String, serde_json::Value>,
 
     /// Global functions available in the template
     #[serde(skip)]
@@ -767,9 +759,11 @@ mod tests {
 
     #[test]
     fn test_language_from_str() {
-        assert_eq!(Language::from_str("rust"), Some(Language::Rust));
-        assert_eq!(Language::from_str("python"), Some(Language::Python));
-        assert_eq!(Language::from_str("unknown"), None);
+        assert_eq!(Language::from_name("rust"), Some(Language::Rust));
+
+        assert_eq!(Language::from_name("python"), Some(Language::Python));
+
+        assert_eq!(Language::from_name("unknown"), None);
     }
 
     #[test]

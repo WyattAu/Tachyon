@@ -96,6 +96,9 @@ tachyon-editor = { path = "../editor" }
 # Markdown rendering (WASM-compatible, no SIMD)
 pulldown-cmark = { version = "0.9", default-features = false }
 
+[features]
+staging = []
+
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
 wasm-bindgen = "0.2"

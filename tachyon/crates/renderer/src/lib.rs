@@ -25,7 +25,7 @@ pub use cache::RenderCache;
 pub use error::{RendererError, RendererResult};
 pub use latex::{LatexDocumentRenderer, LatexRenderer};
 pub use markdown::MarkdownParser;
-pub use page::{render_full_page, render_full_page_with_template, SiteConfig};
+pub use page::SiteConfig;
 pub use syntax::SyntaxHighlighter;
 pub use template::TemplateEngine;
 pub use types::{
@@ -64,11 +64,6 @@ impl Renderer {
             cache: RenderCache::with_config(config.cache.clone()),
             config,
         }
-    }
-
-    /// Create a new renderer with default configuration
-    pub fn default() -> Self {
-        Self::new(RenderConfig::default())
     }
 
     /// Render a document

@@ -68,6 +68,7 @@ impl GuiCommand {
     }
 
     /// Create from clap arguments
+    #[allow(clippy::too_many_arguments)]
     pub fn from_args(
         dev_tools: bool,
         window_width: Option<u32>,
@@ -153,7 +154,7 @@ impl GuiCommand {
         let api_url = format!("http://{}:{}/api/v1", server_host, server_port);
 
         println!("Launching Tachyon Desktop...");
-        println!("");
+        println!();
         println!("Configuration:");
         println!("  Tauri project: {}", tauri_dir.display());
         println!("  API URL: {}", api_url);
@@ -169,7 +170,7 @@ impl GuiCommand {
                 "development"
             }
         );
-        println!("");
+        println!();
 
         let mut cmd = ProcessCommand::new("cargo");
 
@@ -211,7 +212,7 @@ impl GuiCommand {
 
         println!("Starting Tauri application...");
         println!("(Press Ctrl+C in the Tauri window to exit)");
-        println!("");
+        println!();
 
         let status = cmd
             .status()
@@ -232,10 +233,10 @@ impl Command for GuiCommand {
         // Load configuration
         let config = self.load_config()?;
 
-        println!("");
+        println!();
         println!("Tachyon Desktop Application");
         println!("============================");
-        println!("");
+        println!();
 
         // Launch the desktop application
         self.launch_tauri(&config)?;

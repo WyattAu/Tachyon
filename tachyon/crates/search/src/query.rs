@@ -63,7 +63,7 @@ impl QueryEngine {
         let query = self.parse_query(request, schema)?;
 
         // Create collector with pagination
-        let limit = request.page_size as usize;
+        let limit = request.page_size;
         let _offset = request.offset();
 
         let collector = TopDocs::with_limit(limit);

@@ -37,6 +37,9 @@ slug = "0.1"
 # OpenAPI schema generation
 utoipa = { version = "5", features = ["chrono"] }
 
+[features]
+staging = []
+
 [dev-dependencies]
 tokio-test = { workspace = true }
 serial_test = { workspace = true }

@@ -183,9 +183,9 @@ impl DocumentRepository {
             .bind(metadata.edit_count)
             .bind(&metadata.content)
             .bind(&metadata.html)
-            .bind(&metadata.created_at)
-            .bind(&metadata.updated_at)
-            .bind(&metadata.published_at)
+            .bind(metadata.created_at)
+            .bind(metadata.updated_at)
+            .bind(metadata.published_at)
             .bind(metadata.content_hash.as_deref())
             .bind(metadata.conflict_detected.unwrap_or(false))
             .execute(&mut *conn)
@@ -268,8 +268,8 @@ impl DocumentRepository {
             .bind(metadata.character_count)
             .bind(metadata.read_count)
             .bind(metadata.edit_count)
-            .bind(&metadata.updated_at)
-            .bind(&metadata.published_at)
+            .bind(metadata.updated_at)
+            .bind(metadata.published_at)
             .bind(&metadata.content)
             .bind(&metadata.html)
             .bind(&metadata.id)
@@ -705,8 +705,8 @@ impl RepositoryRepository {
             .bind(metadata.total_storage_bytes)
             .bind(metadata.member_count)
             .bind(&metadata.local_path)
-            .bind(&metadata.created_at)
-            .bind(&metadata.updated_at)
+            .bind(metadata.created_at)
+            .bind(metadata.updated_at)
             .execute(&mut *conn)
             .await
             .map_err(|e| {
@@ -789,7 +789,7 @@ impl RepositoryRepository {
             .bind(metadata.total_storage_bytes)
             .bind(metadata.member_count)
             .bind(&metadata.local_path)
-            .bind(&metadata.updated_at)
+            .bind(metadata.updated_at)
             .bind(&metadata.id)
             .execute(&mut *conn)
             .await
@@ -935,7 +935,7 @@ fn count_placeholders(sql: &str) -> usize {
     while let Some(c) = chars.next() {
         if c == '$' {
             // Skip the digit(s) after $
-            while chars.peek().map_or(false, |c| c.is_ascii_digit()) {
+            while chars.peek().is_some_and(|c| c.is_ascii_digit()) {
                 chars.next();
             }
             count += 1;

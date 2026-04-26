@@ -203,6 +203,20 @@ pub async fn confirm_password_reset(
         )
     })?;
 
+    if body.new_password.len() < 8
+        || !body.new_password.chars().any(|c| c.is_uppercase())
+        || !body.new_password.chars().any(|c| c.is_lowercase())
+        || !body.new_password.chars().any(|c| c.is_ascii_digit())
+    {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "WEAK_PASSWORD".to_string(),
+                message: "Password must be at least 8 characters with uppercase, lowercase, and digit".to_string(),
+            }),
+        ));
+    }
+
     let new_hash = tachyon_core::types::user::User::hash_password(&body.new_password)
         .map_err(|e| {
             (

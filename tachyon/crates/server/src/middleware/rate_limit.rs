@@ -219,6 +219,7 @@ impl RateLimitStore {
         }
     }
     
+    #[allow(dead_code)]
     async fn cleanup(&self, max_age_secs: u64) {
         match self {
             RateLimitStore::InMemory(store) => store.cleanup_expired(max_age_secs).await,

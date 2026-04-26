@@ -5,7 +5,7 @@ use crate::error::RbacResult;
 use crate::types::{Action, Effect, Resource, Subject};
 use dashmap::DashMap;
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -25,7 +25,7 @@ pub struct Permission {
     /// Permission effect (allow/deny)
     pub effect: Effect,
     /// Additional conditions
-    pub conditions: HashMap<String, String>,
+    pub conditions: BTreeMap<String, String>,
     /// Priority (higher = more important)
     pub priority: i32,
     /// Permission description
@@ -49,7 +49,7 @@ impl Permission {
             resource_pattern: resource_pattern.to_string(),
             action_pattern: action_pattern.to_string(),
             effect,
-            conditions: HashMap::new(),
+            conditions: BTreeMap::new(),
             priority: 0,
             description: String::new(),
         }
@@ -186,7 +186,7 @@ impl PermissionInheritance {
     pub fn add_relationship(&mut self, parent: &str, child: &str) {
         self.relationships
             .entry(parent.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(child.to_string());
     }
 

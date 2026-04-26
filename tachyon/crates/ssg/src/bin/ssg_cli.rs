@@ -23,7 +23,7 @@ use clap::Parser;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tachyon_ssg::{ColorTheme, NavLink, SsgDocument, SiteConfig, SiteGenerator, TranslationConfig};
+use tachyon_ssg::{ColorTheme, NavLink, SsgDocument, SiteConfig, SiteGenerator};
 
 #[derive(Parser, Debug)]
 #[command(name = "tachyon-ssg-cli", about = "Build static documentation sites from markdown")]
@@ -84,11 +84,11 @@ fn parse_frontmatter(content: &str) -> (Frontmatter, String) {
     let mut fm = Frontmatter::default();
     let body;
 
-    if content.starts_with("---\n") {
+    if let Some(stripped) = content.strip_prefix("---\n") {
         // Find the closing ---
-        if let Some(end) = content[4..].find("\n---") {
-            let yaml_block = &content[4..4 + end];
-            body = content[4 + end + 4..].trim_start().to_string();
+        if let Some(end) = stripped.find("\n---") {
+            let yaml_block = &stripped[..end];
+            body = stripped[end + 4..].trim_start().to_string();
 
             for line in yaml_block.lines() {
                 let line = line.trim();
@@ -145,6 +145,7 @@ fn parse_yaml_array(s: &str) -> Vec<String> {
         .collect()
 }
 
+#[allow(dead_code)]
 fn slugify(s: &str) -> String {
     s.to_lowercase()
         .chars()
@@ -169,8 +170,8 @@ fn slugify(s: &str) -> String {
 fn title_from_content(content: &str, filename: &str) -> String {
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("# ") {
-            return trimmed[2..].to_string();
+        if let Some(stripped) = trimmed.strip_prefix("# ") {
+            return stripped.to_string();
         }
     }
     // Fall back to filename

@@ -43,7 +43,7 @@ impl OnboardingRepository {
             .bind(user_id)
             .fetch_one(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
         Ok(row.get("count"))
     }
 
@@ -55,7 +55,7 @@ impl OnboardingRepository {
             .bind(user_id)
             .fetch_optional(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
         match row {
             Some(row) => Ok(row.get("created_at")),
             None => Ok(None),
@@ -72,7 +72,7 @@ impl OnboardingRepository {
             .bind(user_id)
             .fetch_optional(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         let completed_steps: Vec<String> = match row {
             Some(r) => {
@@ -134,7 +134,7 @@ impl OnboardingRepository {
             .bind(user_id)
             .fetch_optional(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         let mut prefs: serde_json::Value = match row {
             Some(r) => {
@@ -172,7 +172,7 @@ impl OnboardingRepository {
             .bind(&prefs)
             .execute(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(())
     }

@@ -7,7 +7,7 @@ use axum::{
     response::Json,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tachyon_core::id::{DocumentId, RepositoryId, UserId};
@@ -231,8 +231,8 @@ pub async fn search(
     };
 
     let page = query.page.max(1);
-    let page_size = query.page_size.min(100).max(1);
-    let fetch_limit = (page_size * 3).min(300) as i64;
+    let page_size = query.page_size.clamp(1, 100);
+    let fetch_limit = (page_size * 3).min(300);
 
     match state.search_repo.search(&query.q, &filters, 1, fetch_limit).await {
         Ok(pg_response) => {
@@ -357,7 +357,7 @@ pub async fn global_search(
     };
 
     let page = query.page.max(1);
-    let page_size = query.page_size.min(100).max(1);
+    let page_size = query.page_size.clamp(1, 100);
 
     match state.search_repo.global_search(&query.q, &filters, page, page_size).await {
         Ok(response) => {
@@ -590,7 +590,7 @@ pub async fn reindex_tantivy(
             tags: m.parse_tags().unwrap_or_default(),
             created_at: m.created_at,
             updated_at: m.updated_at,
-            custom_fields: HashMap::new(),
+            custom_fields: BTreeMap::new(),
         })
     }).collect();
 

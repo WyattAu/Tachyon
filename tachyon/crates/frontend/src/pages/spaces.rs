@@ -144,7 +144,7 @@ pub fn SpacesPage() -> impl IntoView {
             <Show when=move || editing_space.get().is_some()>
                 {move || editing_space.get().map(|space| {
                     view! {
-                        <EditSpaceModal space=space on_close=close_edit.clone() on_saved=saved_edit.clone() />
+                        <EditSpaceModal space=space on_close=close_edit on_saved=saved_edit />
                     }
                 })}
             </Show>
@@ -165,7 +165,7 @@ pub fn SpacesPage() -> impl IntoView {
                         <ConfirmModal title="Delete Space".to_string()
                             message="Are you sure? Documents in this space will become unorganized.".to_string()
                             confirm_label="Delete".to_string()
-                            on_confirm=on_confirm on_cancel=cancel_delete.clone() />
+                            on_confirm=on_confirm on_cancel=cancel_delete />
                     }
                 })}
             </Show>
@@ -174,7 +174,7 @@ pub fn SpacesPage() -> impl IntoView {
             <Show when=move || managing_members_id.get().is_some()>
                 {move || managing_members_id.get().map(|sid| {
                     view! {
-                        <MembersModal space_id=sid on_close=close_members.clone() />
+                        <MembersModal space_id=sid on_close=close_members />
                     }
                 })}
             </Show>
@@ -302,8 +302,8 @@ fn CreateSpaceModal(
     let (submitting, set_submitting) = signal(false);
     let (error, set_error) = signal(None::<String>);
 
-    let colors = vec!["#3B82F6", "#6366F1", "#8B5CF6", "#EC4899", "#EF4444", "#F59E0B", "#10B981", "#6B7280"];
-    let icons = vec!["folder", "book", "star", "heart", "briefcase", "home", "code", "lightbulb"];
+    let colors = ["#3B82F6", "#6366F1", "#8B5CF6", "#EC4899", "#EF4444", "#F59E0B", "#10B981", "#6B7280"];
+    let icons = ["folder", "book", "star", "heart", "briefcase", "home", "code", "lightbulb"];
 
     let do_submit = move |_| {
         let n = name.get();
@@ -439,8 +439,8 @@ fn EditSpaceModal(
     let (submitting, set_submitting) = signal(false);
     let (error, set_error) = signal(None::<String>);
 
-    let colors = vec!["#3B82F6", "#6366F1", "#8B5CF6", "#EC4899", "#EF4444", "#F59E0B", "#10B981", "#6B7280"];
-    let icons = vec!["folder", "book", "star", "heart", "briefcase", "home", "code", "lightbulb"];
+    let colors = ["#3B82F6", "#6366F1", "#8B5CF6", "#EC4899", "#EF4444", "#F59E0B", "#10B981", "#6B7280"];
+    let icons = ["folder", "book", "star", "heart", "briefcase", "home", "code", "lightbulb"];
 
     let do_submit = move |_| {
         let n = name.get();
@@ -583,10 +583,7 @@ fn MembersModal(
         let api = ApiClient::default();
         let sid = space_id_for_fetch.clone();
         spawn_local(async move {
-            match api.list_space_members(&sid).await {
-                Ok(m) => set_members.set(m),
-                Err(_) => {}
-            }
+            if let Ok(m) = api.list_space_members(&sid).await { set_members.set(m) }
             set_loading.set(false);
         });
     };
@@ -606,10 +603,7 @@ fn MembersModal(
         spawn_local(async move {
             match api.add_space_member(&sid, &AddSpaceMemberRequest { user_id: uid, role: Some(role) }).await {
                 Ok(_) => {
-                    match api.list_space_members(&sid).await {
-                        Ok(m) => set_members.set(m),
-                        Err(_) => {}
-                    }
+                    if let Ok(m) = api.list_space_members(&sid).await { set_members.set(m) }
                     set_new_uid.set(String::new());
                 }
                 Err(e) => set_error.set(Some(format!("{:?}", e))),
@@ -622,10 +616,7 @@ fn MembersModal(
         let sid = space_id_for_remove.clone();
         spawn_local(async move {
             let _ = api.remove_space_member(&sid, &uid).await;
-            match api.list_space_members(&sid).await {
-                Ok(m) => set_members.set(m),
-                Err(_) => {}
-            }
+            if let Ok(m) = api.list_space_members(&sid).await { set_members.set(m) }
         });
     });
 
@@ -634,10 +625,7 @@ fn MembersModal(
         let sid = space_id_for_change.clone();
         spawn_local(async move {
             let _ = api.update_space_member(&sid, &uid, &UpdateSpaceMemberRequest { role }).await;
-            match api.list_space_members(&sid).await {
-                Ok(m) => set_members.set(m),
-                Err(_) => {}
-            }
+            if let Ok(m) = api.list_space_members(&sid).await { set_members.set(m) }
         });
     });
 

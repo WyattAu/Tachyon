@@ -47,6 +47,7 @@ impl Default for SiteConfig {
 /// - Canonical URL
 /// - Inline Tailwind CDN for styling
 /// - Dark mode support via system preference
+#[allow(dead_code)]
 pub fn render_full_page(ctx: &RenderContext, site: &SiteConfig) -> String {
     let title = escape_html(&ctx.title);
     let description = escape_html(&extract_description(&ctx.content));
@@ -254,6 +255,7 @@ pub fn render_full_page(ctx: &RenderContext, site: &SiteConfig) -> String {
     )
 }
 
+#[allow(dead_code)]
 pub fn render_full_page_with_template(
     ctx: &RenderContext,
     site: &SiteConfig,
@@ -385,6 +387,7 @@ pub fn render_full_page_with_template(
 }
 
 /// Escape HTML special characters for safe embedding in attributes.
+#[allow(dead_code)]
 fn escape_html(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
@@ -401,6 +404,7 @@ fn escape_html(s: &str) -> String {
 }
 
 /// Extract a plain-text description from HTML content (first 160 chars).
+#[allow(dead_code)]
 fn extract_description(html: &str) -> String {
     // Strip all HTML tags
     let plain = strip_html_tags(html);
@@ -418,6 +422,7 @@ fn extract_description(html: &str) -> String {
 }
 
 /// Naive HTML tag stripper for description extraction.
+#[allow(dead_code)]
 fn strip_html_tags(html: &str) -> String {
     let mut result = String::with_capacity(html.len());
     let mut in_tag = false;
@@ -437,6 +442,7 @@ fn strip_html_tags(html: &str) -> String {
 }
 
 /// Convert a title to a URL-safe slug.
+#[allow(dead_code)]
 fn slugify(title: &str) -> String {
     let slug: String = title
         .to_lowercase()

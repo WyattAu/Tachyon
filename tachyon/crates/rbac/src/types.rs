@@ -5,7 +5,7 @@ use crate::error::{RbacError, RbacResult};
 use crate::{SessionId, UserId};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 
 // ============================================================================
@@ -20,8 +20,8 @@ pub struct Subject {
     /// Unique subject identifier
     pub subject_id: String,
     /// Additional attributes for ABAC
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub attributes: HashMap<String, String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub attributes: BTreeMap<String, String>,
 }
 
 impl Subject {
@@ -37,7 +37,7 @@ impl Subject {
         Self {
             subject_type: subject_type.to_string(),
             subject_id: subject_id.to_string(),
-            attributes: HashMap::new(),
+            attributes: BTreeMap::new(),
         }
     }
 
@@ -136,8 +136,8 @@ pub struct Resource {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub owner_id: Option<String>,
     /// Additional attributes for ABAC
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub attributes: HashMap<String, String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub attributes: BTreeMap<String, String>,
 }
 
 impl Resource {
@@ -154,7 +154,7 @@ impl Resource {
             resource_type: resource_type.to_string(),
             resource_id: resource_id.to_string(),
             owner_id: None,
-            attributes: HashMap::new(),
+            attributes: BTreeMap::new(),
         }
     }
 
@@ -231,8 +231,8 @@ pub struct AuthContext {
     /// User roles
     pub roles: Vec<String>,
     /// Additional context attributes
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub attributes: HashMap<String, String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub attributes: BTreeMap<String, String>,
     /// Timestamp when context was created
     pub created_at: DateTime<Utc>,
 }
@@ -251,7 +251,7 @@ impl AuthContext {
             user_id,
             session_id,
             roles: Vec::new(),
-            attributes: HashMap::new(),
+            attributes: BTreeMap::new(),
             created_at: Utc::now(),
         }
     }
@@ -341,8 +341,8 @@ pub struct Action {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
     /// Additional attributes
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub attributes: HashMap<String, String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub attributes: BTreeMap<String, String>,
 }
 
 impl Action {
@@ -357,7 +357,7 @@ impl Action {
         Self {
             action_name: action_name.to_string(),
             scope: None,
-            attributes: HashMap::new(),
+            attributes: BTreeMap::new(),
         }
     }
 

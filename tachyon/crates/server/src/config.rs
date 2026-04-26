@@ -242,6 +242,7 @@ impl Default for TrueLayerConfig {
 
 /// OAuth2 provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct OAuth2Config {
     /// Enable OAuth2 authentication
     pub enabled: bool,
@@ -438,18 +439,6 @@ impl Default for LogConfig {
     }
 }
 
-impl Default for OAuth2Config {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            google_client_id: None,
-            google_client_secret: None,
-            github_client_id: None,
-            github_client_secret: None,
-            redirect_base_url: None,
-        }
-    }
-}
 
 impl ServerConfig {
     /// Create a new server configuration
@@ -495,12 +484,12 @@ impl ServerConfig {
 
         if self.enable_tls {
             if self.tls_cert_path.is_none()
-                || self.tls_cert_path.as_ref().map_or(true, |p| p.is_empty())
+                || self.tls_cert_path.as_ref().is_none_or(|p| p.is_empty())
             {
                 return Err("TLS certificate path required when TLS is enabled".to_string());
             }
             if self.tls_key_path.is_none()
-                || self.tls_key_path.as_ref().map_or(true, |p| p.is_empty())
+                || self.tls_key_path.as_ref().is_none_or(|p| p.is_empty())
             {
                 return Err("TLS key path required when TLS is enabled".to_string());
             }
@@ -520,7 +509,7 @@ impl ServerConfig {
 
         if self.jwt.secret == "change-this-secret-key-in-production" {
             return Err(
-                "JWT secret must be changed from the default value for production".to_string(),
+                "JWT secret must be changed from default value. Set TACHYON_JWT_SECRET environment variable.".to_string(),
             );
         }
 

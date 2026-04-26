@@ -5,7 +5,7 @@ use crate::error::{RbacError, RbacResult};
 use crate::types::{Action, Effect, Resource, Subject};
 use dashmap::DashMap;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -44,7 +44,7 @@ pub struct PolicyRule {
     /// Rule priority (higher = more important)
     pub priority: i32,
     /// Rule conditions (for ABAC)
-    pub conditions: HashMap<String, String>,
+    pub conditions: BTreeMap<String, String>,
     /// Rule description
     pub description: String,
 }
@@ -75,7 +75,7 @@ impl PolicyRule {
             action_pattern: action_pattern.to_string(),
             effect,
             priority: 0,
-            conditions: HashMap::new(),
+            conditions: BTreeMap::new(),
             description: String::new(),
         }
     }
@@ -185,7 +185,7 @@ impl PolicyRule {
                 "resource.type" => Some(resource.resource_type.as_str()),
                 "resource.id" => Some(resource.resource_id.as_str()),
                 "action.name" => Some(action.action_name.as_str()),
-                "action.scope" => action.scope.as_ref().map(|s| s.as_str()),
+                "action.scope" => action.scope.as_deref(),
                 _ => subject
                     .get_attribute(key)
                     .or_else(|| resource.get_attribute(key))
@@ -376,7 +376,7 @@ impl PolicyEngine {
     ///
     /// # Returns
     /// New PolicyEngine instance
-    pub fn with_cache_size(cache_size: usize) -> Self {
+    pub fn with_cache_size(_cache_size: usize) -> Self {
         Self {
             policies: DashMap::new(),
             cache: DashMap::new(),

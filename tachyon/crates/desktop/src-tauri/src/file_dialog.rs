@@ -9,6 +9,7 @@ use tachyon_core::{ErrorResult, TachyonError};
 
 /// File dialog options
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct FileDialogOptions {
     /// Default file name for save dialog
     pub default_name: Option<String>,
@@ -20,16 +21,6 @@ pub struct FileDialogOptions {
     pub directory: bool,
 }
 
-impl Default for FileDialogOptions {
-    fn default() -> Self {
-        Self {
-            default_name: None,
-            extensions: vec![],
-            multiple: false,
-            directory: false,
-        }
-    }
-}
 
 /// File dialog result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -229,7 +220,7 @@ impl FileDialogManager {
 
     /// Show an error message dialog
     pub fn show_error(&self, title: impl AsRef<str>, message: impl AsRef<str>) {
-        let _ = self.app_handle
+        self.app_handle
             .dialog()
             .message(message.as_ref())
             .title(title.as_ref())
@@ -239,7 +230,7 @@ impl FileDialogManager {
 
     /// Show a warning message dialog
     pub fn show_warning(&self, title: impl AsRef<str>, message: impl AsRef<str>) {
-        let _ = self.app_handle
+        self.app_handle
             .dialog()
             .message(message.as_ref())
             .title(title.as_ref())
@@ -249,7 +240,7 @@ impl FileDialogManager {
 
     /// Show an info message dialog
     pub fn show_info(&self, title: impl AsRef<str>, message: impl AsRef<str>) {
-        let _ = self.app_handle
+        self.app_handle
             .dialog()
             .message(message.as_ref())
             .title(title.as_ref())

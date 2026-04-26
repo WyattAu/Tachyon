@@ -7,7 +7,7 @@ use crate::types::error::TachyonError;
 use crate::util::{slugify, validate_tag_name};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 // ============================================================================
 // Document Status
@@ -162,7 +162,7 @@ impl DocumentContent {
 // ============================================================================
 
 /// Frontmatter metadata from markdown documents
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DocumentFrontmatter {
     /// Document title
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -175,18 +175,7 @@ pub struct DocumentFrontmatter {
     pub tags: Vec<String>,
     /// Custom metadata fields
     #[serde(flatten)]
-    pub custom: HashMap<String, serde_json::Value>,
-}
-
-impl Default for DocumentFrontmatter {
-    fn default() -> Self {
-        Self {
-            title: None,
-            description: None,
-            tags: Vec::new(),
-            custom: HashMap::new(),
-        }
-    }
+    pub custom: BTreeMap<String, serde_json::Value>,
 }
 
 // ============================================================================

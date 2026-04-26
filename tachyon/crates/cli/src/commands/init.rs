@@ -320,9 +320,9 @@ impl Command for InitCommand {
         println!("Creating README...");
         self.create_readme(repo_path, &name)?;
 
-        println!("");
+        println!();
         println!("Repository initialized successfully!");
-        println!("");
+        println!();
         println!("Next steps:");
         println!("  Run 'tachyon serve' to start the server");
         println!("  Run 'tachyon gui' to launch the desktop application");

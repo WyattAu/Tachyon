@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -14,19 +15,12 @@ pub struct RemoteCursor {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct AwarenessState {
     pub cursors: Vec<RemoteCursor>,
     pub local_user_id: String,
 }
 
-impl Default for AwarenessState {
-    fn default() -> Self {
-        Self {
-            cursors: Vec::new(),
-            local_user_id: String::new(),
-        }
-    }
-}
 
 const CURSOR_COLORS: &[&str] = &[
     "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8",

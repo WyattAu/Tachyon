@@ -14,7 +14,7 @@ pub fn EmptyDocuments() -> impl IntoView {
             <button
                 class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                 on:click=move |_| {
-                    let _ = leptos_router::hooks::use_navigate()("/documents", Default::default());
+                    leptos_router::hooks::use_navigate()("/documents", Default::default());
                 }
             >
                 "+ New Document"

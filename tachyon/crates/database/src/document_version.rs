@@ -79,7 +79,7 @@ impl DocumentVersionRepository {
             .bind(new_version_number)
             .bind(&req.content)
             .bind(&req.commit_message)
-            .bind(&now)
+            .bind(now)
             .bind(&req.created_by)
             .fetch_one(&mut *conn)
             .await
@@ -115,7 +115,7 @@ impl DocumentVersionRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        version.ok_or_else(|| DatabaseError::not_found("document_version", &format!("{}:v{}", document_id, version_number)))
+        version.ok_or_else(|| DatabaseError::not_found("document_version", format!("{}:v{}", document_id, version_number)))
     }
 
     #[instrument(skip(self))]

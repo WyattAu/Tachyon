@@ -470,7 +470,7 @@ fn CreateEditModal(
         })
     };
 
-    let btn_label = move || if submitting.get() { "Saving..." } else { if is_edit { "Update" } else { "Create" } };
+    let btn_label = move || if submitting.get() { "Saving..." } else if is_edit { "Update" } else { "Create" };
     let btn_class = move || format!(
         "px-4 py-2 text-sm text-white rounded-lg {}",
         if submitting.get() { "bg-blue-400 cursor-not-allowed" } else { "bg-blue-600 hover:bg-blue-700" }

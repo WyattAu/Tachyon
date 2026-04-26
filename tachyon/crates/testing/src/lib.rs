@@ -49,10 +49,7 @@ impl TestApp {
         let database_url = std::env::var("TEST_DATABASE_URL")
             .unwrap_or_else(|_| "postgres://tachyon:tachyon@localhost:5432/tachyon_test".to_string());
 
-        let pool = match tachyon_database::init_with_migrations(&database_url).await {
-            Ok(p) => Some(p),
-            Err(_) => None,
-        };
+        let pool = tachyon_database::init_with_migrations(&database_url).await.ok();
 
         let router = tachyon_server::routes::create_router().await;
 

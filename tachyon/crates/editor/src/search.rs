@@ -14,7 +14,7 @@ pub struct SearchResult {
     pub match_text: String,
 }
 
-pub struct Search {
+pub(crate) struct Search {
     case_sensitive: bool,
     whole_word: bool,
     use_regex: bool,
@@ -71,6 +71,7 @@ impl Search {
         results
     }
 
+    #[allow(dead_code)]
     pub fn find_in_line(&self, query: &str, line: &str, line_num: usize) -> Vec<SearchResult> {
         let re = match self.build_regex(query) {
             Some(r) => r,
@@ -161,6 +162,7 @@ impl Search {
         transactions
     }
 
+    #[allow(dead_code)]
     pub fn count_matches(&self, query: &str, buffer: &TextBuffer) -> usize {
         self.find(query, buffer).len()
     }

@@ -6,6 +6,7 @@ use crate::schema::DatabasePool;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, FromRow, Row};
+use std::collections::HashMap;
 use tracing::{debug, info, instrument};
 
 const ORG_SELECT_SQL: &str = r#"
@@ -560,5 +561,29 @@ impl OrganizationRepository {
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
         Ok(row.get("count"))
+    }
+
+    /// Count members for multiple organizations in a single query
+    #[instrument(skip(self))]
+    pub async fn count_members_batch(&self, org_ids: &[String]) -> DatabaseResult<HashMap<String, i64>> {
+        if org_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let count_sql = r#"
+            SELECT organization_id::text as id, COUNT(*) as count
+            FROM organization_members
+            WHERE organization_id = ANY($1::uuid[])
+            GROUP BY organization_id
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let rows: Vec<(String, i64)> = query_as(count_sql)
+            .bind(org_ids)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        Ok(rows.into_iter().collect())
     }
 }

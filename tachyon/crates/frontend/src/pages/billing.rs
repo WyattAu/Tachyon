@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, clippy::redundant_locals)]
 
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -65,19 +65,19 @@ pub fn BillingPage() -> impl IntoView {
     let plans = plans_r;
 
     let load_data = {
-        let set_plans = set_plans.clone();
-        let set_subscription = set_subscription.clone();
-        let set_invoices = set_invoices.clone();
-        let set_usage = set_usage.clone();
-        let set_loading = set_loading.clone();
-        let set_error = set_error.clone();
+        let set_plans = set_plans;
+        let set_subscription = set_subscription;
+        let set_invoices = set_invoices;
+        let set_usage = set_usage;
+        let set_loading = set_loading;
+        let set_error = set_error;
         move || {
-            let set_plans = set_plans.clone();
-            let set_subscription = set_subscription.clone();
-            let set_invoices = set_invoices.clone();
-            let set_usage = set_usage.clone();
-            let set_loading = set_loading.clone();
-            let set_error = set_error.clone();
+            let set_plans = set_plans;
+            let set_subscription = set_subscription;
+            let set_invoices = set_invoices;
+            let set_usage = set_usage;
+            let set_loading = set_loading;
+            let set_error = set_error;
             spawn_local(async move {
                 set_loading.set(true);
                 set_error.set(None);
@@ -108,9 +108,9 @@ pub fn BillingPage() -> impl IntoView {
     });
 
     let handle_cancel = {
-        let load_data = load_data.clone();
+        let load_data = load_data;
         move |_: leptos::ev::MouseEvent| {
-            let load_data = load_data.clone();
+            let load_data = load_data;
             spawn_local(async move {
                 match do_cancel_subscription("default").await {
                     Ok(()) => {
@@ -125,9 +125,9 @@ pub fn BillingPage() -> impl IntoView {
     };
 
     let handle_subscribe = {
-        let load_data = load_data.clone();
+        let load_data = load_data;
         move |plan_name: String| {
-            let load_data = load_data.clone();
+            let load_data = load_data;
             spawn_local(async move {
                 set_error.set(None);
                 match do_create_subscription("default", &plan_name).await {
@@ -349,7 +349,7 @@ pub fn BillingPage() -> impl IntoView {
                                 {plans.get().into_iter().map(|plan| {
                                     let is_current = subscription.get().as_ref().map(|s| s.plan_details.name == plan.name).unwrap_or(false);
                                     let plan_name = plan.name.clone();
-                                    let handle_subscribe = handle_subscribe.clone();
+                                    let handle_subscribe = handle_subscribe;
                                     view! {
                                         <div class={
                                             format!("rounded-lg border p-5 {}",

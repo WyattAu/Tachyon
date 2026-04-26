@@ -13,7 +13,7 @@ use crate::SessionId;
 #[cfg(test)]
 use crate::UserId;
 use chrono::{DateTime, Utc};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use tracing::{debug, error, info, instrument, warn};
 
 // ============================================================================
@@ -400,9 +400,9 @@ impl Enforcer {
     /// Get cache statistics
     ///
     /// # Returns
-    /// HashMap of cache statistics
-    pub fn get_cache_stats(&self) -> HashMap<String, usize> {
-        let mut stats = HashMap::new();
+    /// BTreeMap of cache statistics
+    pub fn get_cache_stats(&self) -> BTreeMap<String, usize> {
+        let mut stats = BTreeMap::new();
         stats.insert("authorization_cache".to_string(), self.cache.size());
         stats.insert(
             "permission_cache".to_string(),

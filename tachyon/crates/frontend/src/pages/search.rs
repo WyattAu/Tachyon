@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_locals)]
 use std::sync::Arc;
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
@@ -89,8 +90,8 @@ pub fn SearchPage() -> impl IntoView {
         let val = event_target_value(&ev);
         query.set(val.clone());
         let client = api_client_for_input.clone();
-        let show_sugg = show_suggestions.clone();
-        let suggs = suggestions.clone();
+        let show_sugg = show_suggestions;
+        let suggs = suggestions;
         let cb = wasm_bindgen::prelude::Closure::<dyn Fn()>::new(move || {
             let q = val.clone();
             let client_inner = client.clone();
@@ -117,12 +118,12 @@ pub fn SearchPage() -> impl IntoView {
 
     let save_search: Arc<dyn Fn() + Send + Sync> = {
         let api_client = api_client.clone();
-        let query = query.clone();
-        let selected_status = selected_status.clone();
-        let selected_visibility = selected_visibility.clone();
-        let selected_tags = selected_tags.clone();
-        let date_from = date_from.clone();
-        let date_to = date_to.clone();
+        let query = query;
+        let selected_status = selected_status;
+        let selected_visibility = selected_visibility;
+        let selected_tags = selected_tags;
+        let date_from = date_from;
+        let date_to = date_to;
         Arc::new(move || {
             let client = api_client.clone();
             let q = query.get();
@@ -210,7 +211,7 @@ pub fn SearchPage() -> impl IntoView {
                                 {move || {
                                     suggestions.get().into_iter().map(|s| {
                                         let sc = s.clone();
-                                        let sel = select_suggestion.clone();
+                                        let sel = select_suggestion;
                                         view! {
                                             <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                                                 on:click=move |_| sel(sc.clone())>{s}</button>

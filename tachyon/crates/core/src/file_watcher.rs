@@ -127,11 +127,11 @@ impl FileWatcher {
 
     pub fn scan_initial(&self) -> Vec<FileChangeEvent> {
         let mut events = Vec::new();
-        let mut entries = WalkDir::new(&self.config.watch_path)
+        let entries = WalkDir::new(&self.config.watch_path)
             .follow_links(false)
             .into_iter();
 
-        while let Some(entry) = entries.next() {
+        for entry in entries {
             match entry {
                 Ok(e) => {
                     let path = e.path();

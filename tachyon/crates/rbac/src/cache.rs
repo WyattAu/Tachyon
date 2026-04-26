@@ -46,7 +46,7 @@ impl CacheEntry {
         let elapsed = chrono::Utc::now()
             .signed_duration_since(self.cached_at)
             .num_seconds()
-            .abs() as u64;
+            .unsigned_abs();
 
         elapsed >= self.ttl
     }
@@ -285,7 +285,7 @@ impl AuthorizationCache {
 
             self.cache.retain(|_k, v| {
                 // Evict if expired OR if we haven't evicted enough yet
-                let elapsed = now.signed_duration_since(v.cached_at).num_seconds().abs() as u64;
+                let elapsed = now.signed_duration_since(v.cached_at).num_seconds().unsigned_abs();
                 let is_expired = elapsed >= v.ttl;
 
                 // Keep if: not expired AND (we've evicted enough OR entry is new)

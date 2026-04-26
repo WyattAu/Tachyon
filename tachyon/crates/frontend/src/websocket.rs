@@ -351,7 +351,8 @@ impl WebSocketClient {
         }
         for binary_data in binary_queue {
             if let Some(ws) = &self.inner.borrow().ws {
-                let js_bytes = unsafe { js_sys::Uint8Array::view(&binary_data) };
+                let js_bytes = js_sys::Uint8Array::new_with_length(binary_data.len() as u32);
+                js_bytes.copy_from(&binary_data);
                 if ws.send_with_array_buffer(&js_bytes.buffer()).is_err() {
                     self.inner.borrow_mut().binary_queue.push(binary_data);
                     break;
@@ -564,7 +565,8 @@ impl WebSocketClient {
         let mut inner = self.inner.borrow_mut();
         if inner.state == ConnectionState::Connected {
             if let Some(ws) = &inner.ws {
-                let js_bytes = unsafe { js_sys::Uint8Array::view(data) };
+                let js_bytes = js_sys::Uint8Array::new_with_length(data.len() as u32);
+                js_bytes.copy_from(data);
                 ws.send_with_array_buffer(&js_bytes.buffer())
                     .map_err(|e| format!("{:?}", e))?;
                 return Ok(());

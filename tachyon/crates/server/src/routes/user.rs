@@ -986,7 +986,7 @@ pub async fn guest_login(
     };
 
     let user = User::new(
-        user_id.clone(),
+        user_id,
         "guest".to_string(),
         "Guest User".to_string(),
         UserRole::Reader,

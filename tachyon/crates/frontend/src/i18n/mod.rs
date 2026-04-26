@@ -12,6 +12,7 @@ use std::sync::LazyLock;
 
 /// Supported locale codes (ISO 639-1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[allow(dead_code, clippy::incompatible_msrv)]
 pub enum Locale {
     En,
     Zh,
@@ -23,6 +24,7 @@ pub enum Locale {
     Pt,
 }
 
+#[allow(dead_code)]
 impl Locale {
     /// All supported locales.
     pub const ALL: &[Locale] = &[Locale::En, Locale::Zh, Locale::Ja, Locale::De, Locale::Fr, Locale::Es, Locale::Ko, Locale::Pt];
@@ -82,6 +84,7 @@ impl Locale {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TranslationKey(&'static str);
 
+#[allow(dead_code)]
 impl TranslationKey {
     // Navigation
     pub const HOME: Self = TranslationKey("nav.home");
@@ -127,6 +130,7 @@ impl TranslationKey {
 }
 
 /// English translations (source of truth).
+#[allow(dead_code, clippy::incompatible_msrv)]
 static EN_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     // Navigation
@@ -172,6 +176,7 @@ static EN_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// Chinese translations.
+#[allow(dead_code, clippy::incompatible_msrv)]
 static ZH_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     m.insert("nav.home", "首页");
@@ -213,6 +218,7 @@ static ZH_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// Japanese translations.
+#[allow(dead_code, clippy::incompatible_msrv)]
 static JA_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     m.insert("nav.home", "ホーム");
@@ -254,6 +260,7 @@ static JA_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// Get translations for a locale (falls back to English).
+#[allow(dead_code)]
 fn translations_for(locale: Locale) -> &'static HashMap<&'static str, &'static str> {
     match locale {
         Locale::Zh => &ZH_TRANSLATIONS,
@@ -263,6 +270,7 @@ fn translations_for(locale: Locale) -> &'static HashMap<&'static str, &'static s
 }
 
 /// Look up a translation by key.
+#[allow(dead_code)]
 pub fn t(locale: Locale, key: TranslationKey) -> &'static str {
     translations_for(locale)
         .get(key.0)
@@ -280,6 +288,7 @@ pub fn t(locale: Locale, key: TranslationKey) -> &'static str {
 /// let locale = use_locale();
 /// view! { <span>{t(locale.get(), TranslationKey::HOME)}</span> }
 /// ```
+#[allow(dead_code)]
 pub fn use_locale() -> ReadSignal<Locale> {
     let (locale, set_locale) = signal(Locale::detect_from_browser());
 

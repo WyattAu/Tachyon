@@ -26,9 +26,9 @@ pub fn ConflictResolver(
 
     let doc_id_load = document_id.clone();
     let api_load = api_client.clone();
-    let set_ci = set_conflict_info.clone();
-    let set_ld = set_loading.clone();
-    let set_er = set_error_msg.clone();
+    let set_ci = set_conflict_info;
+    let set_ld = set_loading;
+    let set_er = set_error_msg;
 
     wasm_bindgen_futures::spawn_local(async move {
         let client = match api_load.lock().ok() {
@@ -56,7 +56,7 @@ pub fn ConflictResolver(
             Some(i) if i.has_conflict => {
                 set_has_conflict.set(true);
                 let merge = i.merge_result.as_ref();
-                set_is_clean.set(merge.as_ref().map_or(false, |m| m.status == "clean"));
+                set_is_clean.set(merge.as_ref().is_some_and(|m| m.status == "clean"));
                 set_conflict_count.set(merge.as_ref().map_or(0, |m| m.conflict_count));
                 set_merge_content.set(merge.as_ref().map(|m| m.content.clone()).unwrap_or_default());
                 set_current_content.set(i.current_content.clone().unwrap_or_default());
@@ -71,18 +71,18 @@ pub fn ConflictResolver(
     let on_accept_ours = {
         let doc_id = document_id.clone();
         let api = api_client.clone();
-        let on_resolved_cb = on_resolved.clone();
-        let set_rs = set_resolving.clone();
-        let set_er = set_error_msg.clone();
+        let on_resolved_cb = on_resolved;
+        let set_rs = set_resolving;
+        let set_er = set_error_msg;
         move |_: leptos::ev::MouseEvent| {
             let doc_id = doc_id.clone();
             let api = match api.lock().ok() {
                 Some(guard) => guard.clone(),
                 None => return,
             };
-            let on_resolved_cb = on_resolved_cb.clone();
-            let set_rs = set_rs.clone();
-            let set_er = set_er.clone();
+            let on_resolved_cb = on_resolved_cb;
+            let set_rs = set_rs;
+            let set_er = set_er;
             wasm_bindgen_futures::spawn_local(async move {
                 set_rs.set(true);
                 match api.resolve_conflict(&doc_id, "ours", None).await {
@@ -104,18 +104,18 @@ pub fn ConflictResolver(
     let on_accept_theirs = {
         let doc_id = document_id.clone();
         let api = api_client.clone();
-        let on_resolved_cb = on_resolved.clone();
-        let set_rs = set_resolving.clone();
-        let set_er = set_error_msg.clone();
+        let on_resolved_cb = on_resolved;
+        let set_rs = set_resolving;
+        let set_er = set_error_msg;
         move |_: leptos::ev::MouseEvent| {
             let doc_id = doc_id.clone();
             let api = match api.lock().ok() {
                 Some(guard) => guard.clone(),
                 None => return,
             };
-            let on_resolved_cb = on_resolved_cb.clone();
-            let set_rs = set_rs.clone();
-            let set_er = set_er.clone();
+            let on_resolved_cb = on_resolved_cb;
+            let set_rs = set_rs;
+            let set_er = set_er;
             wasm_bindgen_futures::spawn_local(async move {
                 set_rs.set(true);
                 match api.resolve_conflict(&doc_id, "theirs", None).await {
@@ -137,9 +137,9 @@ pub fn ConflictResolver(
     let on_accept_merge = {
         let doc_id = document_id.clone();
         let api = api_client.clone();
-        let on_resolved_cb = on_resolved.clone();
-        let set_rs = set_resolving.clone();
-        let set_er = set_error_msg.clone();
+        let on_resolved_cb = on_resolved;
+        let set_rs = set_resolving;
+        let set_er = set_error_msg;
         move |_: leptos::ev::MouseEvent| {
             let doc_id = doc_id.clone();
             let content = doc_id.clone();
@@ -147,9 +147,9 @@ pub fn ConflictResolver(
                 Some(guard) => guard.clone(),
                 None => return,
             };
-            let on_resolved_cb = on_resolved_cb.clone();
-            let set_rs = set_rs.clone();
-            let set_er = set_er.clone();
+            let on_resolved_cb = on_resolved_cb;
+            let set_rs = set_rs;
+            let set_er = set_er;
             wasm_bindgen_futures::spawn_local(async move {
                 set_rs.set(true);
                 match api.resolve_conflict(&doc_id, "manual", Some(&content)).await {

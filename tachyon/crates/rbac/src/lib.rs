@@ -1,3 +1,5 @@
+//! Tachyon RBAC — role-based access control with policy engine.
+
 // Tachyon RBAC - Role-Based Access Control
 // Provides permission checking, policy evaluation, session management, and enforcer logic
 

@@ -75,7 +75,7 @@ pub async fn create_session(
     let now = Utc::now();
     let expires_in = chrono::Duration::seconds(state.expiration_secs as i64);
 
-    let session = SessionBuilder::new(session_id.clone(), user_id.clone(), token_value)
+    let session = SessionBuilder::new(session_id, user_id, token_value)
         .token_type(TokenType::Bearer)
         .expires_in(expires_in)
         .build();

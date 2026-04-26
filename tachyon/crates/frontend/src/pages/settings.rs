@@ -105,8 +105,8 @@ fn ProfileTab() -> impl IntoView {
         let mail = email.get();
         set_saving_profile.set(true);
         set_profile_msg.set(String::new());
-        let set_msg = set_profile_msg.clone();
-        let set_saving = set_saving_profile.clone();
+        let set_msg = set_profile_msg;
+        let set_saving = set_saving_profile;
         wasm_bindgen_futures::spawn_local(async move {
             let dn = if name.is_empty() { None } else { Some(name.as_str()) };
             let em = if mail.is_empty() { None } else { Some(mail.as_str()) };
@@ -176,11 +176,11 @@ fn AccountTab() -> impl IntoView {
         }
         set_saving_password.set(true);
         set_password_msg.set(String::new());
-        let set_msg = set_password_msg.clone();
-        let set_saving = set_saving_password.clone();
-        let set_old = set_old_password.clone();
-        let set_new = set_new_password.clone();
-        let set_confirm = set_confirm_password.clone();
+        let set_msg = set_password_msg;
+        let set_saving = set_saving_password;
+        let set_old = set_old_password;
+        let set_new = set_new_password;
+        let set_confirm = set_confirm_password;
         wasm_bindgen_futures::spawn_local(async move {
             match ApiClient::default().change_password(&old_pw, &new_pw).await {
                 Ok(_) => {
@@ -261,9 +261,9 @@ fn PreferencesTab() -> impl IntoView {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">"Theme"</label>
                         <div class="flex gap-4">
-                            <ThemeOption label="Light" value="light" current_theme=theme.get() on_change=on_theme_change.clone() />
-                            <ThemeOption label="Dark" value="dark" current_theme=theme.get() on_change=on_theme_change.clone() />
-                            <ThemeOption label="System" value="system" current_theme=theme.get() on_change=on_theme_change.clone() />
+                            <ThemeOption label="Light" value="light" current_theme=theme.get() on_change=on_theme_change />
+                            <ThemeOption label="Dark" value="dark" current_theme=theme.get() on_change=on_theme_change />
+                            <ThemeOption label="System" value="system" current_theme=theme.get() on_change=on_theme_change />
                         </div>
                     </div>
                 </div>
@@ -316,7 +316,7 @@ fn DangerTab() -> impl IntoView {
         }
         set_deleting.set(true);
         set_danger_msg.set(String::new());
-        let set_del = set_deleting.clone();
+        let set_del = set_deleting;
         wasm_bindgen_futures::spawn_local(async move {
             let client = ApiClient::default();
             let _ = client.delete_account().await;

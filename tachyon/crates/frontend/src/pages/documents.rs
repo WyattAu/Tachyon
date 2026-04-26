@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_locals)]
 // Documents Pages
 
 use leptos::prelude::*;
@@ -470,9 +471,9 @@ pub fn DocumentPage() -> impl IntoView {
     let (load_error, set_load_error) = signal::<Option<String>>(None);
     let (doc, set_doc) = signal::<Option<Document>>(None);
 
-    let set_ld = set_loading.clone();
-    let set_le = set_load_error.clone();
-    let set_d = set_doc.clone();
+    let set_ld = set_loading;
+    let set_le = set_load_error;
+    let set_d = set_doc;
 
     Effect::new(move || {
         let did = doc_id.clone();
@@ -569,7 +570,7 @@ pub fn DocumentPage() -> impl IntoView {
                     let nav = navigate.clone();
                     let edit_id_clone = edit_id.clone();
                     let on_edit = Callback::new(move |_: leptos::ev::MouseEvent| {
-                        let _ = nav(&format!("/documents/{}/edit", edit_id_clone), Default::default());
+                        nav(&format!("/documents/{}/edit", edit_id_clone), Default::default());
                     });
 
                     view! {
@@ -684,10 +685,10 @@ pub fn DocumentEditPage() -> impl IntoView {
 
     let api_client = ApiClient::default();
     let fetch_doc_id = document_id();
-    let set_dc = set_doc_content.clone();
-    let set_dt = set_doc_title.clone();
-    let set_ld = set_loading.clone();
-    let set_le = set_load_error.clone();
+    let set_dc = set_doc_content;
+    let set_dt = set_doc_title;
+    let set_ld = set_loading;
+    let set_le = set_load_error;
 
     Effect::new(move || {
         let did = fetch_doc_id.clone();
@@ -738,26 +739,26 @@ pub fn DocumentEditPage() -> impl IntoView {
             }
 
             {
-                let handle = auto_save_debounce.borrow().clone();
+                let handle = *auto_save_debounce.borrow();
                 if let Some(h) = handle {
-                    let _ = web_sys::window().map(|w| { let _ = w.clear_timeout_with_handle(h); });
+                    let _ = web_sys::window().map(|w| { w.clear_timeout_with_handle(h); });
                 }
             }
 
             let api = ApiClient::default();
             let did = doc_id_val;
-            let set_is_saving = set_is_saving.clone();
-            let set_last_saved = set_last_saved.clone();
-            let set_dirty = set_dirty.clone();
+            let set_is_saving = set_is_saving;
+            let set_last_saved = set_last_saved;
+            let set_dirty = set_dirty;
             let dh = auto_save_debounce.clone();
 
             let closure = wasm_bindgen::closure::Closure::<dyn Fn()>::new(move || {
                 let api = api.clone();
                 let did = did.clone();
                 let content_val = document_content.get_untracked();
-                let set_is_saving = set_is_saving.clone();
-                let set_last_saved = set_last_saved.clone();
-                let set_dirty = set_dirty.clone();
+                let set_is_saving = set_is_saving;
+                let set_last_saved = set_last_saved;
+                let set_dirty = set_dirty;
 
                 wasm_bindgen_futures::spawn_local(async move {
                     let body = serde_json::json!({ "content": content_val });
@@ -799,9 +800,9 @@ pub fn DocumentEditPage() -> impl IntoView {
 
         let api = ApiClient::default();
         let did = doc_id_val;
-        let set_is_saving = set_is_saving.clone();
-        let set_last_saved = set_last_saved.clone();
-        let set_dirty = set_dirty.clone();
+        let set_is_saving = set_is_saving;
+        let set_last_saved = set_last_saved;
+        let set_dirty = set_dirty;
 
         wasm_bindgen_futures::spawn_local(async move {
             set_is_saving.set(true);
@@ -823,7 +824,7 @@ pub fn DocumentEditPage() -> impl IntoView {
 
     // Ctrl+S handler
     {
-        let save_fn = manual_save.clone();
+        let save_fn = manual_save;
         if let Some(window) = web_sys::window() {
             let closure = wasm_bindgen::closure::Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |e: web_sys::KeyboardEvent| {
                 if (e.ctrl_key() || e.meta_key()) && e.key() == "s" {
@@ -952,8 +953,8 @@ pub fn DocumentEditPage() -> impl IntoView {
                                 }
                             });
                             let ed = editor;
-                            let on_change = on_editor_change.clone();
-                            let on_save = manual_save.clone();
+                            let on_change = on_editor_change;
+                            let on_save = manual_save;
                             let on_search = Callback::new(move |_: ()| show_search.update(|s| *s = !*s));
                             let on_preview = Callback::new(move |_: ()| set_show_preview.update(|s| *s = !*s));
 

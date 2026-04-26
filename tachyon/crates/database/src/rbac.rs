@@ -33,8 +33,8 @@ impl UserRoleRepository {
             .bind(&mapping.user_id)
             .bind(&mapping.role)
             .bind(&mapping.assigned_by)
-            .bind(&mapping.assigned_at)
-            .bind(&mapping.expires_at)
+            .bind(mapping.assigned_at)
+            .bind(mapping.expires_at)
             .execute(&mut *conn)
             .await
             .map_err(|e| {
@@ -192,7 +192,7 @@ impl UserRoleRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(update_sql)
-            .bind(&expires_at)
+            .bind(expires_at)
             .bind(user_id.as_str())
             .bind(role)
             .execute(&mut *conn)
@@ -239,7 +239,7 @@ impl RolePermissionRepository {
             .bind(&mapping.permission)
             .bind(&mapping.resource_type)
             .bind(&conditions_json)
-            .bind(&mapping.created_at)
+            .bind(mapping.created_at)
             .execute(&mut *conn)
             .await
             .map_err(|e| {
@@ -421,8 +421,8 @@ impl PolicyRepository {
             .bind(policy.enabled)
             .bind(&policy.description)
             .bind(&policy.created_by)
-            .bind(&policy.created_at)
-            .bind(&policy.updated_at)
+            .bind(policy.created_at)
+            .bind(policy.updated_at)
             .execute(&mut *conn)
             .await
             .map_err(|e| {
@@ -506,7 +506,7 @@ impl PolicyRepository {
             .bind(policy.priority)
             .bind(policy.enabled)
             .bind(&policy.description)
-            .bind(&policy.updated_at)
+            .bind(policy.updated_at)
             .bind(policy.id)
             .execute(&mut *conn)
             .await
@@ -597,10 +597,10 @@ impl AuditLogRepository {
             .bind(&log.resource_id)
             .bind(&log.action)
             .bind(&log.effect)
-            .bind(&log.policy_id)
+            .bind(log.policy_id)
             .bind(&log.reason)
             .bind(&log.ip_address)
-            .bind(&log.timestamp)
+            .bind(log.timestamp)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -722,7 +722,7 @@ impl AuditLogRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(delete_sql)
-            .bind(&cutoff_date)
+            .bind(cutoff_date)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;

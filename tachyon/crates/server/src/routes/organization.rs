@@ -118,11 +118,18 @@ pub async fn list_organizations(
         .await
         .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to list organizations: {}", e)))?;
 
-    let mut responses = Vec::with_capacity(orgs.len());
-    for org in orgs {
-        let member_count = repo.count_members(&org.id).await.unwrap_or(0);
-        responses.push(OrganizationResponse::from_org(org, member_count));
-    }
+    let member_counts = repo
+        .count_members_batch(&orgs.iter().map(|o| o.id.clone()).collect::<Vec<_>>())
+        .await
+        .unwrap_or_default();
+
+    let responses: Vec<OrganizationResponse> = orgs
+        .into_iter()
+        .map(|org| {
+            let member_count = member_counts.get(&org.id).copied().unwrap_or(0);
+            OrganizationResponse::from_org(org, member_count)
+        })
+        .collect();
 
     Ok(Json(responses))
 }

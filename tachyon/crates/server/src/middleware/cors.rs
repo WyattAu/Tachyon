@@ -2,52 +2,52 @@
 // Cross-Origin Resource Sharing configuration
 
 use crate::config::ServerConfig;
-use tower_http::cors::{Any, CorsLayer};
+use axum::http::{HeaderValue, Method};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
-/// Create CORS layer from configuration
-///
-/// # Arguments
-/// * `config` - Server configuration
-///
-/// # Returns
-/// Configured CORS layer
 pub fn create_cors_layer(config: &ServerConfig) -> CorsLayer {
     if !config.cors.enabled {
-        return CorsLayer::new()
-            .allow_origin(Any)
-            .allow_methods(Any)
-            .allow_headers(Any);
+        return CorsLayer::new();
     }
 
-    let mut cors = CorsLayer::new().allow_origin(Any);
+    let allow_origin = if config.cors.allowed_origins.contains(&"*".to_string()) {
+        AllowOrigin::any()
+    } else {
+        let origins: Vec<HeaderValue> = config.cors.allowed_origins
+            .iter()
+            .filter_map(|origin| origin.parse().ok())
+            .collect();
+        AllowOrigin::list(origins)
+    };
 
-    // Add allowed methods
-    for method in &config.cors.allowed_methods {
-        if let Ok(method_str) = method.parse::<axum::http::Method>() {
-            cors = cors.allow_methods([method_str]);
-        }
+    let allow_methods: Vec<Method> = config.cors.allowed_methods
+        .iter()
+        .filter_map(|m| m.parse().ok())
+        .collect();
+
+    let allow_headers: Vec<axum::http::HeaderName> = config.cors.allowed_headers
+        .iter()
+        .filter_map(|h| h.parse().ok())
+        .collect();
+
+    let expose_headers: Vec<axum::http::HeaderName> = config.cors.exposed_headers
+        .iter()
+        .filter_map(|h| h.parse().ok())
+        .collect();
+
+    let mut cors = CorsLayer::new()
+        .allow_origin(allow_origin)
+        .allow_methods(allow_methods)
+        .allow_headers(allow_headers);
+
+    if !expose_headers.is_empty() {
+        cors = cors.expose_headers(expose_headers);
     }
 
-    // Add allowed headers
-    for header in &config.cors.allowed_headers {
-        if let Ok(header_str) = header.parse::<axum::http::HeaderName>() {
-            cors = cors.allow_headers([header_str]);
-        }
-    }
-
-    // Add exposed headers
-    for header in &config.cors.exposed_headers {
-        if let Ok(header_str) = header.parse::<axum::http::HeaderName>() {
-            cors = cors.expose_headers([header_str]);
-        }
-    }
-
-    // Set credentials
     if config.cors.allow_credentials {
         cors = cors.allow_credentials(true);
     }
 
-    // Set max age
     if let Some(max_age) = config.cors.max_age_secs {
         cors = cors.max_age(std::time::Duration::from_secs(max_age));
     }

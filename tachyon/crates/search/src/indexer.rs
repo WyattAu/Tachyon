@@ -4,6 +4,8 @@
 use crate::error::{SearchError, SearchResult};
 use crate::types::{FieldDefinition, FieldType, IndexConfig};
 use std::collections::HashMap;
+#[cfg(test)]
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tantivy::{Index, IndexReader, IndexWriter, ReloadPolicy, TantivyDocument, schema::*};
@@ -608,7 +610,7 @@ mod tests {
             tags: vec!["test".to_string(), "document".to_string()],
             created_at: Utc::now(),
             updated_at: Utc::now(),
-            custom_fields: HashMap::new(),
+            custom_fields: BTreeMap::new(),
         };
 
         let result = index_manager.index_document(&document).await;

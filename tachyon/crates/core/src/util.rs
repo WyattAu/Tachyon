@@ -117,7 +117,7 @@ pub fn validate_path<P: AsRef<Path>>(path: P) -> Result<(), PathError> {
     }
 
     // Check for null bytes
-    let path_str = path.to_str().ok_or_else(|| PathError::InvalidUtf8)?;
+    let path_str = path.to_str().ok_or(PathError::InvalidUtf8)?;
 
     if path_str.contains('\0') {
         return Err(PathError::InvalidPath(

@@ -40,13 +40,13 @@ pub fn DashboardPage() -> impl IntoView {
     let nav_import = navigate.clone();
 
     let on_new_doc = Callback::new(move |_: leptos::ev::MouseEvent| {
-        let _ = nav_doc("/documents", Default::default());
+        nav_doc("/documents", Default::default());
     });
     let on_new_space = Callback::new(move |_: leptos::ev::MouseEvent| {
-        let _ = nav_space("/spaces", Default::default());
+        nav_space("/spaces", Default::default());
     });
     let on_import = Callback::new(move |_: leptos::ev::MouseEvent| {
-        let _ = nav_import("/documents", Default::default());
+        nav_import("/documents", Default::default());
     });
 
     let api = ApiClient::default();

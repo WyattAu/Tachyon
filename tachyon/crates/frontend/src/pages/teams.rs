@@ -259,10 +259,7 @@ pub fn TeamCard(team: Team) -> impl IntoView {
             let team_id = team.id.clone();
             spawn_local(async move {
                 set_loading_members.set(true);
-                match fetch_team_members(&team_id).await {
-                    Ok(m) => set_members.set(m),
-                    Err(_) => {}
-                }
+                if let Ok(m) = fetch_team_members(&team_id).await { set_members.set(m) }
                 set_loading_members.set(false);
             });
         }

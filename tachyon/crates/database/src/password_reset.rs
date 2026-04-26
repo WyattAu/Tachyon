@@ -87,7 +87,7 @@ impl PasswordResetRepository {
             .bind(expires_in_hours)
             .fetch_one(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
     #[instrument(skip(self))]
@@ -107,7 +107,7 @@ impl PasswordResetRepository {
             .bind(token_hash)
             .fetch_optional(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         let token = match token {
             Some(t) => t,
@@ -119,7 +119,7 @@ impl PasswordResetRepository {
             .bind(&token.id)
             .execute(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(Some(token))
     }
@@ -132,7 +132,7 @@ impl PasswordResetRepository {
             .bind(user_id)
             .execute(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(())
     }
@@ -168,7 +168,7 @@ impl PasswordResetRepository {
             .bind(expires_in_hours)
             .fetch_one(self.pool.inner())
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))
+            .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
     #[instrument(skip(self))]
@@ -188,7 +188,7 @@ impl PasswordResetRepository {
             .bind(token_hash)
             .fetch_optional(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         let token = match token {
             Some(t) => t,
@@ -200,7 +200,7 @@ impl PasswordResetRepository {
             .bind(&token.id)
             .execute(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(Some(token))
     }

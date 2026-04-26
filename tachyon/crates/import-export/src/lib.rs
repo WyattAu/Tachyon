@@ -21,7 +21,7 @@ pub use markdown_zip::{ExportDocument, MarkdownZipExporter, MarkdownZipImporter}
 pub use obsidian::ObsidianImporter;
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// A document parsed from an import source, ready to be stored.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,7 +43,7 @@ pub struct ImportedDocument {
     /// Last modification date (from frontmatter or file metadata)
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
     /// Additional metadata from frontmatter not mapped to specific fields
-    pub extra: HashMap<String, serde_json::Value>,
+    pub extra: BTreeMap<String, serde_json::Value>,
 }
 
 /// Summary of an import operation.
@@ -92,7 +92,7 @@ impl ImportedDocument {
 }
 
 /// Simple slugification: lowercase, replace non-alphanumeric with hyphens.
-pub fn slugify(text: &str) -> String {
+pub(crate) fn slugify(text: &str) -> String {
     text.to_lowercase()
         .chars()
         .map(|c| if c.is_alphanumeric() { c } else { '-' })
@@ -163,7 +163,7 @@ mod tests {
             source_path: "my-document.md".to_string(),
             created_at: None,
             updated_at: None,
-            extra: HashMap::new(),
+            extra: BTreeMap::new(),
         };
         assert_eq!(doc.effective_slug(), "my-document");
 

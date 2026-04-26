@@ -87,7 +87,7 @@ impl SyntaxHighlighter {
 
         // Initialize JSON
         if let Ok(mut config) = HighlightConfiguration::new(
-            tree_sitter_json::language().into(),
+            tree_sitter_json::language(),
             "json",
             tree_sitter_json::HIGHLIGHTS_QUERY,
             "",
@@ -166,7 +166,7 @@ impl SyntaxHighlighter {
 
     /// Highlight code and return HTML
     pub fn highlight(&self, code: &str, language: &str) -> RendererResult<String> {
-        let lang = Language::from_str(language)
+        let lang = Language::from_name(language)
             .ok_or_else(|| RendererError::unsupported_language(language))?;
 
         self.highlight_with_lang(code, &lang)
@@ -183,7 +183,7 @@ impl SyntaxHighlighter {
         let highlights = highlighter
             .highlight(config, code.as_bytes(), None, |lang_name| {
                 self.configs
-                    .get(&Language::from_str(lang_name).unwrap_or(Language::Rust))
+                    .get(&Language::from_name(lang_name).unwrap_or(Language::Rust))
             })
             .map_err(|e| RendererError::syntax_highlight(e.to_string()))?;
 
@@ -226,7 +226,7 @@ impl SyntaxHighlighter {
 
     /// Check if a language is supported
     pub fn is_language_supported(&self, language: &str) -> bool {
-        Language::from_str(language)
+        Language::from_name(language)
             .map(|lang| self.configs.contains_key(&lang))
             .unwrap_or(false)
     }

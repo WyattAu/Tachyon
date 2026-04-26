@@ -56,8 +56,8 @@ impl CatalogRepository {
             .bind(&project.framework)
             .bind(&project.visibility)
             .bind(&project.status)
-            .bind(&project.created_at)
-            .bind(&project.updated_at)
+            .bind(project.created_at)
+            .bind(project.updated_at)
             .execute(&mut *conn)
             .await
             .map_err(|e| {
@@ -309,7 +309,7 @@ impl CatalogRepository {
             .bind(&project.framework)
             .bind(&project.visibility)
             .bind(&project.status)
-            .bind(&project.updated_at)
+            .bind(project.updated_at)
             .bind(&project.id)
             .execute(&mut *conn)
             .await
@@ -441,8 +441,8 @@ impl CatalogRepository {
             .bind(&component.api_spec_url)
             .bind(&tags_json)
             .bind(&component.lifecycle)
-            .bind(&component.created_at)
-            .bind(&component.updated_at)
+            .bind(component.created_at)
+            .bind(component.updated_at)
             .execute(&mut *conn)
             .await
             .map_err(|e| {
@@ -579,7 +579,7 @@ impl CatalogRepository {
             .bind(&member.user_id)
             .bind(&member.role)
             .bind(&member.added_by)
-            .bind(&member.added_at)
+            .bind(member.added_at)
             .execute(&mut *conn)
             .await
             .map_err(|e| {

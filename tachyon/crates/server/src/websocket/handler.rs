@@ -102,7 +102,11 @@ impl ConnectionManager {
     }
 
     pub async fn remove_client(&self, client_id: &str) {
-        if let Some(client) = self.clients.write().await.remove(client_id) {
+        let client = {
+            let mut clients = self.clients.write().await;
+            clients.remove(client_id)
+        };
+        if let Some(client) = client {
             let mut rooms = self.rooms.write().await;
             for room_id in client.rooms {
                 if let Some(members) = rooms.get_mut(&room_id) {
@@ -154,11 +158,18 @@ impl ConnectionManager {
         let room_id = format!("doc:{}", document_id);
         self.leave_room(client_id, &room_id).await;
         
-        if let Some(presence_list) = self.document_presence.write().await.get_mut(document_id) {
-            presence_list.retain(|p| p.client_id != client_id);
-            if presence_list.is_empty() {
-                self.document_presence.write().await.remove(document_id);
+        let should_remove = {
+            let mut presence = self.document_presence.write().await;
+            if let Some(list) = presence.get_mut(document_id) {
+                list.retain(|p| p.client_id != client_id);
+                list.is_empty()
+            } else {
+                false
             }
+        };
+        
+        if should_remove {
+            self.document_presence.write().await.remove(document_id);
         }
         
         debug!(client_id = %client_id, document_id = %document_id, "Client left document");

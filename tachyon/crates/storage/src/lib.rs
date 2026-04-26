@@ -1,3 +1,5 @@
+//! Tachyon Storage — pluggable storage backends for documents.
+
 // Tachyon Storage — Pluggable document storage backends
 //
 // Implementations:

@@ -96,8 +96,8 @@ pub struct NodeMetadata {
     /// Tags for categorization
     pub tags: Vec<String>,
     /// Custom metadata fields
-    #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
-    pub custom_metadata: std::collections::HashMap<String, serde_json::Value>,
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub custom_metadata: std::collections::BTreeMap<String, serde_json::Value>,
 }
 
 impl NodeMetadata {
@@ -119,7 +119,7 @@ impl NodeMetadata {
             parent_id: None,
             document_id: None,
             tags: Vec::new(),
-            custom_metadata: std::collections::HashMap::new(),
+            custom_metadata: std::collections::BTreeMap::new(),
         }
     }
 
@@ -297,7 +297,7 @@ impl Node {
     pub fn connected_node_ids(&self) -> HashSet<NodeId> {
         self.relationships
             .iter()
-            .map(|r| r.target_node_id.clone())
+            .map(|r| r.target_node_id)
             .collect()
     }
 
@@ -443,7 +443,7 @@ impl NodeBuilder {
     /// Result containing Node or error
     pub fn build(self) -> Result<Node, TachyonError> {
         let id = self.id.unwrap_or_else(crate::id::generate_node_id);
-        let mut node = Node::new(id.clone(), self.node_type, self.title, self.created_by);
+        let mut node = Node::new(id, self.node_type, self.title, self.created_by);
 
         if let Some(content) = self.content {
             node = node.with_content(content);

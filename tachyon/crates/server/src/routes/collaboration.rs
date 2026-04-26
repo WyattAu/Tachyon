@@ -16,7 +16,6 @@ use tachyon_database::UpdateDocumentCommentRequest as DbUpdateCommentRequest;
 use tachyon_database::error::DatabaseError;
 use tachyon_database::PresenceRepository;
 use tachyon_database::UpsertPresenceRequest as DbUpsertPresenceRequest;
-use tachyon_database::UpdatePresenceRequest as DbUpdatePresenceRequest;
 use crate::websocket::ConnectionManager;
 
 /// Collaboration state
@@ -253,10 +252,10 @@ pub async fn update_presence(
         req.document_id.clone(),
         vec![presence_user],
     );
-    state.connection_manager.broadcast_to_room(
+    let _ = state.connection_manager.broadcast_to_room(
         &format!("doc:{}", req.document_id),
         presence_msg,
-    );
+    ).await;
 
     // Return all live presence for this document
     let users = repo
@@ -305,10 +304,10 @@ pub async fn remove_presence(
         document_id.clone(),
         user_id,
     );
-    state.connection_manager.broadcast_to_room(
+    let _ = state.connection_manager.broadcast_to_room(
         &format!("doc:{}", document_id),
         leave_msg,
-    );
+    ).await;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -415,10 +414,10 @@ pub async fn create_comment(
         "system".to_string(),
         activity,
     );
-    state.connection_manager.broadcast_to_room(
+    let _ = state.connection_manager.broadcast_to_room(
         &format!("doc:{}", req.document_id),
         activity_msg,
-    );
+    ).await;
 
     Ok(Json(db_comment_to_comment(comment)))
 }

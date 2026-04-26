@@ -497,7 +497,7 @@ impl RepositoryBuilder {
     /// Result containing Repository or error
     pub fn build(self) -> Result<Repository, TachyonError> {
         let id = self.id.unwrap_or_else(crate::id::generate_repository_id);
-        let mut repo = Repository::new(id.clone(), self.name, self.repository_type, self.owner_id);
+        let mut repo = Repository::new(id, self.name, self.repository_type, self.owner_id);
 
         if let Some(visibility) = self.visibility {
             repo = repo.with_visibility(visibility);

@@ -107,7 +107,7 @@ impl MarkdownZipImporter {
                 source_path: name,
                 created_at: None,
                 updated_at: None,
-                extra: std::collections::HashMap::new(),
+                extra: std::collections::BTreeMap::new(),
             };
         }
 
@@ -192,7 +192,7 @@ impl MarkdownZipImporter {
                 source_path: name,
                 created_at,
                 updated_at,
-                extra: std::collections::HashMap::new(),
+                extra: std::collections::BTreeMap::new(),
             };
             documents.push(doc);
         }
@@ -216,10 +216,12 @@ impl MarkdownZipExporter {
         created_at: Option<chrono::DateTime<chrono::Utc>>,
         updated_at: Option<chrono::DateTime<chrono::Utc>>,
     ) -> String {
-        let mut fm = Frontmatter::default();
-        fm.title = Some(title.to_string());
-        fm.description = description.map(|s| s.to_string());
-        fm.tags = tags.to_vec();
+        let mut fm = Frontmatter {
+            title: Some(title.to_string()),
+            description: description.map(|s| s.to_string()),
+            tags: tags.to_vec(),
+            ..Default::default()
+        };
         if let Some(dt) = created_at {
             fm.created = Some(dt.to_rfc3339());
         }
@@ -243,7 +245,7 @@ impl MarkdownZipExporter {
 
         for (title, content, path) in documents {
             let md_content = Self::document_to_markdown(title, content, &[], None, None, None);
-            zip.start_file(path, options.clone())
+            zip.start_file(path, options)
                 .map_err(|e| ImportExportError::zip(e.to_string()))?;
             zip.write_all(md_content.as_bytes())
                 .map_err(|e| ImportExportError::zip(e.to_string()))?;
@@ -292,7 +294,7 @@ impl MarkdownZipExporter {
                 ));
             }
 
-            zip.start_file(&path, options.clone())
+            zip.start_file(&path, options)
                 .map_err(|e| ImportExportError::zip(e.to_string()))?;
             zip.write_all(md_content.as_bytes())
                 .map_err(|e| ImportExportError::zip(e.to_string()))?;
@@ -345,8 +347,7 @@ fn title_from_path(path: &str) -> String {
 
     // Convert hyphens/underscores to spaces, title-case
     without_ext
-        .replace('-', " ")
-        .replace('_', " ")
+        .replace(['-', '_'], " ")
         .split(' ')
         .filter(|s| !s.is_empty())
         .map(|word| {

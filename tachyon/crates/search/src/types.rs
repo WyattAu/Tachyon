@@ -4,7 +4,7 @@
 use crate::error::{SearchError, SearchResult};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use tachyon_core::id::{DocumentId, RepositoryId, UserId};
 
 // ============================================================================
@@ -213,7 +213,7 @@ pub struct SearchDocument {
     pub updated_at: DateTime<Utc>,
     /// Additional custom fields
     #[serde(flatten)]
-    pub custom_fields: HashMap<String, serde_json::Value>,
+    pub custom_fields: BTreeMap<String, serde_json::Value>,
 }
 
 impl SearchDocument {
@@ -235,7 +235,7 @@ impl SearchDocument {
             tags: Vec::new(),
             created_at: now,
             updated_at: now,
-            custom_fields: HashMap::new(),
+            custom_fields: BTreeMap::new(),
         }
     }
 
@@ -395,7 +395,7 @@ pub struct SearchRequest {
     /// Structured query (alternative to query string)
     pub structured_query: Option<QueryType>,
     /// Field filters
-    pub filters: HashMap<String, serde_json::Value>,
+    pub filters: BTreeMap<String, serde_json::Value>,
     /// Tags to filter by
     pub tags: Option<Vec<String>>,
     /// Repository ID to filter by
@@ -422,7 +422,7 @@ impl Default for SearchRequest {
         Self {
             query: String::new(),
             structured_query: None,
-            filters: HashMap::new(),
+            filters: BTreeMap::new(),
             tags: None,
             repository_id: None,
             author_id: None,
@@ -652,7 +652,7 @@ impl SearchResponse {
         query_time_ms: u64,
     ) -> Self {
         let total_pages = if request.page_size > 0 {
-            (total_hits + request.page_size - 1) / request.page_size
+            total_hits.div_ceil(request.page_size)
         } else {
             0
         };

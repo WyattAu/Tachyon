@@ -14,8 +14,6 @@ fn slugify(text: &str) -> String {
         .map(|c| {
             if c.is_alphanumeric() {
                 c.to_lowercase().next().unwrap()
-            } else if c.is_whitespace() {
-                '-'
             } else {
                 '-'
             }
@@ -32,8 +30,6 @@ fn slugify_wiki_link(text: &str) -> String {
         .map(|c| {
             if c.is_alphanumeric() || c == '-' {
                 c.to_lowercase().next().unwrap()
-            } else if c.is_whitespace() {
-                '-'
             } else {
                 '-'
             }
@@ -267,18 +263,18 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                 Tag::Strikethrough => html.push_str("<del>"),
                 Tag::Link(_link_type, url, title) => {
                     html.push_str("<a href=\"");
-                    html.push_str(&url.to_string());
+                    html.push_str(url.as_ref());
                     if !title.is_empty() {
                         html.push_str("\" title=\"");
-                        html.push_str(&title.to_string());
+                        html.push_str(title.as_ref());
                     }
                     html.push_str("\">");
                 }
                 Tag::Image(_link_type, url, title) => {
                     html.push_str("<img src=\"");
-                    html.push_str(&url.to_string());
+                    html.push_str(url.as_ref());
                     html.push_str("\" alt=\"");
-                    html.push_str(&title.to_string());
+                    html.push_str(title.as_ref());
                     html.push_str("\" />");
                 }
                 Tag::Table(_alignment) => html.push_str("<table>"),
@@ -342,11 +338,11 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                 }
             },
             Event::Text(text) => {
-                html.push_str(&text.to_string());
+                html.push_str(text.as_ref());
             }
             Event::Code(text) => {
                 html.push_str("<code>");
-                html.push_str(&text.to_string());
+                html.push_str(text.as_ref());
                 html.push_str("</code>");
             }
             Event::Html(text) => {
@@ -416,12 +412,12 @@ pub fn extract_headings(markdown: &str) -> Vec<MarkdownHeading> {
             }
             Event::Text(text) => {
                 if current_heading_level.is_some() {
-                    current_text.push_str(&text.to_string());
+                    current_text.push_str(text.as_ref());
                 }
             }
             Event::Code(text) => {
                 if current_heading_level.is_some() {
-                    current_text.push_str(&text.to_string());
+                    current_text.push_str(text.as_ref());
                 }
             }
             _ => {}

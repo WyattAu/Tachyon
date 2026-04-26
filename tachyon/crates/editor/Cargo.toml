@@ -12,3 +12,6 @@ serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 tracing = "0.1"
 yrs = "0.25"
+
+[features]
+staging = []

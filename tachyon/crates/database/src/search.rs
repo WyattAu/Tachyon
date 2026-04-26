@@ -63,6 +63,7 @@ fn row_to_document_metadata(row: sqlx::postgres::PgRow) -> DatabaseResult<Docume
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct SearchFilters {
     pub content_type: Option<String>,
     pub status: Option<String>,
@@ -74,20 +75,6 @@ pub struct SearchFilters {
     pub date_to: Option<DateTime<Utc>>,
 }
 
-impl Default for SearchFilters {
-    fn default() -> Self {
-        Self {
-            content_type: None,
-            status: None,
-            visibility: None,
-            project_id: None,
-            author_id: None,
-            tags: None,
-            date_from: None,
-            date_to: None,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {

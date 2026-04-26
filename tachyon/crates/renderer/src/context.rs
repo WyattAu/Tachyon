@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Rendering context with template data
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderContext {
     /// Document title
@@ -21,6 +22,7 @@ pub struct RenderContext {
 
 /// Author information
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AuthorInfo {
     pub name: String,
     pub email: Option<String>,
@@ -38,6 +40,7 @@ pub struct RenderMetadata {
 
 /// Navigation information
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct NavigationInfo {
     pub current_page: String,
     pub breadcrumbs: Vec<Breadcrumb>,
@@ -46,6 +49,7 @@ pub struct NavigationInfo {
 
 /// Breadcrumb item
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Breadcrumb {
     pub title: String,
     pub url: String,
@@ -53,12 +57,14 @@ pub struct Breadcrumb {
 
 /// Related page
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct RelatedPage {
     pub title: String,
     pub url: String,
     pub snippet: Option<String>,
 }
 
+#[allow(dead_code)]
 impl RenderContext {
     /// Create a new render context
     ///
@@ -76,7 +82,7 @@ impl RenderContext {
     }
 
     /// Convert to JSON Value
-    pub fn to_json(&self) -> Value {
+    pub(crate) fn to_json(&self) -> Value {
         serde_json::to_value(self).unwrap_or(Value::Null)
     }
 }

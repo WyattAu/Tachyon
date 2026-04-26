@@ -95,13 +95,10 @@ pub fn PluginsPage() -> impl IntoView {
                                             let id = t_toggle_id.clone();
                                             let new_enabled = !t_enabled;
                                             spawn_local(async move {
-                                                match api.update_plugin(&id, &UpdatePluginRequest {
+                                                if api.update_plugin(&id, &UpdatePluginRequest {
                                                     enabled: Some(new_enabled),
                                                     ..Default::default()
-                                                }).await {
-                                                    Ok(_) => set_refresh_counter.update(|n| *n += 1),
-                                                    Err(_) => {},
-                                                }
+                                                }).await.is_ok() { set_refresh_counter.update(|n| *n += 1) }
                                             });
                                         })}
                                     />

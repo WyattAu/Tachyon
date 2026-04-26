@@ -96,10 +96,10 @@ impl ObsidianImporter {
             let title = frontmatter
                 .title
                 .clone()
-                .or_else(|| extract_first_heading(&body))
+                .or_else(|| extract_first_heading(body))
                 .unwrap_or_else(|| title_from_path(&name));
 
-            let mut inline_tags = extract_inline_tags(&body);
+            let mut inline_tags = extract_inline_tags(body);
             let mut tags: Vec<String> = frontmatter.tags.clone();
             tags.append(&mut inline_tags);
             tags.sort();
@@ -128,7 +128,7 @@ impl ObsidianImporter {
                 source_path: name,
                 created_at,
                 updated_at,
-                extra: std::collections::HashMap::new(),
+                extra: std::collections::BTreeMap::new(),
             };
             documents.push(doc);
         }
@@ -219,10 +219,10 @@ impl ObsidianImporter {
             let title = frontmatter
                 .title
                 .clone()
-                .or_else(|| extract_first_heading(&body))
+                .or_else(|| extract_first_heading(body))
                 .unwrap_or_else(|| title_from_path(&name));
 
-            let mut inline_tags = extract_inline_tags(&body);
+            let mut inline_tags = extract_inline_tags(body);
             let mut tags: Vec<String> = frontmatter.tags.clone();
             tags.append(&mut inline_tags);
             tags.sort();
@@ -247,7 +247,7 @@ impl ObsidianImporter {
                 source_path: name,
                 created_at,
                 updated_at,
-                extra: std::collections::HashMap::new(),
+                extra: std::collections::BTreeMap::new(),
             };
             documents.push(doc);
         }
@@ -283,8 +283,8 @@ fn should_skip_path(path: &str) -> bool {
 fn extract_first_heading(content: &str) -> Option<String> {
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("# ") {
-            return Some(trimmed[2..].trim().to_string());
+        if let Some(stripped) = trimmed.strip_prefix("# ") {
+            return Some(stripped.trim().to_string());
         }
         if !trimmed.is_empty() && !trimmed.starts_with('#') {
             break;
@@ -307,7 +307,7 @@ fn extract_inline_tags(content: &str) -> Vec<String> {
         }
 
         let trimmed = line.trim();
-        if trimmed.starts_with('#') && trimmed.chars().nth(1).map_or(false, |c| c == ' ') {
+        if trimmed.starts_with('#') && (trimmed.chars().nth(1) == Some(' ')) {
             continue;
         }
 
@@ -317,7 +317,7 @@ fn extract_inline_tags(content: &str) -> Vec<String> {
             if let Some(tag) = word.strip_prefix('#') {
                 // Must start with a letter and contain only word chars, hyphens, slashes
                 let chars: Vec<char> = tag.chars().collect();
-                if chars.first().map_or(false, |c| c.is_ascii_alphabetic())
+                if chars.first().is_some_and(|c| c.is_ascii_alphabetic())
                     && chars
                         .iter()
                         .all(|c| c.is_alphanumeric() || *c == '-' || *c == '/')
@@ -339,8 +339,7 @@ fn title_from_path(path: &str) -> String {
         .unwrap_or(filename);
 
     without_ext
-        .replace('-', " ")
-        .replace('_', " ")
+        .replace(['-', '_'], " ")
         .split(' ')
         .filter(|s| !s.is_empty())
         .map(|word| {

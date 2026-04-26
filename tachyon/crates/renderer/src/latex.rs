@@ -156,10 +156,7 @@ impl LatexRenderer {
     /// Validate LaTeX syntax
     pub fn validate<S: AsRef<str>>(&self, latex: S) -> bool {
         let latex = latex.as_ref();
-        match katex::render(latex) {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        katex::render(latex).is_ok()
     }
 
     /// Get rendering options
@@ -242,6 +239,7 @@ fn find_substring(chars: &[char], start: usize, pattern: &str) -> Option<usize> 
 }
 
 /// LaTeX document renderer for rendering complete LaTeX documents
+#[derive(Default)]
 pub struct LatexDocumentRenderer {
     /// LaTeX renderer
     renderer: LatexRenderer,
@@ -278,13 +276,6 @@ impl LatexDocumentRenderer {
     }
 }
 
-impl Default for LatexDocumentRenderer {
-    fn default() -> Self {
-        Self {
-            renderer: LatexRenderer::default(),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

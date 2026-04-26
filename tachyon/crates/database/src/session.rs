@@ -54,9 +54,9 @@ impl SessionRepository {
             .bind(session.metadata.ip_address.as_deref())
             .bind(session.metadata.user_agent.as_deref())
             .bind(session.metadata.device_info.as_deref())
-            .bind(&session.created_at)
-            .bind(&session.expires_at)
-            .bind(&session.last_activity)
+            .bind(session.created_at)
+            .bind(session.expires_at)
+            .bind(session.last_activity)
             .execute(&mut *conn)
             .await
             .map_err(|e| {
@@ -300,7 +300,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(delete_sql)
-            .bind(&before_date)
+            .bind(before_date)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -327,7 +327,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(delete_sql)
-            .bind(&cutoff_date)
+            .bind(cutoff_date)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -486,7 +486,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(update_sql)
-            .bind(&new_expires_at)
+            .bind(new_expires_at)
             .bind(session_id.as_str())
             .execute(&mut *conn)
             .await

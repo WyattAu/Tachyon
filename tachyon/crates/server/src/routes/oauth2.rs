@@ -55,6 +55,7 @@ pub fn create_oauth2_router() -> Router<OAuth2State> {
 #[derive(Debug, Deserialize)]
 struct CallbackQuery {
     code: String,
+    #[allow(dead_code)]
     state: Option<String>,
     error: Option<String>,
     error_description: Option<String>,

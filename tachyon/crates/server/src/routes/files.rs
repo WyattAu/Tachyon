@@ -1,10 +1,12 @@
+#![allow(private_interfaces)]
+
 use axum::{
     extract::{Query, State},
     http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use tokio::fs;
 
@@ -93,7 +95,7 @@ struct StatsResponse {
     total_files: usize,
     total_dirs: usize,
     total_size_bytes: u64,
-    file_types: std::collections::HashMap<String, usize>,
+    file_types: std::collections::BTreeMap<String, usize>,
     largest_files: Vec<LargestFileEntry>,
 }
 
@@ -149,7 +151,7 @@ fn internal_error(msg: impl Into<String>) -> ApiError {
     )
 }
 
-fn resolve_path(root: &PathBuf, relative: &str) -> Result<PathBuf, ApiError> {
+fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ApiError> {
     if let Err(e) = tachyon_core::validate_path(relative) {
         return Err(error("INVALID_PATH", format!("Path validation failed: {}", e)));
     }
@@ -164,7 +166,7 @@ fn resolve_path(root: &PathBuf, relative: &str) -> Result<PathBuf, ApiError> {
         }
     })?;
 
-    let root_canonical = root.canonicalize().unwrap_or_else(|_| root.clone());
+    let root_canonical = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     if !canonical.starts_with(&root_canonical) {
         return Err(error("FORBIDDEN", "Access denied: path is outside root directory"));
     }
@@ -176,9 +178,9 @@ fn format_modified(metadata: &std::fs::Metadata) -> String {
     metadata
         .modified()
         .ok()
-        .and_then(|t| {
+        .map(|t| {
             let dt: chrono::DateTime<chrono::Utc> = t.into();
-            Some(dt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
+            dt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
         })
         .unwrap_or_default()
 }
@@ -335,6 +337,8 @@ pub async fn search_files(
     let root_canonical = state.root_path.canonicalize().unwrap_or_else(|_| state.root_path.clone());
     let mut results = Vec::new();
     Box::pin(walk_dir_search(&base, &root_canonical, &query_lower, &mut results)).await?;
+
+    results.sort_by(|a, b| a.path.cmp(&b.path));
 
     Ok(Json(SearchResponse { files: results }))
 }
@@ -493,7 +497,7 @@ pub async fn get_stats(
     let mut total_files = 0usize;
     let mut total_dirs = 0usize;
     let mut total_size = 0u64;
-    let mut file_types = std::collections::HashMap::new();
+    let mut file_types = std::collections::BTreeMap::new();
     let mut largest_files: Vec<LargestFileEntry> = Vec::new();
 
     Box::pin(walk_dir_stats(&root, &root, &mut total_files, &mut total_dirs, &mut total_size, &mut file_types, &mut largest_files)).await?;
@@ -516,7 +520,7 @@ fn walk_dir_stats<'a>(
     total_files: &'a mut usize,
     total_dirs: &'a mut usize,
     total_size: &'a mut u64,
-    file_types: &'a mut std::collections::HashMap<String, usize>,
+    file_types: &'a mut std::collections::BTreeMap<String, usize>,
     largest_files: &'a mut Vec<LargestFileEntry>,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), ApiError>> + Send + 'a>> {
     Box::pin(async move {

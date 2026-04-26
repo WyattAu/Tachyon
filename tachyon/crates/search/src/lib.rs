@@ -1,3 +1,5 @@
+//! Tachyon Search — full-text search with Tantivy indexing and ranking.
+
 // Tachyon Search Library
 // Full-text search engine for Tachyon knowledge management system using Tantivy
 
@@ -48,7 +50,7 @@ pub async fn init_with_config(config: types::IndexConfig) -> SearchResult<IndexM
     let index_path = config
         .index_path
         .as_ref()
-        .map(|p| std::path::PathBuf::from(p))
+        .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::temp_dir().join("tachyon_search"));
     IndexManager::with_config(index_path, config).await
 }

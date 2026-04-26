@@ -464,7 +464,7 @@ impl Editor {
             self.buffer.insert(line, self.buffer.line_len(line), "\n");
         }
         self.buffer
-            .insert(line + 1, 0, &line_text.trim_end_matches('\n'));
+            .insert(line + 1, 0, line_text.trim_end_matches('\n'));
         self.buffer
             .insert(line + 1, self.buffer.line_len(line + 1), "\n");
         self.cursor.line += 1;
@@ -869,7 +869,7 @@ impl Editor {
         let line_text = self.buffer.line(line);
         let trimmed = line_text.trim_start_matches('\n').trim_start();
 
-        let extra_indent = if trimmed.starts_with(|c: char| c == '{' || c == '(' || c == '[') {
+        let extra_indent = if trimmed.starts_with(['{', '(', '[']) {
             self.tab_size
         } else {
             0

@@ -7,7 +7,6 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use std::sync::Arc;
 use crate::config::SecurityConfig as ServerSecurityConfig;
 
 #[derive(Debug, Clone)]
@@ -375,7 +374,7 @@ pub struct SecurityHeadersState {
 }
 
 impl SecurityHeadersState {
-    pub fn new(config: SecurityHeadersConfig) -> Self {
+    pub fn new(_config: SecurityHeadersConfig) -> Self {
         Self {
             #[cfg(feature = "staging")]
             config: Arc::new(config),

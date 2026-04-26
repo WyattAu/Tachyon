@@ -1,3 +1,5 @@
+//! Tachyon Core — shared types, utilities, and identifiers for the Tachyon platform.
+
 // Tachyon Core Library
 // Central shared library for knowledge management system
 

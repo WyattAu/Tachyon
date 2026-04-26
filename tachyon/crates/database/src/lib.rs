@@ -1,3 +1,5 @@
+//! Tachyon Database — PostgreSQL persistence layer with migrations and repositories.
+
 // Tachyon Database - PostgreSQL Database Layer
 // Provides metadata storage, session persistence, and RBAC mapping tables
 

@@ -39,3 +39,4 @@ tokio-test = "0.4"
 default = []
 full = ["cached"]
 cached = ["casbin/cached"]
+staging = []

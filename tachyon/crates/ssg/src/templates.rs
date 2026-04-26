@@ -188,9 +188,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         footer = escape_html(&ctx.site.footer),
         custom_css = ctx
             .site
-            .custom_css
-            .as_ref()
-            .map(|css| css.as_str())
+            .custom_css.as_deref()
             .unwrap_or_default(),
         theme_class = theme_class,
         language = ctx.language,
@@ -205,7 +203,7 @@ pub fn render_index_page(ctx: &IndexContext) -> String {
     let cards_html: String = ctx
         .documents
         .iter()
-        .map(|doc| render_doc_card(doc))
+        .map(render_doc_card)
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -279,7 +277,7 @@ pub fn render_category_page(ctx: &CategoryContext) -> String {
     let cards_html: String = ctx
         .documents
         .iter()
-        .map(|doc| render_doc_card(doc))
+        .map(render_doc_card)
         .collect::<Vec<_>>()
         .join("\n");
 

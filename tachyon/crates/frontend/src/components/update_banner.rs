@@ -110,7 +110,7 @@ pub fn UpdateBanner() -> impl IntoView {
     let (download_progress, set_download_progress) = signal(0u32);
 
     Effect::new(move |_| {
-        let set_info = set_update_info.clone();
+        let set_info = set_update_info;
         spawn_local(async move {
             if web_sys::window()
                 .and_then(|w| {
@@ -126,7 +126,7 @@ pub fn UpdateBanner() -> impl IntoView {
     });
 
     Effect::new(move |_| {
-        listen_download_progress(set_download_progress.clone());
+        listen_download_progress(set_download_progress);
     });
 
     let on_dismiss = Callback::new(move |_: leptos::ev::MouseEvent| {

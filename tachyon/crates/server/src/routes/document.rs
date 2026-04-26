@@ -7,7 +7,7 @@ use axum::{
     response::{Json, IntoResponse},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tachyon_core::{compute_content_hash, Document, DocumentContent, DocumentId, DocumentStatus, DocumentVisibility};
@@ -277,7 +277,7 @@ pub async fn create_document(
     // Create document
     let doc_id = tachyon_core::generate_document_id();
     let content = DocumentContent::markdown(req.content.clone());
-    let mut doc = Document::new(doc_id.clone(), req.title.clone(), author_id.clone(), content);
+    let mut doc = Document::new(doc_id, req.title.clone(), author_id, content);
 
     // Set visibility
     if let Some(ref vis) = req.visibility {
@@ -374,7 +374,7 @@ pub async fn create_document(
         if let Ok(mut conn) = state.pool.acquire().await {
             if let Err(e) = sqlx::query("UPDATE documents SET outgoing_links = $1 WHERE id = $2")
                 .bind(&links_json)
-                .bind(&doc.id.to_string())
+                .bind(doc.id.to_string())
                 .execute(&mut *conn)
                 .await
             {
@@ -394,15 +394,15 @@ pub async fn create_document(
     }
 
     state.index_in_tantivy(SearchDocument {
-        id: doc.id.clone(),
+        id: doc.id,
         title: doc.metadata.title.clone(),
         content: doc.content.as_text().unwrap_or("").to_string(),
-        author_id: author_id.clone(),
-        repository_id: doc.repository_id.clone(),
+        author_id,
+        repository_id: doc.repository_id,
         tags: doc.metadata.tags.clone(),
         created_at: doc.metadata.created_at,
         updated_at: doc.metadata.updated_at,
-        custom_fields: HashMap::new(),
+        custom_fields: BTreeMap::new(),
     }).await;
 
     if let Err(e) = ActivityRepository::create(&state.pool, CreateActivityEvent {
@@ -432,10 +432,17 @@ pub async fn create_document(
 
     info!("Document created successfully: {}", response.id);
 
-    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), state.http_client.clone(), "document_created", &serde_json::json!({
-        "document_id": response.id.clone(),
-        "title": response.title.clone(),
-    }));
+    {
+        let pool = state.pool.clone();
+        let client = state.http_client.clone();
+        let payload = serde_json::json!({
+            "document_id": response.id.clone(),
+            "title": response.title.clone(),
+        });
+        tokio::spawn(async move {
+            crate::webhook_delivery::deliver_event(pool, client, "document_created", &payload).await;
+        });
+    }
 
     Ok(Json(response))
 }
@@ -615,7 +622,7 @@ pub async fn update_document(
     }
 
     state.index_in_tantivy(SearchDocument {
-        id: doc_id.clone(),
+        id: doc_id,
         title: metadata.title.clone(),
         content: metadata.content.clone().unwrap_or_default(),
         author_id: UserId::parse_str(&metadata.author_id).unwrap_or_default(),
@@ -623,7 +630,7 @@ pub async fn update_document(
         tags: metadata.parse_tags().unwrap_or_default(),
         created_at: metadata.created_at,
         updated_at: metadata.updated_at,
-        custom_fields: HashMap::new(),
+        custom_fields: BTreeMap::new(),
     }).await;
 
     if let Err(e) = ActivityRepository::create(&state.pool, CreateActivityEvent {
@@ -658,10 +665,17 @@ pub async fn update_document(
 
     info!("Document updated successfully: {}", document_id);
 
-    let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), state.http_client.clone(), "document_updated", &serde_json::json!({
-        "document_id": document_id.clone(),
-        "title": response.title.clone(),
-    }));
+    {
+        let pool = state.pool.clone();
+        let client = state.http_client.clone();
+        let payload = serde_json::json!({
+            "document_id": document_id.clone(),
+            "title": response.title.clone(),
+        });
+        tokio::spawn(async move {
+            crate::webhook_delivery::deliver_event(pool, client, "document_updated", &payload).await;
+        });
+    }
 
     Ok(Json(response))
 }
@@ -691,9 +705,16 @@ pub async fn delete_document(
             state.delete_from_tantivy(&document_id).await;
             info!("Document deleted: {}", document_id);
 
-            let _ = crate::webhook_delivery::deliver_event(state.pool.clone(), state.http_client.clone(), "document_deleted", &serde_json::json!({
-                "document_id": document_id.clone(),
-            }));
+            {
+                let pool = state.pool.clone();
+                let client = state.http_client.clone();
+                let payload = serde_json::json!({
+                    "document_id": document_id.clone(),
+                });
+                tokio::spawn(async move {
+                    crate::webhook_delivery::deliver_event(pool, client, "document_deleted", &payload).await;
+                });
+            }
 
             Ok(StatusCode::NO_CONTENT)
         }
@@ -882,7 +903,7 @@ pub async fn search_documents(
 pub async fn get_document_metadata(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
-) -> Result<Json<HashMap<String, String>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<BTreeMap<String, String>>, (StatusCode, Json<ErrorResponse>)> {
     debug!("Getting document metadata: {}", document_id);
 
     // Parse document ID
@@ -900,7 +921,7 @@ pub async fn get_document_metadata(
     // Get metadata from repository
     match state.repository.get_by_id(&doc_id).await {
         Ok(metadata) => {
-            let mut result = HashMap::new();
+            let mut result = BTreeMap::new();
             result.insert("id".to_string(), metadata.id.clone());
             result.insert("title".to_string(), metadata.title.clone());
             result.insert("status".to_string(), metadata.status.clone());
@@ -1279,7 +1300,7 @@ pub async fn upload_attachment(
     let user_id = tachyon_core::generate_user_id();
     let repo = AttachmentRepository::new(state.pool.clone());
 
-    while let Some(field) = multipart.next_field().await.ok().flatten() {
+    if let Some(field) = multipart.next_field().await.ok().flatten() {
         let filename = field.file_name().unwrap_or("unknown").to_string();
         let mime_type = field.content_type().unwrap_or("application/octet-stream").to_string();
         

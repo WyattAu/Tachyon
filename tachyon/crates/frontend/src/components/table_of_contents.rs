@@ -35,8 +35,6 @@ pub fn extract_headings(markdown: &str) -> Vec<Heading> {
             .map(|c| {
                 if c.is_alphanumeric() {
                     c.to_lowercase().next().unwrap()
-                } else if c.is_whitespace() {
-                    '-'
                 } else {
                     '-'
                 }

@@ -43,8 +43,8 @@ where
     let (show_onboarding, set_show_onboarding) = signal(should_show_onboarding());
 
     Effect::new(move |_| {
-        let set_so = set_search_open.clone();
-        let set_po = set_palette_open.clone();
+        let set_so = set_search_open;
+        let set_po = set_palette_open;
         let cb = wasm_bindgen::closure::Closure::<dyn Fn(wasm_bindgen::JsValue)>::new(
             move |event: wasm_bindgen::JsValue| {
                 let ev = event.unchecked_into::<web_sys::KeyboardEvent>();
@@ -89,7 +89,7 @@ where
     Effect::new(move |_| {
         if let Some(id) = crate::components::auth_guard::get_user_id().filter(|s| !s.is_empty()) {
             set_user_id.set(Some(id));
-            let set_name = set_user_display_name.clone();
+            let set_name = set_user_display_name;
             let api = ApiClient::default();
             spawn_local(async move {
                 if let Ok(user) = api.get_current_user().await {
@@ -120,20 +120,20 @@ where
         }
         let client = crate::api::ApiClient::default();
         client.clear_auth_token();
-        let _ = navigate("/login", Default::default());
+        navigate("/login", Default::default());
     });
 
     let (show_notifications, set_show_notifications) = signal(false);
     let (notifications, set_notifications) = signal(Vec::<Notification>::new());
     let (unread_count, set_unread_count) = signal(0u32);
 
-    let set_notifications_ref = set_notifications.clone();
-    let set_unread_count_ref = set_unread_count.clone();
+    let set_notifications_ref = set_notifications;
+    let set_unread_count_ref = set_unread_count;
 
     let fetch_notifications = move || {
         let api = ApiClient::default();
-        let set_n = set_notifications_ref.clone();
-        let set_uc = set_unread_count_ref.clone();
+        let set_n = set_notifications_ref;
+        let set_uc = set_unread_count_ref;
         spawn_local(async move {
             if let Ok(count) = api.get_unread_notification_count().await {
                 set_uc.set(count);
@@ -154,12 +154,12 @@ where
     });
 
     let fetch_for_all = {
-        let set_n = set_notifications.clone();
-        let set_uc = set_unread_count.clone();
+        let set_n = set_notifications;
+        let set_uc = set_unread_count;
         move || {
             let api = ApiClient::default();
-            let set_n = set_n.clone();
-            let set_uc = set_uc.clone();
+            let set_n = set_n;
+            let set_uc = set_uc;
             spawn_local(async move {
                 if let Ok(count) = api.get_unread_notification_count().await {
                     set_uc.set(count);
@@ -189,9 +189,9 @@ where
     };
 
     Effect::new(move |_| {
-        let set_um = set_show_user_menu.clone();
-        let set_notif = set_show_notifications.clone();
-        let set_mm = set_mobile_menu_open.clone();
+        let set_um = set_show_user_menu;
+        let set_notif = set_show_notifications;
+        let set_mm = set_mobile_menu_open;
         let closure = wasm_bindgen::closure::Closure::<dyn Fn(wasm_bindgen::JsValue)>::new(move |_event: wasm_bindgen::JsValue| {
             set_um.set(false);
             set_notif.set(false);
@@ -418,7 +418,7 @@ where
                                                             let truncated = if body.len() > 60 { format!("{}...", &body.chars().take(60).collect::<String>()) } else { body };
                                                             let time = format_notification_time(&n.created_at);
                                                             let is_read = n.read;
-                                                            let fetch_ref = fetch_for_all.clone();
+                                                            let fetch_ref = fetch_for_all;
                                                             view! {
                                                                 <div
                                                                     class={
@@ -449,7 +449,7 @@ where
                                                                                         ev.stop_propagation();
                                                                                         let api = ApiClient::default();
                                                                                         let nid = nid_clone.clone();
-                                                                                        let fetch = fetch_ref.clone();
+                                                                                        let fetch = fetch_ref;
                                                                                         spawn_local(async move {
                                                                                             let _ = api.mark_notification_read(&nid).await;
                                                                                             fetch();

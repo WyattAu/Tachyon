@@ -193,15 +193,12 @@ impl BrowserStore {
         if idb_ready_val {
             if let Some(json) = docs {
                 wasm_bindgen_futures::spawn_local(async move {
-                    match indexeddb::IndexedDBStore::open().await {
-                        Ok(idb) => {
-                            if let Ok(map) = serde_json::from_str::<HashMap<String, StoredDocument>>(&json) {
-                                for (_, doc) in map {
-                                    let _ = idb.put(doc).await;
-                                }
+                    if let Ok(idb) = indexeddb::IndexedDBStore::open().await {
+                        if let Ok(map) = serde_json::from_str::<HashMap<String, StoredDocument>>(&json) {
+                            for (_, doc) in map {
+                                let _ = idb.put(doc).await;
                             }
                         }
-                        Err(_) => {} // Silently fall back to localStorage
                     }
                 });
             }
@@ -319,10 +316,7 @@ impl BrowserStore {
         let idb_ready_val = self.idb_ready.lock().map(|r| *r).unwrap_or(false);
         if idb_ready_val {
             wasm_bindgen_futures::spawn_local(async move {
-                match indexeddb::IndexedDBStore::open().await {
-                    Ok(idb) => { let _ = idb.clear().await; }
-                    Err(_) => {}
-                }
+                if let Ok(idb) = indexeddb::IndexedDBStore::open().await { let _ = idb.clear().await; }
             });
         }
     }

@@ -94,7 +94,7 @@ fn init_tracing(config: &ServerConfig) {
 /// Initialize Tantivy search index (best-effort).
 async fn init_tantivy_index() -> Option<std::sync::Arc<tokio::sync::Mutex<IndexManager>>> {
     let index_path = std::path::PathBuf::from(".tachyon/search_index");
-    if let Err(e) = std::fs::create_dir_all(&index_path) {
+    if let Err(e) = tokio::fs::create_dir_all(&index_path).await {
         warn!("Failed to create search index directory: {}", e);
         return None;
     }
@@ -235,7 +235,7 @@ async fn main() -> Result<()> {
         config.database_path.as_deref().unwrap_or("not configured")
     } else {
         // Don't log the full URL with password
-        config.database_url.split('@').last().unwrap_or("configured")
+        config.database_url.split('@').next_back().unwrap_or("configured")
     });
 
     run_with_graceful_shutdown(config).await

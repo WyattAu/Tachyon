@@ -235,8 +235,7 @@ impl AuthState {
                 .to_str()
                 .map_err(|_| AuthError::InvalidTokenFormat)?;
 
-            if auth_str.starts_with("Bearer ") {
-                let token = &auth_str[7..];
+            if let Some(token) = auth_str.strip_prefix("Bearer ") {
                 let claims = self.validate_jwt(token)?;
 
                 let user_id = claims.sub.clone();
@@ -323,7 +322,20 @@ pub async fn auth_middleware(
         return Ok(next.run(request).await);
     }
 
-    if path == "/health" || path == "/metrics" || path == "/" || path.starts_with("/api/v1/auth/") || path.starts_with("/api/docs") {
+    let is_public = path == "/api/v1/auth/login"
+        || path == "/api/v1/auth/register"
+        || path == "/api/v1/auth/guest"
+        || path == "/api/v1/auth/refresh"
+        || path.starts_with("/api/v1/auth/password-reset/request")
+        || path.starts_with("/api/v1/auth/email-verification/request")
+        || path == "/api/health"
+        || path == "/api/docs"
+        || path.starts_with("/api/static/")
+        || path == "/health"
+        || path == "/metrics"
+        || path == "/";
+
+    if is_public {
         return Ok(next.run(request).await);
     }
 
@@ -343,14 +355,8 @@ pub async fn auth_middleware(
         Err(e) => {
             warn!(error = %e, "Authentication failed");
             let status = match e {
-                AuthError::MissingAuthHeader | AuthError::InvalidTokenFormat => {
-                    StatusCode::UNAUTHORIZED
-                }
-                AuthError::TokenExpired => StatusCode::UNAUTHORIZED,
-                AuthError::InvalidSignature | AuthError::InvalidApiKey => StatusCode::FORBIDDEN,
-                AuthError::UserNotFound => StatusCode::NOT_FOUND,
-                AuthError::InsufficientPermissions => StatusCode::FORBIDDEN,
                 AuthError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+                _ => StatusCode::UNAUTHORIZED,
             };
 
             let body = serde_json::json!({

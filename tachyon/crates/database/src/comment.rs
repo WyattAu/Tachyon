@@ -131,20 +131,20 @@ impl CommentRepository {
             .bind(&req.author_name)
             .bind(&req.content)
             .bind(&req.anchor_section)
-            .bind(&req.anchor_line_start)
-            .bind(&req.anchor_line_end)
+            .bind(req.anchor_line_start)
+            .bind(req.anchor_line_end)
             .bind(&req.anchor_selection)
             .bind(&req.parent_id)
             .bind(&mentions)
             .fetch_one(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         sqlx::query("UPDATE documents SET comment_count = comment_count + 1 WHERE id = $1::uuid")
             .bind(&req.document_id)
             .execute(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(comment)
     }
@@ -258,14 +258,14 @@ impl CommentRepository {
             .bind(&resolved_by)
             .fetch_one(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         if status == "resolved" && existing.status != "resolved" {
             sqlx::query("UPDATE documents SET comment_count = GREATEST(comment_count - 1, 0) WHERE id = $1::uuid")
                 .bind(&existing.document_id)
                 .execute(&mut *conn)
                 .await
-                .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+                .map_err(|e| DatabaseError::query_error(e.to_string()))?;
         }
 
         Ok(comment)
@@ -291,7 +291,7 @@ impl CommentRepository {
                 .bind(&existing.document_id)
                 .execute(&mut *conn)
                 .await
-                .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+                .map_err(|e| DatabaseError::query_error(e.to_string()))?;
         }
 
         Ok(())

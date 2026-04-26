@@ -141,8 +141,7 @@ impl ValidatedPageSize {
         Self {
             value: page_size
                 .unwrap_or(DEFAULT_PAGE_SIZE)
-                .min(MAX_PAGE_SIZE)
-                .max(1),
+                .clamp(1, MAX_PAGE_SIZE),
         }
     }
 
@@ -341,6 +340,7 @@ pub struct ValidatedSearchFilters {
 }
 
 impl ValidatedSearchFilters {
+    #[allow(clippy::too_many_arguments)]
     pub fn validate(
         query: Option<&str>,
         page: Option<usize>,

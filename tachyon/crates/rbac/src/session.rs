@@ -177,6 +177,7 @@ impl SessionManager {
     ///
     /// # Returns
     /// Result indicating success or error
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_session(
         &self,
         user_id: &UserId,
@@ -233,9 +234,9 @@ impl SessionManager {
         .bind(&record.ip_address)
         .bind(&record.user_agent)
         .bind(&record.device_info)
-        .bind(&record.created_at)
-        .bind(&record.expires_at)
-        .bind(&record.last_activity)
+        .bind(record.created_at)
+        .bind(record.expires_at)
+        .bind(record.last_activity)
         .bind(&record.token_value)
         .bind(&record.token_type)
         .execute(&*self.db_pool)
@@ -243,7 +244,7 @@ impl SessionManager {
         .map_err(|e| RbacError::database_error(format!("Failed to create session: {}", e)))?;
 
         // Cache the session
-        self.cache.insert(session_id.clone(), record);
+        self.cache.insert(*session_id, record);
 
         Ok(())
     }
@@ -275,7 +276,7 @@ impl SessionManager {
             })?;
 
         // Cache the result
-        self.cache.insert(session_id.clone(), result.clone());
+        self.cache.insert(*session_id, result.clone());
 
         Ok(result)
     }

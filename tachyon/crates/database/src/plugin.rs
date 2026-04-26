@@ -113,6 +113,7 @@ pub struct CreatePluginRequest {
 
 /// Update an existing plugin record
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct UpdatePluginRequest {
     pub description: Option<String>,
     pub version: Option<String>,
@@ -154,8 +155,7 @@ impl PluginRepository {
         let runtime_type = req.runtime_type.unwrap_or_else(|| "wasm".to_string());
         let enabled = req.enabled.unwrap_or(false);
 
-        let sql = format!(
-            r#"
+        let sql = r#"
             INSERT INTO plugins (id, name, description, version, author, homepage, license,
                                  extension_points, manifest, runtime_type, entry_point,
                                  enabled, installed_at, updated_at, installed_by)
@@ -167,8 +167,7 @@ impl PluginRepository {
                 extension_points::text as extension_points, manifest::text as manifest,
                 runtime_type, entry_point, enabled, installed_at, updated_at,
                 installed_by::text as installed_by
-            "#
-        );
+            "#.to_string();
 
         let mut conn = self.pool.acquire().await?;
         let plugin = sqlx::query_as::<_, Plugin>(&sql)
@@ -192,7 +191,7 @@ impl PluginRepository {
             .map_err(|e| {
                 let msg = e.to_string();
                 if msg.contains("duplicate key") || msg.contains("UNIQUE constraint") {
-                    DatabaseError::duplicate("plugin", &format!("Plugin '{}' version '{}' already installed", req.name, req.version))
+                    DatabaseError::duplicate("plugin", format!("Plugin '{}' version '{}' already installed", req.name, req.version))
                 } else {
                     DatabaseError::query_error(&msg)
                 }
@@ -334,7 +333,7 @@ impl PluginRepository {
             .bind(now)
             .fetch_one(&mut *conn)
             .await
-            .map_err(|e| DatabaseError::query_error(&e.to_string()))?;
+            .map_err(|e| DatabaseError::query_error(e.to_string()))?;
 
         Ok(plugin)
     }
@@ -397,18 +396,3 @@ impl PluginRepository {
     }
 }
 
-impl Default for UpdatePluginRequest {
-    fn default() -> Self {
-        Self {
-            description: None,
-            version: None,
-            author: None,
-            homepage: None,
-            license: None,
-            extension_points: None,
-            manifest: None,
-            entry_point: None,
-            enabled: None,
-        }
-    }
-}

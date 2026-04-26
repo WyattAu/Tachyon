@@ -108,7 +108,7 @@ impl AttachmentRepository {
             .bind(&req.mime_type)
             .bind(size)
             .bind(&storage_path)
-            .bind(&now)
+            .bind(now)
             .bind(&req.created_by)
             .fetch_one(&mut *conn)
             .await

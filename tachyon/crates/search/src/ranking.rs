@@ -369,7 +369,7 @@ impl ResultAggregator {
     ///
     /// # Arguments
     /// * `weights` - Field weights
-    pub fn new(weights: FieldWeights) -> Self {
+    pub fn new(_weights: FieldWeights) -> Self {
         Self {
             #[cfg(feature = "staging")]
             weights,
@@ -380,6 +380,7 @@ impl ResultAggregator {
     ///
     /// # Returns
     /// New ResultAggregator instance
+    #[allow(clippy::should_implement_trait)]
     pub fn default() -> Self {
         Self::new(FieldWeights::default())
     }
@@ -399,7 +400,7 @@ impl ResultAggregator {
 
         for results in results_sets {
             for result in results {
-                if seen_ids.insert(result.document_id.clone()) {
+                if seen_ids.insert(result.document_id) {
                     combined.push(result.clone());
                 }
             }
@@ -440,7 +441,7 @@ impl ResultAggregator {
         for results in results_sets {
             for result in results {
                 fused_map
-                    .entry(result.document_id.clone())
+                    .entry(result.document_id)
                     .or_insert_with(|| (Vec::new(), result.clone()))
                     .0
                     .push(result.score);

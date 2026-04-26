@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_locals)]
 use crate::components::collaborative_cursors::{AwarenessState, CollaborativeCursors};
 use leptos::prelude::*;
 use tachyon_editor::{Cursor, Editor, HighlightToken};
@@ -124,7 +125,7 @@ pub fn NativeEditor(
                     (true, false, "Tab") => { e.unindent_selection(); }
                     (false, false, "ArrowLeft") => {
                         if shift {
-                            let cur = e.cursor().clone();
+                            let cur = *e.cursor();
                             let mut target = cur;
                             target.move_left(e.buffer());
                             e.extend_selection_to(target);
@@ -134,7 +135,7 @@ pub fn NativeEditor(
                     }
                     (false, false, "ArrowRight") => {
                         if shift {
-                            let cur = e.cursor().clone();
+                            let cur = *e.cursor();
                             let mut target = cur;
                             target.move_right(e.buffer());
                             e.extend_selection_to(target);
@@ -144,7 +145,7 @@ pub fn NativeEditor(
                     }
                     (false, false, "ArrowUp") => {
                         if shift {
-                            let cur = e.cursor().clone();
+                            let cur = *e.cursor();
                             let mut target = cur;
                             target.move_up(e.buffer());
                             e.extend_selection_to(target);
@@ -154,7 +155,7 @@ pub fn NativeEditor(
                     }
                     (false, false, "ArrowDown") => {
                         if shift {
-                            let cur = e.cursor().clone();
+                            let cur = *e.cursor();
                             let mut target = cur;
                             target.move_down(e.buffer());
                             e.extend_selection_to(target);
@@ -237,7 +238,7 @@ pub fn NativeEditor(
             on:scroll={handle_scroll}
             on:mousedown={handle_mousedown}
             style:font-size={font_size.clone()}
-            style:outline={move || if is_focused.get() { "none" } else { "none" }}
+            style:outline={move || "none"}
             style:cursor="text"
             prop:contenteditable="false"
         >
@@ -288,7 +289,7 @@ pub fn NativeEditor(
                         let cursor_line = editor.with(|e| e.cursor().line);
                         let is_active = cursor_line == line_idx;
                         let line_num = line_idx + 1;
-                        let h = handle_click.clone();
+                        let h = handle_click;
                         let wc = wrap_class.clone();
                         let ln = line_numbers;
 

@@ -97,8 +97,8 @@ impl TemplateRepository {
             .bind(&req.content)
             .bind(&req.category)
             .bind(&tags)
-            .bind(&now)
-            .bind(&now)
+            .bind(now)
+            .bind(now)
             .bind(&req.created_by)
             .fetch_one(&mut *conn)
             .await
@@ -203,7 +203,7 @@ impl TemplateRepository {
             .bind(&content)
             .bind(&category)
             .bind(&tags)
-            .bind(&now)
+            .bind(now)
             .bind(id)
             .fetch_one(&mut *conn)
             .await

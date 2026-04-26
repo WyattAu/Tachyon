@@ -46,9 +46,8 @@ impl Default for ApiClient {
     }
 }
 
+#[allow(dead_code)]
 impl ApiClient {
-    /// Create a new API client
-    #[cfg(feature = "staging")]
     pub fn new(base_url: &str) -> Self {
         Self {
             base_url: base_url.to_string(),
@@ -73,11 +72,11 @@ impl ApiClient {
 
     /// Get WebSocket URL from base URL
     pub fn websocket_url(&self) -> String {
-        let ws_url = self.base_url
+        
+        self.base_url
             .replace("http://", "ws://")
             .replace("https://", "wss://")
-            .replace("/api/v1", "/ws");
-        ws_url
+            .replace("/api/v1", "/ws")
     }
 
     /// Create a new WebSocket client
@@ -1057,6 +1056,7 @@ pub type ApiResult<T> = Result<T, ApiError>;
 // Review API
 // ========================================================================
 
+#[allow(dead_code)]
 impl ApiClient {
     /// Create a review request for a document
     pub async fn create_review(&self, document_id: &str, reviewer_id: &str, summary: Option<&str>) -> Result<DocumentReview, ApiError> {

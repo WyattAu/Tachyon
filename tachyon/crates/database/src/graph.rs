@@ -120,9 +120,9 @@ impl GraphRepository {
             .bind(&node.visibility)
             .bind(node.weight)
             .bind(&node.properties)
-            .bind(&node.project_id.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
-            .bind(&node.document_id.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
-            .bind(&node.created_by.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
+            .bind(node.project_id.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
+            .bind(node.document_id.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
+            .bind(node.created_by.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
             .bind(node.is_active)
             .bind(node.created_at)
             .bind(node.updated_at)
@@ -168,6 +168,7 @@ impl GraphRepository {
     }
 
     #[instrument(skip(self))]
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_node(
         &self,
         id: &str,
@@ -355,8 +356,8 @@ impl GraphRepository {
             .bind(edge.weight)
             .bind(edge.confidence)
             .bind(&edge.properties)
-            .bind(&edge.project_id.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
-            .bind(&edge.created_by.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
+            .bind(edge.project_id.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
+            .bind(edge.created_by.as_deref().map(uuid::Uuid::parse_str).transpose().ok().flatten())
             .bind(edge.is_active)
             .bind(edge.created_at)
             .bind(edge.updated_at)
@@ -367,7 +368,7 @@ impl GraphRepository {
                 if msg.contains("unique") || msg.contains("duplicate") || msg.contains("idx_kg_edges_unique") {
                     DatabaseError::duplicate("edge", format!("Edge already exists: {} -> {} ({})", edge.source_id, edge.target_id, edge.edge_type))
                 } else if msg.contains("foreign key") || msg.contains("references") {
-                    DatabaseError::constraint_violation(format!("Source or target node does not exist"))
+                    DatabaseError::constraint_violation("Source or target node does not exist".to_string())
                 } else {
                     DatabaseError::QueryError(msg)
                 }
@@ -391,6 +392,7 @@ impl GraphRepository {
     }
 
     #[instrument(skip(self))]
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_edge(
         &self,
         id: &str,
@@ -632,10 +634,10 @@ impl GraphRepository {
 
         let mut conn = self.pool.acquire().await?;
 
-        let records = if edge_type.is_some() {
+        let records = if let Some(et) = &edge_type {
             query_as::<_, GraphEdge>(sql)
                 .bind(uuid)
-                .bind(edge_type.unwrap())
+                .bind(et)
                 .bind(depth as i32)
                 .fetch_all(&mut *conn)
                 .await

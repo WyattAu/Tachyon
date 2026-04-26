@@ -1,3 +1,5 @@
+//! Tachyon Editor — native Rust text editor with syntax highlighting and collaboration.
+
 pub mod buffer;
 pub mod cursor;
 pub mod transaction;
