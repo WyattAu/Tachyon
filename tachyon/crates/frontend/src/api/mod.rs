@@ -282,5 +282,79 @@ pub enum ApiError {
     NotFound(String),
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_api_error_display() {
+        let err = ApiError::Network("timeout".to_string());
+        assert_eq!(format!("{}", err), "Network error: timeout");
+    }
+
+    #[test]
+    fn test_api_error_serialization_display() {
+        let err = ApiError::Serialization("bad json".to_string());
+        assert_eq!(format!("{}", err), "Serialization error: bad json");
+    }
+
+    #[test]
+    fn test_api_error_api_display() {
+        let err = ApiError::Api("HTTP 500: server error".to_string());
+        assert_eq!(format!("{}", err), "API error: HTTP 500: server error");
+    }
+
+    #[test]
+    fn test_api_error_not_found_display() {
+        let err = ApiError::NotFound("document 123".to_string());
+        assert_eq!(format!("{}", err), "Not found: document 123");
+    }
+
+    #[test]
+    fn test_api_error_clone() {
+        let err = ApiError::Network("conn reset".to_string());
+        let cloned = err.clone();
+        assert_eq!(format!("{}", err), format!("{}", cloned));
+    }
+
+    #[test]
+    fn test_api_error_debug() {
+        let err = ApiError::Api("test".to_string());
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("Api"));
+        assert!(debug.contains("test"));
+    }
+
+    #[test]
+    fn test_api_client_new() {
+        let client = ApiClient::new("http://example.com/api");
+        assert!(client.get_auth_token().is_none());
+    }
+
+    #[test]
+    fn test_api_client_token_management() {
+        let client = ApiClient::new("http://example.com/api");
+        assert!(client.get_auth_token().is_none());
+
+        client.set_auth_token("test-token".to_string());
+        assert_eq!(client.get_auth_token(), Some("test-token".to_string()));
+
+        client.clear_auth_token();
+        assert!(client.get_auth_token().is_none());
+    }
+
+    #[test]
+    fn test_websocket_url_http() {
+        let client = ApiClient::new("http://localhost:8080/api/v1");
+        assert_eq!(client.websocket_url(), "ws://localhost:8080/ws");
+    }
+
+    #[test]
+    fn test_websocket_url_https() {
+        let client = ApiClient::new("https://example.com/api/v1");
+        assert_eq!(client.websocket_url(), "wss://example.com/ws");
+    }
+}
+
 #[cfg(feature = "staging")]
 pub type ApiResult<T> = Result<T, ApiError>;

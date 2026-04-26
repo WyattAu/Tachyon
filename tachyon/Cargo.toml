@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/server", "crates/desktop", "crates/desktop/src-tauri", "crates/renderer", "crates/rbac", "crates/search", "crates/database", "crates/storage", "crates/testing", "crates/cli", "crates/frontend", "crates/import-export", "crates/ssg", "crates/plugin-runtime", "crates/editor"]
+members = ["crates/core", "crates/server", "crates/desktop", "crates/desktop/src-tauri", "crates/renderer", "crates/rbac", "crates/search", "crates/database", "crates/storage", "crates/testing", "crates/cli", "crates/frontend", "crates/import-export", "crates/ssg", "crates/plugin-runtime", "crates/editor", "crates/benchmarks"]
 resolver = "2"
 package.version = "0.1.0"
 package.edition = "2021"

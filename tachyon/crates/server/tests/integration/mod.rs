@@ -33,3 +33,4 @@ mod health;
 mod documents;
 mod search;
 mod auth;
+mod crdt_test;

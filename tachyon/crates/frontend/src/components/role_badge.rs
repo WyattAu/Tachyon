@@ -211,4 +211,149 @@ mod tests {
         assert!(admin_role.has_permission(&Permission::Delete));
         assert!(admin_role.has_permission(&Permission::Admin));
     }
+
+    #[test]
+    fn test_permission_as_str() {
+        assert_eq!(Permission::Read.as_str(), "read");
+        assert_eq!(Permission::Write.as_str(), "write");
+        assert_eq!(Permission::Delete.as_str(), "delete");
+        assert_eq!(Permission::Admin.as_str(), "admin");
+        assert_eq!(Permission::Owner.as_str(), "owner");
+    }
+
+    #[test]
+    fn test_permission_includes() {
+        assert!(Permission::Owner.includes(&Permission::Read));
+        assert!(Permission::Owner.includes(&Permission::Admin));
+        assert!(Permission::Owner.includes(&Permission::Owner));
+        assert!(Permission::Admin.includes(&Permission::Read));
+        assert!(Permission::Admin.includes(&Permission::Delete));
+        assert!(!Permission::Read.includes(&Permission::Write));
+        assert!(!Permission::Read.includes(&Permission::Delete));
+        assert!(Permission::Read.includes(&Permission::Read));
+    }
+
+    #[test]
+    fn test_owner_role_has_all_permissions() {
+        let owner_role = UserRole {
+            id: 1,
+            name: "owner".to_string(),
+            description: None,
+            permissions: vec!["owner".to_string()],
+            is_system: true,
+        };
+        assert!(owner_role.has_permission(&Permission::Read));
+        assert!(owner_role.has_permission(&Permission::Write));
+        assert!(owner_role.has_permission(&Permission::Delete));
+        assert!(owner_role.has_permission(&Permission::Admin));
+        assert!(owner_role.has_permission(&Permission::Owner));
+    }
+
+    #[test]
+    fn test_reader_role_limited_permissions() {
+        let reader_role = UserRole {
+            id: 2,
+            name: "reader".to_string(),
+            description: None,
+            permissions: vec!["read".to_string()],
+            is_system: false,
+        };
+        assert!(reader_role.has_permission(&Permission::Read));
+        assert!(!reader_role.has_permission(&Permission::Write));
+        assert!(!reader_role.has_permission(&Permission::Admin));
+    }
+
+    #[test]
+    fn test_writer_role_permissions() {
+        let writer_role = UserRole {
+            id: 3,
+            name: "writer".to_string(),
+            description: None,
+            permissions: vec!["read".to_string(), "write".to_string()],
+            is_system: false,
+        };
+        assert!(writer_role.has_permission(&Permission::Read));
+        assert!(writer_role.has_permission(&Permission::Write));
+        assert!(!writer_role.has_permission(&Permission::Delete));
+    }
+
+    #[test]
+    fn test_role_with_unknown_permission() {
+        let role = UserRole {
+            id: 4,
+            name: "custom".to_string(),
+            description: None,
+            permissions: vec!["read".to_string(), "custom_perm".to_string()],
+            is_system: false,
+        };
+        assert!(role.has_permission(&Permission::Read));
+        assert!(!role.has_permission(&Permission::Admin));
+    }
+
+    #[test]
+    fn test_role_with_empty_permissions() {
+        let role = UserRole {
+            id: 5,
+            name: "no_perms".to_string(),
+            description: None,
+            permissions: vec![],
+            is_system: false,
+        };
+        assert!(!role.has_permission(&Permission::Read));
+        assert!(!role.has_permission(&Permission::Admin));
+    }
+
+    #[test]
+    fn test_badge_color_known_roles() {
+        let owner = UserRole {
+            id: 1, name: "owner".to_string(), description: None,
+            permissions: vec![], is_system: true,
+        };
+        assert!(owner.badge_color().contains("purple"));
+
+        let admin = UserRole {
+            id: 2, name: "admin".to_string(), description: None,
+            permissions: vec![], is_system: true,
+        };
+        assert!(admin.badge_color().contains("red"));
+
+        let editor = UserRole {
+            id: 3, name: "editor".to_string(), description: None,
+            permissions: vec![], is_system: false,
+        };
+        assert!(editor.badge_color().contains("orange"));
+    }
+
+    #[test]
+    fn test_badge_color_unknown_role() {
+        let role = UserRole {
+            id: 99, name: "custom_role".to_string(), description: None,
+            permissions: vec![], is_system: false,
+        };
+        assert!(role.badge_color().contains("green"));
+    }
+
+    #[test]
+    fn test_permission_serialization() {
+        let perm = Permission::Admin;
+        let json = serde_json::to_string(&perm).unwrap();
+        let parsed: Permission = serde_json::from_str(&json).unwrap();
+        assert_eq!(perm, parsed);
+    }
+
+    #[test]
+    fn test_user_role_serialization() {
+        let role = UserRole {
+            id: 1,
+            name: "admin".to_string(),
+            description: Some("Administrator".to_string()),
+            permissions: vec!["read".to_string(), "write".to_string()],
+            is_system: true,
+        };
+        let json = serde_json::to_string(&role).unwrap();
+        let parsed: UserRole = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.name, "admin");
+        assert_eq!(parsed.description, Some("Administrator".to_string()));
+        assert!(parsed.is_system);
+    }
 }

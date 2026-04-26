@@ -300,7 +300,7 @@ pub fn VersionDiffView(
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum DiffLineType {
     Unchanged,
     Added,
@@ -531,5 +531,136 @@ fn format_timestamp(timestamp: &str) -> String {
         dt.format("%Y-%m-%d %H:%M").to_string()
     } else {
         timestamp.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_compute_diff_identical() {
+        let diff = compute_diff("line1\nline2\nline3", "line1\nline2\nline3");
+        assert_eq!(diff.old_lines.len(), 3);
+        assert_eq!(diff.new_lines.len(), 3);
+        for line in &diff.old_lines {
+            assert_eq!(line.line_type, DiffLineType::Unchanged);
+        }
+        for line in &diff.new_lines {
+            assert_eq!(line.line_type, DiffLineType::Unchanged);
+        }
+    }
+
+    #[test]
+    fn test_compute_diff_empty_old() {
+        let diff = compute_diff("", "new line");
+        assert_eq!(diff.old_lines.len(), 1);
+        assert_eq!(diff.new_lines.len(), 1);
+        assert_eq!(diff.new_lines[0].line_type, DiffLineType::Added);
+        assert_eq!(diff.new_lines[0].content, "new line");
+    }
+
+    #[test]
+    fn test_compute_diff_empty_new() {
+        let diff = compute_diff("old line", "");
+        assert_eq!(diff.old_lines.len(), 1);
+        assert_eq!(diff.old_lines[0].line_type, DiffLineType::Removed);
+        assert_eq!(diff.old_lines[0].content, "old line");
+    }
+
+    #[test]
+    fn test_compute_diff_both_empty() {
+        let diff = compute_diff("", "");
+        assert!(diff.old_lines.is_empty());
+        assert!(diff.new_lines.is_empty());
+    }
+
+    #[test]
+    fn test_compute_diff_added_lines() {
+        let diff = compute_diff("line1", "line1\nline2\nline3");
+        assert_eq!(diff.new_lines.len(), 3);
+        assert_eq!(diff.new_lines[1].line_type, DiffLineType::Added);
+        assert_eq!(diff.new_lines[1].content, "line2");
+        assert_eq!(diff.new_lines[2].line_type, DiffLineType::Added);
+        assert_eq!(diff.new_lines[2].content, "line3");
+    }
+
+    #[test]
+    fn test_compute_diff_removed_lines() {
+        let diff = compute_diff("line1\nline2\nline3", "line1");
+        assert_eq!(diff.old_lines.len(), 3);
+        assert_eq!(diff.old_lines[1].line_type, DiffLineType::Removed);
+        assert_eq!(diff.old_lines[1].content, "line2");
+    }
+
+    #[test]
+    fn test_lcs_empty_inputs() {
+        assert!(longest_common_subsequence(&[], &[]).is_empty());
+        assert!(longest_common_subsequence(&["a"], &[]).is_empty());
+        assert!(longest_common_subsequence(&[], &["a"]).is_empty());
+    }
+
+    #[test]
+    fn test_lcs_identical() {
+        let lines = vec!["a", "b", "c"];
+        let result = longest_common_subsequence(&lines, &lines);
+        assert_eq!(result, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn test_lcs_no_common() {
+        let old = vec!["a", "b", "c"];
+        let new = vec!["x", "y", "z"];
+        let result = longest_common_subsequence(&old, &new);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_lcs_partial_common() {
+        let old = vec!["a", "b", "c", "d"];
+        let new = vec!["b", "c", "x"];
+        let result = longest_common_subsequence(&old, &new);
+        assert_eq!(result, vec!["b", "c"]);
+    }
+
+    #[test]
+    fn test_format_timestamp_valid_rfc3339() {
+        let ts = "2024-06-15T14:30:00Z";
+        let formatted = format_timestamp(ts);
+        assert_eq!(formatted, "2024-06-15 14:30");
+    }
+
+    #[test]
+    fn test_format_timestamp_with_timezone() {
+        let ts = "2024-06-15T14:30:00+05:30";
+        let formatted = format_timestamp(ts);
+        assert!(formatted.contains("2024-06-15"));
+    }
+
+    #[test]
+    fn test_format_timestamp_invalid() {
+        let ts = "not-a-timestamp";
+        let formatted = format_timestamp(ts);
+        assert_eq!(formatted, "not-a-timestamp");
+    }
+
+    #[test]
+    fn test_format_timestamp_empty() {
+        let formatted = format_timestamp("");
+        assert_eq!(formatted, "");
+    }
+
+    #[test]
+    fn test_diff_line_type_equality() {
+        assert_eq!(DiffLineType::Added, DiffLineType::Added);
+        assert_ne!(DiffLineType::Added, DiffLineType::Removed);
+        assert_ne!(DiffLineType::Unchanged, DiffLineType::Added);
+    }
+
+    #[test]
+    fn test_compute_diff_replaced_line() {
+        let diff = compute_diff("old", "new");
+        assert!(diff.old_lines.iter().any(|l| l.line_type == DiffLineType::Removed));
+        assert!(diff.new_lines.iter().any(|l| l.line_type == DiffLineType::Added));
     }
 }

@@ -122,3 +122,48 @@ jobs:
           else
             echo "No Lean4 specs found"
           fi
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [check, test-unit]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tachyon_test
+          POSTGRES_PASSWORD: tachyon_test
+          POSTGRES_DB: tachyon_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://tachyon_test:tachyon_test@localhost:5432/tachyon_test
+      JWT_SECRET: test-secret-for-e2e
+      E2E_BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        working-directory: tachyon/e2e
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Run E2E tests
+        working-directory: tachyon/e2e
+        run: npm test
+        env:
+          CI: true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-results
+          path: tachyon/e2e/test-results/
+          retention-days: 7

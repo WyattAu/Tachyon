@@ -636,6 +636,197 @@ pub struct UpdateSavedSearchRequest {
     pub filters: Option<SearchFilters>,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_api_response_success() {
+        let resp = ApiResponse::success_item(42i32);
+        assert!(resp.success);
+        assert_eq!(resp.data, Some(42));
+        assert!(resp.message.is_none());
+        assert!(resp.error.is_none());
+    }
+
+    #[test]
+    fn test_api_response_error() {
+        let resp = ApiResponse::<i32>::error_msg("not found".to_string());
+        assert!(!resp.success);
+        assert!(resp.data.is_none());
+        assert_eq!(resp.error, Some("not found".to_string()));
+    }
+
+    #[test]
+    fn test_api_response_serialization() {
+        let resp = ApiResponse::success_item("hello".to_string());
+        let json = serde_json::to_string(&resp).unwrap();
+        let deserialized: ApiResponse<String> = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.data, Some("hello".to_string()));
+    }
+
+    #[test]
+    fn test_lifecycle_default() {
+        assert_eq!(Lifecycle::default(), Lifecycle::Experimental);
+    }
+
+    #[test]
+    fn test_lifecycle_display() {
+        assert_eq!(Lifecycle::Production.to_string(), "Production");
+        assert_eq!(Lifecycle::Deprecated.to_string(), "Deprecated");
+    }
+
+    #[test]
+    fn test_lifecycle_serde_roundtrip() {
+        let lifecycle = Lifecycle::Development;
+        let json = serde_json::to_string(&lifecycle).unwrap();
+        assert_eq!(json, "\"development\"");
+        let parsed: Lifecycle = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, Lifecycle::Development);
+    }
+
+    #[test]
+    fn test_visibility_default() {
+        assert_eq!(Visibility::default(), Visibility::Private);
+    }
+
+    #[test]
+    fn test_document_status_display() {
+        assert_eq!(DocumentStatus::Draft.to_string(), "Draft");
+        assert_eq!(DocumentStatus::Published.to_string(), "Published");
+        assert_eq!(DocumentStatus::Archived.to_string(), "Archived");
+        assert_eq!(DocumentStatus::Deleted.to_string(), "Deleted");
+    }
+
+    #[test]
+    fn test_document_visibility_display() {
+        assert_eq!(DocumentVisibility::Public.to_string(), "Public");
+        assert_eq!(DocumentVisibility::Private.to_string(), "Private");
+        assert_eq!(DocumentVisibility::Restricted.to_string(), "Restricted");
+    }
+
+    #[test]
+    fn test_paginated_response() {
+        let resp = PaginatedResponse {
+            items: vec![1, 2, 3],
+            total: 10,
+            page: 1,
+            page_size: 3,
+            total_pages: 4,
+        };
+        assert_eq!(resp.items.len(), 3);
+        assert_eq!(resp.total, 10);
+        assert_eq!(resp.total_pages, 4);
+    }
+
+    #[test]
+    fn test_search_filters_default() {
+        let filters = SearchFilters::default();
+        assert!(filters.content_type.is_none());
+        assert!(filters.tags.is_none());
+        assert!(filters.date_from.is_none());
+    }
+
+    #[test]
+    fn test_activity_event_equality() {
+        let e1 = ActivityEvent {
+            id: "1".to_string(),
+            actor_id: "a".to_string(),
+            event_type: "create".to_string(),
+            target_type: "document".to_string(),
+            target_id: "d1".to_string(),
+            description: "Created doc".to_string(),
+            metadata: serde_json::json!({}),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+        };
+        let e2 = e1.clone();
+        assert_eq!(e1, e2);
+    }
+
+    #[test]
+    fn test_notification_equality() {
+        let n1 = Notification {
+            id: "1".to_string(),
+            user_id: "u".to_string(),
+            notification_type: "mention".to_string(),
+            title: "Mention".to_string(),
+            body: Some("You were mentioned".to_string()),
+            link: Some("/doc/1".to_string()),
+            read: false,
+            metadata: serde_json::json!({}),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+        };
+        assert!(!n1.read);
+        let mut n2 = n1.clone();
+        n2.read = true;
+        assert_ne!(n1, n2);
+    }
+
+    #[test]
+    fn test_update_document_request_skip_none() {
+        let req = UpdateDocumentRequest {
+            content: None,
+            title: Some("New Title".to_string()),
+            visibility: None,
+            status: None,
+            tags: Some(vec!["tag1".to_string()]),
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("title"));
+        assert!(!json.contains("content"));
+        assert!(!json.contains("status"));
+    }
+
+    #[test]
+    fn test_space_serialization() {
+        let space = Space {
+            id: "s1".to_string(),
+            name: "My Space".to_string(),
+            slug: "my-space".to_string(),
+            description: Some("A space".to_string()),
+            icon: "📁".to_string(),
+            color: "#000".to_string(),
+            owner_id: "u1".to_string(),
+            parent_id: None,
+            visibility: "private".to_string(),
+            sort_order: 0,
+            is_default: true,
+            document_count: 5,
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            updated_at: "2024-01-01T00:00:00Z".to_string(),
+        };
+        let json = serde_json::to_string(&space).unwrap();
+        let parsed: Space = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.name, "My Space");
+        assert!(parsed.is_default);
+        assert_eq!(parsed.document_count, 5);
+    }
+
+    #[test]
+    fn test_conflict_info_no_conflict() {
+        let info = ConflictInfo {
+            document_id: "d1".to_string(),
+            has_conflict: false,
+            base_content: None,
+            current_content: None,
+            incoming_content: None,
+            merge_result: None,
+        };
+        assert!(!info.has_conflict);
+    }
+
+    #[test]
+    fn test_merge_result_info() {
+        let merge = MergeResultInfo {
+            status: "clean".to_string(),
+            content: "merged content".to_string(),
+            conflict_count: 0,
+        };
+        assert_eq!(merge.conflict_count, 0);
+        assert_eq!(merge.status, "clean");
+    }
+}
+
 pub fn url_encode(s: &str) -> String {
     js_sys::encode_uri_component(s)
         .as_string()

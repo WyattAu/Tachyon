@@ -1,0 +1,28 @@
+[package]
+name = "tachyon-benchmarks"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+tachyon-search = { path = "../search" }
+tachyon-renderer = { path = "../renderer" }
+tachyon-rbac = { path = "../rbac" }
+tachyon-core = { path = "../core" }
+criterion = { version = "0.5", features = ["html_reports"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+serde_json = "1"
+chrono = "0.4"
+tempfile = "3"
+
+[[bench]]
+name = "search"
+harness = false
+
+[[bench]]
+name = "renderer"
+harness = false
+
+[[bench]]
+name = "rbac"
+harness = false

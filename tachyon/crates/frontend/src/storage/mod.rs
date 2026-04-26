@@ -415,3 +415,181 @@ pub fn set_locale(locale: &str) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::Document;
+
+    fn make_document(id: &str, title: &str, content: &str) -> Document {
+        Document {
+            id: id.to_string(),
+            title: title.to_string(),
+            slug: Some(id.to_string()),
+            html: None,
+            content: content.to_string(),
+            status: "draft".to_string(),
+            visibility: "private".to_string(),
+            tags: vec![],
+            author_id: "user-1".to_string(),
+            repository_id: None,
+            word_count: content.split_whitespace().count(),
+            character_count: content.chars().count(),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            updated_at: "2024-01-01T00:00:00Z".to_string(),
+            published_at: None,
+        }
+    }
+
+    #[test]
+    fn test_document_to_local_document_conversion() {
+        let doc = make_document("doc-1", "Test Doc", "Hello world");
+        let local: LocalDocument = doc.into();
+        assert_eq!(local.id, "doc-1");
+        assert_eq!(local.title, "Test Doc");
+        assert_eq!(local.content, "Hello world");
+        assert_eq!(local.status, "draft");
+        assert_eq!(local.visibility, "private");
+        assert!(local.description.is_none());
+    }
+
+    #[test]
+    fn test_stored_to_document_conversion() {
+        let local = LocalDocument {
+            id: "doc-1".to_string(),
+            title: "Test".to_string(),
+            slug: Some("test".to_string()),
+            content: "Content here".to_string(),
+            html: Some("<p>Content</p>".to_string()),
+            status: "published".to_string(),
+            visibility: "public".to_string(),
+            tags: vec!["tag1".to_string()],
+            author_id: "user-1".to_string(),
+            word_count: 2,
+            character_count: 12,
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            updated_at: "2024-01-01T00:00:00Z".to_string(),
+            published_at: Some("2024-01-01T00:00:00Z".to_string()),
+            description: Some("A test doc".to_string()),
+        };
+        let stored = StoredDocument {
+            document: local,
+            sync_status: SyncStatus::Synced,
+            local_version: 1,
+            server_version: Some(1),
+            last_modified: "2024-01-01T00:00:00Z".to_string(),
+        };
+        let doc = stored_to_document(&stored);
+        assert_eq!(doc.id, "doc-1");
+        assert_eq!(doc.title, "Test");
+        assert_eq!(doc.content, "Content here");
+        assert_eq!(doc.status, "published");
+        assert_eq!(doc.tags, vec!["tag1".to_string()]);
+        assert!(doc.repository_id.is_none());
+    }
+
+    #[test]
+    fn test_stored_to_document_preserves_html() {
+        let local = LocalDocument {
+            id: "d1".to_string(),
+            title: "T".to_string(),
+            slug: None,
+            content: "C".to_string(),
+            html: Some("<p>C</p>".to_string()),
+            status: "draft".to_string(),
+            visibility: "private".to_string(),
+            tags: vec![],
+            author_id: "u1".to_string(),
+            word_count: 1,
+            character_count: 1,
+            created_at: "".to_string(),
+            updated_at: "".to_string(),
+            published_at: None,
+            description: None,
+        };
+        let stored = StoredDocument {
+            document: local,
+            sync_status: SyncStatus::Synced,
+            local_version: 0,
+            server_version: None,
+            last_modified: "".to_string(),
+        };
+        let doc = stored_to_document(&stored);
+        assert_eq!(doc.html, Some("<p>C</p>".to_string()));
+    }
+
+    #[test]
+    fn test_sync_status_equality() {
+        assert_eq!(SyncStatus::Synced, SyncStatus::Synced);
+        assert_ne!(SyncStatus::Synced, SyncStatus::PendingCreate);
+        assert_ne!(SyncStatus::PendingUpdate, SyncStatus::Conflict);
+    }
+
+    #[test]
+    fn test_stored_document_serialization() {
+        let stored = StoredDocument {
+            document: LocalDocument {
+                id: "d1".to_string(),
+                title: "T".to_string(),
+                slug: None,
+                content: "C".to_string(),
+                html: None,
+                status: "draft".to_string(),
+                visibility: "private".to_string(),
+                tags: vec![],
+                author_id: "u1".to_string(),
+                word_count: 1,
+                character_count: 1,
+                created_at: "".to_string(),
+                updated_at: "".to_string(),
+                published_at: None,
+                description: None,
+            },
+            sync_status: SyncStatus::PendingUpdate,
+            local_version: 3,
+            server_version: Some(2),
+            last_modified: "2024-01-01".to_string(),
+        };
+        let json = serde_json::to_string(&stored).unwrap();
+        let parsed: StoredDocument = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.document.id, "d1");
+        assert_eq!(parsed.sync_status, SyncStatus::PendingUpdate);
+        assert_eq!(parsed.local_version, 3);
+        assert_eq!(parsed.server_version, Some(2));
+    }
+
+    #[test]
+    fn test_local_document_serialization_roundtrip() {
+        let local = LocalDocument {
+            id: "d1".to_string(),
+            title: "My Doc".to_string(),
+            slug: Some("my-doc".to_string()),
+            content: "# Hello\n\nWorld".to_string(),
+            html: Some("<h1>Hello</h1>".to_string()),
+            status: "published".to_string(),
+            visibility: "public".to_string(),
+            tags: vec!["rust".to_string(), "wasm".to_string()],
+            author_id: "u1".to_string(),
+            word_count: 2,
+            character_count: 12,
+            created_at: "2024-06-01T00:00:00Z".to_string(),
+            updated_at: "2024-06-15T00:00:00Z".to_string(),
+            published_at: Some("2024-06-15T00:00:00Z".to_string()),
+            description: Some("A document".to_string()),
+        };
+        let json = serde_json::to_string(&local).unwrap();
+        let parsed: LocalDocument = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.title, "My Doc");
+        assert_eq!(parsed.tags, vec!["rust".to_string(), "wasm".to_string()]);
+        assert_eq!(parsed.visibility, "public");
+    }
+
+    #[test]
+    fn test_sync_state_equality() {
+        assert_eq!(SyncState::Idle, SyncState::Idle);
+        assert_eq!(SyncState::Offline, SyncState::Offline);
+        assert_ne!(SyncState::Idle, SyncState::Syncing);
+        assert_eq!(SyncState::Error("err".to_string()), SyncState::Error("err".to_string()));
+        assert_ne!(SyncState::Error("a".to_string()), SyncState::Error("b".to_string()));
+    }
+}

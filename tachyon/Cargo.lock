@@ -8566,6 +8566,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "tachyon-benchmarks"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "criterion",
+ "serde_json",
+ "tachyon-core",
+ "tachyon-rbac",
+ "tachyon-renderer",
+ "tachyon-search",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "tachyon-cli"
 version = "0.1.0"
 dependencies = [

@@ -21,6 +21,66 @@ fn status_badge(status: &str) -> (String, String) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_status_badge_pending() {
+        let (cls, label) = status_badge("pending");
+        assert!(cls.contains("yellow"));
+        assert_eq!(label, "Pending");
+    }
+
+    #[test]
+    fn test_status_badge_approved() {
+        let (cls, label) = status_badge("approved");
+        assert!(cls.contains("green"));
+        assert_eq!(label, "Approved");
+    }
+
+    #[test]
+    fn test_status_badge_rejected() {
+        let (cls, label) = status_badge("rejected");
+        assert!(cls.contains("red"));
+        assert_eq!(label, "Rejected");
+    }
+
+    #[test]
+    fn test_status_badge_changes_requested() {
+        let (cls, label) = status_badge("changes_requested");
+        assert!(cls.contains("orange"));
+        assert_eq!(label, "Changes Requested");
+    }
+
+    #[test]
+    fn test_status_badge_cancelled() {
+        let (cls, label) = status_badge("cancelled");
+        assert!(cls.contains("gray"));
+        assert_eq!(label, "Cancelled");
+    }
+
+    #[test]
+    fn test_status_badge_unknown() {
+        let (cls, label) = status_badge("custom_status");
+        assert!(cls.contains("gray"));
+        assert_eq!(label, "custom_status");
+    }
+
+    #[test]
+    fn test_format_timestamp_valid() {
+        let ts = "2024-01-15T10:30:00Z";
+        let formatted = format_timestamp(ts);
+        assert_eq!(formatted, "2024-01-15 10:30");
+    }
+
+    #[test]
+    fn test_format_timestamp_invalid() {
+        let formatted = format_timestamp("invalid");
+        assert_eq!(formatted, "invalid");
+    }
+}
+
 /// Review Panel — shows review status, list, and actions for a document
 #[component]
 pub fn ReviewPanel(

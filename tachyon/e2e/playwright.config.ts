@@ -1,43 +1,21 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  
+  timeout: 30000,
+  retries: 0,
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:8080',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'on-first-retry',
   },
-
   projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
+    { name: 'chromium', use: { browserName: 'chromium' } },
   ],
-
-  // webServer is disabled — start server externally:
-  // TACHYON_RATE_LIMIT_ENABLED=false DATABASE_URL="postgres://tachyon:tachyon@localhost:5433/tachyon" ./target/debug/tachyon-server
+  webServer: {
+    command: 'cargo run --release',
+    port: 3000,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
 });

@@ -564,4 +564,135 @@ mod tests {
         assert!(html.contains("<th>"));
         assert!(html.contains("<td>"));
     }
+
+    #[test]
+    fn test_footnotes() {
+        let md = "Text with a footnote[^1].\n\n[^1]: The footnote text.";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("footnote"));
+        assert!(html.contains("fn-1"));
+    }
+
+    #[test]
+    fn test_inline_code() {
+        let md = "Use `println!` for debugging";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("<code>println!</code>"));
+    }
+
+    #[test]
+    fn test_horizontal_rule() {
+        let md = "---";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("<hr"));
+    }
+
+    #[test]
+    fn test_blockquote() {
+        let md = "> This is a quote";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("<blockquote>"));
+        assert!(html.contains("This is a quote"));
+    }
+
+    #[test]
+    fn test_numbered_list() {
+        let md = "1. First\n2. Second\n3. Third";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("<ol>"));
+        assert!(html.contains("<li>First</li>"));
+    }
+
+    #[test]
+    fn test_bullet_list() {
+        let md = "- Item 1\n- Item 2";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("<ul>"));
+        assert!(html.contains("<li>"));
+    }
+
+    #[test]
+    fn test_image_tag() {
+        let md = "![alt text](https://example.com/image.png)";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("src=\"https://example.com/image.png\""));
+        assert!(html.contains("<img"));
+    }
+
+    #[test]
+    fn test_autolink() {
+        let md = "Visit [my site](https://example.com)";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("<a href=\"https://example.com\">"));
+        assert!(html.contains("my site"));
+    }
+
+    #[test]
+    fn test_wikilink_with_pipe_in_code_block() {
+        let md = "```\nSome text | with pipe\n```\n[[Real Link|Display]]";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("Display"));
+        assert!(html.contains("real-link"));
+    }
+
+    #[test]
+    fn test_multiple_wikilinks() {
+        let md = "See [[Page A]] and [[Page B|Custom B]] for info";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("page-a"));
+        assert!(html.contains("page-b"));
+        assert!(html.contains("Custom B"));
+    }
+
+    #[test]
+    fn test_unclosed_wikilink_preserved() {
+        let md = "This [[has no closing";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("[["));
+    }
+
+    #[test]
+    fn test_extract_headings_with_code_in_heading() {
+        let md = "# Heading with `code` inside";
+        let headings = extract_headings(md);
+        assert_eq!(headings.len(), 1);
+        assert_eq!(headings[0].text, "Heading with code inside");
+    }
+
+    #[test]
+    fn test_extract_headings_nested_heading_levels() {
+        let md = "#### H4\n###### H6\n## H2\n##### H5";
+        let headings = extract_headings(md);
+        assert_eq!(headings.len(), 4);
+        assert_eq!(headings[0].level, 4);
+        assert_eq!(headings[1].level, 6);
+    }
+
+    #[test]
+    fn test_count_words_with_wikilinks() {
+        let md = "Hello [[My Page]] world";
+        assert_eq!(count_words(md), 4);
+    }
+
+    #[test]
+    fn test_count_words_empty() {
+        assert_eq!(count_words(""), 0);
+    }
+
+    #[test]
+    fn test_count_words_single_word() {
+        assert_eq!(count_words("hello"), 1);
+    }
+
+    #[test]
+    fn test_count_characters_unicode() {
+        let md = "hello世界";
+        assert_eq!(count_characters(md), 7);
+    }
+
+    #[test]
+    fn test_empty_markdown() {
+        let html = render_markdown_to_html("");
+        assert!(html.is_empty());
+    }
 }
