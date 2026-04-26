@@ -113,10 +113,10 @@ where
 
     let on_sign_out = Callback::new(move |_: leptos::ev::MouseEvent| {
         if let Some(window) = web_sys::window() {
-            let _ = window.local_storage().unwrap().map(|storage| {
-                storage.remove_item("tachyon_token").ok();
-                storage.remove_item("tachyon_remember").ok();
-            });
+            if let Ok(Some(storage)) = window.local_storage() {
+                let _ = storage.remove_item("tachyon_token");
+                let _ = storage.remove_item("tachyon_remember");
+            }
         }
         let client = crate::api::ApiClient::default();
         client.clear_auth_token();

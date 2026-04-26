@@ -322,7 +322,9 @@ fn DangerTab() -> impl IntoView {
             let _ = client.delete_account().await;
             client.clear_auth_token();
             if let Some(window) = web_sys::window() {
-                let _ = window.local_storage().unwrap().map(|s| s.remove_item("tachyon_token").ok());
+                if let Ok(Some(s)) = window.local_storage() {
+                    let _ = s.remove_item("tachyon_token");
+                }
                 let _ = window.location().set_href("/login");
             }
             set_del.set(false);

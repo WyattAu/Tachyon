@@ -125,7 +125,7 @@ struct RecentFileEntry {
 }
 
 const ALLOWED_EXTENSIONS: &[&str] = &[
-    ".md", ".txt", ".html", ".json", ".yaml", ".yml", ".toml",
+    ".md", ".txt", ".json", ".yaml", ".yml", ".toml",
 ];
 
 type ApiError = (StatusCode, Json<serde_json::Value>);
@@ -681,7 +681,7 @@ mod tests {
 
     #[test]
     fn test_is_allowed_ext_html() {
-        assert!(is_allowed_ext("index.html"));
+        assert!(!is_allowed_ext("index.html"));
     }
 
     #[test]

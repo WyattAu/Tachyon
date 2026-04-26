@@ -163,10 +163,10 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
             }
             "sign_out" => {
                 if let Some(window) = web_sys::window() {
-                    let _ = window.local_storage().unwrap().map(|storage| {
-                        storage.remove_item("tachyon_token").ok();
-                        storage.remove_item("tachyon_remember").ok();
-                    });
+                    if let Ok(Some(storage)) = window.local_storage() {
+                        let _ = storage.remove_item("tachyon_token");
+                        let _ = storage.remove_item("tachyon_remember");
+                    }
                 }
                 let navigate = use_navigate();
                 navigate("/login", Default::default());

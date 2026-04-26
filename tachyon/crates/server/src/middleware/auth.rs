@@ -328,6 +328,7 @@ pub async fn auth_middleware(
         || path == "/api/v1/auth/refresh"
         || path.starts_with("/api/v1/auth/password-reset/request")
         || path.starts_with("/api/v1/auth/email-verification/request")
+        || path == "/api/v1/billing/webhook"
         || path == "/api/health"
         || path == "/api/docs"
         || path.starts_with("/api/static/")

@@ -7,7 +7,7 @@ use axum::{
     response::{Json, IntoResponse},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tachyon_core::{compute_content_hash, Document, DocumentContent, DocumentId, DocumentStatus, DocumentVisibility};
@@ -33,25 +33,25 @@ pub struct DocumentState {
 }
 
 impl DocumentState {
-    pub fn new(pool: DatabasePool) -> Self {
+    pub fn new(pool: DatabasePool, http_client: reqwest::Client) -> Self {
         let repository = DocumentRepository::new(pool.clone());
         Self {
             pool,
             repository,
             guest_config: GuestConfig::default(),
             index_manager: None,
-            http_client: reqwest::Client::new(),
+            http_client,
         }
     }
 
-    pub fn with_guest_config(pool: DatabasePool, guest_config: GuestConfig) -> Self {
+    pub fn with_guest_config(pool: DatabasePool, guest_config: GuestConfig, http_client: reqwest::Client) -> Self {
         let repository = DocumentRepository::new(pool.clone());
         Self {
             pool,
             repository,
             guest_config,
             index_manager: None,
-            http_client: reqwest::Client::new(),
+            http_client,
         }
     }
 
@@ -235,7 +235,7 @@ pub struct ErrorResponse {
     pub message: String,
     /// Additional details
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub details: Option<HashMap<String, String>>,
+    pub details: Option<BTreeMap<String, String>>,
 }
 
 /// Create a new document
@@ -849,30 +849,33 @@ pub async fn search_documents(
         .await
     {
         Ok(document_ids) => {
-            // Fetch actual documents by ID
+            // Batch-fetch actual documents by ID
+            let doc_ids: Vec<DocumentId> = document_ids
+                .iter()
+                .filter_map(|id| DocumentId::parse_str(id).ok())
+                .collect();
+
             let mut results = Vec::new();
-            for id in document_ids {
-                if let Ok(doc_id) = DocumentId::parse_str(&id) {
-                    if let Ok(metadata) = state.repository.get_by_id(&doc_id).await {
-                        let tags = metadata.parse_tags().unwrap_or_default();
-                        results.push(DocumentResponse {
-                            id: metadata.id,
-                            title: metadata.title,
-                            slug: metadata.slug,
-                            html: None,
-                            content: String::new(),
-                            status: metadata.status,
-                            visibility: metadata.visibility,
-                            tags,
-                            author_id: metadata.author_id,
-                            repository_id: metadata.project_id,
-                            word_count: metadata.word_count as usize,
-                            character_count: metadata.character_count as usize,
-                            created_at: metadata.created_at.to_rfc3339(),
-                            updated_at: metadata.updated_at.to_rfc3339(),
-                            published_at: metadata.published_at.map(|t| t.to_rfc3339()),
-                        });
-                    }
+            if let Ok(docs) = state.repository.get_by_ids_batch(&doc_ids).await {
+                for metadata in docs {
+                    let tags = metadata.parse_tags().unwrap_or_default();
+                    results.push(DocumentResponse {
+                        id: metadata.id,
+                        title: metadata.title,
+                        slug: metadata.slug,
+                        html: None,
+                        content: String::new(),
+                        status: metadata.status,
+                        visibility: metadata.visibility,
+                        tags,
+                        author_id: metadata.author_id,
+                        repository_id: metadata.project_id,
+                        word_count: metadata.word_count as usize,
+                        character_count: metadata.character_count as usize,
+                        created_at: metadata.created_at.to_rfc3339(),
+                        updated_at: metadata.updated_at.to_rfc3339(),
+                        published_at: metadata.published_at.map(|t| t.to_rfc3339()),
+                    });
                 }
             }
 

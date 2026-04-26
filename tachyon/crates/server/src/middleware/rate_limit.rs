@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tracing::{debug, warn};
+use tracing::warn;
 
 #[derive(Debug, Clone)]
 pub struct RateLimitConfig {
@@ -151,18 +151,14 @@ pub struct RateLimitInfo {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 struct InMemoryStore {
     buckets: dashmap::DashMap<String, TokenBucket>,
-    #[allow(dead_code)]
-    last_cleanup: std::sync::RwLock<Instant>,
 }
 
 impl InMemoryStore {
     fn new() -> Self {
         Self {
             buckets: dashmap::DashMap::new(),
-            last_cleanup: std::sync::RwLock::new(Instant::now()),
         }
     }
     
@@ -192,14 +188,6 @@ impl InMemoryStore {
         }
     }
     
-    #[allow(dead_code)]
-    async fn cleanup_expired(&self, max_age_secs: u64) {
-        let cutoff = Instant::now() - Duration::from_secs(max_age_secs);
-        self.buckets.retain(|_, bucket| bucket.last_refill > cutoff);
-        *self.last_cleanup.write().unwrap() = Instant::now();
-        
-        debug!("Rate limit cleanup completed, {} buckets remaining", self.buckets.len());
-    }
 }
 
 #[derive(Clone)]
@@ -216,13 +204,6 @@ impl RateLimitStore {
     async fn check(&self, key: &str, limit: RateLimit) -> Result<RateLimitInfo, ()> {
         match self {
             RateLimitStore::InMemory(store) => store.check_rate_limit(key, limit).await,
-        }
-    }
-    
-    #[allow(dead_code)]
-    async fn cleanup(&self, max_age_secs: u64) {
-        match self {
-            RateLimitStore::InMemory(store) => store.cleanup_expired(max_age_secs).await,
         }
     }
 }

@@ -74,7 +74,7 @@ pub async fn create_router() -> Router {
         guest_user_id: "00000000-0000-0000-0000-000000000000".to_string(),
     };
 
-    let document_state = DocumentState::with_guest_config(pool.clone(), guest_config.clone());
+    let document_state = DocumentState::with_guest_config(pool.clone(), guest_config.clone(), reqwest::Client::new());
     let user_state = UserState::with_guest_config(
         pool.clone(),
         "test_secret_key".to_string(),
@@ -87,7 +87,7 @@ pub async fn create_router() -> Router {
     let repository_state = RepositoryState::new();
     let node_state = NodeState::new(pool.clone());
     let catalog_state = CatalogState::new(pool.clone());
-    let review_state = ReviewState::new(pool.clone());
+    let review_state = ReviewState::new(pool.clone(), reqwest::Client::new());
     let activity_state = ActivityState::new(pool.clone());
     let notification_state = NotificationState::new(pool.clone());
     let tags_state = TagsState { pool: pool.clone() };

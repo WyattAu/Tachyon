@@ -229,6 +229,25 @@ impl DocumentRepository {
         }
     }
 
+    /// Get multiple documents by ID in a single query
+    pub async fn get_by_ids_batch(&self, ids: &[DocumentId]) -> DatabaseResult<Vec<DocumentMetadata>> {
+        if ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let select_sql = format!("{} WHERE id = ANY($1::uuid[])", DOCUMENT_SELECT_SQL);
+        let id_strs: Vec<String> = ids.iter().map(|id| id.as_str()).collect();
+
+        let mut conn = self.pool.acquire().await?;
+        let rows = query(&select_sql)
+            .bind(&id_strs)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        rows.into_iter().map(row_to_document_metadata).collect()
+    }
+
     /// Update a document
     ///
     /// # Arguments

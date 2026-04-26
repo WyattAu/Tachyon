@@ -132,28 +132,22 @@ async fn run_server(config: ServerConfig) -> Result<()> {
         .context("Invalid server address")?;
 
     // Initialize all application state via the shared library.
-    let state = tachyon_server::init_app_state(&config).await?;
+    let mut state = tachyon_server::init_app_state(&config).await?;
 
     // Initialize optional Tantivy search index and inject into relevant states.
     let tantivy_index = init_tantivy_index().await;
 
-    let document_state = match &tantivy_index {
-        Some(mgr) => state.0.with_index_manager(mgr.clone()),
-        None => state.0,
+    state.document_state = match &tantivy_index {
+        Some(mgr) => state.document_state.with_index_manager(mgr.clone()),
+        None => state.document_state,
     };
-    let search_state = match &tantivy_index {
-        Some(mgr) => state.8.with_index_manager(mgr.clone()),
-        None => state.8,
+    state.search_state = match &tantivy_index {
+        Some(mgr) => state.search_state.with_index_manager(mgr.clone()),
+        None => state.search_state,
     };
 
     // Build the full Axum router with all routes and middleware.
-    let app = tachyon_server::build_app(
-        document_state, state.1, state.2, state.3, state.4, state.5,
-        state.6, state.7, search_state, state.9, state.10, state.11,
-        state.12, state.13, state.14, state.15, state.16, state.17,
-        state.18, state.19, state.20, state.21, state.22,
-        &config,
-    );
+    let app = tachyon_server::build_app(state, &config);
 
     let listener = tokio::net::TcpListener::bind(&addr)
         .await

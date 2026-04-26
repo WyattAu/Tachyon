@@ -167,6 +167,28 @@ impl GraphRepository {
         Ok(record)
     }
 
+    pub async fn get_nodes_by_ids_batch(&self, ids: &[String]) -> DatabaseResult<Vec<GraphNode>> {
+        if ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let uuids: Result<Vec<uuid::Uuid>, _> = ids
+            .iter()
+            .map(|id| uuid::Uuid::parse_str(id).map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e))))
+            .collect();
+        let uuids = uuids?;
+
+        let sql = "SELECT * FROM knowledge_graph_nodes WHERE id = ANY($1::uuid[]) AND is_active = true";
+        let mut conn = self.pool.acquire().await?;
+        let records = query_as::<_, GraphNode>(sql)
+            .bind(&uuids)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        Ok(records)
+    }
+
     #[instrument(skip(self))]
     #[allow(clippy::too_many_arguments)]
     pub async fn update_node(

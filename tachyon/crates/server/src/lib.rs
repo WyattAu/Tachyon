@@ -136,6 +136,37 @@ use axum::extract::State;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
+/// Application state shared across all routes and middleware.
+///
+/// Contains all initialized services, pools, and configuration
+/// needed by the Tachyon server.
+#[derive(Clone)]
+pub struct AppState {
+    pub document_state: crate::routes::document::DocumentState,
+    pub user_state: crate::routes::user::UserState,
+    pub session_state: crate::routes::session::SessionState,
+    pub repository_state: crate::routes::repository::RepositoryState,
+    pub node_state: crate::routes::node::NodeState,
+    pub catalog_state: crate::routes::catalog::CatalogState,
+    pub team_state: crate::routes::team::TeamState,
+    pub role_state: crate::routes::role::RoleState,
+    pub search_state: crate::routes::search::SearchState,
+    pub seo_state: crate::routes::seo::SeoState,
+    pub review_state: crate::routes::review::ReviewState,
+    pub activity_state: crate::routes::activity::ActivityState,
+    pub notification_state: crate::routes::notification::NotificationState,
+    pub tags_state: crate::routes::tags::TagsState,
+    pub webhook_state: crate::routes::webhook::WebhookState,
+    pub plugin_state: crate::routes::plugin::PluginState,
+    pub space_state: crate::routes::space::SpaceState,
+    pub conflict_state: crate::routes::conflict::ConflictState,
+    pub onboarding_state: crate::routes::onboarding::OnboardingState,
+    pub connection_manager: crate::websocket::ConnectionManager,
+    pub crdt_connection_manager: crate::websocket::CrdtConnectionManager,
+    pub pool: tachyon_database::DatabasePool,
+    pub http_client: reqwest::Client,
+}
+
 /// Initialize application state from a [`ServerConfig`].
 ///
 /// Creates the database pool, seeds the admin user (if needed),
@@ -145,31 +176,7 @@ use tower_http::cors::CorsLayer;
 /// used by both `tachyon-server` (binary) and `tachyon serve` (CLI).
 pub async fn init_app_state(
     config: &ServerConfig,
-) -> anyhow::Result<(
-    crate::routes::document::DocumentState,
-    crate::routes::user::UserState,
-    crate::routes::session::SessionState,
-    crate::routes::repository::RepositoryState,
-    crate::routes::node::NodeState,
-    crate::routes::catalog::CatalogState,
-    crate::routes::team::TeamState,
-    crate::routes::role::RoleState,
-    crate::routes::search::SearchState,
-    crate::routes::seo::SeoState,
-    crate::routes::review::ReviewState,
-    crate::routes::activity::ActivityState,
-    crate::routes::notification::NotificationState,
-    crate::routes::tags::TagsState,
-    crate::routes::webhook::WebhookState,
-    crate::routes::plugin::PluginState,
-    crate::routes::space::SpaceState,
-    crate::routes::conflict::ConflictState,
-    crate::routes::onboarding::OnboardingState,
-    crate::websocket::ConnectionManager,
-    crate::websocket::CrdtConnectionManager,
-    tachyon_database::DatabasePool,
-    reqwest::Client,
-)> {
+) -> anyhow::Result<AppState> {
     use crate::routes::review::ReviewState;
     use crate::routes::activity::ActivityState;
     use crate::routes::tags::TagsState;
@@ -229,7 +236,9 @@ pub async fn init_app_state(
         }
     }
 
-    let document_state = DocumentState::with_guest_config(pool.clone(), config.guest.clone());
+    let http_client = reqwest::Client::new();
+
+    let document_state = DocumentState::with_guest_config(pool.clone(), config.guest.clone(), http_client.clone());
     let user_state = UserState::with_guest_config(
         pool.clone(),
         config.jwt.secret.clone(),
@@ -249,7 +258,7 @@ pub async fn init_app_state(
         pool: pool.clone(),
         site_config: config.site.clone(),
     };
-    let review_state = ReviewState::new(pool.clone());
+    let review_state = ReviewState::new(pool.clone(), http_client.clone());
     let activity_state = ActivityState::new(pool.clone());
     let notification_state = NotificationState::new(pool.clone());
     let tags_state = TagsState { pool: pool.clone() };
@@ -264,47 +273,47 @@ pub async fn init_app_state(
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let connection_manager = ConnectionManager::new();
     let crdt_connection_manager = CrdtConnectionManager::new();
-    let http_client = reqwest::Client::new();
 
-    Ok((
+    Ok(AppState {
         document_state, user_state, session_state, repository_state, node_state,
         catalog_state, team_state, role_state, search_state, seo_state,
         review_state, activity_state, notification_state, tags_state,
-        webhook_state, plugin_state, space_state,         conflict_state, onboarding_state, connection_manager, crdt_connection_manager, pool, http_client,
-    ))
+        webhook_state, plugin_state, space_state, conflict_state,
+        onboarding_state, connection_manager, crdt_connection_manager, pool, http_client,
+    })
 }
 
 /// Build the full Axum router with all routes, middleware, and state.
 ///
 /// This is the single entry point for creating the Tachyon HTTP/WebSocket
 /// application, used by both `tachyon-server` (binary) and `tachyon serve` (CLI).
-#[allow(clippy::too_many_arguments)]
 pub fn build_app(
-    document_state: crate::routes::document::DocumentState,
-    user_state: crate::routes::user::UserState,
-    session_state: crate::routes::session::SessionState,
-    repository_state: crate::routes::repository::RepositoryState,
-    node_state: crate::routes::node::NodeState,
-    catalog_state: crate::routes::catalog::CatalogState,
-    team_state: crate::routes::team::TeamState,
-    role_state: crate::routes::role::RoleState,
-    search_state: crate::routes::search::SearchState,
-    seo_state: crate::routes::seo::SeoState,
-    review_state: crate::routes::review::ReviewState,
-    activity_state: crate::routes::activity::ActivityState,
-    notification_state: crate::routes::notification::NotificationState,
-    tags_state: crate::routes::tags::TagsState,
-    webhook_state: crate::routes::webhook::WebhookState,
-    plugin_state: crate::routes::plugin::PluginState,
-    space_state: crate::routes::space::SpaceState,
-    conflict_state: crate::routes::conflict::ConflictState,
-    onboarding_state: crate::routes::onboarding::OnboardingState,
-    connection_manager: crate::websocket::ConnectionManager,
-    crdt_connection_manager: crate::websocket::CrdtConnectionManager,
-    pool: tachyon_database::DatabasePool,
-    http_client: reqwest::Client,
+    state: AppState,
     config: &ServerConfig,
 ) -> axum::Router {
+    let document_state = state.document_state;
+    let user_state = state.user_state;
+    let session_state = state.session_state;
+    let repository_state = state.repository_state;
+    let node_state = state.node_state;
+    let catalog_state = state.catalog_state;
+    let team_state = state.team_state;
+    let role_state = state.role_state;
+    let search_state = state.search_state;
+    let seo_state = state.seo_state;
+    let review_state = state.review_state;
+    let activity_state = state.activity_state;
+    let notification_state = state.notification_state;
+    let tags_state = state.tags_state;
+    let webhook_state = state.webhook_state;
+    let plugin_state = state.plugin_state;
+    let space_state = state.space_state;
+    let conflict_state = state.conflict_state;
+    let onboarding_state = state.onboarding_state;
+    let connection_manager = state.connection_manager;
+    let crdt_connection_manager = state.crdt_connection_manager;
+    let pool = state.pool;
+    let http_client = state.http_client;
     use crate::routes::document::create_document_router;
     use crate::routes::user::create_user_router;
     use crate::routes::session::create_session_router;
@@ -368,7 +377,7 @@ pub fn build_app(
 
     // Billing, Organization, SSG routers (pool-backed, created inline)
     let truelayer_client = if config.truelayer.enabled {
-        let client = crate::truelayer::TrueLayerClient::new(&config.truelayer);
+        let client = crate::truelayer::TrueLayerClient::new(&config.truelayer, http_client.clone());
         if client.is_enabled() {
             tracing::info!("TrueLayer payment processing enabled");
             Some(client)
@@ -518,13 +527,7 @@ pub fn build_app(
 /// and [`build_app`] separately.
 pub async fn build_server(config: &ServerConfig) -> anyhow::Result<axum::Router> {
     let state = init_app_state(config).await?;
-    Ok(build_app(
-        state.0, state.1, state.2, state.3, state.4, state.5,
-        state.6, state.7, state.8, state.9, state.10, state.11,
-        state.12, state.13, state.14, state.15, state.16, state.17,
-        state.18, state.19, state.20, state.21, state.22,
-        config,
-    ))
+    Ok(build_app(state, config))
 }
 
 /// Build CORS layer from server config.

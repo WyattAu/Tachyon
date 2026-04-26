@@ -392,11 +392,8 @@ pub async fn query_graph(
             .map_err(|e| db_err(&e))?;
 
         let mut nodes = Vec::new();
-        for nid in &path {
-            match state.repo().get_node_by_id(nid).await {
-                Ok(node) => nodes.push(node),
-                Err(_) => continue,
-            }
+        if let Ok(fetched) = state.repo().get_nodes_by_ids_batch(&path).await {
+            nodes = fetched;
         }
 
         let mut edges = Vec::new();
@@ -433,13 +430,11 @@ pub async fn query_graph(
     node_ids.sort();
     node_ids.dedup();
 
-    let mut nodes = Vec::new();
-    for nid in node_ids {
-        match state.repo().get_node_by_id(&nid).await {
-            Ok(node) => nodes.push(node),
-            Err(_) => continue,
-        }
-    }
+    let nodes = state
+        .repo()
+        .get_nodes_by_ids_batch(&node_ids)
+        .await
+        .unwrap_or_default();
 
     Ok(Json(GraphQueryResponse {
         node_count: nodes.len(),

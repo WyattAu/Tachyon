@@ -489,10 +489,9 @@ fn add_security_headers_with_config_opts(mut response: Response, config: &Server
 pub fn add_security_headers_with_config(mut response: Response, config: &SecurityHeadersConfig) -> Response {
     let headers = response.headers_mut();
     
-    headers.insert(
-        header::CONTENT_SECURITY_POLICY,
-        HeaderValue::from_str(&config.content_security_policy.to_header_value()).unwrap(),
-    );
+    if let Ok(value) = HeaderValue::from_str(&config.content_security_policy.to_header_value()) {
+        headers.insert(header::CONTENT_SECURITY_POLICY, value);
+    }
     
     headers.insert(
         header::X_FRAME_OPTIONS,

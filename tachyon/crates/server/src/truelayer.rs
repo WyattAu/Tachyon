@@ -108,7 +108,7 @@ impl Clone for TrueLayerClient {
 }
 
 impl TrueLayerClient {
-    pub fn new(config: &crate::config::TrueLayerConfig) -> Self {
+    pub fn new(config: &crate::config::TrueLayerConfig, http_client: reqwest::Client) -> Self {
         let base_url = match config.environment.as_str() {
             "production" => "https://api.truelayer.com",
             _ => "https://api.truelayer-sandbox.com",
@@ -120,7 +120,7 @@ impl TrueLayerClient {
             && !config.merchant_account_id.is_empty();
 
         Self {
-            client: reqwest::Client::new(),
+            client: http_client,
             client_id: config.client_id.clone(),
             client_secret: config.client_secret.clone(),
             base_url: base_url.to_string(),

@@ -3,15 +3,32 @@
 
 use axum::{
     extract::State,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::Json,
 };
 use chrono::{DateTime, Utc};
+use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
+use sha2::Sha256;
+use subtle::ConstantTimeEq;
 use tracing::{info, warn};
 use tachyon_database::error::DatabaseError;
 
 use crate::truelayer::{TrueLayerClient, TrueLayerError};
+
+type HmacSha256 = Hmac<Sha256>;
+
+fn verify_webhook_signature(payload: &[u8], signature_header: &str, secret: &str) -> bool {
+    let sig_part = signature_header.strip_prefix("v1=").unwrap_or(signature_header);
+
+    let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
+        .expect("HMAC can take key of any size");
+    mac.update(payload);
+
+    let expected = hex::encode(mac.finalize().into_bytes());
+
+    expected.as_bytes().ct_eq(sig_part.as_bytes()).into()
+}
 
 /// Billing state
 #[derive(Clone)]
@@ -565,8 +582,44 @@ pub async fn get_payment_status(
 /// POST /api/v1/billing/webhook — TrueLayer webhook handler
 pub async fn webhook_handler(
     State(state): State<BillingState>,
+    headers: HeaderMap,
     body: String,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<BillingErrorResponse>)> {
+    if let Some(truelayer) = &state.truelayer {
+        let secret = truelayer.webhook_secret();
+        if !secret.is_empty() {
+            let signature = headers
+                .get("TrueLayer-Signature")
+                .and_then(|v| v.to_str().ok());
+
+            match signature {
+                None => {
+                    warn!("Webhook received without signature header");
+                    return Err((
+                        StatusCode::UNAUTHORIZED,
+                        Json(BillingErrorResponse {
+                            code: "MISSING_SIGNATURE".to_string(),
+                            message: "Missing TrueLayer-Signature header".to_string(),
+                        }),
+                    ));
+                }
+                Some(sig) => {
+                    if !verify_webhook_signature(body.as_bytes(), sig, secret) {
+                        warn!("Webhook signature verification failed");
+                        return Err((
+                            StatusCode::UNAUTHORIZED,
+                            Json(BillingErrorResponse {
+                                code: "INVALID_SIGNATURE".to_string(),
+                                message: "Webhook signature verification failed".to_string(),
+                            }),
+                        ));
+                    }
+                    info!("Webhook signature verified successfully");
+                }
+            }
+        }
+    }
+
     let payload: WebhookPayload = serde_json::from_str(&body).map_err(|e| {
         (StatusCode::BAD_REQUEST, Json(BillingErrorResponse {
             code: "INVALID_PAYLOAD".to_string(),
@@ -575,13 +628,6 @@ pub async fn webhook_handler(
     })?;
 
     info!("Received TrueLayer webhook: {} ({})", payload.event_type, payload.event_id);
-
-    if let Some(truelayer) = &state.truelayer {
-        let secret = truelayer.webhook_secret();
-        if !secret.is_empty() {
-            warn!("Webhook signature verification not yet implemented — ignoring secret");
-        }
-    }
 
     match payload.event_type.as_str() {
         "mandate_approved" | "mandate_active" => {

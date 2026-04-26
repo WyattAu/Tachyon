@@ -20,7 +20,7 @@ serde_yaml = "0.9"
 
 # Error handling & Logging
 anyhow = { workspace = true }
-thiserror = "2"
+thiserror.workspace = true
 tracing = { workspace = true }
 
 # Markdown parsing

@@ -24,8 +24,8 @@ pub struct ReviewState {
 }
 
 impl ReviewState {
-    pub fn new(pool: DatabasePool) -> Self {
-        Self { pool, http_client: reqwest::Client::new() }
+    pub fn new(pool: DatabasePool, http_client: reqwest::Client) -> Self {
+        Self { pool, http_client }
     }
 }
 
@@ -162,17 +162,25 @@ pub async fn create_review(
         });
     }
 
-    let _ = NotificationRepository::create(&state.pool, CreateNotification {
-        user_id: review.reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
-        notification_type: "review_requested".to_string(),
-        title: format!("Review requested on {}", document_id),
-        body: None,
-        link: Some(format!("/documents/{}/reviews/{}", document_id, review.id)),
-        metadata: Some(serde_json::json!({
-            "document_id": document_id,
-            "review_id": review.id,
-        })),
-    }).await;
+    {
+        let pool = state.pool.clone();
+        let reviewer_id = review.reviewer_id.clone();
+        let document_id = document_id.clone();
+        let review_id = review.id.clone();
+        tokio::spawn(async move {
+            let _ = NotificationRepository::create(&pool, CreateNotification {
+                user_id: reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
+                notification_type: "review_requested".to_string(),
+                title: format!("Review requested on {}", document_id),
+                body: None,
+                link: Some(format!("/documents/{}/reviews/{}", document_id, review_id)),
+                metadata: Some(serde_json::json!({
+                    "document_id": document_id,
+                    "review_id": review_id,
+                })),
+            }).await;
+        });
+    }
 
     Ok(Json(ReviewResponse::from(review)))
 }
@@ -272,17 +280,26 @@ pub async fn update_review(
         });
     }
 
-    let _ = NotificationRepository::create(&state.pool, CreateNotification {
-        user_id: review.reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
-        notification_type: notification_type.to_string(),
-        title: format!("Review {} for document", body.status),
-        body: summary,
-        link: Some(format!("/reviews/{}", review_id)),
-        metadata: Some(serde_json::json!({
-            "review_id": review_id,
-            "status": body.status,
-        })),
-    }).await;
+    {
+        let pool = state.pool.clone();
+        let reviewer_id = review.reviewer_id.clone();
+        let notification_type = notification_type.to_string();
+        let review_status = body.status.clone();
+        let review_id = review_id.clone();
+        tokio::spawn(async move {
+            let _ = NotificationRepository::create(&pool, CreateNotification {
+                user_id: reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
+                notification_type,
+                title: format!("Review {} for document", review_status),
+                body: summary,
+                link: Some(format!("/reviews/{}", review_id)),
+                metadata: Some(serde_json::json!({
+                    "review_id": review_id,
+                    "status": review_status,
+                })),
+            }).await;
+        });
+    }
 
     Ok(Json(ReviewResponse::from(review)))
 }
@@ -315,17 +332,24 @@ pub async fn create_comment(
             )
         })?;
 
-    let _ = NotificationRepository::create(&state.pool, CreateNotification {
-        user_id: author_id.parse().unwrap_or(uuid::Uuid::nil()),
-        notification_type: "review_commented".to_string(),
-        title: format!("New comment on review {}", review_id),
-        body: Some(content),
-        link: Some(format!("/reviews/{}/comments", review_id)),
-        metadata: Some(serde_json::json!({
-            "review_id": review_id,
-            "comment_id": comment.id,
-        })),
-    }).await;
+    {
+        let pool = state.pool.clone();
+        let review_id = review_id.clone();
+        let comment_id = comment.id.clone();
+        tokio::spawn(async move {
+            let _ = NotificationRepository::create(&pool, CreateNotification {
+                user_id: author_id.parse().unwrap_or(uuid::Uuid::nil()),
+                notification_type: "review_commented".to_string(),
+                title: format!("New comment on review {}", review_id),
+                body: Some(content),
+                link: Some(format!("/reviews/{}/comments", review_id)),
+                metadata: Some(serde_json::json!({
+                    "review_id": review_id,
+                    "comment_id": comment_id,
+                })),
+            }).await;
+        });
+    }
 
     Ok(Json(CommentResponse::from(comment)))
 }

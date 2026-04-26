@@ -80,8 +80,10 @@ impl IndexedDBStore {
         >::new(|event: web_sys::IdbVersionChangeEvent| {
             let target = event.target().unwrap();
             let request = target.unchecked_ref::<web_sys::IdbOpenDbRequest>();
-            let db: IdbDatabase = request.result().unwrap().unchecked_into();
-            db.create_object_store("documents").unwrap();
+            if let Ok(result) = request.result() {
+                let db: IdbDatabase = result.unchecked_into();
+                let _ = db.create_object_store("documents");
+            }
         });
 
         open_request.set_onupgradeneeded(Some(on_upgrade.as_ref().unchecked_ref()));
