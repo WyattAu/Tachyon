@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -119,7 +120,7 @@ pub fn EditorSettings(
         if let Some(window) = web_sys::window() {
             if let Some(doc) = window.document() {
                 if let Ok(event) = doc.create_event("CustomEvent") {
-                    let _ = event.init_event_with_bubbles_and_cancelable("tachyon:settings-changed", true, true);
+                    event.init_event_with_bubbles_and_cancelable("tachyon:settings-changed", true, true);
                     let _ = window.dispatch_event(&event);
                 }
             }

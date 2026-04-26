@@ -11,9 +11,11 @@ use axum::{
     response::Json,
 };
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
+use sha2::{Sha256, Digest};
 use tachyon_core::{User, UserId, UserRole};
-use tachyon_database::{DatabasePool, UserRepository};
+use tachyon_database::{DatabasePool, RefreshTokenRepository, UserRepository};
 use tracing::{debug, info, instrument, warn};
 use crate::config::GuestConfig;
 
@@ -71,6 +73,8 @@ pub struct UserState {
     pub guest_config: GuestConfig,
 }
 
+const REFRESH_TOKEN_EXPIRATION_SECS: u64 = 30 * 24 * 60 * 60;
+
 impl UserState {
     /// Create a new user state with full JWT config and guest config.
     pub fn with_guest_config(
@@ -94,6 +98,16 @@ impl UserState {
     /// Get a UserRepository for this state.
     fn user_repo(&self) -> UserRepository {
         UserRepository::new(self.pool.clone())
+    }
+
+    /// Get a RefreshTokenRepository for this state.
+    fn refresh_token_repo(&self) -> RefreshTokenRepository {
+        RefreshTokenRepository::new(self.pool.clone())
+    }
+
+    fn generate_refresh_token(&self) -> String {
+        let bytes: [u8; 32] = rand::thread_rng().gen();
+        hex::encode(bytes)
     }
 
     /// Generate a JWT token for a user.
@@ -212,6 +226,20 @@ pub struct AuthenticateRequest {
     pub password: String,
 }
 
+/// Request to refresh an access token.
+#[derive(Debug, Deserialize)]
+pub struct RefreshRequest {
+    /// Refresh token
+    pub refresh_token: String,
+}
+
+/// Request to logout (revoke refresh token).
+#[derive(Debug, Deserialize)]
+pub struct LogoutRequest {
+    /// Refresh token to revoke
+    pub refresh_token: Option<String>,
+}
+
 /// Authentication response.
 #[derive(Debug, Serialize)]
 pub struct AuthenticateResponse {
@@ -223,6 +251,9 @@ pub struct AuthenticateResponse {
     /// Access token
     #[serde(skip_serializing_if = "Option::is_none")]
     pub access_token: Option<String>,
+    /// Refresh token
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
     /// Token type
     pub token_type: String,
     /// Token expires in (seconds)
@@ -306,6 +337,15 @@ pub struct UserErrorResponse {
     pub code: String,
     /// Error message
     pub message: String,
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+fn hash_refresh_token(token: &str) -> String {
+    let hash = Sha256::digest(token.as_bytes());
+    hex::encode(hash)
 }
 
 // ============================================================================
@@ -403,10 +443,18 @@ pub async fn register(
                 }
             };
 
+            let refresh_repo = state.refresh_token_repo();
+            let raw_refresh = state.generate_refresh_token();
+            let refresh_hash = hash_refresh_token(&raw_refresh);
+            if let Err(e) = refresh_repo.create(&created.id.to_string(), &refresh_hash, REFRESH_TOKEN_EXPIRATION_SECS as i64).await {
+                warn!("Failed to create refresh token after registration: {}", e);
+            }
+
             Ok(Json(AuthenticateResponse {
                 success: true,
                 user_id: Some(created.id.to_string()),
                 access_token: Some(token),
+                refresh_token: Some(raw_refresh),
                 token_type: "Bearer".into(),
                 expires_in: state.token_expiration_secs,
                 error: None,
@@ -801,6 +849,7 @@ pub async fn authenticate(
             success: false,
             user_id: None,
             access_token: None,
+            refresh_token: None,
             token_type: "Bearer".into(),
             expires_in: state.token_expiration_secs,
             error: Some("Username cannot be empty".into()),
@@ -813,6 +862,7 @@ pub async fn authenticate(
             success: false,
             user_id: None,
             access_token: None,
+            refresh_token: None,
             token_type: "Bearer".into(),
             expires_in: state.token_expiration_secs,
             error: Some("Password cannot be empty".into()),
@@ -832,6 +882,7 @@ pub async fn authenticate(
                 success: false,
                 user_id: None,
                 access_token: None,
+                refresh_token: None,
                 token_type: "Bearer".into(),
                 expires_in: state.token_expiration_secs,
                 error: Some("Invalid username or password".into()),
@@ -847,6 +898,7 @@ pub async fn authenticate(
             success: false,
             user_id: None,
             access_token: None,
+            refresh_token: None,
             token_type: "Bearer".into(),
             expires_in: state.token_expiration_secs,
             error: Some("Account is disabled".into()),
@@ -863,6 +915,7 @@ pub async fn authenticate(
                 success: false,
                 user_id: None,
                 access_token: None,
+                refresh_token: None,
                 token_type: "Bearer".into(),
                 expires_in: state.token_expiration_secs,
                 error: Some("Invalid username or password".into()),
@@ -886,12 +939,21 @@ pub async fn authenticate(
         }
     };
 
+    // Generate refresh token
+    let refresh_repo = state.refresh_token_repo();
+    let raw_refresh = state.generate_refresh_token();
+    let refresh_hash = hash_refresh_token(&raw_refresh);
+    if let Err(e) = refresh_repo.create(&user.id.to_string(), &refresh_hash, REFRESH_TOKEN_EXPIRATION_SECS as i64).await {
+        warn!("Failed to create refresh token: {}", e);
+    }
+
     info!("Authentication successful: {} ({})", user.username, user.id);
 
     Ok(Json(AuthenticateResponse {
         success: true,
         user_id: Some(user.id.to_string()),
         access_token: Some(token),
+        refresh_token: Some(raw_refresh),
         token_type: "Bearer".into(),
         expires_in: state.token_expiration_secs,
         error: None,
@@ -943,16 +1005,141 @@ pub async fn auth_status(
 
 /// Logout user.
 ///
-/// Currently a no-op since JWTs are stateless. When session persistence
-/// is wired, this will revoke the session in the database.
+/// Revokes the provided refresh token. If no refresh token is provided,
+/// returns success (backward compatible with stateless JWT logout).
 pub async fn logout(
-    State(_state): State<UserState>,
+    State(state): State<UserState>,
+    body: Option<Json<LogoutRequest>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<UserErrorResponse>)> {
     info!("User logout");
+
+    if let Some(Json(req)) = body {
+        if let Some(ref token) = req.refresh_token {
+            let hash = hash_refresh_token(token);
+            let repo = state.refresh_token_repo();
+            if let Err(e) = repo.revoke(&hash).await {
+                warn!("Failed to revoke refresh token: {}", e);
+            }
+        }
+    }
+
     Ok(Json(serde_json::json!({
         "success": true,
         "message": "Logged out successfully"
     })))
+}
+
+/// POST /auth/refresh — exchange a valid refresh token for new access + refresh tokens.
+pub async fn refresh_token_handler(
+    State(state): State<UserState>,
+    Json(req): Json<RefreshRequest>,
+) -> Result<Json<AuthenticateResponse>, (StatusCode, Json<UserErrorResponse>)> {
+    info!("Token refresh request");
+
+    let token_hash = hash_refresh_token(&req.refresh_token);
+
+    let repo = state.refresh_token_repo();
+    let stored = match repo.find_valid_by_hash(&token_hash).await {
+        Ok(Some(t)) => t,
+        Ok(None) => {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(UserErrorResponse {
+                    code: "INVALID_TOKEN".into(),
+                    message: "Invalid or expired refresh token".into(),
+                }),
+            ));
+        }
+        Err(e) => {
+            warn!("Failed to validate refresh token: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UserErrorResponse {
+                    code: "INTERNAL_ERROR".into(),
+                    message: "Failed to validate refresh token".into(),
+                }),
+            ));
+        }
+    };
+
+    let user_id = match UserId::parse_str(&stored.user_id) {
+        Ok(id) => id,
+        Err(_) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UserErrorResponse {
+                    code: "INTERNAL_ERROR".into(),
+                    message: "Invalid user ID in refresh token".into(),
+                }),
+            ));
+        }
+    };
+
+    let user_repo = state.user_repo();
+    let user = match user_repo.get_by_id(&user_id).await {
+        Ok(u) => u,
+        Err(_) => {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(UserErrorResponse {
+                    code: "USER_NOT_FOUND".into(),
+                    message: "User not found".into(),
+                }),
+            ));
+        }
+    };
+
+    if !user.is_active.unwrap_or(true) {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(UserErrorResponse {
+                code: "ACCOUNT_DISABLED".into(),
+                message: "Account is disabled".into(),
+            }),
+        ));
+    }
+
+    let _ = repo.revoke(&token_hash).await;
+
+    let access_token = match state.generate_jwt(&user.id.to_string(), user.permissions.role) {
+        Ok(t) => t,
+        Err(e) => {
+            warn!("Failed to generate JWT on refresh: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UserErrorResponse {
+                    code: "TOKEN_ERROR".into(),
+                    message: "Failed to generate access token".into(),
+                }),
+            ));
+        }
+    };
+
+    let new_raw_refresh = state.generate_refresh_token();
+    let new_hash = hash_refresh_token(&new_raw_refresh);
+    if let Err(e) = repo.create(&user.id.to_string(), &new_hash, REFRESH_TOKEN_EXPIRATION_SECS as i64).await {
+        warn!("Failed to create refresh token: {}", e);
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(UserErrorResponse {
+                code: "TOKEN_ERROR".into(),
+                message: "Failed to generate refresh token".into(),
+            }),
+        ));
+    }
+
+    info!("Token refresh successful: user {}", user.id);
+
+    Ok(Json(AuthenticateResponse {
+        success: true,
+        user_id: Some(user.id.to_string()),
+        access_token: Some(access_token),
+        refresh_token: Some(new_raw_refresh),
+        token_type: "Bearer".into(),
+        expires_in: state.token_expiration_secs,
+        error: None,
+        user: Some(UserResponse::from(user)),
+    }))
 }
 
 /// Guest login — auto-authenticate as a guest user.
@@ -1012,6 +1199,7 @@ pub async fn guest_login(
         success: true,
         user_id: Some(user_id.to_string()),
         access_token: Some(token),
+        refresh_token: None,
         token_type: "Bearer".into(),
         expires_in: state.token_expiration_secs,
         error: None,
@@ -1038,9 +1226,10 @@ pub async fn guest_status(
 /// Routes:
 /// - `POST /auth/register` — public registration (Reader role)
 /// - `POST /auth/login` — authenticate (username/email + password)
+/// - `POST /auth/refresh` — refresh access + refresh tokens
 /// - `POST /auth/guest` — guest login (when enabled)
 /// - `GET  /auth/status` — check JWT validity
-/// - `POST /auth/logout` — logout (no-op for JWT)
+/// - `POST /auth/logout` — logout (revokes refresh token if provided)
 /// - `GET  /auth/me` — get current user profile
 /// - `PUT  /auth/me` — update current user profile
 /// - `GET  /auth/guest-status` — guest config (public)
@@ -1056,6 +1245,7 @@ pub fn create_user_router() -> axum::Router<UserState> {
         // Auth routes (public)
         .route("/auth/register", post(register))
         .route("/auth/login", post(authenticate))
+        .route("/auth/refresh", post(refresh_token_handler))
         .route("/auth/guest", post(guest_login))
         .route("/auth/status", get(auth_status))
         .route("/auth/logout", post(logout))
@@ -1097,6 +1287,7 @@ mod tests {
             success: true,
             user_id: Some("user-1".to_string()),
             access_token: Some("token-123".to_string()),
+            refresh_token: None,
             token_type: "Bearer".to_string(),
             expires_in: 3600,
             error: None,

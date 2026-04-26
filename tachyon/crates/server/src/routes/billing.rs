@@ -18,6 +18,21 @@ use crate::truelayer::{TrueLayerClient, TrueLayerError};
 
 type HmacSha256 = Hmac<Sha256>;
 
+#[derive(Debug, Clone, PartialEq)]
+enum TransitionType {
+    Upgrade,
+    Downgrade,
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+struct ProrationResult {
+    prorated_amount: f64,
+    credit: f64,
+    charge: f64,
+    days_remaining: u32,
+}
+
 fn verify_webhook_signature(payload: &[u8], signature_header: &str, secret: &str) -> bool {
     let sig_part = signature_header.strip_prefix("v1=").unwrap_or(signature_header);
 
@@ -204,6 +219,23 @@ pub struct PaymentStatusResponse {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct ChangePlanRequest {
+    pub organization_id: String,
+    pub new_plan: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ChangePlanResponse {
+    pub subscription_id: String,
+    pub old_plan: String,
+    pub new_plan: String,
+    pub status: String,
+    pub effective_at: String,
+    pub prorated_amount: Option<f64>,
+    pub next_billing_date: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct WebhookPayload {
     #[serde(rename = "type")]
     pub event_type: String,
@@ -282,6 +314,82 @@ fn truelayer_error_response(e: TrueLayerError) -> (StatusCode, Json<BillingError
                 message: err.to_string(),
             }),
         ),
+    }
+}
+
+fn validate_plan_name(plan: &str) -> Result<(), (StatusCode, Json<BillingErrorResponse>)> {
+    const VALID_PLANS: &[&str] = &["free", "pro", "team", "enterprise"];
+    if !VALID_PLANS.contains(&plan) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(BillingErrorResponse {
+                code: "INVALID_PLAN".to_string(),
+                message: format!("Invalid plan '{}'. Must be one of: free, pro, team, enterprise", plan),
+            }),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_plan_transition(
+    current: &str,
+    new: &str,
+) -> Result<TransitionType, (StatusCode, Json<BillingErrorResponse>)> {
+    const PLAN_ORDER: &[&str] = &["free", "pro", "team", "enterprise"];
+    let current_idx = PLAN_ORDER.iter().position(|&p| p == current).unwrap_or(0);
+    let new_idx = PLAN_ORDER.iter().position(|&p| p == new).unwrap_or(0);
+
+    if current == "enterprise" {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(BillingErrorResponse {
+                code: "ENTERPRISE_CHANGE_REQUIRES_ADMIN".to_string(),
+                message: "Enterprise plan changes require admin approval".to_string(),
+            }),
+        ));
+    }
+
+    match new_idx.cmp(&current_idx) {
+        std::cmp::Ordering::Greater => Ok(TransitionType::Upgrade),
+        std::cmp::Ordering::Less => Ok(TransitionType::Downgrade),
+        std::cmp::Ordering::Equal => Err((
+            StatusCode::BAD_REQUEST,
+            Json(BillingErrorResponse {
+                code: "SAME_PLAN".to_string(),
+                message: "Already on this plan".to_string(),
+            }),
+        )),
+    }
+}
+
+fn plan_price_f64(plan: &str) -> f64 {
+    plan_price(plan) as f64 / 100.0
+}
+
+fn calculate_proration(
+    current_plan_price: f64,
+    new_plan_price: f64,
+    billing_start: DateTime<Utc>,
+    billing_end: DateTime<Utc>,
+    now: DateTime<Utc>,
+) -> ProrationResult {
+    let total_days = (billing_end - billing_start).num_days();
+    let total_days = if total_days <= 0 { 1.0 } else { total_days as f64 };
+    let days_used = (now - billing_start).num_days();
+    let days_used = if days_used < 0 { 0.0 } else { days_used as f64 };
+    let days_remaining = (total_days - days_used).max(0.0);
+
+    let current_daily = current_plan_price / total_days;
+    let new_daily = new_plan_price / total_days;
+
+    let credit = current_daily * days_remaining;
+    let charge = new_daily * days_remaining;
+
+    ProrationResult {
+        prorated_amount: charge - credit,
+        credit,
+        charge,
+        days_remaining: days_remaining as u32,
     }
 }
 
@@ -395,26 +503,192 @@ pub async fn list_invoices(
     Json(InvoicesResponse { invoices, total })
 }
 
-/// GET /api/v1/billing/usage/{org_id} — Get usage metrics
+/// GET /api/v1/billing/usage/{org_id} — Get usage metrics (real implementation)
 pub async fn get_usage(
-    State(_state): State<BillingState>,
+    State(state): State<BillingState>,
     axum::extract::Path(org_id): axum::extract::Path<String>,
 ) -> Json<UsageResponse> {
     let now = Utc::now();
     let period_start = now - chrono::Duration::days(30);
+
+    let pool = state.pool.inner();
+
+    let documents_total: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM documents WHERE organization_id = $1 AND deleted_at IS NULL"
+    )
+    .bind(&org_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    let documents_created: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM documents WHERE organization_id = $1 AND deleted_at IS NULL AND created_at >= $2"
+    )
+    .bind(&org_id)
+    .bind(period_start)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    let storage_bytes: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(SUM(LENGTH(content::text)), 0) FROM documents WHERE organization_id = $1 AND deleted_at IS NULL"
+    )
+    .bind(&org_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    let members_total: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM organization_members WHERE organization_id = $1"
+    )
+    .bind(&org_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(1);
+
+    let plan = sqlx::query_scalar::<_, String>(
+        "SELECT plan FROM subscriptions WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 1"
+    )
+    .bind(&org_id)
+    .fetch_one(pool)
+    .await
+    .ok()
+    .map(|p| match p.as_str() {
+        "pro" => Plan::Pro,
+        "team" => Plan::Team,
+        "enterprise" => Plan::Enterprise,
+        _ => Plan::Free,
+    })
+    .unwrap_or(Plan::Free);
 
     Json(UsageResponse {
         usage: UsageMetrics {
             organization_id: org_id,
             period_start,
             period_end: now,
-            documents_created: 0,
-            documents_total: 0,
-            members_total: 1,
-            storage_bytes: 0,
-            plan: Plan::Free,
+            documents_created: documents_created as usize,
+            documents_total: documents_total as usize,
+            members_total: members_total as usize,
+            storage_bytes: storage_bytes as u64,
+            plan,
         },
     })
+}
+
+/// POST /api/v1/billing/subscription/change-plan — Upgrade/downgrade plan
+pub async fn change_plan(
+    State(state): State<BillingState>,
+    Json(req): Json<ChangePlanRequest>,
+) -> Result<Json<ChangePlanResponse>, (StatusCode, Json<BillingErrorResponse>)> {
+    validate_plan_name(&req.new_plan)?;
+
+    let repo = tachyon_database::SubscriptionRepository::new(state.pool.clone());
+    let sub = repo.get_by_org(&req.organization_id).await.map_err(|e| {
+        if matches!(e, DatabaseError::NotFound { .. }) {
+            (StatusCode::NOT_FOUND, Json(BillingErrorResponse {
+                code: "NOT_FOUND".to_string(),
+                message: "No subscription found".to_string(),
+            }))
+        } else {
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(BillingErrorResponse {
+                code: "DB_ERROR".to_string(),
+                message: e.to_string(),
+            }))
+        }
+    })?;
+
+    let old_plan = sub.plan.clone();
+    let transition = validate_plan_transition(&old_plan, &req.new_plan)?;
+
+    let now = Utc::now();
+    let proration = calculate_proration(
+        plan_price_f64(&old_plan),
+        plan_price_f64(&req.new_plan),
+        sub.current_period_start,
+        sub.current_period_end,
+        now,
+    );
+
+    match transition {
+        TransitionType::Upgrade => {
+            let prorated_cents = (proration.prorated_amount * 100.0).round() as i64;
+
+            if let Some(truelayer) = state.truelayer.as_ref() {
+                let reference = format!("upgrade-{}-{}", sub.id, uuid::Uuid::new_v4());
+                let payment_result = truelayer.create_payment(
+                    sub.payment_method_id.as_deref().unwrap_or(""),
+                    prorated_cents as u64,
+                    &reference,
+                ).await.map_err(truelayer_error_response)?;
+
+                let updated = repo.update(&sub.id, tachyon_database::UpdateSubscriptionRequest {
+                    plan: Some(req.new_plan.clone()),
+                    status: None,
+                    cancel_at_period_end: None,
+                    payment_method_id: None,
+                }).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(BillingErrorResponse {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                })))?;
+
+                let invoice_repo = tachyon_database::InvoiceRepository::new(state.pool.clone());
+                let _ = invoice_repo.create(tachyon_database::CreateInvoiceRequest {
+                    subscription_id: updated.id.clone(),
+                    organization_id: req.organization_id.clone(),
+                    amount_cents: prorated_cents,
+                    currency: "GBP".to_string(),
+                    description: format!("Upgrade from {} to {}", old_plan, req.new_plan),
+                }).await;
+
+                info!("Plan upgrade: {} -> {} for org {} (payment {})", old_plan, req.new_plan, req.organization_id, payment_result.id);
+
+                Ok(Json(ChangePlanResponse {
+                    subscription_id: updated.id,
+                    old_plan,
+                    new_plan: req.new_plan,
+                    status: "pending_payment".to_string(),
+                    effective_at: now.to_rfc3339(),
+                    prorated_amount: Some(proration.prorated_amount),
+                    next_billing_date: Some(sub.current_period_end.to_rfc3339()),
+                }))
+            } else {
+                let updated = repo.update(&sub.id, tachyon_database::UpdateSubscriptionRequest {
+                    plan: Some(req.new_plan.clone()),
+                    status: None,
+                    cancel_at_period_end: None,
+                    payment_method_id: None,
+                }).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(BillingErrorResponse {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                })))?;
+
+                info!("Plan upgrade (free): {} -> {} for org {}", old_plan, req.new_plan, req.organization_id);
+
+                Ok(Json(ChangePlanResponse {
+                    subscription_id: updated.id,
+                    old_plan,
+                    new_plan: req.new_plan,
+                    status: "immediate".to_string(),
+                    effective_at: now.to_rfc3339(),
+                    prorated_amount: Some(proration.prorated_amount),
+                    next_billing_date: Some(sub.current_period_end.to_rfc3339()),
+                }))
+            }
+        }
+        TransitionType::Downgrade => {
+            info!("Plan downgrade scheduled: {} -> {} for org {} (effective at period end)", old_plan, req.new_plan, req.organization_id);
+
+            Ok(Json(ChangePlanResponse {
+                subscription_id: sub.id,
+                old_plan,
+                new_plan: req.new_plan,
+                status: "scheduled".to_string(),
+                effective_at: sub.current_period_end.to_rfc3339(),
+                prorated_amount: Some(proration.prorated_amount),
+                next_billing_date: Some(sub.current_period_end.to_rfc3339()),
+            }))
+        }
+    }
 }
 
 /// POST /api/v1/billing/subscriptions/{org_id}/cancel — Cancel subscription
@@ -684,6 +958,7 @@ pub fn create_billing_router() -> axum::Router<BillingState> {
         .route("/billing/subscriptions", post(create_subscription))
         .route("/billing/subscriptions/{org_id}", get(get_subscription))
         .route("/billing/subscriptions/{org_id}/cancel", post(cancel_subscription))
+        .route("/billing/subscription/change-plan", post(change_plan))
         .route("/billing/invoices/{org_id}", get(list_invoices))
         .route("/billing/usage/{org_id}", get(get_usage))
         .route("/billing/mandates", post(create_mandate))
@@ -691,4 +966,184 @@ pub fn create_billing_router() -> axum::Router<BillingState> {
         .route("/billing/payments", post(create_payment))
         .route("/billing/payments/{payment_id}", get(get_payment_status))
         .route("/billing/webhook", post(webhook_handler))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Duration;
+
+    #[test]
+    fn test_validate_plan_name_valid() {
+        for plan in &["free", "pro", "team", "enterprise"] {
+            assert!(validate_plan_name(plan).is_ok(), "plan '{}' should be valid", plan);
+        }
+    }
+
+    #[test]
+    fn test_validate_plan_name_invalid() {
+        assert!(validate_plan_name("premium").is_err());
+        assert!(validate_plan_name("basic").is_err());
+        assert!(validate_plan_name("").is_err());
+    }
+
+    #[test]
+    fn test_validate_plan_transition_upgrades() {
+        assert_eq!(validate_plan_transition("free", "pro").unwrap(), TransitionType::Upgrade);
+        assert_eq!(validate_plan_transition("free", "team").unwrap(), TransitionType::Upgrade);
+        assert_eq!(validate_plan_transition("free", "enterprise").unwrap(), TransitionType::Upgrade);
+        assert_eq!(validate_plan_transition("pro", "team").unwrap(), TransitionType::Upgrade);
+        assert_eq!(validate_plan_transition("pro", "enterprise").unwrap(), TransitionType::Upgrade);
+        assert_eq!(validate_plan_transition("team", "enterprise").unwrap(), TransitionType::Upgrade);
+    }
+
+    #[test]
+    fn test_validate_plan_transition_downgrades() {
+        assert_eq!(validate_plan_transition("pro", "free").unwrap(), TransitionType::Downgrade);
+        assert_eq!(validate_plan_transition("team", "pro").unwrap(), TransitionType::Downgrade);
+        assert_eq!(validate_plan_transition("team", "free").unwrap(), TransitionType::Downgrade);
+    }
+
+    #[test]
+    fn test_validate_plan_transition_same_plan() {
+        let result = validate_plan_transition("pro", "pro");
+        assert!(result.is_err());
+        let (status, body) = result.unwrap_err();
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body.code, "SAME_PLAN");
+    }
+
+    #[test]
+    fn test_validate_plan_transition_enterprise_blocked() {
+        let result = validate_plan_transition("enterprise", "free");
+        assert!(result.is_err());
+        let (status, body) = result.unwrap_err();
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(body.code, "ENTERPRISE_CHANGE_REQUIRES_ADMIN");
+    }
+
+    #[test]
+    fn test_validate_plan_transition_enterprise_upgrade_blocked() {
+        let result = validate_plan_transition("enterprise", "team");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().0, StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    fn test_calculate_proration_mid_period_upgrade() {
+        let start = Utc::now() - Duration::days(15);
+        let end = Utc::now() + Duration::days(15);
+        let now = Utc::now();
+
+        let result = calculate_proration(12.0, 29.0, start, end, now);
+
+        assert!(result.prorated_amount > 0.0);
+        assert!(result.charge > result.credit);
+        assert_eq!(result.days_remaining, 15);
+    }
+
+    #[test]
+    fn test_calculate_proration_downgrade() {
+        let start = Utc::now() - Duration::days(15);
+        let end = Utc::now() + Duration::days(15);
+        let now = Utc::now();
+
+        let result = calculate_proration(29.0, 12.0, start, end, now);
+
+        assert!(result.prorated_amount < 0.0);
+        assert!(result.charge < result.credit);
+        assert_eq!(result.days_remaining, 15);
+    }
+
+    #[test]
+    fn test_calculate_proration_free_upgrade() {
+        let start = Utc::now() - Duration::days(15);
+        let end = Utc::now() + Duration::days(15);
+        let now = Utc::now();
+
+        let result = calculate_proration(0.0, 12.0, start, end, now);
+
+        assert_eq!(result.credit, 0.0);
+        assert!(result.charge > 0.0);
+        assert!(result.prorated_amount > 0.0);
+    }
+
+    #[test]
+    fn test_calculate_proration_downgrade_to_free() {
+        let start = Utc::now() - Duration::days(15);
+        let end = Utc::now() + Duration::days(15);
+        let now = Utc::now();
+
+        let result = calculate_proration(12.0, 0.0, start, end, now);
+
+        assert_eq!(result.charge, 0.0);
+        assert!(result.credit > 0.0);
+        assert!(result.prorated_amount < 0.0);
+    }
+
+    #[test]
+    fn test_calculate_proration_at_period_end() {
+        let start = Utc::now() - Duration::days(30);
+        let end = Utc::now();
+        let now = Utc::now();
+
+        let result = calculate_proration(12.0, 29.0, start, end, now);
+
+        assert_eq!(result.days_remaining, 0);
+        assert!(result.prorated_amount.abs() < 0.01);
+    }
+
+    #[test]
+    fn test_plan_limits() {
+        assert_eq!(Plan::Free.max_documents(), 100);
+        assert_eq!(Plan::Free.max_members(), 1);
+
+        assert_eq!(Plan::Pro.max_documents(), 10_000);
+        assert_eq!(Plan::Pro.max_members(), 5);
+
+        assert_eq!(Plan::Team.max_documents(), 100_000);
+        assert_eq!(Plan::Team.max_members(), 50);
+
+        assert_eq!(Plan::Enterprise.max_documents(), usize::MAX);
+        assert_eq!(Plan::Enterprise.max_members(), usize::MAX);
+    }
+
+    #[test]
+    fn test_plan_prices() {
+        assert_eq!(Plan::Free.price_monthly(), 0);
+        assert_eq!(Plan::Pro.price_monthly(), 12_00);
+        assert_eq!(Plan::Team.price_monthly(), 29_00);
+        assert_eq!(Plan::Enterprise.price_monthly(), 0);
+    }
+
+    #[test]
+    fn test_plan_price_f64() {
+        assert!((plan_price_f64("free") - 0.0).abs() < 0.001);
+        assert!((plan_price_f64("pro") - 12.0).abs() < 0.001);
+        assert!((plan_price_f64("team") - 29.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_change_plan_request_deserialize() {
+        let json = r#"{"organization_id":"org-1","new_plan":"pro"}"#;
+        let req: ChangePlanRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.organization_id, "org-1");
+        assert_eq!(req.new_plan, "pro");
+    }
+
+    #[test]
+    fn test_change_plan_response_serialize() {
+        let resp = ChangePlanResponse {
+            subscription_id: "sub-1".to_string(),
+            old_plan: "free".to_string(),
+            new_plan: "pro".to_string(),
+            status: "immediate".to_string(),
+            effective_at: "2025-01-01T00:00:00+00:00".to_string(),
+            prorated_amount: Some(6.50),
+            next_billing_date: Some("2025-02-01T00:00:00+00:00".to_string()),
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(json.contains("immediate"));
+        assert!(json.contains("6.5"));
+    }
 }

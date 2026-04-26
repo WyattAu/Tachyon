@@ -1,9 +1,9 @@
 #![allow(private_interfaces)]
 
 use axum::{
-    extract::{Query, State},
-    http::StatusCode,
-    Json,
+    extract::{Multipart, Query, State},
+    http::{StatusCode, header},
+    response::{IntoResponse, Json, Response},
 };
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -13,6 +13,7 @@ use tokio::fs;
 #[derive(Clone)]
 pub struct FilesState {
     pub root_path: PathBuf,
+    pub uploads_dir: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]
@@ -124,9 +125,27 @@ struct RecentFileEntry {
     size: u64,
 }
 
+#[derive(Debug, Serialize)]
+pub struct UploadResponse {
+    pub id: String,
+    pub filename: String,
+    pub url: String,
+    pub size: u64,
+    pub content_type: String,
+    pub uploaded_at: String,
+}
+
 const ALLOWED_EXTENSIONS: &[&str] = &[
     ".md", ".txt", ".json", ".yaml", ".yml", ".toml",
 ];
+
+const UPLOAD_ALLOWED_EXTENSIONS: &[&str] = &[
+    "png", "jpg", "jpeg", "gif", "webp", "svg",
+    "pdf", "doc", "docx", "xls", "xlsx",
+    "txt", "md", "csv", "json",
+];
+
+const MAX_UPLOAD_SIZE: usize = 50 * 1024 * 1024;
 
 type ApiError = (StatusCode, Json<serde_json::Value>);
 
@@ -193,6 +212,66 @@ fn is_allowed_ext(name: &str) -> bool {
     match ext {
         Some(ref e) => ALLOWED_EXTENSIONS.contains(&e.as_str()),
         None => false,
+    }
+}
+
+fn is_upload_allowed_ext(ext: &str) -> bool {
+    UPLOAD_ALLOWED_EXTENSIONS.contains(&ext.to_lowercase().as_str())
+}
+
+fn is_binary_file(path: &Path) -> bool {
+    match path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+        Some(ref ext) => matches!(
+            ext.as_str(),
+            "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg"
+                | "pdf" | "doc" | "docx" | "xls" | "xlsx"
+        ),
+        None => false,
+    }
+}
+
+fn content_type_for_ext(path: &Path) -> &'static str {
+    match path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+        Some(ref ext) => match ext.as_str() {
+            "png" => "image/png",
+            "jpg" | "jpeg" => "image/jpeg",
+            "gif" => "image/gif",
+            "webp" => "image/webp",
+            "svg" => "image/svg+xml",
+            "pdf" => "application/pdf",
+            "doc" => "application/msword",
+            "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "xls" => "application/vnd.ms-excel",
+            "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "txt" => "text/plain",
+            "md" => "text/markdown",
+            "csv" => "text/csv",
+            "json" => "application/json",
+            "yaml" | "yml" => "application/x-yaml",
+            "toml" => "application/x-toml",
+            _ => "application/octet-stream",
+        },
+        None => "application/octet-stream",
+    }
+}
+
+fn expected_content_type(ext: &str) -> &'static str {
+    match ext {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        "pdf" => "application/pdf",
+        "doc" => "application/msword",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xls" => "application/vnd.ms-excel",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "txt" => "text/plain",
+        "md" => "text/markdown",
+        "csv" => "text/csv",
+        "json" => "application/json",
+        _ => "application/octet-stream",
     }
 }
 
@@ -292,7 +371,7 @@ fn parse_frontmatter(content: &str) -> (Option<serde_json::Value>, &str) {
 pub async fn read_file(
     State(state): State<FilesState>,
     Query(params): Query<ReadQuery>,
-) -> Result<Json<ReadResponse>, ApiError> {
+) -> Result<Response, ApiError> {
     let target = resolve_path(&state.root_path, &params.path)?;
 
     let metadata = fs::metadata(&target).await.map_err(|e| {
@@ -305,6 +384,22 @@ pub async fn read_file(
 
     if metadata.is_dir() {
         return Err(error("IS_DIRECTORY", "Path is a directory, not a file"));
+    }
+
+    if is_binary_file(&target) {
+        let data = fs::read(&target).await.map_err(|e| {
+            internal_error(format!("Failed to read file: {}", e))
+        })?;
+        let content_type = content_type_for_ext(&target);
+        let size = data.len();
+
+        let response = Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, content_type)
+            .header(header::CONTENT_LENGTH, size.to_string())
+            .body(axum::body::Body::from(data))
+            .unwrap();
+        return Ok(response);
     }
 
     let content = fs::read_to_string(&target).await.map_err(|e| {
@@ -320,7 +415,7 @@ pub async fn read_file(
         size,
         encoding: "utf-8".to_string(),
         frontmatter,
-    }))
+    }).into_response())
 }
 
 pub async fn search_files(
@@ -639,8 +734,84 @@ fn walk_dir_recent<'a>(
     })
 }
 
+pub async fn upload_file(
+    State(state): State<FilesState>,
+    mut multipart: Multipart,
+) -> Result<Json<UploadResponse>, ApiError> {
+    let field = multipart.next_field().await
+        .map_err(|e| internal_error(format!("Failed to parse multipart: {}", e)))?
+        .ok_or_else(|| error("NO_FILE", "No file provided in upload"))?;
+
+    let filename = field.file_name()
+        .ok_or_else(|| error("MISSING_FILENAME", "File has no filename"))?
+        .to_string();
+
+    if filename.is_empty() {
+        return Err(error("MISSING_FILENAME", "Filename is empty"));
+    }
+
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
+        return Err(error("INVALID_FILENAME", "Filename contains invalid characters"));
+    }
+
+    let content_type = field.content_type()
+        .ok_or_else(|| error("MISSING_CONTENT_TYPE", "File has no content type"))?
+        .to_string();
+
+    let ext = Path::new(&filename)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .ok_or_else(|| error("INVALID_FILE", "File has no extension"))?;
+
+    if !is_upload_allowed_ext(&ext) {
+        return Err(error(
+            "INVALID_FILE_TYPE",
+            format!("File type .{} is not allowed", ext),
+        ));
+    }
+
+    let expected = expected_content_type(&ext);
+    if !content_type.contains(expected.split('/').next().unwrap_or("")) {
+        return Err(error(
+            "INVALID_CONTENT_TYPE",
+            format!("Content-Type {} does not match expected type for .{}", content_type, ext),
+        ));
+    }
+
+    let data = field.bytes().await
+        .map_err(|e| internal_error(format!("Failed to read file data: {}", e)))?;
+
+    if data.len() > MAX_UPLOAD_SIZE {
+        return Err(error("FILE_TOO_LARGE", "File size exceeds 50MB limit"));
+    }
+
+    let safe_name = format!("{}{}", uuid::Uuid::new_v4(), Path::new(&filename)
+        .extension()
+        .map(|e| format!(".{}", e.to_string_lossy().to_lowercase()))
+        .unwrap_or_default());
+
+    if let Err(e) = fs::create_dir_all(&state.uploads_dir).await {
+        return Err(internal_error(format!("Failed to create uploads directory: {}", e)));
+    }
+
+    let upload_path = state.uploads_dir.join(&safe_name);
+    if let Err(e) = fs::write(&upload_path, &data).await {
+        return Err(internal_error(format!("Failed to save file: {}", e)));
+    }
+
+    Ok(Json(UploadResponse {
+        id: uuid::Uuid::new_v4().to_string(),
+        filename,
+        url: format!("/files/uploads/{}", safe_name),
+        size: data.len() as u64,
+        content_type,
+        uploaded_at: chrono::Utc::now().to_rfc3339(),
+    }))
+}
+
 pub fn create_files_router() -> axum::Router<FilesState> {
-    use axum::routing::get;
+    use axum::routing::{get, post};
 
     axum::Router::new()
         .route("/files/list", get(list_directory))
@@ -649,6 +820,7 @@ pub fn create_files_router() -> axum::Router<FilesState> {
         .route("/files/tree", get(get_tree))
         .route("/files/stats", get(get_stats))
         .route("/files/recent", get(get_recent_files))
+        .route("/files/upload", post(upload_file))
 }
 
 #[cfg(test)]

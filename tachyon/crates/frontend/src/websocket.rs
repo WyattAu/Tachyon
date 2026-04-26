@@ -99,6 +99,7 @@ pub struct SelectionRange {
 pub type MessageCallback = Rc<dyn Fn(WsMessage)>;
 pub type BinaryCallback = Rc<dyn Fn(Vec<u8>)>;
 pub type StateCallback = Rc<dyn Fn(ConnectionState)>;
+pub type ReconnectCallback = Rc<dyn Fn()>;
 
 /// Configuration for heartbeat and reconnection behavior.
 #[derive(Debug, Clone)]
@@ -130,6 +131,7 @@ struct WebSocketInner {
     on_message: Option<MessageCallback>,
     on_binary: Option<BinaryCallback>,
     on_state_change: Option<StateCallback>,
+    on_reconnect: Option<ReconnectCallback>,
     reconnect_attempts: u32,
     config: WsConfig,
     base_url: String,
@@ -165,6 +167,7 @@ impl WebSocketClient {
                 on_message: None,
                 on_binary: None,
                 on_state_change: None,
+                on_reconnect: None,
                 reconnect_attempts: 0,
                 config: WsConfig::default(),
                 base_url: ws_url,
@@ -210,6 +213,10 @@ impl WebSocketClient {
 
     pub fn on_state_change(&self, callback: StateCallback) {
         self.inner.borrow_mut().on_state_change = Some(callback);
+    }
+
+    pub fn on_reconnect(&self, callback: ReconnectCallback) {
+        self.inner.borrow_mut().on_reconnect = Some(callback);
     }
 
     fn set_state(&self, new_state: ConnectionState) {
@@ -385,6 +392,7 @@ impl WebSocketClient {
         let base_url = inner.base_url.clone();
         let on_message = inner.on_message.clone();
         let on_binary = inner.on_binary.clone();
+        let on_reconnect = inner.on_reconnect.clone();
         drop(inner);
 
         let state_label = if is_reconnect {
@@ -402,10 +410,17 @@ impl WebSocketClient {
                 let self_clone = self.clone();
                 let onopen_closure = Closure::<dyn Fn(Event)>::new(move |_| {
                     web_sys::console::log_1(&"WebSocket connected".into());
+                    let was_reconnect = is_reconnect;
                     self_clone.inner.borrow_mut().reconnect_attempts = 0;
                     self_clone.set_state(ConnectionState::Connected);
                     self_clone.start_heartbeat();
                     self_clone.flush_message_queue();
+                    if was_reconnect {
+                        self_clone.request_sync_state();
+                        if let Some(cb) = &on_reconnect {
+                            cb();
+                        }
+                    }
                 });
                 ws.set_onopen(Some(onopen_closure.as_ref().unchecked_ref()));
                 onopen_closure.forget();
@@ -574,6 +589,23 @@ impl WebSocketClient {
         }
         inner.binary_queue.push(data.to_vec());
         Err("Not connected — binary message queued".to_string())
+    }
+
+    /// Request the current CRDT document state from the server.
+    /// Sends a sync step 1 message (type 0, step 1) to trigger the server
+    /// to respond with the full document state vector and updates.
+    pub fn request_sync_state(&self) {
+        let sync_msg = vec![0x00, 0x01];
+        let _ = self.send_binary(&sync_msg);
+    }
+
+    /// Send a selection update to other collaborators.
+    /// Binary format: [0x02, start_u32_le, end_u32_le]
+    pub fn send_selection_update(&self, start: usize, end: usize) -> Result<(), String> {
+        let mut data = vec![0x02];
+        data.extend_from_slice(&(start as u32).to_le_bytes());
+        data.extend_from_slice(&(end as u32).to_le_bytes());
+        self.send_binary(&data)
     }
 }
 

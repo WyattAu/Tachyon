@@ -34,18 +34,18 @@ pub fn EditorPreview(
                 return;
             }
 
-            let handle = debounce_handle.borrow().clone();
+            let handle = *debounce_handle.borrow();
             if let Some(h) = handle {
                 let _ = web_sys::window().map(|w| {
-                    let _ = w.clear_timeout_with_handle(h);
+                    w.clear_timeout_with_handle(h);
                 });
             }
 
             let api = ApiClient::default();
-            let set_html = set_preview_html.clone();
-            let set_err = set_render_error.clone();
-            let set_load = set_is_loading.clone();
-            let set_client = set_using_client_render.clone();
+            let set_html = set_preview_html;
+            let set_err = set_render_error;
+            let set_load = set_is_loading;
+            let set_client = set_using_client_render;
             let content_for_closure = content.clone();
             let dh = debounce_handle.clone();
 
@@ -53,10 +53,10 @@ pub fn EditorPreview(
                 set_load.set(true);
                 let api = api.clone();
                 let content = content_for_closure.clone();
-                let set_html = set_html.clone();
-                let set_err = set_err.clone();
-                let set_load = set_load.clone();
-                let set_client = set_client.clone();
+                let set_html = set_html;
+                let set_err = set_err;
+                let set_load = set_load;
+                let set_client = set_client;
 
                 spawn_local(async move {
                     match api.render_markdown(&content).await {

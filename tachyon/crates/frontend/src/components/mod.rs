@@ -8,17 +8,13 @@ pub mod auth_guard;
 pub mod breadcrumbs;
 pub mod catalog;
 pub mod collaborative_cursors;
-#[cfg(feature = "staging")]
 pub mod presence_indicators;
 pub mod command_palette;
 pub mod common;
 pub mod conflict_resolver;
-#[cfg(feature = "staging")]
 pub mod editor_preview;
 pub mod editor_search;
-#[cfg(feature = "staging")]
 pub mod editor_settings;
-#[cfg(feature = "staging")]
 pub mod editor_split;
 pub mod editor_toolbar;
 pub mod empty_state;
@@ -35,6 +31,7 @@ pub mod template_selector;
 pub mod markdown_preview;
 pub mod update_banner;
 pub mod version_history;
+pub mod user_avatar;
 
 pub use activity_feed::{Activity, ActivityFeed};
 pub use app_shell::AppShell;
@@ -54,12 +51,13 @@ pub use onboarding::{should_show_onboarding, OnboardingWizard};
 pub use review_panel::ReviewPanel;
 pub use template_selector::TemplateSelector;
 pub use version_history::VersionHistory;
-#[cfg(feature = "staging")]
 pub use editor_preview::EditorPreview;
-#[cfg(feature = "staging")]
+#[allow(unused_imports)]
 pub use editor_settings::{EditorSettings, EditorSettingsData};
-#[cfg(feature = "staging")]
+#[allow(unused_imports)]
 pub use editor_split::{EditorSplit, SplitMode};
-#[cfg(feature = "staging")]
+#[allow(unused_imports)]
 pub use presence_indicators::{PresenceIndicators as CollabPresenceIndicators, PresenceUser as CollabPresenceUser};
 pub use table_of_contents::TableOfContents;
+#[allow(unused_imports)]
+pub use user_avatar::UserAvatar;

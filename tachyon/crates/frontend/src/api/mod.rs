@@ -356,5 +356,5 @@ mod tests {
     }
 }
 
-#[cfg(feature = "staging")]
+#[allow(dead_code)]
 pub type ApiResult<T> = Result<T, ApiError>;

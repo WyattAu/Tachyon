@@ -49,6 +49,12 @@ pub struct ServerConfig {
     pub oauth2: OAuth2Config,
     /// TrueLayer payment configuration
     pub truelayer: TrueLayerConfig,
+    /// SMTP URL for email delivery (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smtp_url: Option<String>,
+    /// From address for outgoing emails (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smtp_from: Option<String>,
 }
 
 /// JWT configuration for token-based authentication
@@ -286,6 +292,8 @@ impl Default for ServerConfig {
             log: LogConfig::default(),
             oauth2: OAuth2Config::default(),
             truelayer: TrueLayerConfig::default(),
+            smtp_url: None,
+            smtp_from: None,
         }
     }
 }
@@ -652,6 +660,12 @@ impl ServerConfig {
         }
 
         // Security configuration
+        if let Ok(val) = std::env::var("TACHYON_SMTP_URL") {
+            config.smtp_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMTP_FROM") {
+            config.smtp_from = Some(val);
+        }
         if let Ok(val) = std::env::var("TACHYON_SECURITY_CSP_ENABLED") {
             config.security.csp_enabled = val != "0" && val != "false";
         }

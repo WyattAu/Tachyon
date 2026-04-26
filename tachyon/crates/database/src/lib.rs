@@ -18,6 +18,7 @@ pub mod onboarding;
 pub mod organization;
 pub mod password_reset;
 pub mod permissions;
+pub mod refresh_token;
 pub mod plugin;
 pub mod presence;
 pub mod rbac;
@@ -86,6 +87,7 @@ pub use password_reset::{
 };
 pub use onboarding::{OnboardingRepository, OnboardingStatus, OnboardingStep};
 pub use presence::{Presence, PresenceRepository, UpsertPresenceRequest, UpdatePresenceRequest, PRESENCE_TTL_SECS};
+pub use refresh_token::{RefreshToken, RefreshTokenRepository};
 pub use space::{
     AddSpaceMemberRequest, CreateSpaceRequest, Space, SpaceMember, SpaceRepository,
     UpdateSpaceMemberRequest, UpdateSpaceRequest,

@@ -16,6 +16,27 @@ impl NotificationState {
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
+
+    pub fn create_notification_email(
+        email: crate::email::EmailService,
+        to: &str,
+        notification_type: &str,
+        title: &str,
+        body: &str,
+    ) {
+        let to = to.to_string();
+        let notification_type = notification_type.to_string();
+        let title = title.to_string();
+        let body = body.to_string();
+        tokio::spawn(async move {
+            if let Err(e) = email
+                .send_notification(&to, &notification_type, &title, &body, None)
+                .await
+            {
+                tracing::warn!("Failed to send notification email: {}", e);
+            }
+        });
+    }
 }
 
 #[derive(Debug, Deserialize)]

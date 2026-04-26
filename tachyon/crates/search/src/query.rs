@@ -3,7 +3,7 @@
 
 use crate::IndexManager;
 use crate::error::{SearchError, SearchResult};
-use crate::types::SearchRequest;
+use crate::types::{SearchRequest, Suggestion, SuggestionCategory};
 use std::sync::Arc;
 use tantivy::{
     DocAddress, Searcher, TantivyDocument,
@@ -333,18 +333,83 @@ impl QueryEngine {
 
     /// Get suggestions for autocomplete
     ///
+    /// Uses Tantivy's phrase prefix query to find document titles that
+    /// match the given prefix.
+    ///
     /// # Arguments
-    /// * `query` - Partial query
-    /// * `limit` - Maximum number of suggestions
+    /// * `prefix` - Partial query text to match against titles
+    /// * `limit` - Maximum number of suggestions to return
     ///
     /// # Returns
     /// Result containing suggestions or error
     ///
     /// # Errors
     /// Returns error if suggestion generation fails
-    pub async fn suggest(&self, _query: &str, _limit: usize) -> SearchResult<Vec<String>> {
-        // Simple suggestion implementation
-        let suggestions = Vec::new();
+    pub async fn suggest(&self, prefix: &str, limit: usize) -> SearchResult<Vec<Suggestion>> {
+        if prefix.is_empty() || limit == 0 {
+            return Ok(Vec::new());
+        }
+
+        let reader = self.index_manager.reader()?;
+        let searcher = reader.searcher();
+        let schema = self.index_manager.schema();
+
+        let title_field = schema.get_field("title").map_err(|e| {
+            SearchError::query("FIELD_ERROR", format!("Failed to get title field: {}", e))
+        })?;
+
+        let lowered = prefix.to_lowercase();
+        let terms: Vec<tantivy::Term> = lowered
+            .split_whitespace()
+            .map(|word| tantivy::Term::from_field_text(title_field, word))
+            .collect();
+
+        if terms.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let prefix_query = tantivy::query::PhrasePrefixQuery::new(terms);
+
+        let collector = TopDocs::with_limit(limit);
+        let top_docs = searcher
+            .search(&prefix_query, &collector)
+            .map_err(|e| {
+                SearchError::query(
+                    "SUGGESTION_EXECUTION_ERROR",
+                    format!("Suggestion search failed: {}", e),
+                )
+            })?;
+
+        let id_field = schema.get_field("id").map_err(|e| {
+            SearchError::query("FIELD_ERROR", format!("Failed to get id field: {}", e))
+        })?;
+
+        let mut suggestions = Vec::new();
+        let mut seen_titles = std::collections::HashSet::new();
+
+        for (_score, doc_address) in top_docs {
+            if let Ok(retrieved_doc) = searcher.doc::<TantivyDocument>(doc_address) {
+                let title = retrieved_doc
+                    .get_first(title_field)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_string();
+
+                if seen_titles.insert(title.clone()) {
+                    let document_id = retrieved_doc
+                        .get_first(id_field)
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+
+                    suggestions.push(Suggestion {
+                        text: title,
+                        document_id,
+                        category: SuggestionCategory::Document,
+                    });
+                }
+            }
+        }
+
         Ok(suggestions)
     }
 }
@@ -352,6 +417,8 @@ impl QueryEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::SearchDocument;
+    use tachyon_core::id::{DocumentId, UserId};
     use tempfile::TempDir;
 
     #[tokio::test]
@@ -363,5 +430,140 @@ mod tests {
         let query_engine = QueryEngine::new(index_manager);
 
         assert_eq!(query_engine.field_boosts.len(), 2);
+    }
+
+    async fn setup_index_with_docs(docs: Vec<SearchDocument>) -> (QueryEngine, TempDir) {
+        let temp_dir = TempDir::new().unwrap();
+        let index_path = temp_dir.path().to_path_buf();
+        let index_manager = IndexManager::new(index_path).await.unwrap();
+
+        for doc in &docs {
+            index_manager.index_document(doc).await.unwrap();
+        }
+
+        (QueryEngine::new(index_manager), temp_dir)
+    }
+
+    fn make_doc(title: &str, content: &str) -> SearchDocument {
+        SearchDocument::new(
+            DocumentId::new(),
+            title.to_string(),
+            content.to_string(),
+            UserId::new(),
+        )
+    }
+
+    #[tokio::test]
+    async fn test_suggest_empty_prefix_returns_nothing() {
+        let (engine, _dir) = setup_index_with_docs(vec![
+            make_doc("Rust Programming", "content"),
+            make_doc("Rust Language Guide", "content"),
+        ])
+        .await;
+
+        let results = engine.suggest("", 10).await.unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_suggest_zero_limit_returns_nothing() {
+        let (engine, _dir) = setup_index_with_docs(vec![make_doc("Rust Programming", "content")]).await;
+
+        let results = engine.suggest("rust", 0).await.unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_suggest_single_char_prefix() {
+        let (engine, _dir) = setup_index_with_docs(vec![
+            make_doc("Rust Programming Language", "content about rust"),
+            make_doc("Rust Language Guide", "another rust doc"),
+            make_doc("Python Programming", "content about python"),
+        ])
+        .await;
+
+        let results = engine.suggest("r", 10).await.unwrap();
+        assert!(!results.is_empty());
+        for s in &results {
+            assert!(s.text.to_lowercase().contains("r"));
+            assert_eq!(s.category, SuggestionCategory::Document);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_suggest_multi_word_prefix() {
+        let (engine, _dir) = setup_index_with_docs(vec![
+            make_doc("Rust Programming Language", "content"),
+            make_doc("Rust Performance Tips", "content"),
+            make_doc("Python Programming Language", "content"),
+        ])
+        .await;
+
+        let results = engine.suggest("rust pro", 10).await.unwrap();
+        assert!(!results.is_empty());
+        assert!(results.iter().all(|s| {
+            let lower = s.text.to_lowercase();
+            lower.contains("rust") && lower.contains("pro")
+        }));
+    }
+
+    #[tokio::test]
+    async fn test_suggest_no_matches_returns_empty() {
+        let (engine, _dir) = setup_index_with_docs(vec![
+            make_doc("Rust Programming", "content"),
+            make_doc("Rust Language Guide", "content"),
+        ])
+        .await;
+
+        let results = engine.suggest("zzzzzzz", 10).await.unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_suggest_limit_respected() {
+        let (engine, _dir) = setup_index_with_docs(vec![
+            make_doc("Rust Programming Basics", "content"),
+            make_doc("Rust Async Programming", "content"),
+            make_doc("Rust Systems Programming", "content"),
+            make_doc("Rust Web Programming", "content"),
+            make_doc("Rust Embedded Programming", "content"),
+        ])
+        .await;
+
+        let results = engine.suggest("rust", 2).await.unwrap();
+        assert!(results.len() <= 2);
+    }
+
+    #[tokio::test]
+    async fn test_suggest_case_insensitive() {
+        let (engine, _dir) = setup_index_with_docs(vec![
+            make_doc("Rust Programming", "content"),
+            make_doc("rust programming guide", "content"),
+        ])
+        .await;
+
+        let lower = engine.suggest("rust", 10).await.unwrap();
+        let upper = engine.suggest("RUST", 10).await.unwrap();
+
+        assert_eq!(lower.len(), upper.len());
+    }
+
+    #[tokio::test]
+    async fn test_suggest_returns_document_ids() {
+        let doc = make_doc("Rust Programming", "content");
+        let doc_id = doc.id.to_string();
+        let (engine, _dir) = setup_index_with_docs(vec![doc]).await;
+
+        let results = engine.suggest("rust", 10).await.unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].document_id.as_deref(), Some(doc_id.as_str()));
+    }
+
+    #[tokio::test]
+    async fn test_suggest_whitespace_only_prefix() {
+        let (engine, _dir) = setup_index_with_docs(vec![make_doc("Rust Programming", "content")]).await;
+
+        let results = engine.suggest("   ", 10).await.unwrap();
+        assert!(results.is_empty());
     }
 }

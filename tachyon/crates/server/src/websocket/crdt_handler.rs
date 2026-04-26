@@ -31,7 +31,7 @@ use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, info, warn};
 
 use crate::crdt::CrdtDocumentManager;
-use tachyon_core::types::crdt::{CollaborationInfo, CrdtDocumentState};
+use tachyon_core::types::crdt::{CollaborationInfo, CrdtDocumentState, SelectionRange};
 
 // ============================================================================
 // Connection Manager
@@ -52,6 +52,8 @@ struct ConnectedClient {
 enum RelayEvent {
     /// Binary message from a client to relay to others.
     Binary { room: String, sender: String, data: Vec<u8> },
+    /// Selection update from a client to relay to others.
+    Selection { room: String, sender: String, data: Vec<u8>, selection: SelectionRange },
     /// A client joined a room.
     Joined { room: String, client_id: String },
     /// A client left a room.
@@ -225,10 +227,17 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
         loop {
             match relay_rx.recv().await {
                 Ok(RelayEvent::Binary { room: event_room, sender, data }) => {
-                    // Only forward to clients in the same room, not the sender.
                     if event_room == room_for_send && sender != client_id_for_send {
                         if let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
                             warn!(client_id = %client_id_for_send, error = %e, "Failed to send binary message");
+                            break;
+                        }
+                    }
+                }
+                Ok(RelayEvent::Selection { room: event_room, sender, data, selection: _ }) => {
+                    if event_room == room_for_send && sender != client_id_for_send {
+                        if let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
+                            warn!(client_id = %client_id_for_send, error = %e, "Failed to send selection message");
                             break;
                         }
                     }
@@ -271,30 +280,69 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                 Ok(Message::Binary(data)) => {
                     let data_vec: Vec<u8> = data.to_vec();
 
-                    // Apply sync updates (message type 0) to the server-side Yrs document.
-                    // y-websocket protocol: byte 0 is the message type.
-                    // 0 = sync, 1 = awareness, 2 = awareness query.
-                    if !data_vec.is_empty() && data_vec[0] == 0 {
-                        // Strip the message type byte to get the raw Yrs update.
-                        if data_vec.len() > 1 {
-                            if let Err(e) = crdt_manager.apply_update(&room_for_recv, &data_vec[1..]) {
-                                warn!(
+                    if data_vec.is_empty() {
+                        continue;
+                    }
+
+                    let msg_type = data_vec[0];
+                    match msg_type {
+                        0 => {
+                            // Sync: apply update to server-side Yrs document, then broadcast.
+                            if data_vec.len() > 1 {
+                                if let Err(e) = crdt_manager.apply_update(&room_for_recv, &data_vec[1..]) {
+                                    warn!(
+                                        client_id = %client_id_for_recv,
+                                        room = %room_for_recv,
+                                        error = %e,
+                                        "Failed to apply CRDT update"
+                                    );
+                                }
+                            }
+                            let _ = broadcast_tx.send(RelayEvent::Binary {
+                                room: room_for_recv.clone(),
+                                sender: client_id_for_recv.clone(),
+                                data: data_vec,
+                            });
+                        }
+                        1 => {
+                            // Awareness: forward unchanged.
+                            let _ = broadcast_tx.send(RelayEvent::Binary {
+                                room: room_for_recv.clone(),
+                                sender: client_id_for_recv.clone(),
+                                data: data_vec,
+                            });
+                        }
+                        2 => {
+                            // Selection update: parse, validate, and broadcast.
+                            if let Some(selection) = parse_selection_update(&data_vec) {
+                                debug!(
                                     client_id = %client_id_for_recv,
                                     room = %room_for_recv,
-                                    error = %e,
-                                    "Failed to apply CRDT update"
+                                    start = selection.start,
+                                    end = selection.end,
+                                    "Selection update"
+                                );
+                                let _ = broadcast_tx.send(RelayEvent::Selection {
+                                    room: room_for_recv.clone(),
+                                    sender: client_id_for_recv.clone(),
+                                    data: data_vec,
+                                    selection,
+                                });
+                            } else {
+                                warn!(
+                                    client_id = %client_id_for_recv,
+                                    "Invalid selection update payload"
                                 );
                             }
                         }
-                    }
-
-                    // Forward binary messages to other clients in the room.
-                    if let Err(e) = broadcast_tx.send(RelayEvent::Binary {
-                        room: room_for_recv.clone(),
-                        sender: client_id_for_recv.clone(),
-                        data: data_vec,
-                    }) {
-                        warn!(client_id = %client_id_for_recv, error = %e, "Failed to broadcast message");
+                        _ => {
+                            // Unknown type: forward unchanged.
+                            let _ = broadcast_tx.send(RelayEvent::Binary {
+                                room: room_for_recv.clone(),
+                                sender: client_id_for_recv.clone(),
+                                data: data_vec,
+                            });
+                        }
                     }
                 }
                 Ok(Message::Close(_)) => {
@@ -366,6 +414,20 @@ fn encode_sync_step1(update: &[u8]) -> Vec<u8> {
     msg
 }
 
+/// Parse a selection update from a binary message.
+///
+/// Expected format after the message type byte (0x02):
+/// - Bytes 1-4: start position (u32, little-endian)
+/// - Bytes 5-8: end position (u32, little-endian)
+fn parse_selection_update(data: &[u8]) -> Option<SelectionRange> {
+    if data.len() < 9 {
+        return None;
+    }
+    let start = u32::from_le_bytes(data[1..5].try_into().ok()?);
+    let end = u32::from_le_bytes(data[5..9].try_into().ok()?);
+    Some(SelectionRange { start, end })
+}
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -428,5 +490,65 @@ mod tests {
         });
 
         assert_eq!(manager.client_count().await, 2);
+    }
+
+    #[test]
+    fn test_parse_selection_update_valid() {
+        let mut data = vec![0x02];
+        data.extend_from_slice(&10u32.to_le_bytes());
+        data.extend_from_slice(&20u32.to_le_bytes());
+        let selection = parse_selection_update(&data).unwrap();
+        assert_eq!(selection.start, 10);
+        assert_eq!(selection.end, 20);
+    }
+
+    #[test]
+    fn test_parse_selection_update_too_short() {
+        let data = vec![0x02, 0x01, 0x00];
+        assert!(parse_selection_update(&data).is_none());
+    }
+
+    #[test]
+    fn test_parse_selection_update_empty() {
+        let data: Vec<u8> = vec![];
+        assert!(parse_selection_update(&data).is_none());
+    }
+
+    #[test]
+    fn test_parse_selection_update_minimal() {
+        let mut data = vec![0x02];
+        data.extend_from_slice(&0u32.to_le_bytes());
+        data.extend_from_slice(&0u32.to_le_bytes());
+        let selection = parse_selection_update(&data).unwrap();
+        assert_eq!(selection.start, 0);
+        assert_eq!(selection.end, 0);
+    }
+
+    #[test]
+    fn test_parse_selection_update_large_offsets() {
+        let mut data = vec![0x02];
+        data.extend_from_slice(&u32::MAX.to_le_bytes());
+        data.extend_from_slice(&u32::MAX.to_le_bytes());
+        let selection = parse_selection_update(&data).unwrap();
+        assert_eq!(selection.start, u32::MAX);
+        assert_eq!(selection.end, u32::MAX);
+    }
+
+    #[test]
+    fn test_parse_selection_update_wrong_type() {
+        let mut data = vec![0x00];
+        data.extend_from_slice(&10u32.to_le_bytes());
+        data.extend_from_slice(&20u32.to_le_bytes());
+        let selection = parse_selection_update(&data);
+        assert_eq!(selection.unwrap().start, 10);
+    }
+
+    #[test]
+    fn test_encode_sync_step1() {
+        let update = vec![0xAA, 0xBB, 0xCC];
+        let msg = encode_sync_step1(&update);
+        assert_eq!(msg[0], 0);
+        assert_eq!(msg[1], 1);
+        assert_eq!(&msg[2..], &[0xAA, 0xBB, 0xCC]);
     }
 }

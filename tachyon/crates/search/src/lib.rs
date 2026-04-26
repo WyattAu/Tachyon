@@ -19,7 +19,7 @@ pub use ranking::{BM25Ranker, FieldWeights, QueryStats, ResultAggregator};
 pub use types::{
     BM25Config, BatchIndexRequest, BatchIndexResponse, BooleanOperator, FieldDefinition, FieldType,
     IndexConfig, QueryType, RangeValue, SearchDocument, SearchRequest, SearchResponse,
-    SearchResponseItem, SortOrder,
+    SearchResponseItem, SortOrder, Suggestion, SuggestionCategory,
 };
 
 /// Search library version

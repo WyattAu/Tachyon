@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -38,9 +39,9 @@ fn ensure_typing_style() {
     }
 }
 
+#[allow(dead_code)]
 #[component]
 pub fn PresenceIndicators(
-    #[allow(dead_code)]
     users: RwSignal<Vec<PresenceUser>>,
 ) -> impl IntoView {
     ensure_typing_style();

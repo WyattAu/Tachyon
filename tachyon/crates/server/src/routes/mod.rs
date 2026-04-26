@@ -304,7 +304,7 @@ pub use password_reset::{
 
 // Files exports
 pub use files::{
-    create_files_router, FilesState,
+    create_files_router, FilesState, UploadResponse,
 };
 
 // SSG exports

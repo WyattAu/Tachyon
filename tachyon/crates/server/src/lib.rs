@@ -110,6 +110,7 @@
 pub mod api_docs;
 pub mod audit;
 pub mod config;
+pub mod email;
 pub mod error;
 pub mod conflict;
 pub mod crdt;
@@ -165,6 +166,7 @@ pub struct AppState {
     pub crdt_connection_manager: crate::websocket::CrdtConnectionManager,
     pub pool: tachyon_database::DatabasePool,
     pub http_client: reqwest::Client,
+    pub email: crate::email::EmailService,
 }
 
 /// Initialize application state from a [`ServerConfig`].
@@ -273,6 +275,7 @@ pub async fn init_app_state(
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let connection_manager = ConnectionManager::new();
     let crdt_connection_manager = CrdtConnectionManager::new();
+    let email = crate::email::EmailService::new(config);
 
     Ok(AppState {
         document_state, user_state, session_state, repository_state, node_state,
@@ -280,6 +283,7 @@ pub async fn init_app_state(
         review_state, activity_state, notification_state, tags_state,
         webhook_state, plugin_state, space_state, conflict_state,
         onboarding_state, connection_manager, crdt_connection_manager, pool, http_client,
+        email,
     })
 }
 
@@ -411,7 +415,10 @@ pub fn build_app(
 
     let files_root = std::env::var("TACHYON_FILES_ROOT")
         .unwrap_or_else(|_| "./content".to_string());
-    let files_state = FilesState { root_path: std::path::PathBuf::from(&files_root) };
+    let files_state = FilesState {
+        root_path: std::path::PathBuf::from(&files_root),
+        uploads_dir: std::path::PathBuf::from(&files_root).join("uploads"),
+    };
     let files_router = create_files_router().with_state(files_state);
 
     let api_v1 = Router::new()

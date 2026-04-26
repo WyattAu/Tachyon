@@ -10,25 +10,21 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[cfg(feature = "staging")]
     pub async fn list_root_spaces(&self, owner_id: &str) -> Result<Vec<crate::types::Space>, ApiError> {
         let url = format!("{}/spaces/root?owner_id={}", self.base_url, owner_id);
         self.get(&url).await
     }
 
-    #[cfg(feature = "staging")]
     pub async fn list_child_spaces(&self, parent_id: &str, owner_id: &str) -> Result<Vec<crate::types::Space>, ApiError> {
         let url = format!("{}/spaces/{}/children?owner_id={}", self.base_url, parent_id, owner_id);
         self.get(&url).await
     }
 
-    #[cfg(feature = "staging")]
     pub async fn get_space(&self, space_id: &str) -> Result<crate::types::Space, ApiError> {
         let url = format!("{}/spaces/{}", self.base_url, space_id);
         self.get(&url).await
     }
 
-    #[cfg(feature = "staging")]
     pub async fn get_default_space(&self, owner_id: &str) -> Result<crate::types::Space, ApiError> {
         let url = format!("{}/spaces/default?owner_id={}", self.base_url, owner_id);
         self.get(&url).await
@@ -69,7 +65,6 @@ impl ApiClient {
         self.delete(&url).await
     }
 
-    #[cfg(feature = "staging")]
     pub async fn move_document_to_space(&self, document_id: &str, space_id: Option<&str>) -> Result<(), ApiError> {
         let url = format!("{}/spaces/move-document/{}", self.base_url, document_id);
         let body = serde_json::json!({ "space_id": space_id });

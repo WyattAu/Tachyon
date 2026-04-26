@@ -623,7 +623,7 @@ pub async fn reindex_tantivy(
 #[derive(Debug, Serialize)]
 pub struct SuggestResponse {
     pub query: String,
-    pub suggestions: Vec<String>,
+    pub suggestions: Vec<tachyon_search::types::Suggestion>,
 }
 
 #[derive(Debug, Deserialize)]

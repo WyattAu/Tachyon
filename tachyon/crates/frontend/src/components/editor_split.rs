@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use tachyon_editor::Editor;
 use leptos::prelude::*;
 
@@ -9,10 +10,9 @@ pub enum SplitMode {
     Split,
 }
 
-#[component]
 #[allow(dead_code)]
+#[component]
 pub fn EditorSplit(
-    #[allow(dead_code)]
     editor: RwSignal<Editor>,
     #[prop(default = SplitMode::Edit)]
     #[allow(dead_code)]
@@ -89,7 +89,7 @@ pub fn EditorSplit(
                                         content={String::new()}
                                         document_id={document_id.clone()}
                                         placeholder={placeholder.clone()}
-                                        on_change={on_change.clone()}
+                                        on_change={on_change}
                                     />
                                 </div>
                             }.into_any()
@@ -112,8 +112,8 @@ pub fn EditorSplit(
                                             content={String::new()}
                                             document_id={document_id.clone()}
                                             placeholder={placeholder.clone()}
-                                            on_change={on_change.clone()}
-                                        />
+                                             on_change={on_change}
+                                         />
                                     </div>
                                     <div class="editor-split-divider"></div>
                                     <div class="editor-pane editor-pane-right">

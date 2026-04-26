@@ -101,7 +101,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[cfg(feature = "staging")]
     pub async fn diff_versions(&self, document_id: &str, v1: i32, v2: i32) -> Result<DocumentDiffResponse, ApiError> {
         let url = format!("{}/documents/{}/versions/{}/diff/{}", self.base_url, document_id, v1, v2);
         self.get(&url).await

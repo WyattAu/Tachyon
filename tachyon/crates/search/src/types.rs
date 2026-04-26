@@ -685,6 +685,58 @@ impl SearchResponse {
 }
 
 // ============================================================================
+// Suggestions
+// ============================================================================
+
+/// Category of a search suggestion
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SuggestionCategory {
+    /// Suggestion from document titles
+    #[serde(rename = "document")]
+    Document,
+    /// Suggestion from tags
+    #[serde(rename = "tag")]
+    Tag,
+    /// Suggestion from spaces
+    #[serde(rename = "space")]
+    Space,
+    /// Suggestion from recent searches
+    #[serde(rename = "recent")]
+    Recent,
+}
+
+/// A single search suggestion for autocomplete
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Suggestion {
+    /// Suggestion text
+    pub text: String,
+    /// Associated document ID (if applicable)
+    pub document_id: Option<String>,
+    /// Category of the suggestion
+    pub category: SuggestionCategory,
+}
+
+impl Suggestion {
+    /// Create a new document suggestion
+    pub fn document(text: impl Into<String>, document_id: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            document_id: Some(document_id.into()),
+            category: SuggestionCategory::Document,
+        }
+    }
+
+    /// Create a new tag suggestion
+    pub fn tag(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            document_id: None,
+            category: SuggestionCategory::Tag,
+        }
+    }
+}
+
+// ============================================================================
 // Batch Operations
 // ============================================================================
 

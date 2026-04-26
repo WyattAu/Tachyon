@@ -53,6 +53,7 @@ chrono = { version = "0.4", features = ["serde"] }
 # Utilities
 uuid = { version = "1", features = ["v4", "serde"] }
 base64 = "0.22"
+rand = { workspace = true }
 
 # Validation & Security
 regex = "1"

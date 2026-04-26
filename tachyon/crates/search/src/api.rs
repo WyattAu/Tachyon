@@ -5,7 +5,7 @@ use crate::error::SearchError;
 use crate::indexer::IndexManager;
 use crate::query::QueryEngine;
 use crate::types::{
-    BatchIndexRequest, BatchIndexResponse, SearchRequest, SearchResponse, SortOrder,
+    BatchIndexRequest, BatchIndexResponse, SearchRequest, SearchResponse, SortOrder, Suggestion,
 };
 use axum::{
     extract::{Path, State, ws::Message, ws::WebSocketUpgrade},
@@ -80,7 +80,7 @@ pub(crate) struct SuggestionsResponse {
     /// Query string
     pub query: String,
     /// Suggestions
-    pub suggestions: Vec<String>,
+    pub suggestions: Vec<Suggestion>,
 }
 
 /// WebSocket search request
