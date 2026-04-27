@@ -9,6 +9,14 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, GetString, ReadTxn, Text, TextRef, Transact, Update};
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WikilinkState {
+    pub active: bool,
+    pub query: String,
+    pub start_line: usize,
+    pub start_col: usize,
+}
+
 fn current_timestamp() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -510,6 +518,43 @@ impl Editor {
 
         self.cursor.line += 1;
         self.cursor.col = current_col.min(self.buffer.line_len(self.cursor.line));
+    }
+
+    pub fn get_wikilink_state(&self) -> Option<WikilinkState> {
+        let line_text = self.buffer.line(self.cursor.line);
+        let trimmed = line_text.trim_end_matches('\n');
+        let before_cursor = &trimmed[..self.cursor.col.min(trimmed.len())];
+
+        if let Some(start) = before_cursor.rfind("[[") {
+            let after_start = &before_cursor[start + 2..];
+            if after_start.contains("]]") {
+                return None;
+            }
+            Some(WikilinkState {
+                active: true,
+                query: after_start.to_string(),
+                start_line: self.cursor.line,
+                start_col: start,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn insert_wikilink(&mut self, title: &str, alias: Option<&str>) {
+        if let Some(wl_state) = self.get_wikilink_state() {
+            let replacement = match alias {
+                Some(a) => format!("[[{}|{}]]", title, a),
+                None => format!("[[{}]]", title),
+            };
+
+            self.cursor = Cursor::new(wl_state.start_line, wl_state.start_col);
+            let end = Cursor::new(self.cursor.line, wl_state.start_col + 2 + wl_state.query.len());
+            self.selection = Selection::range(self.cursor, end);
+            self.delete_selection();
+
+            self.insert_text(&replacement);
+        }
     }
 
     pub fn undo(&mut self) -> bool {
@@ -1211,5 +1256,58 @@ mod tests {
 
         editor_b.apply_remote_update(&update2);
         assert_eq!(editor_b.content(), "hello world");
+    }
+
+    #[test]
+    fn test_get_wikilink_state_active() {
+        let mut editor = Editor::with_content("[[hello");
+        editor.move_cursor_to(0, 7);
+        let state = editor.get_wikilink_state();
+        assert!(state.is_some());
+        let s = state.unwrap();
+        assert!(s.active);
+        assert_eq!(s.query, "hello");
+        assert_eq!(s.start_line, 0);
+        assert_eq!(s.start_col, 0);
+    }
+
+    #[test]
+    fn test_get_wikilink_state_closed() {
+        let mut editor = Editor::with_content("[[hello]]");
+        editor.move_cursor_to(0, 9);
+        let state = editor.get_wikilink_state();
+        assert!(state.is_none());
+    }
+
+    #[test]
+    fn test_get_wikilink_state_no_open() {
+        let mut editor = Editor::with_content("some random text");
+        editor.move_cursor_to(0, 16);
+        let state = editor.get_wikilink_state();
+        assert!(state.is_none());
+    }
+
+    #[test]
+    fn test_insert_wikilink() {
+        let mut editor = Editor::with_content("[[hel");
+        editor.move_cursor_to(0, 5);
+        editor.insert_wikilink("Hello World", None);
+        assert_eq!(editor.content(), "[[Hello World]]");
+    }
+
+    #[test]
+    fn test_insert_wikilink_with_alias() {
+        let mut editor = Editor::with_content("some [[hel");
+        editor.move_cursor_to(0, 10);
+        editor.insert_wikilink("Hello World", Some("hw"));
+        assert_eq!(editor.content(), "some [[Hello World|hw]]");
+    }
+
+    #[test]
+    fn test_insert_wikilink_no_state() {
+        let mut editor = Editor::with_content("no wikilink here");
+        editor.move_cursor_to(0, 17);
+        editor.insert_wikilink("Hello", None);
+        assert_eq!(editor.content(), "no wikilink here");
     }
 }

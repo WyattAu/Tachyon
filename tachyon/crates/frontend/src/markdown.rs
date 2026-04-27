@@ -277,7 +277,7 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                     html.push_str(title.as_ref());
                     html.push_str("\" />");
                 }
-                Tag::Table(_alignment) => html.push_str("<table>"),
+                Tag::Table(_alignment) => html.push_str("<div class=\"overflow-x-auto\"><table class=\"min-w-full\">"),
                 Tag::TableHead => {
                     in_table_head = true;
                     html.push_str("<thead><tr>");
@@ -320,7 +320,7 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                 Tag::Strikethrough => html.push_str("</del>"),
                 Tag::Link(..) => html.push_str("</a>"),
                 Tag::Image(..) => {}
-                Tag::Table(_) => html.push_str("</table>"),
+                Tag::Table(_) => html.push_str("</table></div>"),
                 Tag::TableHead => {
                     in_table_head = false;
                     html.push_str("</tr></thead>");

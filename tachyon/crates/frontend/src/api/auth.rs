@@ -92,4 +92,19 @@ impl ApiClient {
         let url = format!("{}/auth/logout", self.base_url);
         self.post_empty(&url).await
     }
+
+    pub async fn enable_mfa(&self) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/auth/mfa", self.base_url);
+        self.post(&url, &serde_json::json!({})).await
+    }
+
+    pub async fn disable_mfa(&self) -> Result<(), ApiError> {
+        let url = format!("{}/auth/mfa", self.base_url);
+        self.delete(&url).await
+    }
+
+    pub async fn update_user_settings(&self, settings: &serde_json::Map<String, serde_json::Value>) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/auth/me", self.base_url);
+        self.put(&url, settings).await
+    }
 }

@@ -142,10 +142,12 @@ pub fn BillingPage() -> impl IntoView {
     };
 
     view! {
-        <div class="p-6 max-w-6xl mx-auto">
-            <div class="mb-6">
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">"Billing & Subscription"</h1>
-                <p class="text-gray-600 dark:text-gray-400 mt-1">"Manage your subscription, view invoices, and track usage."</p>
+        <div class="p-4 md:p-6 max-w-6xl mx-auto">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">"Billing & Subscription"</h1>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">"Manage your subscription, view invoices, and track usage."</p>
+                </div>
             </div>
 
             {move || error.get().map(|e| view! {

@@ -670,6 +670,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d27c3610c36aee21ce8ac510e6224498de4228ad772a171ed65643a24693a5a8"
 
 [[package]]
+name = "base32"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "022dfe9eb35f19ebbcb51e0b40a5ab759f46ad60cadf7297e0bd085afb50e076"
+
+[[package]]
 name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8871,7 +8877,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert_matches",
+ "async-trait",
  "axum",
+ "base32",
  "base64 0.22.1",
  "bytes",
  "chrono",
@@ -8894,6 +8902,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "serial_test",
+ "sha1",
  "sha2",
  "sqlx",
  "subtle",
@@ -8905,6 +8914,7 @@ dependencies = [
  "tachyon-renderer",
  "tachyon-search",
  "tachyon-ssg",
+ "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "tokio-test",

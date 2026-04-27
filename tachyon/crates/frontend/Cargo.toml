@@ -50,6 +50,7 @@ web-sys = { version = "0.3", features = [
     "BlobPropertyBag",
     "File",
     "FileList",
+    "FormData",
     "DataTransfer",
     "DragEvent",
     "KeyboardEvent",
@@ -64,6 +65,7 @@ web-sys = { version = "0.3", features = [
     "ScrollIntoViewOptions",
     "ScrollBehavior",
     "ScrollLogicalPosition",
+    "WheelEvent",
     "IdbFactory",
     "IdbDatabase",
     "IdbObjectStore",
@@ -76,6 +78,8 @@ web-sys = { version = "0.3", features = [
     "IdbIndex",
     "IdbKeyRange",
     "IdbTransactionMode",
+    "MediaQueryList",
+    "MediaQueryListEvent",
 ] }
 js-sys = "0.3"
 

@@ -12,6 +12,7 @@ pub mod presence_indicators;
 pub mod command_palette;
 pub mod common;
 pub mod conflict_resolver;
+pub mod drop_zone;
 pub mod editor_preview;
 pub mod editor_search;
 pub mod editor_settings;
@@ -21,6 +22,7 @@ pub mod empty_state;
 pub mod error_boundary;
 pub mod layout;
 pub mod loading;
+pub mod mobile_nav;
 pub mod native_editor;
 pub mod onboarding;
 pub mod review_panel;
@@ -28,10 +30,14 @@ pub mod role_badge;
 pub mod skeleton;
 pub mod table_of_contents;
 pub mod template_selector;
+pub mod theme_toggle;
 pub mod markdown_preview;
 pub mod update_banner;
+pub mod image_preview;
+pub mod upload_progress;
 pub mod version_history;
 pub mod user_avatar;
+pub mod wikilink_autocomplete;
 
 pub use activity_feed::{Activity, ActivityFeed};
 pub use app_shell::AppShell;
@@ -61,3 +67,15 @@ pub use presence_indicators::{PresenceIndicators as CollabPresenceIndicators, Pr
 pub use table_of_contents::TableOfContents;
 #[allow(unused_imports)]
 pub use user_avatar::UserAvatar;
+#[allow(unused_imports)]
+pub use wikilink_autocomplete::{WikilinkAutocomplete, WikilinkCompletion};
+#[allow(unused_imports)]
+pub use drop_zone::DroppedFile;
+#[allow(unused_imports)]
+pub use drop_zone::DropZone;
+#[allow(unused_imports)]
+pub use upload_progress::{UploadItem, UploadProgress, UploadStatus};
+#[allow(unused_imports)]
+pub use theme_toggle::{Theme, ThemeToggle, ThemeInitializer, get_current_theme, get_current_theme_label};
+#[allow(unused_imports)]
+pub use mobile_nav::MobileNav;

@@ -14,6 +14,7 @@ use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, deco
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sha2::{Sha256, Digest};
+use sqlx::Row;
 use tachyon_core::{User, UserId, UserRole};
 use tachyon_database::{DatabasePool, RefreshTokenRepository, UserRepository};
 use tracing::{debug, info, instrument, warn};
@@ -73,7 +74,7 @@ pub struct UserState {
     pub guest_config: GuestConfig,
 }
 
-const REFRESH_TOKEN_EXPIRATION_SECS: u64 = 30 * 24 * 60 * 60;
+pub(crate) const REFRESH_TOKEN_EXPIRATION_SECS: u64 = 30 * 24 * 60 * 60;
 
 impl UserState {
     /// Create a new user state with full JWT config and guest config.
@@ -96,16 +97,16 @@ impl UserState {
     }
 
     /// Get a UserRepository for this state.
-    fn user_repo(&self) -> UserRepository {
+    pub(crate) fn user_repo(&self) -> UserRepository {
         UserRepository::new(self.pool.clone())
     }
 
     /// Get a RefreshTokenRepository for this state.
-    fn refresh_token_repo(&self) -> RefreshTokenRepository {
+    pub(crate) fn refresh_token_repo(&self) -> RefreshTokenRepository {
         RefreshTokenRepository::new(self.pool.clone())
     }
 
-    fn generate_refresh_token(&self) -> String {
+    pub(crate) fn generate_refresh_token(&self) -> String {
         let bytes: [u8; 32] = rand::thread_rng().gen();
         hex::encode(bytes)
     }
@@ -114,7 +115,7 @@ impl UserState {
     ///
     /// The token includes `permissions` and `team_id` fields (defaulting to
     /// empty/None) to maintain compatibility with the auth middleware Claims.
-    fn generate_jwt(&self, user_id: &str, role: UserRole) -> Result<String, String> {
+    pub(crate) fn generate_jwt(&self, user_id: &str, role: UserRole) -> Result<String, String> {
         let now = jsonwebtoken::get_current_timestamp();
         let exp = now + self.token_expiration_secs;
 
@@ -264,6 +265,13 @@ pub struct AuthenticateResponse {
     /// User info
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<UserResponse>,
+    /// Whether MFA is required to complete login
+    #[serde(default)]
+    pub mfa_required: bool,
+    /// User ID for MFA completion (set when mfa_required is true)
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mfa_user_id: Option<String>,
 }
 
 /// User response (never includes password_hash).
@@ -343,7 +351,7 @@ pub struct UserErrorResponse {
 // Helpers
 // ============================================================================
 
-fn hash_refresh_token(token: &str) -> String {
+pub(crate) fn hash_refresh_token(token: &str) -> String {
     let hash = Sha256::digest(token.as_bytes());
     hex::encode(hash)
 }
@@ -457,6 +465,8 @@ pub async fn register(
                 expires_in: state.token_expiration_secs,
                 error: None,
                 user: Some(UserResponse::from(created)),
+                mfa_required: false,
+                mfa_user_id: None,
             }))
         }
         Err(e) => {
@@ -850,6 +860,8 @@ pub async fn authenticate(
             expires_in: state.token_expiration_secs,
             error: Some("Username cannot be empty".into()),
             user: None,
+            mfa_required: false,
+            mfa_user_id: None,
         }));
     }
 
@@ -863,6 +875,8 @@ pub async fn authenticate(
             expires_in: state.token_expiration_secs,
             error: Some("Password cannot be empty".into()),
             user: None,
+            mfa_required: false,
+            mfa_user_id: None,
         }));
     }
 
@@ -883,6 +897,8 @@ pub async fn authenticate(
                 expires_in: state.token_expiration_secs,
                 error: Some("Invalid username or password".into()),
                 user: None,
+                mfa_required: false,
+                mfa_user_id: None,
             }));
         }
     };
@@ -899,6 +915,8 @@ pub async fn authenticate(
             expires_in: state.token_expiration_secs,
             error: Some("Account is disabled".into()),
             user: None,
+            mfa_required: false,
+            mfa_user_id: None,
         }));
     }
 
@@ -916,6 +934,53 @@ pub async fn authenticate(
                 expires_in: state.token_expiration_secs,
                 error: Some("Invalid username or password".into()),
                 user: None,
+                mfa_required: false,
+                mfa_user_id: None,
+            }));
+        }
+    }
+
+    // Check if MFA is enabled
+    let mut conn = state.pool.acquire().await.map_err(|e| {
+        warn!("Failed to acquire connection for MFA check: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(UserErrorResponse {
+                code: "INTERNAL_ERROR".into(),
+                message: "Database error".into(),
+            }),
+        )
+    })?;
+    let totp_row = sqlx::query("SELECT totp_enabled FROM users WHERE id = $1")
+        .bind(user.id.as_uuid())
+        .fetch_optional(&mut *conn)
+        .await
+        .map_err(|e| {
+            warn!("Failed to check MFA status: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UserErrorResponse {
+                    code: "INTERNAL_ERROR".into(),
+                    message: "Database error".into(),
+                }),
+            )
+        })?;
+
+    if let Some(row) = totp_row {
+        let totp_enabled: bool = row.get("totp_enabled");
+        if totp_enabled {
+            info!("MFA required for user {} ({})", user.username, user.id);
+            return Ok(Json(AuthenticateResponse {
+                success: true,
+                user_id: Some(user.id.to_string()),
+                access_token: None,
+                refresh_token: None,
+                token_type: "Bearer".into(),
+                expires_in: state.token_expiration_secs,
+                error: None,
+                user: Some(UserResponse::from(user.clone())),
+                mfa_required: true,
+                mfa_user_id: Some(user.id.to_string()),
             }));
         }
     }
@@ -954,6 +1019,8 @@ pub async fn authenticate(
         expires_in: state.token_expiration_secs,
         error: None,
         user: Some(UserResponse::from(user)),
+        mfa_required: false,
+        mfa_user_id: None,
     }))
 }
 
@@ -1136,6 +1203,8 @@ pub async fn refresh_token_handler(
         expires_in: state.token_expiration_secs,
         error: None,
         user: Some(UserResponse::from(user)),
+        mfa_required: false,
+        mfa_user_id: None,
     }))
 }
 
@@ -1200,6 +1269,8 @@ pub async fn guest_login(
         expires_in: state.token_expiration_secs,
         error: None,
         user: Some(UserResponse::from(user)),
+        mfa_required: false,
+        mfa_user_id: None,
     }))
 }
 
@@ -1288,6 +1359,8 @@ mod tests {
             expires_in: 3600,
             error: None,
             user: None,
+            mfa_required: false,
+            mfa_user_id: None,
         };
 
         let json = serde_json::to_string(&resp).unwrap();

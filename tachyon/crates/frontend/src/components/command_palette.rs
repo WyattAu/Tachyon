@@ -232,7 +232,7 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
         ></div>
 
         <div
-            class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
+            class="fixed inset-0 z-50 flex items-start sm:justify-center pt-[10vh] sm:pt-[20vh] px-4"
             style={move || if open.get() { "" } else { "display: none;" }}
         >
             <div
@@ -247,7 +247,7 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
                     <input
                         type="text"
                         placeholder="Search documents, commands..."
-                        class="w-full px-3 py-3 bg-transparent text-gray-900 dark:text-gray-100 outline-none"
+                        class="w-full min-h-[44px] px-3 py-3 bg-transparent text-gray-900 dark:text-gray-100 outline-none"
                         prop:value={move || query.get()}
                         on:input=on_input
                         on:keydown=on_keydown

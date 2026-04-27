@@ -1,5 +1,6 @@
 #![allow(clippy::redundant_locals)]
 use crate::components::collaborative_cursors::{AwarenessState, CollaborativeCursors};
+use crate::components::wikilink_autocomplete::{WikilinkAutocomplete, WikilinkCompletion};
 use leptos::prelude::*;
 use tachyon_editor::{Cursor, Editor, HighlightToken};
 use wasm_bindgen::JsCast;
@@ -70,6 +71,10 @@ pub fn NativeEditor(
     let visible_lines = RwSignal::new(50usize);
     let is_focused = RwSignal::new(false);
 
+    let (wl_visible, set_wl_visible) = signal(false);
+    let (wl_query, set_wl_query) = signal(String::new());
+    let (wl_position, set_wl_position) = signal((0.0, 0.0));
+
     let editor_for_change = editor;
     let on_change_cb = on_change;
 
@@ -78,6 +83,26 @@ pub fn NativeEditor(
         let dirty = editor_for_change.with(|e| e.is_dirty());
         if dirty {
             on_change_cb.run(content);
+        }
+    });
+
+    let editor_for_wl = editor;
+    let wl_line_numbers = line_numbers;
+    Effect::new(move |_| {
+        let wl_state = editor_for_wl.with(|e| e.get_wikilink_state());
+        if let Some(state) = wl_state {
+            if !state.query.is_empty() {
+                set_wl_query.set(state.query.clone());
+                set_wl_visible.set(true);
+                let gutter_w = if wl_line_numbers { 50.0 } else { 0.0 };
+                let top_px = state.start_line as f64 * LINE_HEIGHT_PX + LINE_HEIGHT_PX;
+                let left_px = gutter_w + state.start_col as f64 * CHAR_WIDTH_PX;
+                set_wl_position.set((left_px, top_px));
+            } else {
+                set_wl_visible.set(false);
+            }
+        } else {
+            set_wl_visible.set(false);
         }
     });
 
@@ -229,6 +254,14 @@ pub fn NativeEditor(
     } else {
         "line-content".to_string()
     };
+
+    let editor_for_wl_select = editor;
+    let on_wikilink_select = Callback::new(move |completion: WikilinkCompletion| {
+        editor_for_wl_select.update(|e| {
+            e.insert_wikilink(&completion.title, None);
+        });
+        set_wl_visible.set(false);
+    });
 
     view! {
         <div
@@ -423,6 +456,14 @@ pub fn NativeEditor(
                     }.into_any()
                 }
             }
+
+            // Wikilink autocomplete dropdown
+            <WikilinkAutocomplete
+                query=wl_query
+                visible=wl_visible
+                position=wl_position
+                on_select=on_wikilink_select
+            />
         </div>
     }
 }

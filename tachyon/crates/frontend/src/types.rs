@@ -423,6 +423,17 @@ pub struct RenderMarkdownResponse {
 // Attachment Types
 // ============================================================================
 
+/// File upload response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UploadResponse {
+    pub id: String,
+    pub filename: String,
+    pub url: String,
+    pub size: u64,
+    pub content_type: String,
+    pub uploaded_at: String,
+}
+
 /// Document attachment
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attachment {

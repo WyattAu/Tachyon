@@ -140,14 +140,14 @@ pub fn RolesPage() -> impl IntoView {
     };
 
     view! {
-        <div class="p-6 max-w-6xl mx-auto">
-            <div class="flex justify-between items-center mb-6">
+        <div class="p-4 md:p-6 max-w-6xl mx-auto">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">"Role Management"</h1>
+                    <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">"Role Management"</h1>
                     <p class="text-gray-600 dark:text-gray-400 mt-1">"Manage roles and permissions for your team"</p>
                 </div>
                 <button
-                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    class="min-h-[44px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mt-3 sm:mt-0"
                     on:click=move |_| set_show_create_modal.set(true)
                 >
                     "Create Role"
@@ -171,6 +171,7 @@ pub fn RolesPage() -> impl IntoView {
             }}
 
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+                <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
@@ -236,6 +237,7 @@ pub fn RolesPage() -> impl IntoView {
                         }).collect::<Vec<_>>()}
                     </tbody>
                 </table>
+                </div>
             </div>
 
             {move || if show_create_modal.get() {

@@ -18,6 +18,8 @@ pub mod spaces;
 pub mod ssg;
 pub mod billing;
 pub mod audit;
+pub mod profile;
+pub mod onboarding;
 
 pub use graph::GraphPage;
 pub use home::HomePage;
@@ -38,3 +40,5 @@ pub use spaces::SpacesPage;
 pub use ssg::SsgPage;
 pub use billing::BillingPage;
 pub use audit::AuditPage;
+pub use profile::ProfilePage;
+pub use onboarding::OnboardingPage;

@@ -25,6 +25,10 @@ pub struct UserRecord {
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub totp_secret: Option<String>,
+    pub totp_enabled: bool,
+    pub totp_backup_codes: Option<Vec<String>>,
+    pub totp_verified_at: Option<DateTime<Utc>>,
 }
 
 impl UserRecord {

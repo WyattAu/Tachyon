@@ -5,6 +5,7 @@ pub mod activity;
 pub mod billing;
 pub mod files;
 pub mod health;
+pub mod mfa;
 pub mod metrics;
 pub mod catalog;
 pub mod collaboration;

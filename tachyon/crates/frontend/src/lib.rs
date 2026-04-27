@@ -13,7 +13,7 @@ pub mod websocket;
 use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
-use components::{AppShell, AuthGuard, provide_auth_context, AppErrorBoundary};
+use components::{AppShell, AuthGuard, provide_auth_context, AppErrorBoundary, ThemeInitializer};
 use crate::api::ApiClient;
 use storage::{BrowserStore, sync::SyncEngine};
 
@@ -72,6 +72,7 @@ pub fn App() -> impl IntoView {
     view! {
         <AppErrorBoundary>
             <GlobalStyles />
+            <ThemeInitializer />
             <Router>
                 <AppShell theme=theme toggle_theme=toggle_theme>
                 <Routes fallback=NotFound>
@@ -239,6 +240,24 @@ pub fn App() -> impl IntoView {
                             <AuthGuard>
                                 <AppErrorBoundary>
                                     <pages::AuditPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/profile") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::ProfilePage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/onboarding") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::OnboardingPage />
                                 </AppErrorBoundary>
                             </AuthGuard>
                         }

@@ -117,7 +117,9 @@ pub mod crdt;
 pub mod graph_extractor;
 pub mod middleware;
 pub mod routes;
+pub mod storage;
 pub mod sync;
+pub mod totp;
 pub mod truelayer;
 pub mod validation;
 pub mod webhook_delivery;
@@ -353,6 +355,7 @@ pub fn build_app(
     use crate::routes::oauth2::{create_oauth2_router, OAuth2State};
     use crate::routes::password_reset::{create_password_reset_router, PasswordResetState};
     use crate::routes::files::{create_files_router, FilesState};
+    use crate::routes::mfa::create_mfa_router;
     use crate::websocket::handle_websocket_upgrade;
     use crate::websocket::handle_crdt_websocket_upgrade;
     use axum::{Router, routing::get};
@@ -364,7 +367,7 @@ pub fn build_app(
     };
 
     let document_router = create_document_router().with_state(document_state);
-    let user_router = create_user_router().with_state(user_state);
+    let user_router = create_user_router().with_state(user_state.clone());
     let session_router = create_session_router().with_state(session_state);
     let repository_router = create_repository_router().with_state(repository_state);
     let node_router = create_node_router().with_state(node_state);
@@ -428,6 +431,7 @@ pub fn build_app(
         uploads_dir: std::path::PathBuf::from(&files_root).join("uploads"),
     };
     let files_router = create_files_router().with_state(files_state);
+    let mfa_router = create_mfa_router().with_state(user_state.clone());
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -454,6 +458,7 @@ pub fn build_app(
         .merge(organization_router)
         .merge(password_reset_router)
         .merge(files_router)
+        .merge(mfa_router)
         .layer(RequestBodyLimitLayer::new(1024 * 1024))
         .merge(
             ssg_router

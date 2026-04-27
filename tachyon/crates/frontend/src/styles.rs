@@ -594,6 +594,16 @@ pub fn GlobalStyles() -> impl IntoView {
                     white-space: nowrap;
                 }}
 
+                @media (max-width: 767px) {{
+                    .editor-toolbar-btn {{
+                        min-width: 44px;
+                        min-height: 44px;
+                        height: 44px;
+                        padding: 4px 8px;
+                        font-size: 14px;
+                    }}
+                }}
+
                 .editor-toolbar-btn:hover:not(:disabled) {{
                     background: #e5e7eb;
                 }}

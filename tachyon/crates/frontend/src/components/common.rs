@@ -23,7 +23,7 @@ pub fn Button(
 
     view! {
         <button
-            class=format!("px-4 py-2 rounded-md font-medium transition-colors {}", variant_class)
+            class=format!("min-h-[44px] px-4 py-3 rounded-md font-medium transition-colors {}", variant_class)
         >
             {text}
         </button>
@@ -115,12 +115,12 @@ pub fn Grid(
 ) -> impl IntoView {
     let cols_class = match cols {
         1 => "grid-cols-1",
-        2 => "grid-cols-2",
-        3 => "grid-cols-3",
-        4 => "grid-cols-4",
-        5 => "grid-cols-5",
-        6 => "grid-cols-6",
-        _ => "grid-cols-3",
+        2 => "grid-cols-1 md:grid-cols-2",
+        3 => "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+        4 => "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
+        5 => "grid-cols-1 md:grid-cols-3 lg:grid-cols-5",
+        6 => "grid-cols-1 md:grid-cols-3 lg:grid-cols-6",
+        _ => "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
     };
 
     view! {
@@ -138,7 +138,7 @@ pub fn PageHeader(
 ) -> impl IntoView {
     view! {
         <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-900">{title}</h1>
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{title}</h1>
         </div>
     }
 }
