@@ -5,7 +5,6 @@ use anyhow::{Context, Result};
 use std::backtrace::Backtrace;
 use std::net::SocketAddr;
 use std::sync::OnceLock;
-use std::time::Instant;
 use tachyon_server::config::ServerConfig;
 use tachyon_search::{IndexConfig, IndexManager};
 use tracing::{error, info, warn};
@@ -13,9 +12,6 @@ use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberI
 
 /// Global panic information storage for debugging
 static PANIC_INFO: OnceLock<String> = OnceLock::new();
-
-/// Server start time for uptime tracking
-static START_TIME: OnceLock<Instant> = OnceLock::new();
 
 /// Setup custom panic handler for better error reporting
 fn setup_panic_handler() {
@@ -162,46 +158,39 @@ async fn run_server(config: ServerConfig) -> Result<()> {
     );
 
     axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .context("Failed to serve HTTP connections")?;
 
     Ok(())
 }
 
-/// Setup graceful shutdown
-async fn run_with_graceful_shutdown(config: ServerConfig) -> Result<()> {
-    let server_task = tokio::spawn(run_server(config.clone()));
-
-    // Wait for Ctrl+C (SIGINT) or SIGTERM (Docker stop signal)
-    let ctrl_c = tokio::signal::ctrl_c();
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
 
     #[cfg(unix)]
-    let sigterm = async {
-        let mut signal = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("Failed to install SIGTERM handler");
-        signal.recv().await;
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("Failed to install signal handler")
+            .recv()
+            .await;
     };
+
     #[cfg(not(unix))]
-    let sigterm = std::future::pending::<()>();
+    let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => {
-            info!("Received Ctrl+C signal, initiating graceful shutdown...");
-        }
-        _ = sigterm => {
-            info!("Received SIGTERM signal, initiating graceful shutdown...");
-        }
+        _ = ctrl_c => info!("Received Ctrl+C, shutting down gracefully..."),
+        _ = terminate => info!("Received SIGTERM, shutting down gracefully..."),
     }
 
-    server_task.abort();
-
-    let _ = tokio::time::timeout(std::time::Duration::from_secs(30), server_task)
-        .await
-        .context("Server shutdown timeout")??;
-
-    info!("Server shutdown complete");
-
-    Ok(())
+    info!("Waiting 30 seconds for connections to drain...");
+    tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+    info!("Shutdown complete");
 }
 
 /// Main entry point
@@ -209,7 +198,6 @@ async fn run_with_graceful_shutdown(config: ServerConfig) -> Result<()> {
 async fn main() -> Result<()> {
     // Setup panic handler FIRST before any other initialization
     setup_panic_handler();
-    START_TIME.get_or_init(Instant::now);
 
     // Load configuration from environment variables
     let config = ServerConfig::from_env();
@@ -232,7 +220,7 @@ async fn main() -> Result<()> {
         config.database_url.split('@').next_back().unwrap_or("configured")
     });
 
-    run_with_graceful_shutdown(config).await
+    run_server(config).await
 }
 
 #[cfg(test)]

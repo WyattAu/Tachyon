@@ -352,10 +352,8 @@ fn hash_refresh_token(token: &str) -> String {
 // Route Handlers
 // ============================================================================
 
-/// Register a new user (public endpoint).
-///
-/// Creates a user with the default `Reader` role. The password is hashed
-/// with Argon2id before storage.
+/// POST /auth/register
+/// Rate limit: 3 requests per minute per IP
 #[instrument(skip(state), fields(username = %req.username))]
 pub async fn register(
     State(state): State<UserState>,
@@ -834,10 +832,8 @@ pub async fn update_me(
     }
 }
 
-/// Authenticate user (login).
-///
-/// Looks up the user by username or email in the database, verifies the
-/// password with Argon2id, and returns a JWT token on success.
+/// POST /auth/login
+/// Rate limit: 5 requests per minute per IP
 pub async fn authenticate(
     State(state): State<UserState>,
     Json(req): Json<AuthenticateRequest>,
@@ -1029,7 +1025,8 @@ pub async fn logout(
     })))
 }
 
-/// POST /auth/refresh — exchange a valid refresh token for new access + refresh tokens.
+/// POST /auth/refresh
+/// Rate limit: 10 requests per minute per IP
 pub async fn refresh_token_handler(
     State(state): State<UserState>,
     Json(req): Json<RefreshRequest>,
@@ -1142,9 +1139,8 @@ pub async fn refresh_token_handler(
     }))
 }
 
-/// Guest login — auto-authenticate as a guest user.
-///
-/// Only available when `guest_login_enabled` is true in config.
+/// POST /auth/guest
+/// Rate limit: 3 requests per minute per IP
 pub async fn guest_login(
     State(state): State<UserState>,
 ) -> Result<Json<AuthenticateResponse>, (StatusCode, Json<UserErrorResponse>)> {

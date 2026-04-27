@@ -403,6 +403,21 @@ pub fn configure_endpoint_rate_limit(path: &str, max_requests: u32, window_secs:
     (path.to_string(), RateLimit::new(max_requests, window_secs))
 }
 
+pub struct RateLimitRule {
+    pub path_pattern: String,
+    pub max_requests: usize,
+    pub window_secs: u64,
+}
+
+pub fn default_rules() -> Vec<RateLimitRule> {
+    vec![
+        RateLimitRule { path_pattern: "/api/auth/login".to_string(), max_requests: 5, window_secs: 60 },
+        RateLimitRule { path_pattern: "/api/auth/register".to_string(), max_requests: 3, window_secs: 60 },
+        RateLimitRule { path_pattern: "/api/auth/password-reset".to_string(), max_requests: 3, window_secs: 3600 },
+        RateLimitRule { path_pattern: "/api/*".to_string(), max_requests: 100, window_secs: 60 },
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

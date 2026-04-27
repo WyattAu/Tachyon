@@ -9,8 +9,20 @@ use tracing::info_span;
 #[derive(Debug, Clone)]
 pub struct RequestId(pub String);
 
+impl std::fmt::Display for RequestId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 pub async fn request_id_middleware(request: Request, next: Next) -> Response {
-    let request_id = uuid::Uuid::new_v4().to_string();
+    let request_id = request
+        .headers()
+        .get("x-request-id")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+
     let request_id_header = HeaderValue::from_str(&request_id).unwrap_or_else(|_| {
         HeaderValue::from_static("unknown")
     });

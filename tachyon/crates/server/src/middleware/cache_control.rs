@@ -50,8 +50,45 @@ pub async fn cache_control_middleware(request: Request, next: Next) -> Response 
     response
 }
 
-/// Determine the appropriate Cache-Control directive based on path.
+/// Determine the appropriate Cache-Control directive based on path and file extension.
 fn determine_cache_directive(path: &str) -> String {
+    // HTML files and root: no cache (SPA shell must always be fresh)
+    if path.ends_with(".html") || path == "/" {
+        return "no-cache, no-store, must-revalidate".to_string();
+    }
+
+    // WASM: long cache (immutable, content-hashed by Trunk)
+    if path.ends_with(".wasm") {
+        return "public, max-age=31536000, immutable".to_string();
+    }
+
+    // JS/CSS: long cache (content-hashed by Trunk)
+    if path.ends_with(".js") || path.ends_with(".css") {
+        return "public, max-age=31536000, immutable".to_string();
+    }
+
+    // Images: long cache
+    if path.ends_with(".png") || path.ends_with(".jpg") || path.ends_with(".jpeg")
+        || path.ends_with(".gif") || path.ends_with(".webp") || path.ends_with(".svg")
+        || path.ends_with(".ico") {
+        return "public, max-age=31536000, immutable".to_string();
+    }
+
+    // Fonts: long cache
+    if path.ends_with(".woff") || path.ends_with(".woff2") || path.ends_with(".ttf") || path.ends_with(".eot") {
+        return "public, max-age=31536000, immutable".to_string();
+    }
+
+    // Source maps: long cache (paired with content-hashed assets)
+    if path.ends_with(".map") {
+        return "public, max-age=31536000, immutable".to_string();
+    }
+
+    // Manifest files: short cache (content may change)
+    if path.ends_with(".webmanifest") || path == "/manifest.json" {
+        return "public, max-age=3600".to_string();
+    }
+
     // SEO files: cache for 1 hour
     if path == "/robots.txt" || path == "/sitemap.xml" {
         return "public, max-age=3600, stale-while-revalidate=86400".to_string();
@@ -112,6 +149,47 @@ mod tests {
 
         let directive = determine_cache_directive("/api/v1/health");
         assert_eq!(directive, "no-cache");
+    }
+
+    #[test]
+    fn test_determine_cache_directive_html() {
+        let directive = determine_cache_directive("/index.html");
+        assert_eq!(directive, "no-cache, no-store, must-revalidate");
+
+        let directive = determine_cache_directive("/");
+        assert_eq!(directive, "no-cache, no-store, must-revalidate");
+    }
+
+    #[test]
+    fn test_determine_cache_directive_wasm() {
+        let directive = determine_cache_directive("/tachyon_frontend_bg.wasm");
+        assert!(directive.contains("max-age=31536000"));
+        assert!(directive.contains("immutable"));
+    }
+
+    #[test]
+    fn test_determine_cache_directive_js_css() {
+        let directive = determine_cache_directive("/tachyon_frontend.js");
+        assert!(directive.contains("immutable"));
+
+        let directive = determine_cache_directive("/styles.css");
+        assert!(directive.contains("immutable"));
+    }
+
+    #[test]
+    fn test_determine_cache_directive_images() {
+        for ext in &[".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico"] {
+            let directive = determine_cache_directive(&format!("/assets/img{}", ext));
+            assert!(directive.contains("immutable"), "Failed for extension {}", ext);
+        }
+    }
+
+    #[test]
+    fn test_determine_cache_directive_fonts() {
+        for ext in &[".woff", ".woff2", ".ttf", ".eot"] {
+            let directive = determine_cache_directive(&format!("/assets/font{}", ext));
+            assert!(directive.contains("immutable"), "Failed for extension {}", ext);
+        }
     }
 
     #[test]

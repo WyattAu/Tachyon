@@ -115,6 +115,8 @@ async fn send_email_webhook(client: &reqwest::Client, to: &str, subject: &str, b
 // Handlers
 // ============================================================================
 
+/// POST /auth/password-reset
+/// Rate limit: 3 requests per minute per IP
 pub async fn request_password_reset(
     State(state): State<PasswordResetState>,
     Json(body): Json<PasswordResetRequest>,
@@ -173,6 +175,8 @@ pub async fn request_password_reset(
     }))
 }
 
+/// POST /auth/password-reset/confirm
+/// Rate limit: 10 requests per minute per IP
 pub async fn confirm_password_reset(
     State(state): State<PasswordResetState>,
     Json(body): Json<PasswordResetConfirm>,

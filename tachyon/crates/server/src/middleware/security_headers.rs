@@ -419,14 +419,31 @@ pub fn add_security_headers_from_config(response: Response, config: &ServerSecur
 
 fn add_security_headers_with_config_opts(mut response: Response, config: &ServerSecurityConfig) -> Response {
     let headers = response.headers_mut();
+    let is_dev = config.is_development();
     
     if config.csp_enabled {
+        let mut csp = if is_dev {
+            ContentSecurityPolicy::development()
+        } else {
+            ContentSecurityPolicy::default()
+        };
+        
+        if !config.frame_ancestors.is_empty() {
+            csp.frame_ancestors = vec![config.frame_ancestors.clone()];
+        }
+        
         let csp_value = config.csp_custom.as_deref()
             .map(|s| s.to_string())
-            .unwrap_or_else(|| {
-                ContentSecurityPolicy::default().to_header_value()
-            });
-        if let Ok(value) = HeaderValue::from_str(&csp_value) {
+            .unwrap_or_else(|| csp.to_header_value());
+        
+        if config.csp_report_only {
+            if let Ok(value) = HeaderValue::from_str(&csp_value) {
+                headers.insert(
+                    "Content-Security-Policy-Report-Only",
+                    value,
+                );
+            }
+        } else if let Ok(value) = HeaderValue::from_str(&csp_value) {
             headers.insert(
                 header::CONTENT_SECURITY_POLICY,
                 value,
@@ -445,19 +462,20 @@ fn add_security_headers_with_config_opts(mut response: Response, config: &Server
     );
     
     headers.insert(
-        "X-XSS-Protection",
-        HeaderValue::from_static("1; mode=block"),
-    );
-    
-    headers.insert(
         header::REFERRER_POLICY,
         HeaderValue::from_static("strict-origin-when-cross-origin"),
     );
     
-    headers.insert(
-        header::STRICT_TRANSPORT_SECURITY,
-        HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
-    );
+    if config.is_hsts_enabled() && !is_dev {
+        let sts = StrictTransportSecurity {
+            max_age: config.hsts_max_age,
+            include_subdomains: config.hsts_include_subdomains,
+            preload: config.hsts_preload,
+        };
+        if let Ok(value) = HeaderValue::from_str(&sts.to_header_value()) {
+            headers.insert(header::STRICT_TRANSPORT_SECURITY, value);
+        }
+    }
     
     if config.permissions_policy {
         let permissions = PermissionsPolicy::default();
@@ -467,21 +485,24 @@ fn add_security_headers_with_config_opts(mut response: Response, config: &Server
     }
     
     if config.coep_enabled {
+        let coep_value = if is_dev { "unsafe-none" } else { "credentialless" };
         headers.insert(
             "Cross-Origin-Embedder-Policy",
-            HeaderValue::from_static("require-corp"),
+            HeaderValue::from_static(coep_value),
         );
     }
     
-    headers.insert(
-        "Cross-Origin-Opener-Policy",
-        HeaderValue::from_static("same-origin"),
-    );
-    
-    headers.insert(
-        "Cross-Origin-Resource-Policy",
-        HeaderValue::from_static("same-origin"),
-    );
+    if !is_dev {
+        headers.insert(
+            "Cross-Origin-Opener-Policy",
+            HeaderValue::from_static("same-origin"),
+        );
+        
+        headers.insert(
+            "Cross-Origin-Resource-Policy",
+            HeaderValue::from_static("same-origin"),
+        );
+    }
     
     response
 }

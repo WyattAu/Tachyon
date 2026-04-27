@@ -161,9 +161,16 @@ pub struct EndpointRateLimit {
 pub struct SecurityConfig {
     /// Enable security headers
     pub enable_security_headers: bool,
+    /// Whether the server is in development mode (affects CSP and other headers)
+    #[serde(default = "default_true")]
+    pub development: bool,
     /// Environment mode (affects CSP and other headers)
     pub environment: String,
     /// Enable HSTS (Strict Transport Security)
+    #[serde(default = "default_true")]
+    pub hsts_enabled: bool,
+    /// Enable HSTS (Strict Transport Security) — legacy alias
+    #[serde(default)]
     pub enable_hsts: bool,
     /// HSTS max age in seconds
     pub hsts_max_age: u64,
@@ -177,14 +184,36 @@ pub struct SecurityConfig {
     #[serde(default)]
     pub csp_directives: BTreeMap<String, String>,
     /// Enable Content-Security-Policy header
+    #[serde(default = "default_true")]
     pub csp_enabled: bool,
     /// Override default CSP with a custom value
     #[serde(skip_serializing_if = "Option::is_none")]
     pub csp_custom: Option<String>,
     /// Enable Permissions-Policy header
+    #[serde(default = "default_true")]
     pub permissions_policy: bool,
     /// Enable Cross-Origin-Embedder-Policy header
     pub coep_enabled: bool,
+    /// Allowed frame ancestors for CSP (e.g., "'none'", "'self'", "https://example.com")
+    #[serde(default = "default_frame_ancestors")]
+    pub frame_ancestors: String,
+    /// Trusted origins for CORS (in addition to configured origins)
+    #[serde(default)]
+    pub trusted_origins: Vec<String>,
+}
+
+fn default_true() -> bool { true }
+
+fn default_frame_ancestors() -> String { "'none'".to_string() }
+
+impl SecurityConfig {
+    pub fn is_hsts_enabled(&self) -> bool {
+        self.hsts_enabled || self.enable_hsts
+    }
+
+    pub fn is_development(&self) -> bool {
+        self.development || self.environment == "development"
+    }
 }
 
 /// Site configuration for SEO and server-side rendering
@@ -381,7 +410,28 @@ impl Default for RateLimitConfig {
             },
         );
         endpoint_limits.insert(
+            "/api/v1/auth/register".to_string(),
+            EndpointRateLimit {
+                max_requests: 3,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/refresh".to_string(),
+            EndpointRateLimit {
+                max_requests: 10,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
             "/api/v1/auth/guest".to_string(),
+            EndpointRateLimit {
+                max_requests: 3,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/password-reset".to_string(),
             EndpointRateLimit {
                 max_requests: 3,
                 window_secs: 60,
@@ -409,17 +459,21 @@ impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
             enable_security_headers: true,
+            development: true,
             environment: "development".to_string(),
-            enable_hsts: false,
+            hsts_enabled: true,
+            enable_hsts: true,
             hsts_max_age: 31536000,
             hsts_include_subdomains: true,
-            hsts_preload: false,
+            hsts_preload: true,
             csp_report_only: false,
             csp_directives: BTreeMap::new(),
             csp_enabled: true,
             csp_custom: None,
             permissions_policy: true,
-            coep_enabled: false,
+            coep_enabled: true,
+            frame_ancestors: "'none'".to_string(),
+            trusted_origins: Vec::new(),
         }
     }
 }
@@ -677,6 +731,21 @@ impl ServerConfig {
         }
         if let Ok(val) = std::env::var("TACHYON_SECURITY_COEP_ENABLED") {
             config.security.coep_enabled = val == "1" || val == "true";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_HSTS_ENABLED") {
+            config.security.hsts_enabled = val != "0" && val != "false";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_DEVELOPMENT") {
+            config.security.development = val != "0" && val != "false";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_FRAME_ANCESTORS") {
+            config.security.frame_ancestors = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_TRUSTED_ORIGINS") {
+            config.security.trusted_origins = val.split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
         }
 
         config

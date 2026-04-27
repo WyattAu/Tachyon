@@ -143,6 +143,7 @@ use tower_http::cors::CorsLayer;
 /// needed by the Tachyon server.
 #[derive(Clone)]
 pub struct AppState {
+    pub start_time: std::time::Instant,
     pub document_state: crate::routes::document::DocumentState,
     pub user_state: crate::routes::user::UserState,
     pub session_state: crate::routes::session::SessionState,
@@ -167,6 +168,8 @@ pub struct AppState {
     pub pool: tachyon_database::DatabasePool,
     pub http_client: reqwest::Client,
     pub email: crate::email::EmailService,
+    pub metrics: Arc<crate::middleware::metrics::RequestMetrics>,
+    pub api_cache: crate::middleware::api_cache::ApiCache,
 }
 
 /// Initialize application state from a [`ServerConfig`].
@@ -278,12 +281,15 @@ pub async fn init_app_state(
     let email = crate::email::EmailService::new(config);
 
     Ok(AppState {
+        start_time: std::time::Instant::now(),
         document_state, user_state, session_state, repository_state, node_state,
         catalog_state, team_state, role_state, search_state, seo_state,
         review_state, activity_state, notification_state, tags_state,
         webhook_state, plugin_state, space_state, conflict_state,
         onboarding_state, connection_manager, crdt_connection_manager, pool, http_client,
         email,
+        metrics: Arc::new(crate::middleware::metrics::RequestMetrics::new()),
+        api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(60)),
     })
 }
 
@@ -295,6 +301,7 @@ pub fn build_app(
     state: AppState,
     config: &ServerConfig,
 ) -> axum::Router {
+    let start_time = state.start_time;
     let document_state = state.document_state;
     let user_state = state.user_state;
     let session_state = state.session_state;
@@ -318,6 +325,7 @@ pub fn build_app(
     let crdt_connection_manager = state.crdt_connection_manager;
     let pool = state.pool;
     let http_client = state.http_client;
+    let metrics = state.metrics;
     use crate::routes::document::create_document_router;
     use crate::routes::user::create_user_router;
     use crate::routes::session::create_session_router;
@@ -481,16 +489,29 @@ pub fn build_app(
     });
 
     let health_router = Router::new()
-        .route("/health", get(health_handler))
+        .route("/health", get(crate::routes::health::health_check))
+        .route("/ready", get(crate::routes::health::readiness_check))
         .route("/metrics", get(metrics_handler))
         .route("/metrics/prometheus", get(prometheus_metrics_handler))
-        .with_state(HealthState { pool: pool.clone() });
+        .with_state(HealthState {
+            pool: pool.clone(),
+            start_time,
+            redis_enabled: config.rate_limit.enabled && config.rate_limit.redis_url.is_some(),
+        });
+
+    let metrics_router = Router::new()
+        .route("/metrics/app", get(crate::routes::metrics::prometheus_metrics))
+        .with_state(crate::routes::metrics::MetricsState {
+            metrics: metrics.clone(),
+            start_time,
+        });
 
     let security_config = Arc::new(config.security.clone());
 
     let mut router = Router::new()
         .route("/", get(root_handler))
         .merge(health_router)
+        .merge(metrics_router)
         .merge(seo_router)
         .merge(ws_router)
         .merge(crdt_ws_router)
@@ -498,10 +519,17 @@ pub fn build_app(
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
+                .layer(axum::middleware::from_fn_with_state(
+                    crate::middleware::request_tracing::RequestTracingState {
+                        metrics: metrics.clone(),
+                    },
+                    crate::middleware::request_logging_with_metrics,
+                ))
                 .layer(axum::middleware::from_fn(audit_middleware))
                 .layer(axum::middleware::from_fn(request_id_middleware))
                 .layer(axum::middleware::from_fn(cache_control_middleware))
                 .layer(CompressionLayer::new())
+                .layer(axum::middleware::from_fn(request_size_limit))
                 .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
                 .layer(build_cors_layer(config))
                 .map_response(move |response| add_security_headers_from_config(response, &security_config)),
@@ -597,21 +625,8 @@ pub fn build_cors_layer(config: &ServerConfig) -> CorsLayer {
 #[derive(Clone)]
 pub(crate) struct HealthState {
     pub(crate) pool: tachyon_database::DatabasePool,
-}
-
-async fn health_handler(
-    State(state): State<HealthState>,
-) -> axum::Json<serde_json::Value> {
-    let db_status = match state.pool.execute("SELECT 1").await {
-        Ok(_) => "healthy",
-        Err(_) => "unhealthy",
-    };
-
-    axum::Json(serde_json::json!({
-        "status": if db_status == "healthy" { "healthy" } else { "unhealthy" },
-        "version": env!("CARGO_PKG_VERSION"),
-        "components": { "database": db_status },
-    }))
+    pub(crate) start_time: std::time::Instant,
+    pub(crate) redis_enabled: bool,
 }
 
 async fn metrics_handler(
