@@ -1,6 +1,8 @@
 use super::*;
 
-#[allow(dead_code)]
+/// Plugins API methods.
+///
+/// Reserved for future use: plugin marketplace and management.
 impl ApiClient {
     pub async fn list_plugins(&self, enabled_only: Option<bool>) -> Result<Vec<Plugin>, ApiError> {
         let mut url = format!("{}/plugins?", self.base_url);
@@ -10,6 +12,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn get_plugin(&self, plugin_id: &str) -> Result<Plugin, ApiError> {
         let url = format!("{}/plugins/{}", self.base_url, plugin_id);
         self.get(&url).await

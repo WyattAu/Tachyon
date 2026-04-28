@@ -1,6 +1,8 @@
 use super::*;
 
-#[allow(dead_code)]
+/// SSG API methods.
+///
+/// Reserved for future use: static site generation from the frontend.
 impl ApiClient {
     pub async fn build_site(&self, config: &SsgBuildRequest) -> Result<SsgBuildResponse, ApiError> {
         let url = format!("{}/ssg/build", self.base_url);

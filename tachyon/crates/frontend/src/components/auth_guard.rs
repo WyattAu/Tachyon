@@ -80,6 +80,9 @@ pub fn provide_auth_context() {
     let _ = get_stored_token();
 }
 
+/// Clear authentication state and redirect to login.
+///
+/// Reserved for future use: explicit logout flow.
 #[allow(dead_code)]
 pub fn logout() {
     if let Some(window) = web_sys::window() {

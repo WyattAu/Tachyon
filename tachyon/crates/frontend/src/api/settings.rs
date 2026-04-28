@@ -1,6 +1,8 @@
 use super::*;
 
-#[allow(dead_code)]
+/// Settings API methods.
+///
+/// Reserved for future use: admin settings and audit log management.
 impl ApiClient {
     pub async fn list_audit_logs(
         &self,
@@ -34,11 +36,13 @@ impl ApiClient {
         self.delete(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn list_webhooks(&self) -> Result<Vec<crate::types::WebhookInfo>, ApiError> {
         let url = format!("{}/webhooks", self.base_url);
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn create_webhook(
         &self,
         webhook_url: &str,
@@ -54,6 +58,7 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
+    #[allow(dead_code)]
     pub async fn delete_webhook(&self, id: &str) -> Result<(), ApiError> {
         let url = format!("{}/webhooks/{}", self.base_url, id);
         self.delete(&url).await

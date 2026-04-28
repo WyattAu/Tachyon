@@ -1,6 +1,8 @@
 use super::*;
 
-#[allow(dead_code)]
+/// Auth API methods.
+///
+/// Reserved for future use: authentication flows from the frontend.
 impl ApiClient {
     pub async fn login(&self, username: &str, password: &str) -> Result<AuthenticateResponse, ApiError> {
         let url = format!("{}/auth/login", self.base_url);
@@ -27,11 +29,13 @@ impl ApiClient {
         self.post_empty_json(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn guest_status(&self) -> Result<GuestStatusResponse, ApiError> {
         let url = format!("{}/auth/guest-status", self.base_url);
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn auto_authenticate_guest(&self) -> Result<bool, ApiError> {
         if self.get_auth_token().is_some() {
             return Ok(false);
@@ -52,6 +56,7 @@ impl ApiClient {
         Ok(false)
     }
 
+    #[allow(dead_code)]
     pub async fn auth_status(&self) -> Result<AuthStatusResponse, ApiError> {
         let url = format!("{}/auth/status", self.base_url);
         self.get(&url).await
@@ -88,6 +93,7 @@ impl ApiClient {
         self.delete(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn logout(&self) -> Result<(), ApiError> {
         let url = format!("{}/auth/logout", self.base_url);
         self.post_empty(&url).await

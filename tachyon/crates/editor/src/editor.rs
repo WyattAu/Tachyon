@@ -32,13 +32,17 @@ pub struct Editor {
     highlighter: Highlighter,
     search: Search,
     is_dirty: bool,
+    /// Reserved for future use: word-wrap toggle for the editor view.
     #[allow(dead_code)]
     word_wrap: bool,
     tab_size: usize,
+    /// Reserved for future use: auto-indent on newline.
     #[allow(dead_code)]
     auto_indent: bool,
+    /// Reserved for future use: bracket matching highlighting.
     #[allow(dead_code)]
     bracket_matching: bool,
+    /// Reserved for future use: line-number gutter toggle.
     #[allow(dead_code)]
     line_numbers: bool,
     current_search_results: Vec<SearchResult>,

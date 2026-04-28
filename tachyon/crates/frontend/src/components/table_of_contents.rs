@@ -1,14 +1,18 @@
 use leptos::prelude::*;
 
+/// Represents a heading extracted from markdown content.
+///
+/// Reserved for future use: table-of-contents generation.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct Heading {
     pub level: u8,
     pub text: String,
     pub slug: String,
 }
 
-#[allow(dead_code)]
+/// Extract headings from markdown content for table-of-contents display.
+///
+/// Reserved for future use: TOC sidebar component.
 pub fn extract_headings(markdown: &str) -> Vec<Heading> {
     let mut headings = Vec::new();
     let mut in_code_block = false;

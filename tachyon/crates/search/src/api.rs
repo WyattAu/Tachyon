@@ -40,9 +40,10 @@ fn default_page_size() -> usize {
     20
 }
 
-/// Search parameters from URL query
+/// Search parameters from URL query.
+///
+/// Reserved for future use: paginated search API with filters.
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 pub(crate) struct SearchParams {
     /// Query string
     pub query: String,
@@ -54,12 +55,16 @@ pub(crate) struct SearchParams {
     pub page_size: usize,
     /// Sort order
     #[serde(default)]
+    #[allow(dead_code)]
     pub sort: Option<String>,
     /// Tags filter
+    #[allow(dead_code)]
     pub tags: Option<String>,
     /// Repository ID filter
+    #[allow(dead_code)]
     pub repository_id: Option<String>,
     /// Author ID filter
+    #[allow(dead_code)]
     pub author_id: Option<String>,
 }
 
@@ -83,13 +88,15 @@ pub(crate) struct SuggestionsResponse {
     pub suggestions: Vec<Suggestion>,
 }
 
-/// WebSocket search request
+/// WebSocket search request.
+///
+/// Reserved for future use: WebSocket-based live search.
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 pub(crate) struct WebSocketSearchRequest {
     /// Query string
     pub query: String,
     /// Session ID
+    #[allow(dead_code)]
     pub session_id: Option<String>,
     /// Request ID
     pub request_id: Option<String>,
@@ -339,7 +346,9 @@ fn check_search_permission(
     Ok(())
 }
 
-/// Check search permission with full context (async version)
+/// Check search permission with full context (async version).
+///
+/// Reserved for future use: per-request RBAC authorization.
 ///
 /// # Arguments
 /// * `enforcer` - RBAC enforcer  

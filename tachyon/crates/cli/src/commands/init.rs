@@ -219,7 +219,9 @@ For more information, visit the Tachyon documentation.
         }
     }
 
-    /// Interactive setup wizard
+    /// Interactive setup wizard.
+    ///
+    /// Reserved for future use: guided project initialization.
     #[allow(dead_code)]
     fn interactive_setup(&mut self) -> CliResult<String> {
         let mut name = self.options.name.clone();

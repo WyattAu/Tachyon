@@ -35,7 +35,9 @@ pub struct AuthResponse {
     pub error: Option<String>,
 }
 
-/// Server configuration request
+/// Server configuration request.
+///
+/// Reserved for future use: dynamic server URL configuration in the desktop app.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfigRequest {
@@ -220,6 +222,8 @@ async fn authenticate_with_server(
 /// Creates a local session without requiring server connectivity.
 /// Useful for offline operation and personal use cases.
 ///
+/// Reserved for future use: local-first authentication mode.
+///
 /// # Arguments
 /// * `username` - Local username
 ///
@@ -244,7 +248,9 @@ fn authenticate_local_first(username: &str) -> Result<(String, String), String> 
     Ok((token, user_id))
 }
 
-/// Authenticate with server or fall back to local-first mode
+/// Authenticate with server or fall back to local-first mode.
+///
+/// Reserved for future use: hybrid authentication in the desktop app.
 ///
 /// # Arguments
 /// * `server_url` - Server base URL  

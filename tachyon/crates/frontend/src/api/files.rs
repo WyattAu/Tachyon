@@ -1,7 +1,10 @@
 use super::*;
 
-#[allow(dead_code)]
+/// Files API methods.
+///
+/// Reserved for future use: file upload and management.
 impl ApiClient {
+    #[allow(dead_code)]
     pub async fn upload_file(&self, file: &web_sys::File) -> Result<UploadResponse, ApiError> {
         use gloo_net::http::Request;
 

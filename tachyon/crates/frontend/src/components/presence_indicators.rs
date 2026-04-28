@@ -10,7 +10,6 @@ pub struct PresenceUser {
     pub is_typing: bool,
 }
 
-#[allow(dead_code)]
 fn ensure_typing_style() {
     if let Some(window) = web_sys::window() {
         if let Some(doc) = window.document() {
@@ -39,7 +38,6 @@ fn ensure_typing_style() {
     }
 }
 
-#[allow(dead_code)]
 #[component]
 pub fn PresenceIndicators(
     users: RwSignal<Vec<PresenceUser>>,

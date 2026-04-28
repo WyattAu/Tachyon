@@ -1,6 +1,8 @@
 use super::*;
 
-#[allow(dead_code)]
+/// Billing API methods.
+///
+/// Reserved for future use: subscription and billing management.
 impl ApiClient {
     pub async fn get_billing_plans(&self) -> Result<crate::types::BillingPlansResponse, ApiError> {
         let url = format!("{}/billing/plans", self.base_url);
@@ -33,17 +35,20 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn create_mandate(&self, org_id: &str, return_url: &str) -> Result<crate::types::MandateResponse, ApiError> {
         let url = format!("{}/billing/mandates", self.base_url);
         let body = serde_json::json!({ "organization_id": org_id, "return_url": return_url });
         self.post(&url, &body).await
     }
 
+    #[allow(dead_code)]
     pub async fn get_mandate_status(&self, mandate_id: &str) -> Result<crate::types::MandateStatusResponse, ApiError> {
         let url = format!("{}/billing/mandates/{}", self.base_url, mandate_id);
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn get_payment_status(&self, payment_id: &str) -> Result<crate::types::PaymentStatusResponse, ApiError> {
         let url = format!("{}/billing/payments/{}", self.base_url, payment_id);
         self.get(&url).await

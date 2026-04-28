@@ -53,8 +53,11 @@ impl Default for ApiClient {
     }
 }
 
-#[allow(dead_code)]
+/// API client for the Tachyon backend.
+///
+/// Reserved for future use: direct client instantiation (currently uses `default()`).
 impl ApiClient {
+    #[allow(dead_code)]
     pub fn new(base_url: &str) -> Self {
         Self {
             base_url: base_url.to_string(),
@@ -356,5 +359,8 @@ mod tests {
     }
 }
 
+/// API result type.
+///
+/// Reserved for future use: unified error handling across API calls.
 #[allow(dead_code)]
 pub type ApiResult<T> = Result<T, ApiError>;

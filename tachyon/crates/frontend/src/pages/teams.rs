@@ -35,7 +35,7 @@ pub struct TeamMember {
     #[allow(dead_code)]
     pub role_id: i64,
     pub role_name: String,
-    #[allow(dead_code)]
+    /// Deserialized from API response; not yet rendered in the UI.
     pub joined_at: String,
     #[allow(dead_code)]
     pub invited_by: Option<String>,

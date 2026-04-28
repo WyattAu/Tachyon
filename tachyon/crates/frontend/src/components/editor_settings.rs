@@ -58,7 +58,9 @@ impl Default for EditorSettingsData {
 }
 
 impl EditorSettingsData {
-    #[allow(dead_code)]
+    /// Load settings from localStorage.
+    ///
+    /// Reserved for future use: persistent editor preferences.
     fn load() -> Self {
         let window = match web_sys::window() {
             Some(w) => w,
@@ -74,7 +76,9 @@ impl EditorSettingsData {
         }
     }
 
-    #[allow(dead_code)]
+    /// Save settings to localStorage.
+    ///
+    /// Reserved for future use: persistent editor preferences.
     fn save(&self) {
         let window = match web_sys::window() {
             Some(w) => w,
@@ -90,11 +94,12 @@ impl EditorSettingsData {
     }
 }
 
+/// Editor settings panel.
+///
+/// Reserved for future use: editor preference configuration UI.
 #[component]
 pub fn EditorSettings(
-    #[allow(dead_code)]
     visible: RwSignal<bool>,
-    #[allow(dead_code)]
     settings: RwSignal<EditorSettingsData>,
 ) -> impl IntoView {
     Effect::new(move |_| {

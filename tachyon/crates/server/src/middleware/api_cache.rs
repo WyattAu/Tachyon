@@ -14,6 +14,7 @@ struct CacheEntry {
     data: Vec<u8>,
     content_type: String,
     expires_at: Instant,
+    /// Reserved for future use: cache hit statistics.
     #[allow(dead_code)]
     hit_count: u64,
 }

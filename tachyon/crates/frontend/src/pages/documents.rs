@@ -1122,6 +1122,9 @@ struct DocumentEditParams {
     id: String,
 }
 
+/// Activity feed entry deserialized from the API.
+///
+/// Reserved for future use: document activity timeline.
 #[derive(serde::Deserialize)]
 #[allow(dead_code)]
 struct ActivityData {

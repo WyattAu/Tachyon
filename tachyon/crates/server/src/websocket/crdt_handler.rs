@@ -38,26 +38,30 @@ use tachyon_core::types::crdt::{CollaborationInfo, CrdtDocumentState, SelectionR
 // ============================================================================
 
 /// A connected client in a relay room.
+///
+/// Reserved for future use: per-client metadata tracking.
 #[derive(Debug)]
-#[allow(dead_code)]
 struct ConnectedClient {
+    #[allow(dead_code)]
     client_id: String,
     room: String,
+    #[allow(dead_code)]
     send: tokio::sync::mpsc::UnboundedSender<Message>,
 }
 
 /// Broadcast event for the relay.
+///
+/// Reserved for future use: event-driven room management.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 enum RelayEvent {
     /// Binary message from a client to relay to others.
     Binary { room: String, sender: String, data: Vec<u8> },
     /// Selection update from a client to relay to others.
-    Selection { room: String, sender: String, data: Vec<u8>, selection: SelectionRange },
+    Selection { room: String, sender: String, data: Vec<u8>, #[allow(dead_code)] selection: SelectionRange },
     /// A client joined a room.
-    Joined { room: String, client_id: String },
+    Joined { room: String, #[allow(dead_code)] client_id: String },
     /// A client left a room.
-    Left { room: String, client_id: String },
+    Left { room: String, #[allow(dead_code)] client_id: String },
 }
 
 /// CRDT connection manager — public API compatible with the old handler.

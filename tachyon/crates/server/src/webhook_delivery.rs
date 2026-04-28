@@ -12,7 +12,7 @@ const MAX_BACKOFF: Duration = Duration::from_secs(60);
 
 fn compute_signature(secret: &str, body: &[u8]) -> String {
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
-        .unwrap_or_else(|_| HmacSha256::new_from_slice(b"").unwrap());
+        .unwrap_or_else(|_| HmacSha256::new_from_slice(b"").expect("HMAC accepts any key length"));
     mac.update(body);
     let result = mac.finalize();
     hex::encode(result.into_bytes())

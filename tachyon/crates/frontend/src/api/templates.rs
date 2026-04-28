@@ -1,6 +1,8 @@
 use super::*;
 
-#[allow(dead_code)]
+/// Templates API methods.
+///
+/// Reserved for future use: document template management.
 impl ApiClient {
     pub async fn list_templates(&self, category: Option<&str>) -> Result<Vec<DocumentTemplate>, ApiError> {
         let mut url = format!("{}/templates?", self.base_url);
@@ -10,6 +12,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn get_template(&self, template_id: &str) -> Result<DocumentTemplate, ApiError> {
         let url = format!("{}/templates/{}", self.base_url, template_id);
         self.get(&url).await

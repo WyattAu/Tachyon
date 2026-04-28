@@ -6,10 +6,11 @@ use leptos::prelude::*;
 
 /// Onboarding wizard shown on first visit.
 /// Steps: Welcome -> Create First Doc -> Invite Team -> Customize -> Done
+///
+/// Reserved for future use: first-visit onboarding flow.
 #[component]
 pub fn OnboardingWizard(
     #[prop(optional)]
-    #[allow(dead_code)]
     on_complete: Option<Callback<()>>,
 ) -> impl IntoView {
     let (step, set_step) = signal(0u32);
@@ -233,7 +234,8 @@ pub fn OnboardingWizard(
 
 /// Check if onboarding has been completed.
 /// Returns true if the user should see the onboarding wizard.
-#[allow(dead_code)]
+///
+/// Reserved for future use: conditional onboarding display.
 pub fn should_show_onboarding() -> bool {
     if let Some(window) = web_sys::window() {
         if let Some(storage) = window.local_storage().ok().flatten() {

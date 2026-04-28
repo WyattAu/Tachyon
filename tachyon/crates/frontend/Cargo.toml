@@ -98,7 +98,7 @@ send_wrapper = "0.6"
 tachyon-editor = { path = "../editor" }
 
 # Markdown rendering (WASM-compatible, no SIMD)
-pulldown-cmark = { version = "0.9", default-features = false }
+pulldown-cmark = "0.9"
 
 [features]
 staging = []

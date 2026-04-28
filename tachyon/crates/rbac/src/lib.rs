@@ -8,6 +8,7 @@ pub mod enforcer;
 pub mod error;
 pub mod permission;
 pub mod policy;
+pub mod role;
 pub mod session;
 pub mod types;
 

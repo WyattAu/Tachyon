@@ -4,8 +4,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// Rendering context with template data
-#[allow(dead_code)]
+/// Rendering context with template data.
+///
+/// Reserved for future use by the SSR / static-site generation pipeline.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderContext {
     /// Document title
@@ -20,9 +21,10 @@ pub struct RenderContext {
     pub navigation: Option<NavigationInfo>,
 }
 
-/// Author information
+/// Author information.
+///
+/// Reserved for future use by the SSR pipeline.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct AuthorInfo {
     pub name: String,
     pub email: Option<String>,
@@ -38,35 +40,39 @@ pub struct RenderMetadata {
     pub read_time: Option<usize>,
 }
 
-/// Navigation information
+/// Navigation information.
+///
+/// Reserved for future use by the SSR pipeline.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct NavigationInfo {
     pub current_page: String,
     pub breadcrumbs: Vec<Breadcrumb>,
     pub related_pages: Vec<RelatedPage>,
 }
 
-/// Breadcrumb item
+/// Breadcrumb item.
+///
+/// Reserved for future use by the SSR pipeline.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct Breadcrumb {
     pub title: String,
     pub url: String,
 }
 
-/// Related page
+/// Related page.
+///
+/// Reserved for future use by the SSR pipeline.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct RelatedPage {
     pub title: String,
     pub url: String,
     pub snippet: Option<String>,
 }
 
-#[allow(dead_code)]
 impl RenderContext {
-    /// Create a new render context
+    /// Create a new render context.
+    ///
+    /// Reserved for future use by the SSR pipeline.
     ///
     /// # Arguments
     /// * `title` - Document title
@@ -82,6 +88,7 @@ impl RenderContext {
     }
 
     /// Convert to JSON Value
+    #[allow(dead_code)]
     pub(crate) fn to_json(&self) -> Value {
         serde_json::to_value(self).unwrap_or(Value::Null)
     }

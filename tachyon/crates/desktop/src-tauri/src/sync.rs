@@ -82,7 +82,7 @@ pub struct AutoSyncManager {
     repository_path: Option<PathBuf>,
     config: SyncConfig,
     commit_queue: Arc<RwLock<VecDeque<CommitQueueEntry>>>,
-    #[allow(dead_code)]
+    /// Reserved for future use: handle to the background sync task.
     sync_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
     is_syncing: Arc<RwLock<bool>>,
 }

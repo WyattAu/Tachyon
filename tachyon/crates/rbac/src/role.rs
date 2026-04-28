@@ -102,6 +102,7 @@ impl Role {
     }
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for Role {
     fn default() -> Self {
         Role::Guest

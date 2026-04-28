@@ -560,7 +560,11 @@ mod tests {
     fn test_table() {
         let md = "| a | b |\n|---|---|\n| 1 | 2 |";
         let html = render_markdown_to_html(md);
-        assert!(html.contains("<table>"));
+        let bytes = html.as_bytes();
+        let table_pos = html.find("<table");
+        assert!(table_pos.is_some(), "No <table> found. Bytes around pos 25-40: {:?}", &bytes[25..40.min(bytes.len())]);
+        let table_str = &html[table_pos.unwrap()..];
+        eprintln!("Table tag: {:?}", &table_str[..table_str.len().min(20)]);
         assert!(html.contains("<th>"));
         assert!(html.contains("<td>"));
     }

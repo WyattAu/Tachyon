@@ -24,6 +24,9 @@ pub enum Locale {
     Pt,
 }
 
+/// Locale implementation.
+///
+/// Reserved for future use: internationalization support.
 #[allow(dead_code)]
 impl Locale {
     /// All supported locales.
@@ -81,7 +84,10 @@ impl Locale {
 }
 
 /// Translation key identifiers.
+///
+/// Reserved for future use: i18n key constants for UI translations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[allow(dead_code)]
 pub struct TranslationKey(&'static str);
 
 #[allow(dead_code)]
@@ -260,6 +266,8 @@ static JA_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// Get translations for a locale (falls back to English).
+///
+/// Reserved for future use: i18n translation lookup.
 #[allow(dead_code)]
 fn translations_for(locale: Locale) -> &'static HashMap<&'static str, &'static str> {
     match locale {
@@ -270,6 +278,8 @@ fn translations_for(locale: Locale) -> &'static HashMap<&'static str, &'static s
 }
 
 /// Look up a translation by key.
+///
+/// Reserved for future use: i18n string resolution.
 #[allow(dead_code)]
 pub fn t(locale: Locale, key: TranslationKey) -> &'static str {
     translations_for(locale)
@@ -282,6 +292,8 @@ pub fn t(locale: Locale, key: TranslationKey) -> &'static str {
 }
 
 /// Reactive translation helper.
+///
+/// Reserved for future use: Leptos reactive i18n integration.
 ///
 /// Usage in a component:
 /// ```rust,ignore

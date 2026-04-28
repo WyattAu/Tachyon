@@ -1,6 +1,8 @@
 use super::*;
 
-#[allow(dead_code)]
+/// Activity API methods.
+///
+/// Reserved for future use: activity feed and notification system.
 impl ApiClient {
     pub async fn list_activity(&self, limit: Option<u32>, offset: Option<u32>) -> Result<ActivityListResponse, ApiError> {
         let mut params = vec![];

@@ -39,6 +39,7 @@ impl std::error::Error for WebSocketUpgradeError {}
 
 #[derive(Debug, Clone)]
 struct ConnectedClient {
+    /// Reserved for future use: per-client identification.
     #[allow(dead_code)]
     client_id: String,
     user_id: Option<String>,

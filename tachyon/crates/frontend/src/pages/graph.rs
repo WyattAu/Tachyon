@@ -71,8 +71,10 @@ impl Default for GraphNode {
     }
 }
 
+/// An edge in the knowledge graph.
+///
+/// Reserved for future use: graph visualization data model.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct GraphEdge {
     #[serde(default)]
     pub id: String,
@@ -122,6 +124,7 @@ struct SimNode {
 struct SimEdge {
     source: usize,
     target: usize,
+    /// Reserved for future use: weighted edge layout.
     #[allow(dead_code)]
     weight: f64,
 }

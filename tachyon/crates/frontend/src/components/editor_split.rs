@@ -3,28 +3,22 @@ use tachyon_editor::Editor;
 use leptos::prelude::*;
 
 #[derive(Clone, Copy, PartialEq)]
-#[allow(dead_code)]
 pub enum SplitMode {
     Edit,
     Preview,
     Split,
 }
 
-#[allow(dead_code)]
 #[component]
 pub fn EditorSplit(
     editor: RwSignal<Editor>,
     #[prop(default = SplitMode::Edit)]
-    #[allow(dead_code)]
     mode: SplitMode,
     #[prop(default = String::new())]
-    #[allow(dead_code)]
     document_id: String,
     #[prop(default = "Start writing...".to_string())]
-    #[allow(dead_code)]
     placeholder: String,
     #[prop(default = Callback::new(|_: String| {}))]
-    #[allow(dead_code)]
     on_change: Callback<String>,
 ) -> impl IntoView {
     let (current_mode, set_current_mode) = signal(mode);

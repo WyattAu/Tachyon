@@ -7,8 +7,10 @@ use wasm_bindgen_futures::spawn_local;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+/// Live markdown preview panel.
+///
+/// Reserved for future use: side-by-side editor preview.
 #[component]
-#[allow(dead_code)]
 pub fn EditorPreview(
     editor: RwSignal<Editor>,
     #[prop(default = String::new())]

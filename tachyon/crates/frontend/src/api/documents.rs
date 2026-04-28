@@ -1,6 +1,8 @@
 use super::*;
 
-#[allow(dead_code)]
+/// Documents API methods.
+///
+/// Reserved for future use: document CRUD from the frontend.
 impl ApiClient {
     pub async fn list_documents(&self, page: Option<usize>, page_size: Option<usize>) -> Result<DocumentListResponse, ApiError> {
         let mut url = format!("{}/documents?", self.base_url);
@@ -50,6 +52,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn create_version(&self, document_id: &str, content: &str, commit_message: Option<&str>) -> Result<DocumentVersion, ApiError> {
         let url = format!("{}/documents/{}/versions", self.base_url, document_id);
         let body = serde_json::json!({
@@ -101,6 +104,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn diff_versions(&self, document_id: &str, v1: i32, v2: i32) -> Result<DocumentDiffResponse, ApiError> {
         let url = format!("{}/documents/{}/versions/{}/diff/{}", self.base_url, document_id, v1, v2);
         self.get(&url).await

@@ -268,6 +268,9 @@ impl Default for Highlighter {
     }
 }
 
+/// Map a highlight token to a CSS class name.
+///
+/// Reserved for future use: CSS class generation for syntax highlighting.
 #[allow(dead_code)]
 pub(crate) fn css_class(token: &HighlightToken) -> &'static str {
     match token {

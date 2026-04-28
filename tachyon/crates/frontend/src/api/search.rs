@@ -1,6 +1,8 @@
 use super::*;
 
-#[allow(dead_code)]
+/// Search API methods.
+///
+/// Reserved for future use: full-text search with filters and pagination.
 impl ApiClient {
     pub async fn search(
         &self,
@@ -115,16 +117,19 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn get_saved_search(&self, id: &str) -> Result<SavedSearch, ApiError> {
         let url = format!("{}/search/saved/{}", self.base_url, id);
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn update_saved_search(&self, id: &str, request: &UpdateSavedSearchRequest) -> Result<SavedSearch, ApiError> {
         let url = format!("{}/search/saved/{}", self.base_url, id);
         self.put(&url, request).await
     }
 
+    #[allow(dead_code)]
     pub async fn delete_saved_search(&self, id: &str) -> Result<(), ApiError> {
         let url = format!("{}/search/saved/{}", self.base_url, id);
         self.delete(&url).await

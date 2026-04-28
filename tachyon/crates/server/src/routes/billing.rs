@@ -24,12 +24,17 @@ enum TransitionType {
     Downgrade,
 }
 
+/// Proration calculation result.
+///
+/// Reserved for future use: subscription plan transition billing.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 struct ProrationResult {
     prorated_amount: f64,
+    #[allow(dead_code)]
     credit: f64,
+    #[allow(dead_code)]
     charge: f64,
+    #[allow(dead_code)]
     days_remaining: u32,
 }
 

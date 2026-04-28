@@ -145,6 +145,9 @@ fn parse_yaml_array(s: &str) -> Vec<String> {
         .collect()
 }
 
+/// Convert a string to a URL-safe slug.
+///
+/// Reserved for future use: slug generation in the SSG pipeline.
 #[allow(dead_code)]
 fn slugify(s: &str) -> String {
     s.to_lowercase()

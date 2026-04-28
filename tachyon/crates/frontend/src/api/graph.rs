@@ -1,6 +1,8 @@
 use super::*;
 
-#[allow(dead_code)]
+/// Graph API methods.
+///
+/// Reserved for future use: knowledge graph visualization.
 impl ApiClient {
     pub async fn list_graph_nodes(
         &self,
@@ -25,11 +27,13 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn get_graph_node(&self, node_id: &str) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/nodes/{}", self.base_url, node_id);
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn create_graph_node(&self, data: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/nodes", self.base_url);
         self.post(&url, data).await
@@ -40,11 +44,13 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn create_graph_edge(&self, data: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/edges", self.base_url);
         self.post(&url, data).await
     }
 
+    #[allow(dead_code)]
     pub async fn query_graph(&self, data: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/graph/query", self.base_url);
         self.post(&url, data).await
@@ -55,11 +61,13 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn get_graph_at_time(&self, at: &str) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/graph/at?at={}", self.base_url, at);
         self.get(&url).await
     }
 
+    #[allow(dead_code)]
     pub async fn get_graph_diff(&self, from: &str, to: &str) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/graph/diff?from={}&to={}", self.base_url, from, to);
         self.get(&url).await

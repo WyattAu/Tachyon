@@ -19,9 +19,11 @@ pub struct EmailTemplate {
 
 #[derive(Clone)]
 pub struct EmailService {
+    /// Reserved for future use: HTTP client for webhook-based email delivery.
     #[allow(dead_code)]
     client: reqwest::Client,
     smtp_url: Option<String>,
+    /// Reserved for future use: sender address for outbound emails.
     #[allow(dead_code)]
     from_address: String,
 }
