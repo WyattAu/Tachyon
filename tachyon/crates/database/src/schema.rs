@@ -82,18 +82,18 @@ impl DatabasePool {
             .map_err(DatabaseError::ConnectionError)?;
 
         // Enable extensions if needed
+        // Use DO $$ ... EXCEPTION to handle concurrent CREATE EXTENSION race conditions
+        // (multiple test threads may try to create the same extension simultaneously)
         if self.config.enable_extensions {
-            // Enable UUID generation
-            sqlx::query("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
+            for ext in ["uuid-ossp", "pgcrypto", "pg_trgm"] {
+                sqlx::query(&format!(
+                    "DO $$ BEGIN CREATE EXTENSION IF NOT EXISTS \"{}\"; EXCEPTION WHEN duplicate_object THEN NULL; END $$;",
+                    ext
+                ))
                 .execute(&mut *conn)
                 .await
                 .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
-            
-            // Enable JSONB
-            sqlx::query("CREATE EXTENSION IF NOT EXISTS \"pg_trgm\"")
-                .execute(&mut *conn)
-                .await
-                .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+            }
                 
             debug!("PostgreSQL extensions enabled");
         }

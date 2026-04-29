@@ -15,13 +15,16 @@ fn bench_authorize(c: &mut Criterion) {
                     let mut enforcer = Enforcer::new();
 
                     for i in 0..num_policies {
+                        let policy_name = format!("bench-policy-{}", i);
+                        let policy_desc = format!("Bench Policy {}", i);
+                        let rule_name = format!("bench-rule-{}", i);
                         let policy = tachyon_rbac::Policy::new(
-                            format!("bench-policy-{}", i),
-                            format!("Bench Policy {}", i),
+                            &policy_name,
+                            &policy_desc,
                             tachyon_rbac::PolicyType::Rbac,
                         )
                         .add_rule(tachyon_rbac::PolicyRule::new(
-                            format!("bench-rule-{}", i),
+                            &rule_name,
                             "role:admin",
                             "document:*",
                             "read",

@@ -30,20 +30,12 @@ pub async fn setup_database(_pool: &DatabasePool) {
 }
 
 pub async fn teardown_database(pool: &DatabasePool) {
-    let tables = [
-        "search_index",
-        "documents",
-        "repositories",
-        "space_members",
-        "spaces",
-        "sessions",
-        "saved_searches",
-        "user_roles",
-        "users",
-    ];
-    for table in &tables {
+    // TRUNCATE ... CASCADE handles all FK dependencies automatically.
+    // We only need to truncate the root tables; everything else cascades.
+    let root_tables = ["users", "teams"];
+    for table in &root_tables {
         let _ = pool
-            .execute(&format!("DELETE FROM {} CASCADE", table))
+            .execute(&format!("TRUNCATE TABLE {} CASCADE", table))
             .await;
     }
 }

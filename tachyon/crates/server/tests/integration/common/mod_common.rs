@@ -69,16 +69,17 @@ pub async fn register_and_login(app: &Router, username: &str, email: &str, passw
                 .uri("/api/v1/auth/register")
                 .header("Content-Type", "application/json")
                 .body(Body::from(json!({
+                    "username": username,
+                    "display_name": username,
                     "email": email,
                     "password": password,
-                    "username": username,
                 }).to_string()))
                 .unwrap(),
         )
         .await
         .ok()?;
 
-    if register_response.status() != StatusCode::CREATED {
+    if register_response.status() != StatusCode::OK {
         return None;
     }
 
@@ -90,7 +91,7 @@ pub async fn register_and_login(app: &Router, username: &str, email: &str, passw
                 .uri("/api/v1/auth/login")
                 .header("Content-Type", "application/json")
                 .body(Body::from(json!({
-                    "email": email,
+                    "username": username,
                     "password": password,
                 }).to_string()))
                 .unwrap(),
@@ -103,10 +104,9 @@ pub async fn register_and_login(app: &Router, username: &str, email: &str, passw
     }
 
     let body: serde_json::Value = read_body_json(login_response).await;
-    let token = body.get("token").and_then(|t| t.as_str()).map(|s| s.to_string())?;
+    let token = body.get("access_token").and_then(|t| t.as_str()).map(|s| s.to_string())?;
 
-    let user_id = body.get("user")
-        .and_then(|u| u.get("id"))
+    let user_id = body.get("user_id")
         .and_then(|i| i.as_str())
         .map(|s| s.to_string())
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());

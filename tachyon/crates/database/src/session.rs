@@ -10,6 +10,11 @@ use tachyon_core::id::SessionId;
 use tachyon_core::types::session::Session;
 use tracing::{debug, info, instrument};
 
+fn parse_uuid(s: &str, field: &str) -> Result<uuid::Uuid, DatabaseError> {
+    uuid::Uuid::parse_str(s)
+        .map_err(|e| DatabaseError::ValidationError(format!("Invalid {} UUID: {}", field, e)))
+}
+
 /// Session repository for persistence operations
 pub struct SessionRepository {
     pool: DatabasePool,
@@ -45,8 +50,8 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         query(insert_sql)
-            .bind(session.id.as_str())
-            .bind(session.user_id().as_str())
+            .bind(parse_uuid(&session.id.as_str(), "session_id")?)
+            .bind(parse_uuid(&session.user_id().as_str(), "user_id")?)
             .bind(session.session_type().to_string())
             .bind(format!("{:?}", session.status))
             .bind(&session.token.value)
@@ -87,7 +92,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query_as::<_, SessionRecord>(select_sql)
-            .bind(id.as_str())
+            .bind(parse_uuid(&id.as_str(), "session_id")?)
             .fetch_optional(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -137,7 +142,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let sessions = query_as::<_, SessionRecord>(select_sql)
-            .bind(user_id)
+            .bind(parse_uuid(user_id, "user_id")?)
             .fetch_all(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -158,7 +163,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(update_sql)
-            .bind(id.as_str())
+            .bind(parse_uuid(&id.as_str(), "session_id")?)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -184,7 +189,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(update_sql)
-            .bind(id.as_str())
+            .bind(parse_uuid(&id.as_str(), "session_id")?)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -211,7 +216,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(update_sql)
-            .bind(user_id)
+            .bind(parse_uuid(user_id, "user_id")?)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -246,8 +251,8 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(update_sql)
-            .bind(user_id)
-            .bind(except_session_id.as_str())
+            .bind(parse_uuid(user_id, "user_id")?)
+            .bind(parse_uuid(&except_session_id.as_str(), "session_id")?)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -274,7 +279,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(delete_sql)
-            .bind(id.as_str())
+            .bind(parse_uuid(&id.as_str(), "session_id")?)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -377,7 +382,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query(count_sql)
-            .bind(user_id)
+            .bind(parse_uuid(user_id, "user_id")?)
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -398,7 +403,7 @@ impl SessionRepository {
 
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query(count_sql)
-            .bind(user_id)
+            .bind(parse_uuid(user_id, "user_id")?)
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -452,7 +457,7 @@ impl SessionRepository {
                 let update_sql = "UPDATE sessions SET status = 'Expired' WHERE id = $1";
                 let mut conn = self.pool.acquire().await?;
                 query(update_sql)
-                    .bind(session_id.as_str())
+                    .bind(parse_uuid(&session_id.as_str(), "session_id")?)
                     .execute(&mut *conn)
                     .await
                     .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -487,7 +492,7 @@ impl SessionRepository {
         let mut conn = self.pool.acquire().await?;
         let result = query(update_sql)
             .bind(new_expires_at)
-            .bind(session_id.as_str())
+            .bind(parse_uuid(&session_id.as_str(), "session_id")?)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;

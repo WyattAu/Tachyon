@@ -5,9 +5,65 @@ use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, FromRow};
+use sqlx::{query, query_as, FromRow, Row};
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+/// Database row model for the `teams` table.
+#[derive(Debug, Clone, FromRow)]
+struct TeamRecord {
+    id: uuid::Uuid,
+    name: String,
+    slug: String,
+    description: Option<String>,
+    owner_id: uuid::Uuid,
+    avatar_url: Option<String>,
+    settings: serde_json::Value,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+}
+
+impl From<TeamRecord> for Team {
+    fn from(r: TeamRecord) -> Self {
+        Self {
+            id: r.id.to_string(),
+            name: r.name,
+            slug: r.slug,
+            description: r.description,
+            owner_id: r.owner_id.to_string(),
+            avatar_url: r.avatar_url,
+            settings: r.settings,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }
+    }
+}
+
+/// Database row model for the `team_members` table.
+#[derive(Debug, Clone, FromRow)]
+struct TeamMemberRecord {
+    id: i64,
+    team_id: uuid::Uuid,
+    user_id: uuid::Uuid,
+    role_id: i64,
+    role_name: String,
+    joined_at: DateTime<Utc>,
+    invited_by: Option<uuid::Uuid>,
+}
+
+impl From<TeamMemberRecord> for TeamMember {
+    fn from(r: TeamMemberRecord) -> Self {
+        Self {
+            id: r.id,
+            team_id: r.team_id.to_string(),
+            user_id: r.user_id.to_string(),
+            role_id: r.role_id,
+            role_name: r.role_name,
+            joined_at: r.joined_at,
+            invited_by: r.invited_by.map(|u| u.to_string()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Team {
     pub id: String,
     pub name: String,
@@ -42,7 +98,7 @@ impl Team {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TeamMember {
     pub id: i64,
     pub team_id: String,
@@ -113,6 +169,11 @@ impl RoleRecord {
     }
 }
 
+fn parse_uuid(s: &str, field: &str) -> Result<uuid::Uuid, DatabaseError> {
+    uuid::Uuid::parse_str(s)
+        .map_err(|e| DatabaseError::ValidationError(format!("Invalid {} UUID: {}", field, e)))
+}
+
 #[derive(Clone)]
 pub struct TeamRepository {
     pool: DatabasePool,
@@ -130,13 +191,18 @@ impl TeamRepository {
             RETURNING *
         "#;
 
+        let team_id = uuid::Uuid::parse_str(&team.id)
+            .map_err(|e| DatabaseError::ValidationError(format!("Invalid team UUID: {}", e)))?;
+        let owner_id = uuid::Uuid::parse_str(&team.owner_id)
+            .map_err(|e| DatabaseError::ValidationError(format!("Invalid owner UUID: {}", e)))?;
+
         let mut conn = self.pool.acquire().await?;
-        query_as::<_, Team>(insert_sql)
-            .bind(&team.id)
+        query_as::<_, TeamRecord>(insert_sql)
+            .bind(team_id)
             .bind(&team.name)
             .bind(&team.slug)
             .bind(&team.description)
-            .bind(&team.owner_id)
+            .bind(owner_id)
             .bind(&team.avatar_url)
             .bind(&team.settings)
             .bind(team.created_at)
@@ -144,16 +210,18 @@ impl TeamRepository {
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))
+            .map(Team::from)
     }
 
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<Team> {
         let select_sql = "SELECT * FROM teams WHERE id = $1";
 
         let mut conn = self.pool.acquire().await?;
-        query_as::<_, Team>(select_sql)
-            .bind(id)
+        query_as::<_, TeamRecord>(select_sql)
+            .bind(parse_uuid(id, "team")?)
             .fetch_optional(&mut *conn)
             .await?
+            .map(Team::from)
             .ok_or_else(|| DatabaseError::not_found("team", id))
     }
 
@@ -161,10 +229,11 @@ impl TeamRepository {
         let select_sql = "SELECT * FROM teams WHERE slug = $1";
 
         let mut conn = self.pool.acquire().await?;
-        query_as::<_, Team>(select_sql)
+        query_as::<_, TeamRecord>(select_sql)
             .bind(slug)
             .fetch_optional(&mut *conn)
             .await?
+            .map(Team::from)
             .ok_or_else(|| DatabaseError::not_found("team", slug))
     }
 
@@ -172,11 +241,12 @@ impl TeamRepository {
         let select_sql = "SELECT * FROM teams WHERE owner_id = $1 ORDER BY created_at DESC";
 
         let mut conn = self.pool.acquire().await?;
-        query_as::<_, Team>(select_sql)
-            .bind(owner_id)
+        query_as::<_, TeamRecord>(select_sql)
+            .bind(parse_uuid(owner_id, "owner")?)
             .fetch_all(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))
+            .map(|records| records.into_iter().map(Team::from).collect())
     }
 
     pub async fn list_for_user(&self, user_id: &str) -> DatabaseResult<Vec<Team>> {
@@ -188,11 +258,12 @@ impl TeamRepository {
         "#;
 
         let mut conn = self.pool.acquire().await?;
-        query_as::<_, Team>(select_sql)
-            .bind(user_id)
+        query_as::<_, TeamRecord>(select_sql)
+            .bind(parse_uuid(user_id, "user")?)
             .fetch_all(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))
+            .map(|records| records.into_iter().map(Team::from).collect())
     }
 
     pub async fn update(&self, team: &Team) -> DatabaseResult<Team> {
@@ -204,8 +275,8 @@ impl TeamRepository {
         "#;
 
         let mut conn = self.pool.acquire().await?;
-        query_as::<_, Team>(update_sql)
-            .bind(&team.id)
+        query_as::<_, TeamRecord>(update_sql)
+            .bind(parse_uuid(&team.id, "team")?)
             .bind(&team.name)
             .bind(&team.slug)
             .bind(&team.description)
@@ -214,6 +285,7 @@ impl TeamRepository {
             .bind(team.updated_at)
             .fetch_optional(&mut *conn)
             .await?
+            .map(Team::from)
             .ok_or_else(|| DatabaseError::not_found("team", &team.id))
     }
 
@@ -222,7 +294,7 @@ impl TeamRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(delete_sql)
-            .bind(id)
+            .bind(parse_uuid(id, "team")?)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -241,28 +313,34 @@ impl TeamRepository {
             RETURNING id, team_id, user_id, role_id, role_name, joined_at, invited_by
         "#;
 
+        let team_id = parse_uuid(&member.team_id, "team_id")?;
+        let user_id = parse_uuid(&member.user_id, "user_id")?;
+        let invited_by = member.invited_by.as_deref().map(|s| parse_uuid(s, "invited_by")).transpose()?;
+
         let mut conn = self.pool.acquire().await?;
-        query_as::<_, TeamMember>(insert_sql)
-            .bind(&member.team_id)
-            .bind(&member.user_id)
+        query_as::<_, TeamMemberRecord>(insert_sql)
+            .bind(team_id)
+            .bind(user_id)
             .bind(member.role_id)
             .bind(&member.role_name)
             .bind(member.joined_at)
-            .bind(&member.invited_by)
+            .bind(invited_by)
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))
+            .map(TeamMember::from)
     }
 
     pub async fn get_member(&self, team_id: &str, user_id: &str) -> DatabaseResult<TeamMember> {
         let select_sql = "SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2";
 
         let mut conn = self.pool.acquire().await?;
-        query_as::<_, TeamMember>(select_sql)
-            .bind(team_id)
-            .bind(user_id)
+        query_as::<_, TeamMemberRecord>(select_sql)
+            .bind(parse_uuid(team_id, "team_id")?)
+            .bind(parse_uuid(user_id, "user_id")?)
             .fetch_optional(&mut *conn)
             .await?
+            .map(TeamMember::from)
             .ok_or_else(|| DatabaseError::not_found("team_member", format!("{}:{}", team_id, user_id)))
     }
 
@@ -270,11 +348,12 @@ impl TeamRepository {
         let select_sql = "SELECT * FROM team_members WHERE team_id = $1 ORDER BY joined_at ASC";
 
         let mut conn = self.pool.acquire().await?;
-        query_as::<_, TeamMember>(select_sql)
-            .bind(team_id)
+        query_as::<_, TeamMemberRecord>(select_sql)
+            .bind(parse_uuid(team_id, "team_id")?)
             .fetch_all(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))
+            .map(|records| records.into_iter().map(TeamMember::from).collect())
     }
 
     pub async fn update_member_role(&self, team_id: &str, user_id: &str, role_id: i64, role_name: &str) -> DatabaseResult<()> {
@@ -282,8 +361,8 @@ impl TeamRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(update_sql)
-            .bind(team_id)
-            .bind(user_id)
+            .bind(parse_uuid(team_id, "team_id")?)
+            .bind(parse_uuid(user_id, "user_id")?)
             .bind(role_id)
             .bind(role_name)
             .execute(&mut *conn)
@@ -302,8 +381,8 @@ impl TeamRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(delete_sql)
-            .bind(team_id)
-            .bind(user_id)
+            .bind(parse_uuid(team_id, "team_id")?)
+            .bind(parse_uuid(user_id, "user_id")?)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -320,8 +399,8 @@ impl TeamRepository {
 
         let mut conn = self.pool.acquire().await?;
         let result = query(select_sql)
-            .bind(team_id)
-            .bind(user_id)
+            .bind(parse_uuid(team_id, "team_id")?)
+            .bind(parse_uuid(user_id, "user_id")?)
             .fetch_optional(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;

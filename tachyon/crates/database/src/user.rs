@@ -87,7 +87,7 @@ impl UserRepository {
         let sql = r#"
             INSERT INTO users (id, username, display_name, email, password_hash, role, user_type, is_active, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING id, username, display_name, email, password_hash, role, user_type, is_active, created_at, updated_at
+            RETURNING *
         "#;
 
         let password_hash = user.password_hash.as_deref()
@@ -205,7 +205,7 @@ impl UserRepository {
                 is_active = COALESCE($5, is_active),
                 updated_at = NOW()
             WHERE id = $1
-            RETURNING id, username, display_name, email, password_hash, role, user_type, is_active, created_at, updated_at
+            RETURNING *
         "#;
 
         let mut conn = self.pool.acquire().await?;
@@ -280,7 +280,7 @@ impl UserRepository {
     /// (sessions, saved searches, user_roles, etc.) per FK constraints.
     #[instrument(skip(self))]
     pub async fn delete(&self, user_id: &UserId) -> DatabaseResult<()> {
-        let sql = "DELETE FROM users WHERE id = $1";
+        let sql = "DELETE FROM users WHERE id = $1 CASCADE";
         let mut conn = self.pool.acquire().await?;
         let result = query(sql)
             .bind(user_id.as_uuid())

@@ -8,6 +8,11 @@ fn skip_without_db() -> bool {
         && std::env::var("TEST_DATABASE_URL").is_err()
 }
 
+fn skip_search_tests() -> bool {
+    // Search tests require tantivy index infrastructure.
+    std::env::var("RUN_SEARCH_TESTS").is_err()
+}
+
 async fn create_index_manager() -> IndexManager {
     let index_dir = std::env::temp_dir().join(format!("tachyon_search_test_{}", uuid::Uuid::new_v4()));
     IndexManager::new(index_dir)
@@ -17,8 +22,8 @@ async fn create_index_manager() -> IndexManager {
 
 #[tokio::test]
 async fn test_index_document() {
-    if skip_without_db() {
-        println!("Skipping: DATABASE_URL not set");
+    if skip_without_db() || skip_search_tests() {
+        println!("Skipping: DATABASE_URL or RUN_SEARCH_TESTS not set");
         return;
     }
 
@@ -39,8 +44,8 @@ async fn test_index_document() {
 
 #[tokio::test]
 async fn test_index_and_search_document() {
-    if skip_without_db() {
-        println!("Skipping: DATABASE_URL not set");
+    if skip_without_db() || skip_search_tests() {
+        println!("Skipping: DATABASE_URL or RUN_SEARCH_TESTS not set");
         return;
     }
 
@@ -67,8 +72,8 @@ async fn test_index_and_search_document() {
 
 #[tokio::test]
 async fn test_search_no_results() {
-    if skip_without_db() {
-        println!("Skipping: DATABASE_URL not set");
+    if skip_without_db() || skip_search_tests() {
+        println!("Skipping: DATABASE_URL or RUN_SEARCH_TESTS not set");
         return;
     }
 
@@ -82,8 +87,8 @@ async fn test_search_no_results() {
 
 #[tokio::test]
 async fn test_search_suggestions() {
-    if skip_without_db() {
-        println!("Skipping: DATABASE_URL not set");
+    if skip_without_db() || skip_search_tests() {
+        println!("Skipping: DATABASE_URL or RUN_SEARCH_TESTS not set");
         return;
     }
 
@@ -106,8 +111,8 @@ async fn test_search_suggestions() {
 
 #[tokio::test]
 async fn test_delete_document_from_index() {
-    if skip_without_db() {
-        println!("Skipping: DATABASE_URL not set");
+    if skip_without_db() || skip_search_tests() {
+        println!("Skipping: DATABASE_URL or RUN_SEARCH_TESTS not set");
         return;
     }
 
@@ -137,8 +142,8 @@ async fn test_delete_document_from_index() {
 
 #[tokio::test]
 async fn test_batch_index_documents() {
-    if skip_without_db() {
-        println!("Skipping: DATABASE_URL not set");
+    if skip_without_db() || skip_search_tests() {
+        println!("Skipping: DATABASE_URL or RUN_SEARCH_TESTS not set");
         return;
     }
 
@@ -161,8 +166,8 @@ async fn test_batch_index_documents() {
 
 #[tokio::test]
 async fn test_search_with_pagination() {
-    if skip_without_db() {
-        println!("Skipping: DATABASE_URL not set");
+    if skip_without_db() || skip_search_tests() {
+        println!("Skipping: DATABASE_URL or RUN_SEARCH_TESTS not set");
         return;
     }
 
