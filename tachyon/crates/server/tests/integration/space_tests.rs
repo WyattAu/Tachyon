@@ -2,10 +2,9 @@
 use axum::{
     body::Body,
     http::{Request, StatusCode},
-    Router,
 };
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -50,7 +49,9 @@ async fn test_create_space() {
         .expect("Request failed");
 
     assert!(
-        response.status() == StatusCode::CREATED || response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
+        response.status() == StatusCode::CREATED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
         "Expected CREATED, OK, or INTERNAL_SERVER_ERROR, got {}",
         response.status()
     );
@@ -127,7 +128,10 @@ async fn test_get_default_space() {
 
     // May return 200 with default space or 404 if none set
     assert!(
-        response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND || response.status() == StatusCode::INTERNAL_SERVER_ERROR || response.status() == StatusCode::BAD_REQUEST,
+        response.status() == StatusCode::OK
+            || response.status() == StatusCode::NOT_FOUND
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR
+            || response.status() == StatusCode::BAD_REQUEST,
         "Expected OK, NOT_FOUND, INTERNAL_SERVER_ERROR, or BAD_REQUEST, got {}",
         response.status()
     );

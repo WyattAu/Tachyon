@@ -8,10 +8,8 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use tachyon_core::id::{DocumentId, generate_document_id};
-use tachyon_core::types::document::{
-    Document, DocumentContent, DocumentMetadata, DocumentStatus,
-};
+use tachyon_core::id::{generate_document_id, DocumentId};
+use tachyon_core::types::document::{Document, DocumentContent, DocumentMetadata, DocumentStatus};
 use tachyon_core::types::storage::{
     DocumentListSummary, DocumentStore, ListParams, ListResult, SortDirection, SortField,
     StorageError, StorageResult,
@@ -65,32 +63,16 @@ fn text_matches(query: &str, doc: &Document) -> bool {
 fn sort_documents(docs: &mut [Document], sort_by: SortField, sort_dir: SortDirection) {
     match (sort_by, sort_dir) {
         (SortField::UpdatedAt, SortDirection::Desc) => {
-            docs.sort_by(|a, b| {
-                b.metadata
-                    .updated_at
-                    .cmp(&a.metadata.updated_at)
-            });
+            docs.sort_by(|a, b| b.metadata.updated_at.cmp(&a.metadata.updated_at));
         }
         (SortField::UpdatedAt, SortDirection::Asc) => {
-            docs.sort_by(|a, b| {
-                a.metadata
-                    .updated_at
-                    .cmp(&b.metadata.updated_at)
-            });
+            docs.sort_by(|a, b| a.metadata.updated_at.cmp(&b.metadata.updated_at));
         }
         (SortField::CreatedAt, SortDirection::Desc) => {
-            docs.sort_by(|a, b| {
-                b.metadata
-                    .created_at
-                    .cmp(&a.metadata.created_at)
-            });
+            docs.sort_by(|a, b| b.metadata.created_at.cmp(&a.metadata.created_at));
         }
         (SortField::CreatedAt, SortDirection::Asc) => {
-            docs.sort_by(|a, b| {
-                a.metadata
-                    .created_at
-                    .cmp(&b.metadata.created_at)
-            });
+            docs.sort_by(|a, b| a.metadata.created_at.cmp(&b.metadata.created_at));
         }
         (SortField::Title, SortDirection::Asc) => {
             docs.sort_by(|a, b| a.metadata.title.cmp(&b.metadata.title));
@@ -122,7 +104,11 @@ impl DocumentStore for MemoryStore {
             let docs = self.documents.read();
             let slug = doc.metadata.slug.as_deref().unwrap_or(&doc.metadata.title);
             for existing in docs.values() {
-                let existing_slug = existing.metadata.slug.as_deref().unwrap_or(&existing.metadata.title);
+                let existing_slug = existing
+                    .metadata
+                    .slug
+                    .as_deref()
+                    .unwrap_or(&existing.metadata.title);
                 if existing_slug == slug {
                     return Err(StorageError::ConstraintViolation {
                         field: "slug".to_string(),
@@ -134,11 +120,11 @@ impl DocumentStore for MemoryStore {
 
             let mut docs = self.documents.write();
             docs.insert(id.as_str(), doc);
-            docs.get(&id.as_str()).cloned().ok_or_else(|| {
-                StorageError::Internal {
+            docs.get(&id.as_str())
+                .cloned()
+                .ok_or_else(|| StorageError::Internal {
                     message: "Document lost after insert".to_string(),
-                }
-            })
+                })
         })
     }
 
@@ -148,9 +134,11 @@ impl DocumentStore for MemoryStore {
     ) -> Pin<Box<dyn Future<Output = StorageResult<Document>> + Send + 'a>> {
         Box::pin(async move {
             let docs = self.documents.read();
-            docs.get(&id.as_str()).cloned().ok_or_else(|| StorageError::NotFound {
-                id: id.as_str().to_string(),
-            })
+            docs.get(&id.as_str())
+                .cloned()
+                .ok_or_else(|| StorageError::NotFound {
+                    id: id.as_str().to_string(),
+                })
         })
     }
 
@@ -162,9 +150,11 @@ impl DocumentStore for MemoryStore {
     ) -> Pin<Box<dyn Future<Output = StorageResult<Document>> + Send + 'a>> {
         Box::pin(async move {
             let mut docs = self.documents.write();
-            let doc = docs.get_mut(&id.as_str()).ok_or_else(|| StorageError::NotFound {
-                id: id.as_str().to_string(),
-            })?;
+            let doc = docs
+                .get_mut(&id.as_str())
+                .ok_or_else(|| StorageError::NotFound {
+                    id: id.as_str().to_string(),
+                })?;
             doc.update_content(content);
             Ok(doc.clone())
         })
@@ -178,9 +168,11 @@ impl DocumentStore for MemoryStore {
     ) -> Pin<Box<dyn Future<Output = StorageResult<Document>> + Send + 'a>> {
         Box::pin(async move {
             let mut docs = self.documents.write();
-            let doc = docs.get_mut(&id.as_str()).ok_or_else(|| StorageError::NotFound {
-                id: id.as_str().to_string(),
-            })?;
+            let doc = docs
+                .get_mut(&id.as_str())
+                .ok_or_else(|| StorageError::NotFound {
+                    id: id.as_str().to_string(),
+                })?;
             doc.metadata = metadata;
             doc.metadata.touch();
             Ok(doc.clone())
@@ -236,12 +228,7 @@ impl DocumentStore for MemoryStore {
 
             // Filter by tags (any match)
             if !params.tags.is_empty() {
-                items.retain(|d| {
-                    params
-                        .tags
-                        .iter()
-                        .any(|t| d.metadata.tags.contains(t))
-                });
+                items.retain(|d| params.tags.iter().any(|t| d.metadata.tags.contains(t)));
             }
 
             // Filter by search query
@@ -255,7 +242,8 @@ impl DocumentStore for MemoryStore {
             // Paginate
             let start = (params.page.saturating_sub(1)) * params.page_size;
             let end = (start + params.page_size).min(total);
-            let page_items: Vec<Document> = items.into_iter().skip(start).take(end - start).collect();
+            let page_items: Vec<Document> =
+                items.into_iter().skip(start).take(end - start).collect();
 
             Ok(ListResult {
                 total,
@@ -288,8 +276,10 @@ impl DocumentStore for MemoryStore {
     ) -> Pin<Box<dyn Future<Output = StorageResult<DocumentListSummary>> + Send + 'a>> {
         Box::pin(async move {
             let docs = self.documents.read();
-            let active: Vec<&Document> =
-                docs.values().filter(|d| d.status != DocumentStatus::Deleted).collect();
+            let active: Vec<&Document> = docs
+                .values()
+                .filter(|d| d.status != DocumentStatus::Deleted)
+                .collect();
 
             let mut all_tags = std::collections::HashSet::new();
             let mut total_words = 0usize;
@@ -301,9 +291,18 @@ impl DocumentStore for MemoryStore {
 
             Ok(DocumentListSummary {
                 total_documents: active.len(),
-                draft_count: active.iter().filter(|d| d.status == DocumentStatus::Draft).count(),
-                published_count: active.iter().filter(|d| d.status == DocumentStatus::Published).count(),
-                archived_count: active.iter().filter(|d| d.status == DocumentStatus::Archived).count(),
+                draft_count: active
+                    .iter()
+                    .filter(|d| d.status == DocumentStatus::Draft)
+                    .count(),
+                published_count: active
+                    .iter()
+                    .filter(|d| d.status == DocumentStatus::Published)
+                    .count(),
+                archived_count: active
+                    .iter()
+                    .filter(|d| d.status == DocumentStatus::Archived)
+                    .count(),
                 total_word_count: total_words,
                 total_tags: all_tags.len(),
             })
@@ -349,7 +348,9 @@ impl DocumentStore for MemoryStore {
         })
     }
 
-    fn is_available<'a>(&'a self) -> Pin<Box<dyn Future<Output = StorageResult<bool>> + Send + 'a>> {
+    fn is_available<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = StorageResult<bool>> + Send + 'a>> {
         Box::pin(async move { Ok(true) })
     }
 }
@@ -400,7 +401,10 @@ mod tests {
         // Update metadata
         let mut meta = updated.metadata.clone();
         meta.description = Some("desc".to_string());
-        let updated = store.update_document_metadata(&doc.id, meta, None).await.unwrap();
+        let updated = store
+            .update_document_metadata(&doc.id, meta, None)
+            .await
+            .unwrap();
         assert_eq!(updated.metadata.description, Some("desc".to_string()));
 
         // Delete (soft)
@@ -421,13 +425,19 @@ mod tests {
 
         let m1 = DocumentMetadata::new("Rust Book".to_string(), user_id);
         store
-            .create_document(m1, DocumentContent::markdown("Rust programming language".to_string()))
+            .create_document(
+                m1,
+                DocumentContent::markdown("Rust programming language".to_string()),
+            )
             .await
             .unwrap();
 
         let m2 = DocumentMetadata::new("Python Book".to_string(), user_id);
         store
-            .create_document(m2, DocumentContent::markdown("Python scripting".to_string()))
+            .create_document(
+                m2,
+                DocumentContent::markdown("Python scripting".to_string()),
+            )
             .await
             .unwrap();
 

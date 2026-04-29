@@ -3,20 +3,35 @@
 
 #![allow(dead_code)]
 
-use leptos::prelude::*;
 use crate::api::ApiClient;
 use crate::types::{DocumentReview, ReviewComment};
-use wasm_bindgen::JsCast;
+use leptos::prelude::*;
 use std::sync::{Arc, Mutex};
+use wasm_bindgen::JsCast;
 
 /// Review status badge with color coding
 fn status_badge(status: &str) -> (String, String) {
     match status {
-        "pending" => ("bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200".to_string(), "Pending".to_string()),
-        "approved" => ("bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200".to_string(), "Approved".to_string()),
-        "rejected" => ("bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200".to_string(), "Rejected".to_string()),
-        "changes_requested" => ("bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200".to_string(), "Changes Requested".to_string()),
-        "cancelled" => ("bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300".to_string(), "Cancelled".to_string()),
+        "pending" => (
+            "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200".to_string(),
+            "Pending".to_string(),
+        ),
+        "approved" => (
+            "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200".to_string(),
+            "Approved".to_string(),
+        ),
+        "rejected" => (
+            "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200".to_string(),
+            "Rejected".to_string(),
+        ),
+        "changes_requested" => (
+            "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200".to_string(),
+            "Changes Requested".to_string(),
+        ),
+        "cancelled" => (
+            "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300".to_string(),
+            "Cancelled".to_string(),
+        ),
         _ => ("bg-gray-100 text-gray-600".to_string(), status.to_string()),
     }
 }
@@ -83,9 +98,7 @@ mod tests {
 
 /// Review Panel — shows review status, list, and actions for a document
 #[component]
-pub fn ReviewPanel(
-    document_id: String,
-) -> impl IntoView {
+pub fn ReviewPanel(document_id: String) -> impl IntoView {
     let api_client = Arc::new(Mutex::new(ApiClient::default()));
 
     let (refresh_counter, set_refresh_counter) = signal(0u32);
@@ -100,9 +113,7 @@ pub fn ReviewPanel(
             let _ = refresh_counter.get();
             let client = api_client.lock().unwrap().clone();
             let doc_id = document_id.clone();
-            async move {
-                client.list_reviews(&doc_id).await.unwrap_or_default()
-            }
+            async move { client.list_reviews(&doc_id).await.unwrap_or_default() }
         }
     });
 
@@ -113,9 +124,7 @@ pub fn ReviewPanel(
             let _ = refresh_counter.get();
             let client = api_client.lock().unwrap().clone();
             let doc_id = document_id.clone();
-            async move {
-                client.get_review_status(&doc_id).await.ok()
-            }
+            async move { client.get_review_status(&doc_id).await.ok() }
         }
     });
 
@@ -130,8 +139,11 @@ pub fn ReviewPanel(
 
         wasm_bindgen_futures::spawn_local(async move {
             // Use the author from localStorage or a default
-            let reviewer_id = crate::components::auth_guard::get_user_id().unwrap_or_else(|| "anonymous".to_string());
-            let _ = client.create_review(&doc_id, &reviewer_id, Some("Submitted for review")).await;
+            let reviewer_id = crate::components::auth_guard::get_user_id()
+                .unwrap_or_else(|| "anonymous".to_string());
+            let _ = client
+                .create_review(&doc_id, &reviewer_id, Some("Submitted for review"))
+                .await;
             set_rc.update(|n| *n += 1);
         });
     };
@@ -210,35 +222,39 @@ fn ReviewList(
 ) -> impl IntoView {
     move || {
         let reviews = reviews_resource.get();
-        reviews.map(|reviews| {
-            if reviews.is_empty() {
-                view! {
-                    <div class="p-4 text-center text-gray-500 dark:text-gray-400">
-                        "No reviews submitted yet"
-                    </div>
-                }.into_any()
-            } else {
-                let doc_id = document_id.clone();
-                let api = api_client.clone();
-                let set_rc = set_refresh_counter;
-                view! {
-                    <ul class="divide-y divide-gray-200 dark:border-gray-700">
-                        <For
-                            each=move || reviews.clone()
-                            key=|r| r.id.clone()
-                            let:review
-                        >
-                            <ReviewItem
-                                document_id=doc_id.clone()
-                                review=review
-                                api_client=api.clone()
-                                set_refresh_counter=set_rc
-                            />
-                        </For>
-                    </ul>
-                }.into_any()
-            }
-        }).unwrap_or_else(|| view! { <div></div> }.into_any())
+        reviews
+            .map(|reviews| {
+                if reviews.is_empty() {
+                    view! {
+                        <div class="p-4 text-center text-gray-500 dark:text-gray-400">
+                            "No reviews submitted yet"
+                        </div>
+                    }
+                    .into_any()
+                } else {
+                    let doc_id = document_id.clone();
+                    let api = api_client.clone();
+                    let set_rc = set_refresh_counter;
+                    view! {
+                        <ul class="divide-y divide-gray-200 dark:border-gray-700">
+                            <For
+                                each=move || reviews.clone()
+                                key=|r| r.id.clone()
+                                let:review
+                            >
+                                <ReviewItem
+                                    document_id=doc_id.clone()
+                                    review=review
+                                    api_client=api.clone()
+                                    set_refresh_counter=set_rc
+                                />
+                            </For>
+                        </ul>
+                    }
+                    .into_any()
+                }
+            })
+            .unwrap_or_else(|| view! { <div></div> }.into_any())
     }
 }
 
@@ -251,7 +267,10 @@ fn ReviewItem(
 ) -> impl IntoView {
     let review_id = review.id.clone();
     let status = review.status.clone();
-    let summary = review.summary.clone().unwrap_or_else(|| "No summary".to_string());
+    let summary = review
+        .summary
+        .clone()
+        .unwrap_or_else(|| "No summary".to_string());
     let reviewer_id = review.reviewer_id.clone();
     let created_at = format_timestamp(&review.created_at);
 
@@ -280,7 +299,9 @@ fn ReviewItem(
         let api = api_approve.lock().unwrap().clone();
         let set_rc = set_rc_approve;
         wasm_bindgen_futures::spawn_local(async move {
-            let _ = api.update_review(&doc_id, &rid, "approved", Some("Approved")).await;
+            let _ = api
+                .update_review(&doc_id, &rid, "approved", Some("Approved"))
+                .await;
             set_rc.update(|n| *n += 1);
         });
     };
@@ -301,7 +322,9 @@ fn ReviewItem(
         let api = api_reject.lock().unwrap().clone();
         let set_rc = set_rc_reject;
         wasm_bindgen_futures::spawn_local(async move {
-            let _ = api.update_review(&doc_id, &rid, "rejected", Some("Rejected")).await;
+            let _ = api
+                .update_review(&doc_id, &rid, "rejected", Some("Rejected"))
+                .await;
             set_rc.update(|n| *n += 1);
         });
     };
@@ -322,7 +345,14 @@ fn ReviewItem(
         let api = api_changes.lock().unwrap().clone();
         let set_rc = set_rc_changes;
         wasm_bindgen_futures::spawn_local(async move {
-            let _ = api.update_review(&doc_id, &rid, "changes_requested", Some("Changes requested")).await;
+            let _ = api
+                .update_review(
+                    &doc_id,
+                    &rid,
+                    "changes_requested",
+                    Some("Changes requested"),
+                )
+                .await;
             set_rc.update(|n| *n += 1);
         });
     };
@@ -352,8 +382,12 @@ fn ReviewItem(
         let content = text;
 
         wasm_bindgen_futures::spawn_local(async move {
-            let author_id = crate::components::auth_guard::get_user_id().unwrap_or_else(|| "anonymous".to_string());
-            if let Ok(comment) = api.create_review_comment(&doc_id, &rid, &author_id, &content).await {
+            let author_id = crate::components::auth_guard::get_user_id()
+                .unwrap_or_else(|| "anonymous".to_string());
+            if let Ok(comment) = api
+                .create_review_comment(&doc_id, &rid, &author_id, &content)
+                .await
+            {
                 set_c.update(|c| {
                     c.push(comment);
                 });

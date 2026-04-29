@@ -1,11 +1,10 @@
 // Integration tests for onboarding routes
 use axum::{
     body::Body,
-    http::{Request, StatusCode, header},
-    Router,
+    http::{Request, StatusCode},
 };
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -32,8 +31,7 @@ async fn test_get_onboarding_status_unauthenticated() {
 
     // Should require auth or return default status
     assert!(
-        response.status() == StatusCode::OK
-            || response.status() == StatusCode::UNAUTHORIZED,
+        response.status() == StatusCode::OK || response.status() == StatusCode::UNAUTHORIZED,
         "Expected OK or UNAUTHORIZED, got {}",
         response.status()
     );
@@ -154,9 +152,7 @@ async fn test_complete_multiple_onboarding_steps() {
                     .uri("/api/v1/onboarding/complete")
                     .header("Content-Type", "application/json")
                     .header("Authorization", common::auth_header(&auth.token))
-                    .body(Body::from(
-                        json!({ "step_id": step }).to_string(),
-                    ))
+                    .body(Body::from(json!({ "step_id": step }).to_string()))
                     .unwrap(),
             )
             .await

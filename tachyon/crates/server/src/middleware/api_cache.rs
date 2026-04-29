@@ -40,12 +40,15 @@ impl ApiCache {
 
     pub async fn set(&self, key: &str, data: Vec<u8>, content_type: String, ttl: Option<Duration>) {
         let mut entries = self.entries.write().await;
-        entries.insert(key.to_string(), CacheEntry {
-            data,
-            content_type,
-            expires_at: Instant::now() + ttl.unwrap_or(self.default_ttl),
-            hit_count: 0,
-        });
+        entries.insert(
+            key.to_string(),
+            CacheEntry {
+                data,
+                content_type,
+                expires_at: Instant::now() + ttl.unwrap_or(self.default_ttl),
+                hit_count: 0,
+            },
+        );
     }
 
     pub async fn invalidate(&self, key: &str) {
@@ -79,7 +82,9 @@ mod tests {
     #[tokio::test]
     async fn test_cache_set_get() {
         let cache = ApiCache::new(Duration::from_secs(60));
-        cache.set("key1", b"hello".to_vec(), "text/plain".to_string(), None).await;
+        cache
+            .set("key1", b"hello".to_vec(), "text/plain".to_string(), None)
+            .await;
         let result = cache.get("key1").await;
         assert!(result.is_some());
         let (data, ct) = result.unwrap();
@@ -96,7 +101,9 @@ mod tests {
     #[tokio::test]
     async fn test_cache_expiration() {
         let cache = ApiCache::new(Duration::from_millis(10));
-        cache.set("key1", b"data".to_vec(), "text/plain".to_string(), None).await;
+        cache
+            .set("key1", b"data".to_vec(), "text/plain".to_string(), None)
+            .await;
         tokio::time::sleep(Duration::from_millis(20)).await;
         assert!(cache.get("key1").await.is_none());
     }
@@ -104,7 +111,9 @@ mod tests {
     #[tokio::test]
     async fn test_cache_invalidate() {
         let cache = ApiCache::new(Duration::from_secs(60));
-        cache.set("key1", b"data".to_vec(), "text/plain".to_string(), None).await;
+        cache
+            .set("key1", b"data".to_vec(), "text/plain".to_string(), None)
+            .await;
         cache.invalidate("key1").await;
         assert!(cache.get("key1").await.is_none());
     }
@@ -112,9 +121,15 @@ mod tests {
     #[tokio::test]
     async fn test_cache_invalidate_prefix() {
         let cache = ApiCache::new(Duration::from_secs(60));
-        cache.set("api:docs:1", b"a".to_vec(), "text/plain".to_string(), None).await;
-        cache.set("api:docs:2", b"b".to_vec(), "text/plain".to_string(), None).await;
-        cache.set("api:users:1", b"c".to_vec(), "text/plain".to_string(), None).await;
+        cache
+            .set("api:docs:1", b"a".to_vec(), "text/plain".to_string(), None)
+            .await;
+        cache
+            .set("api:docs:2", b"b".to_vec(), "text/plain".to_string(), None)
+            .await;
+        cache
+            .set("api:users:1", b"c".to_vec(), "text/plain".to_string(), None)
+            .await;
         cache.invalidate_prefix("api:docs:").await;
         assert!(cache.get("api:docs:1").await.is_none());
         assert!(cache.get("api:docs:2").await.is_none());
@@ -124,8 +139,22 @@ mod tests {
     #[tokio::test]
     async fn test_cache_cleanup() {
         let cache = ApiCache::new(Duration::from_millis(10));
-        cache.set("expired", b"x".to_vec(), "text/plain".to_string(), Some(Duration::from_millis(5))).await;
-        cache.set("valid", b"y".to_vec(), "text/plain".to_string(), Some(Duration::from_secs(60))).await;
+        cache
+            .set(
+                "expired",
+                b"x".to_vec(),
+                "text/plain".to_string(),
+                Some(Duration::from_millis(5)),
+            )
+            .await;
+        cache
+            .set(
+                "valid",
+                b"y".to_vec(),
+                "text/plain".to_string(),
+                Some(Duration::from_secs(60)),
+            )
+            .await;
         tokio::time::sleep(Duration::from_millis(15)).await;
         cache.cleanup().await;
         assert!(cache.get("expired").await.is_none());

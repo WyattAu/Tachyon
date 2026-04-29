@@ -1,17 +1,14 @@
 #![allow(dead_code)]
 
+use crate::storage::{BrowserStore, StoredDocument};
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
-use crate::storage::{BrowserStore, StoredDocument};
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::JsCast;
 
 #[component]
-pub fn ClientSearch(
-    open: ReadSignal<bool>,
-    set_open: WriteSignal<bool>,
-) -> impl IntoView {
+pub fn ClientSearch(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> impl IntoView {
     let (query, set_query) = signal(String::new());
     let (results, set_results) = signal(Vec::<StoredDocument>::new());
     let (searching, set_searching) = signal(false);

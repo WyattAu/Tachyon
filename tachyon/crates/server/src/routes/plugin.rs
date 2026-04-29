@@ -115,7 +115,13 @@ pub async fn list_plugins(
     State(state): State<PluginState>,
 ) -> Result<Json<Vec<PluginResponse>>, (StatusCode, Json<ErrorResponse>)> {
     let repo = PluginRepository::new(state.pool.clone());
-    let plugins = repo.list(query.enabled, query.runtime_type.as_deref(), query.limit, query.offset)
+    let plugins = repo
+        .list(
+            query.enabled,
+            query.runtime_type.as_deref(),
+            query.limit,
+            query.offset,
+        )
         .await
         .map_err(|e| {
             (
@@ -127,7 +133,9 @@ pub async fn list_plugins(
             )
         })?;
 
-    Ok(Json(plugins.into_iter().map(PluginResponse::from).collect()))
+    Ok(Json(
+        plugins.into_iter().map(PluginResponse::from).collect(),
+    ))
 }
 
 pub async fn get_plugin(
@@ -172,30 +180,31 @@ pub async fn create_plugin(
     }
 
     let repo = PluginRepository::new(state.pool.clone());
-    let plugin = repo.create(CreatePluginRequest {
-        name: body.name,
-        description: body.description,
-        version: body.version,
-        author: body.author,
-        homepage: body.homepage,
-        license: body.license,
-        extension_points: body.extension_points,
-        manifest: body.manifest,
-        runtime_type: body.runtime_type,
-        entry_point: body.entry_point,
-        enabled: body.enabled,
-        installed_by: None,
-    })
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "CREATE_ERROR".to_string(),
-                message: format!("Failed to create plugin: {}", e),
-            }),
-        )
-    })?;
+    let plugin = repo
+        .create(CreatePluginRequest {
+            name: body.name,
+            description: body.description,
+            version: body.version,
+            author: body.author,
+            homepage: body.homepage,
+            license: body.license,
+            extension_points: body.extension_points,
+            manifest: body.manifest,
+            runtime_type: body.runtime_type,
+            entry_point: body.entry_point,
+            enabled: body.enabled,
+            installed_by: None,
+        })
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    code: "CREATE_ERROR".to_string(),
+                    message: format!("Failed to create plugin: {}", e),
+                }),
+            )
+        })?;
 
     info!("Installed plugin: {} v{}", plugin.name, plugin.version);
     Ok(Json(PluginResponse::from(plugin)))
@@ -208,27 +217,31 @@ pub async fn update_plugin(
 ) -> Result<Json<PluginResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = PluginRepository::new(state.pool.clone());
 
-    let plugin = repo.update(&plugin_id, UpdatePluginRequest {
-        description: body.description,
-        version: body.version,
-        author: body.author,
-        homepage: body.homepage,
-        license: body.license,
-        extension_points: body.extension_points,
-        manifest: body.manifest,
-        entry_point: body.entry_point,
-        enabled: body.enabled,
-    })
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "UPDATE_ERROR".to_string(),
-                message: format!("Failed to update plugin: {}", e),
-            }),
+    let plugin = repo
+        .update(
+            &plugin_id,
+            UpdatePluginRequest {
+                description: body.description,
+                version: body.version,
+                author: body.author,
+                homepage: body.homepage,
+                license: body.license,
+                extension_points: body.extension_points,
+                manifest: body.manifest,
+                entry_point: body.entry_point,
+                enabled: body.enabled,
+            },
         )
-    })?;
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    code: "UPDATE_ERROR".to_string(),
+                    message: format!("Failed to update plugin: {}", e),
+                }),
+            )
+        })?;
 
     info!("Updated plugin: {}", plugin.name);
     Ok(Json(PluginResponse::from(plugin)))
@@ -281,7 +294,9 @@ pub async fn invoke_hook(
     State(state): State<PluginState>,
     Json(req): Json<InvokeHookRequest>,
 ) -> Result<Json<InvokeHookResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let results = state.runtime.invoke_hook(&req.hook, req.input, req.timeout_ms);
+    let results = state
+        .runtime
+        .invoke_hook(&req.hook, req.input, req.timeout_ms);
 
     let plugins_invoked = results.len();
     info!(

@@ -81,7 +81,10 @@ impl SubscriptionRepository {
 
     #[instrument(skip(self))]
     pub async fn get_by_org(&self, organization_id: &str) -> DatabaseResult<Subscription> {
-        let sql = format!("{} WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 1", SUB_SELECT);
+        let sql = format!(
+            "{} WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 1",
+            SUB_SELECT
+        );
         sqlx::query_as::<_, Subscription>(&sql)
             .bind(organization_id)
             .fetch_optional(self.pool.inner())
@@ -90,13 +93,19 @@ impl SubscriptionRepository {
     }
 
     #[instrument(skip(self))]
-    pub async fn update(&self, id: &str, req: UpdateSubscriptionRequest) -> DatabaseResult<Subscription> {
+    pub async fn update(
+        &self,
+        id: &str,
+        req: UpdateSubscriptionRequest,
+    ) -> DatabaseResult<Subscription> {
         let existing = self.get_by_id(id).await?;
         let now = Utc::now();
 
         let plan = req.plan.unwrap_or(existing.plan);
         let status = req.status.unwrap_or(existing.status);
-        let cancel = req.cancel_at_period_end.unwrap_or(existing.cancel_at_period_end);
+        let cancel = req
+            .cancel_at_period_end
+            .unwrap_or(existing.cancel_at_period_end);
         let payment = req.payment_method_id.or(existing.payment_method_id);
 
         let sql = r#"
@@ -222,7 +231,10 @@ impl InvoiceRepository {
 
     #[instrument(skip(self))]
     pub async fn list_by_org(&self, organization_id: &str) -> DatabaseResult<Vec<Invoice>> {
-        let sql = format!("{} WHERE organization_id = $1 ORDER BY invoice_date DESC LIMIT 100", INV_SELECT);
+        let sql = format!(
+            "{} WHERE organization_id = $1 ORDER BY invoice_date DESC LIMIT 100",
+            INV_SELECT
+        );
         sqlx::query_as::<_, Invoice>(&sql)
             .bind(organization_id)
             .fetch_all(self.pool.inner())
@@ -298,7 +310,11 @@ impl NotificationPreferenceRepository {
     }
 
     #[instrument(skip(self))]
-    pub async fn upsert(&self, req: UpsertNotificationPrefRequest, user_id: &str) -> DatabaseResult<NotificationPreference> {
+    pub async fn upsert(
+        &self,
+        req: UpsertNotificationPrefRequest,
+        user_id: &str,
+    ) -> DatabaseResult<NotificationPreference> {
         let sql = r#"
             INSERT INTO notification_preferences (user_id, notification_type, enabled, channel, updated_at)
             VALUES ($1, $2, $3, $4, NOW())

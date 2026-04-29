@@ -2,10 +2,9 @@
 use axum::{
     body::Body,
     http::{Request, StatusCode},
-    Router,
 };
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -115,7 +114,9 @@ async fn test_session_unauthorized() {
         .expect("Request failed");
 
     assert!(
-        response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::OK || response.status() == StatusCode::BAD_REQUEST,
+        response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::BAD_REQUEST,
         "Expected UNAUTHORIZED, OK, or BAD_REQUEST (no auth middleware in test router), got {}",
         response.status()
     );

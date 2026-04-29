@@ -16,21 +16,19 @@ fn ensure_typing_style() {
             if doc.get_element_by_id("collab-typing-style").is_none() {
                 if let Ok(style) = doc.create_element("style") {
                     style.set_id("collab-typing-style");
-                    style.set_text_content(Some(
-                        concat!(
-                            "@keyframes collab-typing-dot{",
-                            "0%,80%,100%{transform:scale(0)}",
-                            "40%{transform:scale(1)}",
-                            "}",
-                            ".collab-typing-dot{",
-                            "display:inline-block;width:4px;height:4px;",
-                            "border-radius:50%;background-color:currentColor;",
-                            "animation:collab-typing-dot 1.4s infinite ease-in-out both",
-                            "}",
-                            ".collab-typing-dot:nth-child(1){animation-delay:-.32s}",
-                            ".collab-typing-dot:nth-child(2){animation-delay:-.16s}",
-                        ),
-                    ));
+                    style.set_text_content(Some(concat!(
+                        "@keyframes collab-typing-dot{",
+                        "0%,80%,100%{transform:scale(0)}",
+                        "40%{transform:scale(1)}",
+                        "}",
+                        ".collab-typing-dot{",
+                        "display:inline-block;width:4px;height:4px;",
+                        "border-radius:50%;background-color:currentColor;",
+                        "animation:collab-typing-dot 1.4s infinite ease-in-out both",
+                        "}",
+                        ".collab-typing-dot:nth-child(1){animation-delay:-.32s}",
+                        ".collab-typing-dot:nth-child(2){animation-delay:-.16s}",
+                    )));
                     let _ = doc.head().and_then(|head| head.append_child(&style).ok());
                 }
             }
@@ -39,9 +37,7 @@ fn ensure_typing_style() {
 }
 
 #[component]
-pub fn PresenceIndicators(
-    users: RwSignal<Vec<PresenceUser>>,
-) -> impl IntoView {
+pub fn PresenceIndicators(users: RwSignal<Vec<PresenceUser>>) -> impl IntoView {
     ensure_typing_style();
 
     view! {

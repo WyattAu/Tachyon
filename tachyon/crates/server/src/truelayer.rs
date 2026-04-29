@@ -171,7 +171,8 @@ impl TrueLayerClient {
         }
 
         let token_resp: TokenResponse = resp.json().await?;
-        let expires_at = Instant::now() + Duration::from_secs(token_resp.expires_in.saturating_sub(60));
+        let expires_at =
+            Instant::now() + Duration::from_secs(token_resp.expires_in.saturating_sub(60));
 
         {
             let mut cache = self.token_cache.lock().await;
@@ -223,7 +224,10 @@ impl TrueLayerClient {
         let status = resp.status().as_u16();
         if !resp.status().is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(TrueLayerError::ApiError { status, message: body });
+            return Err(TrueLayerError::ApiError {
+                status,
+                message: body,
+            });
         }
 
         let result: CreateMandateResponse = resp.json().await?;
@@ -250,7 +254,10 @@ impl TrueLayerClient {
         let status = resp.status().as_u16();
         if !resp.status().is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(TrueLayerError::ApiError { status, message: body });
+            return Err(TrueLayerError::ApiError {
+                status,
+                message: body,
+            });
         }
 
         let result: MandateStatus = resp.json().await?;
@@ -287,7 +294,10 @@ impl TrueLayerClient {
         let status = resp.status().as_u16();
         if !resp.status().is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(TrueLayerError::ApiError { status, message: body });
+            return Err(TrueLayerError::ApiError {
+                status,
+                message: body,
+            });
         }
 
         let result: CreatePaymentResponse = resp.json().await?;
@@ -314,7 +324,10 @@ impl TrueLayerClient {
         let status = resp.status().as_u16();
         if !resp.status().is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(TrueLayerError::ApiError { status, message: body });
+            return Err(TrueLayerError::ApiError {
+                status,
+                message: body,
+            });
         }
 
         let result: PaymentStatusResponse = resp.json().await?;

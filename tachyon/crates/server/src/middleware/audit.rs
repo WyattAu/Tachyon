@@ -1,17 +1,10 @@
-use axum::{
-    extract::Request,
-    middleware::Next,
-    response::Response,
-};
+use axum::{extract::Request, middleware::Next, response::Response};
 use tracing;
 
 use crate::middleware::auth::AuthContext;
 use crate::middleware::request_id::RequestId;
 
-pub async fn audit_middleware(
-    request: Request,
-    next: Next,
-) -> Response {
+pub async fn audit_middleware(request: Request, next: Next) -> Response {
     let path = request.uri().path().to_string();
     let method = request.method().to_string();
 

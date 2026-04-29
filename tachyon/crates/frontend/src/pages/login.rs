@@ -1,9 +1,9 @@
-use leptos::prelude::*;
-use leptos::ev;
-use leptos_router::hooks::use_navigate;
-use leptos::task::spawn_local;
 use crate::api::ApiClient;
 use crate::components::ButtonSpinner;
+use leptos::ev;
+use leptos::prelude::*;
+use leptos::task::spawn_local;
+use leptos_router::hooks::use_navigate;
 
 fn is_valid_email(email: &str) -> bool {
     (|| {
@@ -22,10 +22,13 @@ fn get_return_url() -> String {
             for pair in search.trim_start_matches('?').split('&') {
                 if let Some(url) = pair.strip_prefix("return=") {
                     let decoded = url
-                        .replace("%2F", "/").replace("%2f", "/")
-                        .replace("%3F", "?").replace("%3f", "?")
+                        .replace("%2F", "/")
+                        .replace("%2f", "/")
+                        .replace("%3F", "?")
+                        .replace("%3f", "?")
                         .replace("%26", "&")
-                        .replace("%3D", "=").replace("%3d", "=")
+                        .replace("%3D", "=")
+                        .replace("%3d", "=")
                         .replace("%23", "#")
                         .replace("%25", "%");
                     return Some(decoded);
@@ -142,11 +145,15 @@ pub fn LoginPage() -> impl IntoView {
     };
 
     let on_google_login = move |_| {
-        error.set(Some("Google OAuth is not yet configured. Please contact your administrator.".to_string()));
+        error.set(Some(
+            "Google OAuth is not yet configured. Please contact your administrator.".to_string(),
+        ));
     };
 
     let on_github_login = move |_| {
-        error.set(Some("GitHub OAuth is not yet configured. Please contact your administrator.".to_string()));
+        error.set(Some(
+            "GitHub OAuth is not yet configured. Please contact your administrator.".to_string(),
+        ));
     };
 
     view! {

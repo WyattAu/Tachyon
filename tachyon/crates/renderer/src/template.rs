@@ -266,7 +266,6 @@ impl TemplateBuilder {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

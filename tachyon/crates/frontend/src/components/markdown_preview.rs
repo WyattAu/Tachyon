@@ -1,16 +1,12 @@
 #![allow(dead_code)]
 
-use leptos::prelude::*;
 use crate::markdown::{
-    render_markdown_to_html, extract_headings as md_extract_headings, MarkdownHeading,
+    extract_headings as md_extract_headings, render_markdown_to_html, MarkdownHeading,
 };
+use leptos::prelude::*;
 
 #[component]
-pub fn MarkdownPreview(
-    content: String,
-    #[prop(default = true)]
-    render_toc: bool,
-) -> impl IntoView {
+pub fn MarkdownPreview(content: String, #[prop(default = true)] render_toc: bool) -> impl IntoView {
     let (html_output, set_html_output) = signal(String::new());
     let (headings, set_headings) = signal(Vec::<MarkdownHeading>::new());
 

@@ -1,7 +1,7 @@
-use leptos::prelude::*;
-use wasm_bindgen_futures::spawn_local;
 use crate::api::ApiClient;
 use crate::types::{SsgBuildRequest, SsgBuildResponse};
+use leptos::prelude::*;
+use wasm_bindgen_futures::spawn_local;
 
 #[component]
 pub fn SsgPage() -> impl IntoView {
@@ -118,11 +118,19 @@ pub fn SsgPage() -> impl IntoView {
         })
     };
 
-    let btn_label = move || if building.get() { "Building..." } else { "Build Site" };
-    let btn_class = move || format!(
+    let btn_label = move || {
+        if building.get() {
+            "Building..."
+        } else {
+            "Build Site"
+        }
+    };
+    let btn_class = move || {
+        format!(
         "px-6 py-3 text-white rounded-lg font-medium transition-colors flex items-center gap-2 {}",
         if building.get() { "bg-blue-400 cursor-not-allowed" } else { "bg-blue-600 hover:bg-blue-700" }
-    );
+    )
+    };
 
     view! {
         <div>
@@ -146,7 +154,7 @@ pub fn SsgPage() -> impl IntoView {
                             "Site Title"
                         </label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={title.get()}
@@ -158,7 +166,7 @@ pub fn SsgPage() -> impl IntoView {
                             "Description"
                         </label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={description.get()}
@@ -170,7 +178,7 @@ pub fn SsgPage() -> impl IntoView {
                             "Base URL"
                         </label>
                         <input type="url"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={base_url.get()}
@@ -182,7 +190,7 @@ pub fn SsgPage() -> impl IntoView {
                             "Theme"
                         </label>
                         <select
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={theme.get()}
@@ -214,7 +222,7 @@ pub fn SsgPage() -> impl IntoView {
                         {btn_label}
                     </button>
                     <button
-                        class="px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 
+                        class="px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600
                                rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
                         on:click={handle_download}
                     >

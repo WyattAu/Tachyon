@@ -2,7 +2,7 @@
 
 use axum::{
     extract::{Multipart, Query, State},
-    http::{StatusCode, header},
+    http::{header, StatusCode},
     response::{IntoResponse, Json, Response},
 };
 use serde::{Deserialize, Serialize};
@@ -135,14 +135,11 @@ pub struct UploadResponse {
     pub uploaded_at: String,
 }
 
-const ALLOWED_EXTENSIONS: &[&str] = &[
-    ".md", ".txt", ".json", ".yaml", ".yml", ".toml",
-];
+const ALLOWED_EXTENSIONS: &[&str] = &[".md", ".txt", ".json", ".yaml", ".yml", ".toml"];
 
 const UPLOAD_ALLOWED_EXTENSIONS: &[&str] = &[
-    "png", "jpg", "jpeg", "gif", "webp", "svg",
-    "pdf", "doc", "docx", "xls", "xlsx",
-    "txt", "md", "csv", "json",
+    "png", "jpg", "jpeg", "gif", "webp", "svg", "pdf", "doc", "docx", "xls", "xlsx", "txt", "md",
+    "csv", "json",
 ];
 
 const MAX_UPLOAD_SIZE: usize = 50 * 1024 * 1024;
@@ -172,7 +169,10 @@ fn internal_error(msg: impl Into<String>) -> ApiError {
 
 fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ApiError> {
     if let Err(e) = tachyon_core::validate_path(relative) {
-        return Err(error("INVALID_PATH", format!("Path validation failed: {}", e)));
+        return Err(error(
+            "INVALID_PATH",
+            format!("Path validation failed: {}", e),
+        ));
     }
 
     let joined = root.join(relative.strip_prefix('/').unwrap_or(relative));
@@ -187,7 +187,10 @@ fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ApiError> {
 
     let root_canonical = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     if !canonical.starts_with(&root_canonical) {
-        return Err(error("FORBIDDEN", "Access denied: path is outside root directory"));
+        return Err(error(
+            "FORBIDDEN",
+            "Access denied: path is outside root directory",
+        ));
     }
 
     Ok(canonical)
@@ -220,18 +223,35 @@ fn is_upload_allowed_ext(ext: &str) -> bool {
 }
 
 fn is_binary_file(path: &Path) -> bool {
-    match path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+    {
         Some(ref ext) => matches!(
             ext.as_str(),
-            "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg"
-                | "pdf" | "doc" | "docx" | "xls" | "xlsx"
+            "png"
+                | "jpg"
+                | "jpeg"
+                | "gif"
+                | "webp"
+                | "svg"
+                | "pdf"
+                | "doc"
+                | "docx"
+                | "xls"
+                | "xlsx"
         ),
         None => false,
     }
 }
 
 fn content_type_for_ext(path: &Path) -> &'static str {
-    match path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+    {
         Some(ref ext) => match ext.as_str() {
             "png" => "image/png",
             "jpg" | "jpeg" => "image/jpeg",
@@ -305,19 +325,22 @@ pub async fn list_directory(
         return Err(error("NOT_DIRECTORY", "Path is not a directory"));
     }
 
-    let mut entries = fs::read_dir(&target).await.map_err(|e| {
-        internal_error(format!("Failed to read directory: {}", e))
-    })?;
+    let mut entries = fs::read_dir(&target)
+        .await
+        .map_err(|e| internal_error(format!("Failed to read directory: {}", e)))?;
 
     let mut result = Vec::new();
 
-    while let Some(entry) = entries.next_entry().await.map_err(|e| {
-        internal_error(format!("Failed to read directory entry: {}", e))
-    })? {
+    while let Some(entry) = entries
+        .next_entry()
+        .await
+        .map_err(|e| internal_error(format!("Failed to read directory entry: {}", e)))?
+    {
         let name = entry.file_name().to_string_lossy().to_string();
-        let meta = entry.metadata().await.map_err(|e| {
-            internal_error(format!("Failed to read metadata: {}", e))
-        })?;
+        let meta = entry
+            .metadata()
+            .await
+            .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
         let is_dir = meta.is_dir();
 
         if !should_show(&name, is_dir, show_all) {
@@ -329,16 +352,18 @@ pub async fn list_directory(
             is_dir,
             size: meta.len(),
             modified_at: format_modified(&meta),
-            extension: entry.path().extension().and_then(|e| e.to_str()).map(|s| s.to_string()),
+            extension: entry
+                .path()
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|s| s.to_string()),
         });
     }
 
-    result.sort_by(|a, b| {
-        match (a.is_dir, b.is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.cmp(&b.name),
-        }
+    result.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.cmp(&b.name),
     });
 
     Ok(Json(ListResponse {
@@ -387,9 +412,9 @@ pub async fn read_file(
     }
 
     if is_binary_file(&target) {
-        let data = fs::read(&target).await.map_err(|e| {
-            internal_error(format!("Failed to read file: {}", e))
-        })?;
+        let data = fs::read(&target)
+            .await
+            .map_err(|e| internal_error(format!("Failed to read file: {}", e)))?;
         let content_type = content_type_for_ext(&target);
         let size = data.len();
 
@@ -402,9 +427,9 @@ pub async fn read_file(
         return Ok(response);
     }
 
-    let content = fs::read_to_string(&target).await.map_err(|e| {
-        internal_error(format!("Failed to read file: {}", e))
-    })?;
+    let content = fs::read_to_string(&target)
+        .await
+        .map_err(|e| internal_error(format!("Failed to read file: {}", e)))?;
 
     let size = metadata.len();
     let (frontmatter, body) = parse_frontmatter(&content);
@@ -415,7 +440,8 @@ pub async fn read_file(
         size,
         encoding: "utf-8".to_string(),
         frontmatter,
-    }).into_response())
+    })
+    .into_response())
 }
 
 pub async fn search_files(
@@ -429,9 +455,18 @@ pub async fn search_files(
         return Err(error("NOT_DIRECTORY", "Specified path is not a directory"));
     }
 
-    let root_canonical = state.root_path.canonicalize().unwrap_or_else(|_| state.root_path.clone());
+    let root_canonical = state
+        .root_path
+        .canonicalize()
+        .unwrap_or_else(|_| state.root_path.clone());
     let mut results = Vec::new();
-    Box::pin(walk_dir_search(&base, &root_canonical, &query_lower, &mut results)).await?;
+    Box::pin(walk_dir_search(
+        &base,
+        &root_canonical,
+        &query_lower,
+        &mut results,
+    ))
+    .await?;
 
     results.sort_by(|a, b| a.path.cmp(&b.path));
 
@@ -445,13 +480,15 @@ fn walk_dir_search<'a>(
     results: &'a mut Vec<SearchResultEntry>,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), ApiError>> + Send + 'a>> {
     Box::pin(async move {
-        let mut entries = fs::read_dir(dir).await.map_err(|e| {
-            internal_error(format!("Failed to read directory: {}", e))
-        })?;
+        let mut entries = fs::read_dir(dir)
+            .await
+            .map_err(|e| internal_error(format!("Failed to read directory: {}", e)))?;
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| {
-            internal_error(format!("Failed to read directory entry: {}", e))
-        })? {
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(|e| internal_error(format!("Failed to read directory entry: {}", e)))?
+        {
             let path = entry.path();
             let name = entry.file_name().to_string_lossy().to_string();
 
@@ -459,9 +496,10 @@ fn walk_dir_search<'a>(
                 continue;
             }
 
-            let meta = entry.metadata().await.map_err(|e| {
-                internal_error(format!("Failed to read metadata: {}", e))
-            })?;
+            let meta = entry
+                .metadata()
+                .await
+                .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
 
             let relative = path
                 .strip_prefix(root)
@@ -507,7 +545,10 @@ pub async fn get_tree(
         return Err(error("NOT_DIRECTORY", "Path is not a directory"));
     }
 
-    let root_canonical = state.root_path.canonicalize().unwrap_or_else(|_| state.root_path.clone());
+    let root_canonical = state
+        .root_path
+        .canonicalize()
+        .unwrap_or_else(|_| state.root_path.clone());
     let children = Box::pin(build_tree(&target, &root_canonical, 0, max_depth)).await?;
 
     Ok(Json(TreeResponse {
@@ -527,15 +568,17 @@ fn build_tree<'a>(
             return Ok(Vec::new());
         }
 
-        let mut entries = fs::read_dir(dir).await.map_err(|e| {
-            internal_error(format!("Failed to read directory: {}", e))
-        })?;
+        let mut entries = fs::read_dir(dir)
+            .await
+            .map_err(|e| internal_error(format!("Failed to read directory: {}", e)))?;
 
         let mut nodes = Vec::new();
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| {
-            internal_error(format!("Failed to read directory entry: {}", e))
-        })? {
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(|e| internal_error(format!("Failed to read directory entry: {}", e)))?
+        {
             let path = entry.path();
             let name = entry.file_name().to_string_lossy().to_string();
 
@@ -543,9 +586,10 @@ fn build_tree<'a>(
                 continue;
             }
 
-            let meta = entry.metadata().await.map_err(|e| {
-                internal_error(format!("Failed to read metadata: {}", e))
-            })?;
+            let meta = entry
+                .metadata()
+                .await
+                .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
 
             let is_dir = meta.is_dir();
             let relative = path
@@ -572,22 +616,21 @@ fn build_tree<'a>(
             });
         }
 
-        nodes.sort_by(|a, b| {
-            match (a.is_dir, b.is_dir) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
-                _ => a.name.cmp(&b.name),
-            }
+        nodes.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.cmp(&b.name),
         });
 
         Ok(nodes)
     })
 }
 
-pub async fn get_stats(
-    State(state): State<FilesState>,
-) -> Result<Json<StatsResponse>, ApiError> {
-    let root = state.root_path.canonicalize().unwrap_or_else(|_| state.root_path.clone());
+pub async fn get_stats(State(state): State<FilesState>) -> Result<Json<StatsResponse>, ApiError> {
+    let root = state
+        .root_path
+        .canonicalize()
+        .unwrap_or_else(|_| state.root_path.clone());
 
     let mut total_files = 0usize;
     let mut total_dirs = 0usize;
@@ -595,7 +638,16 @@ pub async fn get_stats(
     let mut file_types = std::collections::BTreeMap::new();
     let mut largest_files: Vec<LargestFileEntry> = Vec::new();
 
-    Box::pin(walk_dir_stats(&root, &root, &mut total_files, &mut total_dirs, &mut total_size, &mut file_types, &mut largest_files)).await?;
+    Box::pin(walk_dir_stats(
+        &root,
+        &root,
+        &mut total_files,
+        &mut total_dirs,
+        &mut total_size,
+        &mut file_types,
+        &mut largest_files,
+    ))
+    .await?;
 
     largest_files.sort_by(|a, b| b.size.cmp(&a.size));
     largest_files.truncate(10);
@@ -619,39 +671,53 @@ fn walk_dir_stats<'a>(
     largest_files: &'a mut Vec<LargestFileEntry>,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), ApiError>> + Send + 'a>> {
     Box::pin(async move {
-        let mut entries = fs::read_dir(dir).await.map_err(|e| {
-            internal_error(format!("Failed to read directory: {}", e))
-        })?;
+        let mut entries = fs::read_dir(dir)
+            .await
+            .map_err(|e| internal_error(format!("Failed to read directory: {}", e)))?;
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| {
-            internal_error(format!("Failed to read directory entry: {}", e))
-        })? {
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(|e| internal_error(format!("Failed to read directory entry: {}", e)))?
+        {
             let name = entry.file_name().to_string_lossy().to_string();
 
             if name.starts_with('.') {
                 continue;
             }
 
-            let meta = entry.metadata().await.map_err(|e| {
-                internal_error(format!("Failed to read metadata: {}", e))
-            })?;
+            let meta = entry
+                .metadata()
+                .await
+                .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
 
             if meta.is_dir() {
                 *total_dirs += 1;
-                Box::pin(walk_dir_stats(&entry.path(), root, total_files, total_dirs, total_size, file_types, largest_files)).await?;
+                Box::pin(walk_dir_stats(
+                    &entry.path(),
+                    root,
+                    total_files,
+                    total_dirs,
+                    total_size,
+                    file_types,
+                    largest_files,
+                ))
+                .await?;
             } else {
                 *total_files += 1;
                 let size = meta.len();
                 *total_size += size;
 
-                let ext = entry.path()
+                let ext = entry
+                    .path()
                     .extension()
                     .and_then(|e| e.to_str())
                     .map(|e| format!(".{}", e.to_lowercase()))
                     .unwrap_or_else(|| ".other".to_string());
                 *file_types.entry(ext).or_insert(0) += 1;
 
-                let relative = entry.path()
+                let relative = entry
+                    .path()
                     .strip_prefix(root)
                     .unwrap_or(&entry.path())
                     .to_string_lossy()
@@ -674,7 +740,10 @@ pub async fn get_recent_files(
     Query(params): Query<RecentQuery>,
 ) -> Result<Json<RecentResponse>, ApiError> {
     let limit = params.limit.unwrap_or(20).min(100);
-    let root = state.root_path.canonicalize().unwrap_or_else(|_| state.root_path.clone());
+    let root = state
+        .root_path
+        .canonicalize()
+        .unwrap_or_else(|_| state.root_path.clone());
     let mut all_files = Vec::new();
 
     Box::pin(walk_dir_recent(&root, &root, &mut all_files)).await?;
@@ -691,22 +760,25 @@ fn walk_dir_recent<'a>(
     files: &'a mut Vec<RecentFileEntry>,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), ApiError>> + Send + 'a>> {
     Box::pin(async move {
-        let mut entries = fs::read_dir(dir).await.map_err(|e| {
-            internal_error(format!("Failed to read directory: {}", e))
-        })?;
+        let mut entries = fs::read_dir(dir)
+            .await
+            .map_err(|e| internal_error(format!("Failed to read directory: {}", e)))?;
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| {
-            internal_error(format!("Failed to read directory entry: {}", e))
-        })? {
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(|e| internal_error(format!("Failed to read directory entry: {}", e)))?
+        {
             let name = entry.file_name().to_string_lossy().to_string();
 
             if name.starts_with('.') {
                 continue;
             }
 
-            let meta = entry.metadata().await.map_err(|e| {
-                internal_error(format!("Failed to read metadata: {}", e))
-            })?;
+            let meta = entry
+                .metadata()
+                .await
+                .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
 
             if meta.is_dir() {
                 Box::pin(walk_dir_recent(&entry.path(), root, files)).await?;
@@ -715,7 +787,8 @@ fn walk_dir_recent<'a>(
                     continue;
                 }
 
-                let relative = entry.path()
+                let relative = entry
+                    .path()
                     .strip_prefix(root)
                     .unwrap_or(&entry.path())
                     .to_string_lossy()
@@ -738,11 +811,14 @@ pub async fn upload_file(
     State(state): State<FilesState>,
     mut multipart: Multipart,
 ) -> Result<Json<UploadResponse>, ApiError> {
-    let field = multipart.next_field().await
+    let field = multipart
+        .next_field()
+        .await
         .map_err(|e| internal_error(format!("Failed to parse multipart: {}", e)))?
         .ok_or_else(|| error("NO_FILE", "No file provided in upload"))?;
 
-    let filename = field.file_name()
+    let filename = field
+        .file_name()
         .ok_or_else(|| error("MISSING_FILENAME", "File has no filename"))?
         .to_string();
 
@@ -751,10 +827,14 @@ pub async fn upload_file(
     }
 
     if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
-        return Err(error("INVALID_FILENAME", "Filename contains invalid characters"));
+        return Err(error(
+            "INVALID_FILENAME",
+            "Filename contains invalid characters",
+        ));
     }
 
-    let content_type = field.content_type()
+    let content_type = field
+        .content_type()
         .ok_or_else(|| error("MISSING_CONTENT_TYPE", "File has no content type"))?
         .to_string();
 
@@ -775,24 +855,36 @@ pub async fn upload_file(
     if !content_type.contains(expected.split('/').next().unwrap_or("")) {
         return Err(error(
             "INVALID_CONTENT_TYPE",
-            format!("Content-Type {} does not match expected type for .{}", content_type, ext),
+            format!(
+                "Content-Type {} does not match expected type for .{}",
+                content_type, ext
+            ),
         ));
     }
 
-    let data = field.bytes().await
+    let data = field
+        .bytes()
+        .await
         .map_err(|e| internal_error(format!("Failed to read file data: {}", e)))?;
 
     if data.len() > MAX_UPLOAD_SIZE {
         return Err(error("FILE_TOO_LARGE", "File size exceeds 50MB limit"));
     }
 
-    let safe_name = format!("{}{}", uuid::Uuid::new_v4(), Path::new(&filename)
-        .extension()
-        .map(|e| format!(".{}", e.to_string_lossy().to_lowercase()))
-        .unwrap_or_default());
+    let safe_name = format!(
+        "{}{}",
+        uuid::Uuid::new_v4(),
+        Path::new(&filename)
+            .extension()
+            .map(|e| format!(".{}", e.to_string_lossy().to_lowercase()))
+            .unwrap_or_default()
+    );
 
     if let Err(e) = fs::create_dir_all(&state.uploads_dir).await {
-        return Err(internal_error(format!("Failed to create uploads directory: {}", e)));
+        return Err(internal_error(format!(
+            "Failed to create uploads directory: {}",
+            e
+        )));
     }
 
     let upload_path = state.uploads_dir.join(&safe_name);
@@ -887,7 +979,7 @@ mod tests {
     #[test]
     fn test_should_show_allowed_files() {
         assert!(should_show("readme.md", false, false)); // .md is allowed
-        assert!(should_show("readme.md", false, true));  // show_all also works
+        assert!(should_show("readme.md", false, true)); // show_all also works
         assert!(!should_show("data.csv", false, false)); // .csv not allowed
     }
 
@@ -1000,15 +1092,13 @@ mod tests {
     fn test_list_response_serialization() {
         let resp = ListResponse {
             path: "/src".to_string(),
-            entries: vec![
-                EntryInfo {
-                    name: "main.rs".to_string(),
-                    is_dir: false,
-                    size: 512,
-                    modified_at: "2026-01-01T00:00:00+00:00".to_string(),
-                    extension: Some("rs".to_string()),
-                },
-            ],
+            entries: vec![EntryInfo {
+                name: "main.rs".to_string(),
+                is_dir: false,
+                size: 512,
+                modified_at: "2026-01-01T00:00:00+00:00".to_string(),
+                extension: Some("rs".to_string()),
+            }],
         };
         let json = serde_json::to_string(&resp).unwrap();
         assert!(json.contains("/src"));

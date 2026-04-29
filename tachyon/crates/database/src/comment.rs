@@ -216,7 +216,10 @@ impl CommentRepository {
             (None, None)
         } else {
             (
-                existing.resolved_at.as_ref().and_then(|s| s.parse::<DateTime<Utc>>().ok()),
+                existing
+                    .resolved_at
+                    .as_ref()
+                    .and_then(|s| s.parse::<DateTime<Utc>>().ok()),
                 existing.resolved_by.clone(),
             )
         };
@@ -277,10 +280,7 @@ impl CommentRepository {
 
         let sql = "DELETE FROM document_comments WHERE id = $1::uuid";
         let mut conn = self.pool.acquire().await?;
-        let result = sqlx::query(sql)
-            .bind(id)
-            .execute(&mut *conn)
-            .await?;
+        let result = sqlx::query(sql).bind(id).execute(&mut *conn).await?;
 
         if result.rows_affected() == 0 {
             return Err(DatabaseError::not_found("comment", id));
@@ -409,7 +409,10 @@ mod tests {
             mentions: Some(vec!["bob".into()]),
         };
         assert_eq!(req.document_id, "doc-1");
-        assert_eq!(req.mentions.as_deref(), Some(["bob".to_string()].as_slice()));
+        assert_eq!(
+            req.mentions.as_deref(),
+            Some(["bob".to_string()].as_slice())
+        );
         assert_eq!(req.parent_id.as_deref(), Some("parent-1"));
     }
 

@@ -587,12 +587,7 @@ mod tests {
         let user_id = crate::id::generate_user_id();
         let content = DocumentContent::markdown("# Test Document".to_string());
 
-        let doc = Document::new(
-            doc_id.clone(),
-            "Test Document".to_string(),
-            user_id,
-            content,
-        );
+        let doc = Document::new(doc_id, "Test Document".to_string(), user_id, content);
 
         assert_eq!(doc.id, doc_id);
         assert_eq!(doc.metadata.title, "Test Document");
@@ -631,9 +626,9 @@ mod tests {
 
         // Valid document
         let doc = Document::new(
-            doc_id.clone(),
+            doc_id,
             "Valid Title".to_string(),
-            user_id.clone(),
+            user_id,
             DocumentContent::markdown("Content".to_string()),
         );
         assert!(doc.validate().is_ok());
@@ -642,7 +637,7 @@ mod tests {
         let invalid_doc = Document::new(
             crate::id::generate_document_id(),
             "".to_string(),
-            user_id.clone(),
+            user_id,
             DocumentContent::markdown("Content".to_string()),
         );
         assert!(invalid_doc.validate().is_err());

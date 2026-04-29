@@ -410,7 +410,7 @@ proptest! {
 
         for (i, target_id) in target_ids.iter().enumerate() {
             let rel_type = rel_types[i % rel_types.len()];
-            node.add_relationship(target_id.clone(), rel_type);
+            node.add_relationship(*target_id, rel_type);
         }
 
         let connected = node.connected_node_ids();
@@ -432,7 +432,7 @@ proptest! {
 
         let target_ids: Vec<_> = (0..target_count).map(|_| generate_node_id()).collect();
         for target_id in &target_ids {
-            node.add_relationship(target_id.clone(), RelationshipType::References);
+            node.add_relationship(*target_id, RelationshipType::References);
         }
 
         let initial_count = node.relationships.len();
@@ -498,7 +498,7 @@ proptest! {
         let edge_id = generate_edge_id();
         let other_id = generate_node_id();
 
-        let edge = Edge::new(edge_id, source_id.clone(), target_id.clone(), edge_type, user_id);
+        let edge = Edge::new(edge_id, source_id, target_id, edge_type, user_id);
 
         prop_assert!(edge.connects_to(&source_id), "Must connect to source");
         prop_assert!(edge.connects_to(&target_id), "Must connect to target");
@@ -650,10 +650,10 @@ proptest! {
         let dep_targets: Vec<_> = (0..deps_count).map(|_| generate_node_id()).collect();
 
         for target in &ref_targets {
-            node.add_relationship(target.clone(), RelationshipType::References);
+            node.add_relationship(*target, RelationshipType::References);
         }
         for target in &dep_targets {
-            node.add_relationship(target.clone(), RelationshipType::DependsOn);
+            node.add_relationship(*target, RelationshipType::DependsOn);
         }
 
         let refs = node.get_relationships_by_type(RelationshipType::References);

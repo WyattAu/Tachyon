@@ -106,7 +106,12 @@ impl Search {
         let start = Cursor::new(current_match.line, current_match.start_col);
         let old_text = current_match.match_text.clone();
 
-        buffer.delete_range(current_match.line, current_match.start_col, current_match.line, current_match.end_col);
+        buffer.delete_range(
+            current_match.line,
+            current_match.start_col,
+            current_match.line,
+            current_match.end_col,
+        );
         buffer.insert(current_match.line, current_match.start_col, replacement);
 
         let new_col = current_match.start_col + replacement.len();

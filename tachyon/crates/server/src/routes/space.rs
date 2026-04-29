@@ -145,7 +145,10 @@ pub async fn list_root_spaces(
     Query(query): Query<SpaceQuery>,
     State(state): State<SpaceState>,
 ) -> Result<Json<Vec<SpaceResponse>>, (StatusCode, Json<ErrorResponse>)> {
-    let owner_id = query.owner_id.as_deref().ok_or_else(|| bad_request("OWNER_REQUIRED", "owner_id query parameter is required"))?;
+    let owner_id = query
+        .owner_id
+        .as_deref()
+        .ok_or_else(|| bad_request("OWNER_REQUIRED", "owner_id query parameter is required"))?;
     let repo = SpaceRepository::new(state.pool.clone());
     let spaces = repo
         .list_root_spaces(owner_id, query.limit)
@@ -173,12 +176,20 @@ pub async fn list_child_spaces(
     Query(query): Query<SpaceQuery>,
     State(state): State<SpaceState>,
 ) -> Result<Json<Vec<SpaceResponse>>, (StatusCode, Json<ErrorResponse>)> {
-    let owner_id = query.owner_id.as_deref().ok_or_else(|| bad_request("OWNER_REQUIRED", "owner_id query parameter is required"))?;
+    let owner_id = query
+        .owner_id
+        .as_deref()
+        .ok_or_else(|| bad_request("OWNER_REQUIRED", "owner_id query parameter is required"))?;
     let repo = SpaceRepository::new(state.pool.clone());
     let spaces = repo
         .list_child_spaces(&parent_id, owner_id)
         .await
-        .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to list child spaces: {}", e)))?;
+        .map_err(|e| {
+            server_error(
+                "QUERY_ERROR",
+                &format!("Failed to list child spaces: {}", e),
+            )
+        })?;
 
     let doc_counts = repo
         .count_documents_batch(&spaces.iter().map(|s| s.id.clone()).collect::<Vec<_>>())
@@ -201,9 +212,10 @@ pub async fn get_space(
     State(state): State<SpaceState>,
 ) -> Result<Json<SpaceResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = SpaceRepository::new(state.pool.clone());
-    let space = repo.get_by_id(&space_id).await.map_err(|e| {
-        not_found(&format!("Space not found: {}", e))
-    })?;
+    let space = repo
+        .get_by_id(&space_id)
+        .await
+        .map_err(|e| not_found(&format!("Space not found: {}", e)))?;
 
     let doc_count = repo.count_documents(&space_id).await.unwrap_or(0);
     Ok(Json(SpaceResponse::from_space(space, doc_count)))
@@ -213,11 +225,15 @@ pub async fn get_default_space(
     Query(query): Query<SpaceQuery>,
     State(state): State<SpaceState>,
 ) -> Result<Json<SpaceResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let owner_id = query.owner_id.as_deref().ok_or_else(|| bad_request("OWNER_REQUIRED", "owner_id query parameter is required"))?;
+    let owner_id = query
+        .owner_id
+        .as_deref()
+        .ok_or_else(|| bad_request("OWNER_REQUIRED", "owner_id query parameter is required"))?;
     let repo = SpaceRepository::new(state.pool.clone());
-    let space = repo.get_default_space(owner_id).await.map_err(|e| {
-        not_found(&format!("Default space not found: {}", e))
-    })?;
+    let space = repo
+        .get_default_space(owner_id)
+        .await
+        .map_err(|e| not_found(&format!("Default space not found: {}", e)))?;
 
     let doc_count = repo.count_documents(&space.id).await.unwrap_or(0);
     Ok(Json(SpaceResponse::from_space(space, doc_count)))
@@ -236,14 +252,17 @@ pub async fn create_space(
 
     let repo = SpaceRepository::new(state.pool.clone());
     let space = repo
-        .create(owner_id, CreateSpaceRequest {
-            name: body.name,
-            description: body.description,
-            icon: body.icon,
-            color: body.color,
-            parent_id: body.parent_id,
-            visibility: body.visibility,
-        })
+        .create(
+            owner_id,
+            CreateSpaceRequest {
+                name: body.name,
+                description: body.description,
+                icon: body.icon,
+                color: body.color,
+                parent_id: body.parent_id,
+                visibility: body.visibility,
+            },
+        )
         .await
         .map_err(|e| server_error("CREATE_ERROR", &format!("Failed to create space: {}", e)))?;
 
@@ -260,15 +279,18 @@ pub async fn update_space(
     let repo = SpaceRepository::new(state.pool.clone());
 
     let space = repo
-        .update(&space_id, UpdateSpaceRequest {
-            name: body.name,
-            description: body.description,
-            icon: body.icon,
-            color: body.color,
-            parent_id: body.parent_id,
-            visibility: body.visibility,
-            sort_order: body.sort_order,
-        })
+        .update(
+            &space_id,
+            UpdateSpaceRequest {
+                name: body.name,
+                description: body.description,
+                icon: body.icon,
+                color: body.color,
+                parent_id: body.parent_id,
+                visibility: body.visibility,
+                sort_order: body.sort_order,
+            },
+        )
         .await
         .map_err(|e| server_error("UPDATE_ERROR", &format!("Failed to update space: {}", e)))?;
 
@@ -282,9 +304,9 @@ pub async fn delete_space(
     State(state): State<SpaceState>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     let repo = SpaceRepository::new(state.pool.clone());
-    repo.delete(&space_id).await.map_err(|e| {
-        not_found(&format!("Space not found: {}", e))
-    })?;
+    repo.delete(&space_id)
+        .await
+        .map_err(|e| not_found(&format!("Space not found: {}", e)))?;
 
     info!("Space deleted: {}", space_id);
     Ok(StatusCode::NO_CONTENT)
@@ -302,7 +324,9 @@ pub async fn list_space_members(
         .await
         .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to list members: {}", e)))?;
 
-    Ok(Json(members.into_iter().map(SpaceMemberResponse::from).collect()))
+    Ok(Json(
+        members.into_iter().map(SpaceMemberResponse::from).collect(),
+    ))
 }
 
 pub async fn add_space_member(
@@ -312,10 +336,13 @@ pub async fn add_space_member(
 ) -> Result<Json<SpaceMemberResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = SpaceRepository::new(state.pool.clone());
     let member = repo
-        .add_member(&space_id, AddSpaceMemberRequest {
-            user_id: body.user_id,
-            role: body.role,
-        })
+        .add_member(
+            &space_id,
+            AddSpaceMemberRequest {
+                user_id: body.user_id,
+                role: body.role,
+            },
+        )
         .await
         .map_err(|e| server_error("CREATE_ERROR", &format!("Failed to add member: {}", e)))?;
 
@@ -330,9 +357,11 @@ pub async fn update_space_member(
 ) -> Result<Json<SpaceMemberResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = SpaceRepository::new(state.pool.clone());
     let member = repo
-        .update_member(&space_id, &user_id, UpdateSpaceMemberRequest {
-            role: body.role,
-        })
+        .update_member(
+            &space_id,
+            &user_id,
+            UpdateSpaceMemberRequest { role: body.role },
+        )
         .await
         .map_err(|e| server_error("UPDATE_ERROR", &format!("Failed to update member: {}", e)))?;
 
@@ -345,9 +374,9 @@ pub async fn remove_space_member(
     State(state): State<SpaceState>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     let repo = SpaceRepository::new(state.pool.clone());
-    repo.remove_member(&space_id, &user_id).await.map_err(|e| {
-        not_found(&format!("Member not found: {}", e))
-    })?;
+    repo.remove_member(&space_id, &user_id)
+        .await
+        .map_err(|e| not_found(&format!("Member not found: {}", e)))?;
 
     info!("Member {} removed from space {}", user_id, space_id);
     Ok(StatusCode::NO_CONTENT)
@@ -365,7 +394,10 @@ pub async fn move_document(
         .await
         .map_err(|e| server_error("MOVE_ERROR", &format!("Failed to move document: {}", e)))?;
 
-    info!("Document {} moved to space {:?}", document_id, body.space_id);
+    info!(
+        "Document {} moved to space {:?}",
+        document_id, body.space_id
+    );
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -378,19 +410,37 @@ pub fn create_space_router() -> axum::Router<SpaceState> {
         // Space CRUD
         .route("/spaces", axum::routing::get(list_spaces))
         .route("/spaces/root", axum::routing::get(list_root_spaces))
-        .route("/spaces/{space_id}/children", axum::routing::get(list_child_spaces))
+        .route(
+            "/spaces/{space_id}/children",
+            axum::routing::get(list_child_spaces),
+        )
         .route("/spaces/default", axum::routing::get(get_default_space))
         .route("/spaces", axum::routing::post(create_space))
         .route("/spaces/{space_id}", axum::routing::get(get_space))
         .route("/spaces/{space_id}", axum::routing::put(update_space))
         .route("/spaces/{space_id}", axum::routing::delete(delete_space))
         // Member management
-        .route("/spaces/{space_id}/members", axum::routing::get(list_space_members))
-        .route("/spaces/{space_id}/members", axum::routing::post(add_space_member))
-        .route("/spaces/{space_id}/members/{user_id}", axum::routing::put(update_space_member))
-        .route("/spaces/{space_id}/members/{user_id}", axum::routing::delete(remove_space_member))
+        .route(
+            "/spaces/{space_id}/members",
+            axum::routing::get(list_space_members),
+        )
+        .route(
+            "/spaces/{space_id}/members",
+            axum::routing::post(add_space_member),
+        )
+        .route(
+            "/spaces/{space_id}/members/{user_id}",
+            axum::routing::put(update_space_member),
+        )
+        .route(
+            "/spaces/{space_id}/members/{user_id}",
+            axum::routing::delete(remove_space_member),
+        )
         // Document operations
-        .route("/spaces/move-document/{document_id}", axum::routing::put(move_document))
+        .route(
+            "/spaces/move-document/{document_id}",
+            axum::routing::put(move_document),
+        )
 }
 
 // ============================================================================

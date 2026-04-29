@@ -5,7 +5,7 @@ use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, FromRow, Row};
+use sqlx::{query, query_as, FromRow};
 
 /// Database row model for the `teams` table.
 #[derive(Debug, Clone, FromRow)]
@@ -315,7 +315,11 @@ impl TeamRepository {
 
         let team_id = parse_uuid(&member.team_id, "team_id")?;
         let user_id = parse_uuid(&member.user_id, "user_id")?;
-        let invited_by = member.invited_by.as_deref().map(|s| parse_uuid(s, "invited_by")).transpose()?;
+        let invited_by = member
+            .invited_by
+            .as_deref()
+            .map(|s| parse_uuid(s, "invited_by"))
+            .transpose()?;
 
         let mut conn = self.pool.acquire().await?;
         query_as::<_, TeamMemberRecord>(insert_sql)
@@ -341,7 +345,9 @@ impl TeamRepository {
             .fetch_optional(&mut *conn)
             .await?
             .map(TeamMember::from)
-            .ok_or_else(|| DatabaseError::not_found("team_member", format!("{}:{}", team_id, user_id)))
+            .ok_or_else(|| {
+                DatabaseError::not_found("team_member", format!("{}:{}", team_id, user_id))
+            })
     }
 
     pub async fn list_members(&self, team_id: &str) -> DatabaseResult<Vec<TeamMember>> {
@@ -356,7 +362,13 @@ impl TeamRepository {
             .map(|records| records.into_iter().map(TeamMember::from).collect())
     }
 
-    pub async fn update_member_role(&self, team_id: &str, user_id: &str, role_id: i64, role_name: &str) -> DatabaseResult<()> {
+    pub async fn update_member_role(
+        &self,
+        team_id: &str,
+        user_id: &str,
+        role_id: i64,
+        role_name: &str,
+    ) -> DatabaseResult<()> {
         let update_sql = "UPDATE team_members SET role_id = $3, role_name = $4 WHERE team_id = $1 AND user_id = $2";
 
         let mut conn = self.pool.acquire().await?;
@@ -370,7 +382,10 @@ impl TeamRepository {
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
         if result.rows_affected() == 0 {
-            return Err(DatabaseError::not_found("team_member", format!("{}:{}", team_id, user_id)));
+            return Err(DatabaseError::not_found(
+                "team_member",
+                format!("{}:{}", team_id, user_id),
+            ));
         }
 
         Ok(())
@@ -388,7 +403,10 @@ impl TeamRepository {
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
         if result.rows_affected() == 0 {
-            return Err(DatabaseError::not_found("team_member", format!("{}:{}", team_id, user_id)));
+            return Err(DatabaseError::not_found(
+                "team_member",
+                format!("{}:{}", team_id, user_id),
+            ));
         }
 
         Ok(())
@@ -502,7 +520,9 @@ impl RoleRepository {
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
         if result.rows_affected() == 0 {
-            return Err(DatabaseError::ValidationError("Cannot delete system role".to_string()));
+            return Err(DatabaseError::ValidationError(
+                "Cannot delete system role".to_string(),
+            ));
         }
 
         Ok(())
@@ -513,12 +533,18 @@ impl RoleRepository {
             RoleRecord::new("owner".to_string(), serde_json::json!(["owner"]))
                 .with_description("Full ownership with all permissions".to_string())
                 .system(),
-            RoleRecord::new("admin".to_string(), serde_json::json!(["admin", "delete", "write", "read"]))
-                .with_description("Full administrative access".to_string())
-                .system(),
-            RoleRecord::new("editor".to_string(), serde_json::json!(["delete", "write", "read"]))
-                .with_description("Can read, write, and delete content".to_string())
-                .system(),
+            RoleRecord::new(
+                "admin".to_string(),
+                serde_json::json!(["admin", "delete", "write", "read"]),
+            )
+            .with_description("Full administrative access".to_string())
+            .system(),
+            RoleRecord::new(
+                "editor".to_string(),
+                serde_json::json!(["delete", "write", "read"]),
+            )
+            .with_description("Can read, write, and delete content".to_string())
+            .system(),
             RoleRecord::new("writer".to_string(), serde_json::json!(["write", "read"]))
                 .with_description("Can read and write content".to_string())
                 .system(),
@@ -543,7 +569,11 @@ mod tests {
 
     #[test]
     fn test_team_creation() {
-        let team = Team::new("Engineering".to_string(), "engineering".to_string(), "user-123".to_string());
+        let team = Team::new(
+            "Engineering".to_string(),
+            "engineering".to_string(),
+            "user-123".to_string(),
+        );
         assert_eq!(team.name, "Engineering");
         assert_eq!(team.slug, "engineering");
         assert_eq!(team.owner_id, "user-123");
@@ -551,7 +581,12 @@ mod tests {
 
     #[test]
     fn test_team_member_creation() {
-        let member = TeamMember::new("team-1".to_string(), "user-1".to_string(), 1, "admin".to_string());
+        let member = TeamMember::new(
+            "team-1".to_string(),
+            "user-1".to_string(),
+            1,
+            "admin".to_string(),
+        );
         assert_eq!(member.team_id, "team-1");
         assert_eq!(member.user_id, "user-1");
         assert_eq!(member.role_name, "admin");

@@ -55,13 +55,31 @@ struct ConnectedClient {
 #[derive(Debug, Clone)]
 enum RelayEvent {
     /// Binary message from a client to relay to others.
-    Binary { room: String, sender: String, data: Vec<u8> },
+    Binary {
+        room: String,
+        sender: String,
+        data: Vec<u8>,
+    },
     /// Selection update from a client to relay to others.
-    Selection { room: String, sender: String, data: Vec<u8>, #[allow(dead_code)] selection: SelectionRange },
+    Selection {
+        room: String,
+        sender: String,
+        data: Vec<u8>,
+        #[allow(dead_code)]
+        selection: SelectionRange,
+    },
     /// A client joined a room.
-    Joined { room: String, #[allow(dead_code)] client_id: String },
+    Joined {
+        room: String,
+        #[allow(dead_code)]
+        client_id: String,
+    },
     /// A client left a room.
-    Left { room: String, #[allow(dead_code)] client_id: String },
+    Left {
+        room: String,
+        #[allow(dead_code)]
+        client_id: String,
+    },
 }
 
 /// CRDT connection manager — public API compatible with the old handler.
@@ -117,11 +135,7 @@ impl CrdtConnectionManager {
     /// Initialize a document room with persisted update log.
     /// Kept for backward compatibility — the relay doesn't use this
     /// for message routing, but the data is available for inspection.
-    pub async fn init_document_from_persisted(
-        &self,
-        document_id: &str,
-        update_log: Vec<u8>,
-    ) {
+    pub async fn init_document_from_persisted(&self, document_id: &str, update_log: Vec<u8>) {
         let mut docs = self.documents.write().await;
         docs.insert(
             document_id.to_string(),
@@ -143,7 +157,10 @@ impl CrdtConnectionManager {
     /// Register a client in a room.
     async fn join_room(&self, client_id: &str, room: &str) {
         let mut rooms = self.room_clients.write().await;
-        rooms.entry(room.to_string()).or_default().push(client_id.to_string());
+        rooms
+            .entry(room.to_string())
+            .or_default()
+            .push(client_id.to_string());
     }
 
     /// Remove a client from its room.
@@ -201,7 +218,11 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
             room: room.clone(),
             send: _tx,
         };
-        manager.clients.write().await.insert(client_id.clone(), client);
+        manager
+            .clients
+            .write()
+            .await
+            .insert(client_id.clone(), client);
     }
     manager.join_room(&client_id, &room).await;
     let _ = manager.broadcast_tx.send(RelayEvent::Joined {
@@ -230,7 +251,11 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     let send_task = async move {
         loop {
             match relay_rx.recv().await {
-                Ok(RelayEvent::Binary { room: event_room, sender, data }) => {
+                Ok(RelayEvent::Binary {
+                    room: event_room,
+                    sender,
+                    data,
+                }) => {
                     if event_room == room_for_send && sender != client_id_for_send {
                         if let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
                             warn!(client_id = %client_id_for_send, error = %e, "Failed to send binary message");
@@ -238,7 +263,12 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                         }
                     }
                 }
-                Ok(RelayEvent::Selection { room: event_room, sender, data, selection: _ }) => {
+                Ok(RelayEvent::Selection {
+                    room: event_room,
+                    sender,
+                    data,
+                    selection: _,
+                }) => {
                     if event_room == room_for_send && sender != client_id_for_send {
                         if let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
                             warn!(client_id = %client_id_for_send, error = %e, "Failed to send selection message");
@@ -246,7 +276,9 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                         }
                     }
                 }
-                Ok(RelayEvent::Joined { room: event_room, .. }) => {
+                Ok(RelayEvent::Joined {
+                    room: event_room, ..
+                }) => {
                     debug!(
                         client_id = %client_id_for_send,
                         event_room = %event_room,
@@ -254,7 +286,9 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                         "Client joined"
                     );
                 }
-                Ok(RelayEvent::Left { room: event_room, .. }) => {
+                Ok(RelayEvent::Left {
+                    room: event_room, ..
+                }) => {
                     debug!(
                         client_id = %client_id_for_send,
                         event_room = %event_room,
@@ -293,7 +327,9 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                         0 => {
                             // Sync: apply update to server-side Yrs document, then broadcast.
                             if data_vec.len() > 1 {
-                                if let Err(e) = crdt_manager.apply_update(&room_for_recv, &data_vec[1..]) {
+                                if let Err(e) =
+                                    crdt_manager.apply_update(&room_for_recv, &data_vec[1..])
+                                {
                                     warn!(
                                         client_id = %client_id_for_recv,
                                         room = %room_for_recv,
@@ -467,7 +503,9 @@ mod tests {
     async fn test_init_document_from_persisted() {
         let manager = CrdtConnectionManager::new();
         let update_log = vec![1, 2, 3, 4, 5];
-        manager.init_document_from_persisted("doc1", update_log.clone()).await;
+        manager
+            .init_document_from_persisted("doc1", update_log.clone())
+            .await;
 
         let log = manager.get_document_update_log("doc1").await;
         assert_eq!(log, Some(update_log));
@@ -482,16 +520,22 @@ mod tests {
         let (tx1, _) = tokio::sync::mpsc::unbounded_channel();
         let (tx2, _) = tokio::sync::mpsc::unbounded_channel();
 
-        manager.clients.write().await.insert("c1".to_string(), ConnectedClient {
-            client_id: "c1".to_string(),
-            room: "room1".to_string(),
-            send: tx1,
-        });
-        manager.clients.write().await.insert("c2".to_string(), ConnectedClient {
-            client_id: "c2".to_string(),
-            room: "room1".to_string(),
-            send: tx2,
-        });
+        manager.clients.write().await.insert(
+            "c1".to_string(),
+            ConnectedClient {
+                client_id: "c1".to_string(),
+                room: "room1".to_string(),
+                send: tx1,
+            },
+        );
+        manager.clients.write().await.insert(
+            "c2".to_string(),
+            ConnectedClient {
+                client_id: "c2".to_string(),
+                room: "room1".to_string(),
+                send: tx2,
+            },
+        );
 
         assert_eq!(manager.client_count().await, 2);
     }

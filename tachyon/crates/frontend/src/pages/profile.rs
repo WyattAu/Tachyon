@@ -1,8 +1,8 @@
 #![allow(dead_code, clippy::redundant_locals)]
 
+use crate::api::ApiClient;
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
-use crate::api::ApiClient;
 
 #[component]
 pub fn ProfilePage() -> impl IntoView {
@@ -24,13 +24,40 @@ pub fn ProfilePage() -> impl IntoView {
         let api = ApiClient::default();
         spawn_local(async move {
             if let Ok(user) = api.get_current_user().await {
-                let name = user.get("display_name").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let uname = user.get("username").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let mail = user.get("email").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let b = user.get("bio").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let tz = user.get("timezone").and_then(|v| v.as_str()).unwrap_or("UTC").to_string();
-                let mfa = user.get("mfa_enabled").and_then(|v| v.as_bool()).unwrap_or(false);
-                let av = user.get("avatar_url").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let name = user
+                    .get("display_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let uname = user
+                    .get("username")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let mail = user
+                    .get("email")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let b = user
+                    .get("bio")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let tz = user
+                    .get("timezone")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("UTC")
+                    .to_string();
+                let mfa = user
+                    .get("mfa_enabled")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let av = user
+                    .get("avatar_url")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
                 set_display_name.set(name);
                 set_username.set(uname);
                 set_email.set(mail);
@@ -53,7 +80,11 @@ pub fn ProfilePage() -> impl IntoView {
         let set_msg = set_profile_msg;
         let set_saving = set_saving;
         spawn_local(async move {
-            let dn = if name.is_empty() { None } else { Some(name.as_str()) };
+            let dn = if name.is_empty() {
+                None
+            } else {
+                Some(name.as_str())
+            };
             let em: Option<&str> = None;
             match client.update_profile(dn, em).await {
                 Ok(_) => {
@@ -61,8 +92,12 @@ pub fn ProfilePage() -> impl IntoView {
                     body.insert("bio".to_string(), serde_json::json!(b));
                     body.insert("timezone".to_string(), serde_json::json!(tz));
                     match client.update_user_settings(&body).await {
-                        Ok(_) => set_msg.set(Some(("Profile saved successfully.".to_string(), true))),
-                        Err(e) => set_msg.set(Some((format!("Failed to save settings: {}", e), false))),
+                        Ok(_) => {
+                            set_msg.set(Some(("Profile saved successfully.".to_string(), true)))
+                        }
+                        Err(e) => {
+                            set_msg.set(Some((format!("Failed to save settings: {}", e), false)))
+                        }
                     }
                 }
                 Err(e) => set_msg.set(Some((format!("Failed to save: {}", e), false))),
@@ -81,7 +116,10 @@ pub fn ProfilePage() -> impl IntoView {
                 let _ = api.enable_mfa().await;
             }
             if let Ok(user) = api.get_current_user().await {
-                let mfa = user.get("mfa_enabled").and_then(|v| v.as_bool()).unwrap_or(false);
+                let mfa = user
+                    .get("mfa_enabled")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
                 set_mfa_enabled.set(mfa);
             }
         });
@@ -108,9 +146,18 @@ pub fn ProfilePage() -> impl IntoView {
     };
 
     let timezone_options = [
-        "UTC", "America/New_York", "America/Chicago", "America/Denver",
-        "America/Los_Angeles", "Europe/London", "Europe/Paris", "Europe/Berlin",
-        "Asia/Tokyo", "Asia/Shanghai", "Asia/Kolkata", "Australia/Sydney",
+        "UTC",
+        "America/New_York",
+        "America/Chicago",
+        "America/Denver",
+        "America/Los_Angeles",
+        "Europe/London",
+        "Europe/Paris",
+        "Europe/Berlin",
+        "Asia/Tokyo",
+        "Asia/Shanghai",
+        "Asia/Kolkata",
+        "Australia/Sydney",
     ];
 
     view! {
@@ -300,7 +347,11 @@ fn ProfileCard(
 }
 
 #[component]
-fn ProfileSection(title: &'static str, description: &'static str, children: Children) -> impl IntoView {
+fn ProfileSection(
+    title: &'static str,
+    description: &'static str,
+    children: Children,
+) -> impl IntoView {
     view! {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
             <div class="mb-4">

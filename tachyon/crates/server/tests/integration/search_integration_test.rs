@@ -1,11 +1,8 @@
 use tachyon_core::id::{DocumentId, UserId};
-use tachyon_search::{
-    IndexManager, QueryEngine, SearchDocument, SearchRequest, SortOrder,
-};
+use tachyon_search::{IndexManager, QueryEngine, SearchDocument, SearchRequest, SortOrder};
 
 fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err()
-        && std::env::var("TEST_DATABASE_URL").is_err()
+    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
 }
 
 fn skip_search_tests() -> bool {
@@ -14,7 +11,8 @@ fn skip_search_tests() -> bool {
 }
 
 async fn create_index_manager() -> IndexManager {
-    let index_dir = std::env::temp_dir().join(format!("tachyon_search_test_{}", uuid::Uuid::new_v4()));
+    let index_dir =
+        std::env::temp_dir().join(format!("tachyon_search_test_{}", uuid::Uuid::new_v4()));
     IndexManager::new(index_dir)
         .await
         .expect("Failed to create index manager")
@@ -39,7 +37,11 @@ async fn test_index_document() {
     assert!(doc.validate().is_ok());
 
     let result = manager.index_document(&doc).await;
-    assert!(result.is_ok(), "Indexing document should succeed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Indexing document should succeed: {:?}",
+        result.err()
+    );
 }
 
 #[tokio::test]
@@ -59,7 +61,10 @@ async fn test_index_and_search_document() {
     )
     .with_tags(vec!["rust".to_string(), "programming".to_string()]);
 
-    manager.index_document(&doc).await.expect("Failed to index document");
+    manager
+        .index_document(&doc)
+        .await
+        .expect("Failed to index document");
 
     let query_engine = QueryEngine::new(manager);
     let request = SearchRequest::new("Rust programming")
@@ -67,7 +72,10 @@ async fn test_index_and_search_document() {
         .with_sort(SortOrder::Score);
 
     let response = query_engine.search(&request).await.expect("Search failed");
-    assert!(response.total_hits >= 1, "Should find at least one result for 'Rust programming'");
+    assert!(
+        response.total_hits >= 1,
+        "Should find at least one result for 'Rust programming'"
+    );
 }
 
 #[tokio::test]
@@ -105,8 +113,14 @@ async fn test_search_suggestions() {
     manager.index_document(&doc).await.expect("Failed to index");
 
     let query_engine = QueryEngine::new(manager);
-    let suggestions = query_engine.suggest("tach", 5).await.expect("Suggestions failed");
-    assert!(!suggestions.is_empty(), "Should return suggestions for 'tach'");
+    let suggestions = query_engine
+        .suggest("tach", 5)
+        .await
+        .expect("Suggestions failed");
+    assert!(
+        !suggestions.is_empty(),
+        "Should return suggestions for 'tach'"
+    );
 }
 
 #[tokio::test]
@@ -120,7 +134,7 @@ async fn test_delete_document_from_index() {
     let doc_id = DocumentId::new();
 
     let doc = SearchDocument::new(
-        doc_id.clone(),
+        doc_id,
         "Document To Delete".to_string(),
         "Content that will be deleted.".to_string(),
         UserId::new(),
@@ -130,14 +144,26 @@ async fn test_delete_document_from_index() {
 
     let query_engine = QueryEngine::new(manager.clone());
     let request = SearchRequest::new("Document To Delete");
-    let before = query_engine.search(&request).await.expect("Search before delete failed");
+    let before = query_engine
+        .search(&request)
+        .await
+        .expect("Search before delete failed");
     assert!(before.total_hits >= 1);
 
-    manager.delete_document(&doc_id.as_str()).await.expect("Failed to delete from index");
+    manager
+        .delete_document(&doc_id.as_str())
+        .await
+        .expect("Failed to delete from index");
 
     let query_engine2 = QueryEngine::new(manager);
-    let after = query_engine2.search(&request).await.expect("Search after delete failed");
-    assert_eq!(after.total_hits, 0, "Document should not be found after deletion");
+    let after = query_engine2
+        .search(&request)
+        .await
+        .expect("Search after delete failed");
+    assert_eq!(
+        after.total_hits, 0,
+        "Document should not be found after deletion"
+    );
 }
 
 #[tokio::test]
@@ -160,7 +186,10 @@ async fn test_batch_index_documents() {
         })
         .collect();
 
-    let count = manager.batch_index(&docs).await.expect("Batch index failed");
+    let count = manager
+        .batch_index(&docs)
+        .await
+        .expect("Batch index failed");
     assert_eq!(count, 5);
 }
 
@@ -184,13 +213,17 @@ async fn test_search_with_pagination() {
     }
 
     let query_engine = QueryEngine::new(manager);
-    let page1 = SearchRequest::new("Pagination Test Doc")
-        .with_pagination(1, 3);
-    let response1 = query_engine.search(&page1).await.expect("Search page 1 failed");
+    let page1 = SearchRequest::new("Pagination Test Doc").with_pagination(1, 3);
+    let response1 = query_engine
+        .search(&page1)
+        .await
+        .expect("Search page 1 failed");
     assert_eq!(response1.results.len(), 3);
 
-    let page2 = SearchRequest::new("Pagination Test Doc")
-        .with_pagination(2, 3);
-    let response2 = query_engine.search(&page2).await.expect("Search page 2 failed");
+    let page2 = SearchRequest::new("Pagination Test Doc").with_pagination(2, 3);
+    let response2 = query_engine
+        .search(&page2)
+        .await
+        .expect("Search page 2 failed");
     assert_eq!(response2.results.len(), 3);
 }

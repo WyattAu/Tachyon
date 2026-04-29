@@ -24,10 +24,7 @@ async fn test_list_plans() {
         .await
         .unwrap();
 
-    assert!(
-        response.status() == StatusCode::OK
-            || response.status() == StatusCode::NOT_FOUND
-    );
+    assert!(response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -47,10 +44,13 @@ async fn test_create_subscription() {
                 .method("POST")
                 .uri("/api/v1/billing/subscriptions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(serde_json::json!({
-                    "organization_id": org_id,
-                    "plan": "free"
-                }).to_string()))
+                .body(Body::from(
+                    serde_json::json!({
+                        "organization_id": org_id,
+                        "plan": "free"
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -79,7 +79,7 @@ async fn test_get_usage() {
         .clone()
         .oneshot(
             Request::builder()
-                .uri(&format!("/api/v1/billing/usage/{}", org_id))
+                .uri(format!("/api/v1/billing/usage/{}", org_id))
                 .body(Body::empty())
                 .unwrap(),
         )

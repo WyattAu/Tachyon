@@ -76,7 +76,11 @@ impl StorageBackend for LocalStorage {
         Ok(path.exists())
     }
 
-    async fn presigned_url(&self, key: &str, _expires_in_secs: u64) -> Result<String, StorageError> {
+    async fn presigned_url(
+        &self,
+        key: &str,
+        _expires_in_secs: u64,
+    ) -> Result<String, StorageError> {
         Ok(format!("{}/{}", self.base_url, key))
     }
 }

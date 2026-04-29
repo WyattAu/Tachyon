@@ -4,7 +4,11 @@ use super::*;
 ///
 /// Reserved for future use: authentication flows from the frontend.
 impl ApiClient {
-    pub async fn login(&self, username: &str, password: &str) -> Result<AuthenticateResponse, ApiError> {
+    pub async fn login(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<AuthenticateResponse, ApiError> {
         let url = format!("{}/auth/login", self.base_url);
         let body = LoginRequest {
             username: username.to_string(),
@@ -13,7 +17,12 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
-    pub async fn register(&self, username: &str, email: &str, password: &str) -> Result<AuthenticateResponse, ApiError> {
+    pub async fn register(
+        &self,
+        username: &str,
+        email: &str,
+        password: &str,
+    ) -> Result<AuthenticateResponse, ApiError> {
         let url = format!("{}/auth/register", self.base_url);
         let body = serde_json::json!({
             "username": username,
@@ -42,7 +51,7 @@ impl ApiClient {
         }
 
         let status = self.guest_status().await?;
-        
+
         if status.public_notes_enabled && status.guest_login_enabled {
             let response = self.guest_login().await?;
             if response.success {
@@ -52,7 +61,7 @@ impl ApiClient {
                 }
             }
         }
-        
+
         Ok(false)
     }
 
@@ -67,7 +76,11 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    pub async fn update_profile(&self, display_name: Option<&str>, email: Option<&str>) -> Result<serde_json::Value, ApiError> {
+    pub async fn update_profile(
+        &self,
+        display_name: Option<&str>,
+        email: Option<&str>,
+    ) -> Result<serde_json::Value, ApiError> {
         let mut body = serde_json::Map::new();
         if let Some(name) = display_name {
             body.insert("display_name".to_string(), serde_json::json!(name));
@@ -79,7 +92,11 @@ impl ApiClient {
         self.put(&url, &body).await
     }
 
-    pub async fn change_password(&self, old_password: &str, new_password: &str) -> Result<(), ApiError> {
+    pub async fn change_password(
+        &self,
+        old_password: &str,
+        new_password: &str,
+    ) -> Result<(), ApiError> {
         let url = format!("{}/auth/change-password", self.base_url);
         let body = serde_json::json!({
             "old_password": old_password,
@@ -109,7 +126,10 @@ impl ApiClient {
         self.delete(&url).await
     }
 
-    pub async fn update_user_settings(&self, settings: &serde_json::Map<String, serde_json::Value>) -> Result<serde_json::Value, ApiError> {
+    pub async fn update_user_settings(
+        &self,
+        settings: &serde_json::Map<String, serde_json::Value>,
+    ) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/auth/me", self.base_url);
         self.put(&url, settings).await
     }

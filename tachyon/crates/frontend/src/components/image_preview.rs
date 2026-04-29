@@ -5,8 +5,7 @@ use leptos::prelude::*;
 #[component]
 pub fn ImagePreview(
     src: String,
-    #[prop(default = String::new())]
-    alt: String,
+    #[prop(default = String::new())] alt: String,
     open: Signal<bool>,
     on_close: Callback<()>,
 ) -> impl IntoView {
@@ -19,8 +18,10 @@ pub fn ImagePreview(
         set_zoom_level.set(new_zoom);
     };
 
-    let zoom_in = move |_: leptos::ev::MouseEvent| set_zoom_level.update(|z| *z = (*z + 0.25).min(5.0));
-    let zoom_out = move |_: leptos::ev::MouseEvent| set_zoom_level.update(|z| *z = (*z - 0.25).max(0.25));
+    let zoom_in =
+        move |_: leptos::ev::MouseEvent| set_zoom_level.update(|z| *z = (*z + 0.25).min(5.0));
+    let zoom_out =
+        move |_: leptos::ev::MouseEvent| set_zoom_level.update(|z| *z = (*z - 0.25).max(0.25));
     let zoom_reset = move |_: leptos::ev::MouseEvent| set_zoom_level.set(1.0);
 
     let close_backdrop = move |_: leptos::ev::MouseEvent| on_close.run(());
@@ -90,10 +91,8 @@ pub fn ImagePreview(
 pub fn Thumbnail(
     src: String,
     alt: String,
-    #[prop(default = 48)]
-    size: u32,
-    #[prop(default = "rounded".to_string())]
-    class: String,
+    #[prop(default = 48)] size: u32,
+    #[prop(default = "rounded".to_string())] class: String,
 ) -> impl IntoView {
     let size_style = format!("width: {}px; height: {}px;", size, size);
     let container_class = format!("overflow-hidden {} bg-gray-100 dark:bg-gray-700", class);

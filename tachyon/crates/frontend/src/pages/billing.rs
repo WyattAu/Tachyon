@@ -1,9 +1,9 @@
 #![allow(dead_code, clippy::redundant_locals)]
 
-use leptos::prelude::*;
-use leptos::task::spawn_local;
 use crate::api::ApiClient;
 use crate::types::*;
+use leptos::prelude::*;
+use leptos::task::spawn_local;
 
 async fn fetch_plans() -> Result<BillingPlansResponse, String> {
     let client = ApiClient::default();
@@ -12,7 +12,10 @@ async fn fetch_plans() -> Result<BillingPlansResponse, String> {
 
 async fn fetch_subscription(org_id: &str) -> Result<SubscriptionResponse, String> {
     let client = ApiClient::default();
-    client.get_subscription(org_id).await.map_err(|e| e.to_string())
+    client
+        .get_subscription(org_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 async fn fetch_invoices(org_id: &str) -> Result<InvoicesResponse, String> {
@@ -27,13 +30,19 @@ async fn fetch_usage(org_id: &str) -> Result<UsageResponse, String> {
 
 async fn do_cancel_subscription(org_id: &str) -> Result<(), String> {
     let client = ApiClient::default();
-    client.cancel_subscription(org_id).await.map_err(|e| e.to_string())?;
+    client
+        .cancel_subscription(org_id)
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
 async fn do_create_subscription(org_id: &str, plan: &str) -> Result<SubscriptionResponse, String> {
     let client = ApiClient::default();
-    client.create_subscription(org_id, plan).await.map_err(|e| e.to_string())
+    client
+        .create_subscription(org_id, plan)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 fn format_cents(cents: u64) -> String {
@@ -132,7 +141,10 @@ pub fn BillingPage() -> impl IntoView {
                 set_error.set(None);
                 match do_create_subscription("default", &plan_name).await {
                     Ok(_) => {
-                        set_success_msg.set(Some(format!("Successfully subscribed to {} plan!", plan_name)));
+                        set_success_msg.set(Some(format!(
+                            "Successfully subscribed to {} plan!",
+                            plan_name
+                        )));
                         load_data();
                     }
                     Err(e) => set_error.set(Some(e)),

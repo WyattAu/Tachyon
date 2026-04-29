@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use tachyon_core::DocumentId;
 use tracing::{debug, warn};
 
-use super::{DocumentState, DocumentQuery, DocumentResponse, DocumentSearchResponse, ErrorResponse};
+use super::{
+    DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState, ErrorResponse,
+};
 
 pub async fn search_documents(
     Query(query): Query<DocumentQuery>,

@@ -2,10 +2,9 @@
 use axum::{
     body::Body,
     http::{Request, StatusCode},
-    Router,
 };
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 

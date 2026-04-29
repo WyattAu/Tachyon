@@ -39,9 +39,21 @@ impl IntoResponse for ServerError {
             Self::Validation(msg) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR", msg.as_str()),
             Self::Auth(msg) => (StatusCode::UNAUTHORIZED, "AUTH_ERROR", msg.as_str()),
             Self::Rbac(msg) => (StatusCode::FORBIDDEN, "FORBIDDEN", msg.as_str()),
-            Self::Database(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR", msg.as_str()),
-            Self::Search(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "SEARCH_ERROR", msg.as_str()),
-            Self::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", msg.as_str()),
+            Self::Database(msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "DATABASE_ERROR",
+                msg.as_str(),
+            ),
+            Self::Search(msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "SEARCH_ERROR",
+                msg.as_str(),
+            ),
+            Self::Internal(msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
+                msg.as_str(),
+            ),
         };
         let body = Json(json!({ "code": code, "message": message }));
         (status, body).into_response()
@@ -69,7 +81,9 @@ impl From<serde_json::Error> for ServerError {
 impl From<crate::middleware::auth::AuthError> for ServerError {
     fn from(e: crate::middleware::auth::AuthError) -> Self {
         match &e {
-            crate::middleware::auth::AuthError::InsufficientPermissions => Self::Rbac(e.to_string()),
+            crate::middleware::auth::AuthError::InsufficientPermissions => {
+                Self::Rbac(e.to_string())
+            }
             _ => Self::Auth(e.to_string()),
         }
     }

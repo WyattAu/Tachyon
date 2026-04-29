@@ -68,14 +68,23 @@ fn determine_cache_directive(path: &str) -> String {
     }
 
     // Images: long cache
-    if path.ends_with(".png") || path.ends_with(".jpg") || path.ends_with(".jpeg")
-        || path.ends_with(".gif") || path.ends_with(".webp") || path.ends_with(".svg")
-        || path.ends_with(".ico") {
+    if path.ends_with(".png")
+        || path.ends_with(".jpg")
+        || path.ends_with(".jpeg")
+        || path.ends_with(".gif")
+        || path.ends_with(".webp")
+        || path.ends_with(".svg")
+        || path.ends_with(".ico")
+    {
         return "public, max-age=31536000, immutable".to_string();
     }
 
     // Fonts: long cache
-    if path.ends_with(".woff") || path.ends_with(".woff2") || path.ends_with(".ttf") || path.ends_with(".eot") {
+    if path.ends_with(".woff")
+        || path.ends_with(".woff2")
+        || path.ends_with(".ttf")
+        || path.ends_with(".eot")
+    {
         return "public, max-age=31536000, immutable".to_string();
     }
 
@@ -180,7 +189,11 @@ mod tests {
     fn test_determine_cache_directive_images() {
         for ext in &[".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico"] {
             let directive = determine_cache_directive(&format!("/assets/img{}", ext));
-            assert!(directive.contains("immutable"), "Failed for extension {}", ext);
+            assert!(
+                directive.contains("immutable"),
+                "Failed for extension {}",
+                ext
+            );
         }
     }
 
@@ -188,7 +201,11 @@ mod tests {
     fn test_determine_cache_directive_fonts() {
         for ext in &[".woff", ".woff2", ".ttf", ".eot"] {
             let directive = determine_cache_directive(&format!("/assets/font{}", ext));
-            assert!(directive.contains("immutable"), "Failed for extension {}", ext);
+            assert!(
+                directive.contains("immutable"),
+                "Failed for extension {}",
+                ext
+            );
         }
     }
 

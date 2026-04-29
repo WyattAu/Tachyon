@@ -3,21 +3,23 @@
 
 use crate::config::ServerConfig;
 use axum::{
-    Json,
     extract::{Request, State},
     http::{HeaderMap, StatusCode},
     middleware::Next,
     response::Response,
+    Json,
 };
 use chrono::Utc;
-use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use sha2::{Sha256, Digest};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use sqlx::Row;
 use std::sync::Arc;
 use tachyon_core::{UserAction, UserRole};
 use tachyon_database::{DatabasePool, Permission};
-use tachyon_rbac::types::{AccessRequest, Action as RbacAction, Resource as RbacResource, Subject as RbacSubject};
+use tachyon_rbac::types::{
+    AccessRequest, Action as RbacAction, Resource as RbacResource, Subject as RbacSubject,
+};
 use tachyon_rbac::AuthContext as RbacAuthContext;
 use tachyon_rbac::{Enforcer, EnforcerConfig as RbacEnforcerConfig};
 use tachyon_rbac::{SessionId, UserId};
@@ -52,7 +54,7 @@ impl AuthContext {
         if self.role == UserRole::Admin {
             return true;
         }
-        
+
         self.permissions.iter().any(|p| {
             if let Some(perm) = Permission::from_str(p) {
                 perm.includes(&permission)
@@ -184,7 +186,10 @@ impl AuthState {
         let hash = Sha256::digest(api_key.as_bytes());
         let hash_hex = hex::encode(hash);
 
-        let mut conn = self.pool.acquire().await
+        let mut conn = self
+            .pool
+            .acquire()
+            .await
             .map_err(|e| AuthError::InternalError(format!("Database error: {}", e)))?;
 
         let row = sqlx::query(
@@ -229,7 +234,10 @@ impl AuthState {
         Ok((user_id.to_string(), role))
     }
 
-    pub async fn extract_auth_context(&self, headers: &HeaderMap) -> Result<AuthContext, AuthError> {
+    pub async fn extract_auth_context(
+        &self,
+        headers: &HeaderMap,
+    ) -> Result<AuthContext, AuthError> {
         if let Some(auth_header) = headers.get("authorization") {
             let auth_str = auth_header
                 .to_str()
@@ -293,8 +301,8 @@ impl AuthState {
 
         let user_id = UserId::parse_str(&auth_context.user_id).unwrap_or_else(|_| UserId::new());
         let session_id = SessionId::new();
-        let rbac_context = RbacAuthContext::new(user_id, session_id)
-            .with_role(&auth_context.role.to_string());
+        let rbac_context =
+            RbacAuthContext::new(user_id, session_id).with_role(&auth_context.role.to_string());
 
         let request = AccessRequest::new(subject, resource, action, rbac_context);
 
@@ -394,9 +402,7 @@ pub async fn require_permission_middleware(
 }
 
 pub fn require_permission(permission: Permission) -> impl Fn(&AuthContext) -> bool {
-    move |auth_context: &AuthContext| {
-        auth_context.has_permission(permission)
-    }
+    move |auth_context: &AuthContext| auth_context.has_permission(permission)
 }
 
 pub fn check_permission(auth_context: &AuthContext, action: UserAction) -> bool {
@@ -450,18 +456,27 @@ mod tests {
         .expect("token encoding should succeed")
     }
 
-    fn decode_test_token(token: &str, secret: &str, issuer: &str, audience: &str) -> Result<Claims, AuthError> {
+    fn decode_test_token(
+        token: &str,
+        secret: &str,
+        issuer: &str,
+        audience: &str,
+    ) -> Result<Claims, AuthError> {
         let mut validation = Validation::new(Algorithm::HS256);
         validation.set_issuer(&[issuer]);
         validation.set_audience(&[audience]);
 
-        decode::<Claims>(token, &DecodingKey::from_secret(secret.as_ref()), &validation)
-            .map(|data| data.claims)
-            .map_err(|e| match e.kind() {
-                jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthError::TokenExpired,
-                jsonwebtoken::errors::ErrorKind::InvalidSignature => AuthError::InvalidSignature,
-                _ => AuthError::InvalidTokenFormat,
-            })
+        decode::<Claims>(
+            token,
+            &DecodingKey::from_secret(secret.as_ref()),
+            &validation,
+        )
+        .map(|data| data.claims)
+        .map_err(|e| match e.kind() {
+            jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthError::TokenExpired,
+            jsonwebtoken::errors::ErrorKind::InvalidSignature => AuthError::InvalidSignature,
+            _ => AuthError::InvalidTokenFormat,
+        })
     }
 
     #[test]
@@ -495,17 +510,25 @@ mod tests {
         let claims = make_test_claims(user_id, "writer");
         let token = encode_test_token(&claims, secret);
 
-        assert!(decode_test_token(&token, secret, issuer, audience).is_ok(),
-            "valid token should decode");
+        assert!(
+            decode_test_token(&token, secret, issuer, audience).is_ok(),
+            "valid token should decode"
+        );
 
-        assert!(decode_test_token(&token, "wrong-secret", issuer, audience).is_err(),
-            "wrong secret should fail");
+        assert!(
+            decode_test_token(&token, "wrong-secret", issuer, audience).is_err(),
+            "wrong secret should fail"
+        );
 
-        assert!(decode_test_token(&token, secret, "wrong-issuer", audience).is_err(),
-            "wrong issuer should fail");
+        assert!(
+            decode_test_token(&token, secret, "wrong-issuer", audience).is_err(),
+            "wrong issuer should fail"
+        );
 
-        assert!(decode_test_token(&token, secret, issuer, "wrong-audience").is_err(),
-            "wrong audience should fail");
+        assert!(
+            decode_test_token(&token, secret, issuer, "wrong-audience").is_err(),
+            "wrong audience should fail"
+        );
     }
 
     #[test]

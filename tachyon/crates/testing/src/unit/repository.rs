@@ -5,12 +5,12 @@
 
 #[allow(unused_imports)]
 use std::path::PathBuf;
-use tachyon_core::{generate_repository_id, generate_user_id};
 #[allow(unused_imports)]
 use tachyon_core::types::repository::{
     GitOperations, Repository, RepositoryBuilder, RepositoryConfig, RepositoryMetadata,
     RepositoryStatus, RepositoryType, RepositoryVisibility,
 };
+use tachyon_core::{generate_repository_id, generate_user_id};
 
 #[allow(dead_code)]
 fn make_repo() -> Repository {
@@ -137,7 +137,10 @@ fn test_repository_config_builder() {
         .with_auto_sync(true);
 
     assert_eq!(config.default_branch, Some("develop".to_string()));
-    assert_eq!(config.remote_url.as_deref(), Some("https://github.com/test/repo"));
+    assert_eq!(
+        config.remote_url.as_deref(),
+        Some("https://github.com/test/repo")
+    );
     assert_eq!(config.auto_sync, Some(true));
 }
 

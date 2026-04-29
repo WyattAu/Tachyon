@@ -8,8 +8,8 @@
 //! - Customizable via ColorTheme CSS custom properties
 //! - Accessible (semantic HTML, ARIA labels)
 
-use crate::render::{CategoryContext, DocCard, IndexContext, NavItem, PageContext};
 use crate::manifest::{ColorTheme, SiteConfig};
+use crate::render::{CategoryContext, DocCard, IndexContext, NavItem, PageContext};
 
 /// Generate CSS custom properties from a ColorTheme.
 ///
@@ -24,10 +24,7 @@ fn color_theme_css(theme: Option<&ColorTheme>) -> String {
         .font_family
         .as_deref()
         .unwrap_or("ui-sans-serif, system-ui, -apple-system, sans-serif");
-    let font_heading = t
-        .heading_font_family
-        .as_deref()
-        .unwrap_or(font_body);
+    let font_heading = t.heading_font_family.as_deref().unwrap_or(font_body);
 
     format!(
         r#"
@@ -50,7 +47,13 @@ fn color_theme_css(theme: Option<&ColorTheme>) -> String {
 
 /// Render a document page.
 pub fn render_doc_page(ctx: &PageContext) -> String {
-    let nav_html = render_nav(ctx.site, ctx.nav_items, ctx.current_slug, ctx.language, ctx.language_switcher);
+    let nav_html = render_nav(
+        ctx.site,
+        ctx.nav_items,
+        ctx.current_slug,
+        ctx.language,
+        ctx.language_switcher,
+    );
     let tags_html = render_tags(ctx.tags);
     let theme_class = match ctx.site.theme.as_str() {
         "dark" => "dark",
@@ -187,10 +190,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         updated_html = updated_html,
         body = ctx.body,
         footer = escape_html(&ctx.site.footer),
-        custom_css = ctx
-            .site
-            .custom_css.as_deref()
-            .unwrap_or_default(),
+        custom_css = ctx.site.custom_css.as_deref().unwrap_or_default(),
         theme_class = theme_class,
         language = ctx.language,
         dir = dir,
@@ -200,7 +200,13 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
 
 /// Render the site index page.
 pub fn render_index_page(ctx: &IndexContext) -> String {
-    let nav_html = render_nav(ctx.site, ctx.nav_items, None, ctx.language, ctx.language_switcher);
+    let nav_html = render_nav(
+        ctx.site,
+        ctx.nav_items,
+        None,
+        ctx.language,
+        ctx.language_switcher,
+    );
     let cards_html: String = ctx
         .documents
         .iter()

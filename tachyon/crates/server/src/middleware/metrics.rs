@@ -15,7 +15,8 @@ impl RequestMetrics {
 
     pub fn record_request(&self, duration_ms: u64, status: u16) {
         self.total_requests.fetch_add(1, Ordering::Relaxed);
-        self.total_request_duration_ms.fetch_add(duration_ms, Ordering::Relaxed);
+        self.total_request_duration_ms
+            .fetch_add(duration_ms, Ordering::Relaxed);
         if status < 400 {
             self.successful_requests.fetch_add(1, Ordering::Relaxed);
         } else {

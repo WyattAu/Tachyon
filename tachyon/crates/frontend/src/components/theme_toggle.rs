@@ -141,24 +141,29 @@ pub fn ThemeInitializer() -> impl IntoView {
 
         if let Some(window) = web_sys::window() {
             if let Ok(Some(mql)) = window.match_media("(prefers-color-scheme: dark)") {
-                let callback = wasm_bindgen::closure::Closure::<dyn Fn(web_sys::Event)>::new(move |_e: web_sys::Event| {
-                    let stored = get_stored_theme();
-                    if stored == Theme::System {
-                        if let Some(window) = web_sys::window() {
-                            if let Some(document) = window.document() {
-                                let html = document.document_element().unwrap();
-                                if let Ok(Some(sys_mql)) = window.match_media("(prefers-color-scheme: dark)") {
-                                    if sys_mql.matches() {
-                                        let _ = html.class_list().add_1("dark");
-                                    } else {
-                                        let _ = html.class_list().remove_1("dark");
+                let callback = wasm_bindgen::closure::Closure::<dyn Fn(web_sys::Event)>::new(
+                    move |_e: web_sys::Event| {
+                        let stored = get_stored_theme();
+                        if stored == Theme::System {
+                            if let Some(window) = web_sys::window() {
+                                if let Some(document) = window.document() {
+                                    let html = document.document_element().unwrap();
+                                    if let Ok(Some(sys_mql)) =
+                                        window.match_media("(prefers-color-scheme: dark)")
+                                    {
+                                        if sys_mql.matches() {
+                                            let _ = html.class_list().add_1("dark");
+                                        } else {
+                                            let _ = html.class_list().remove_1("dark");
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                });
-                let _ = mql.add_event_listener_with_callback("change", callback.as_ref().unchecked_ref());
+                    },
+                );
+                let _ = mql
+                    .add_event_listener_with_callback("change", callback.as_ref().unchecked_ref());
                 callback.forget();
             }
         }

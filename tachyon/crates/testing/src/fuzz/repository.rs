@@ -6,11 +6,11 @@
 #[allow(unused_imports)]
 use std::path::PathBuf;
 #[allow(unused_imports)]
-use tachyon_core::{generate_repository_id, generate_user_id};
-#[allow(unused_imports)]
 use tachyon_core::types::repository::{
     Repository, RepositoryConfig, RepositoryStatus, RepositoryType, RepositoryVisibility,
 };
+#[allow(unused_imports)]
+use tachyon_core::{generate_repository_id, generate_user_id};
 
 #[test]
 fn test_repository_random_names_no_panic() {
@@ -122,17 +122,15 @@ fn test_repository_all_status_transitions() {
 
 #[test]
 fn test_repository_config_random_values_no_panic() {
-    let configs = vec![
-        RepositoryConfig::new()
-            .with_default_branch("main".to_string())
-            .with_default_branch("".to_string())
-            .with_default_branch("a".repeat(1000).to_string())
-            .with_remote_url("https://github.com/test/repo".to_string())
-            .with_remote_url("not-a-url".to_string())
-            .with_remote_url("".to_string())
-            .with_auto_sync(true)
-            .with_auto_sync(false),
-    ];
+    let configs = vec![RepositoryConfig::new()
+        .with_default_branch("main".to_string())
+        .with_default_branch("".to_string())
+        .with_default_branch("a".repeat(1000).to_string())
+        .with_remote_url("https://github.com/test/repo".to_string())
+        .with_remote_url("not-a-url".to_string())
+        .with_remote_url("".to_string())
+        .with_auto_sync(true)
+        .with_auto_sync(false)];
 
     for config in &configs {
         let json = serde_json::to_string(config).unwrap();
@@ -163,10 +161,7 @@ fn test_repository_random_types_no_panic() {
 
 #[test]
 fn test_repository_random_visibilities_no_panic() {
-    let visibilities = vec![
-        RepositoryVisibility::Public,
-        RepositoryVisibility::Private,
-    ];
+    let visibilities = vec![RepositoryVisibility::Public, RepositoryVisibility::Private];
 
     for vis in visibilities {
         let repo = Repository::new(

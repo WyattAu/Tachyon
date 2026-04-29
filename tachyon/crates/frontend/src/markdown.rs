@@ -122,11 +122,7 @@ fn preprocess_wikilinks(input: &str) -> String {
 
                         let href_target = if let Some(hash_pos) = target.find('#') {
                             let (t, h) = target.split_at(hash_pos);
-                            format!(
-                                "/documents/{}#{}",
-                                slugify_wiki_link(t),
-                                slugify(&h[1..])
-                            )
+                            format!("/documents/{}#{}", slugify_wiki_link(t), slugify(&h[1..]))
                         } else {
                             format!("/documents/{}", slugify_wiki_link(target))
                         };
@@ -135,11 +131,7 @@ fn preprocess_wikilinks(input: &str) -> String {
                         // The ZWSP prevents markdown from interpreting this as HTML
                         result.push_str(&format!(
                             "{}{}|{}|{}{}",
-                            WIKILINK_PREFIX,
-                            link_index,
-                            href_target,
-                            display,
-                            WIKILINK_PREFIX,
+                            WIKILINK_PREFIX, link_index, href_target, display, WIKILINK_PREFIX,
                         ));
                         link_index += 1;
                         continue;
@@ -253,9 +245,7 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                     html.push_str(&format!("<pre class=\"code-block\"><code{}>", lang_class));
                 }
                 Tag::List(Some(1)) => html.push_str("<ol>"),
-                Tag::List(Some(start)) => {
-                    html.push_str(&format!("<ol start=\"{}\">", start))
-                }
+                Tag::List(Some(start)) => html.push_str(&format!("<ol start=\"{}\">", start)),
                 Tag::List(None) => html.push_str("<ul>"),
                 Tag::Item => html.push_str("<li>"),
                 Tag::Emphasis => html.push_str("<em>"),
@@ -277,7 +267,9 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                     html.push_str(title.as_ref());
                     html.push_str("\" />");
                 }
-                Tag::Table(_alignment) => html.push_str("<div class=\"overflow-x-auto\"><table class=\"min-w-full\">"),
+                Tag::Table(_alignment) => {
+                    html.push_str("<div class=\"overflow-x-auto\"><table class=\"min-w-full\">")
+                }
                 Tag::TableHead => {
                     in_table_head = true;
                     html.push_str("<thead><tr>");
@@ -361,13 +353,9 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
             }
             Event::TaskListMarker(checked) => {
                 if checked {
-                    html.push_str(
-                        "<input type=\"checkbox\" disabled checked /> ",
-                    );
+                    html.push_str("<input type=\"checkbox\" disabled checked /> ");
                 } else {
-                    html.push_str(
-                        "<input type=\"checkbox\" disabled /> ",
-                    );
+                    html.push_str("<input type=\"checkbox\" disabled /> ");
                 }
             }
         }
@@ -562,7 +550,11 @@ mod tests {
         let html = render_markdown_to_html(md);
         let bytes = html.as_bytes();
         let table_pos = html.find("<table");
-        assert!(table_pos.is_some(), "No <table> found. Bytes around pos 25-40: {:?}", &bytes[25..40.min(bytes.len())]);
+        assert!(
+            table_pos.is_some(),
+            "No <table> found. Bytes around pos 25-40: {:?}",
+            &bytes[25..40.min(bytes.len())]
+        );
         let table_str = &html[table_pos.unwrap()..];
         eprintln!("Table tag: {:?}", &table_str[..table_str.len().min(20)]);
         assert!(html.contains("<th>"));

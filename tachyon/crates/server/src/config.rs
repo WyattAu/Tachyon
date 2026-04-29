@@ -202,9 +202,13 @@ pub struct SecurityConfig {
     pub trusted_origins: Vec<String>,
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
-fn default_frame_ancestors() -> String { "'none'".to_string() }
+fn default_frame_ancestors() -> String {
+    "'none'".to_string()
+}
 
 impl SecurityConfig {
     pub fn is_hsts_enabled(&self) -> bool {
@@ -276,8 +280,7 @@ impl Default for TrueLayerConfig {
 }
 
 /// OAuth2 provider configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OAuth2Config {
     /// Enable OAuth2 authentication
     pub enabled: bool,
@@ -303,8 +306,7 @@ impl Default for ServerConfig {
         Self {
             host: "0.0.0.0".to_string(),
             port: 8080,
-            database_url: "postgres://tachyon:tachyon@127.0.0.1:5433/tachyon"
-                .to_string(),
+            database_url: "postgres://tachyon:tachyon@127.0.0.1:5433/tachyon".to_string(),
             database_path: None,
             cache_size_mb: 256,
             enable_tls: false,
@@ -500,7 +502,6 @@ impl Default for LogConfig {
         }
     }
 }
-
 
 impl ServerConfig {
     /// Create a new server configuration
@@ -742,7 +743,8 @@ impl ServerConfig {
             config.security.frame_ancestors = val;
         }
         if let Ok(val) = std::env::var("TACHYON_SECURITY_TRUSTED_ORIGINS") {
-            config.security.trusted_origins = val.split(',')
+            config.security.trusted_origins = val
+                .split(',')
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
@@ -791,8 +793,10 @@ mod tests {
 
     #[test]
     fn test_config_validation_tls_missing_cert() {
-        let mut config = ServerConfig::default();
-        config.enable_tls = true;
+        let config = ServerConfig {
+            enable_tls: true,
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
     }
 

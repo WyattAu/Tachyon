@@ -6,9 +6,7 @@ use chrono::Duration;
 use tachyon_core::{
     generate_document_id, generate_repository_id, generate_session_id, generate_user_id,
     types::document::{Document, DocumentContent},
-    types::repository::{
-        Repository, RepositoryConfig, RepositoryType,
-    },
+    types::repository::{Repository, RepositoryConfig, RepositoryType},
     types::session::{Session, SessionType, TokenType},
     types::user::{User, UserRole},
 };
@@ -130,9 +128,9 @@ impl RepositoryFixture {
 
     pub fn cloned() -> Self {
         let mut fixture = Self::new();
-        fixture.repository = fixture.repository.with_status(
-            tachyon_core::types::repository::RepositoryStatus::Cloned,
-        );
+        fixture.repository = fixture
+            .repository
+            .with_status(tachyon_core::types::repository::RepositoryStatus::Cloned);
         fixture
     }
 

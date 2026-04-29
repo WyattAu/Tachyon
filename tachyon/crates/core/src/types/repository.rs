@@ -575,7 +575,7 @@ mod tests {
         let user_id = crate::id::generate_user_id();
 
         let repo = Repository::new(
-            repo_id.clone(),
+            repo_id,
             "Test Repo".to_string(),
             RepositoryType::Personal,
             user_id,
@@ -584,7 +584,7 @@ mod tests {
         assert_eq!(repo.id, repo_id);
         assert_eq!(repo.metadata.name, "Test Repo");
         assert_eq!(repo.status, RepositoryStatus::Init);
-        assert!(repo.is_ready() == false);
+        assert!(!repo.is_ready());
     }
 
     #[test]
@@ -593,7 +593,7 @@ mod tests {
         let user_id = crate::id::generate_user_id();
 
         let mut repo = Repository::new(
-            repo_id.clone(),
+            repo_id,
             "Test Repo".to_string(),
             RepositoryType::Personal,
             user_id,
@@ -612,10 +612,10 @@ mod tests {
 
         // Valid repository
         let repo = Repository::new(
-            repo_id.clone(),
+            repo_id,
             "Valid Repo Name".to_string(),
             RepositoryType::Personal,
-            user_id.clone(),
+            user_id,
         );
         assert!(repo.validate().is_ok());
 

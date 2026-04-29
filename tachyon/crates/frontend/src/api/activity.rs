@@ -4,18 +4,36 @@ use super::*;
 ///
 /// Reserved for future use: activity feed and notification system.
 impl ApiClient {
-    pub async fn list_activity(&self, limit: Option<u32>, offset: Option<u32>) -> Result<ActivityListResponse, ApiError> {
+    pub async fn list_activity(
+        &self,
+        limit: Option<u32>,
+        offset: Option<u32>,
+    ) -> Result<ActivityListResponse, ApiError> {
         let mut params = vec![];
-        if let Some(l) = limit { params.push(format!("limit={}", l)); }
-        if let Some(o) = offset { params.push(format!("offset={}", o)); }
-        let query = if params.is_empty() { String::new() } else { format!("?{}", params.join("&")) };
+        if let Some(l) = limit {
+            params.push(format!("limit={}", l));
+        }
+        if let Some(o) = offset {
+            params.push(format!("offset={}", o));
+        }
+        let query = if params.is_empty() {
+            String::new()
+        } else {
+            format!("?{}", params.join("&"))
+        };
         let url = format!("{}/activity{}", self.base_url, query);
         self.get(&url).await
     }
 
-    pub async fn list_notifications(&self, limit: Option<u32>, include_read: bool) -> Result<NotificationListResponse, ApiError> {
+    pub async fn list_notifications(
+        &self,
+        limit: Option<u32>,
+        include_read: bool,
+    ) -> Result<NotificationListResponse, ApiError> {
         let mut params = vec![format!("include_read={}", include_read)];
-        if let Some(l) = limit { params.push(format!("limit={}", l)); }
+        if let Some(l) = limit {
+            params.push(format!("limit={}", l));
+        }
         let url = format!("{}/notifications?{}", self.base_url, params.join("&"));
         self.get(&url).await
     }

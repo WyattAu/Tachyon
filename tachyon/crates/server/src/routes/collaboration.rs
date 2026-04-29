@@ -10,13 +10,13 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
+use crate::websocket::ConnectionManager;
+use tachyon_database::error::DatabaseError;
 use tachyon_database::CommentRepository;
 use tachyon_database::CreateDocumentCommentRequest as DbCreateCommentRequest;
-use tachyon_database::UpdateDocumentCommentRequest as DbUpdateCommentRequest;
-use tachyon_database::error::DatabaseError;
 use tachyon_database::PresenceRepository;
+use tachyon_database::UpdateDocumentCommentRequest as DbUpdateCommentRequest;
 use tachyon_database::UpsertPresenceRequest as DbUpsertPresenceRequest;
-use crate::websocket::ConnectionManager;
 
 /// Collaboration state
 #[derive(Clone)]
@@ -26,8 +26,14 @@ pub struct CollaborationState {
 }
 
 impl CollaborationState {
-    pub fn new(pool: tachyon_database::DatabasePool, connection_manager: ConnectionManager) -> Self {
-        Self { pool, connection_manager }
+    pub fn new(
+        pool: tachyon_database::DatabasePool,
+        connection_manager: ConnectionManager,
+    ) -> Self {
+        Self {
+            pool,
+            connection_manager,
+        }
     }
 }
 
@@ -170,18 +176,17 @@ fn db_presence_to_info(db: tachyon_database::presence::Presence) -> PresenceInfo
         "away" => PresenceStatus::Away,
         _ => PresenceStatus::Active,
     };
-    let cursor_position = if db.cursor_section.is_some()
-        || db.cursor_line.is_some()
-        || db.cursor_selection.is_some()
-    {
-        Some(CursorInfo {
-            section: db.cursor_section,
-            line: db.cursor_line.map(|v| v as u32),
-            selection: db.cursor_selection,
-        })
-    } else {
-        None
-    };
+    let cursor_position =
+        if db.cursor_section.is_some() || db.cursor_line.is_some() || db.cursor_selection.is_some()
+        {
+            Some(CursorInfo {
+                section: db.cursor_section,
+                line: db.cursor_line.map(|v| v as u32),
+                selection: db.cursor_selection,
+            })
+        } else {
+            None
+        };
     let connected_at = db
         .connected_at
         .parse::<DateTime<Utc>>()
@@ -231,20 +236,28 @@ pub async fn update_presence(
         document_id: req.document_id.clone(),
         status: req.status.as_ref().map(status_to_db),
         cursor_section: req.cursor_position.as_ref().and_then(|c| c.section.clone()),
-        cursor_line: req.cursor_position.as_ref().and_then(|c| c.line.map(|v| v as i32)),
-        cursor_selection: req.cursor_position.as_ref().and_then(|c| c.selection.clone()),
+        cursor_line: req
+            .cursor_position
+            .as_ref()
+            .and_then(|c| c.line.map(|v| v as i32)),
+        cursor_selection: req
+            .cursor_position
+            .as_ref()
+            .and_then(|c| c.selection.clone()),
     };
 
     let repo = PresenceRepository::new(state.pool.clone());
-    repo.upsert(db_req)
-        .await
-        .map_err(|e| db_error(&e))?;
+    repo.upsert(db_req).await.map_err(|e| db_error(&e))?;
 
     // Broadcast presence update to WebSocket clients viewing this document
     let presence_user = crate::websocket::types::PresenceUser {
         user_id: req.user_id.clone(),
         user_name: req.user_name.clone(),
-        cursor_position: req.cursor_position.as_ref().map(|c| c.line.unwrap_or(0) as usize).unwrap_or(0),
+        cursor_position: req
+            .cursor_position
+            .as_ref()
+            .map(|c| c.line.unwrap_or(0) as usize)
+            .unwrap_or(0),
         selection: None,
         color: None,
     };
@@ -252,10 +265,10 @@ pub async fn update_presence(
         req.document_id.clone(),
         vec![presence_user],
     );
-    let _ = state.connection_manager.broadcast_to_room(
-        &format!("doc:{}", req.document_id),
-        presence_msg,
-    ).await;
+    let _ = state
+        .connection_manager
+        .broadcast_to_room(&format!("doc:{}", req.document_id), presence_msg)
+        .await;
 
     // Return all live presence for this document
     let users = repo
@@ -300,14 +313,11 @@ pub async fn remove_presence(
         .map_err(|e| db_error(&e))?;
 
     // Broadcast leave event to WebSocket clients
-    let leave_msg = crate::websocket::types::WebSocketMessage::leave(
-        document_id.clone(),
-        user_id,
-    );
-    let _ = state.connection_manager.broadcast_to_room(
-        &format!("doc:{}", document_id),
-        leave_msg,
-    ).await;
+    let leave_msg = crate::websocket::types::WebSocketMessage::leave(document_id.clone(), user_id);
+    let _ = state
+        .connection_manager
+        .broadcast_to_room(&format!("doc:{}", document_id), leave_msg)
+        .await;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -335,7 +345,10 @@ fn db_comment_to_comment(db: tachyon_database::comment::Comment) -> Comment {
     };
     let created_at = parse_datetime(&db.created_at);
     let updated_at = parse_datetime(&db.updated_at);
-    let resolved_at = db.resolved_at.as_ref().and_then(|s| s.parse::<DateTime<Utc>>().ok());
+    let resolved_at = db
+        .resolved_at
+        .as_ref()
+        .and_then(|s| s.parse::<DateTime<Utc>>().ok());
 
     Comment {
         id: db.id,
@@ -391,8 +404,14 @@ pub async fn create_comment(
         author_name: "User".to_string(),
         content: req.content.clone(),
         anchor_section: req.anchor.as_ref().and_then(|a| a.section.clone()),
-        anchor_line_start: req.anchor.as_ref().and_then(|a| a.line_start.map(|v| v as i32)),
-        anchor_line_end: req.anchor.as_ref().and_then(|a| a.line_end.map(|v| v as i32)),
+        anchor_line_start: req
+            .anchor
+            .as_ref()
+            .and_then(|a| a.line_start.map(|v| v as i32)),
+        anchor_line_end: req
+            .anchor
+            .as_ref()
+            .and_then(|a| a.line_end.map(|v| v as i32)),
         anchor_selection: req.anchor.as_ref().and_then(|a| a.selection_text.clone()),
         parent_id: req.parent_id.clone(),
         mentions: None,
@@ -401,7 +420,10 @@ pub async fn create_comment(
     let repo = CommentRepository::new(state.pool.clone());
     let comment = repo.create(db_req).await.map_err(|e| db_error(&e))?;
 
-    info!("Comment created on {} (mentions: {:?})", req.document_id, comment.mentions);
+    info!(
+        "Comment created on {} (mentions: {:?})",
+        req.document_id, comment.mentions
+    );
 
     // Broadcast comment activity to WebSocket clients viewing this document
     let activity = crate::websocket::types::ActivityUpdate {
@@ -414,10 +436,10 @@ pub async fn create_comment(
         "system".to_string(),
         activity,
     );
-    let _ = state.connection_manager.broadcast_to_room(
-        &format!("doc:{}", req.document_id),
-        activity_msg,
-    ).await;
+    let _ = state
+        .connection_manager
+        .broadcast_to_room(&format!("doc:{}", req.document_id), activity_msg)
+        .await;
 
     Ok(Json(db_comment_to_comment(comment)))
 }
@@ -499,11 +521,20 @@ pub fn create_collaboration_router() -> axum::Router<CollaborationState> {
     axum::Router::new()
         .route("/collaboration/presence", put(update_presence))
         .route("/collaboration/presence/{document_id}", get(get_presence))
-        .route("/collaboration/presence/{document_id}/{user_id}", delete(remove_presence))
+        .route(
+            "/collaboration/presence/{document_id}/{user_id}",
+            delete(remove_presence),
+        )
         // Comment CRUD: list by document, create, update, delete
-        .route("/collaboration/documents/{document_id}/comments", get(list_comments))
+        .route(
+            "/collaboration/documents/{document_id}/comments",
+            get(list_comments),
+        )
         .route("/collaboration/comments", post(create_comment))
         .route("/collaboration/comments/{comment_id}", put(update_comment))
-        .route("/collaboration/comments/{comment_id}", delete(delete_comment))
+        .route(
+            "/collaboration/comments/{comment_id}",
+            delete(delete_comment),
+        )
         .route("/collaboration/mentions/{user_id}", get(get_mentions))
 }

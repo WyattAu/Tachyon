@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::Path;
 
 use crate::error::{SsgError, SsgResult};
-use crate::manifest::{BuildResult, SsgDocument, SiteConfig};
+use crate::manifest::{BuildResult, SiteConfig, SsgDocument};
 
 /// Static site generator engine.
 ///
@@ -46,10 +46,8 @@ impl SiteGenerator {
 
         if languages.len() > 1 {
             for lang in &languages {
-                let lang_docs: Vec<&SsgDocument> = documents
-                    .iter()
-                    .filter(|d| d.language == *lang)
-                    .collect();
+                let lang_docs: Vec<&SsgDocument> =
+                    documents.iter().filter(|d| d.language == *lang).collect();
 
                 let (pages, categories, generated) =
                     self.build_language_dir(&lang_docs, lang, output_dir, &languages)?;
@@ -120,10 +118,8 @@ impl SiteGenerator {
 
         if languages.len() > 1 {
             for lang in &languages {
-                let lang_docs: Vec<&SsgDocument> = documents
-                    .iter()
-                    .filter(|d| d.language == *lang)
-                    .collect();
+                let lang_docs: Vec<&SsgDocument> =
+                    documents.iter().filter(|d| d.language == *lang).collect();
 
                 let (pages, categories, generated) =
                     self.build_language_zip(&lang_docs, lang, &mut zip, options, &languages)?;
@@ -231,18 +227,31 @@ impl SiteGenerator {
         };
 
         for doc in &sorted_docs {
-            let html = self.render_document_page(doc, &sorted_docs, lang, lang_prefix.as_deref(), all_languages)?;
+            let html = self.render_document_page(
+                doc,
+                &sorted_docs,
+                lang,
+                lang_prefix.as_deref(),
+                all_languages,
+            )?;
             let filename = format!("{}.html", doc.slug);
             let path = write_dir.join(&filename);
-            std::fs::write(&path, html)
-                .map_err(|e| SsgError::Io(format!("Failed to write {}/{}: {}", lang, filename, e)))?;
+            std::fs::write(&path, html).map_err(|e| {
+                SsgError::Io(format!("Failed to write {}/{}: {}", lang, filename, e))
+            })?;
             generated_pages.push(doc.slug.clone());
         }
 
         let mut category_count = 0usize;
         if self.config.group_by_tag {
             for (tag, tag_docs) in &tag_groups {
-                let html = self.render_category_page(tag, tag_docs, lang, lang_prefix.as_deref(), all_languages)?;
+                let html = self.render_category_page(
+                    tag,
+                    tag_docs,
+                    lang,
+                    lang_prefix.as_deref(),
+                    all_languages,
+                )?;
                 let filename = format!("category-{}.html", crate::slug::slugify(tag));
                 let path = write_dir.join(&filename);
                 std::fs::write(&path, html)
@@ -251,7 +260,8 @@ impl SiteGenerator {
             }
         }
 
-        let index_html = self.render_index_page(&sorted_docs, lang, lang_prefix.as_deref(), all_languages)?;
+        let index_html =
+            self.render_index_page(&sorted_docs, lang, lang_prefix.as_deref(), all_languages)?;
         let index_path = write_dir.join("index.html");
         std::fs::write(&index_path, index_html)
             .map_err(|e| SsgError::Io(format!("Failed to write {}/index.html: {}", lang, e)))?;
@@ -303,7 +313,13 @@ impl SiteGenerator {
         };
 
         for doc in &sorted_docs {
-            let html = self.render_document_page(doc, &sorted_docs, lang, lang_prefix.as_deref(), all_languages)?;
+            let html = self.render_document_page(
+                doc,
+                &sorted_docs,
+                lang,
+                lang_prefix.as_deref(),
+                all_languages,
+            )?;
             let path = if is_multi {
                 format!("{}/{}.html", lang, doc.slug)
             } else {
@@ -319,7 +335,13 @@ impl SiteGenerator {
         let mut category_count = 0usize;
         if self.config.group_by_tag {
             for (tag, tag_docs) in &tag_groups {
-                let html = self.render_category_page(tag, tag_docs, lang, lang_prefix.as_deref(), all_languages)?;
+                let html = self.render_category_page(
+                    tag,
+                    tag_docs,
+                    lang,
+                    lang_prefix.as_deref(),
+                    all_languages,
+                )?;
                 let path = if is_multi {
                     format!("{}/category-{}.html", lang, crate::slug::slugify(tag))
                 } else {
@@ -333,7 +355,8 @@ impl SiteGenerator {
             }
         }
 
-        let index_html = self.render_index_page(&sorted_docs, lang, lang_prefix.as_deref(), all_languages)?;
+        let index_html =
+            self.render_index_page(&sorted_docs, lang, lang_prefix.as_deref(), all_languages)?;
         let index_path = if is_multi {
             format!("{}/index.html", lang)
         } else {

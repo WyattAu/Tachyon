@@ -9,14 +9,15 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tachyon_core::id::{DocumentId, RepositoryId, UserId};
 use tachyon_database::{
-    DatabasePool, DocumentRepository, SearchRepository, SavedSearchRepository,
-    CreateSavedSearchRequest, UpdateSavedSearchRequest, SavedSearch,
-    SearchFilters,
+    CreateSavedSearchRequest, DatabasePool, DocumentRepository, SavedSearch, SavedSearchRepository,
+    SearchFilters, SearchRepository, UpdateSavedSearchRequest,
 };
-use tachyon_search::{IndexManager, QueryEngine, ResultAggregator, SearchDocument, SearchRequest, SearchResponseItem};
+use tachyon_search::{
+    IndexManager, QueryEngine, ResultAggregator, SearchDocument, SearchRequest, SearchResponseItem,
+};
+use tokio::sync::Mutex;
 use tracing::{info, warn};
 
 #[derive(Clone)]
@@ -201,8 +202,7 @@ async fn search_tantivy(
     let engine = QueryEngine::new(guard.clone());
     drop(guard);
 
-    let request = SearchRequest::new(query)
-        .with_pagination(page, page_size);
+    let request = SearchRequest::new(query).with_pagination(page, page_size);
 
     match engine.search(&request).await {
         Ok(response) => Some(response.results),
@@ -217,7 +217,10 @@ pub async fn search(
     Query(query): Query<SearchQuery>,
     State(state): State<SearchState>,
 ) -> Result<Json<SearchResultsResponse>, (StatusCode, Json<ErrorResponse>)> {
-    info!("Search request: q='{}', page={}, page_size={}", query.q, query.page, query.page_size);
+    info!(
+        "Search request: q='{}', page={}, page_size={}",
+        query.q, query.page, query.page_size
+    );
 
     let filters = SearchFilters {
         content_type: query.content_type,
@@ -225,97 +228,158 @@ pub async fn search(
         visibility: query.visibility,
         project_id: query.project_id,
         author_id: query.author_id,
-        tags: query.tags.as_ref().map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
-        date_from: query.date_from.as_ref().and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok().map(|d| d.with_timezone(&chrono::Utc))),
-        date_to: query.date_to.as_ref().and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok().map(|d| d.with_timezone(&chrono::Utc))),
+        tags: query
+            .tags
+            .as_ref()
+            .map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+        date_from: query.date_from.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
+        date_to: query.date_to.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
     };
 
     let page = query.page.max(1);
     let page_size = query.page_size.clamp(1, 100);
     let fetch_limit = (page_size * 3).min(300);
 
-    match state.search_repo.search(&query.q, &filters, 1, fetch_limit).await {
+    match state
+        .search_repo
+        .search(&query.q, &filters, 1, fetch_limit)
+        .await
+    {
         Ok(pg_response) => {
             let total = pg_response.total;
             let facets_source = pg_response.facets;
             let pg_results = pg_response.results;
 
-            let pg_metadata_map: HashMap<String, &_> = pg_results.iter()
+            let pg_metadata_map: HashMap<String, &_> = pg_results
+                .iter()
                 .map(|r| (r.document.id.clone(), r))
                 .collect();
 
-            let pg_items: Vec<SearchResponseItem> = pg_results.iter().map(|r| {
-                SearchResponseItem {
+            let pg_items: Vec<SearchResponseItem> = pg_results
+                .iter()
+                .map(|r| SearchResponseItem {
                     document_id: DocumentId::parse_str(&r.document.id).unwrap_or_default(),
                     title: r.document.title.clone(),
                     snippet: r.headline.clone().unwrap_or_default(),
                     score: r.rank as f32,
                     highlights: Vec::new(),
                     author_id: UserId::parse_str(&r.document.author_id).unwrap_or_default(),
-                    repository_id: r.document.project_id.as_ref()
+                    repository_id: r
+                        .document
+                        .project_id
+                        .as_ref()
                         .and_then(|id| RepositoryId::parse_str(id).ok()),
                     tags: r.document.parse_tags().unwrap_or_default(),
                     created_at: r.document.created_at,
-                }
-            }).collect();
+                })
+                .collect();
 
-            let tantivy_items = search_tantivy(&state, &query.q, 1, fetch_limit as usize).await
+            let tantivy_items = search_tantivy(&state, &query.q, 1, fetch_limit as usize)
+                .await
                 .unwrap_or_default();
 
             let aggregator = ResultAggregator::default();
             let fused = aggregator.fuse_results(vec![pg_items, tantivy_items]);
 
-            let results: Vec<SearchResultItem> = fused.into_iter().map(|item| {
-                let id_str = item.document_id.to_string();
-                if let Some(pg_r) = pg_metadata_map.get(&id_str) {
-                    let tags = pg_r.document.parse_tags().unwrap_or_default();
-                    SearchResultItem {
-                        id: pg_r.document.id.clone(),
-                        title: pg_r.document.title.clone(),
-                        slug: pg_r.document.slug.clone(),
-                        description: pg_r.document.description.clone(),
-                        status: pg_r.document.status.clone(),
-                        visibility: pg_r.document.visibility.clone(),
-                        tags,
-                        author_id: pg_r.document.author_id.clone(),
-                        project_id: pg_r.document.project_id.clone(),
-                        word_count: pg_r.document.word_count,
-                        rank: item.score as f64,
-                        headline: pg_r.headline.clone(),
-                        created_at: pg_r.document.created_at.to_rfc3339(),
-                        updated_at: pg_r.document.updated_at.to_rfc3339(),
+            let results: Vec<SearchResultItem> = fused
+                .into_iter()
+                .map(|item| {
+                    let id_str = item.document_id.to_string();
+                    if let Some(pg_r) = pg_metadata_map.get(&id_str) {
+                        let tags = pg_r.document.parse_tags().unwrap_or_default();
+                        SearchResultItem {
+                            id: pg_r.document.id.clone(),
+                            title: pg_r.document.title.clone(),
+                            slug: pg_r.document.slug.clone(),
+                            description: pg_r.document.description.clone(),
+                            status: pg_r.document.status.clone(),
+                            visibility: pg_r.document.visibility.clone(),
+                            tags,
+                            author_id: pg_r.document.author_id.clone(),
+                            project_id: pg_r.document.project_id.clone(),
+                            word_count: pg_r.document.word_count,
+                            rank: item.score as f64,
+                            headline: pg_r.headline.clone(),
+                            created_at: pg_r.document.created_at.to_rfc3339(),
+                            updated_at: pg_r.document.updated_at.to_rfc3339(),
+                        }
+                    } else {
+                        SearchResultItem {
+                            id: id_str,
+                            title: item.title,
+                            slug: None,
+                            description: if item.snippet.is_empty() {
+                                None
+                            } else {
+                                Some(item.snippet)
+                            },
+                            status: "draft".to_string(),
+                            visibility: "private".to_string(),
+                            tags: item.tags,
+                            author_id: item.author_id.to_string(),
+                            project_id: item.repository_id.map(|id| id.to_string()),
+                            word_count: 0,
+                            rank: item.score as f64,
+                            headline: if item.highlights.is_empty() {
+                                None
+                            } else {
+                                Some(item.highlights.join(" "))
+                            },
+                            created_at: item.created_at.to_rfc3339(),
+                            updated_at: item.created_at.to_rfc3339(),
+                        }
                     }
-                } else {
-                    SearchResultItem {
-                        id: id_str,
-                        title: item.title,
-                        slug: None,
-                        description: if item.snippet.is_empty() { None } else { Some(item.snippet) },
-                        status: "draft".to_string(),
-                        visibility: "private".to_string(),
-                        tags: item.tags,
-                        author_id: item.author_id.to_string(),
-                        project_id: item.repository_id.map(|id| id.to_string()),
-                        word_count: 0,
-                        rank: item.score as f64,
-                        headline: if item.highlights.is_empty() { None } else { Some(item.highlights.join(" ")) },
-                        created_at: item.created_at.to_rfc3339(),
-                        updated_at: item.created_at.to_rfc3339(),
-                    }
-                }
-            }).collect();
+                })
+                .collect();
 
             let start = ((page - 1) * page_size) as usize;
-            let paginated: Vec<SearchResultItem> = results.into_iter()
+            let paginated: Vec<SearchResultItem> = results
+                .into_iter()
                 .skip(start)
                 .take(page_size as usize)
                 .collect();
 
             let facets = SearchFacetsResponse {
-                content_types: facets_source.content_types.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
-                statuses: facets_source.statuses.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
-                visibilities: facets_source.visibilities.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
-                tags: facets_source.tags.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
+                content_types: facets_source
+                    .content_types
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                statuses: facets_source
+                    .statuses
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                visibilities: facets_source
+                    .visibilities
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                tags: facets_source
+                    .tags
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
             };
 
             Ok(Json(SearchResultsResponse {
@@ -351,15 +415,30 @@ pub async fn global_search(
         visibility: query.visibility,
         project_id: query.project_id,
         author_id: query.author_id,
-        tags: query.tags.as_ref().map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
-        date_from: query.date_from.as_ref().and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok().map(|d| d.with_timezone(&chrono::Utc))),
-        date_to: query.date_to.as_ref().and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok().map(|d| d.with_timezone(&chrono::Utc))),
+        tags: query
+            .tags
+            .as_ref()
+            .map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+        date_from: query.date_from.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
+        date_to: query.date_to.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
     };
 
     let page = query.page.max(1);
     let page_size = query.page_size.clamp(1, 100);
 
-    match state.search_repo.global_search(&query.q, &filters, page, page_size).await {
+    match state
+        .search_repo
+        .global_search(&query.q, &filters, page, page_size)
+        .await
+    {
         Ok(response) => {
             let doc_results: Vec<SearchResultItem> = response
                 .documents
@@ -387,10 +466,46 @@ pub async fn global_search(
                 .collect();
 
             let facets = SearchFacetsResponse {
-                content_types: response.documents.facets.content_types.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
-                statuses: response.documents.facets.statuses.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
-                visibilities: response.documents.facets.visibilities.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
-                tags: response.documents.facets.tags.into_iter().map(|f| FacetItem { value: f.value, count: f.count }).collect(),
+                content_types: response
+                    .documents
+                    .facets
+                    .content_types
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                statuses: response
+                    .documents
+                    .facets
+                    .statuses
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                visibilities: response
+                    .documents
+                    .facets
+                    .visibilities
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                tags: response
+                    .documents
+                    .facets
+                    .tags
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
             };
 
             let projects: Vec<ProjectSearchResultItem> = response
@@ -466,9 +581,16 @@ pub async fn list_saved_searches(
 ) -> Result<Json<Vec<SavedSearchResponse>>, (StatusCode, Json<ErrorResponse>)> {
     let user_id = tachyon_core::generate_user_id();
 
-    match state.saved_search_repo.list_by_user(&user_id.to_string()).await {
+    match state
+        .saved_search_repo
+        .list_by_user(&user_id.to_string())
+        .await
+    {
         Ok(searches) => {
-            let response: Vec<SavedSearchResponse> = searches.into_iter().map(SavedSearchResponse::from).collect();
+            let response: Vec<SavedSearchResponse> = searches
+                .into_iter()
+                .map(SavedSearchResponse::from)
+                .collect();
             Ok(Json(response))
         }
         Err(e) => {
@@ -578,21 +700,27 @@ pub async fn reindex_tantivy(
         )
     })?;
 
-    let search_docs: Vec<SearchDocument> = documents.iter().filter_map(|m| {
-        let doc_id = DocumentId::parse_str(&m.id).ok()?;
-        let author_id = UserId::parse_str(&m.author_id).ok()?;
-        Some(SearchDocument {
-            id: doc_id,
-            title: m.title.clone(),
-            content: m.content.clone().unwrap_or_default(),
-            author_id,
-            repository_id: m.project_id.as_ref().and_then(|id| RepositoryId::parse_str(id).ok()),
-            tags: m.parse_tags().unwrap_or_default(),
-            created_at: m.created_at,
-            updated_at: m.updated_at,
-            custom_fields: BTreeMap::new(),
+    let search_docs: Vec<SearchDocument> = documents
+        .iter()
+        .filter_map(|m| {
+            let doc_id = DocumentId::parse_str(&m.id).ok()?;
+            let author_id = UserId::parse_str(&m.author_id).ok()?;
+            Some(SearchDocument {
+                id: doc_id,
+                title: m.title.clone(),
+                content: m.content.clone().unwrap_or_default(),
+                author_id,
+                repository_id: m
+                    .project_id
+                    .as_ref()
+                    .and_then(|id| RepositoryId::parse_str(id).ok()),
+                tags: m.parse_tags().unwrap_or_default(),
+                created_at: m.created_at,
+                updated_at: m.updated_at,
+                custom_fields: BTreeMap::new(),
+            })
         })
-    }).collect();
+        .collect();
 
     let total = search_docs.len();
 
@@ -611,7 +739,10 @@ pub async fn reindex_tantivy(
         )
     })?;
 
-    info!("Tantivy reindex complete: {}/{} documents indexed", indexed, total);
+    info!(
+        "Tantivy reindex complete: {}/{} documents indexed",
+        indexed, total
+    );
 
     Ok(Json(serde_json::json!({
         "indexed": indexed,
@@ -655,7 +786,10 @@ pub async fn suggest(
     let engine = QueryEngine::new(guard.clone());
     drop(guard);
 
-    let suggestions = engine.suggest(&query.q, query.limit).await.unwrap_or_default();
+    let suggestions = engine
+        .suggest(&query.q, query.limit)
+        .await
+        .unwrap_or_default();
 
     Ok(Json(SuggestResponse {
         query: query.q,

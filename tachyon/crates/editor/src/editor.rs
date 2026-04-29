@@ -553,7 +553,10 @@ impl Editor {
             };
 
             self.cursor = Cursor::new(wl_state.start_line, wl_state.start_col);
-            let end = Cursor::new(self.cursor.line, wl_state.start_col + 2 + wl_state.query.len());
+            let end = Cursor::new(
+                self.cursor.line,
+                wl_state.start_col + 2 + wl_state.query.len(),
+            );
             self.selection = Selection::range(self.cursor, end);
             self.delete_selection();
 

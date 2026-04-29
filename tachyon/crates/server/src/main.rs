@@ -5,10 +5,10 @@ use anyhow::{Context, Result};
 use std::backtrace::Backtrace;
 use std::net::SocketAddr;
 use std::sync::OnceLock;
-use tachyon_server::config::ServerConfig;
 use tachyon_search::{IndexConfig, IndexManager};
+use tachyon_server::config::ServerConfig;
 use tracing::{error, info, warn};
-use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt, Layer};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 /// Global panic information storage for debugging
 static PANIC_INFO: OnceLock<String> = OnceLock::new();
@@ -16,7 +16,8 @@ static PANIC_INFO: OnceLock<String> = OnceLock::new();
 /// Setup custom panic handler for better error reporting
 fn setup_panic_handler() {
     std::panic::set_hook(Box::new(|panic_info| {
-        let location = panic_info.location()
+        let location = panic_info
+            .location()
             .map(|loc| format!("{}:{}:{}", loc.file(), loc.line(), loc.column()))
             .unwrap_or_else(|| "unknown location".to_string());
 
@@ -95,8 +96,7 @@ async fn init_tantivy_index() -> Option<std::sync::Arc<tokio::sync::Mutex<IndexM
         return None;
     }
 
-    let index_config = IndexConfig::new("tachyon")
-        .with_index_path(".tachyon/search_index");
+    let index_config = IndexConfig::new("tachyon").with_index_path(".tachyon/search_index");
 
     match IndexManager::with_config(index_path.clone(), index_config).await {
         Ok(mgr) => {
@@ -213,12 +213,19 @@ async fn main() -> Result<()> {
         log_format = %config.log.format,
         "Logging initialized"
     );
-    info!("Database URL: {}", if config.database_url.is_empty() {
-        config.database_path.as_deref().unwrap_or("not configured")
-    } else {
-        // Don't log the full URL with password
-        config.database_url.split('@').next_back().unwrap_or("configured")
-    });
+    info!(
+        "Database URL: {}",
+        if config.database_url.is_empty() {
+            config.database_path.as_deref().unwrap_or("not configured")
+        } else {
+            // Don't log the full URL with password
+            config
+                .database_url
+                .split('@')
+                .next_back()
+                .unwrap_or("configured")
+        }
+    );
 
     run_server(config).await
 }

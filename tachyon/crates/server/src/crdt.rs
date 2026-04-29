@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use std::sync::Arc;
 use dashmap::DashMap;
-use yrs::{Doc, GetString, ReadTxn, Text, TextRef, Transact};
+use std::sync::Arc;
 use yrs::updates::decoder::Decode;
+use yrs::{Doc, GetString, ReadTxn, Text, TextRef, Transact};
 
 pub(crate) struct CrdtDocument {
     doc: Doc,

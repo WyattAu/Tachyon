@@ -3,12 +3,12 @@
 //! Tests using Axum's body utilities to verify the server can build
 //! a router and respond to requests.
 
-use axum::{
-    Router,
-    routing::get,
-};
 #[allow(unused_imports)]
-use axum::{body::Body, http::{Request, StatusCode}};
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
+use axum::{routing::get, Router};
 #[allow(unused_imports)]
 use http_body_util::BodyExt;
 #[allow(unused_imports)]

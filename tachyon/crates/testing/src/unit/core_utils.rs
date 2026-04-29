@@ -4,9 +4,9 @@
 //! path utilities, hash utilities, and validation functions.
 
 #[allow(unused_imports)]
-use tachyon_core::util::*;
-#[allow(unused_imports)]
 use tachyon_core::util::PathError;
+#[allow(unused_imports)]
+use tachyon_core::util::*;
 
 #[test]
 fn test_slugify_basic() {

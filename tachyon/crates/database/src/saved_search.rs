@@ -22,10 +22,11 @@ pub struct SavedSearch {
 impl SavedSearch {
     pub fn parse_filters(&self) -> DatabaseResult<Option<super::search::SearchFilters>> {
         match &self.filters {
-            Some(f) => Ok(Some(
-                serde_json::from_str(f)
-                    .map_err(|e| DatabaseError::SerializationError(e.to_string()))?,
-            )),
+            Some(f) => {
+                Ok(Some(serde_json::from_str(f).map_err(|e| {
+                    DatabaseError::SerializationError(e.to_string())
+                })?))
+            }
             None => Ok(None),
         }
     }
@@ -34,10 +35,11 @@ impl SavedSearch {
         filters: &Option<super::search::SearchFilters>,
     ) -> DatabaseResult<Option<String>> {
         match filters {
-            Some(f) => Ok(Some(
-                serde_json::to_string(f)
-                    .map_err(|e| DatabaseError::SerializationError(e.to_string()))?,
-            )),
+            Some(f) => {
+                Ok(Some(serde_json::to_string(f).map_err(|e| {
+                    DatabaseError::SerializationError(e.to_string())
+                })?))
+            }
             None => Ok(None),
         }
     }
@@ -99,7 +101,10 @@ impl SavedSearchRepository {
                 }
             })?;
 
-        info!("Saved search created: {} for user {}", saved_search.id, saved_search.user_id);
+        info!(
+            "Saved search created: {} for user {}",
+            saved_search.id, saved_search.user_id
+        );
         Ok(saved_search)
     }
 
@@ -140,12 +145,20 @@ impl SavedSearchRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        debug!("Found {} saved searches for user {}", saved_searches.len(), user_id);
+        debug!(
+            "Found {} saved searches for user {}",
+            saved_searches.len(),
+            user_id
+        );
         Ok(saved_searches)
     }
 
     #[instrument(skip(self))]
-    pub async fn update(&self, id: &str, request: UpdateSavedSearchRequest) -> DatabaseResult<SavedSearch> {
+    pub async fn update(
+        &self,
+        id: &str,
+        request: UpdateSavedSearchRequest,
+    ) -> DatabaseResult<SavedSearch> {
         let current = self.get_by_id(id).await?;
         let filters_json = SavedSearch::serialize_filters(&request.filters)?;
 
@@ -213,8 +226,8 @@ impl SavedSearchRepository {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::search::SearchFilters;
+    use super::*;
     use pretty_assertions::assert_eq;
 
     fn make_saved_search(filters: Option<&str>) -> SavedSearch {

@@ -1,8 +1,4 @@
-use axum::{
-    extract::Path,
-    http::StatusCode,
-    response::Json,
-};
+use axum::{extract::Path, http::StatusCode, response::Json};
 use serde::{Deserialize, Serialize};
 use tachyon_core::id::DocumentId;
 use tachyon_database::{DatabasePool, DocumentRepository};
@@ -140,27 +136,21 @@ pub async fn resolve_conflict(
     };
 
     let final_content = match body.resolution.as_str() {
-        "manual" => {
-            match &body.content {
-                Some(c) => c.clone(),
-                None => {
-                    return Err((
-                        StatusCode::BAD_REQUEST,
-                        Json(ErrorResponse {
-                            code: "MISSING_CONTENT".to_string(),
-                            message: "Content is required for manual resolution".to_string(),
-                            details: None,
-                        }),
-                    ));
-                }
+        "manual" => match &body.content {
+            Some(c) => c.clone(),
+            None => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        code: "MISSING_CONTENT".to_string(),
+                        message: "Content is required for manual resolution".to_string(),
+                        details: None,
+                    }),
+                ));
             }
-        }
-        "ours" => {
-            doc.content.clone().unwrap_or_default()
-        }
-        "theirs" => {
-            doc.content.clone().unwrap_or_default()
-        }
+        },
+        "ours" => doc.content.clone().unwrap_or_default(),
+        "theirs" => doc.content.clone().unwrap_or_default(),
         _ => {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -178,7 +168,10 @@ pub async fn resolve_conflict(
     updated.conflict_detected = Some(false);
 
     if let Err(e) = repo.update(updated).await {
-        warn!("Failed to resolve conflict for document {}: {}", document_id, e);
+        warn!(
+            "Failed to resolve conflict for document {}: {}",
+            document_id, e
+        );
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
@@ -190,10 +183,16 @@ pub async fn resolve_conflict(
     }
 
     if let Err(e) = repo.clear_conflict(&doc_id).await {
-        warn!("Failed to clear conflict flag for document {}: {}", document_id, e);
+        warn!(
+            "Failed to clear conflict flag for document {}: {}",
+            document_id, e
+        );
     }
 
-    info!("Conflict resolved for document {} with resolution: {}", document_id, body.resolution);
+    info!(
+        "Conflict resolved for document {} with resolution: {}",
+        document_id, body.resolution
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -214,7 +213,10 @@ pub fn create_conflict_router() -> axum::Router<ConflictState> {
 
     axum::Router::new()
         .route("/documents/{document_id}/conflict", get(get_conflict_info))
-        .route("/documents/{document_id}/conflict/resolve", post(resolve_conflict))
+        .route(
+            "/documents/{document_id}/conflict/resolve",
+            post(resolve_conflict),
+        )
 }
 
 #[cfg(test)]

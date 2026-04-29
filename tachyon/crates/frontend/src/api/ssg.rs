@@ -40,10 +40,8 @@ impl ApiClient {
 
                 let bag = web_sys::BlobPropertyBag::new();
                 bag.set_type("application/zip");
-                let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(
-                    &parts,
-                    &bag,
-                ).map_err(|e| ApiError::Api(format!("Failed to create blob: {:?}", e)))?;
+                let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &bag)
+                    .map_err(|e| ApiError::Api(format!("Failed to create blob: {:?}", e)))?;
 
                 let url = web_sys::Url::create_object_url_with_blob(&blob)
                     .map_err(|e| ApiError::Api(format!("Failed to create object URL: {:?}", e)))?;

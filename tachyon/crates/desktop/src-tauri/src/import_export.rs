@@ -3,8 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use tauri::AppHandle;
 use tachyon_core::TachyonError;
+use tauri::AppHandle;
 
 use crate::events::EventEmitter;
 
@@ -98,8 +98,8 @@ pub struct ExportDocumentDto {
     pub tags: Vec<String>,
     pub description: Option<String>,
     pub path: String,
-    pub created_at: Option<String>,  // ISO 8601
-    pub updated_at: Option<String>,  // ISO 8601
+    pub created_at: Option<String>, // ISO 8601
+    pub updated_at: Option<String>, // ISO 8601
 }
 
 /// A document to export as HTML.
@@ -110,8 +110,8 @@ pub struct HtmlExportDocumentDto {
     pub slug: String,
     pub description: Option<String>,
     pub tags: Vec<String>,
-    pub created_at: Option<String>,  // ISO 8601
-    pub updated_at: Option<String>,  // ISO 8601
+    pub created_at: Option<String>, // ISO 8601
+    pub updated_at: Option<String>, // ISO 8601
 }
 
 /// Import an Obsidian vault from a directory or ZIP file.
@@ -139,14 +139,16 @@ pub async fn import_obsidian_vault(
             // Import from ZIP
             let zip_bytes = std::fs::read(&path_owned)
                 .map_err(|e| format!("Failed to read ZIP file: {}", e))?;
-            let (documents, summary) = tachyon_import_export::ObsidianImporter::import_from_bytes(&zip_bytes)
-                .map_err(|e| e.to_string())?;
+            let (documents, summary) =
+                tachyon_import_export::ObsidianImporter::import_from_bytes(&zip_bytes)
+                    .map_err(|e| e.to_string())?;
             Ok::<_, String>((documents, summary))
         } else {
             // Import from directory
             let dir_path = Path::new(&path_owned);
-            let (documents, summary) = tachyon_import_export::ObsidianImporter::import_from_dir(dir_path)
-                .map_err(|e| e.to_string())?;
+            let (documents, summary) =
+                tachyon_import_export::ObsidianImporter::import_from_dir(dir_path)
+                    .map_err(|e| e.to_string())?;
             Ok::<_, String>((documents, summary))
         }
     })
@@ -180,7 +182,10 @@ pub async fn import_obsidian_vault(
     let _ = emitter.emit_notification(
         crate::events::NotificationLevel::Info,
         "Import Complete",
-        format!("Imported {} documents from Obsidian vault", import_result.imported),
+        format!(
+            "Imported {} documents from Obsidian vault",
+            import_result.imported
+        ),
     );
 
     Ok(import_result)
@@ -202,10 +207,11 @@ pub async fn import_markdown_zip(
 
     let path_owned = request.path.clone();
     let result = tokio::task::spawn_blocking(move || {
-        let zip_bytes = std::fs::read(&path_owned)
-            .map_err(|e| format!("Failed to read ZIP file: {}", e))?;
-        let (documents, summary) = tachyon_import_export::MarkdownZipImporter::import_documents_from_bytes(&zip_bytes)
-            .map_err(|e| e.to_string())?;
+        let zip_bytes =
+            std::fs::read(&path_owned).map_err(|e| format!("Failed to read ZIP file: {}", e))?;
+        let (documents, summary) =
+            tachyon_import_export::MarkdownZipImporter::import_documents_from_bytes(&zip_bytes)
+                .map_err(|e| e.to_string())?;
         Ok::<_, String>((documents, summary))
     })
     .await
@@ -238,7 +244,10 @@ pub async fn import_markdown_zip(
     let _ = emitter.emit_notification(
         crate::events::NotificationLevel::Info,
         "Import Complete",
-        format!("Imported {} documents from Markdown ZIP", import_result.imported),
+        format!(
+            "Imported {} documents from Markdown ZIP",
+            import_result.imported
+        ),
     );
 
     Ok(import_result)
@@ -267,15 +276,20 @@ pub async fn export_markdown_zip(
             tags: d.tags,
             description: d.description,
             path: d.path,
-            created_at: d.created_at.and_then(|s| tachyon_import_export::parse_date(&s)),
-            updated_at: d.updated_at.and_then(|s| tachyon_import_export::parse_date(&s)),
+            created_at: d
+                .created_at
+                .and_then(|s| tachyon_import_export::parse_date(&s)),
+            updated_at: d
+                .updated_at
+                .and_then(|s| tachyon_import_export::parse_date(&s)),
         })
         .collect();
 
     let output_path = request.output_path.clone();
     let result = tokio::task::spawn_blocking(move || {
-        let (bytes, summary) = tachyon_import_export::MarkdownZipExporter::export_with_metadata(&export_docs)
-            .map_err(|e| e.to_string())?;
+        let (bytes, summary) =
+            tachyon_import_export::MarkdownZipExporter::export_with_metadata(&export_docs)
+                .map_err(|e| e.to_string())?;
 
         // Ensure parent directory exists
         if let Some(parent) = Path::new(&output_path).parent() {
@@ -303,7 +317,10 @@ pub async fn export_markdown_zip(
     let _ = emitter.emit_notification(
         crate::events::NotificationLevel::Info,
         "Export Complete",
-        format!("Exported {} documents to {}", export_result.exported, request.output_path),
+        format!(
+            "Exported {} documents to {}",
+            export_result.exported, request.output_path
+        ),
     );
 
     Ok(export_result)
@@ -324,8 +341,12 @@ pub async fn export_html(
     }
 
     let config = tachyon_import_export::HtmlExportConfig {
-        site_title: request.site_title.unwrap_or_else(|| "Tachyon Export".to_string()),
-        site_description: request.site_description.unwrap_or_else(|| "Exported from Tachyon".to_string()),
+        site_title: request
+            .site_title
+            .unwrap_or_else(|| "Tachyon Export".to_string()),
+        site_description: request
+            .site_description
+            .unwrap_or_else(|| "Exported from Tachyon".to_string()),
         ..Default::default()
     };
 
@@ -338,15 +359,20 @@ pub async fn export_html(
             slug: d.slug,
             description: d.description,
             tags: d.tags,
-            created_at: d.created_at.and_then(|s| tachyon_import_export::parse_date(&s)),
-            updated_at: d.updated_at.and_then(|s| tachyon_import_export::parse_date(&s)),
+            created_at: d
+                .created_at
+                .and_then(|s| tachyon_import_export::parse_date(&s)),
+            updated_at: d
+                .updated_at
+                .and_then(|s| tachyon_import_export::parse_date(&s)),
         })
         .collect();
 
     let output_path = request.output_path.clone();
     let result = tokio::task::spawn_blocking(move || {
-        let (bytes, summary) = tachyon_import_export::HtmlExporter::export_to_zip(&export_docs, &config)
-            .map_err(|e| e.to_string())?;
+        let (bytes, summary) =
+            tachyon_import_export::HtmlExporter::export_to_zip(&export_docs, &config)
+                .map_err(|e| e.to_string())?;
 
         // Ensure parent directory exists
         if let Some(parent) = Path::new(&output_path).parent() {
@@ -374,7 +400,10 @@ pub async fn export_html(
     let _ = emitter.emit_notification(
         crate::events::NotificationLevel::Info,
         "Export Complete",
-        format!("Exported {} HTML documents to {}", export_result.exported, request.output_path),
+        format!(
+            "Exported {} HTML documents to {}",
+            export_result.exported, request.output_path
+        ),
     );
 
     Ok(export_result)

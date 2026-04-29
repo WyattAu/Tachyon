@@ -9,12 +9,19 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    pub async fn get_subscription(&self, org_id: &str) -> Result<crate::types::SubscriptionResponse, ApiError> {
+    pub async fn get_subscription(
+        &self,
+        org_id: &str,
+    ) -> Result<crate::types::SubscriptionResponse, ApiError> {
         let url = format!("{}/billing/subscriptions/{}", self.base_url, org_id);
         self.get(&url).await
     }
 
-    pub async fn create_subscription(&self, org_id: &str, plan: &str) -> Result<crate::types::SubscriptionResponse, ApiError> {
+    pub async fn create_subscription(
+        &self,
+        org_id: &str,
+        plan: &str,
+    ) -> Result<crate::types::SubscriptionResponse, ApiError> {
         let url = format!("{}/billing/subscriptions", self.base_url);
         let body = serde_json::json!({ "organization_id": org_id, "plan": plan });
         self.post(&url, &body).await
@@ -25,7 +32,10 @@ impl ApiClient {
         self.post_empty_json(&url).await
     }
 
-    pub async fn get_invoices(&self, org_id: &str) -> Result<crate::types::InvoicesResponse, ApiError> {
+    pub async fn get_invoices(
+        &self,
+        org_id: &str,
+    ) -> Result<crate::types::InvoicesResponse, ApiError> {
         let url = format!("{}/billing/invoices/{}", self.base_url, org_id);
         self.get(&url).await
     }
@@ -36,20 +46,30 @@ impl ApiClient {
     }
 
     #[allow(dead_code)]
-    pub async fn create_mandate(&self, org_id: &str, return_url: &str) -> Result<crate::types::MandateResponse, ApiError> {
+    pub async fn create_mandate(
+        &self,
+        org_id: &str,
+        return_url: &str,
+    ) -> Result<crate::types::MandateResponse, ApiError> {
         let url = format!("{}/billing/mandates", self.base_url);
         let body = serde_json::json!({ "organization_id": org_id, "return_url": return_url });
         self.post(&url, &body).await
     }
 
     #[allow(dead_code)]
-    pub async fn get_mandate_status(&self, mandate_id: &str) -> Result<crate::types::MandateStatusResponse, ApiError> {
+    pub async fn get_mandate_status(
+        &self,
+        mandate_id: &str,
+    ) -> Result<crate::types::MandateStatusResponse, ApiError> {
         let url = format!("{}/billing/mandates/{}", self.base_url, mandate_id);
         self.get(&url).await
     }
 
     #[allow(dead_code)]
-    pub async fn get_payment_status(&self, payment_id: &str) -> Result<crate::types::PaymentStatusResponse, ApiError> {
+    pub async fn get_payment_status(
+        &self,
+        payment_id: &str,
+    ) -> Result<crate::types::PaymentStatusResponse, ApiError> {
         let url = format!("{}/billing/payments/{}", self.base_url, payment_id);
         self.get(&url).await
     }

@@ -8,8 +8,8 @@ use tachyon_core::{generate_session_id, generate_user_id};
 #[allow(unused_imports)]
 use tachyon_rbac::{
     role::Role,
-    Enforcer, Permission, PermissionChecker, Policy, PolicyEngine, PolicyRule, PolicyType,
     types::{Action, AuthContext, Effect, Resource, Subject},
+    Enforcer, Permission, PermissionChecker, Policy, PolicyEngine, PolicyRule, PolicyType,
 };
 
 #[test]
@@ -82,7 +82,7 @@ fn test_policy_engine_random_policies_no_panic() {
                 "read",
                 Effect::Allow,
             )
-            .with_priority(i as i32),
+            .with_priority(i),
         );
 
         engine.add_policy(policy);
@@ -129,8 +129,14 @@ fn test_resource_random_values_no_panic() {
 fn test_action_random_values_no_panic() {
     let long_500 = "a".repeat(500);
     let action_names = vec![
-        "", "read", "write", "delete", "admin", long_500.as_str(),
-        "action with spaces", "action\nwith\nnewlines",
+        "",
+        "read",
+        "write",
+        "delete",
+        "admin",
+        long_500.as_str(),
+        "action with spaces",
+        "action\nwith\nnewlines",
     ];
 
     for name in &action_names {
@@ -141,7 +147,15 @@ fn test_action_random_values_no_panic() {
 
 #[test]
 fn test_role_all_variants_serde() {
-    let roles = vec![Role::Guest, Role::User, Role::PowerUser, Role::Editor, Role::Moderator, Role::Admin, Role::Owner];
+    let roles = vec![
+        Role::Guest,
+        Role::User,
+        Role::PowerUser,
+        Role::Editor,
+        Role::Moderator,
+        Role::Admin,
+        Role::Owner,
+    ];
 
     for role in &roles {
         let json = serde_json::to_string(role).unwrap();

@@ -618,7 +618,7 @@ mod tests {
     fn test_auth_context() {
         let user_id = UserId::new();
         let session_id = SessionId::new();
-        let context = AuthContext::new(user_id.clone(), session_id.clone())
+        let context = AuthContext::new(user_id, session_id)
             .with_role("admin")
             .with_attribute("ip", "127.0.0.1");
 

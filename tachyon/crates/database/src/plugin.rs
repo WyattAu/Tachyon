@@ -72,7 +72,10 @@ impl Plugin {
     /// Serialize extension points to JSON string for storage
     pub fn serialize_extension_points(points: &[String]) -> DatabaseResult<String> {
         serde_json::to_string(points).map_err(|e| {
-            DatabaseError::SerializationError(format!("Failed to serialize extension_points: {}", e))
+            DatabaseError::SerializationError(format!(
+                "Failed to serialize extension_points: {}",
+                e
+            ))
         })
     }
 
@@ -112,8 +115,7 @@ pub struct CreatePluginRequest {
 }
 
 /// Update an existing plugin record
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UpdatePluginRequest {
     pub description: Option<String>,
     pub version: Option<String>,
@@ -145,13 +147,15 @@ impl PluginRepository {
     pub async fn create(&self, req: CreatePluginRequest) -> DatabaseResult<Plugin> {
         let id = uuid::Uuid::new_v4().to_string();
         let now = Utc::now();
-        let extension_points = Plugin::serialize_extension_points(
-            &req.extension_points.unwrap_or_default(),
-        )?;
-        let manifest = req.manifest
+        let extension_points =
+            Plugin::serialize_extension_points(&req.extension_points.unwrap_or_default())?;
+        let manifest = req
+            .manifest
             .map(|m| serde_json::to_string(&m))
             .transpose()
-            .map_err(|e| DatabaseError::SerializationError(format!("Failed to serialize manifest: {}", e)))?;
+            .map_err(|e| {
+                DatabaseError::SerializationError(format!("Failed to serialize manifest: {}", e))
+            })?;
         let runtime_type = req.runtime_type.unwrap_or_else(|| "wasm".to_string());
         let enabled = req.enabled.unwrap_or(false);
 
@@ -167,7 +171,8 @@ impl PluginRepository {
                 extension_points::text as extension_points, manifest::text as manifest,
                 runtime_type, entry_point, enabled, installed_at, updated_at,
                 installed_by::text as installed_by
-            "#.to_string();
+            "#
+        .to_string();
 
         let mut conn = self.pool.acquire().await?;
         let plugin = sqlx::query_as::<_, Plugin>(&sql)
@@ -191,7 +196,13 @@ impl PluginRepository {
             .map_err(|e| {
                 let msg = e.to_string();
                 if msg.contains("duplicate key") || msg.contains("UNIQUE constraint") {
-                    DatabaseError::duplicate("plugin", format!("Plugin '{}' version '{}' already installed", req.name, req.version))
+                    DatabaseError::duplicate(
+                        "plugin",
+                        format!(
+                            "Plugin '{}' version '{}' already installed",
+                            req.name, req.version
+                        ),
+                    )
                 } else {
                     DatabaseError::query_error(&msg)
                 }
@@ -341,10 +352,14 @@ impl PluginRepository {
     /// Toggle plugin enabled state
     #[instrument(skip(self))]
     pub async fn set_enabled(&self, id: &str, enabled: bool) -> DatabaseResult<Plugin> {
-        self.update(id, UpdatePluginRequest {
-            enabled: Some(enabled),
-            ..Default::default()
-        }).await
+        self.update(
+            id,
+            UpdatePluginRequest {
+                enabled: Some(enabled),
+                ..Default::default()
+            },
+        )
+        .await
     }
 
     /// Delete a plugin
@@ -352,10 +367,7 @@ impl PluginRepository {
     pub async fn delete(&self, id: &str) -> DatabaseResult<()> {
         let sql = "DELETE FROM plugins WHERE id = $1::uuid";
         let mut conn = self.pool.acquire().await?;
-        let result = sqlx::query(sql)
-            .bind(id)
-            .execute(&mut *conn)
-            .await?;
+        let result = sqlx::query(sql).bind(id).execute(&mut *conn).await?;
 
         if result.rows_affected() == 0 {
             return Err(DatabaseError::not_found("plugin", id));
@@ -504,4 +516,3 @@ mod tests {
         assert!(req.enabled.is_none());
     }
 }
-

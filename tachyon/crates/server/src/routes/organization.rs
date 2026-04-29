@@ -1,6 +1,7 @@
 // Organization Routes
 // REST API endpoints for organization (multi-tenant) management
 
+use crate::middleware::AuthContext;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -8,10 +9,9 @@ use axum::{
     Extension,
 };
 use serde::{Deserialize, Serialize};
-use crate::middleware::AuthContext;
 use tachyon_database::{
-    AddOrganizationMemberRequest, CreateOrganizationRequest, DatabasePool,
-    OrganizationRepository, UpdateOrganizationMemberRequest, UpdateOrganizationRequest,
+    AddOrganizationMemberRequest, CreateOrganizationRequest, DatabasePool, OrganizationRepository,
+    UpdateOrganizationMemberRequest, UpdateOrganizationRequest,
 };
 use tracing::info;
 
@@ -116,7 +116,12 @@ pub async fn list_organizations(
     let orgs = repo
         .list_for_user(user_id, include_personal, query.limit, query.offset)
         .await
-        .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to list organizations: {}", e)))?;
+        .map_err(|e| {
+            server_error(
+                "QUERY_ERROR",
+                &format!("Failed to list organizations: {}", e),
+            )
+        })?;
 
     let member_counts = repo
         .count_members_batch(&orgs.iter().map(|o| o.id.clone()).collect::<Vec<_>>())
@@ -175,7 +180,10 @@ pub async fn create_organization(
             if e.to_string().contains("duplicate") {
                 bad_request("DUPLICATE", &format!("Organization creation failed: {}", e))
             } else {
-                server_error("CREATE_ERROR", &format!("Failed to create organization: {}", e))
+                server_error(
+                    "CREATE_ERROR",
+                    &format!("Failed to create organization: {}", e),
+                )
             }
         })?;
 
@@ -218,15 +226,16 @@ pub async fn delete_organization(
     State(state): State<OrganizationState>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     let repo = OrganizationRepository::new(state.pool.clone());
-    repo.delete(&id)
-        .await
-        .map_err(|e| {
-            if e.to_string().contains("personal") {
-                bad_request("CANNOT_DELETE_PERSONAL", "Cannot delete the personal organization")
-            } else {
-                not_found(&format!("Organization not found: {}", e))
-            }
-        })?;
+    repo.delete(&id).await.map_err(|e| {
+        if e.to_string().contains("personal") {
+            bad_request(
+                "CANNOT_DELETE_PERSONAL",
+                "Cannot delete the personal organization",
+            )
+        } else {
+            not_found(&format!("Organization not found: {}", e))
+        }
+    })?;
 
     info!("Organization deleted: {}", id);
     Ok(StatusCode::NO_CONTENT)
@@ -246,7 +255,12 @@ pub async fn list_members(
         .await
         .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to list members: {}", e)))?;
 
-    Ok(Json(members.into_iter().map(OrganizationMemberResponse::from).collect()))
+    Ok(Json(
+        members
+            .into_iter()
+            .map(OrganizationMemberResponse::from)
+            .collect(),
+    ))
 }
 
 /// Add a member to an organization
@@ -267,13 +281,19 @@ pub async fn add_member(
         .await
         .map_err(|e| {
             if e.to_string().contains("duplicate") {
-                bad_request("ALREADY_MEMBER", "User is already a member of this organization")
+                bad_request(
+                    "ALREADY_MEMBER",
+                    "User is already a member of this organization",
+                )
             } else {
                 server_error("ADD_MEMBER_ERROR", &format!("Failed to add member: {}", e))
             }
         })?;
 
-    info!("Member added to organization {}: {}", org_id, member.user_id);
+    info!(
+        "Member added to organization {}: {}",
+        org_id, member.user_id
+    );
     Ok(Json(OrganizationMemberResponse::from(member)))
 }
 
@@ -323,10 +343,24 @@ pub fn create_organization_router() -> axum::Router<OrganizationState> {
     use axum::routing::{get, put};
 
     axum::Router::new()
-        .route("/organizations", get(list_organizations).post(create_organization))
-        .route("/organizations/{id}", get(get_organization).put(update_organization).delete(delete_organization))
-        .route("/organizations/{org_id}/members", get(list_members).post(add_member))
-        .route("/organizations/{org_id}/members/{user_id}", put(update_member).delete(remove_member))
+        .route(
+            "/organizations",
+            get(list_organizations).post(create_organization),
+        )
+        .route(
+            "/organizations/{id}",
+            get(get_organization)
+                .put(update_organization)
+                .delete(delete_organization),
+        )
+        .route(
+            "/organizations/{org_id}/members",
+            get(list_members).post(add_member),
+        )
+        .route(
+            "/organizations/{org_id}/members/{user_id}",
+            put(update_member).delete(remove_member),
+        )
 }
 
 // ============================================================================

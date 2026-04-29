@@ -1,12 +1,14 @@
 // App Shell - Main layout with sidebar navigation
 
 use crate::api::ApiClient;
+use crate::components::{
+    should_show_onboarding, ClientSearch, CommandPalette, OnboardingWizard, ThemeToggle,
+};
 use crate::types::Notification;
-use crate::components::{should_show_onboarding, CommandPalette, OnboardingWizard, ClientSearch, ThemeToggle};
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
-use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::spawn_local;
 
 fn format_notification_time(timestamp: &str) -> String {
     let dt = chrono::DateTime::parse_from_rfc3339(timestamp);
@@ -77,7 +79,8 @@ where
             let on_finish = Callback::new(move |()| set_show_onboarding.set(false));
             view! {
                 <OnboardingWizard on_complete={on_finish} />
-            }.into_any()
+            }
+            .into_any()
         } else {
             ().into_any()
         }
@@ -193,14 +196,17 @@ where
         let set_um = set_show_user_menu;
         let set_notif = set_show_notifications;
         let set_mm = set_mobile_menu_open;
-        let closure = wasm_bindgen::closure::Closure::<dyn Fn(wasm_bindgen::JsValue)>::new(move |_event: wasm_bindgen::JsValue| {
-            set_um.set(false);
-            set_notif.set(false);
-            set_mm.set(false);
-        });
+        let closure = wasm_bindgen::closure::Closure::<dyn Fn(wasm_bindgen::JsValue)>::new(
+            move |_event: wasm_bindgen::JsValue| {
+                set_um.set(false);
+                set_notif.set(false);
+                set_mm.set(false);
+            },
+        );
         if let Some(window) = web_sys::window() {
             if let Some(document) = window.document() {
-                let _ = document.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref());
+                let _ = document
+                    .add_event_listener_with_callback("click", closure.as_ref().unchecked_ref());
                 closure.forget();
             }
         }

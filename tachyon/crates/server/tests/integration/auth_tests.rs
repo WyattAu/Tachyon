@@ -1,7 +1,7 @@
 use axum::body::Body;
-use axum::http::{Request, StatusCode, header};
-use tower::ServiceExt;
+use axum::http::{header, Request, StatusCode};
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -21,12 +21,15 @@ async fn test_register_success() {
                 .method("POST")
                 .uri("/api/v1/auth/register")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "email": format!("integtest_{}@example.com", unique),
-                    "password": "SecurePass123!",
-                    "username": format!("integuser_{}", unique),
-                    "display_name": format!("Test User {}", unique)
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "email": format!("integtest_{}@example.com", unique),
+                        "password": "SecurePass123!",
+                        "username": format!("integuser_{}", unique),
+                        "display_name": format!("Test User {}", unique)
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -41,7 +44,11 @@ async fn test_register_success() {
     assert_eq!(status, StatusCode::OK, "Body: {}", body_str);
 
     let body: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap_or_default();
-    assert!(body.get("user").is_some(), "Response missing user: {}", body_str);
+    assert!(
+        body.get("user").is_some(),
+        "Response missing user: {}",
+        body_str
+    );
 }
 
 #[tokio::test]
@@ -109,12 +116,15 @@ async fn test_login_success() {
                 .method("POST")
                 .uri("/api/v1/auth/register")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "email": format!("login_{}@example.com", unique),
-                    "password": "SecurePass123!",
-                    "username": format!("loginuser_{}", unique),
-                    "display_name": format!("Login User {}", unique)
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "email": format!("login_{}@example.com", unique),
+                        "password": "SecurePass123!",
+                        "username": format!("loginuser_{}", unique),
+                        "display_name": format!("Login User {}", unique)
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -127,10 +137,13 @@ async fn test_login_success() {
                 .method("POST")
                 .uri("/api/v1/auth/login")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "username": format!("loginuser_{}", unique),
-                    "password": "SecurePass123!"
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "username": format!("loginuser_{}", unique),
+                        "password": "SecurePass123!"
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -159,12 +172,15 @@ async fn test_login_invalid_password() {
                 .method("POST")
                 .uri("/api/v1/auth/register")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "email": format!("badpass_{}@example.com", unique),
-                    "password": "SecurePass123!",
-                    "username": format!("badpassuser_{}", unique),
-                    "display_name": format!("Bad Pass User {}", unique)
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "email": format!("badpass_{}@example.com", unique),
+                        "password": "SecurePass123!",
+                        "username": format!("badpassuser_{}", unique),
+                        "display_name": format!("Bad Pass User {}", unique)
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -177,10 +193,13 @@ async fn test_login_invalid_password() {
                 .method("POST")
                 .uri("/api/v1/auth/login")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "username": format!("badpassuser_{}", unique),
-                    "password": "WrongPassword!"
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "username": format!("badpassuser_{}", unique),
+                        "password": "WrongPassword!"
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -204,13 +223,7 @@ async fn test_get_me_with_valid_token() {
     let username = format!("meuser_{}", unique);
     let email = format!("me_{}@example.com", unique);
 
-    let auth = common::register_and_login(
-        &app,
-        &username,
-        &email,
-        "SecurePass123!",
-    )
-    .await;
+    let auth = common::register_and_login(&app, &username, &email, "SecurePass123!").await;
 
     let auth = match auth {
         Some(a) => a,
@@ -233,7 +246,10 @@ async fn test_get_me_with_valid_token() {
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::OK || response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::INTERNAL_SERVER_ERROR || response.status() == StatusCode::NOT_FOUND,
+        response.status() == StatusCode::OK
+            || response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR
+            || response.status() == StatusCode::NOT_FOUND,
         "Expected OK, UNAUTHORIZED, INTERNAL_SERVER_ERROR, or NOT_FOUND, got {}",
         response.status()
     );
@@ -275,7 +291,9 @@ async fn test_jwt_validation_expired_token() {
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+        response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::NOT_FOUND,
         "Expected UNAUTHORIZED, OK, or NOT_FOUND (no auth middleware in test router), got {}",
         response.status()
     );
@@ -298,12 +316,15 @@ async fn test_logout() {
                 .method("POST")
                 .uri("/api/v1/auth/register")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "email": format!("logout_{}@example.com", unique),
-                    "password": "SecurePass123!",
-                    "username": format!("logoutuser_{}", unique),
-                    "display_name": format!("Logout User {}", unique)
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "email": format!("logout_{}@example.com", unique),
+                        "password": "SecurePass123!",
+                        "username": format!("logoutuser_{}", unique),
+                        "display_name": format!("Logout User {}", unique)
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await

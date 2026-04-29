@@ -62,8 +62,6 @@ impl UserPreferencesRepository {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_default_preferences() {
         let prefs = serde_json::json!({});

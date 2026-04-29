@@ -1,14 +1,14 @@
 // Auto-sync commits implementation
 // Handles automatic Git commits and synchronization
 
+use chrono::{DateTime, Utc};
+use git2::{Repository, Signature, Time};
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use tokio::sync::RwLock;
 use tachyon_core::{ErrorResult, TachyonError};
-use git2::{Repository, Signature, Time};
-use chrono::{DateTime, Utc};
-use std::collections::VecDeque;
+use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
 /// Commit queue entry
@@ -115,7 +115,8 @@ impl AutoSyncManager {
     /// # Returns
     /// Error if initialization fails
     pub fn initialize_repository(&self) -> ErrorResult<()> {
-        let path = self.repository_path
+        let path = self
+            .repository_path
             .as_ref()
             .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?;
 
@@ -125,8 +126,12 @@ impl AutoSyncManager {
         }
 
         // Initialize new repository
-        Repository::init(path)
-            .map_err(|e| TachyonError::git("INIT_ERROR", format!("Failed to initialize repository: {}", e)))?;
+        Repository::init(path).map_err(|e| {
+            TachyonError::git(
+                "INIT_ERROR",
+                format!("Failed to initialize repository: {}", e),
+            )
+        })?;
 
         Ok(())
     }
@@ -169,7 +174,8 @@ impl AutoSyncManager {
             .and_then(|n| n.to_str())
             .unwrap_or("file");
 
-        self.config.commit_message_template
+        self.config
+            .commit_message_template
             .replace("{filename}", filename)
             .replace("{path}", path)
     }
@@ -179,7 +185,8 @@ impl AutoSyncManager {
     /// # Returns
     /// Sync result with commit information
     pub async fn commit_pending(&self) -> ErrorResult<SyncResult> {
-        let path = self.repository_path
+        let path = self
+            .repository_path
             .as_ref()
             .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?
             .clone();
@@ -203,8 +210,9 @@ impl AutoSyncManager {
         // All git2 operations must run on a blocking thread because
         // git2::Repository is not Send/Sync.
         let result = tokio::task::spawn_blocking(move || {
-            let repo = Repository::open(&path)
-                .map_err(|e| TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e)))?;
+            let repo = Repository::open(&path).map_err(|e| {
+                TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e))
+            })?;
 
             let mut commits_made = 0u32;
             let mut files_synced = 0u32;
@@ -253,36 +261,44 @@ impl AutoSyncManager {
         }
 
         // Get repository relative path
-        let repo_path = repo.path().parent()
-            .ok_or_else(|| TachyonError::internal("REPO_PATH_ERROR", "Failed to get repository path"))?;
-        
-        let relative_path = path.strip_prefix(repo_path)
+        let repo_path = repo.path().parent().ok_or_else(|| {
+            TachyonError::internal("REPO_PATH_ERROR", "Failed to get repository path")
+        })?;
+
+        let relative_path = path
+            .strip_prefix(repo_path)
             .map_err(|_| TachyonError::validation("PATH_ERROR", "File is not in repository"))?;
 
         // Get index
-        let mut index = repo.index()
+        let mut index = repo
+            .index()
             .map_err(|e| TachyonError::git("INDEX_ERROR", format!("Failed to get index: {}", e)))?;
 
         // Add file to index
-        index.add_path(relative_path)
-            .map_err(|e| TachyonError::git("ADD_ERROR", format!("Failed to add file to index: {}", e)))?;
+        index.add_path(relative_path).map_err(|e| {
+            TachyonError::git("ADD_ERROR", format!("Failed to add file to index: {}", e))
+        })?;
 
         // Write index
-        index.write()
-            .map_err(|e| TachyonError::git("WRITE_INDEX_ERROR", format!("Failed to write index: {}", e)))?;
+        index.write().map_err(|e| {
+            TachyonError::git("WRITE_INDEX_ERROR", format!("Failed to write index: {}", e))
+        })?;
 
         // Get tree ID
-        let tree_id = index.write_tree()
+        let tree_id = index
+            .write_tree()
             .map_err(|e| TachyonError::git("TREE_ERROR", format!("Failed to write tree: {}", e)))?;
 
-        let tree = repo.find_tree(tree_id)
-            .map_err(|e| TachyonError::git("FIND_TREE_ERROR", format!("Failed to find tree: {}", e)))?;
+        let tree = repo.find_tree(tree_id).map_err(|e| {
+            TachyonError::git("FIND_TREE_ERROR", format!("Failed to find tree: {}", e))
+        })?;
 
         // Get HEAD commit if exists
         let parent_commit = match repo.head() {
             Ok(head) => {
-                let commit = head.peel_to_commit()
-                    .map_err(|e| TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e)))?;
+                let commit = head.peel_to_commit().map_err(|e| {
+                    TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e))
+                })?;
                 Some(commit)
             }
             Err(_) => None,
@@ -291,10 +307,15 @@ impl AutoSyncManager {
         // Create signature
         let time = Time::new(
             entry.timestamp.timestamp(),
-            entry.timestamp.timestamp_subsec_nanos() as i32,  // git2 expects i32
+            entry.timestamp.timestamp_subsec_nanos() as i32, // git2 expects i32
         );
         let signature = Signature::new("Tachyon Auto-Sync", "auto-sync@tachyon.io", &time)
-            .map_err(|e| TachyonError::git("SIGNATURE_ERROR", format!("Failed to create signature: {}", e)))?;
+            .map_err(|e| {
+                TachyonError::git(
+                    "SIGNATURE_ERROR",
+                    format!("Failed to create signature: {}", e),
+                )
+            })?;
 
         // Create commit
         let mut parents = Vec::new();
@@ -319,8 +340,13 @@ impl AutoSyncManager {
     ///
     /// # Returns
     /// Sync result with push information
-    pub async fn push_to_remote(&self, remote_name: &str, branch_name: &str) -> ErrorResult<SyncResult> {
-        let path = self.repository_path
+    pub async fn push_to_remote(
+        &self,
+        remote_name: &str,
+        branch_name: &str,
+    ) -> ErrorResult<SyncResult> {
+        let path = self
+            .repository_path
             .as_ref()
             .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?
             .clone();
@@ -329,15 +355,24 @@ impl AutoSyncManager {
 
         // All git2 operations run on a blocking thread (Repository is not Send)
         tokio::task::spawn_blocking(move || {
-            let repo = Repository::open(&path)
-                .map_err(|e| TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e)))?;
+            let repo = Repository::open(&path).map_err(|e| {
+                TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e))
+            })?;
 
             // Find remote
-            let mut remote = repo.find_remote(&remote_name)
-                .map_err(|e| TachyonError::git("REMOTE_ERROR", format!("Failed to find remote: {}", e)))?;
+            let mut remote = repo.find_remote(&remote_name).map_err(|e| {
+                TachyonError::git("REMOTE_ERROR", format!("Failed to find remote: {}", e))
+            })?;
 
             // Push to remote
-            remote.push(&[format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name)], None)
+            remote
+                .push(
+                    &[format!(
+                        "refs/heads/{}:refs/heads/{}",
+                        branch_name, branch_name
+                    )],
+                    None,
+                )
                 .map_err(|e| TachyonError::git("PUSH_ERROR", format!("Failed to push: {}", e)))?;
 
             Ok::<_, TachyonError>(SyncResult {
@@ -355,8 +390,13 @@ impl AutoSyncManager {
     ///
     /// # Returns
     /// Sync result with pull information
-    pub async fn pull_from_remote(&self, remote_name: &str, branch_name: &str) -> ErrorResult<SyncResult> {
-        let path = self.repository_path
+    pub async fn pull_from_remote(
+        &self,
+        remote_name: &str,
+        branch_name: &str,
+    ) -> ErrorResult<SyncResult> {
+        let path = self
+            .repository_path
             .as_ref()
             .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?
             .clone();
@@ -365,33 +405,49 @@ impl AutoSyncManager {
 
         // All git2 operations run on a blocking thread (Repository is not Send)
         tokio::task::spawn_blocking(move || {
-            let repo = Repository::open(&path)
-                .map_err(|e| TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e)))?;
+            let repo = Repository::open(&path).map_err(|e| {
+                TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e))
+            })?;
 
             // Find remote
-            let mut remote = repo.find_remote(&remote_name)
-                .map_err(|e| TachyonError::git("REMOTE_ERROR", format!("Failed to find remote: {}", e)))?;
+            let mut remote = repo.find_remote(&remote_name).map_err(|e| {
+                TachyonError::git("REMOTE_ERROR", format!("Failed to find remote: {}", e))
+            })?;
 
             // Fetch from remote
-            remote.fetch(&[&branch_name], None, None)
+            remote
+                .fetch(&[&branch_name], None, None)
                 .map_err(|e| TachyonError::git("FETCH_ERROR", format!("Failed to fetch: {}", e)))?;
 
             // Get fetch head
-            let fetch_head = repo.find_reference(&format!("refs/remotes/{}/{}", remote_name, branch_name))
-                .map_err(|e| TachyonError::git("FETCH_HEAD_ERROR", format!("Failed to find FETCH_HEAD: {}", e)))?;
+            let fetch_head = repo
+                .find_reference(&format!("refs/remotes/{}/{}", remote_name, branch_name))
+                .map_err(|e| {
+                    TachyonError::git(
+                        "FETCH_HEAD_ERROR",
+                        format!("Failed to find FETCH_HEAD: {}", e),
+                    )
+                })?;
 
-            let fetch_commit = fetch_head.peel_to_commit()
-                .map_err(|e| TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e)))?;
+            let fetch_commit = fetch_head.peel_to_commit().map_err(|e| {
+                TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e))
+            })?;
 
             // Merge into HEAD
-            let head = repo.head()
-                .map_err(|e| TachyonError::git("HEAD_ERROR", format!("Failed to get HEAD: {}", e)))?;
+            let head = repo.head().map_err(|e| {
+                TachyonError::git("HEAD_ERROR", format!("Failed to get HEAD: {}", e))
+            })?;
 
-            let _head_commit = head.peel_to_commit()
-                .map_err(|e| TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e)))?;
+            let _head_commit = head.peel_to_commit().map_err(|e| {
+                TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e))
+            })?;
 
-            let annotated_fetch = repo.find_annotated_commit(fetch_commit.id())
-                .map_err(|e| TachyonError::git("ANNOTATED_ERROR", format!("Failed to find annotated commit: {}", e)))?;
+            let annotated_fetch = repo.find_annotated_commit(fetch_commit.id()).map_err(|e| {
+                TachyonError::git(
+                    "ANNOTATED_ERROR",
+                    format!("Failed to find annotated commit: {}", e),
+                )
+            })?;
 
             // Perform merge with the fetched commit
             let mut merge_opts = git2::MergeOptions::new();
@@ -450,7 +506,8 @@ impl AutoSyncManager {
         &self,
         interval_secs: Option<u64>,
     ) -> ErrorResult<tokio::task::AbortHandle> {
-        let repo_path = self.repository_path
+        let repo_path = self
+            .repository_path
             .clone()
             .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?;
 
@@ -474,7 +531,8 @@ impl AutoSyncManager {
                             continue;
                         }
                         // Only watch markdown files
-                        let ext = path.extension()
+                        let ext = path
+                            .extension()
                             .and_then(|e| e.to_str())
                             .map(|e| e.to_lowercase());
                         match ext.as_deref() {
@@ -483,10 +541,15 @@ impl AutoSyncManager {
                         }
 
                         let path_str = path.to_string_lossy().to_string();
-                        let mtime = entry.metadata()
+                        let mtime = entry
+                            .metadata()
                             .ok()
                             .and_then(|m| m.modified().ok())
-                            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
+                            .map(|t| {
+                                t.duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_secs()
+                            })
                             .unwrap_or(0);
 
                         match last_snapshots.get(&path_str) {
@@ -532,8 +595,9 @@ impl AutoSyncManager {
 
         // Store the abort handle
         {
-            let mut sync_handle = self.sync_handle.lock()
-                .map_err(|e| TachyonError::internal("LOCK_ERROR", format!("Failed to acquire lock: {}", e)))?;
+            let mut sync_handle = self.sync_handle.lock().map_err(|e| {
+                TachyonError::internal("LOCK_ERROR", format!("Failed to acquire lock: {}", e))
+            })?;
             // We don't store JoinHandle in sync_handle anymore since it's not Clone.
             // Instead, we track whether a watcher is active via the is_watching flag.
             *sync_handle = Some(handle);
@@ -544,8 +608,9 @@ impl AutoSyncManager {
 
     /// Stop the file watcher if running.
     pub fn stop_file_watcher(&self) -> ErrorResult<()> {
-        let mut sync_handle = self.sync_handle.lock()
-            .map_err(|e| TachyonError::internal("LOCK_ERROR", format!("Failed to acquire lock: {}", e)))?;
+        let mut sync_handle = self.sync_handle.lock().map_err(|e| {
+            TachyonError::internal("LOCK_ERROR", format!("Failed to acquire lock: {}", e))
+        })?;
 
         if let Some(handle) = sync_handle.take() {
             handle.abort();
@@ -555,7 +620,8 @@ impl AutoSyncManager {
 
     /// Check if the file watcher is running.
     pub fn is_watching(&self) -> bool {
-        self.sync_handle.lock()
+        self.sync_handle
+            .lock()
             .map(|h| h.is_some())
             .unwrap_or(false)
     }
@@ -624,7 +690,7 @@ mod tests {
 
         let manager = AutoSyncManager::new(config);
         let message = manager.generate_commit_message("/path/to/file.txt");
-        
+
         assert!(message.contains("file.txt"));
         assert!(message.contains("Update"));
     }

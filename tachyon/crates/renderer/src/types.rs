@@ -69,7 +69,6 @@ pub enum OutputFormat {
     Markdown,
 }
 
-
 /// Render result containing the rendered content and metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderResult {
@@ -460,7 +459,6 @@ pub enum SyntaxTheme {
     /// Custom theme (user-defined)
     Custom,
 }
-
 
 /// Supported programming languages for syntax highlighting
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]

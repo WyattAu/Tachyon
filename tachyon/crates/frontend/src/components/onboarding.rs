@@ -9,10 +9,7 @@ use leptos::prelude::*;
 ///
 /// Reserved for future use: first-visit onboarding flow.
 #[component]
-pub fn OnboardingWizard(
-    #[prop(optional)]
-    on_complete: Option<Callback<()>>,
-) -> impl IntoView {
+pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> impl IntoView {
     let (step, set_step) = signal(0u32);
     let (display_name, set_display_name) = signal(String::new());
     let (workspace_name, set_workspace_name) = signal("My Workspace".to_string());

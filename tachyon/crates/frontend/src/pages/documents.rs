@@ -1,16 +1,22 @@
 #![allow(clippy::redundant_locals)]
 // Documents Pages
 
-use leptos::prelude::*;
-use leptos_router::hooks::{use_params, use_navigate};
-use leptos_router::params::Params;
 use crate::api::ApiClient;
-use crate::types::{Document, DocumentListResponse, DocumentTemplate, BacklinksResponse};
-use crate::storage::{BrowserStore, StoredDocument, LocalDocument, SyncStatus, SyncState, stored_to_document};
+use crate::components::{
+    Activity, ActivityFeed, BreadcrumbItem, Breadcrumbs, ConflictResolver, EditorSearch,
+    EditorToolbar, EmptyDocuments, MarkdownPreview, NativeEditor, ReviewPanel, TableOfContents,
+    TemplateSelector, VersionHistory,
+};
 use crate::storage::sync::SyncEngine;
-use crate::components::{NativeEditor, EditorToolbar, EditorSearch, MarkdownPreview, ActivityFeed, Activity, VersionHistory, TemplateSelector, ReviewPanel, ConflictResolver, TableOfContents, BreadcrumbItem, Breadcrumbs, EmptyDocuments};
-use wasm_bindgen::JsCast;
+use crate::storage::{
+    stored_to_document, BrowserStore, LocalDocument, StoredDocument, SyncState, SyncStatus,
+};
+use crate::types::{BacklinksResponse, Document, DocumentListResponse, DocumentTemplate};
+use leptos::prelude::*;
+use leptos_router::hooks::{use_navigate, use_params};
+use leptos_router::params::Params;
 use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,30 +77,50 @@ pub fn DocumentsPage() -> impl IntoView {
                     let local = s.get_all();
                     let total = local.len();
                     let docs: Vec<Document> = local.iter().map(stored_to_document).collect();
-                    DocumentListResponse { results: docs, total, page: 1, page_size: 20 }
+                    DocumentListResponse {
+                        results: docs,
+                        total,
+                        page: 1,
+                        page_size: 20,
+                    }
                 }
             }
         }
     });
 
     let total_pages = move || {
-        documents_resource.get().map(|d| {
-            if d.page_size > 0 { (d.total as f64 / d.page_size as f64).ceil() as usize } else { 1 }
-        }).unwrap_or(1)
+        documents_resource
+            .get()
+            .map(|d| {
+                if d.page_size > 0 {
+                    (d.total as f64 / d.page_size as f64).ceil() as usize
+                } else {
+                    1
+                }
+            })
+            .unwrap_or(1)
     };
 
     let filtered_docs = move || {
         let response = documents_resource.get().unwrap_or(DocumentListResponse {
-            results: vec![], total: 0, page: 1, page_size: 20,
+            results: vec![],
+            total: 0,
+            page: 1,
+            page_size: 20,
         });
         let search = search_text.get().to_lowercase();
         let status = status_filter.get();
-        let filtered: Vec<Document> = response.results.into_iter().filter(|doc| {
-            let matches_search = search.is_empty() || doc.title.to_lowercase().contains(&search)
-                || doc.tags.iter().any(|t| t.to_lowercase().contains(&search));
-            let matches_status = status.is_empty() || doc.status == status;
-            matches_search && matches_status
-        }).collect();
+        let filtered: Vec<Document> = response
+            .results
+            .into_iter()
+            .filter(|doc| {
+                let matches_search = search.is_empty()
+                    || doc.title.to_lowercase().contains(&search)
+                    || doc.tags.iter().any(|t| t.to_lowercase().contains(&search));
+                let matches_status = status.is_empty() || doc.status == status;
+                matches_search && matches_status
+            })
+            .collect();
         filtered
     };
 
@@ -119,7 +145,8 @@ pub fn DocumentsPage() -> impl IntoView {
                         let stored = StoredDocument {
                             document: LocalDocument::from(doc.clone()),
                             sync_status: SyncStatus::Synced,
-                            local_version: 1, server_version: Some(1),
+                            local_version: 1,
+                            server_version: Some(1),
                             last_modified: chrono::Utc::now().to_rfc3339(),
                         };
                         s.put(stored);
@@ -133,19 +160,32 @@ pub fn DocumentsPage() -> impl IntoView {
                         let local_id = uuid::Uuid::new_v4().to_string();
                         let now = chrono::Utc::now().to_rfc3339();
                         let local_doc = LocalDocument {
-                            id: local_id, title: title.trim().to_string(), slug: None,
-                            content: String::new(), html: None, status: "draft".to_string(),
-                            visibility: "private".to_string(), tags: vec![], author_id: String::new(),
-                            word_count: 0, character_count: 0, created_at: now.clone(),
-                            updated_at: now, published_at: None, description: None,
+                            id: local_id,
+                            title: title.trim().to_string(),
+                            slug: None,
+                            content: String::new(),
+                            html: None,
+                            status: "draft".to_string(),
+                            visibility: "private".to_string(),
+                            tags: vec![],
+                            author_id: String::new(),
+                            word_count: 0,
+                            character_count: 0,
+                            created_at: now.clone(),
+                            updated_at: now,
+                            published_at: None,
+                            description: None,
                         };
                         let stored = StoredDocument {
-                            document: local_doc, sync_status: SyncStatus::PendingCreate,
-                            local_version: 1, server_version: None,
+                            document: local_doc,
+                            sync_status: SyncStatus::PendingCreate,
+                            local_version: 1,
+                            server_version: None,
                             last_modified: chrono::Utc::now().to_rfc3339(),
                         };
                         s.put(stored);
-                        set_create_error.set(Some(format!("Failed to create: {}. Saved locally.", e)));
+                        set_create_error
+                            .set(Some(format!("Failed to create: {}. Saved locally.", e)));
                         set_creating.set(false);
                     }
                 }
@@ -154,7 +194,10 @@ pub fn DocumentsPage() -> impl IntoView {
     });
 
     let sync_badge = move || {
-        let state = sync_state.as_ref().map(|ss| ss.get()).unwrap_or(SyncState::Idle);
+        let state = sync_state
+            .as_ref()
+            .map(|ss| ss.get())
+            .unwrap_or(SyncState::Idle);
         match state {
             SyncState::Syncing => view! {
                 <span class="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
@@ -306,17 +349,34 @@ fn DocumentRow(document: Document) -> impl IntoView {
     let visibility = document.visibility.clone();
     let word_count = document.word_count;
     let tags = document.tags;
-    let updated = document.updated_at.split('T').next().unwrap_or("Unknown").to_string();
+    let updated = document
+        .updated_at
+        .split('T')
+        .next()
+        .unwrap_or("Unknown")
+        .to_string();
 
     let status_class = match status.as_str() {
         "published" => "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300",
         "archived" => "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
         _ => "bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-300",
     };
-    let status_text = match status.as_str() { "published" => "Published", "archived" => "Archived", _ => "Draft" };
-    let vis_text = match visibility.as_str() { "public" => "Public", "restricted" => "Restricted", _ => "Private" };
+    let status_text = match status.as_str() {
+        "published" => "Published",
+        "archived" => "Archived",
+        _ => "Draft",
+    };
+    let vis_text = match visibility.as_str() {
+        "public" => "Public",
+        "restricted" => "Restricted",
+        _ => "Private",
+    };
 
-    let wc_text = if word_count == 1 { "1 word".to_string() } else { format!("{} words", word_count) };
+    let wc_text = if word_count == 1 {
+        "1 word".to_string()
+    } else {
+        format!("{} words", word_count)
+    };
 
     view! {
         <div class="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
@@ -378,7 +438,12 @@ fn DocumentCard(document: Document) -> impl IntoView {
     let title = document.title.clone();
     let tags = document.tags.clone();
     let word_count = document.word_count;
-    let created_date = document.created_at.split('T').next().unwrap_or("Unknown").to_string();
+    let created_date = document
+        .created_at
+        .split('T')
+        .next()
+        .unwrap_or("Unknown")
+        .to_string();
     let doc_id = document.id.clone();
 
     let status_class = match document.status.as_str() {
@@ -416,11 +481,14 @@ fn DocumentCard(document: Document) -> impl IntoView {
     let navigate = use_navigate();
     let doc_id_for_click = doc_id.clone();
     let on_click = move |_| {
-        navigate(&format!("/documents/{}/edit", doc_id_for_click), Default::default());
+        navigate(
+            &format!("/documents/{}/edit", doc_id_for_click),
+            Default::default(),
+        );
     };
 
     view! {
-        <div 
+        <div
             class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 hover:border-blue-500 transition-colors cursor-pointer"
             on:click={on_click}
         >
@@ -461,9 +529,7 @@ fn DocumentCard(document: Document) -> impl IntoView {
 #[component]
 pub fn DocumentPage() -> impl IntoView {
     let params = use_params::<DocumentViewParams>();
-    let document_id = move || {
-        params.with(|p| p.as_ref().map(|p| p.id.clone()).unwrap_or_default())
-    };
+    let document_id = move || params.with(|p| p.as_ref().map(|p| p.id.clone()).unwrap_or_default());
 
     let api_client = ApiClient::default();
     let doc_id = document_id();
@@ -663,13 +729,11 @@ struct DocumentViewParams {
 #[component]
 pub fn DocumentEditPage() -> impl IntoView {
     let params = use_params::<DocumentEditParams>();
-    let document_id = move || {
-        params.with(|p| p.as_ref().map(|p| p.id.clone()).unwrap_or_default())
-    };
-    
+    let document_id = move || params.with(|p| p.as_ref().map(|p| p.id.clone()).unwrap_or_default());
+
     let _user_id = "user-".to_string() + &uuid::Uuid::new_v4().to_string()[..8];
     let _user_name = "User".to_string();
-    
+
     // Fetch document content on mount
     let (doc_content, set_doc_content) = signal(String::new());
     let (doc_title, set_doc_title) = signal(String::new());
@@ -713,7 +777,7 @@ pub fn DocumentEditPage() -> impl IntoView {
             }
         });
     });
-    
+
     let (activities, _set_activities) = signal(Vec::<Activity>::new());
 
     let document_content = RwSignal::new(String::new());
@@ -725,7 +789,8 @@ pub fn DocumentEditPage() -> impl IntoView {
 
     // Auto-save debounce via Effect
     {
-        let auto_save_debounce: std::rc::Rc<std::cell::RefCell<Option<i32>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let auto_save_debounce: std::rc::Rc<std::cell::RefCell<Option<i32>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(None));
 
         Effect::new(move |_| {
             let content = document_content.get();
@@ -741,7 +806,9 @@ pub fn DocumentEditPage() -> impl IntoView {
             {
                 let handle = *auto_save_debounce.borrow();
                 if let Some(h) = handle {
-                    let _ = web_sys::window().map(|w| { w.clear_timeout_with_handle(h); });
+                    let _ = web_sys::window().map(|w| {
+                        w.clear_timeout_with_handle(h);
+                    });
                 }
             }
 
@@ -826,13 +893,16 @@ pub fn DocumentEditPage() -> impl IntoView {
     {
         let save_fn = manual_save;
         if let Some(window) = web_sys::window() {
-            let closure = wasm_bindgen::closure::Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |e: web_sys::KeyboardEvent| {
-                if (e.ctrl_key() || e.meta_key()) && e.key() == "s" {
-                    e.prevent_default();
-                    save_fn.run(());
-                }
-            });
-            let _ = window.add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref());
+            let closure = wasm_bindgen::closure::Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(
+                move |e: web_sys::KeyboardEvent| {
+                    if (e.ctrl_key() || e.meta_key()) && e.key() == "s" {
+                        e.prevent_default();
+                        save_fn.run(());
+                    }
+                },
+            );
+            let _ = window
+                .add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref());
             closure.forget();
         }
     }
@@ -884,11 +954,13 @@ pub fn DocumentEditPage() -> impl IntoView {
                     }
                 });
             });
-            let _interval_id = web_sys::window()
-                .map(|w| w.set_interval_with_callback_and_timeout_and_arguments_0(
+            let _interval_id = web_sys::window().map(|w| {
+                w.set_interval_with_callback_and_timeout_and_arguments_0(
                     interval_cb.as_ref().unchecked_ref(),
                     500,
-                ).unwrap_or(0));
+                )
+                .unwrap_or(0)
+            });
             interval_cb.forget();
         });
     }
@@ -917,7 +989,7 @@ pub fn DocumentEditPage() -> impl IntoView {
                         </svg>
                     </button>
                 </div>
-                
+
                 <div class="flex-1 overflow-hidden">
                     {move || {
                         let doc_id = document_id();
@@ -1021,7 +1093,7 @@ pub fn DocumentEditPage() -> impl IntoView {
                     }}
                 </div>
             </div>
-            
+
             <div
                 class={move || if sidebar_open.get() {
                     "w-80 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 transition-all duration-200 overflow-hidden hidden md:block"

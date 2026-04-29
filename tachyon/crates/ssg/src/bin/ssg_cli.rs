@@ -23,10 +23,13 @@ use clap::Parser;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tachyon_ssg::{ColorTheme, NavLink, SsgDocument, SiteConfig, SiteGenerator};
+use tachyon_ssg::{ColorTheme, NavLink, SiteConfig, SiteGenerator, SsgDocument};
 
 #[derive(Parser, Debug)]
-#[command(name = "tachyon-ssg-cli", about = "Build static documentation sites from markdown")]
+#[command(
+    name = "tachyon-ssg-cli",
+    about = "Build static documentation sites from markdown"
+)]
 enum Cli {
     /// Build a static site from markdown files
     Build {
@@ -258,9 +261,7 @@ fn collect_documents(input_dir: &Path) -> Result<Vec<SsgDocument>> {
         let (fm, body) = parse_frontmatter(&content);
 
         // Derive slug from relative path
-        let rel = path
-            .strip_prefix(input_dir)
-            .unwrap_or(path);
+        let rel = path.strip_prefix(input_dir).unwrap_or(path);
         let slug = rel
             .with_extension("")
             .to_str()
@@ -311,7 +312,15 @@ fn main() -> Result<()> {
             description,
             base_url,
             with_404,
-        } => cmd_build(input, output, config, title, description, &base_url, with_404),
+        } => cmd_build(
+            input,
+            output,
+            config,
+            title,
+            description,
+            &base_url,
+            with_404,
+        ),
         Cli::Init { target } => cmd_init(&target),
     }
 }
@@ -399,7 +408,10 @@ fn cmd_build(
     println!("   Categories:   {}", result.category_pages);
     println!("   Total files:  {}", result.total_files);
     println!("   Languages:    {}", result.languages);
-    println!("   Output size:  {:.1} KB", result.output_size_bytes as f64 / 1024.0);
+    println!(
+        "   Output size:  {:.1} KB",
+        result.output_size_bytes as f64 / 1024.0
+    );
     println!("   Build time:   {}ms", result.build_time_ms);
     println!();
 
@@ -1154,7 +1166,10 @@ Tachyon uses Leptos in CSR mode because:
     println!();
     println!("✨ Next steps:");
     println!("   1. Edit docs in: {}", target.display());
-    println!("   2. Build site:  tachyon-ssg-cli build --input {} --output site", target.display());
+    println!(
+        "   2. Build site:  tachyon-ssg-cli build --input {} --output site",
+        target.display()
+    );
     println!("   3. Preview:      python3 -m http.server 3000 -d site");
 
     Ok(())

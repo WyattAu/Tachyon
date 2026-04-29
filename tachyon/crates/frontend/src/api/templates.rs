@@ -4,7 +4,10 @@ use super::*;
 ///
 /// Reserved for future use: document template management.
 impl ApiClient {
-    pub async fn list_templates(&self, category: Option<&str>) -> Result<Vec<DocumentTemplate>, ApiError> {
+    pub async fn list_templates(
+        &self,
+        category: Option<&str>,
+    ) -> Result<Vec<DocumentTemplate>, ApiError> {
         let mut url = format!("{}/templates?", self.base_url);
         if let Some(cat) = category {
             url = format!("{}category={}", url, cat);
@@ -18,12 +21,19 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    pub async fn create_template(&self, request: &CreateTemplateRequest) -> Result<DocumentTemplate, ApiError> {
+    pub async fn create_template(
+        &self,
+        request: &CreateTemplateRequest,
+    ) -> Result<DocumentTemplate, ApiError> {
         let url = format!("{}/templates", self.base_url);
         self.post(&url, request).await
     }
 
-    pub async fn update_template(&self, template_id: &str, request: &UpdateTemplateRequest) -> Result<DocumentTemplate, ApiError> {
+    pub async fn update_template(
+        &self,
+        template_id: &str,
+        request: &UpdateTemplateRequest,
+    ) -> Result<DocumentTemplate, ApiError> {
         let url = format!("{}/templates/{}", self.base_url, template_id);
         self.put(&url, request).await
     }

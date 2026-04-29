@@ -1,10 +1,13 @@
 // Spaces Page
 // Space management - tree navigation, create/edit/delete, member management
 
+use crate::api::ApiClient;
+use crate::types::{
+    AddSpaceMemberRequest, CreateSpaceRequest, Space, SpaceMember, UpdateSpaceMemberRequest,
+    UpdateSpaceRequest,
+};
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
-use crate::api::ApiClient;
-use crate::types::{Space, CreateSpaceRequest, UpdateSpaceRequest, SpaceMember, AddSpaceMemberRequest, UpdateSpaceMemberRequest};
 
 // ---------------------------------------------------------------------------
 // Spaces Page
@@ -26,9 +29,7 @@ pub fn SpacesPage() -> impl IntoView {
     let spaces_resource = LocalResource::new(move || {
         let client = api_for_spaces.clone();
         let _rc = refresh_counter.get();
-        async move {
-            client.list_spaces(None).await.unwrap_or_default()
-        }
+        async move { client.list_spaces(None).await.unwrap_or_default() }
     });
 
     // Toggle expansion
@@ -43,15 +44,25 @@ pub fn SpacesPage() -> impl IntoView {
     };
 
     // Refresh
-    let refresh = move || set_refresh_counter.update(|c| { *c += 1; });
+    let refresh = move || {
+        set_refresh_counter.update(|c| {
+            *c += 1;
+        })
+    };
 
     // Create modal close/saved callbacks
     let close_create = Callback::new(move |_| set_show_create_modal.set(false));
-    let saved_create = Callback::new(move |_| { set_show_create_modal.set(false); refresh(); });
+    let saved_create = Callback::new(move |_| {
+        set_show_create_modal.set(false);
+        refresh();
+    });
 
     // Edit modal close/saved callbacks
     let close_edit = Callback::new(move |_| set_editing_space.set(None));
-    let saved_edit = Callback::new(move |_| { set_editing_space.set(None); refresh(); });
+    let saved_edit = Callback::new(move |_| {
+        set_editing_space.set(None);
+        refresh();
+    });
 
     // Delete confirm/cancel callbacks
     let cancel_delete = Callback::new(move |_| set_deleting_id.set(None));
@@ -211,7 +222,11 @@ fn SpaceItem(
 
     let desc_text = match space_desc {
         Some(d) if !d.is_empty() => d,
-        _ => format!("{} document{}", space_doc_count, if space_doc_count == 1 { "" } else { "s" }),
+        _ => format!(
+            "{} document{}",
+            space_doc_count,
+            if space_doc_count == 1 { "" } else { "s" }
+        ),
     };
 
     let chevron_class = if expanded { "rotate-90" } else { "" };
@@ -290,10 +305,7 @@ fn SpaceItem(
 // ---------------------------------------------------------------------------
 
 #[component]
-fn CreateSpaceModal(
-    on_close: Callback<()>,
-    on_created: Callback<()>,
-) -> impl IntoView {
+fn CreateSpaceModal(on_close: Callback<()>, on_created: Callback<()>) -> impl IntoView {
     let (name, set_name) = signal(String::new());
     let (desc, set_desc) = signal(String::new());
     let (icon, set_icon) = signal("folder".to_string());
@@ -302,8 +314,19 @@ fn CreateSpaceModal(
     let (submitting, set_submitting) = signal(false);
     let (error, set_error) = signal(None::<String>);
 
-    let colors = ["#3B82F6", "#6366F1", "#8B5CF6", "#EC4899", "#EF4444", "#F59E0B", "#10B981", "#6B7280"];
-    let icons = ["folder", "book", "star", "heart", "briefcase", "home", "code", "lightbulb"];
+    let colors = [
+        "#3B82F6", "#6366F1", "#8B5CF6", "#EC4899", "#EF4444", "#F59E0B", "#10B981", "#6B7280",
+    ];
+    let icons = [
+        "folder",
+        "book",
+        "star",
+        "heart",
+        "briefcase",
+        "home",
+        "code",
+        "lightbulb",
+    ];
 
     let do_submit = move |_| {
         let n = name.get();
@@ -316,7 +339,11 @@ fn CreateSpaceModal(
         let api = ApiClient::default();
         let req = CreateSpaceRequest {
             name: n,
-            description: if desc.get().is_empty() { None } else { Some(desc.get()) },
+            description: if desc.get().is_empty() {
+                None
+            } else {
+                Some(desc.get())
+            },
             icon: Some(icon.get()),
             color: Some(color.get()),
             parent_id: None,
@@ -324,8 +351,13 @@ fn CreateSpaceModal(
         };
         spawn_local(async move {
             match api.create_space(&req).await {
-                Ok(_) => { on_created.run(()); }
-                Err(e) => { set_error.set(Some(format!("{:?}", e))); set_submitting.set(false); }
+                Ok(_) => {
+                    on_created.run(());
+                }
+                Err(e) => {
+                    set_error.set(Some(format!("{:?}", e)));
+                    set_submitting.set(false);
+                }
             }
         });
     };
@@ -426,11 +458,7 @@ fn CreateSpaceModal(
 // ---------------------------------------------------------------------------
 
 #[component]
-fn EditSpaceModal(
-    space: Space,
-    on_close: Callback<()>,
-    on_saved: Callback<()>,
-) -> impl IntoView {
+fn EditSpaceModal(space: Space, on_close: Callback<()>, on_saved: Callback<()>) -> impl IntoView {
     let (name, set_name) = signal(space.name.clone());
     let (desc, set_desc) = signal(space.description.clone().unwrap_or_default());
     let (icon, set_icon) = signal(space.icon.clone());
@@ -439,8 +467,19 @@ fn EditSpaceModal(
     let (submitting, set_submitting) = signal(false);
     let (error, set_error) = signal(None::<String>);
 
-    let colors = ["#3B82F6", "#6366F1", "#8B5CF6", "#EC4899", "#EF4444", "#F59E0B", "#10B981", "#6B7280"];
-    let icons = ["folder", "book", "star", "heart", "briefcase", "home", "code", "lightbulb"];
+    let colors = [
+        "#3B82F6", "#6366F1", "#8B5CF6", "#EC4899", "#EF4444", "#F59E0B", "#10B981", "#6B7280",
+    ];
+    let icons = [
+        "folder",
+        "book",
+        "star",
+        "heart",
+        "briefcase",
+        "home",
+        "code",
+        "lightbulb",
+    ];
 
     let do_submit = move |_| {
         let n = name.get();
@@ -465,8 +504,13 @@ fn EditSpaceModal(
         };
         spawn_local(async move {
             match api.update_space(&id, &req).await {
-                Ok(_) => { on_saved.run(()); }
-                Err(e) => { set_error.set(Some(format!("{:?}", e))); set_submitting.set(false); }
+                Ok(_) => {
+                    on_saved.run(());
+                }
+                Err(e) => {
+                    set_error.set(Some(format!("{:?}", e)));
+                    set_submitting.set(false);
+                }
             }
         });
     };
@@ -565,10 +609,7 @@ fn EditSpaceModal(
 // ---------------------------------------------------------------------------
 
 #[component]
-fn MembersModal(
-    space_id: String,
-    on_close: Callback<()>,
-) -> impl IntoView {
+fn MembersModal(space_id: String, on_close: Callback<()>) -> impl IntoView {
     let (members, set_members) = signal(Vec::<SpaceMember>::new());
     let (loading, set_loading) = signal(true);
     let (new_uid, set_new_uid) = signal(String::new());
@@ -583,12 +624,16 @@ fn MembersModal(
         let api = ApiClient::default();
         let sid = space_id_for_fetch.clone();
         spawn_local(async move {
-            if let Ok(m) = api.list_space_members(&sid).await { set_members.set(m) }
+            if let Ok(m) = api.list_space_members(&sid).await {
+                set_members.set(m)
+            }
             set_loading.set(false);
         });
     };
 
-    Effect::new(move |_| { fetch_members(); });
+    Effect::new(move |_| {
+        fetch_members();
+    });
 
     let add_member = move |_| {
         let uid = new_uid.get();
@@ -601,9 +646,20 @@ fn MembersModal(
         let sid = space_id_for_add.clone();
         let role = new_role.get();
         spawn_local(async move {
-            match api.add_space_member(&sid, &AddSpaceMemberRequest { user_id: uid, role: Some(role) }).await {
+            match api
+                .add_space_member(
+                    &sid,
+                    &AddSpaceMemberRequest {
+                        user_id: uid,
+                        role: Some(role),
+                    },
+                )
+                .await
+            {
                 Ok(_) => {
-                    if let Ok(m) = api.list_space_members(&sid).await { set_members.set(m) }
+                    if let Ok(m) = api.list_space_members(&sid).await {
+                        set_members.set(m)
+                    }
                     set_new_uid.set(String::new());
                 }
                 Err(e) => set_error.set(Some(format!("{:?}", e))),
@@ -616,7 +672,9 @@ fn MembersModal(
         let sid = space_id_for_remove.clone();
         spawn_local(async move {
             let _ = api.remove_space_member(&sid, &uid).await;
-            if let Ok(m) = api.list_space_members(&sid).await { set_members.set(m) }
+            if let Ok(m) = api.list_space_members(&sid).await {
+                set_members.set(m)
+            }
         });
     });
 
@@ -624,8 +682,12 @@ fn MembersModal(
         let api = ApiClient::default();
         let sid = space_id_for_change.clone();
         spawn_local(async move {
-            let _ = api.update_space_member(&sid, &uid, &UpdateSpaceMemberRequest { role }).await;
-            if let Ok(m) = api.list_space_members(&sid).await { set_members.set(m) }
+            let _ = api
+                .update_space_member(&sid, &uid, &UpdateSpaceMemberRequest { role })
+                .await;
+            if let Ok(m) = api.list_space_members(&sid).await {
+                set_members.set(m)
+            }
         });
     });
 

@@ -4,7 +4,11 @@ use super::*;
 ///
 /// Reserved for future use: document CRUD from the frontend.
 impl ApiClient {
-    pub async fn list_documents(&self, page: Option<usize>, page_size: Option<usize>) -> Result<DocumentListResponse, ApiError> {
+    pub async fn list_documents(
+        &self,
+        page: Option<usize>,
+        page_size: Option<usize>,
+    ) -> Result<DocumentListResponse, ApiError> {
         let mut url = format!("{}/documents?", self.base_url);
         if let Some(p) = page {
             url = format!("{}page={}&", url, p);
@@ -26,7 +30,11 @@ impl ApiClient {
         self.post(&url, data).await
     }
 
-    pub async fn update_document(&self, document_id: &str, data: &serde_json::Value) -> Result<Document, ApiError> {
+    pub async fn update_document(
+        &self,
+        document_id: &str,
+        data: &serde_json::Value,
+    ) -> Result<Document, ApiError> {
         let url = format!("{}/documents/{}", self.base_url, document_id);
         self.put(&url, data).await
     }
@@ -47,13 +55,25 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    pub async fn get_version(&self, document_id: &str, version_number: i32) -> Result<DocumentVersion, ApiError> {
-        let url = format!("{}/documents/{}/versions/{}", self.base_url, document_id, version_number);
+    pub async fn get_version(
+        &self,
+        document_id: &str,
+        version_number: i32,
+    ) -> Result<DocumentVersion, ApiError> {
+        let url = format!(
+            "{}/documents/{}/versions/{}",
+            self.base_url, document_id, version_number
+        );
         self.get(&url).await
     }
 
     #[allow(dead_code)]
-    pub async fn create_version(&self, document_id: &str, content: &str, commit_message: Option<&str>) -> Result<DocumentVersion, ApiError> {
+    pub async fn create_version(
+        &self,
+        document_id: &str,
+        content: &str,
+        commit_message: Option<&str>,
+    ) -> Result<DocumentVersion, ApiError> {
         let url = format!("{}/documents/{}/versions", self.base_url, document_id);
         let body = serde_json::json!({
             "content": content,
@@ -62,7 +82,12 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
-    pub async fn create_review(&self, document_id: &str, reviewer_id: &str, summary: Option<&str>) -> Result<DocumentReview, ApiError> {
+    pub async fn create_review(
+        &self,
+        document_id: &str,
+        reviewer_id: &str,
+        summary: Option<&str>,
+    ) -> Result<DocumentReview, ApiError> {
         let url = format!("{}/documents/{}/reviews", self.base_url, document_id);
         let body = serde_json::json!({
             "reviewer_id": reviewer_id,
@@ -76,13 +101,25 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    pub async fn get_review_status(&self, document_id: &str) -> Result<ReviewStatusSummary, ApiError> {
+    pub async fn get_review_status(
+        &self,
+        document_id: &str,
+    ) -> Result<ReviewStatusSummary, ApiError> {
         let url = format!("{}/documents/{}/reviews/status", self.base_url, document_id);
         self.get(&url).await
     }
 
-    pub async fn update_review(&self, document_id: &str, review_id: &str, status: &str, summary: Option<&str>) -> Result<DocumentReview, ApiError> {
-        let url = format!("{}/documents/{}/reviews/{}", self.base_url, document_id, review_id);
+    pub async fn update_review(
+        &self,
+        document_id: &str,
+        review_id: &str,
+        status: &str,
+        summary: Option<&str>,
+    ) -> Result<DocumentReview, ApiError> {
+        let url = format!(
+            "{}/documents/{}/reviews/{}",
+            self.base_url, document_id, review_id
+        );
         let body = serde_json::json!({
             "status": status,
             "summary": summary,
@@ -90,8 +127,17 @@ impl ApiClient {
         self.put(&url, &body).await
     }
 
-    pub async fn create_review_comment(&self, document_id: &str, review_id: &str, author_id: &str, content: &str) -> Result<ReviewComment, ApiError> {
-        let url = format!("{}/documents/{}/reviews/{}/comments", self.base_url, document_id, review_id);
+    pub async fn create_review_comment(
+        &self,
+        document_id: &str,
+        review_id: &str,
+        author_id: &str,
+        content: &str,
+    ) -> Result<ReviewComment, ApiError> {
+        let url = format!(
+            "{}/documents/{}/reviews/{}/comments",
+            self.base_url, document_id, review_id
+        );
         let body = serde_json::json!({
             "author_id": author_id,
             "content": content,
@@ -99,14 +145,29 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
-    pub async fn list_review_comments(&self, document_id: &str, review_id: &str) -> Result<Vec<ReviewComment>, ApiError> {
-        let url = format!("{}/documents/{}/reviews/{}/comments", self.base_url, document_id, review_id);
+    pub async fn list_review_comments(
+        &self,
+        document_id: &str,
+        review_id: &str,
+    ) -> Result<Vec<ReviewComment>, ApiError> {
+        let url = format!(
+            "{}/documents/{}/reviews/{}/comments",
+            self.base_url, document_id, review_id
+        );
         self.get(&url).await
     }
 
     #[allow(dead_code)]
-    pub async fn diff_versions(&self, document_id: &str, v1: i32, v2: i32) -> Result<DocumentDiffResponse, ApiError> {
-        let url = format!("{}/documents/{}/versions/{}/diff/{}", self.base_url, document_id, v1, v2);
+    pub async fn diff_versions(
+        &self,
+        document_id: &str,
+        v1: i32,
+        v2: i32,
+    ) -> Result<DocumentDiffResponse, ApiError> {
+        let url = format!(
+            "{}/documents/{}/versions/{}/diff/{}",
+            self.base_url, document_id, v1, v2
+        );
         self.get(&url).await
     }
 
@@ -115,8 +176,16 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    pub async fn resolve_conflict(&self, document_id: &str, resolution: &str, content: Option<&str>) -> Result<serde_json::Value, ApiError> {
-        let url = format!("{}/documents/{}/conflict/resolve", self.base_url, document_id);
+    pub async fn resolve_conflict(
+        &self,
+        document_id: &str,
+        resolution: &str,
+        content: Option<&str>,
+    ) -> Result<serde_json::Value, ApiError> {
+        let url = format!(
+            "{}/documents/{}/conflict/resolve",
+            self.base_url, document_id
+        );
         let body = serde_json::json!({
             "resolution": resolution,
             "content": content,
@@ -124,7 +193,12 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
-    pub async fn list_documents_by_tag(&self, tag: &str, page: Option<i64>, page_size: Option<i64>) -> Result<crate::types::SearchResultsResponse, ApiError> {
+    pub async fn list_documents_by_tag(
+        &self,
+        tag: &str,
+        page: Option<i64>,
+        page_size: Option<i64>,
+    ) -> Result<crate::types::SearchResultsResponse, ApiError> {
         let filters = crate::types::SearchFilters {
             tags: Some(vec![tag.to_string()]),
             ..Default::default()
@@ -132,7 +206,10 @@ impl ApiClient {
         self.search("", Some(&filters), page, page_size).await
     }
 
-    pub async fn get_backlinks(&self, document_id: &str) -> Result<crate::types::BacklinksResponse, ApiError> {
+    pub async fn get_backlinks(
+        &self,
+        document_id: &str,
+    ) -> Result<crate::types::BacklinksResponse, ApiError> {
         let url = format!("{}/documents/{}/backlinks", self.base_url, document_id);
         self.get(&url).await
     }

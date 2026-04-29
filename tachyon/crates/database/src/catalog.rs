@@ -93,7 +93,7 @@ impl CatalogRepository {
         if let Some(row) = row {
             let tags_text: String = row.get("tags_text");
             let metadata_text: String = row.get("metadata_text");
-            
+
             let tags: Vec<String> = serde_json::from_str(&tags_text)
                 .map_err(|e| DatabaseError::SerializationError(format!("tags: {}", e)))?;
             let metadata: serde_json::Value = serde_json::from_str(&metadata_text)
@@ -143,7 +143,7 @@ impl CatalogRepository {
         if let Some(row) = row {
             let tags_text: String = row.get("tags_text");
             let metadata_text: String = row.get("metadata_text");
-            
+
             let tags: Vec<String> = serde_json::from_str(&tags_text)
                 .map_err(|e| DatabaseError::SerializationError(format!("tags: {}", e)))?;
             let metadata: serde_json::Value = serde_json::from_str(&metadata_text)
@@ -246,7 +246,7 @@ impl CatalogRepository {
         for row in rows {
             let tags_text: String = row.get("tags_text");
             let metadata_text: String = row.get("metadata_text");
-            
+
             let tags: Vec<String> = serde_json::from_str(&tags_text)
                 .map_err(|e| DatabaseError::SerializationError(format!("tags: {}", e)))?;
             let metadata: serde_json::Value = serde_json::from_str(&metadata_text)
@@ -344,7 +344,11 @@ impl CatalogRepository {
     }
 
     /// Search projects by name, description, or tags
-    pub async fn search_projects(&self, query_text: &str, limit: Option<i64>) -> DatabaseResult<Vec<Project>> {
+    pub async fn search_projects(
+        &self,
+        query_text: &str,
+        limit: Option<i64>,
+    ) -> DatabaseResult<Vec<Project>> {
         let limit = limit.unwrap_or(50);
         let search_pattern = format!("%{}%", query_text.to_lowercase());
 
@@ -377,7 +381,7 @@ impl CatalogRepository {
         for row in rows {
             let tags_text: String = row.get("tags_text");
             let metadata_text: String = row.get("metadata_text");
-            
+
             let tags: Vec<String> = serde_json::from_str(&tags_text)
                 .map_err(|e| DatabaseError::SerializationError(format!("tags: {}", e)))?;
             let metadata: serde_json::Value = serde_json::from_str(&metadata_text)
@@ -500,7 +504,10 @@ impl CatalogRepository {
     }
 
     /// List components by project
-    pub async fn list_components_by_project(&self, project_id: &str) -> DatabaseResult<Vec<Component>> {
+    pub async fn list_components_by_project(
+        &self,
+        project_id: &str,
+    ) -> DatabaseResult<Vec<Component>> {
         // Cast UUID columns to TEXT and extract JSONB as text for manual deserialization
         let select_sql = "SELECT id::text, name, component_type, project_id::text, owner_id::text, \
              system_id::text, repository_url, docs_url, api_spec_url, tags::text as tags_text, lifecycle, created_at, updated_at \
@@ -586,21 +593,31 @@ impl CatalogRepository {
                 if e.to_string().contains("unique") || e.to_string().contains("duplicate") {
                     DatabaseError::duplicate(
                         "project_member",
-                        format!("User {} is already a member of project {}", member.user_id, member.project_id),
+                        format!(
+                            "User {} is already a member of project {}",
+                            member.user_id, member.project_id
+                        ),
                     )
                 } else {
                     DatabaseError::QueryError(e.to_string())
                 }
             })?;
 
-        debug!("Member added to project: {} -> {}", member.user_id, member.project_id);
+        debug!(
+            "Member added to project: {} -> {}",
+            member.user_id, member.project_id
+        );
         Ok(())
     }
 
     /// List project members
-    pub async fn list_project_members(&self, project_id: &str) -> DatabaseResult<Vec<ProjectMember>> {
+    pub async fn list_project_members(
+        &self,
+        project_id: &str,
+    ) -> DatabaseResult<Vec<ProjectMember>> {
         // Cast UUID columns to TEXT for compatibility
-        let select_sql = "SELECT id, project_id::text, user_id::text, role, added_by::text, added_at \
+        let select_sql =
+            "SELECT id, project_id::text, user_id::text, role, added_by::text, added_at \
              FROM project_members WHERE project_id = $1::uuid ORDER BY added_at";
 
         let mut conn = self.pool.acquire().await?;
@@ -629,7 +646,11 @@ impl CatalogRepository {
 
     /// Remove a member from a project
     #[instrument(skip(self))]
-    pub async fn remove_project_member(&self, project_id: &str, user_id: &str) -> DatabaseResult<()> {
+    pub async fn remove_project_member(
+        &self,
+        project_id: &str,
+        user_id: &str,
+    ) -> DatabaseResult<()> {
         let delete_sql = "DELETE FROM project_members WHERE project_id = $1 AND user_id = $2";
 
         let mut conn = self.pool.acquire().await?;

@@ -64,8 +64,8 @@ pub fn list_vault_entries(dir: &Path) -> Result<Vec<VaultEntry>, String> {
 
     let mut entries = Vec::new();
 
-    let read_dir = std::fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read directory: {}", e))?;
+    let read_dir =
+        std::fs::read_dir(dir).map_err(|e| format!("Failed to read directory: {}", e))?;
 
     for entry in read_dir.flatten() {
         let path = entry.path();
@@ -85,13 +85,7 @@ pub fn list_vault_entries(dir: &Path) -> Result<Vec<VaultEntry>, String> {
             let dir_name = name.to_lowercase();
             if matches!(
                 dir_name.as_str(),
-                "node_modules"
-                    | "target"
-                    | "dist"
-                    | "build"
-                    | "__pycache__"
-                    | ".git"
-                    | ".obsidian"
+                "node_modules" | "target" | "dist" | "build" | "__pycache__" | ".git" | ".obsidian"
             ) {
                 continue;
             }
@@ -108,14 +102,11 @@ pub fn list_vault_entries(dir: &Path) -> Result<Vec<VaultEntry>, String> {
             .and_then(|e| e.to_str())
             .map(|s| s.to_lowercase());
 
-        let modified = metadata
-            .modified()
-            .ok()
-            .map(|t| {
-                chrono::DateTime::<chrono::Utc>::from(t)
-                    .format("%Y-%m-%dT%H:%M:%SZ")
-                    .to_string()
-            });
+        let modified = metadata.modified().ok().map(|t| {
+            chrono::DateTime::<chrono::Utc>::from(t)
+                .format("%Y-%m-%dT%H:%M:%SZ")
+                .to_string()
+        });
 
         entries.push(VaultEntry {
             name,
@@ -128,12 +119,10 @@ pub fn list_vault_entries(dir: &Path) -> Result<Vec<VaultEntry>, String> {
     }
 
     // Sort: directories first, then alphabetically
-    entries.sort_by(|a, b| {
-        match (a.is_directory, b.is_directory) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.cmp(&b.name),
-        }
+    entries.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.cmp(&b.name),
     });
 
     Ok(entries)
@@ -148,8 +137,8 @@ pub fn read_markdown_file(path: &Path) -> Result<MarkdownFile, String> {
         return Err(format!("Path is not a file: {}", path.display()));
     }
 
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read file: {}", e))?;
+    let content =
+        std::fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
 
     let filename = path
         .file_name()
@@ -171,8 +160,7 @@ pub fn write_markdown_file(path: &Path, content: &str) -> Result<(), String> {
             .map_err(|e| format!("Failed to create directories: {}", e))?;
     }
 
-    std::fs::write(path, content)
-        .map_err(|e| format!("Failed to write file: {}", e))?;
+    std::fs::write(path, content).map_err(|e| format!("Failed to write file: {}", e))?;
 
     Ok(())
 }
@@ -193,8 +181,7 @@ pub fn start_file_watch(
         recursive: true,
     };
 
-    let mut watcher = FileWatcher::new(config)
-        .map_err(|e| e.to_string())?;
+    let mut watcher = FileWatcher::new(config).map_err(|e| e.to_string())?;
 
     let (tx, rx) = mpsc::channel::<FileChangeEvent>();
 
@@ -217,10 +204,8 @@ pub fn start_file_watch(
             match rx.recv_timeout(std::time::Duration::from_secs(30)) {
                 Ok(event) => {
                     let kind = core_to_event_kind(event.kind);
-                    let _ = emitter.emit_file_changed(
-                        event.path.to_string_lossy().to_string(),
-                        kind,
-                    );
+                    let _ =
+                        emitter.emit_file_changed(event.path.to_string_lossy().to_string(), kind);
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => continue,
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
@@ -257,9 +242,7 @@ pub async fn stop_file_watch(
 }
 
 /// Check if the file watcher is currently running.
-pub async fn is_file_watch_active(
-    watch_handle: Arc<RwLock<Option<FileWatchHandle>>>,
-) -> bool {
+pub async fn is_file_watch_active(watch_handle: Arc<RwLock<Option<FileWatchHandle>>>) -> bool {
     watch_handle.read().await.is_some()
 }
 
@@ -315,14 +298,11 @@ pub fn list_vault_markdown_files(dir: &Path) -> Result<Vec<VaultEntry>, String> 
             Err(_) => continue,
         };
 
-        let modified = metadata
-            .modified()
-            .ok()
-            .map(|t| {
-                chrono::DateTime::<chrono::Utc>::from(t)
-                    .format("%Y-%m-%dT%H:%M:%SZ")
-                    .to_string()
-            });
+        let modified = metadata.modified().ok().map(|t| {
+            chrono::DateTime::<chrono::Utc>::from(t)
+                .format("%Y-%m-%dT%H:%M:%SZ")
+                .to_string()
+        });
 
         entries.push(VaultEntry {
             name,
@@ -420,8 +400,17 @@ mod tests {
 
     #[test]
     fn test_core_to_event_kind() {
-        assert_eq!(core_to_event_kind(FileChangeKind::Created), EventFileChangeKind::Created);
-        assert_eq!(core_to_event_kind(FileChangeKind::Modified), EventFileChangeKind::Modified);
-        assert_eq!(core_to_event_kind(FileChangeKind::Deleted), EventFileChangeKind::Deleted);
+        assert_eq!(
+            core_to_event_kind(FileChangeKind::Created),
+            EventFileChangeKind::Created
+        );
+        assert_eq!(
+            core_to_event_kind(FileChangeKind::Modified),
+            EventFileChangeKind::Modified
+        );
+        assert_eq!(
+            core_to_event_kind(FileChangeKind::Deleted),
+            EventFileChangeKind::Deleted
+        );
     }
 }

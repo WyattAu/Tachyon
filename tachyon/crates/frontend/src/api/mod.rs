@@ -74,7 +74,10 @@ impl ApiClient {
     }
 
     pub fn get_auth_token(&self) -> Option<String> {
-        self.auth_token.lock().unwrap_or_else(|e| e.into_inner()).clone()
+        self.auth_token
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     pub fn websocket_url(&self) -> String {
@@ -92,7 +95,7 @@ impl ApiClient {
         use gloo_net::http::Request;
 
         let mut builder = Request::get(url);
-        
+
         if let Some(token) = self.get_auth_token() {
             builder = builder.header("Authorization", &format!("Bearer {}", token));
         }
@@ -114,12 +117,15 @@ impl ApiClient {
         }
     }
 
-    async fn post<T: Serialize, R: DeserializeOwned>(&self, url: &str, body: &T) -> Result<R, ApiError> {
+    async fn post<T: Serialize, R: DeserializeOwned>(
+        &self,
+        url: &str,
+        body: &T,
+    ) -> Result<R, ApiError> {
         use gloo_net::http::Request;
 
-        let mut builder = Request::post(url)
-            .header("Content-Type", "application/json");
-        
+        let mut builder = Request::post(url).header("Content-Type", "application/json");
+
         if let Some(token) = self.get_auth_token() {
             builder = builder.header("Authorization", &format!("Bearer {}", token));
         }
@@ -143,12 +149,15 @@ impl ApiClient {
         }
     }
 
-    async fn put<T: Serialize, R: DeserializeOwned>(&self, url: &str, body: &T) -> Result<R, ApiError> {
+    async fn put<T: Serialize, R: DeserializeOwned>(
+        &self,
+        url: &str,
+        body: &T,
+    ) -> Result<R, ApiError> {
         use gloo_net::http::Request;
 
-        let mut builder = Request::put(url)
-            .header("Content-Type", "application/json");
-        
+        let mut builder = Request::put(url).header("Content-Type", "application/json");
+
         if let Some(token) = self.get_auth_token() {
             builder = builder.header("Authorization", &format!("Bearer {}", token));
         }
@@ -176,7 +185,7 @@ impl ApiClient {
         use gloo_net::http::Request;
 
         let mut builder = Request::delete(url);
-        
+
         if let Some(token) = self.get_auth_token() {
             builder = builder.header("Authorization", &format!("Bearer {}", token));
         }
@@ -198,9 +207,8 @@ impl ApiClient {
     async fn post_empty(&self, url: &str) -> Result<(), ApiError> {
         use gloo_net::http::Request;
 
-        let mut builder = Request::post(url)
-            .header("Content-Type", "application/json");
-        
+        let mut builder = Request::post(url).header("Content-Type", "application/json");
+
         if let Some(token) = self.get_auth_token() {
             builder = builder.header("Authorization", &format!("Bearer {}", token));
         }
@@ -222,9 +230,8 @@ impl ApiClient {
     async fn post_empty_json<R: DeserializeOwned>(&self, url: &str) -> Result<R, ApiError> {
         use gloo_net::http::Request;
 
-        let mut builder = Request::post(url)
-            .header("Content-Type", "application/json");
-        
+        let mut builder = Request::post(url).header("Content-Type", "application/json");
+
         if let Some(token) = self.get_auth_token() {
             builder = builder.header("Authorization", &format!("Bearer {}", token));
         }
@@ -246,12 +253,15 @@ impl ApiClient {
         }
     }
 
-    async fn post_empty_json_accept_any(&self, url: &str, body: &impl Serialize) -> Result<(), ApiError> {
+    async fn post_empty_json_accept_any(
+        &self,
+        url: &str,
+        body: &impl Serialize,
+    ) -> Result<(), ApiError> {
         use gloo_net::http::Request;
 
-        let mut builder = Request::post(url)
-            .header("Content-Type", "application/json");
-        
+        let mut builder = Request::post(url).header("Content-Type", "application/json");
+
         if let Some(token) = self.get_auth_token() {
             builder = builder.header("Authorization", &format!("Bearer {}", token));
         }
@@ -284,6 +294,12 @@ pub enum ApiError {
     #[error("Not found: {0}")]
     NotFound(String),
 }
+
+/// API result type.
+///
+/// Reserved for future use: unified error handling across API calls.
+#[allow(dead_code)]
+pub type ApiResult<T> = Result<T, ApiError>;
 
 #[cfg(test)]
 mod tests {
@@ -358,9 +374,3 @@ mod tests {
         assert_eq!(client.websocket_url(), "wss://example.com/ws");
     }
 }
-
-/// API result type.
-///
-/// Reserved for future use: unified error handling across API calls.
-#[allow(dead_code)]
-pub type ApiResult<T> = Result<T, ApiError>;

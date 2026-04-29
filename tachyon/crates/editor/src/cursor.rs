@@ -196,8 +196,7 @@ impl Selection {
         if start.line == end.line {
             cursor.line == start.line && cursor.col >= start.col && cursor.col <= end.col
         } else {
-            cursor.line > start.line
-                && cursor.line < end.line
+            cursor.line > start.line && cursor.line < end.line
                 || (cursor.line == start.line && cursor.col >= start.col)
                 || (cursor.line == end.line && cursor.col <= end.col)
         }

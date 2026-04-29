@@ -8,13 +8,13 @@ use tachyon_core::{
     types::document::{Document, DocumentContent},
     types::repository::{Repository, RepositoryType},
     types::session::{Session, SessionType, TokenType},
-    types::user::{User, UserRole, UserAction, UserType},
+    types::user::{User, UserAction, UserRole, UserType},
+};
+use tachyon_rbac::{
+    types::{Action, AuthContext, Effect, Resource, Subject},
+    Permission, Policy, PolicyRule, PolicyType,
 };
 use tachyon_search::SearchDocument;
-use tachyon_rbac::{
-    Permission, Policy, PolicyRule, PolicyType,
-    types::{Action, AuthContext, Effect, Resource, Subject},
-};
 
 pub fn create_test_user() -> User {
     User::new(
@@ -136,7 +136,11 @@ pub fn create_test_permission(id: &str, resource: &str, action: &str) -> Permiss
     Permission::new(id, resource, action, Effect::Allow)
 }
 
-pub fn create_test_access_request(subject: Subject, resource: Resource, action: Action) -> tachyon_rbac::types::AccessRequest {
+pub fn create_test_access_request(
+    subject: Subject,
+    resource: Resource,
+    action: Action,
+) -> tachyon_rbac::types::AccessRequest {
     tachyon_rbac::types::AccessRequest::new(subject, resource, action, create_test_auth_context())
 }
 

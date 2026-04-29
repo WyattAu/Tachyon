@@ -8,10 +8,10 @@ use axum::extract::DefaultBodyLimit;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tachyon_core::{Document, DocumentContent, DocumentStatus, DocumentVisibility};
 use tachyon_database::DatabasePool;
 use tachyon_search::IndexManager;
+use tokio::sync::Mutex;
 use tracing::warn;
 
 use crate::config::GuestConfig;
@@ -37,7 +37,11 @@ impl DocumentState {
         }
     }
 
-    pub fn with_guest_config(pool: DatabasePool, guest_config: GuestConfig, http_client: reqwest::Client) -> Self {
+    pub fn with_guest_config(
+        pool: DatabasePool,
+        guest_config: GuestConfig,
+        http_client: reqwest::Client,
+    ) -> Self {
         let repository = tachyon_database::DocumentRepository::new(pool.clone());
         Self {
             pool,
@@ -164,22 +168,21 @@ pub struct DocumentSearchResponse {
     pub page_size: usize,
 }
 
+pub use document_attachments::{
+    delete_attachment, download_attachment, list_attachments, upload_attachment, AttachmentResponse,
+};
 pub use document_crud::{
     create_document, delete_document, get_document, get_document_metadata, list_documents,
     render_markdown, update_document, CreateDocumentRequest, UpdateDocumentRequest,
 };
-pub use document_search::{search_documents, get_backlinks, BacklinksResponse, BacklinkItem};
-pub use document_versions::{
-    list_versions, get_version, create_version, diff_versions,
-    VersionResponse, CreateVersionBody, DiffLine, DocumentDiffResponse, DiffStats,
-};
-pub use document_attachments::{
-    list_attachments, upload_attachment, download_attachment, delete_attachment,
-    AttachmentResponse,
-};
+pub use document_search::{get_backlinks, search_documents, BacklinkItem, BacklinksResponse};
 pub use document_templates::{
-    list_templates, get_template, create_template, update_template, delete_template,
-    TemplateResponse, CreateTemplateBody, UpdateTemplateBody, TemplateQuery,
+    create_template, delete_template, get_template, list_templates, update_template,
+    CreateTemplateBody, TemplateQuery, TemplateResponse, UpdateTemplateBody,
+};
+pub use document_versions::{
+    create_version, diff_versions, get_version, list_versions, CreateVersionBody, DiffLine,
+    DiffStats, DocumentDiffResponse, VersionResponse,
 };
 
 pub fn create_document_router() -> axum::Router<DocumentState> {
@@ -198,11 +201,26 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
         )
         .route("/documents/{document_id}/versions", get(list_versions))
         .route("/documents/{document_id}/versions", post(create_version))
-        .route("/documents/{document_id}/versions/{version_number}", get(get_version))
-        .route("/documents/{document_id}/versions/{v1}/diff/{v2}", get(diff_versions))
-        .route("/documents/{document_id}/attachments", get(list_attachments))
-        .route("/documents/{document_id}/attachments", post(upload_attachment).layer(DefaultBodyLimit::max(50 * 1024 * 1024)))
-        .route("/documents/{document_id}/attachments/{attachment_id}", delete(delete_attachment))
+        .route(
+            "/documents/{document_id}/versions/{version_number}",
+            get(get_version),
+        )
+        .route(
+            "/documents/{document_id}/versions/{v1}/diff/{v2}",
+            get(diff_versions),
+        )
+        .route(
+            "/documents/{document_id}/attachments",
+            get(list_attachments),
+        )
+        .route(
+            "/documents/{document_id}/attachments",
+            post(upload_attachment).layer(DefaultBodyLimit::max(50 * 1024 * 1024)),
+        )
+        .route(
+            "/documents/{document_id}/attachments/{attachment_id}",
+            delete(delete_attachment),
+        )
         .route("/documents/{document_id}/backlinks", get(get_backlinks))
         .route("/templates", get(list_templates))
         .route("/templates", post(create_template))

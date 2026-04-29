@@ -1,6 +1,6 @@
-use tachyon_database::{DocumentRepository, RepositoryRepository, UserRepository, SpaceRepository};
-use tachyon_database::space::UpdateSpaceRequest;
 use std::panic::AssertUnwindSafe;
+use tachyon_database::space::UpdateSpaceRequest;
+use tachyon_database::{DocumentRepository, RepositoryRepository, SpaceRepository, UserRepository};
 
 use crate::common::setup::{
     create_test_document, create_test_pool, create_test_repository, create_test_space,
@@ -8,8 +8,7 @@ use crate::common::setup::{
 };
 
 fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err()
-        && std::env::var("TEST_DATABASE_URL").is_err()
+    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
 }
 
 #[tokio::test]
@@ -191,9 +190,9 @@ async fn test_repository_crud_lifecycle() {
     // Use catch_unwind to handle the panic gracefully.
 
     let list_result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        tokio::runtime::Runtime::new().unwrap().block_on(
-            repo_repo.list_by_owner(&user.id.as_str(), None, None)
-        )
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(repo_repo.list_by_owner(&user.id.as_str(), None, None))
     }));
     match list_result {
         Ok(Ok(repos)) => assert!(!repos.is_empty()),

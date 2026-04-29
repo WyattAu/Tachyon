@@ -2,11 +2,11 @@ use std::env;
 
 use tachyon_core::id::{generate_document_id, generate_repository_id, generate_user_id};
 use tachyon_core::types::user::{User, UserRole};
-use tachyon_database::{
-    DatabasePool, DocumentMetadata, DocumentRepository, RepositoryMetadata,
-    RepositoryRepository, SpaceRepository, UserRepository,
-};
 use tachyon_database::space::CreateSpaceRequest;
+use tachyon_database::{
+    DatabasePool, DocumentMetadata, DocumentRepository, RepositoryMetadata, RepositoryRepository,
+    SpaceRepository, UserRepository,
+};
 
 const DEFAULT_TEST_DB_URL: &str =
     "postgres://tachyon_test:tachyon_test@127.0.0.1:5433/tachyon_test";
@@ -18,9 +18,9 @@ pub fn test_db_url() -> String {
 }
 
 pub async fn create_test_pool() -> DatabasePool {
-    DatabasePool::new(&test_db_url())
-        .await
-        .expect("Failed to connect to integration test database. Is PostgreSQL running on port 5433?")
+    DatabasePool::new(&test_db_url()).await.expect(
+        "Failed to connect to integration test database. Is PostgreSQL running on port 5433?",
+    )
 }
 
 pub async fn setup_database(_pool: &DatabasePool) {
@@ -48,17 +48,20 @@ pub async fn create_test_user(pool: &DatabasePool) -> User {
         "Test User".to_string(),
         UserRole::Admin,
     );
-    user.email = Some(format!("test_{}@integration.test", uuid::Uuid::new_v4().as_simple()));
-    user.set_password("TestPassword123!").expect("Failed to hash password");
+    user.email = Some(format!(
+        "test_{}@integration.test",
+        uuid::Uuid::new_v4().as_simple()
+    ));
+    user.set_password("TestPassword123!")
+        .expect("Failed to hash password");
 
     let repo = UserRepository::new(pool.clone());
-    repo.create(&user).await.expect("Failed to create test user")
+    repo.create(&user)
+        .await
+        .expect("Failed to create test user")
 }
 
-pub async fn create_test_document(
-    pool: &DatabasePool,
-    author_id: &str,
-) -> DocumentMetadata {
+pub async fn create_test_document(pool: &DatabasePool, author_id: &str) -> DocumentMetadata {
     let id = generate_document_id();
     let now = chrono::Utc::now();
     let meta = DocumentMetadata {
@@ -93,10 +96,7 @@ pub async fn create_test_document(
     meta
 }
 
-pub async fn create_test_repository(
-    pool: &DatabasePool,
-    owner_id: &str,
-) -> RepositoryMetadata {
+pub async fn create_test_repository(pool: &DatabasePool, owner_id: &str) -> RepositoryMetadata {
     let id = generate_repository_id();
     let now = chrono::Utc::now();
     let meta = RepositoryMetadata {

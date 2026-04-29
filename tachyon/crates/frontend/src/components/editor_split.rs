@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use tachyon_editor::Editor;
 use leptos::prelude::*;
+use tachyon_editor::Editor;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum SplitMode {
@@ -12,14 +12,10 @@ pub enum SplitMode {
 #[component]
 pub fn EditorSplit(
     editor: RwSignal<Editor>,
-    #[prop(default = SplitMode::Edit)]
-    mode: SplitMode,
-    #[prop(default = String::new())]
-    document_id: String,
-    #[prop(default = "Start writing...".to_string())]
-    placeholder: String,
-    #[prop(default = Callback::new(|_: String| {}))]
-    on_change: Callback<String>,
+    #[prop(default = SplitMode::Edit)] mode: SplitMode,
+    #[prop(default = String::new())] document_id: String,
+    #[prop(default = "Start writing...".to_string())] placeholder: String,
+    #[prop(default = Callback::new(|_: String| {}))] on_change: Callback<String>,
 ) -> impl IntoView {
     let (current_mode, set_current_mode) = signal(mode);
 

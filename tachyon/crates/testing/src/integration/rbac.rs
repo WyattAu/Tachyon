@@ -5,5 +5,5 @@
 
 #[test]
 fn test_rbac_integration_stub() {
-    assert!(true);
+    // Placeholder for future RBAC integration tests
 }

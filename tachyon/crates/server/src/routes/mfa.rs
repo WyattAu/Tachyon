@@ -1,3 +1,9 @@
+use crate::middleware::auth::AuthContext;
+use crate::routes::user::{
+    hash_refresh_token, AuthenticateResponse, UserErrorResponse, UserResponse, UserState,
+    REFRESH_TOKEN_EXPIRATION_SECS,
+};
+use crate::totp::{generate_backup_codes, generate_otpauth_uri, generate_secret, verify_totp};
 use axum::{
     extract::{Extension, State},
     http::StatusCode,
@@ -6,14 +12,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use tracing::{info, instrument, warn};
-use crate::middleware::auth::AuthContext;
-use crate::routes::user::{
-    AuthenticateResponse, UserErrorResponse, UserResponse, UserState,
-    hash_refresh_token, REFRESH_TOKEN_EXPIRATION_SECS,
-};
-use crate::totp::{
-    generate_backup_codes, generate_otpauth_uri, generate_secret, verify_totp,
-};
 
 #[derive(Debug, Serialize)]
 pub struct MfaEnableResponse {
@@ -144,7 +142,9 @@ pub async fn verify_mfa(
     let secret: Option<String> = row.get("totp_secret");
     let secret = secret.ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP secret not found"))?;
 
-    if !verify_totp(&secret, code).map_err(|_| bad_request("INVALID_CODE", "TOTP verification error"))? {
+    if !verify_totp(&secret, code)
+        .map_err(|_| bad_request("INVALID_CODE", "TOTP verification error"))?
+    {
         return Err(bad_request("INVALID_CODE", "Invalid TOTP code"));
     }
 
@@ -176,14 +176,12 @@ pub async fn disable_mfa(
         .map_err(|_| bad_request("INVALID_USER", "Invalid user ID"))?;
 
     let mut conn = state.pool.acquire().await.map_err(db_error)?;
-    let row = sqlx::query(
-        "SELECT totp_secret, totp_enabled FROM users WHERE id = $1",
-    )
-    .bind(user_id.as_uuid())
-    .fetch_optional(&mut *conn)
-    .await
-    .map_err(db_error)?
-    .ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP not enabled"))?;
+    let row = sqlx::query("SELECT totp_secret, totp_enabled FROM users WHERE id = $1")
+        .bind(user_id.as_uuid())
+        .fetch_optional(&mut *conn)
+        .await
+        .map_err(db_error)?
+        .ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP not enabled"))?;
 
     let totp_enabled: bool = row.get("totp_enabled");
     if !totp_enabled {
@@ -193,7 +191,9 @@ pub async fn disable_mfa(
     let secret: Option<String> = row.get("totp_secret");
     let secret = secret.ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP secret not found"))?;
 
-    if !verify_totp(&secret, code).map_err(|_| bad_request("INVALID_CODE", "TOTP verification error"))? {
+    if !verify_totp(&secret, code)
+        .map_err(|_| bad_request("INVALID_CODE", "TOTP verification error"))?
+    {
         return Err(bad_request("INVALID_CODE", "Invalid TOTP code"));
     }
 
@@ -231,18 +231,20 @@ pub async fn mfa_authenticate(
     }
 
     let mut conn = state.pool.acquire().await.map_err(db_error)?;
-    let row = sqlx::query(
-        "SELECT totp_enabled, totp_secret, totp_backup_codes FROM users WHERE id = $1",
-    )
-    .bind(user_id.as_uuid())
-    .fetch_optional(&mut *conn)
-    .await
-    .map_err(db_error)?
-    .ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP not enabled"))?;
+    let row =
+        sqlx::query("SELECT totp_enabled, totp_secret, totp_backup_codes FROM users WHERE id = $1")
+            .bind(user_id.as_uuid())
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(db_error)?
+            .ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP not enabled"))?;
 
     let totp_enabled: bool = row.get("totp_enabled");
     if !totp_enabled {
-        return Err(bad_request("MFA_NOT_SETUP", "MFA is not enabled for this user"));
+        return Err(bad_request(
+            "MFA_NOT_SETUP",
+            "MFA is not enabled for this user",
+        ));
     }
 
     if let Some(ref backup) = req.backup_code {
@@ -276,7 +278,9 @@ pub async fn mfa_authenticate(
     let secret: Option<String> = row.get("totp_secret");
     let secret = secret.ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP secret not found"))?;
 
-    if !verify_totp(&secret, code).map_err(|_| bad_request("INVALID_CODE", "TOTP verification error"))? {
+    if !verify_totp(&secret, code)
+        .map_err(|_| bad_request("INVALID_CODE", "TOTP verification error"))?
+    {
         return Err(unauthorized("INVALID_MFA_CODE", "Invalid MFA code"));
     }
 

@@ -1,9 +1,9 @@
-use std::time::{SystemTime, Duration};
+use base32::{encode, Alphabet};
 use hmac::{Hmac, Mac};
-use sha1::Sha1;
-use base32::{Alphabet, encode};
 use rand::Rng;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use sha1::Sha1;
+use std::time::{Duration, SystemTime};
 
 type HmacSha1 = Hmac<Sha1>;
 
@@ -21,14 +21,15 @@ pub fn generate_totp_at(secret: &str, time: SystemTime) -> Result<u32, TotpError
     let bytes = base32::decode(Alphabet::Rfc4648 { padding: false }, secret)
         .ok_or(TotpError::InvalidSecret)?;
 
-    let time_step = time.duration_since(SystemTime::UNIX_EPOCH)
+    let time_step = time
+        .duration_since(SystemTime::UNIX_EPOCH)
         .map_err(|_| TotpError::InvalidTime)?
-        .as_secs() / 30;
+        .as_secs()
+        / 30;
 
     let time_bytes = time_step.to_be_bytes();
 
-    let mut mac = HmacSha1::new_from_slice(&bytes)
-        .map_err(|_| TotpError::InvalidSecret)?;
+    let mut mac = HmacSha1::new_from_slice(&bytes).map_err(|_| TotpError::InvalidSecret)?;
     mac.update(&time_bytes);
     let result = mac.finalize().into_bytes();
 
@@ -69,11 +70,7 @@ pub fn generate_backup_codes(count: usize) -> Vec<String> {
         .collect()
 }
 
-pub fn generate_otpauth_uri(
-    secret: &str,
-    email: &str,
-    issuer: &str,
-) -> String {
+pub fn generate_otpauth_uri(secret: &str, email: &str, issuer: &str) -> String {
     format!(
         "otpauth://totp/{}:{}?secret={}&issuer={}&algorithm=SHA1&digits=6&period=30",
         urlencoding::encode(issuer),
@@ -122,7 +119,9 @@ mod tests {
     fn test_generate_secret() {
         let secret = generate_secret();
         assert!(secret.len() >= 20);
-        assert!(secret.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
+        assert!(secret
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
     }
 
     #[test]
@@ -142,7 +141,9 @@ mod tests {
     fn test_generate_backup_codes() {
         let codes = generate_backup_codes(10);
         assert_eq!(codes.len(), 10);
-        assert!(codes.iter().all(|c| c.len() == 8 && c.parse::<u32>().is_ok()));
+        assert!(codes
+            .iter()
+            .all(|c| c.len() == 8 && c.parse::<u32>().is_ok()));
     }
 
     #[test]

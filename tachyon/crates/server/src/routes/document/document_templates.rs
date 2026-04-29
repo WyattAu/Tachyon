@@ -65,7 +65,9 @@ pub async fn list_templates(
     State(state): State<DocumentState>,
 ) -> Result<Json<Vec<TemplateResponse>>, (StatusCode, Json<ErrorResponse>)> {
     let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
-    let templates = repo.list(query.category.as_deref(), Some(50), None).await
+    let templates = repo
+        .list(query.category.as_deref(), Some(50), None)
+        .await
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -77,7 +79,9 @@ pub async fn list_templates(
             )
         })?;
 
-    Ok(Json(templates.into_iter().map(TemplateResponse::from).collect()))
+    Ok(Json(
+        templates.into_iter().map(TemplateResponse::from).collect(),
+    ))
 }
 
 pub async fn get_template(
@@ -85,17 +89,16 @@ pub async fn get_template(
     State(state): State<DocumentState>,
 ) -> Result<Json<TemplateResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
-    let template = repo.get_by_id(&template_id).await
-        .map_err(|e| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Template not found: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+    let template = repo.get_by_id(&template_id).await.map_err(|e| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                code: "NOT_FOUND".to_string(),
+                message: format!("Template not found: {}", e),
+                details: None,
+            }),
+        )
+    })?;
 
     Ok(Json(TemplateResponse::from(template)))
 }
@@ -107,23 +110,26 @@ pub async fn create_template(
     let user_id = tachyon_core::generate_user_id();
     let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
 
-    let template = repo.create(tachyon_database::CreateTemplateRequest {
-        name: body.name,
-        description: body.description,
-        content: body.content,
-        category: body.category,
-        tags: body.tags,
-        created_by: user_id.to_string(),
-    }).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "CREATE_ERROR".to_string(),
-                message: format!("Failed to create template: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let template = repo
+        .create(tachyon_database::CreateTemplateRequest {
+            name: body.name,
+            description: body.description,
+            content: body.content,
+            category: body.category,
+            tags: body.tags,
+            created_by: user_id.to_string(),
+        })
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    code: "CREATE_ERROR".to_string(),
+                    message: format!("Failed to create template: {}", e),
+                    details: None,
+                }),
+            )
+        })?;
 
     tracing::info!("Created template: {}", template.name);
     Ok(Json(TemplateResponse::from(template)))
@@ -136,22 +142,28 @@ pub async fn update_template(
 ) -> Result<Json<TemplateResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
 
-    let template = repo.update(&template_id, tachyon_database::UpdateTemplateRequest {
-        name: body.name,
-        description: body.description,
-        content: body.content,
-        category: body.category,
-        tags: body.tags,
-    }).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "UPDATE_ERROR".to_string(),
-                message: format!("Failed to update template: {}", e),
-                details: None,
-            }),
+    let template = repo
+        .update(
+            &template_id,
+            tachyon_database::UpdateTemplateRequest {
+                name: body.name,
+                description: body.description,
+                content: body.content,
+                category: body.category,
+                tags: body.tags,
+            },
         )
-    })?;
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    code: "UPDATE_ERROR".to_string(),
+                    message: format!("Failed to update template: {}", e),
+                    details: None,
+                }),
+            )
+        })?;
 
     Ok(Json(TemplateResponse::from(template)))
 }
@@ -161,17 +173,16 @@ pub async fn delete_template(
     State(state): State<DocumentState>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
-    repo.delete(&template_id).await
-        .map_err(|e| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Template not found: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+    repo.delete(&template_id).await.map_err(|e| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                code: "NOT_FOUND".to_string(),
+                message: format!("Template not found: {}", e),
+                details: None,
+            }),
+        )
+    })?;
 
     Ok(StatusCode::NO_CONTENT)
 }

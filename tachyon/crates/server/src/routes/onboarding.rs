@@ -1,11 +1,7 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Json,
-};
+use axum::{extract::State, http::StatusCode, response::Json};
 use serde::{Deserialize, Serialize};
-use tachyon_database::{DatabasePool, DocumentMetadata, DocumentRepository, OnboardingRepository};
 use tachyon_core::Id;
+use tachyon_database::{DatabasePool, DocumentMetadata, DocumentRepository, OnboardingRepository};
 use tracing::info;
 
 #[derive(Clone)]
@@ -64,7 +60,12 @@ pub async fn get_onboarding_status(
     let status = repo
         .get_onboarding_status("current_user")
         .await
-        .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to get onboarding status: {}", e)))?;
+        .map_err(|e| {
+            server_error(
+                "QUERY_ERROR",
+                &format!("Failed to get onboarding status: {}", e),
+            )
+        })?;
 
     Ok(Json(OnboardingStatusResponse {
         completed: status.completed,
@@ -186,10 +187,19 @@ pub async fn get_suggestions(
 
 pub fn create_onboarding_router() -> axum::Router<OnboardingState> {
     axum::Router::new()
-        .route("/onboarding/status", axum::routing::get(get_onboarding_status))
+        .route(
+            "/onboarding/status",
+            axum::routing::get(get_onboarding_status),
+        )
         .route("/onboarding/complete", axum::routing::post(complete_step))
-        .route("/onboarding/sample-content", axum::routing::post(create_sample_content))
-        .route("/onboarding/suggestions", axum::routing::get(get_suggestions))
+        .route(
+            "/onboarding/sample-content",
+            axum::routing::post(create_sample_content),
+        )
+        .route(
+            "/onboarding/suggestions",
+            axum::routing::get(get_suggestions),
+        )
 }
 
 fn build_sample_documents() -> Vec<DocumentMetadata> {
@@ -559,7 +569,8 @@ created: 2026-01-01
 Separate sections with three or more hyphens.
 
 See [[Getting Started]] for more on document creation.
-"#.to_string()
+"#
+    .to_string()
 }
 
 fn build_knowledge_graph_content() -> String {
@@ -691,7 +702,8 @@ Speed up your workflow with these keyboard shortcuts.
 > Tip: Press `Ctrl+/` to open the command palette for quick access to any action.
 
 For more on getting started, see [[Getting Started]].
-"#.to_string()
+"#
+    .to_string()
 }
 
 fn server_error(code: &str, message: &str) -> (StatusCode, Json<ErrorResponse>) {
@@ -722,11 +734,27 @@ mod tests {
     fn test_sample_documents_have_valid_content() {
         let docs = build_sample_documents();
         assert_eq!(docs.len(), 5);
-        assert!(docs[0].content.as_ref().unwrap().contains("Welcome to Tachyon"));
-        assert!(docs[1].content.as_ref().unwrap().contains("Getting Started"));
+        assert!(docs[0]
+            .content
+            .as_ref()
+            .unwrap()
+            .contains("Welcome to Tachyon"));
+        assert!(docs[1]
+            .content
+            .as_ref()
+            .unwrap()
+            .contains("Getting Started"));
         assert!(docs[2].content.as_ref().unwrap().contains("Markdown Guide"));
-        assert!(docs[3].content.as_ref().unwrap().contains("Knowledge Graph"));
-        assert!(docs[4].content.as_ref().unwrap().contains("Keyboard Shortcuts"));
+        assert!(docs[3]
+            .content
+            .as_ref()
+            .unwrap()
+            .contains("Knowledge Graph"));
+        assert!(docs[4]
+            .content
+            .as_ref()
+            .unwrap()
+            .contains("Keyboard Shortcuts"));
     }
 
     #[test]
@@ -742,14 +770,19 @@ mod tests {
     fn test_sample_documents_have_frontmatter() {
         let docs = build_sample_documents();
         for doc in &docs {
-            assert!(doc.frontmatter.is_some(), "Document {} missing frontmatter", doc.title);
+            assert!(
+                doc.frontmatter.is_some(),
+                "Document {} missing frontmatter",
+                doc.title
+            );
         }
     }
 
     #[test]
     fn test_sample_documents_have_wiki_links() {
         let docs = build_sample_documents();
-        let all_content: String = docs.iter()
+        let all_content: String = docs
+            .iter()
             .filter_map(|d| d.content.as_ref())
             .cloned()
             .collect::<Vec<_>>()
@@ -762,13 +795,11 @@ mod tests {
     fn test_onboarding_status_response_serialization() {
         let resp = OnboardingStatusResponse {
             completed: false,
-            steps: vec![
-                tachyon_database::OnboardingStep {
-                    id: "create_first_document".to_string(),
-                    name: "Create Your First Document".to_string(),
-                    completed: false,
-                },
-            ],
+            steps: vec![tachyon_database::OnboardingStep {
+                id: "create_first_document".to_string(),
+                name: "Create Your First Document".to_string(),
+                completed: false,
+            }],
             current_step: 0,
         };
         let json = serde_json::to_string(&resp).unwrap();
@@ -813,7 +844,11 @@ mod tests {
     fn test_sample_documents_have_correct_status() {
         let docs = build_sample_documents();
         for doc in &docs {
-            assert_eq!(doc.status, "published", "Document {} should be published", doc.title);
+            assert_eq!(
+                doc.status, "published",
+                "Document {} should be published",
+                doc.title
+            );
         }
     }
 
@@ -899,7 +934,11 @@ mod tests {
         let docs = build_sample_documents();
         let slugs: Vec<&str> = docs.iter().filter_map(|d| d.slug.as_deref()).collect();
         let unique_slugs: std::collections::HashSet<&str> = slugs.iter().copied().collect();
-        assert_eq!(slugs.len(), unique_slugs.len(), "Document slugs should be unique");
+        assert_eq!(
+            slugs.len(),
+            unique_slugs.len(),
+            "Document slugs should be unique"
+        );
     }
 
     #[test]

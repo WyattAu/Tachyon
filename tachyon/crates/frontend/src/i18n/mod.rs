@@ -30,7 +30,16 @@ pub enum Locale {
 #[allow(dead_code)]
 impl Locale {
     /// All supported locales.
-    pub const ALL: &[Locale] = &[Locale::En, Locale::Zh, Locale::Ja, Locale::De, Locale::Fr, Locale::Es, Locale::Ko, Locale::Pt];
+    pub const ALL: &[Locale] = &[
+        Locale::En,
+        Locale::Zh,
+        Locale::Ja,
+        Locale::De,
+        Locale::Fr,
+        Locale::Es,
+        Locale::Ko,
+        Locale::Pt,
+    ];
 
     /// ISO 639-1 code.
     pub fn code(&self) -> &'static str {
@@ -62,7 +71,13 @@ impl Locale {
 
     /// Parse from ISO 639-1 code, defaulting to English.
     pub fn from_code(code: &str) -> Self {
-        match code.split('-').next().unwrap_or("en").to_lowercase().as_str() {
+        match code
+            .split('-')
+            .next()
+            .unwrap_or("en")
+            .to_lowercase()
+            .as_str()
+        {
             "zh" => Locale::Zh,
             "ja" => Locale::Ja,
             "de" => Locale::De,
@@ -170,7 +185,10 @@ static EN_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
     m.insert("common.loading", "Loading...");
     m.insert("common.error", "Something went wrong");
     m.insert("common.no_results", "No results found");
-    m.insert("common.confirm_delete", "Are you sure you want to delete this?");
+    m.insert(
+        "common.confirm_delete",
+        "Are you sure you want to delete this?",
+    );
     // Documents
     m.insert("docs.new", "New Document");
     m.insert("docs.empty", "No documents yet");

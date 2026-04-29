@@ -283,14 +283,14 @@ pub async fn commit(
     info!("Committing to repository: {}", repository_id);
 
     let mut repos = state.repositories.write().await;
-    
+
     match repos.get_mut(&repository_id) {
         Some(repo) => {
             repo.updated_at = Utc::now();
-            
+
             let commit_id = format!("commit_{}", Uuid::new_v4());
             info!("Commit created: {}", commit_id);
-            
+
             Ok(Json(serde_json::json!({
                 "success": true,
                 "commit_id": commit_id,
@@ -322,9 +322,9 @@ pub async fn push(
     info!("Pushing to repository: {}", repository_id);
 
     let branch = req.branch.unwrap_or_else(|| "main".to_string());
-    
+
     let repos = state.repositories.read().await;
-    
+
     match repos.get(&repository_id) {
         Some(repo) => {
             if !repo.is_initialized {
@@ -337,8 +337,11 @@ pub async fn push(
                 ));
             }
 
-            info!("Pushed to repository: {} (branch: {})", repository_id, branch);
-            
+            info!(
+                "Pushed to repository: {} (branch: {})",
+                repository_id, branch
+            );
+
             Ok(Json(serde_json::json!({
                 "success": true,
                 "repository_id": repository_id,
@@ -368,19 +371,21 @@ pub async fn status(
     debug!("Getting repository status: {}", repository_id);
 
     let repos = state.repositories.read().await;
-    
+
     match repos.get(&repository_id) {
-        Some(repo) => {
-            Ok(Json(RepositoryStatus {
-                repository_id: repo.id.clone(),
-                name: repo.name.clone(),
-                branch: repo.branch.clone(),
-                status: if repo.is_initialized { "clean".to_string() } else { "not_initialized".to_string() },
-                uncommitted_changes: 0,
-                unpushed_commits: 0,
-                last_commit: None,
-            }))
-        }
+        Some(repo) => Ok(Json(RepositoryStatus {
+            repository_id: repo.id.clone(),
+            name: repo.name.clone(),
+            branch: repo.branch.clone(),
+            status: if repo.is_initialized {
+                "clean".to_string()
+            } else {
+                "not_initialized".to_string()
+            },
+            uncommitted_changes: 0,
+            unpushed_commits: 0,
+            last_commit: None,
+        })),
         None => {
             debug!("Repository not found: {}", repository_id);
             Err((
@@ -401,7 +406,7 @@ pub async fn list_repositories(
     debug!("Listing repositories");
 
     let repos = state.repositories.read().await;
-    
+
     let mut repo_list: Vec<RepositoryResponse> = repos
         .values()
         .map(|r| RepositoryResponse::from(r.clone()))
@@ -425,7 +430,7 @@ pub async fn get_repository(
     debug!("Getting repository: {}", repository_id);
 
     let repos = state.repositories.read().await;
-    
+
     match repos.get(&repository_id) {
         Some(repo) => Ok(Json(RepositoryResponse::from(repo.clone()))),
         None => {
@@ -449,7 +454,7 @@ pub async fn delete_repository(
     debug!("Deleting repository: {}", repository_id);
 
     let mut repos = state.repositories.write().await;
-    
+
     match repos.remove(&repository_id) {
         Some(_) => {
             info!("Repository deleted: {}", repository_id);

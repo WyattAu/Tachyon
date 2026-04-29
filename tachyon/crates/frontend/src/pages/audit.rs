@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
+use crate::api::ApiClient;
+use crate::types::AuditLogEntry;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use wasm_bindgen::JsCast;
-use crate::api::ApiClient;
-use crate::types::AuditLogEntry;
 
 fn format_timestamp(ts: &str) -> String {
     let dt = chrono::DateTime::parse_from_rfc3339(ts);
@@ -21,9 +21,13 @@ async fn fetch_audit_logs(
     actor_id: Option<&str>,
 ) -> Result<(Vec<AuditLogEntry>, usize), String> {
     let client = ApiClient::default();
-    let raw = client.list_audit_logs(Some(page), Some(page_size), action, actor_id).await.map_err(|e| e.to_string())?;
+    let raw = client
+        .list_audit_logs(Some(page), Some(page_size), action, actor_id)
+        .await
+        .map_err(|e| e.to_string())?;
 
-    let entries: Vec<AuditLogEntry> = raw.get("entries")
+    let entries: Vec<AuditLogEntry> = raw
+        .get("entries")
         .and_then(|v| v.as_array())
         .map(|arr| {
             arr.iter()
@@ -32,9 +36,7 @@ async fn fetch_audit_logs(
         })
         .unwrap_or_default();
 
-    let total = raw.get("total")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0) as usize;
+    let total = raw.get("total").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
 
     Ok((entries, total))
 }
@@ -54,12 +56,18 @@ pub fn AuditPage() -> impl IntoView {
         let action = filter_action.get();
         let actor = filter_actor.get();
         let p = page.get();
-        let act_filter = if action.is_empty() { None } else { Some(action) };
+        let act_filter = if action.is_empty() {
+            None
+        } else {
+            Some(action)
+        };
         let actor_filter = if actor.is_empty() { None } else { Some(actor) };
         spawn_local(async move {
             set_loading.set(true);
             set_error.set(None);
-            match fetch_audit_logs(p, page_size, act_filter.as_deref(), actor_filter.as_deref()).await {
+            match fetch_audit_logs(p, page_size, act_filter.as_deref(), actor_filter.as_deref())
+                .await
+            {
                 Ok((ents, tot)) => {
                     set_entries.set(ents);
                     set_total.set(tot);
@@ -119,8 +127,7 @@ pub fn AuditPage() -> impl IntoView {
         if let Some(window) = web_sys::window() {
             let arr = js_sys::Array::new();
             arr.push(&js_sys::JsString::from(csv.as_str()));
-            let blob = web_sys::Blob::new_with_str_sequence(&arr)
-                .ok();
+            let blob = web_sys::Blob::new_with_str_sequence(&arr).ok();
             if let Some(blob) = blob {
                 let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap_or_default();
                 if let Some(document) = window.document() {
@@ -129,7 +136,9 @@ pub fn AuditPage() -> impl IntoView {
                     a.set_attribute("download", "audit-log.csv").unwrap();
                     if let Some(body) = document.body() {
                         body.append_child(&a).unwrap();
-                        let _ = a.dyn_ref::<web_sys::HtmlElement>().map(|el: &web_sys::HtmlElement| el.click());
+                        let _ = a
+                            .dyn_ref::<web_sys::HtmlElement>()
+                            .map(|el: &web_sys::HtmlElement| el.click());
                         body.remove_child(&a).unwrap();
                     }
                 }

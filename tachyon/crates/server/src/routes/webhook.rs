@@ -98,7 +98,9 @@ pub async fn list_webhooks(
         )
     })?;
 
-    Ok(Json(webhooks.into_iter().map(WebhookResponse::from).collect()))
+    Ok(Json(
+        webhooks.into_iter().map(WebhookResponse::from).collect(),
+    ))
 }
 
 pub async fn delete_webhook(
@@ -115,15 +117,17 @@ pub async fn delete_webhook(
         )
     })?;
 
-    let deleted = WebhookRepository::delete(&state.pool, uuid).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DELETE_ERROR".to_string(),
-                message: format!("Failed to delete webhook: {}", e),
-            }),
-        )
-    })?;
+    let deleted = WebhookRepository::delete(&state.pool, uuid)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    code: "DELETE_ERROR".to_string(),
+                    message: format!("Failed to delete webhook: {}", e),
+                }),
+            )
+        })?;
 
     if !deleted {
         return Err((
@@ -154,7 +158,10 @@ mod tests {
     fn test_create_webhook_body_deserialization() {
         let body = CreateWebhookBody {
             url: "https://example.com/hook".to_string(),
-            events: vec!["document_created".to_string(), "document_updated".to_string()],
+            events: vec![
+                "document_created".to_string(),
+                "document_updated".to_string(),
+            ],
             secret: Some("s3cret".to_string()),
         };
         assert_eq!(body.url, "https://example.com/hook");

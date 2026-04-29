@@ -1,11 +1,10 @@
 // Integration tests for SSG (static site generation) routes
 use axum::{
     body::Body,
-    http::{Request, StatusCode, header},
-    Router,
+    http::{Request, StatusCode},
 };
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 

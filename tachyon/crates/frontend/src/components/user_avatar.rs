@@ -8,8 +8,7 @@ use leptos::prelude::*;
 fn name_to_color(name: &str) -> &'static str {
     let hash: usize = name.bytes().map(|b| b as usize).sum();
     let palette = [
-        "#ef4444", "#f97316", "#eab308", "#22c55e",
-        "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
+        "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
     ];
     palette[hash % palette.len()]
 }
@@ -17,7 +16,12 @@ fn name_to_color(name: &str) -> &'static str {
 fn extract_initials(name: &str) -> String {
     let parts: Vec<&str> = name.split_whitespace().collect();
     match parts.as_slice() {
-        [first] => first.chars().next().unwrap_or('?').to_uppercase().to_string(),
+        [first] => first
+            .chars()
+            .next()
+            .unwrap_or('?')
+            .to_uppercase()
+            .to_string(),
         [first, .., last] => format!(
             "{}{}",
             first.chars().next().unwrap_or('?'),
@@ -30,14 +34,10 @@ fn extract_initials(name: &str) -> String {
 
 #[component]
 pub fn UserAvatar(
-    #[prop(into)]
-    name: String,
-    #[prop(optional, into)]
-    image_url: Option<String>,
-    #[prop(default = 32)]
-    size: u32,
-    #[prop(optional, into)]
-    class: Option<String>,
+    #[prop(into)] name: String,
+    #[prop(optional, into)] image_url: Option<String>,
+    #[prop(default = 32)] size: u32,
+    #[prop(optional, into)] class: Option<String>,
 ) -> impl IntoView {
     let initials = extract_initials(&name);
     let bg_color = name_to_color(&name);
@@ -123,8 +123,7 @@ mod tests {
     #[test]
     fn test_name_to_color_covers_palette() {
         let palette = [
-            "#ef4444", "#f97316", "#eab308", "#22c55e",
-            "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
+            "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
         ];
         let names = ["A", "B", "C", "D", "E", "F", "G", "H"];
         let colors: std::collections::HashSet<_> = names.iter().map(|n| name_to_color(n)).collect();

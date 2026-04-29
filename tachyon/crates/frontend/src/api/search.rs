@@ -11,7 +11,11 @@ impl ApiClient {
         page: Option<i64>,
         page_size: Option<i64>,
     ) -> Result<SearchResultsResponse, ApiError> {
-        let mut url = format!("{}search?q={}", self.base_url, crate::types::url_encode(query));
+        let mut url = format!(
+            "{}search?q={}",
+            self.base_url,
+            crate::types::url_encode(query)
+        );
 
         if let Some(f) = filters {
             if let Some(ref ct) = f.content_type {
@@ -50,7 +54,11 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    pub async fn search_suggest(&self, query: &str, limit: Option<u32>) -> Result<Vec<String>, ApiError> {
+    pub async fn search_suggest(
+        &self,
+        query: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<String>, ApiError> {
         let limit = limit.unwrap_or(10);
         let url = format!(
             "{}/search/suggest?q={}&limit={}",
@@ -68,7 +76,11 @@ impl ApiClient {
         page: Option<i64>,
         page_size: Option<i64>,
     ) -> Result<GlobalSearchResponse, ApiError> {
-        let mut url = format!("{}search/global?q={}", self.base_url, crate::types::url_encode(query));
+        let mut url = format!(
+            "{}search/global?q={}",
+            self.base_url,
+            crate::types::url_encode(query)
+        );
 
         if let Some(f) = filters {
             if let Some(ref ct) = f.content_type {
@@ -107,7 +119,10 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    pub async fn create_saved_search(&self, request: &CreateSavedSearchRequest) -> Result<SavedSearch, ApiError> {
+    pub async fn create_saved_search(
+        &self,
+        request: &CreateSavedSearchRequest,
+    ) -> Result<SavedSearch, ApiError> {
         let url = format!("{}/search/saved", self.base_url);
         self.post(&url, request).await
     }
@@ -124,7 +139,11 @@ impl ApiClient {
     }
 
     #[allow(dead_code)]
-    pub async fn update_saved_search(&self, id: &str, request: &UpdateSavedSearchRequest) -> Result<SavedSearch, ApiError> {
+    pub async fn update_saved_search(
+        &self,
+        id: &str,
+        request: &UpdateSavedSearchRequest,
+    ) -> Result<SavedSearch, ApiError> {
         let url = format!("{}/search/saved/{}", self.base_url, id);
         self.put(&url, request).await
     }

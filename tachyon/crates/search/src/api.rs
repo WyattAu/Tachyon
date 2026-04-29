@@ -8,7 +8,7 @@ use crate::types::{
     BatchIndexRequest, BatchIndexResponse, SearchRequest, SearchResponse, SortOrder, Suggestion,
 };
 use axum::{
-    extract::{Path, State, ws::Message, ws::WebSocketUpgrade},
+    extract::{ws::Message, ws::WebSocketUpgrade, Path, State},
     http::StatusCode,
     response::{Json, Response},
     routing::{get, post},

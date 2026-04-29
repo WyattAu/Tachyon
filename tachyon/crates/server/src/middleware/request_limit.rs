@@ -1,14 +1,11 @@
 use axum::{
     extract::Request,
+    http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Response},
-    http::StatusCode,
 };
 
-pub async fn request_size_limit(
-    request: Request,
-    next: Next,
-) -> Response {
+pub async fn request_size_limit(request: Request, next: Next) -> Response {
     const MAX_SIZE: usize = 10 * 1024 * 1024;
 
     if let Some(content_length) = request.headers().get("content-length") {
@@ -21,7 +18,8 @@ pub async fn request_size_limit(
                             "error": "request_too_large",
                             "message": format!("Request body exceeds {} bytes", MAX_SIZE)
                         })),
-                    ).into_response();
+                    )
+                        .into_response();
                 }
             }
         }

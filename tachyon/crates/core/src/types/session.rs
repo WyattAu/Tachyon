@@ -450,8 +450,8 @@ mod tests {
         let user_id = crate::id::generate_user_id();
 
         let session = Session::new(
-            session_id.clone(),
-            user_id.clone(),
+            session_id,
+            user_id,
             SessionType::Web,
             "test-token".to_string(),
             TokenType::Bearer,
@@ -529,16 +529,12 @@ mod tests {
         let session_id = crate::id::generate_session_id();
         let user_id = crate::id::generate_user_id();
 
-        let session = SessionBuilder::new(
-            session_id.clone(),
-            user_id.clone(),
-            "test-token".to_string(),
-        )
-        .session_type(SessionType::Desktop)
-        .token_type(TokenType::Jwt)
-        .ip_address("192.168.1.1".to_string())
-        .user_agent("Tachyon Desktop/1.0".to_string())
-        .build();
+        let session = SessionBuilder::new(session_id, user_id, "test-token".to_string())
+            .session_type(SessionType::Desktop)
+            .token_type(TokenType::Jwt)
+            .ip_address("192.168.1.1".to_string())
+            .user_agent("Tachyon Desktop/1.0".to_string())
+            .build();
 
         assert_eq!(session.id, session_id);
         assert_eq!(session.session_type(), SessionType::Desktop);

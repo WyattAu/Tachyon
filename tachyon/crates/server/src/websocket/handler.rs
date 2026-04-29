@@ -3,8 +3,8 @@
 
 use axum::{
     extract::{
-        State,
         ws::{Message, WebSocket, WebSocketUpgrade},
+        State,
     },
     response::{IntoResponse, Response},
 };
@@ -16,7 +16,7 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use super::operational_transform::{DocumentState, Operation};
-use super::types::{MessageType, WebSocketMessage, EditOperation, DocumentEdit};
+use super::types::{DocumentEdit, EditOperation, MessageType, WebSocketMessage};
 
 #[derive(Debug)]
 pub enum WebSocketUpgradeError {
@@ -81,7 +81,12 @@ impl ConnectionManager {
     }
 
     pub async fn room_count(&self, room_id: &str) -> usize {
-        self.rooms.read().await.get(room_id).map(|r| r.len()).unwrap_or(0)
+        self.rooms
+            .read()
+            .await
+            .get(room_id)
+            .map(|r| r.len())
+            .unwrap_or(0)
     }
 
     pub async fn add_client(&self, client_id: String) {
@@ -124,7 +129,10 @@ impl ConnectionManager {
     pub async fn join_room(&self, client_id: &str, room_id: &str) {
         {
             let mut rooms = self.rooms.write().await;
-            rooms.entry(room_id.to_string()).or_default().push(client_id.to_string());
+            rooms
+                .entry(room_id.to_string())
+                .or_default()
+                .push(client_id.to_string());
         }
         if let Some(client) = self.clients.write().await.get_mut(client_id) {
             if !client.rooms.contains(&room_id.to_string()) {
@@ -134,31 +142,37 @@ impl ConnectionManager {
         debug!(client_id = %client_id, room_id = %room_id, "Client joined room");
     }
 
-    pub async fn join_document(&self, client_id: &str, document_id: &str, user_id: &str, user_name: &str) {
+    pub async fn join_document(
+        &self,
+        client_id: &str,
+        document_id: &str,
+        user_id: &str,
+        user_name: &str,
+    ) {
         let room_id = format!("doc:{}", document_id);
         self.join_room(client_id, &room_id).await;
-        
+
         let presence = PresenceInfo {
             client_id: client_id.to_string(),
             user_id: user_id.to_string(),
             user_name: user_name.to_string(),
             cursor_position: 0,
         };
-        
+
         self.document_presence
             .write()
             .await
             .entry(document_id.to_string())
             .or_default()
             .push(presence);
-        
+
         debug!(client_id = %client_id, document_id = %document_id, "Client joined document");
     }
 
     pub async fn leave_document(&self, client_id: &str, document_id: &str) {
         let room_id = format!("doc:{}", document_id);
         self.leave_room(client_id, &room_id).await;
-        
+
         let should_remove = {
             let mut presence = self.document_presence.write().await;
             if let Some(list) = presence.get_mut(document_id) {
@@ -168,11 +182,11 @@ impl ConnectionManager {
                 false
             }
         };
-        
+
         if should_remove {
             self.document_presence.write().await.remove(document_id);
         }
-        
+
         debug!(client_id = %client_id, document_id = %document_id, "Client left document");
     }
 
@@ -211,16 +225,16 @@ impl ConnectionManager {
     pub async fn get_room_users(&self, room_id: &str) -> Vec<(String, String)> {
         let rooms = self.rooms.read().await;
         let clients = self.clients.read().await;
-        
+
         rooms
             .get(room_id)
             .map(|members| {
                 members
                     .iter()
                     .filter_map(|id| {
-                        clients.get(id).and_then(|c| {
-                            Some((c.user_id.clone()?, c.user_name.clone()?))
-                        })
+                        clients
+                            .get(id)
+                            .and_then(|c| Some((c.user_id.clone()?, c.user_name.clone()?)))
                     })
                     .collect()
             })
@@ -247,7 +261,12 @@ impl ConnectionManager {
         }
     }
 
-    pub async fn apply_edit(&self, document_id: &str, operation: Operation, client_version: u64) -> Option<u64> {
+    pub async fn apply_edit(
+        &self,
+        document_id: &str,
+        operation: Operation,
+        client_version: u64,
+    ) -> Option<u64> {
         let mut states = self.document_states.write().await;
         if let Some(state) = states.get_mut(document_id) {
             state.apply(operation, client_version).ok()
@@ -281,7 +300,7 @@ pub async fn handle_websocket_upgrade(
 async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
     let client_id = Uuid::new_v4().to_string();
     manager.add_client(client_id.clone()).await;
-    
+
     let (mut sender, mut receiver) = socket.split();
     let mut rx = manager.subscribe();
 
@@ -345,7 +364,7 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
                                     continue;
                                 }
                             };
-                            
+
                             if sender.send(Message::Text(json.into())).await.is_err() {
                                 break;
                             }
@@ -379,23 +398,34 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
     info!(client_id = %client_id, "WebSocket connection closed");
 }
 
-async fn handle_client_message(manager: &ConnectionManager, client_id: &str, msg: WebSocketMessage) {
+async fn handle_client_message(
+    manager: &ConnectionManager,
+    client_id: &str,
+    msg: WebSocketMessage,
+) {
     match msg.message_type {
         MessageType::Join => {
             if let (Some(doc_id), Some(user_id)) = (&msg.document_id, &msg.user_id) {
-                let user_name = msg.data
+                let user_name = msg
+                    .data
                     .as_ref()
                     .and_then(|d| d.get("user_name"))
                     .and_then(|n| n.as_str())
                     .unwrap_or("Unknown")
                     .to_string();
-                
-                manager.set_user_info(client_id, user_id.clone(), user_name.clone()).await;
-                manager.join_document(client_id, doc_id, user_id, &user_name).await;
-                
+
+                manager
+                    .set_user_info(client_id, user_id.clone(), user_name.clone())
+                    .await;
+                manager
+                    .join_document(client_id, doc_id, user_id, &user_name)
+                    .await;
+
                 let join_msg = WebSocketMessage::join(doc_id.clone(), user_id.clone(), user_name);
-                manager.broadcast_to_room(&format!("doc:{}", doc_id), join_msg).await;
-                
+                manager
+                    .broadcast_to_room(&format!("doc:{}", doc_id), join_msg)
+                    .await;
+
                 let presence = manager.get_document_presence(doc_id).await;
                 let presence_users: Vec<super::types::PresenceUser> = presence
                     .into_iter()
@@ -408,17 +438,21 @@ async fn handle_client_message(manager: &ConnectionManager, client_id: &str, msg
                         color: None,
                     })
                     .collect();
-                
+
                 let presence_msg = WebSocketMessage::presence(doc_id.clone(), presence_users);
-                manager.broadcast_to_room(&format!("doc:{}", doc_id), presence_msg).await;
+                manager
+                    .broadcast_to_room(&format!("doc:{}", doc_id), presence_msg)
+                    .await;
             }
         }
         MessageType::Leave => {
             if let (Some(doc_id), Some(user_id)) = (&msg.document_id, &msg.user_id) {
                 manager.leave_document(client_id, doc_id).await;
-                
+
                 let leave_msg = WebSocketMessage::leave(doc_id.clone(), user_id.clone());
-                manager.broadcast_to_room(&format!("doc:{}", doc_id), leave_msg).await;
+                manager
+                    .broadcast_to_room(&format!("doc:{}", doc_id), leave_msg)
+                    .await;
             }
         }
         MessageType::Edit => {
@@ -432,16 +466,27 @@ async fn handle_client_message(manager: &ConnectionManager, client_id: &str, msg
                             EditOperation::Delete { position, length } => {
                                 vec![Operation::delete(position, length)]
                             }
-                            EditOperation::Replace { position, length, text } => {
-                                vec![Operation::delete(position, length), Operation::insert(position, text)]
+                            EditOperation::Replace {
+                                position,
+                                length,
+                                text,
+                            } => {
+                                vec![
+                                    Operation::delete(position, length),
+                                    Operation::insert(position, text),
+                                ]
                             }
                         };
-                        
+
                         if let Some(first_op) = operations.first() {
                             let new_version = if operations.len() == 1 {
-                                manager.apply_edit(doc_id, first_op.clone(), edit.version).await
+                                manager
+                                    .apply_edit(doc_id, first_op.clone(), edit.version)
+                                    .await
                             } else {
-                                let v1 = manager.apply_edit(doc_id, first_op.clone(), edit.version).await;
+                                let v1 = manager
+                                    .apply_edit(doc_id, first_op.clone(), edit.version)
+                                    .await;
                                 let mut result = v1;
                                 for op in operations.iter().skip(1) {
                                     let next_v = v1.unwrap_or(edit.version);
@@ -449,15 +494,20 @@ async fn handle_client_message(manager: &ConnectionManager, client_id: &str, msg
                                 }
                                 result
                             };
-                            
+
                             if let Some(new_version) = new_version {
                                 let mut response_msg = msg.clone();
                                 if let Some(ref mut data) = response_msg.data {
                                     if let Some(obj) = data.as_object_mut() {
-                                        obj.insert("version".to_string(), serde_json::json!(new_version));
+                                        obj.insert(
+                                            "version".to_string(),
+                                            serde_json::json!(new_version),
+                                        );
                                     }
                                 }
-                                manager.broadcast_to_room(&format!("doc:{}", doc_id), response_msg).await;
+                                manager
+                                    .broadcast_to_room(&format!("doc:{}", doc_id), response_msg)
+                                    .await;
                             }
                         }
                     }
@@ -466,7 +516,9 @@ async fn handle_client_message(manager: &ConnectionManager, client_id: &str, msg
         }
         MessageType::Activity | MessageType::Presence => {
             if let Some(doc_id) = &msg.document_id {
-                manager.broadcast_to_room(&format!("doc:{}", doc_id), msg).await;
+                manager
+                    .broadcast_to_room(&format!("doc:{}", doc_id), msg)
+                    .await;
             }
         }
     }
@@ -487,13 +539,13 @@ mod tests {
     async fn test_connection_manager() {
         let manager = ConnectionManager::new();
         let client_id = "test-client".to_string();
-        
+
         manager.add_client(client_id.clone()).await;
         assert_eq!(manager.client_count().await, 1);
-        
+
         manager.join_room(&client_id, "doc:test-doc").await;
         assert_eq!(manager.room_count("doc:test-doc").await, 1);
-        
+
         manager.remove_client(&client_id).await;
         assert_eq!(manager.client_count().await, 0);
     }
@@ -502,10 +554,14 @@ mod tests {
     async fn test_broadcast() {
         let manager = ConnectionManager::new();
         let mut rx = manager.subscribe();
-        
-        let msg = WebSocketMessage::join("doc-1".to_string(), "user-1".to_string(), "Alice".to_string());
+
+        let msg = WebSocketMessage::join(
+            "doc-1".to_string(),
+            "user-1".to_string(),
+            "Alice".to_string(),
+        );
         manager.broadcast(msg).await;
-        
+
         let received = rx.try_recv();
         assert!(received.is_ok());
     }

@@ -27,11 +27,11 @@ pub struct RateLimitConfig {
 impl Default for RateLimitConfig {
     fn default() -> Self {
         let mut endpoint_limits = HashMap::new();
-        
+
         endpoint_limits.insert("/api/v1/auth/login".to_string(), RateLimit::new(5, 60));
         endpoint_limits.insert("/api/v1/auth/guest".to_string(), RateLimit::new(3, 60));
         endpoint_limits.insert("/api/v1/documents".to_string(), RateLimit::new(100, 60));
-        
+
         Self {
             enabled: true,
             redis_url: None,
@@ -50,11 +50,17 @@ pub struct RateLimit {
 
 impl RateLimit {
     pub fn new(max_requests: u32, window_secs: u64) -> Self {
-        Self { max_requests, window_secs }
+        Self {
+            max_requests,
+            window_secs,
+        }
     }
-    
+
     pub fn requests_per_minute(rpm: u32) -> Self {
-        Self { max_requests: rpm, window_secs: 60 }
+        Self {
+            max_requests: rpm,
+            window_secs: 60,
+        }
     }
 }
 
@@ -76,7 +82,7 @@ impl TokenBucket {
             last_refill: Instant::now(),
         }
     }
-    
+
     fn try_consume(&mut self, tokens: f64) -> bool {
         self.refill();
         if self.tokens >= tokens {
@@ -86,14 +92,14 @@ impl TokenBucket {
             false
         }
     }
-    
+
     fn refill(&mut self) {
         let now = Instant::now();
         let elapsed = now.duration_since(self.last_refill).as_secs_f64();
         self.tokens = (self.tokens + elapsed * self.refill_rate).min(self.max_tokens);
         self.last_refill = now;
     }
-    
+
     fn time_to_next_token(&self) -> Duration {
         if self.tokens >= 1.0 {
             Duration::ZERO
@@ -116,7 +122,7 @@ impl RateLimitKey {
     pub fn from_request(headers: &HeaderMap, uri: &Uri, user_id: Option<&str>) -> Self {
         let ip = extract_client_ip(headers);
         let path = uri.path().to_string();
-        
+
         if let Some(uid) = user_id {
             RateLimitKey::User(uid.to_string())
         } else {
@@ -133,13 +139,13 @@ fn extract_client_ip(headers: &HeaderMap) -> String {
             }
         }
     }
-    
+
     if let Some(real_ip) = headers.get("x-real-ip") {
         if let Ok(ip_str) = real_ip.to_str() {
             return ip_str.to_string();
         }
     }
-    
+
     "unknown".to_string()
 }
 
@@ -162,15 +168,17 @@ impl InMemoryStore {
             buckets: dashmap::DashMap::new(),
         }
     }
-    
+
     async fn check_rate_limit(&self, key: &str, limit: RateLimit) -> Result<RateLimitInfo, ()> {
-        let mut bucket = self.buckets.entry(key.to_string())
+        let mut bucket = self
+            .buckets
+            .entry(key.to_string())
             .or_insert_with(|| TokenBucket::new(limit.max_requests, limit.window_secs));
-        
+
         if bucket.try_consume(1.0) {
             let remaining = bucket.tokens.floor() as u32;
             let reset = bucket.time_to_next_token().as_secs();
-            
+
             Ok(RateLimitInfo {
                 limit: limit.max_requests,
                 remaining,
@@ -179,7 +187,7 @@ impl InMemoryStore {
             })
         } else {
             let retry_after = bucket.time_to_next_token().as_secs();
-            
+
             Ok(RateLimitInfo {
                 limit: limit.max_requests,
                 remaining: 0,
@@ -188,7 +196,6 @@ impl InMemoryStore {
             })
         }
     }
-    
 }
 
 #[derive(Debug)]
@@ -228,11 +235,12 @@ impl RedisStore {
         };
 
         if count <= limit.max_requests as i64 {
-            let reset = limit.window_secs - (std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs()
-                - window_start);
+            let reset = limit.window_secs
+                - (std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+                    - window_start);
             Ok(RateLimitInfo {
                 limit: limit.max_requests,
                 remaining: remaining as u32,
@@ -240,11 +248,12 @@ impl RedisStore {
                 retry_after: None,
             })
         } else {
-            let retry_after = limit.window_secs - (std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs()
-                - window_start);
+            let retry_after = limit.window_secs
+                - (std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+                    - window_start);
             Ok(RateLimitInfo {
                 limit: limit.max_requests,
                 remaining: 0,
@@ -292,7 +301,10 @@ impl RateLimitState {
             match RateLimitStore::redis(redis_url) {
                 Ok(store) => store,
                 Err(e) => {
-                    tracing::warn!("Failed to create Redis rate limiter pool: {}, falling back to in-memory", e);
+                    tracing::warn!(
+                        "Failed to create Redis rate limiter pool: {}, falling back to in-memory",
+                        e
+                    );
                     RateLimitStore::in_memory()
                 }
             }
@@ -301,21 +313,21 @@ impl RateLimitState {
         };
         Self { config, store }
     }
-    
+
     pub fn in_memory() -> Self {
         Self {
             config: RateLimitConfig::default(),
             store: RateLimitStore::in_memory(),
         }
     }
-    
+
     fn get_limit_for_path(&self, path: &str) -> RateLimit {
         for (pattern, limit) in &self.config.endpoint_limits {
             if path.starts_with(pattern) || path == pattern {
                 return *limit;
             }
         }
-        
+
         RateLimit::requests_per_minute(self.config.default_requests_per_minute)
     }
 }
@@ -335,12 +347,12 @@ pub async fn rate_limit_middleware(
     if !state.config.enabled {
         return Ok(next.run(request).await);
     }
-    
+
     let path = request.uri().path();
     let headers = request.headers();
-    
+
     let user_id = None;
-    
+
     let limit = state.get_limit_for_path(path);
     let key = RateLimitKey::from_request(headers, request.uri(), user_id);
     let key_str = match key {
@@ -349,7 +361,7 @@ pub async fn rate_limit_middleware(
         RateLimitKey::Endpoint(ep) => format!("endpoint:{}", ep),
         RateLimitKey::Combined { ip, endpoint } => format!("combined:{}:{}", ip, endpoint),
     };
-    
+
     match state.store.check(&key_str, limit).await {
         Ok(info) => {
             if let Some(retry_after) = info.retry_after {
@@ -359,22 +371,25 @@ pub async fn rate_limit_middleware(
                     retry_after = retry_after,
                     "Rate limit exceeded"
                 );
-                
+
                 return Err((
                     StatusCode::TOO_MANY_REQUESTS,
                     Json(RateLimitErrorResponse {
                         error: "RATE_LIMIT_EXCEEDED".to_string(),
-                        message: format!("Rate limit exceeded. Try again in {} seconds.", retry_after),
+                        message: format!(
+                            "Rate limit exceeded. Try again in {} seconds.",
+                            retry_after
+                        ),
                         retry_after,
                     }),
                 ));
             }
-            
+
             let response = next.run(request).await;
-            
+
             let mut response = response;
             let headers = response.headers_mut();
-            
+
             headers.insert(
                 "X-RateLimit-Limit",
                 axum::http::HeaderValue::from_str(&info.limit.to_string())
@@ -390,16 +405,18 @@ pub async fn rate_limit_middleware(
                 axum::http::HeaderValue::from_str(&info.reset.to_string())
                     .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
             );
-            
+
             Ok(response)
         }
-        Err(_) => {
-            Ok(next.run(request).await)
-        }
+        Err(_) => Ok(next.run(request).await),
     }
 }
 
-pub fn configure_endpoint_rate_limit(path: &str, max_requests: u32, window_secs: u64) -> (String, RateLimit) {
+pub fn configure_endpoint_rate_limit(
+    path: &str,
+    max_requests: u32,
+    window_secs: u64,
+) -> (String, RateLimit) {
     (path.to_string(), RateLimit::new(max_requests, window_secs))
 }
 
@@ -411,48 +428,64 @@ pub struct RateLimitRule {
 
 pub fn default_rules() -> Vec<RateLimitRule> {
     vec![
-        RateLimitRule { path_pattern: "/api/auth/login".to_string(), max_requests: 5, window_secs: 60 },
-        RateLimitRule { path_pattern: "/api/auth/register".to_string(), max_requests: 3, window_secs: 60 },
-        RateLimitRule { path_pattern: "/api/auth/password-reset".to_string(), max_requests: 3, window_secs: 3600 },
-        RateLimitRule { path_pattern: "/api/*".to_string(), max_requests: 100, window_secs: 60 },
+        RateLimitRule {
+            path_pattern: "/api/auth/login".to_string(),
+            max_requests: 5,
+            window_secs: 60,
+        },
+        RateLimitRule {
+            path_pattern: "/api/auth/register".to_string(),
+            max_requests: 3,
+            window_secs: 60,
+        },
+        RateLimitRule {
+            path_pattern: "/api/auth/password-reset".to_string(),
+            max_requests: 3,
+            window_secs: 3600,
+        },
+        RateLimitRule {
+            path_pattern: "/api/*".to_string(),
+            max_requests: 100,
+            window_secs: 60,
+        },
     ]
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_token_bucket_creation() {
         let bucket = TokenBucket::new(10, 60);
         assert_eq!(bucket.tokens, 10.0);
         assert_eq!(bucket.max_tokens, 10.0);
     }
-    
+
     #[test]
     fn test_token_bucket_consume() {
         let mut bucket = TokenBucket::new(5, 60);
-        
+
         assert!(bucket.try_consume(1.0));
         assert!((bucket.tokens - 4.0).abs() < 0.01);
-        
+
         assert!(bucket.try_consume(3.0));
         assert!((bucket.tokens - 1.0).abs() < 0.01);
-        
+
         assert!(bucket.try_consume(1.0));
         assert!(bucket.tokens < 0.01);
-        
+
         assert!(!bucket.try_consume(1.0));
     }
-    
+
     #[test]
     fn test_rate_limit_key_extraction() {
         let mut headers = HeaderMap::new();
         headers.insert("x-forwarded-for", "192.168.1.1, 10.0.0.1".parse().unwrap());
-        
+
         let uri: Uri = "/api/v1/documents".parse().unwrap();
         let key = RateLimitKey::from_request(&headers, &uri, None);
-        
+
         match key {
             RateLimitKey::Combined { ip, endpoint } => {
                 assert_eq!(ip, "192.168.1.1");
@@ -461,19 +494,19 @@ mod tests {
             _ => panic!("Expected Combined key"),
         }
     }
-    
+
     #[tokio::test]
     async fn test_in_memory_store() {
         let store = InMemoryStore::new();
         let limit = RateLimit::new(5, 60);
-        
+
         for _ in 0..5 {
             let result = store.check_rate_limit("test-key", limit).await;
             assert!(result.is_ok());
             let info = result.unwrap();
             assert!(info.retry_after.is_none());
         }
-        
+
         let result = store.check_rate_limit("test-key", limit).await;
         assert!(result.is_ok());
         let info = result.unwrap();

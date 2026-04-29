@@ -40,23 +40,24 @@ pub async fn list_activity(
     let limit = query.limit.unwrap_or(50).min(100);
     let offset = query.offset.unwrap_or(0);
 
-    let events = if let (Some(target_type), Some(target_id)) = (&query.target_type, &query.target_id) {
-        let target_uuid = uuid::Uuid::parse_str(target_id)
-            .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid target_id: {}", e)))?;
-        ActivityRepository::list_by_target(&state.pool, target_type, target_uuid, limit)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    } else if let Some(actor_id) = &query.actor_id {
-        let actor_uuid = uuid::Uuid::parse_str(actor_id)
-            .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid actor_id: {}", e)))?;
-        ActivityRepository::list_by_actor(&state.pool, actor_uuid, limit)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    } else {
-        ActivityRepository::list_recent(&state.pool, limit, offset)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    };
+    let events =
+        if let (Some(target_type), Some(target_id)) = (&query.target_type, &query.target_id) {
+            let target_uuid = uuid::Uuid::parse_str(target_id)
+                .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid target_id: {}", e)))?;
+            ActivityRepository::list_by_target(&state.pool, target_type, target_uuid, limit)
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        } else if let Some(actor_id) = &query.actor_id {
+            let actor_uuid = uuid::Uuid::parse_str(actor_id)
+                .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid actor_id: {}", e)))?;
+            ActivityRepository::list_by_actor(&state.pool, actor_uuid, limit)
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        } else {
+            ActivityRepository::list_recent(&state.pool, limit, offset)
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        };
 
     let count = events.len();
     Ok(Json(ActivityListResponse { events, count }))
@@ -73,8 +74,7 @@ pub async fn create_activity(
 }
 
 pub fn create_activity_router() -> axum::Router<ActivityState> {
-    axum::Router::new()
-        .route("/activity", get(list_activity).post(create_activity))
+    axum::Router::new().route("/activity", get(list_activity).post(create_activity))
 }
 
 #[cfg(test)]
@@ -83,11 +83,15 @@ mod tests {
 
     #[test]
     fn test_list_activity_query_deserialization() {
-        let json = r#"{"limit": 25, "offset": 10, "actor_id": "550e8400-e29b-41d4-a716-446655440000"}"#;
+        let json =
+            r#"{"limit": 25, "offset": 10, "actor_id": "550e8400-e29b-41d4-a716-446655440000"}"#;
         let query: ListActivityQuery = serde_json::from_str(json).unwrap();
         assert_eq!(query.limit, Some(25));
         assert_eq!(query.offset, Some(10));
-        assert_eq!(query.actor_id.as_deref(), Some("550e8400-e29b-41d4-a716-446655440000"));
+        assert_eq!(
+            query.actor_id.as_deref(),
+            Some("550e8400-e29b-41d4-a716-446655440000")
+        );
         assert!(query.target_type.is_none());
     }
 

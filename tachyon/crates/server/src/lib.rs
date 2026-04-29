@@ -110,10 +110,10 @@
 pub mod api_docs;
 pub mod audit;
 pub mod config;
-pub mod email;
-pub mod error;
 pub mod conflict;
 pub mod crdt;
+pub mod email;
+pub mod error;
 pub mod graph_extractor;
 pub mod middleware;
 pub mod routes;
@@ -181,33 +181,33 @@ pub struct AppState {
 ///
 /// This is the single entry point for building a Tachyon server,
 /// used by both `tachyon-server` (binary) and `tachyon serve` (CLI).
-pub async fn init_app_state(
-    config: &ServerConfig,
-) -> anyhow::Result<AppState> {
-    use crate::routes::review::ReviewState;
+pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     use crate::routes::activity::ActivityState;
-    use crate::routes::tags::TagsState;
-    use crate::routes::webhook::WebhookState;
+    use crate::routes::catalog::CatalogState;
     use crate::routes::conflict::ConflictState;
+    use crate::routes::document::DocumentState;
+    use crate::routes::node::NodeState;
+    use crate::routes::notification::NotificationState;
     use crate::routes::onboarding::OnboardingState;
     use crate::routes::plugin::PluginState;
-    use crate::routes::space::SpaceState;
-    use crate::routes::user::UserState;
-    use crate::routes::session::SessionState;
     use crate::routes::repository::RepositoryState;
-    use crate::routes::node::NodeState;
-    use crate::routes::catalog::CatalogState;
-    use crate::routes::team::TeamState;
+    use crate::routes::review::ReviewState;
     use crate::routes::role::RoleState;
     use crate::routes::search::SearchState;
-    use crate::routes::document::DocumentState;
-    use crate::routes::notification::NotificationState;
+    use crate::routes::session::SessionState;
+    use crate::routes::space::SpaceState;
+    use crate::routes::tags::TagsState;
+    use crate::routes::team::TeamState;
+    use crate::routes::user::UserState;
+    use crate::routes::webhook::WebhookState;
     use crate::websocket::ConnectionManager;
     use crate::websocket::CrdtConnectionManager;
     use tachyon_database::init_with_migrations;
 
     let database_url = if config.database_url.is_empty() {
-        config.database_path.as_deref()
+        config
+            .database_path
+            .as_deref()
             .unwrap_or("postgres://tachyon:tachyon@localhost:5432/tachyon")
     } else {
         &config.database_url
@@ -220,32 +220,42 @@ pub async fn init_app_state(
     // Seed initial admin user if no users exist
     {
         let user_repo = tachyon_database::UserRepository::new(pool.clone());
-        let admin_username = std::env::var("TACHYON_ADMIN_USERNAME").unwrap_or_else(|_| "admin".into());
+        let admin_username =
+            std::env::var("TACHYON_ADMIN_USERNAME").unwrap_or_else(|_| "admin".into());
         let admin_password = std::env::var("TACHYON_ADMIN_PASSWORD").unwrap_or_else(|_| {
             uuid::Uuid::new_v4().to_string().replace('-', "")[..16].to_string()
         });
-        let admin_email = std::env::var("TACHYON_ADMIN_EMAIL")
-            .unwrap_or_else(|_| "admin@tachyon.local".into());
+        let admin_email =
+            std::env::var("TACHYON_ADMIN_EMAIL").unwrap_or_else(|_| "admin@tachyon.local".into());
 
-        match user_repo.seed_admin(&admin_username, "Administrator", &admin_email, &admin_password).await {
+        match user_repo
+            .seed_admin(
+                &admin_username,
+                "Administrator",
+                &admin_email,
+                &admin_password,
+            )
+            .await
+        {
             Ok(Some(user)) => {
-                tracing::info!(
-                    "Initial admin user seeded: {} ({})",
-                    user.username, user.id
-                );
+                tracing::info!("Initial admin user seeded: {} ({})", user.username, user.id);
             }
             Ok(None) => {
                 tracing::info!("Admin seed skipped: users already exist");
             }
             Err(e) => {
-                tracing::warn!("Failed to seed admin user: {}. Users must be created manually.", e);
+                tracing::warn!(
+                    "Failed to seed admin user: {}. Users must be created manually.",
+                    e
+                );
             }
         }
     }
 
     let http_client = reqwest::Client::new();
 
-    let document_state = DocumentState::with_guest_config(pool.clone(), config.guest.clone(), http_client.clone());
+    let document_state =
+        DocumentState::with_guest_config(pool.clone(), config.guest.clone(), http_client.clone());
     let user_state = UserState::with_guest_config(
         pool.clone(),
         config.jwt.secret.clone(),
@@ -274,7 +284,10 @@ pub async fn init_app_state(
         .unwrap_or_else(|_| std::env::temp_dir())
         .join("plugins");
     let plugin_runtime = tachyon_plugin_runtime::PluginRuntime::new(plugins_dir);
-    let plugin_state = PluginState { pool: pool.clone(), runtime: plugin_runtime };
+    let plugin_state = PluginState {
+        pool: pool.clone(),
+        runtime: plugin_runtime,
+    };
     let space_state = SpaceState { pool: pool.clone() };
     let conflict_state = ConflictState { pool: pool.clone() };
     let onboarding_state = OnboardingState { pool: pool.clone() };
@@ -284,11 +297,29 @@ pub async fn init_app_state(
 
     Ok(AppState {
         start_time: std::time::Instant::now(),
-        document_state, user_state, session_state, repository_state, node_state,
-        catalog_state, team_state, role_state, search_state, seo_state,
-        review_state, activity_state, notification_state, tags_state,
-        webhook_state, plugin_state, space_state, conflict_state,
-        onboarding_state, connection_manager, crdt_connection_manager, pool, http_client,
+        document_state,
+        user_state,
+        session_state,
+        repository_state,
+        node_state,
+        catalog_state,
+        team_state,
+        role_state,
+        search_state,
+        seo_state,
+        review_state,
+        activity_state,
+        notification_state,
+        tags_state,
+        webhook_state,
+        plugin_state,
+        space_state,
+        conflict_state,
+        onboarding_state,
+        connection_manager,
+        crdt_connection_manager,
+        pool,
+        http_client,
         email,
         metrics: Arc::new(crate::middleware::metrics::RequestMetrics::new()),
         api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(60)),
@@ -299,10 +330,7 @@ pub async fn init_app_state(
 ///
 /// This is the single entry point for creating the Tachyon HTTP/WebSocket
 /// application, used by both `tachyon-server` (binary) and `tachyon serve` (CLI).
-pub fn build_app(
-    state: AppState,
-    config: &ServerConfig,
-) -> axum::Router {
+pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let start_time = state.start_time;
     let document_state = state.document_state;
     let user_state = state.user_state;
@@ -328,42 +356,40 @@ pub fn build_app(
     let pool = state.pool;
     let http_client = state.http_client;
     let metrics = state.metrics;
-    use crate::routes::document::create_document_router;
-    use crate::routes::user::create_user_router;
-    use crate::routes::session::create_session_router;
-    use crate::routes::repository::create_repository_router;
-    use crate::routes::node::create_node_router;
+    use crate::routes::activity::create_activity_router;
+    use crate::routes::billing::{create_billing_router, BillingState};
     use crate::routes::catalog::create_catalog_router;
-    use crate::routes::team::create_team_router;
+    use crate::routes::collaboration::{create_collaboration_router, CollaborationState};
+    use crate::routes::conflict::create_conflict_router;
+    use crate::routes::document::create_document_router;
+    use crate::routes::ecosystem::{create_ecosystem_router, EcosystemState};
+    use crate::routes::files::{create_files_router, FilesState};
+    use crate::routes::mfa::create_mfa_router;
+    use crate::routes::node::create_node_router;
+    use crate::routes::notification::create_notification_router;
+    use crate::routes::oauth2::{create_oauth2_router, OAuth2State};
+    use crate::routes::onboarding::create_onboarding_router;
+    use crate::routes::organization::{create_organization_router, OrganizationState};
+    use crate::routes::password_reset::{create_password_reset_router, PasswordResetState};
+    use crate::routes::plugin::create_plugin_router_with_state;
+    use crate::routes::repository::create_repository_router;
+    use crate::routes::review::create_review_router;
     use crate::routes::role::create_role_router;
     use crate::routes::search::create_search_router;
     use crate::routes::seo::create_seo_router;
-    use crate::routes::review::create_review_router;
-    use crate::routes::activity::create_activity_router;
-    use crate::routes::notification::create_notification_router;
-    use crate::routes::tags::create_tags_router;
-    use crate::routes::webhook::create_webhook_router;
-    use crate::routes::conflict::create_conflict_router;
-    use crate::routes::onboarding::create_onboarding_router;
-    use crate::routes::plugin::create_plugin_router_with_state;
+    use crate::routes::session::create_session_router;
     use crate::routes::space::create_space_router;
-    use crate::routes::collaboration::{CollaborationState, create_collaboration_router};
-    use crate::routes::ecosystem::{EcosystemState, create_ecosystem_router};
-    use crate::routes::billing::{BillingState, create_billing_router};
-    use crate::routes::organization::{OrganizationState, create_organization_router};
-    use crate::routes::ssg::{SsgState, create_ssg_router};
-    use crate::routes::oauth2::{create_oauth2_router, OAuth2State};
-    use crate::routes::password_reset::{create_password_reset_router, PasswordResetState};
-    use crate::routes::files::{create_files_router, FilesState};
-    use crate::routes::mfa::create_mfa_router;
-    use crate::websocket::handle_websocket_upgrade;
+    use crate::routes::ssg::{create_ssg_router, SsgState};
+    use crate::routes::tags::create_tags_router;
+    use crate::routes::team::create_team_router;
+    use crate::routes::user::create_user_router;
+    use crate::routes::webhook::create_webhook_router;
     use crate::websocket::handle_crdt_websocket_upgrade;
-    use axum::{Router, routing::get};
+    use crate::websocket::handle_websocket_upgrade;
+    use axum::{routing::get, Router};
     use tower::ServiceBuilder;
     use tower_http::{
-        compression::CompressionLayer,
-        limit::RequestBodyLimitLayer,
-        trace::TraceLayer,
+        compression::CompressionLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,
     };
 
     let document_router = create_document_router().with_state(document_state);
@@ -421,11 +447,14 @@ pub fn build_app(
         client: http_client.clone(),
     };
     let oauth2_router = create_oauth2_router().with_state(oauth2_state);
-    let password_reset_state = PasswordResetState { pool: pool.clone(), client: http_client.clone() };
+    let password_reset_state = PasswordResetState {
+        pool: pool.clone(),
+        client: http_client.clone(),
+    };
     let password_reset_router = create_password_reset_router().with_state(password_reset_state);
 
-    let files_root = std::env::var("TACHYON_FILES_ROOT")
-        .unwrap_or_else(|_| "./content".to_string());
+    let files_root =
+        std::env::var("TACHYON_FILES_ROOT").unwrap_or_else(|_| "./content".to_string());
     let files_state = FilesState {
         root_path: std::path::PathBuf::from(&files_root),
         uploads_dir: std::path::PathBuf::from(&files_root).join("uploads"),
@@ -460,14 +489,8 @@ pub fn build_app(
         .merge(files_router)
         .merge(mfa_router)
         .layer(RequestBodyLimitLayer::new(1024 * 1024))
-        .merge(
-            ssg_router
-                .layer(RequestBodyLimitLayer::new(1024 * 1024)),
-        )
-        .merge(
-            oauth2_router
-                .layer(RequestBodyLimitLayer::new(1024 * 1024)),
-        );
+        .merge(ssg_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
+        .merge(oauth2_router.layer(RequestBodyLimitLayer::new(1024 * 1024)));
 
     let ws_router = Router::new()
         .route("/ws", get(handle_websocket_upgrade))
@@ -483,15 +506,27 @@ pub fn build_app(
 
     let swagger_ui = crate::api_docs::create_swagger_ui();
 
-    let rate_limit_state = crate::middleware::RateLimitState::new(crate::middleware::RateLimitConfig {
-        enabled: config.rate_limit.enabled,
-        redis_url: config.rate_limit.redis_url.clone(),
-        default_requests_per_minute: config.rate_limit.default_requests_per_minute,
-        cleanup_interval_secs: config.rate_limit.cleanup_interval_secs,
-        endpoint_limits: config.rate_limit.endpoint_limits.iter()
-            .map(|(k, v)| (k.clone(), crate::middleware::rate_limit::RateLimit::new(v.max_requests, v.window_secs)))
-            .collect(),
-    });
+    let rate_limit_state =
+        crate::middleware::RateLimitState::new(crate::middleware::RateLimitConfig {
+            enabled: config.rate_limit.enabled,
+            redis_url: config.rate_limit.redis_url.clone(),
+            default_requests_per_minute: config.rate_limit.default_requests_per_minute,
+            cleanup_interval_secs: config.rate_limit.cleanup_interval_secs,
+            endpoint_limits: config
+                .rate_limit
+                .endpoint_limits
+                .iter()
+                .map(|(k, v)| {
+                    (
+                        k.clone(),
+                        crate::middleware::rate_limit::RateLimit::new(
+                            v.max_requests,
+                            v.window_secs,
+                        ),
+                    )
+                })
+                .collect(),
+        });
 
     let health_router = Router::new()
         .route("/health", get(crate::routes::health::health_check))
@@ -505,7 +540,10 @@ pub fn build_app(
         });
 
     let metrics_router = Router::new()
-        .route("/metrics/app", get(crate::routes::metrics::prometheus_metrics))
+        .route(
+            "/metrics/app",
+            get(crate::routes::metrics::prometheus_metrics),
+        )
         .with_state(crate::routes::metrics::MetricsState {
             metrics: metrics.clone(),
             start_time,
@@ -537,16 +575,16 @@ pub fn build_app(
                 .layer(axum::middleware::from_fn(request_size_limit))
                 .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
                 .layer(build_cors_layer(config))
-                .map_response(move |response| add_security_headers_from_config(response, &security_config)),
+                .map_response(move |response| {
+                    add_security_headers_from_config(response, &security_config)
+                }),
         );
 
     router = router.merge(swagger_ui);
 
     let auth_state = crate::middleware::AuthState::new(config.clone(), pool.clone());
-    let auth_layer = axum::middleware::from_fn_with_state(
-        auth_state,
-        crate::middleware::auth_middleware,
-    );
+    let auth_layer =
+        axum::middleware::from_fn_with_state(auth_state, crate::middleware::auth_middleware);
     router = router.layer(auth_layer);
 
     if config.rate_limit.enabled {
@@ -582,24 +620,32 @@ pub fn build_cors_layer(config: &ServerConfig) -> CorsLayer {
     let allow_origin = if config.cors.allowed_origins.contains(&"*".to_string()) {
         AllowOrigin::any()
     } else {
-        let origins: Vec<HeaderValue> = config.cors.allowed_origins
+        let origins: Vec<HeaderValue> = config
+            .cors
+            .allowed_origins
             .iter()
             .filter_map(|origin| origin.parse().ok())
             .collect();
         AllowOrigin::list(origins)
     };
 
-    let allow_methods: Vec<Method> = config.cors.allowed_methods
+    let allow_methods: Vec<Method> = config
+        .cors
+        .allowed_methods
         .iter()
         .filter_map(|m| m.parse().ok())
         .collect();
 
-    let allow_headers: Vec<axum::http::HeaderName> = config.cors.allowed_headers
+    let allow_headers: Vec<axum::http::HeaderName> = config
+        .cors
+        .allowed_headers
         .iter()
         .filter_map(|h| h.parse().ok())
         .collect();
 
-    let expose_headers: Vec<axum::http::HeaderName> = config.cors.exposed_headers
+    let expose_headers: Vec<axum::http::HeaderName> = config
+        .cors
+        .exposed_headers
         .iter()
         .filter_map(|h| h.parse().ok())
         .collect();
@@ -634,10 +680,11 @@ pub(crate) struct HealthState {
     pub(crate) redis_enabled: bool,
 }
 
-async fn metrics_handler(
-    State(state): State<HealthState>,
-) -> axum::Json<serde_json::Value> {
-    let db_stats: serde_json::Value = state.pool.statistics().await
+async fn metrics_handler(State(state): State<HealthState>) -> axum::Json<serde_json::Value> {
+    let db_stats: serde_json::Value = state
+        .pool
+        .statistics()
+        .await
         .unwrap_or_else(|_| serde_json::json!({}));
 
     axum::Json(serde_json::json!({

@@ -34,13 +34,16 @@ pub struct CreateNotification {
 pub struct NotificationRepository;
 
 impl NotificationRepository {
-    pub async fn create(pool: &DatabasePool, notification: CreateNotification) -> DatabaseResult<Notification> {
+    pub async fn create(
+        pool: &DatabasePool,
+        notification: CreateNotification,
+    ) -> DatabaseResult<Notification> {
         let metadata = notification.metadata.unwrap_or(serde_json::json!({}));
         let mut conn = pool.acquire().await?;
         let result = query_as::<_, Notification>(
             r#"INSERT INTO notifications (user_id, type, title, body, link, metadata)
               VALUES ($1, $2, $3, $4, $5, $6)
-              RETURNING id, user_id, type, title, body, link, read, metadata, created_at"#
+              RETURNING id, user_id, type, title, body, link, read, metadata, created_at"#,
         )
         .bind(notification.user_id)
         .bind(&notification.notification_type)
@@ -54,7 +57,13 @@ impl NotificationRepository {
         Ok(result)
     }
 
-    pub async fn list_for_user(pool: &DatabasePool, user_id: Uuid, limit: i64, offset: i64, include_read: bool) -> DatabaseResult<Vec<Notification>> {
+    pub async fn list_for_user(
+        pool: &DatabasePool,
+        user_id: Uuid,
+        limit: i64,
+        offset: i64,
+        include_read: bool,
+    ) -> DatabaseResult<Vec<Notification>> {
         let mut conn = pool.acquire().await?;
         if include_read {
             let results = query_as::<_, Notification>(
@@ -62,7 +71,7 @@ impl NotificationRepository {
                   FROM notifications
                   WHERE user_id = $1
                   ORDER BY created_at DESC
-                  LIMIT $2 OFFSET $3"#
+                  LIMIT $2 OFFSET $3"#,
             )
             .bind(user_id)
             .bind(limit)
@@ -77,7 +86,7 @@ impl NotificationRepository {
                   FROM notifications
                   WHERE user_id = $1 AND read = false
                   ORDER BY created_at DESC
-                  LIMIT $2 OFFSET $3"#
+                  LIMIT $2 OFFSET $3"#,
             )
             .bind(user_id)
             .bind(limit)
@@ -92,7 +101,7 @@ impl NotificationRepository {
     pub async fn get_unread_count(pool: &DatabasePool, user_id: Uuid) -> DatabaseResult<i64> {
         let mut conn = pool.acquire().await?;
         let row: (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND read = false"#
+            r#"SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND read = false"#,
         )
         .bind(user_id)
         .fetch_one(&mut *conn)
@@ -101,7 +110,11 @@ impl NotificationRepository {
         Ok(row.0)
     }
 
-    pub async fn mark_read(pool: &DatabasePool, notification_id: Uuid, user_id: Uuid) -> DatabaseResult<bool> {
+    pub async fn mark_read(
+        pool: &DatabasePool,
+        notification_id: Uuid,
+        user_id: Uuid,
+    ) -> DatabaseResult<bool> {
         let mut conn = pool.acquire().await?;
         let result = sqlx::query(
             r#"UPDATE notifications SET read = true WHERE id = $1 AND user_id = $2 AND read = false"#
@@ -117,7 +130,7 @@ impl NotificationRepository {
     pub async fn mark_all_read(pool: &DatabasePool, user_id: Uuid) -> DatabaseResult<u64> {
         let mut conn = pool.acquire().await?;
         let result = sqlx::query(
-            r#"UPDATE notifications SET read = true WHERE user_id = $1 AND read = false"#
+            r#"UPDATE notifications SET read = true WHERE user_id = $1 AND read = false"#,
         )
         .bind(user_id)
         .execute(&mut *conn)

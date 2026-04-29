@@ -306,20 +306,29 @@ mod tests {
     #[test]
     fn test_badge_color_known_roles() {
         let owner = UserRole {
-            id: 1, name: "owner".to_string(), description: None,
-            permissions: vec![], is_system: true,
+            id: 1,
+            name: "owner".to_string(),
+            description: None,
+            permissions: vec![],
+            is_system: true,
         };
         assert!(owner.badge_color().contains("purple"));
 
         let admin = UserRole {
-            id: 2, name: "admin".to_string(), description: None,
-            permissions: vec![], is_system: true,
+            id: 2,
+            name: "admin".to_string(),
+            description: None,
+            permissions: vec![],
+            is_system: true,
         };
         assert!(admin.badge_color().contains("red"));
 
         let editor = UserRole {
-            id: 3, name: "editor".to_string(), description: None,
-            permissions: vec![], is_system: false,
+            id: 3,
+            name: "editor".to_string(),
+            description: None,
+            permissions: vec![],
+            is_system: false,
         };
         assert!(editor.badge_color().contains("orange"));
     }
@@ -327,8 +336,11 @@ mod tests {
     #[test]
     fn test_badge_color_unknown_role() {
         let role = UserRole {
-            id: 99, name: "custom_role".to_string(), description: None,
-            permissions: vec![], is_system: false,
+            id: 99,
+            name: "custom_role".to_string(),
+            description: None,
+            permissions: vec![],
+            is_system: false,
         };
         assert!(role.badge_color().contains("green"));
     }

@@ -29,8 +29,10 @@ impl DatabasePool {
         info!("Initializing PostgreSQL database pool: {}", database_url);
 
         // Configure pool options
-        debug!("Configuring pool options: max={}, min={}, timeout={}s", 
-            config.max_connections, config.min_connections, config.connection_timeout);
+        debug!(
+            "Configuring pool options: max={}, min={}, timeout={}s",
+            config.max_connections, config.min_connections, config.connection_timeout
+        );
 
         // Create the pool using the connection string directly
         debug!("Connecting to database with timeout...");
@@ -69,7 +71,7 @@ impl DatabasePool {
         info!("PostgreSQL pool initialized successfully");
 
         let db_pool = Self { pool, config };
-        
+
         // Apply database configuration
         db_pool.apply_config().await?;
 
@@ -78,7 +80,10 @@ impl DatabasePool {
 
     /// Apply database configuration (PostgreSQL settings)
     async fn apply_config(&self) -> DatabaseResult<()> {
-        let mut conn = self.pool.acquire().await
+        let mut conn = self
+            .pool
+            .acquire()
+            .await
             .map_err(DatabaseError::ConnectionError)?;
 
         // Enable extensions if needed
@@ -94,7 +99,7 @@ impl DatabasePool {
                 .await
                 .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
             }
-                
+
             debug!("PostgreSQL extensions enabled");
         }
 
@@ -150,7 +155,10 @@ impl DatabasePool {
 
         let pool_size = self.pool.size();
         stats.insert("pool_size".to_string(), serde_json::json!(pool_size));
-        stats.insert("idle_connections".to_string(), serde_json::json!(self.pool.num_idle()));
+        stats.insert(
+            "idle_connections".to_string(),
+            serde_json::json!(self.pool.num_idle()),
+        );
 
         Ok(serde_json::Value::Object(stats))
     }

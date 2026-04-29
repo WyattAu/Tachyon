@@ -1,9 +1,9 @@
-use leptos::prelude::*;
-use leptos::ev;
-use leptos_router::hooks::use_navigate;
-use leptos::task::spawn_local;
 use crate::api::ApiClient;
 use crate::components::ButtonSpinner;
+use leptos::ev;
+use leptos::prelude::*;
+use leptos::task::spawn_local;
+use leptos_router::hooks::use_navigate;
 
 fn is_valid_email(email: &str) -> bool {
     (|| {
@@ -58,11 +58,21 @@ impl PasswordStrength {
 
 fn calc_password_strength(password: &str) -> PasswordStrength {
     let mut score = 0u8;
-    if password.len() >= 8 { score += 1; }
-    if password.len() >= 12 { score += 1; }
-    if password.chars().any(|c| c.is_uppercase()) { score += 1; }
-    if password.chars().any(|c| c.is_ascii_digit()) { score += 1; }
-    if password.chars().any(|c| !c.is_alphanumeric()) { score += 1; }
+    if password.len() >= 8 {
+        score += 1;
+    }
+    if password.len() >= 12 {
+        score += 1;
+    }
+    if password.chars().any(|c| c.is_uppercase()) {
+        score += 1;
+    }
+    if password.chars().any(|c| c.is_ascii_digit()) {
+        score += 1;
+    }
+    if password.chars().any(|c| !c.is_alphanumeric()) {
+        score += 1;
+    }
     match score {
         0..=2 => PasswordStrength::Weak,
         3 => PasswordStrength::Medium,
@@ -122,7 +132,10 @@ pub fn RegisterPage() -> impl IntoView {
         spawn_local(async move {
             let client = ApiClient::default();
 
-            match client.register(&username_clone, &email_clone, &password_clone).await {
+            match client
+                .register(&username_clone, &email_clone, &password_clone)
+                .await
+            {
                 Ok(response) => {
                     if let Some(token) = response.access_token {
                         client.set_auth_token(token.clone());

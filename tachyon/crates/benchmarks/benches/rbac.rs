@@ -57,14 +57,18 @@ fn bench_authorize_cached(c: &mut Criterion) {
     let mut group = c.benchmark_group("rbac_authorize_cached");
 
     let mut enforcer = Enforcer::new();
-    let policy = tachyon_rbac::Policy::new("cached-policy", "Cached Policy", tachyon_rbac::PolicyType::Rbac)
-        .add_rule(tachyon_rbac::PolicyRule::new(
-            "cached-rule",
-            "user:*",
-            "document:*",
-            "read",
-            tachyon_rbac::types::Effect::Allow,
-        ));
+    let policy = tachyon_rbac::Policy::new(
+        "cached-policy",
+        "Cached Policy",
+        tachyon_rbac::PolicyType::Rbac,
+    )
+    .add_rule(tachyon_rbac::PolicyRule::new(
+        "cached-rule",
+        "user:*",
+        "document:*",
+        "read",
+        tachyon_rbac::types::Effect::Allow,
+    ));
     enforcer.policy_engine().add_policy(policy);
 
     let subject = Subject::new("user", "cached-user");

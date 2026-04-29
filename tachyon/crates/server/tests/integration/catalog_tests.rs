@@ -2,10 +2,9 @@
 use axum::{
     body::Body,
     http::{Request, StatusCode},
-    Router,
 };
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -50,7 +49,10 @@ async fn test_create_project() {
         .expect("Request failed");
 
     assert!(
-        response.status() == StatusCode::CREATED || response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR || response.status() == StatusCode::UNPROCESSABLE_ENTITY,
+        response.status() == StatusCode::CREATED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY,
         "Expected CREATED, OK, INTERNAL_SERVER_ERROR, or UNPROCESSABLE_ENTITY, got {}",
         response.status()
     );

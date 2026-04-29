@@ -237,7 +237,7 @@ More content.
 
     // Verify statistics are populated
     assert!(
-        result.stats.render_time_ms > 0 || result.content.len() > 0,
+        result.stats.render_time_ms > 0 || !result.content.is_empty(),
         "Should have timing info"
     );
     assert!(result.metadata.word_count > 0, "Should have word count");

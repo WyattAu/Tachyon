@@ -18,10 +18,10 @@ pub mod onboarding;
 pub mod organization;
 pub mod password_reset;
 pub mod permissions;
-pub mod refresh_token;
 pub mod plugin;
 pub mod presence;
 pub mod rbac;
+pub mod refresh_token;
 pub mod repository;
 pub mod saved_search;
 pub mod schema;
@@ -38,61 +38,63 @@ pub mod webhook;
 // Re-export common types for convenience
 pub use activity::{ActivityEvent, ActivityRepository, CreateActivityEvent};
 pub use attachment::{Attachment, AttachmentRepository, CreateAttachmentRequest};
+pub use billing::{
+    CreateInvoiceRequest, CreateSubscriptionRequest, Invoice, InvoiceRepository,
+    NotificationPreference, NotificationPreferenceRepository, Subscription, SubscriptionRepository,
+    UpdateInvoiceRequest, UpdateSubscriptionRequest, UpsertNotificationPrefRequest,
+};
 pub use catalog::CatalogRepository;
 pub use catalog::{CatalogStats, CreateComponentRequest, CreateProjectRequest};
+pub use comment::{
+    Comment, CommentRepository, CreateCommentRequest as CreateDocumentCommentRequest,
+    UpdateCommentRequest as UpdateDocumentCommentRequest,
+};
 pub use document_review::{
     CreateCommentRequest, CreateReviewRequest, DocumentReview, DocumentReviewRepository,
     ReviewComment, ReviewStatus, UpdateReviewRequest,
 };
 pub use document_version::{CreateVersionRequest, DocumentVersion, DocumentVersionRepository};
 pub use error::{DatabaseError, DatabaseResult};
+pub use graph::{GraphDiff, GraphRepository};
 pub use notification::{CreateNotification, Notification, NotificationRepository};
+pub use onboarding::{OnboardingRepository, OnboardingStatus, OnboardingStep};
 pub use organization::{
-    Organization, OrganizationMember, OrganizationRepository,
-    CreateOrganizationRequest, UpdateOrganizationRequest,
-    AddOrganizationMemberRequest, UpdateOrganizationMemberRequest,
+    AddOrganizationMemberRequest, CreateOrganizationRequest, Organization, OrganizationMember,
+    OrganizationRepository, UpdateOrganizationMemberRequest, UpdateOrganizationRequest,
 };
+pub use password_reset::{EmailVerificationToken, PasswordResetRepository, PasswordResetToken};
 pub use permissions::{DefaultRoles, Permission, ResourcePermission, Role};
-pub use template::{CreateTemplateRequest, DocumentTemplate, TemplateRepository, UpdateTemplateRequest};
-pub use types::{Component, Project, ProjectMember};
+pub use plugin::{CreatePluginRequest, Plugin, PluginRepository, UpdatePluginRequest};
+pub use presence::{
+    Presence, PresenceRepository, UpdatePresenceRequest, UpsertPresenceRequest, PRESENCE_TTL_SECS,
+};
 pub use rbac::{
     AuditLogRepository, PolicyRepository, RolePermissionRepository, UserRoleRepository,
 };
+pub use refresh_token::{RefreshToken, RefreshTokenRepository};
 pub use repository::{DocumentRepository, RepositoryRepository};
-pub use saved_search::{CreateSavedSearchRequest, SavedSearch, SavedSearchRepository, UpdateSavedSearchRequest};
+pub use saved_search::{
+    CreateSavedSearchRequest, SavedSearch, SavedSearchRepository, UpdateSavedSearchRequest,
+};
 pub use schema::DatabasePool;
 pub use search::{
     FacetCount, GlobalSearchResponse, ProjectSearchResult, SearchFacets, SearchFilters,
-    SearchRepository, SearchResponse, SearchResult, SearchHighlight,
+    SearchHighlight, SearchRepository, SearchResponse, SearchResult,
 };
 pub use session::SessionRepository;
-pub use team::{RoleRecord, RoleRepository, Team, TeamMember, TeamRepository};
-pub use graph::{GraphDiff, GraphRepository};
-pub use user::{UserRecord, UserRepository};
-pub use user_preferences::UserPreferencesRepository;
-pub use webhook::{CreateWebhook, Webhook, WebhookRepository};
-pub use plugin::{CreatePluginRequest, Plugin, PluginRepository, UpdatePluginRequest};
-pub use comment::{
-    Comment, CommentRepository,
-    CreateCommentRequest as CreateDocumentCommentRequest,
-    UpdateCommentRequest as UpdateDocumentCommentRequest,
-};
-pub use billing::{
-    Subscription, SubscriptionRepository, CreateSubscriptionRequest, UpdateSubscriptionRequest,
-    Invoice, InvoiceRepository, CreateInvoiceRequest, UpdateInvoiceRequest,
-    NotificationPreference, NotificationPreferenceRepository, UpsertNotificationPrefRequest,
-};
-pub use password_reset::{
-    PasswordResetRepository, PasswordResetToken, EmailVerificationToken,
-};
-pub use onboarding::{OnboardingRepository, OnboardingStatus, OnboardingStep};
-pub use presence::{Presence, PresenceRepository, UpsertPresenceRequest, UpdatePresenceRequest, PRESENCE_TTL_SECS};
-pub use refresh_token::{RefreshToken, RefreshTokenRepository};
 pub use space::{
     AddSpaceMemberRequest, CreateSpaceRequest, Space, SpaceMember, SpaceRepository,
     UpdateSpaceMemberRequest, UpdateSpaceRequest,
 };
+pub use team::{RoleRecord, RoleRepository, Team, TeamMember, TeamRepository};
+pub use template::{
+    CreateTemplateRequest, DocumentTemplate, TemplateRepository, UpdateTemplateRequest,
+};
 pub use types::*;
+pub use types::{Component, Project, ProjectMember};
+pub use user::{UserRecord, UserRepository};
+pub use user_preferences::UserPreferencesRepository;
+pub use webhook::{CreateWebhook, Webhook, WebhookRepository};
 
 // Re-export tachyon-core types
 pub use tachyon_core::id::*;

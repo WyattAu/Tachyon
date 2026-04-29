@@ -1,11 +1,11 @@
-use tachyon_editor::Editor;
-use leptos::prelude::*;
 use crate::api::ApiClient;
 use crate::markdown::render_markdown_to_html;
-use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::spawn_local;
+use leptos::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+use tachyon_editor::Editor;
+use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::spawn_local;
 
 /// Live markdown preview panel.
 ///

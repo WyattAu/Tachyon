@@ -1,13 +1,12 @@
-use tachyon_database::{SpaceRepository};
 use tachyon_database::space::{CreateSpaceRequest, UpdateSpaceRequest};
+use tachyon_database::SpaceRepository;
 
 use crate::common::setup::{
     create_test_pool, create_test_space, create_test_user, setup_database, teardown_database,
 };
 
 fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err()
-        && std::env::var("TEST_DATABASE_URL").is_err()
+    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
 }
 
 #[tokio::test]
@@ -62,7 +61,10 @@ async fn test_get_space_by_id() {
     let space = create_test_space(&pool, &user.id.as_str()).await;
     let repo = SpaceRepository::new(pool.clone());
 
-    let fetched = repo.get_by_id(&space.id).await.expect("Failed to get space by ID");
+    let fetched = repo
+        .get_by_id(&space.id)
+        .await
+        .expect("Failed to get space by ID");
     assert_eq!(fetched.id, space.id);
     assert_eq!(fetched.name, space.name);
 
@@ -218,7 +220,9 @@ async fn test_delete_space() {
     let space = create_test_space(&pool, &user.id.as_str()).await;
     let repo = SpaceRepository::new(pool.clone());
 
-    repo.delete(&space.id).await.expect("Failed to delete space");
+    repo.delete(&space.id)
+        .await
+        .expect("Failed to delete space");
 
     let result = repo.get_by_id(&space.id).await;
     assert!(result.is_err(), "Deleted space should not be found");

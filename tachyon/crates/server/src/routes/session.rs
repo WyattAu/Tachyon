@@ -18,7 +18,10 @@ pub struct SessionState {
 
 impl SessionState {
     pub fn new(pool: DatabasePool, expiration_secs: u64) -> Self {
-        Self { pool, expiration_secs }
+        Self {
+            pool,
+            expiration_secs,
+        }
     }
 }
 

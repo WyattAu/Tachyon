@@ -7,7 +7,7 @@ use axum::{
 };
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use tachyon_database::DatabasePool;
 use tracing::{info, warn};
 
@@ -27,8 +27,14 @@ pub fn create_password_reset_router() -> Router<PasswordResetState> {
     Router::new()
         .route("/auth/password-reset/request", post(request_password_reset))
         .route("/auth/password-reset/confirm", post(confirm_password_reset))
-        .route("/auth/email-verify/request", post(request_email_verification))
-        .route("/auth/email-verify/confirm", post(confirm_email_verification))
+        .route(
+            "/auth/email-verify/request",
+            post(request_email_verification),
+        )
+        .route(
+            "/auth/email-verify/confirm",
+            post(confirm_email_verification),
+        )
 }
 
 // ============================================================================
@@ -82,8 +88,8 @@ fn generate_token() -> String {
 }
 
 async fn send_email_webhook(client: &reqwest::Client, to: &str, subject: &str, body: &str) {
-    let webhook_url = std::env::var("TACHYON_EMAIL_WEBHOOK_URL")
-        .unwrap_or_else(|_| "/dev/null".to_string());
+    let webhook_url =
+        std::env::var("TACHYON_EMAIL_WEBHOOK_URL").unwrap_or_else(|_| "/dev/null".to_string());
 
     if webhook_url == "/dev/null" {
         info!(to = %to, subject = %subject, "Email webhook not configured, skipping email delivery");
@@ -128,7 +134,9 @@ pub async fn request_password_reset(
         Ok(u) => u,
         Err(_) => {
             return Ok(Json(MessageResponse {
-                message: "If an account with that email exists, a password reset link has been sent.".to_string(),
+                message:
+                    "If an account with that email exists, a password reset link has been sent."
+                        .to_string(),
             }));
         }
     };
@@ -151,8 +159,7 @@ pub async fn request_password_reset(
 
     let reset_link = format!(
         "{}/reset-password?token={}",
-        std::env::var("TACHYON_BASE_URL")
-            .unwrap_or_else(|_| "http://localhost:8080".to_string()),
+        std::env::var("TACHYON_BASE_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()),
         token
     );
 
@@ -171,7 +178,8 @@ pub async fn request_password_reset(
     info!(email = %body.email, "Password reset email sent");
 
     Ok(Json(MessageResponse {
-        message: "If an account with that email exists, a password reset link has been sent.".to_string(),
+        message: "If an account with that email exists, a password reset link has been sent."
+            .to_string(),
     }))
 }
 
@@ -216,13 +224,15 @@ pub async fn confirm_password_reset(
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
                 code: "WEAK_PASSWORD".to_string(),
-                message: "Password must be at least 8 characters with uppercase, lowercase, and digit".to_string(),
+                message:
+                    "Password must be at least 8 characters with uppercase, lowercase, and digit"
+                        .to_string(),
             }),
         ));
     }
 
-    let new_hash = tachyon_core::types::user::User::hash_password(&body.new_password)
-        .map_err(|e| {
+    let new_hash =
+        tachyon_core::types::user::User::hash_password(&body.new_password).map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
@@ -232,16 +242,15 @@ pub async fn confirm_password_reset(
             )
         })?;
 
-    let user_id = tachyon_core::id::UserId::parse_str(&token.user_id)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "INVALID_USER_ID".to_string(),
-                    message: format!("Invalid user ID: {}", e),
-                }),
-            )
-        })?;
+    let user_id = tachyon_core::id::UserId::parse_str(&token.user_id).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "INVALID_USER_ID".to_string(),
+                message: format!("Invalid user ID: {}", e),
+            }),
+        )
+    })?;
 
     let user_repo = tachyon_database::UserRepository::new(state.pool.clone());
     user_repo
@@ -307,16 +316,20 @@ pub async fn request_email_verification(
 
     let token_str = &auth_header[7..];
     let validation = Validation::default();
-    decode::<Claims>(token_str, &DecodingKey::from_secret(jwt_secret.as_bytes()), &validation)
-        .map_err(|_| {
-            (
-                StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse {
-                    code: "UNAUTHORIZED".to_string(),
-                    message: "Invalid or expired token".to_string(),
-                }),
-            )
-        })?;
+    decode::<Claims>(
+        token_str,
+        &DecodingKey::from_secret(jwt_secret.as_bytes()),
+        &validation,
+    )
+    .map_err(|_| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse {
+                code: "UNAUTHORIZED".to_string(),
+                message: "Invalid or expired token".to_string(),
+            }),
+        )
+    })?;
 
     let reset_repo = tachyon_database::PasswordResetRepository::new(state.pool.clone());
     let user_repo = tachyon_database::UserRepository::new(state.pool.clone());
@@ -325,7 +338,8 @@ pub async fn request_email_verification(
         Ok(u) => u,
         Err(_) => {
             return Ok(Json(MessageResponse {
-                message: "If an account with that email exists, a verification link has been sent.".to_string(),
+                message: "If an account with that email exists, a verification link has been sent."
+                    .to_string(),
             }));
         }
     };
@@ -348,8 +362,7 @@ pub async fn request_email_verification(
 
     let verify_link = format!(
         "{}/verify-email?token={}",
-        std::env::var("TACHYON_BASE_URL")
-            .unwrap_or_else(|_| "http://localhost:8080".to_string()),
+        std::env::var("TACHYON_BASE_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()),
         token
     );
 
@@ -368,7 +381,8 @@ pub async fn request_email_verification(
     info!(email = %body.email, "Email verification sent");
 
     Ok(Json(MessageResponse {
-        message: "If an account with that email exists, a verification link has been sent.".to_string(),
+        message: "If an account with that email exists, a verification link has been sent."
+            .to_string(),
     }))
 }
 
@@ -402,16 +416,15 @@ pub async fn confirm_email_verification(
         )
     })?;
 
-    let user_id = tachyon_core::id::UserId::parse_str(&token.user_id)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "INVALID_USER_ID".to_string(),
-                    message: format!("Invalid user ID: {}", e),
-                }),
-            )
-        })?;
+    let user_id = tachyon_core::id::UserId::parse_str(&token.user_id).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "INVALID_USER_ID".to_string(),
+                message: format!("Invalid user ID: {}", e),
+            }),
+        )
+    })?;
 
     let user_repo = tachyon_database::UserRepository::new(state.pool.clone());
     user_repo

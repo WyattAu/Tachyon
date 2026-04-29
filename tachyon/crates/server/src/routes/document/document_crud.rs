@@ -5,14 +5,20 @@ use axum::{
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
-use tachyon_core::{compute_content_hash, Document, DocumentContent, DocumentId, DocumentStatus, DocumentVisibility};
 use tachyon_core::id::{RepositoryId, UserId};
-use tachyon_database::{ActivityRepository, CreateActivityEvent, CreateVersionRequest, DocumentVersionRepository};
-use tachyon_renderer::{RenderConfig, Renderer, MarkdownParser};
+use tachyon_core::{
+    compute_content_hash, Document, DocumentContent, DocumentId, DocumentStatus, DocumentVisibility,
+};
+use tachyon_database::{
+    ActivityRepository, CreateActivityEvent, CreateVersionRequest, DocumentVersionRepository,
+};
+use tachyon_renderer::{MarkdownParser, RenderConfig, Renderer};
 use tachyon_search::SearchDocument;
 use tracing::{debug, info, warn};
 
-use super::{DocumentState, ErrorResponse, DocumentResponse, DocumentQuery, DocumentSearchResponse};
+use super::{
+    DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState, ErrorResponse,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct CreateDocumentRequest {
@@ -164,40 +170,57 @@ pub async fn create_document(
                 .execute(&mut *conn)
                 .await
             {
-                warn!("Failed to update outgoing links for document {}: {}", doc.id, e);
+                warn!(
+                    "Failed to update outgoing links for document {}: {}",
+                    doc.id, e
+                );
             }
         }
     }
 
-    if let Err(e) = state.repository.update_search_index(
-        &doc.id,
-        &doc.metadata.title,
-        doc.content.as_text().unwrap_or(""),
-        &doc.metadata.tags,
-    ).await {
-        warn!("Failed to update search index for document {}: {}", doc.id, e);
+    if let Err(e) = state
+        .repository
+        .update_search_index(
+            &doc.id,
+            &doc.metadata.title,
+            doc.content.as_text().unwrap_or(""),
+            &doc.metadata.tags,
+        )
+        .await
+    {
+        warn!(
+            "Failed to update search index for document {}: {}",
+            doc.id, e
+        );
     }
 
-    state.index_in_tantivy(SearchDocument {
-        id: doc.id,
-        title: doc.metadata.title.clone(),
-        content: doc.content.as_text().unwrap_or("").to_string(),
-        author_id,
-        repository_id: doc.repository_id,
-        tags: doc.metadata.tags.clone(),
-        created_at: doc.metadata.created_at,
-        updated_at: doc.metadata.updated_at,
-        custom_fields: BTreeMap::new(),
-    }).await;
+    state
+        .index_in_tantivy(SearchDocument {
+            id: doc.id,
+            title: doc.metadata.title.clone(),
+            content: doc.content.as_text().unwrap_or("").to_string(),
+            author_id,
+            repository_id: doc.repository_id,
+            tags: doc.metadata.tags.clone(),
+            created_at: doc.metadata.created_at,
+            updated_at: doc.metadata.updated_at,
+            custom_fields: BTreeMap::new(),
+        })
+        .await;
 
-    if let Err(e) = ActivityRepository::create(&state.pool, CreateActivityEvent {
-        actor_id: uuid::Uuid::parse_str(&author_id.to_string()).unwrap_or_default(),
-        event_type: "document_created".to_string(),
-        target_type: "document".to_string(),
-        target_id: uuid::Uuid::parse_str(&doc.id.to_string()).unwrap_or_default(),
-        description: format!("Created document: {}", req.title),
-        metadata: None,
-    }).await {
+    if let Err(e) = ActivityRepository::create(
+        &state.pool,
+        CreateActivityEvent {
+            actor_id: uuid::Uuid::parse_str(&author_id.to_string()).unwrap_or_default(),
+            event_type: "document_created".to_string(),
+            target_type: "document".to_string(),
+            target_id: uuid::Uuid::parse_str(&doc.id.to_string()).unwrap_or_default(),
+            description: format!("Created document: {}", req.title),
+            metadata: None,
+        },
+    )
+    .await
+    {
         warn!("Failed to emit activity event for document creation: {}", e);
     }
 
@@ -222,7 +245,8 @@ pub async fn create_document(
             "title": response.title.clone(),
         });
         tokio::spawn(async move {
-            crate::webhook_delivery::deliver_event(pool, client, "document_created", &payload).await;
+            crate::webhook_delivery::deliver_event(pool, client, "document_created", &payload)
+                .await;
         });
     }
 
@@ -319,12 +343,15 @@ pub async fn update_document(
             if current_content != &content {
                 let version_repo = DocumentVersionRepository::new(state.pool.clone());
                 let user_id = tachyon_core::generate_user_id();
-                if let Err(e) = version_repo.create(CreateVersionRequest {
-                    document_id: document_id.clone(),
-                    content: current_content.clone(),
-                    commit_message: Some("Auto-snapshot before update".to_string()),
-                    created_by: user_id.to_string(),
-                }).await {
+                if let Err(e) = version_repo
+                    .create(CreateVersionRequest {
+                        document_id: document_id.clone(),
+                        content: current_content.clone(),
+                        commit_message: Some("Auto-snapshot before update".to_string()),
+                        created_by: user_id.to_string(),
+                    })
+                    .await
+                {
                     warn!("Failed to auto-version document {}: {}", document_id, e);
                 }
             }
@@ -355,16 +382,20 @@ pub async fn update_document(
     }
     metadata.updated_at = chrono::Utc::now();
 
-    state.repository.update(metadata.clone()).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "UPDATE_ERROR".to_string(),
-                message: format!("Failed to update document: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    state
+        .repository
+        .update(metadata.clone())
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    code: "UPDATE_ERROR".to_string(),
+                    message: format!("Failed to update document: {}", e),
+                    details: None,
+                }),
+            )
+        })?;
 
     {
         let content = metadata.content.as_deref().unwrap_or("");
@@ -377,40 +408,60 @@ pub async fn update_document(
                 .execute(&mut *conn)
                 .await
             {
-                warn!("Failed to update outgoing links for document {}: {}", document_id, e);
+                warn!(
+                    "Failed to update outgoing links for document {}: {}",
+                    document_id, e
+                );
             }
         }
     }
 
-    if let Err(e) = state.repository.update_search_index(
-        &doc_id,
-        &metadata.title,
-        metadata.content.as_deref().unwrap_or(""),
-        &metadata.parse_tags().unwrap_or_default(),
-    ).await {
-        warn!("Failed to update search index for document {}: {}", doc_id, e);
+    if let Err(e) = state
+        .repository
+        .update_search_index(
+            &doc_id,
+            &metadata.title,
+            metadata.content.as_deref().unwrap_or(""),
+            &metadata.parse_tags().unwrap_or_default(),
+        )
+        .await
+    {
+        warn!(
+            "Failed to update search index for document {}: {}",
+            doc_id, e
+        );
     }
 
-    state.index_in_tantivy(SearchDocument {
-        id: doc_id,
-        title: metadata.title.clone(),
-        content: metadata.content.clone().unwrap_or_default(),
-        author_id: UserId::parse_str(&metadata.author_id).unwrap_or_default(),
-        repository_id: metadata.project_id.as_ref().and_then(|id| RepositoryId::parse_str(id).ok()),
-        tags: metadata.parse_tags().unwrap_or_default(),
-        created_at: metadata.created_at,
-        updated_at: metadata.updated_at,
-        custom_fields: BTreeMap::new(),
-    }).await;
+    state
+        .index_in_tantivy(SearchDocument {
+            id: doc_id,
+            title: metadata.title.clone(),
+            content: metadata.content.clone().unwrap_or_default(),
+            author_id: UserId::parse_str(&metadata.author_id).unwrap_or_default(),
+            repository_id: metadata
+                .project_id
+                .as_ref()
+                .and_then(|id| RepositoryId::parse_str(id).ok()),
+            tags: metadata.parse_tags().unwrap_or_default(),
+            created_at: metadata.created_at,
+            updated_at: metadata.updated_at,
+            custom_fields: BTreeMap::new(),
+        })
+        .await;
 
-    if let Err(e) = ActivityRepository::create(&state.pool, CreateActivityEvent {
-        actor_id: uuid::Uuid::parse_str(&metadata.author_id).unwrap_or_default(),
-        event_type: "document_updated".to_string(),
-        target_type: "document".to_string(),
-        target_id: uuid::Uuid::parse_str(&document_id).unwrap_or_default(),
-        description: format!("Updated document: {}", metadata.title),
-        metadata: None,
-    }).await {
+    if let Err(e) = ActivityRepository::create(
+        &state.pool,
+        CreateActivityEvent {
+            actor_id: uuid::Uuid::parse_str(&metadata.author_id).unwrap_or_default(),
+            event_type: "document_updated".to_string(),
+            target_type: "document".to_string(),
+            target_id: uuid::Uuid::parse_str(&document_id).unwrap_or_default(),
+            description: format!("Updated document: {}", metadata.title),
+            metadata: None,
+        },
+    )
+    .await
+    {
         warn!("Failed to emit activity event for document update: {}", e);
     }
 
@@ -443,7 +494,8 @@ pub async fn update_document(
             "title": response.title.clone(),
         });
         tokio::spawn(async move {
-            crate::webhook_delivery::deliver_event(pool, client, "document_updated", &payload).await;
+            crate::webhook_delivery::deliver_event(pool, client, "document_updated", &payload)
+                .await;
         });
     }
 
@@ -479,7 +531,13 @@ pub async fn delete_document(
                     "document_id": document_id.clone(),
                 });
                 tokio::spawn(async move {
-                    crate::webhook_delivery::deliver_event(pool, client, "document_deleted", &payload).await;
+                    crate::webhook_delivery::deliver_event(
+                        pool,
+                        client,
+                        "document_deleted",
+                        &payload,
+                    )
+                    .await;
                 });
             }
 

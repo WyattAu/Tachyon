@@ -2,14 +2,14 @@
 
 pub mod buffer;
 pub mod cursor;
-pub mod transaction;
+pub mod editor;
 pub mod highlight;
 pub mod search;
-pub mod editor;
+pub mod transaction;
 
-pub use editor::{Editor, WikilinkState};
 pub use buffer::TextBuffer;
 pub use cursor::{Cursor, Selection, SelectionKind};
-pub use transaction::{Transaction, EditKind};
-pub use highlight::{Highlighter, HighlightSpan, HighlightToken};
+pub use editor::{Editor, WikilinkState};
+pub use highlight::{HighlightSpan, HighlightToken, Highlighter};
 pub use search::SearchResult;
+pub use transaction::{EditKind, Transaction};

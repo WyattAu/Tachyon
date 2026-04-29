@@ -113,7 +113,7 @@ fn test_session_with_metadata() {
 fn test_session_builder() {
     let id = generate_session_id();
     let user_id = generate_user_id();
-    let session = SessionBuilder::new(id.clone(), user_id.clone(), "tok".to_string())
+    let session = SessionBuilder::new(id, user_id, "tok".to_string())
         .session_type(SessionType::Desktop)
         .token_type(TokenType::Jwt)
         .expires_in(Duration::hours(48))
@@ -175,8 +175,7 @@ fn test_session_type_display() {
 
 #[test]
 fn test_session_serde_roundtrip() {
-    let session = create_test_session(Duration::hours(1))
-        .with_ip_address("127.0.0.1".to_string());
+    let session = create_test_session(Duration::hours(1)).with_ip_address("127.0.0.1".to_string());
     let json = serde_json::to_string(&session).expect("serialize");
     let de: Session = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(session.id, de.id);
@@ -185,7 +184,12 @@ fn test_session_serde_roundtrip() {
 
 #[test]
 fn test_all_session_types() {
-    for st in [SessionType::Desktop, SessionType::Web, SessionType::Api, SessionType::Mobile] {
+    for st in [
+        SessionType::Desktop,
+        SessionType::Web,
+        SessionType::Api,
+        SessionType::Mobile,
+    ] {
         let session = Session::new(
             generate_session_id(),
             generate_user_id(),

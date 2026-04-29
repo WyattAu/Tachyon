@@ -1,12 +1,12 @@
 // Teams Page
 // Team list and management interface
 
+use crate::api::ApiClient;
 use leptos::prelude::*;
-use serde::Deserialize;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_params;
 use leptos_router::params::Params;
-use crate::api::ApiClient;
+use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Team {
@@ -50,11 +50,18 @@ async fn fetch_teams() -> Result<Vec<Team>, String> {
 
 async fn fetch_team_members(team_id: &str) -> Result<Vec<TeamMember>, String> {
     let client = ApiClient::default();
-    let raw = client.list_team_members(team_id).await.map_err(|e| e.to_string())?;
+    let raw = client
+        .list_team_members(team_id)
+        .await
+        .map_err(|e| e.to_string())?;
     serde_json::from_value(serde_json::Value::Array(raw)).map_err(|e| e.to_string())
 }
 
-async fn create_team_req(name: String, slug: String, description: Option<String>) -> Result<Team, String> {
+async fn create_team_req(
+    name: String,
+    slug: String,
+    description: Option<String>,
+) -> Result<Team, String> {
     let client = ApiClient::default();
     let body = serde_json::json!({
         "name": name,
@@ -102,7 +109,11 @@ pub fn TeamsPage() -> impl IntoView {
         }
 
         spawn_local(async move {
-            let desc = if description.is_empty() { None } else { Some(description) };
+            let desc = if description.is_empty() {
+                None
+            } else {
+                Some(description)
+            };
             match create_team_req(name, slug, desc).await {
                 Ok(team) => {
                     let mut current_teams = teams.get();
@@ -261,7 +272,9 @@ pub fn TeamCard(team: Team) -> impl IntoView {
             let team_id = team.id.clone();
             spawn_local(async move {
                 set_loading_members.set(true);
-                if let Ok(m) = fetch_team_members(&team_id).await { set_members.set(m) }
+                if let Ok(m) = fetch_team_members(&team_id).await {
+                    set_members.set(m)
+                }
                 set_loading_members.set(false);
             });
         }
@@ -367,9 +380,8 @@ struct TeamDetailParams {
 #[component]
 pub fn TeamDetailPage() -> impl IntoView {
     let params = use_params::<TeamDetailParams>();
-    let team_id = move || {
-        params.with(|p| p.as_ref().map(|p| p.team_id.clone()).unwrap_or_default())
-    };
+    let team_id =
+        move || params.with(|p| p.as_ref().map(|p| p.team_id.clone()).unwrap_or_default());
 
     let (team, set_team) = signal(None::<Team>);
     let (members, set_members) = signal(Vec::<TeamMember>::new());

@@ -14,17 +14,15 @@ pub struct RemoteCursor {
     pub last_seen: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AwarenessState {
     pub cursors: Vec<RemoteCursor>,
     pub local_user_id: String,
 }
 
-
 const CURSOR_COLORS: &[&str] = &[
-    "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8",
-    "#F7DC6F", "#BB8FCE", "#85C1E9",
+    "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F",
+    "#BB8FCE", "#85C1E9",
 ];
 
 pub fn get_cursor_color(user_id: &str) -> String {
@@ -51,12 +49,9 @@ fn normalize_selection(
 #[component]
 pub fn CollaborativeCursors(
     awareness: RwSignal<AwarenessState>,
-    #[prop(default = true)]
-    line_numbers: bool,
-    #[prop(default = 8.0)]
-    char_width: f64,
-    #[prop(default = 22.0)]
-    line_height: f64,
+    #[prop(default = true)] line_numbers: bool,
+    #[prop(default = 8.0)] char_width: f64,
+    #[prop(default = 22.0)] line_height: f64,
 ) -> impl IntoView {
     let gutter_w = if line_numbers { 50.0 } else { 0.0 };
 

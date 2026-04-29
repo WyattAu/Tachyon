@@ -1,11 +1,10 @@
 // Integration tests for team management routes
 use axum::{
     body::Body,
-    http::{Request, StatusCode, header},
-    Router,
+    http::{Request, StatusCode},
 };
-use tower::ServiceExt;
 use serde_json::{json, Value};
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -48,12 +47,20 @@ async fn test_create_team() {
         .await
         .expect("Request failed");
 
-    assert!(response.status() == StatusCode::CREATED || response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR || response.status() == StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(
+        response.status() == StatusCode::CREATED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY
+    );
     if response.status() != StatusCode::CREATED && response.status() != StatusCode::OK {
         return;
     }
     let body: Value = common::read_body_json(response).await;
-    assert_eq!(body["name"].as_str().unwrap(), &format!("Test Team {}", unique));
+    assert_eq!(
+        body["name"].as_str().unwrap(),
+        &format!("Test Team {}", unique)
+    );
     assert!(body["id"].is_string());
 }
 
@@ -109,7 +116,8 @@ async fn test_list_teams() {
         .expect("Request failed");
 
     assert!(
-        response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
+        response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
         "Expected OK or INTERNAL_SERVER_ERROR, got {}",
         response.status()
     );
@@ -119,7 +127,8 @@ async fn test_list_teams() {
 
     assert_eq!(response.status(), StatusCode::OK);
     let body: Value = common::read_body_json(response).await;
-    let results = body["teams"].as_array()
+    let results = body["teams"]
+        .as_array()
         .or_else(|| body["data"].as_array())
         .or_else(|| body.as_array())
         .expect("teams should be array");
@@ -167,7 +176,10 @@ async fn test_add_team_member() {
         .expect("Team creation failed");
 
     if team_response.status() != StatusCode::CREATED && team_response.status() != StatusCode::OK {
-        println!("Skipping: team creation returned {}", team_response.status());
+        println!(
+            "Skipping: team creation returned {}",
+            team_response.status()
+        );
         return;
     }
 
@@ -212,7 +224,11 @@ async fn test_add_team_member() {
         .await
         .expect("Add member request failed");
 
-    assert!(response.status() == StatusCode::CREATED || response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(
+        response.status() == StatusCode::CREATED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR
+    );
 }
 
 #[tokio::test]

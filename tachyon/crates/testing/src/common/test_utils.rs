@@ -1,10 +1,9 @@
-use tachyon_database::{
-    DocumentMetadata, Project, SessionRecord, Team,
-    CreateTemplateRequest, CatalogRepository,
-    DocumentRepository, DatabasePool, init_with_migrations,
-};
-use chrono::{Utc, Duration};
+use chrono::{Duration, Utc};
 use serde_json::json;
+use tachyon_database::{
+    init_with_migrations, CatalogRepository, CreateTemplateRequest, DatabasePool, DocumentMetadata,
+    DocumentRepository, Project, SessionRecord, Team,
+};
 
 pub struct TestDatabase {
     pub pool: DatabasePool,
@@ -12,16 +11,17 @@ pub struct TestDatabase {
 
 impl TestDatabase {
     pub async fn new() -> Self {
-        let database_url = std::env::var("TEST_DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://tachyon:tachyon@localhost:5432/tachyon_test".to_string());
-        
+        let database_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://tachyon:tachyon@localhost:5432/tachyon_test".to_string()
+        });
+
         let pool = init_with_migrations(&database_url)
             .await
             .expect("Failed to setup test database");
-        
+
         Self { pool }
     }
-    
+
     pub async fn cleanup(&self) {
         let cleanup_queries = vec![
             "DELETE FROM documents WHERE title LIKE 'TEST_%'",
@@ -30,7 +30,7 @@ impl TestDatabase {
             "DELETE FROM teams WHERE name LIKE 'TEST_%'",
             "DELETE FROM templates WHERE name LIKE 'TEST_%'",
         ];
-        
+
         for query in cleanup_queries {
             let _ = self.pool.execute(query).await;
         }
@@ -74,7 +74,7 @@ impl TestDataFactory {
         doc.slug = Some(format!("test-{}", title.to_lowercase().replace(' ', "-")));
         doc
     }
-    
+
     pub fn create_project() -> Project {
         let now = Utc::now();
         Project {
@@ -99,7 +99,7 @@ impl TestDataFactory {
             updated_at: now,
         }
     }
-    
+
     pub fn create_session() -> SessionRecord {
         let now = Utc::now();
         SessionRecord {
@@ -117,7 +117,7 @@ impl TestDataFactory {
             last_activity: now,
         }
     }
-    
+
     pub fn create_team() -> Team {
         let now = Utc::now();
         let owner_id = uuid::Uuid::new_v4().to_string();
@@ -133,7 +133,7 @@ impl TestDataFactory {
             updated_at: now,
         }
     }
-    
+
     pub fn create_template() -> CreateTemplateRequest {
         CreateTemplateRequest {
             name: format!("TEST_Template_{}", Utc::now().timestamp()),
@@ -149,37 +149,44 @@ impl TestDataFactory {
 pub struct TestFixtures;
 
 impl TestFixtures {
-    pub async fn create_test_documents(repo: &DocumentRepository, count: usize) -> Vec<DocumentMetadata> {
+    pub async fn create_test_documents(
+        repo: &DocumentRepository,
+        count: usize,
+    ) -> Vec<DocumentMetadata> {
         let mut documents = Vec::new();
-        
+
         for i in 0..count {
             let mut doc = TestDataFactory::create_document();
             doc.title = format!("TEST_Fixture_{}_{}", i, Utc::now().timestamp());
             doc.slug = Some(format!("test-fixture-{}-{}", i, Utc::now().timestamp()));
-            
-            repo.create(doc.clone()).await.expect("Failed to create test document");
+
+            repo.create(doc.clone())
+                .await
+                .expect("Failed to create test document");
             documents.push(doc);
-            
+
             tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
         }
-        
+
         documents
     }
-    
+
     pub async fn create_test_projects(repo: &CatalogRepository, count: usize) -> Vec<Project> {
         let mut projects = Vec::new();
-        
+
         for i in 0..count {
             let mut project = TestDataFactory::create_project();
             project.name = format!("TEST_Fixture_Project_{}_{}", i, Utc::now().timestamp());
             project.slug = format!("test-fixture-project-{}-{}", i, Utc::now().timestamp());
-            
-            repo.create_project(&project).await.expect("Failed to create test project");
+
+            repo.create_project(&project)
+                .await
+                .expect("Failed to create test project");
             projects.push(project);
-            
+
             tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
         }
-        
+
         projects
     }
 }
@@ -221,7 +228,7 @@ pub fn setup_test_env() {
         unsafe {
             std::env::set_var(
                 "TEST_DATABASE_URL",
-                "postgres://tachyon:tachyon@localhost:5432/tachyon_test"
+                "postgres://tachyon:tachyon@localhost:5432/tachyon_test",
             );
         }
     }
@@ -234,11 +241,11 @@ where
 {
     setup_test_env();
     let db = TestDatabase::new().await;
-    
+
     db.cleanup().await;
-    
+
     f(db.clone()).await;
-    
+
     db.cleanup().await;
 }
 

@@ -8,9 +8,9 @@ use tachyon_core::{generate_session_id, generate_user_id};
 #[allow(unused_imports)]
 use tachyon_rbac::{
     role::Role,
+    types::{Action, AuthContext, Effect, Resource, Subject},
     Enforcer, Permission, PermissionChecker, Policy, PolicyEngine, PolicyRule, PolicyType,
     RbacResult,
-    types::{Action, AuthContext, Effect, Resource, Subject},
 };
 
 #[test]
@@ -90,7 +90,12 @@ fn test_permission_matches_wildcard() {
 fn test_permission_checker_basic() {
     let mut checker = PermissionChecker::new();
 
-    checker.add_permission(Permission::new("allow", "document:*", "read", Effect::Allow));
+    checker.add_permission(Permission::new(
+        "allow",
+        "document:*",
+        "read",
+        Effect::Allow,
+    ));
     checker.add_permission(Permission::new("deny", "document:*", "write", Effect::Deny));
 
     let resource = Resource::new("document", "doc123");
@@ -155,8 +160,20 @@ fn test_policy_engine_basic() {
     let engine = PolicyEngine::new();
 
     let policy = Policy::new("p1", "Document Access", PolicyType::Rbac)
-        .add_rule(PolicyRule::new("r1", "user:*", "document:*", "read", Effect::Allow))
-        .add_rule(PolicyRule::new("r2", "user:*", "document:*", "write", Effect::Deny));
+        .add_rule(PolicyRule::new(
+            "r1",
+            "user:*",
+            "document:*",
+            "read",
+            Effect::Allow,
+        ))
+        .add_rule(PolicyRule::new(
+            "r2",
+            "user:*",
+            "document:*",
+            "write",
+            Effect::Deny,
+        ));
 
     engine.add_policy(policy);
 
@@ -252,7 +269,7 @@ fn test_resource_validation() {
 fn test_auth_context() {
     let user_id = generate_user_id();
     let session_id = generate_session_id();
-    let ctx = AuthContext::new(user_id.clone(), session_id.clone())
+    let ctx = AuthContext::new(user_id, session_id)
         .with_role("admin")
         .with_roles(&["user", "moderator"])
         .with_attribute("ip", "127.0.0.1");
@@ -274,7 +291,7 @@ fn test_effect_combine() {
 #[test]
 fn test_enforcer_creation() {
     let enforcer = Enforcer::new();
-    assert!(enforcer.permission_checker().cache_size() >= 0);
+    assert_eq!(enforcer.permission_checker().cache_size(), 0);
 }
 
 #[test]
@@ -294,12 +311,7 @@ fn test_enforcer_authorize_allow() {
     let resource = Resource::new("document", "doc1");
     let action = Action::new("read");
     let context = AuthContext::new(generate_user_id(), generate_session_id());
-    let request = tachyon_rbac::types::AccessRequest::new(
-        subject,
-        resource,
-        action,
-        context,
-    );
+    let request = tachyon_rbac::types::AccessRequest::new(subject, resource, action, context);
 
     let decision = enforcer.authorize(&request).unwrap();
     assert!(decision.is_allowed());

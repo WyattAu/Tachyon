@@ -2,24 +2,29 @@
 // IPC bridge between WebView and Tauri backend
 
 // Module declarations
-mod state;
+mod commands;
 mod events;
 mod file_dialog;
 mod filesystem;
-mod sync;
-mod commands;
 mod import_export;
+mod state;
+mod sync;
 mod tray;
 
 // Re-export public API
-pub use state::{DesktopState, DesktopStateManager, ConnectionStatus, DesktopAppState, SyncStatus};
-pub use events::{DesktopEvent, EventEmitter, SyncStatus as EventSyncStatus, RepositoryStatus, FileChangeKind, NotificationLevel};
-pub use file_dialog::{FileDialogManager, FileDialogOptions, FileDialogResult, FileContent, FileWriteResult};
-pub use sync::{AutoSyncManager, SyncConfig, SyncResult, CommitQueueEntry};
-pub use filesystem::{VaultEntry, MarkdownFile, FileWatchHandle};
+pub use events::{
+    DesktopEvent, EventEmitter, FileChangeKind, NotificationLevel, RepositoryStatus,
+    SyncStatus as EventSyncStatus,
+};
+pub use file_dialog::{
+    FileContent, FileDialogManager, FileDialogOptions, FileDialogResult, FileWriteResult,
+};
+pub use filesystem::{FileWatchHandle, MarkdownFile, VaultEntry};
+pub use state::{ConnectionStatus, DesktopAppState, DesktopState, DesktopStateManager, SyncStatus};
+pub use sync::{AutoSyncManager, CommitQueueEntry, SyncConfig, SyncResult};
 
-use tauri::Manager;
 use std::sync::{Arc, Mutex};
+use tauri::Manager;
 
 /// Embedded server state shared between Tauri and the frontend.
 #[derive(Default)]
@@ -122,17 +127,17 @@ pub fn run() {
             let state_manager = DesktopStateManager::new(DesktopState::default());
             let sync_manager = AutoSyncManager::new(SyncConfig::default());
             let app_state = DesktopAppState::new();
-            
+
             app.manage(state_manager);
             app.manage(sync_manager);
             app.manage(app_state);
-            
+
             // Set up system tray
             if let Err(e) = tray::setup_tray(app) {
                 tracing::warn!("Failed to set up system tray: {}", e);
                 // Non-fatal: tray is optional
             }
-            
+
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -146,7 +151,10 @@ mod tests {
     #[test]
     fn test_connection_status_display() {
         assert_eq!(format!("{}", ConnectionStatus::Connected), "Connected");
-        assert_eq!(format!("{}", ConnectionStatus::Disconnected), "Disconnected");
+        assert_eq!(
+            format!("{}", ConnectionStatus::Disconnected),
+            "Disconnected"
+        );
         assert_eq!(format!("{}", ConnectionStatus::Connecting), "Connecting");
         assert_eq!(format!("{}", ConnectionStatus::Error), "Error");
     }

@@ -4,8 +4,8 @@
 
 pub mod core_types;
 pub mod core_utils;
-pub mod repository;
-pub mod session;
-pub mod rbac;
-pub mod search;
 pub mod database;
+pub mod rbac;
+pub mod repository;
+pub mod search;
+pub mod session;

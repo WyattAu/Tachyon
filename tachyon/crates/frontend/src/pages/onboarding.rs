@@ -1,8 +1,8 @@
 #![allow(dead_code, clippy::redundant_locals)]
 
+use crate::api::ApiClient;
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
-use crate::api::ApiClient;
 
 const TOTAL_STEPS: u32 = 5;
 
@@ -19,11 +19,26 @@ pub fn OnboardingPage() -> impl IntoView {
 
     let load_templates = move || {
         let tpls: Vec<(String, String)> = vec![
-            ("Meeting Notes".to_string(), "A template for capturing meeting notes with action items.".to_string()),
-            ("Project Brief".to_string(), "Define project goals, scope, and deliverables.".to_string()),
-            ("Technical Spec".to_string(), "Document technical decisions and architecture.".to_string()),
-            ("Weekly Report".to_string(), "Track weekly progress and accomplishments.".to_string()),
-            ("Knowledge Base".to_string(), "Create structured documentation articles.".to_string()),
+            (
+                "Meeting Notes".to_string(),
+                "A template for capturing meeting notes with action items.".to_string(),
+            ),
+            (
+                "Project Brief".to_string(),
+                "Define project goals, scope, and deliverables.".to_string(),
+            ),
+            (
+                "Technical Spec".to_string(),
+                "Document technical decisions and architecture.".to_string(),
+            ),
+            (
+                "Weekly Report".to_string(),
+                "Track weekly progress and accomplishments.".to_string(),
+            ),
+            (
+                "Knowledge Base".to_string(),
+                "Create structured documentation articles.".to_string(),
+            ),
         ];
         spawn_local(async move {
             set_loading_templates.set(true);

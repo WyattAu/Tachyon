@@ -1,13 +1,13 @@
 use axum::{
     body::Body,
-    http::{Request, StatusCode, header},
+    http::{header, Request, StatusCode},
     Router,
 };
-use tower::ServiceExt;
-use tachyon_server::routes::create_router;
-use serde_json::json;
+use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
-use chrono::{Utc, Duration};
+use serde_json::json;
+use tachyon_server::routes::create_router;
+use tower::ServiceExt;
 
 async fn create_test_app() -> Router {
     create_router().await
@@ -19,18 +19,19 @@ fn create_test_jwt(user_id: &str, secret: &str) -> String {
         "exp": (Utc::now() + Duration::hours(1)).timestamp(),
         "iat": Utc::now().timestamp()
     });
-    
+
     encode(
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(secret.as_bytes()),
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 #[tokio::test]
 async fn test_login_endpoint_missing_credentials() {
     let app = create_test_app().await;
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -42,19 +43,19 @@ async fn test_login_endpoint_missing_credentials() {
         )
         .await
         .unwrap();
-    
+
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]
 async fn test_login_endpoint_invalid_credentials() {
     let app = create_test_app().await;
-    
+
     let login_data = json!({
         "email": "nonexistent@example.com",
         "password": "wrongpassword"
     });
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -66,14 +67,14 @@ async fn test_login_endpoint_invalid_credentials() {
         )
         .await
         .unwrap();
-    
+
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
 async fn test_protected_endpoint_without_token() {
     let app = create_test_app().await;
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -83,14 +84,14 @@ async fn test_protected_endpoint_without_token() {
         )
         .await
         .unwrap();
-    
+
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
 async fn test_protected_endpoint_with_invalid_token() {
     let app = create_test_app().await;
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -101,18 +102,17 @@ async fn test_protected_endpoint_with_invalid_token() {
         )
         .await
         .unwrap();
-    
+
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
 async fn test_protected_endpoint_with_valid_token() {
     let app = create_test_app().await;
-    let secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "test_secret_key".to_string());
+    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "test_secret_key".to_string());
     let user_id = uuid::Uuid::new_v4().to_string();
     let token = create_test_jwt(&user_id, &secret);
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -123,21 +123,17 @@ async fn test_protected_endpoint_with_valid_token() {
         )
         .await
         .unwrap();
-    
-    assert!(
-        response.status() == StatusCode::OK 
-            || response.status() == StatusCode::UNAUTHORIZED
-    );
+
+    assert!(response.status() == StatusCode::OK || response.status() == StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
 async fn test_logout_endpoint() {
     let app = create_test_app().await;
-    let secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "test_secret_key".to_string());
+    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "test_secret_key".to_string());
     let user_id = uuid::Uuid::new_v4().to_string();
     let token = create_test_jwt(&user_id, &secret);
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -149,14 +145,14 @@ async fn test_logout_endpoint() {
         )
         .await
         .unwrap();
-    
+
     assert!(response.status() == StatusCode::OK || response.status() == StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn test_token_refresh_without_token() {
     let app = create_test_app().await;
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -167,14 +163,14 @@ async fn test_token_refresh_without_token() {
         )
         .await
         .unwrap();
-    
+
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
 async fn test_register_endpoint_missing_data() {
     let app = create_test_app().await;
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -186,20 +182,20 @@ async fn test_register_endpoint_missing_data() {
         )
         .await
         .unwrap();
-    
+
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]
 async fn test_register_endpoint_valid_data() {
     let app = create_test_app().await;
-    
+
     let register_data = json!({
         "email": format!("test_{}@example.com", uuid::Uuid::new_v4()),
         "password": "SecurePass123!",
         "username": format!("testuser_{}", uuid::Uuid::new_v4())
     });
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -211,21 +207,18 @@ async fn test_register_endpoint_valid_data() {
         )
         .await
         .unwrap();
-    
-    assert!(
-        response.status() == StatusCode::CREATED 
-            || response.status() == StatusCode::CONFLICT
-    );
+
+    assert!(response.status() == StatusCode::CREATED || response.status() == StatusCode::CONFLICT);
 }
 
 #[tokio::test]
 async fn test_password_reset_request() {
     let app = create_test_app().await;
-    
+
     let reset_data = json!({
         "email": "test@example.com"
     });
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -237,18 +230,17 @@ async fn test_password_reset_request() {
         )
         .await
         .unwrap();
-    
+
     assert!(response.status() == StatusCode::OK || response.status() == StatusCode::ACCEPTED);
 }
 
 #[tokio::test]
 async fn test_me_endpoint() {
     let app = create_test_app().await;
-    let secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "test_secret_key".to_string());
+    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "test_secret_key".to_string());
     let user_id = uuid::Uuid::new_v4().to_string();
     let token = create_test_jwt(&user_id, &secret);
-    
+
     let response = app
         .oneshot(
             Request::builder()
@@ -259,9 +251,6 @@ async fn test_me_endpoint() {
         )
         .await
         .unwrap();
-    
-    assert!(
-        response.status() == StatusCode::OK 
-            || response.status() == StatusCode::UNAUTHORIZED
-    );
+
+    assert!(response.status() == StatusCode::OK || response.status() == StatusCode::UNAUTHORIZED);
 }

@@ -1,16 +1,13 @@
-use tachyon_editor::Editor;
+use crate::components::native_editor::{insert_line_prefix, insert_markdown_syntax};
 use leptos::prelude::*;
-use crate::components::native_editor::{insert_markdown_syntax, insert_line_prefix};
+use tachyon_editor::Editor;
 
 #[component]
 pub fn EditorToolbar(
     editor: RwSignal<Editor>,
-    #[prop(default = Callback::new(|_: ()| {}))]
-    on_save: Callback<()>,
-    #[prop(default = Callback::new(|_: ()| {}))]
-    on_preview: Callback<()>,
-    #[prop(default = Callback::new(|_: ()| {}))]
-    on_search: Callback<()>,
+    #[prop(default = Callback::new(|_: ()| {}))] on_save: Callback<()>,
+    #[prop(default = Callback::new(|_: ()| {}))] on_preview: Callback<()>,
+    #[prop(default = Callback::new(|_: ()| {}))] on_search: Callback<()>,
 ) -> impl IntoView {
     let ed = editor;
     let bold_action = move |_: leptos::ev::MouseEvent| {
@@ -80,11 +77,15 @@ pub fn EditorToolbar(
     };
     let ed = editor;
     let undo_action = move |_: leptos::ev::MouseEvent| {
-        ed.update(|e| { e.undo(); });
+        ed.update(|e| {
+            e.undo();
+        });
     };
     let ed = editor;
     let redo_action = move |_: leptos::ev::MouseEvent| {
-        ed.update(|e| { e.redo(); });
+        ed.update(|e| {
+            e.redo();
+        });
     };
 
     view! {
@@ -177,8 +178,7 @@ pub fn EditorToolbar(
 fn ToolbarBtn(
     title: &'static str,
     on_click: impl Fn(leptos::ev::MouseEvent) + 'static,
-    #[prop(default = false)]
-    disabled: bool,
+    #[prop(default = false)] disabled: bool,
     children: Children,
 ) -> impl IntoView {
     let child_views = children();

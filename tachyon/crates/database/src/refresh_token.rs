@@ -68,7 +68,10 @@ impl RefreshTokenRepository {
     }
 
     #[instrument(skip(self))]
-    pub async fn find_valid_by_hash(&self, token_hash: &str) -> DatabaseResult<Option<RefreshToken>> {
+    pub async fn find_valid_by_hash(
+        &self,
+        token_hash: &str,
+    ) -> DatabaseResult<Option<RefreshToken>> {
         let sql = format!(
             "{} WHERE token_hash = $1 AND revoked = FALSE AND expires_at > NOW()",
             SELECT_SQL

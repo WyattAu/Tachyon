@@ -412,9 +412,11 @@ mod tests {
         assert_eq!(params.page_size, 20);
         assert!(params.author_id.is_none());
 
-        let mut params = ListParams::default();
-        params.page = 2;
-        params.page_size = 50;
+        let params = ListParams {
+            page: 2,
+            page_size: 50,
+            ..Default::default()
+        };
         assert_eq!(params.page, 2);
         assert_eq!(params.page_size, 50);
     }

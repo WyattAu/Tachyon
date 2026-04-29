@@ -52,7 +52,7 @@ impl DocumentVersionRepository {
     #[instrument(skip(self))]
     pub async fn create(&self, req: CreateVersionRequest) -> DatabaseResult<DocumentVersion> {
         let mut conn = self.pool.acquire().await?;
-        
+
         let current_version: i32 = query(
             "SELECT COALESCE(MAX(version_number), 0) as version FROM document_versions WHERE document_id = $1::uuid"
         )
@@ -85,14 +85,17 @@ impl DocumentVersionRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        info!("Document version created: {} v{}", req.document_id, new_version_number);
+        info!(
+            "Document version created: {} v{}",
+            req.document_id, new_version_number
+        );
         Ok(version)
     }
 
     #[instrument(skip(self))]
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<DocumentVersion> {
         let select_sql = format!("{} WHERE id = $1::uuid", VERSION_SELECT_SQL);
-        
+
         let mut conn = self.pool.acquire().await?;
         let version: Option<DocumentVersion> = query_as(&select_sql)
             .bind(id)
@@ -104,9 +107,16 @@ impl DocumentVersionRepository {
     }
 
     #[instrument(skip(self))]
-    pub async fn get_by_version_number(&self, document_id: &str, version_number: i32) -> DatabaseResult<DocumentVersion> {
-        let select_sql = format!("{} WHERE document_id = $1::uuid AND version_number = $2", VERSION_SELECT_SQL);
-        
+    pub async fn get_by_version_number(
+        &self,
+        document_id: &str,
+        version_number: i32,
+    ) -> DatabaseResult<DocumentVersion> {
+        let select_sql = format!(
+            "{} WHERE document_id = $1::uuid AND version_number = $2",
+            VERSION_SELECT_SQL
+        );
+
         let mut conn = self.pool.acquire().await?;
         let version: Option<DocumentVersion> = query_as(&select_sql)
             .bind(document_id)
@@ -115,11 +125,20 @@ impl DocumentVersionRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        version.ok_or_else(|| DatabaseError::not_found("document_version", format!("{}:v{}", document_id, version_number)))
+        version.ok_or_else(|| {
+            DatabaseError::not_found(
+                "document_version",
+                format!("{}:v{}", document_id, version_number),
+            )
+        })
     }
 
     #[instrument(skip(self))]
-    pub async fn list_by_document(&self, document_id: &str, limit: Option<i64>) -> DatabaseResult<Vec<DocumentVersion>> {
+    pub async fn list_by_document(
+        &self,
+        document_id: &str,
+        limit: Option<i64>,
+    ) -> DatabaseResult<Vec<DocumentVersion>> {
         let limit = limit.unwrap_or(50);
         let select_sql = format!(
             "{} WHERE document_id = $1::uuid ORDER BY version_number DESC LIMIT $2",
@@ -134,7 +153,11 @@ impl DocumentVersionRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        debug!("Found {} versions for document {}", versions.len(), document_id);
+        debug!(
+            "Found {} versions for document {}",
+            versions.len(),
+            document_id
+        );
         Ok(versions)
     }
 
@@ -176,7 +199,8 @@ impl DocumentVersionRepository {
 
     #[instrument(skip(self))]
     pub async fn count_by_document(&self, document_id: &str) -> DatabaseResult<i64> {
-        let count_sql = "SELECT COUNT(*) as count FROM document_versions WHERE document_id = $1::uuid";
+        let count_sql =
+            "SELECT COUNT(*) as count FROM document_versions WHERE document_id = $1::uuid";
 
         let mut conn = self.pool.acquire().await?;
         let row = query(count_sql)

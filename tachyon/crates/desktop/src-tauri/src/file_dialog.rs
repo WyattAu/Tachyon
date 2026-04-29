@@ -3,13 +3,12 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use tachyon_core::{ErrorResult, TachyonError};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
-use tachyon_core::{ErrorResult, TachyonError};
 
 /// File dialog options
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FileDialogOptions {
     /// Default file name for save dialog
     pub default_name: Option<String>,
@@ -20,7 +19,6 @@ pub struct FileDialogOptions {
     /// Allow directory selection
     pub directory: bool,
 }
-
 
 /// File dialog result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,7 +61,10 @@ impl FileDialogManager {
     }
 
     /// Open a file dialog for selecting files
-    pub async fn open_file_dialog(&self, options: FileDialogOptions) -> ErrorResult<FileDialogResult> {
+    pub async fn open_file_dialog(
+        &self,
+        options: FileDialogOptions,
+    ) -> ErrorResult<FileDialogResult> {
         use tauri_plugin_dialog::DialogExt;
 
         // FileDialogBuilder methods consume self and return Self — must chain
@@ -87,7 +88,10 @@ impl FileDialogManager {
                         paths: vec![p.to_string()],
                         canceled: false,
                     },
-                    None => FileDialogResult { paths: vec![], canceled: true },
+                    None => FileDialogResult {
+                        paths: vec![],
+                        canceled: true,
+                    },
                 };
                 let _ = sender.send(result);
             });
@@ -98,7 +102,10 @@ impl FileDialogManager {
                         paths: ps.iter().map(|p| p.to_string()).collect(),
                         canceled: false,
                     },
-                    None => FileDialogResult { paths: vec![], canceled: true },
+                    None => FileDialogResult {
+                        paths: vec![],
+                        canceled: true,
+                    },
                 };
                 let _ = sender.send(result);
             });
@@ -109,19 +116,25 @@ impl FileDialogManager {
                         paths: vec![p.to_string()],
                         canceled: false,
                     },
-                    None => FileDialogResult { paths: vec![], canceled: true },
+                    None => FileDialogResult {
+                        paths: vec![],
+                        canceled: true,
+                    },
                 };
                 let _ = sender.send(result);
             });
         }
 
-        receiver.await.map_err(|_| {
-            TachyonError::internal("DIALOG_ERROR", "File dialog channel closed")
-        })
+        receiver
+            .await
+            .map_err(|_| TachyonError::internal("DIALOG_ERROR", "File dialog channel closed"))
     }
 
     /// Open a save file dialog
-    pub async fn save_file_dialog(&self, options: FileDialogOptions) -> ErrorResult<FileDialogResult> {
+    pub async fn save_file_dialog(
+        &self,
+        options: FileDialogOptions,
+    ) -> ErrorResult<FileDialogResult> {
         use tauri_plugin_dialog::DialogExt;
 
         // FileDialogBuilder methods consume self and return Self — must chain
@@ -144,30 +157,40 @@ impl FileDialogManager {
                     paths: vec![p.to_string()],
                     canceled: false,
                 },
-                None => FileDialogResult { paths: vec![], canceled: true },
+                None => FileDialogResult {
+                    paths: vec![],
+                    canceled: true,
+                },
             };
             let _ = sender.send(result);
         });
 
-        receiver.await.map_err(|_| {
-            TachyonError::internal("DIALOG_ERROR", "Save dialog channel closed")
-        })
+        receiver
+            .await
+            .map_err(|_| TachyonError::internal("DIALOG_ERROR", "Save dialog channel closed"))
     }
 
     /// Read file content
     pub async fn read_file(&self, path: impl AsRef<Path>) -> ErrorResult<FileContent> {
         let path_ref = path.as_ref();
-        
+
         if !path_ref.exists() {
-            return Err(TachyonError::not_found(format!("File: {}", path_ref.display())));
-        }
-        
-        if !path_ref.is_file() {
-            return Err(TachyonError::validation("NOT_A_FILE", format!("Path is not a file: {}", path_ref.display())));
+            return Err(TachyonError::not_found(format!(
+                "File: {}",
+                path_ref.display()
+            )));
         }
 
-        let content = std::fs::read_to_string(path_ref)
-            .map_err(|e| TachyonError::storage("READ_ERROR", format!("Failed to read file: {}", e)))?;
+        if !path_ref.is_file() {
+            return Err(TachyonError::validation(
+                "NOT_A_FILE",
+                format!("Path is not a file: {}", path_ref.display()),
+            ));
+        }
+
+        let content = std::fs::read_to_string(path_ref).map_err(|e| {
+            TachyonError::storage("READ_ERROR", format!("Failed to read file: {}", e))
+        })?;
 
         Ok(FileContent {
             path: path_ref.to_string_lossy().to_string(),
@@ -177,13 +200,18 @@ impl FileDialogManager {
     }
 
     /// Write file content
-    pub async fn write_file(&self, path: impl AsRef<Path>, content: impl AsRef<str>) -> ErrorResult<FileWriteResult> {
+    pub async fn write_file(
+        &self,
+        path: impl AsRef<Path>,
+        content: impl AsRef<str>,
+    ) -> ErrorResult<FileWriteResult> {
         let path_ref = path.as_ref();
         let content_ref = content.as_ref();
         let bytes_written = content_ref.len() as u64;
 
-        std::fs::write(path_ref, content_ref)
-            .map_err(|e| TachyonError::storage("WRITE_ERROR", format!("Failed to write file: {}", e)))?;
+        std::fs::write(path_ref, content_ref).map_err(|e| {
+            TachyonError::storage("WRITE_ERROR", format!("Failed to write file: {}", e))
+        })?;
 
         Ok(FileWriteResult {
             path: path_ref.to_string_lossy().to_string(),
@@ -201,19 +229,27 @@ impl FileDialogManager {
         let path_ref = path.as_ref();
 
         if !path_ref.exists() {
-            return Err(TachyonError::not_found(format!("File: {}", path_ref.display())));
+            return Err(TachyonError::not_found(format!(
+                "File: {}",
+                path_ref.display()
+            )));
         }
 
-        std::fs::remove_file(path_ref)
-            .map_err(|e| TachyonError::storage("DELETE_ERROR", format!("Failed to delete file: {}", e)))?;
+        std::fs::remove_file(path_ref).map_err(|e| {
+            TachyonError::storage("DELETE_ERROR", format!("Failed to delete file: {}", e))
+        })?;
 
         Ok(())
     }
 
     /// Create a directory
     pub async fn create_directory(&self, path: impl AsRef<Path>) -> ErrorResult<()> {
-        std::fs::create_dir_all(path.as_ref())
-            .map_err(|e| TachyonError::storage("CREATE_DIR_ERROR", format!("Failed to create directory: {}", e)))?;
+        std::fs::create_dir_all(path.as_ref()).map_err(|e| {
+            TachyonError::storage(
+                "CREATE_DIR_ERROR",
+                format!("Failed to create directory: {}", e),
+            )
+        })?;
 
         Ok(())
     }

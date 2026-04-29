@@ -14,15 +14,11 @@ pub struct DroppedFile {
 
 #[component]
 pub fn DropZone(
-    #[prop(default = "Drop files here or click to browse".to_string())]
-    label: String,
-    #[prop(default = "*".to_string())]
-    accept: String,
-    #[prop(default = false)]
-    multiple: bool,
+    #[prop(default = "Drop files here or click to browse".to_string())] label: String,
+    #[prop(default = "*".to_string())] accept: String,
+    #[prop(default = false)] multiple: bool,
     on_files: Callback<Vec<DroppedFile>>,
-    #[prop(default = false)]
-    disabled: bool,
+    #[prop(default = false)] disabled: bool,
 ) -> impl IntoView {
     let (is_dragging, set_is_dragging) = signal(false);
     let input_ref = NodeRef::<leptos::html::Input>::new();

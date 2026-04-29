@@ -137,16 +137,22 @@ mod tests {
         stack.push(make_transaction("a"));
         stack.push(make_transaction("b"));
         let t = stack.pop_undo().unwrap();
-        assert_eq!(match &t.kind {
-            EditKind::Insert { text } => text.as_str(),
-            _ => "",
-        }, "b");
+        assert_eq!(
+            match &t.kind {
+                EditKind::Insert { text } => text.as_str(),
+                _ => "",
+            },
+            "b"
+        );
         stack.push_redo(t);
         let r = stack.pop_redo().unwrap();
-        assert_eq!(match &r.kind {
-            EditKind::Insert { text } => text.as_str(),
-            _ => "",
-        }, "b");
+        assert_eq!(
+            match &r.kind {
+                EditKind::Insert { text } => text.as_str(),
+                _ => "",
+            },
+            "b"
+        );
     }
 
     #[test]

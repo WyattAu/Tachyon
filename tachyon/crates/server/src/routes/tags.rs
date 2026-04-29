@@ -23,7 +23,10 @@ pub struct TagsResponse {
 pub async fn list_tags(
     State(state): State<TagsState>,
 ) -> Result<Json<TagsResponse>, (StatusCode, String)> {
-    let mut conn = state.pool.acquire().await
+    let mut conn = state
+        .pool
+        .acquire()
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let rows: Vec<TagInfo> = sqlx::query_as(
@@ -32,7 +35,7 @@ pub async fn list_tags(
            WHERE tags IS NOT NULL AND jsonb_array_length(tags) > 0
            GROUP BY value
            ORDER BY count DESC
-           LIMIT 100"#
+           LIMIT 100"#,
     )
     .fetch_all(&mut *conn)
     .await
@@ -43,8 +46,7 @@ pub async fn list_tags(
 }
 
 pub fn create_tags_router() -> axum::Router<TagsState> {
-    axum::Router::new()
-        .route("/tags", axum::routing::get(list_tags))
+    axum::Router::new().route("/tags", axum::routing::get(list_tags))
 }
 
 #[cfg(test)]
@@ -66,8 +68,14 @@ mod tests {
     fn test_tags_response_serialization() {
         let response = TagsResponse {
             tags: vec![
-                TagInfo { tag: "rust".to_string(), count: 42 },
-                TagInfo { tag: "web".to_string(), count: 10 },
+                TagInfo {
+                    tag: "rust".to_string(),
+                    count: 42,
+                },
+                TagInfo {
+                    tag: "web".to_string(),
+                    count: 10,
+                },
             ],
             total: 2,
         };

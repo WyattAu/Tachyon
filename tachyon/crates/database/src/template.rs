@@ -42,8 +42,7 @@ impl DocumentTemplate {
     }
 
     pub fn serialize_tags(tags: &[String]) -> DatabaseResult<String> {
-        serde_json::to_string(tags)
-            .map_err(|e| DatabaseError::SerializationError(e.to_string()))
+        serde_json::to_string(tags).map_err(|e| DatabaseError::SerializationError(e.to_string()))
     }
 }
 
@@ -103,8 +102,13 @@ impl TemplateRepository {
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| {
-                if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
-                    DatabaseError::duplicate("template", format!("Template '{}' already exists", req.name))
+                if e.to_string().contains("duplicate key")
+                    || e.to_string().contains("UNIQUE constraint")
+                {
+                    DatabaseError::duplicate(
+                        "template",
+                        format!("Template '{}' already exists", req.name),
+                    )
                 } else {
                     DatabaseError::QueryError(e.to_string())
                 }
@@ -117,7 +121,7 @@ impl TemplateRepository {
     #[instrument(skip(self))]
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<DocumentTemplate> {
         let select_sql = format!("{} WHERE id = $1::uuid", TEMPLATE_SELECT_SQL);
-        
+
         let mut conn = self.pool.acquire().await?;
         let template: Option<DocumentTemplate> = query_as(&select_sql)
             .bind(id)
@@ -131,7 +135,7 @@ impl TemplateRepository {
     #[instrument(skip(self))]
     pub async fn get_by_name(&self, name: &str) -> DatabaseResult<DocumentTemplate> {
         let select_sql = format!("{} WHERE name = $1", TEMPLATE_SELECT_SQL);
-        
+
         let mut conn = self.pool.acquire().await?;
         let template: Option<DocumentTemplate> = query_as(&select_sql)
             .bind(name)
@@ -143,17 +147,34 @@ impl TemplateRepository {
     }
 
     #[instrument(skip(self))]
-    pub async fn list(&self, category: Option<&str>, limit: Option<i64>, offset: Option<i64>) -> DatabaseResult<Vec<DocumentTemplate>> {
+    pub async fn list(
+        &self,
+        category: Option<&str>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> DatabaseResult<Vec<DocumentTemplate>> {
         let limit = limit.unwrap_or(50);
         let offset = offset.unwrap_or(0);
 
         let (select_sql, has_category) = match category {
-            Some(_cat) => (format!("{} WHERE category = $1 ORDER BY name ASC LIMIT $2 OFFSET $3", TEMPLATE_SELECT_SQL), true),
-            None => (format!("{} ORDER BY name ASC LIMIT $1 OFFSET $2", TEMPLATE_SELECT_SQL), false),
+            Some(_cat) => (
+                format!(
+                    "{} WHERE category = $1 ORDER BY name ASC LIMIT $2 OFFSET $3",
+                    TEMPLATE_SELECT_SQL
+                ),
+                true,
+            ),
+            None => (
+                format!(
+                    "{} ORDER BY name ASC LIMIT $1 OFFSET $2",
+                    TEMPLATE_SELECT_SQL
+                ),
+                false,
+            ),
         };
 
         let mut conn = self.pool.acquire().await?;
-        
+
         let templates: Vec<DocumentTemplate> = if has_category {
             query_as(&select_sql)
                 .bind(category.unwrap())
@@ -176,7 +197,11 @@ impl TemplateRepository {
     }
 
     #[instrument(skip(self, req))]
-    pub async fn update(&self, id: &str, req: UpdateTemplateRequest) -> DatabaseResult<DocumentTemplate> {
+    pub async fn update(
+        &self,
+        id: &str,
+        req: UpdateTemplateRequest,
+    ) -> DatabaseResult<DocumentTemplate> {
         let existing = self.get_by_id(id).await?;
         let now = Utc::now();
 
@@ -248,7 +273,10 @@ impl TemplateRepository {
     #[instrument(skip(self))]
     pub async fn count(&self, category: Option<&str>) -> DatabaseResult<i64> {
         let (count_sql, has_category) = match category {
-            Some(_) => ("SELECT COUNT(*) as count FROM document_templates WHERE category = $1", true),
+            Some(_) => (
+                "SELECT COUNT(*) as count FROM document_templates WHERE category = $1",
+                true,
+            ),
             None => ("SELECT COUNT(*) as count FROM document_templates", false),
         };
 

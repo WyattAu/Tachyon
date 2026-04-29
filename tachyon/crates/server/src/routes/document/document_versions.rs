@@ -43,7 +43,9 @@ pub async fn list_versions(
     State(state): State<DocumentState>,
 ) -> Result<Json<Vec<VersionResponse>>, (StatusCode, Json<ErrorResponse>)> {
     let repo = tachyon_database::DocumentVersionRepository::new(state.pool.clone());
-    let versions = repo.list_by_document(&document_id, Some(50)).await
+    let versions = repo
+        .list_by_document(&document_id, Some(50))
+        .await
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -55,7 +57,9 @@ pub async fn list_versions(
             )
         })?;
 
-    Ok(Json(versions.into_iter().map(VersionResponse::from).collect()))
+    Ok(Json(
+        versions.into_iter().map(VersionResponse::from).collect(),
+    ))
 }
 
 pub async fn get_version(
@@ -63,7 +67,9 @@ pub async fn get_version(
     State(state): State<DocumentState>,
 ) -> Result<Json<VersionResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = tachyon_database::DocumentVersionRepository::new(state.pool.clone());
-    let version = repo.get_by_version_number(&document_id, version_number).await
+    let version = repo
+        .get_by_version_number(&document_id, version_number)
+        .await
         .map_err(|e| {
             (
                 StatusCode::NOT_FOUND,
@@ -86,23 +92,30 @@ pub async fn create_version(
     let user_id = tachyon_core::generate_user_id();
     let repo = tachyon_database::DocumentVersionRepository::new(state.pool.clone());
 
-    let version = repo.create(tachyon_database::CreateVersionRequest {
-        document_id: document_id.clone(),
-        content: body.content,
-        commit_message: body.commit_message,
-        created_by: user_id.to_string(),
-    }).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "CREATE_ERROR".to_string(),
-                message: format!("Failed to create version: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let version = repo
+        .create(tachyon_database::CreateVersionRequest {
+            document_id: document_id.clone(),
+            content: body.content,
+            commit_message: body.commit_message,
+            created_by: user_id.to_string(),
+        })
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    code: "CREATE_ERROR".to_string(),
+                    message: format!("Failed to create version: {}", e),
+                    details: None,
+                }),
+            )
+        })?;
 
-    tracing::info!("Created version {} for document {}", version.version_number, document_id);
+    tracing::info!(
+        "Created version {} for document {}",
+        version.version_number,
+        document_id
+    );
     Ok(Json(VersionResponse::from(version)))
 }
 
@@ -132,27 +145,33 @@ pub async fn diff_versions(
 ) -> Result<Json<DocumentDiffResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = tachyon_database::DocumentVersionRepository::new(state.pool.clone());
 
-    let ver1 = repo.get_by_version_number(&document_id, v1).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Version {} not found: {}", v1, e),
-                details: None,
-            }),
-        )
-    })?;
+    let ver1 = repo
+        .get_by_version_number(&document_id, v1)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    code: "NOT_FOUND".to_string(),
+                    message: format!("Version {} not found: {}", v1, e),
+                    details: None,
+                }),
+            )
+        })?;
 
-    let ver2 = repo.get_by_version_number(&document_id, v2).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Version {} not found: {}", v2, e),
-                details: None,
-            }),
-        )
-    })?;
+    let ver2 = repo
+        .get_by_version_number(&document_id, v2)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    code: "NOT_FOUND".to_string(),
+                    message: format!("Version {} not found: {}", v2, e),
+                    details: None,
+                }),
+            )
+        })?;
 
     let diff = compute_line_diff(&ver1.content, &ver2.content);
     Ok(Json(diff))
@@ -178,22 +197,40 @@ fn compute_line_diff(old_content: &str, new_content: &str) -> DocumentDiffRespon
             let lcs_line = lcs[lcs_idx];
 
             while old_idx < old_lines.len() && old_lines[old_idx] != lcs_line {
-                result_old.push(DiffLine { content: old_lines[old_idx].to_string(), line_type: "removed".to_string() });
-                result_new.push(DiffLine { content: String::new(), line_type: "unchanged".to_string() });
+                result_old.push(DiffLine {
+                    content: old_lines[old_idx].to_string(),
+                    line_type: "removed".to_string(),
+                });
+                result_new.push(DiffLine {
+                    content: String::new(),
+                    line_type: "unchanged".to_string(),
+                });
                 removed += 1;
                 old_idx += 1;
             }
 
             while new_idx < new_lines.len() && new_lines[new_idx] != lcs_line {
-                result_old.push(DiffLine { content: String::new(), line_type: "unchanged".to_string() });
-                result_new.push(DiffLine { content: new_lines[new_idx].to_string(), line_type: "added".to_string() });
+                result_old.push(DiffLine {
+                    content: String::new(),
+                    line_type: "unchanged".to_string(),
+                });
+                result_new.push(DiffLine {
+                    content: new_lines[new_idx].to_string(),
+                    line_type: "added".to_string(),
+                });
                 added += 1;
                 new_idx += 1;
             }
 
             if old_idx < old_lines.len() && new_idx < new_lines.len() {
-                result_old.push(DiffLine { content: old_lines[old_idx].to_string(), line_type: "unchanged".to_string() });
-                result_new.push(DiffLine { content: new_lines[new_idx].to_string(), line_type: "unchanged".to_string() });
+                result_old.push(DiffLine {
+                    content: old_lines[old_idx].to_string(),
+                    line_type: "unchanged".to_string(),
+                });
+                result_new.push(DiffLine {
+                    content: new_lines[new_idx].to_string(),
+                    line_type: "unchanged".to_string(),
+                });
                 unchanged += 1;
                 old_idx += 1;
                 new_idx += 1;
@@ -201,14 +238,26 @@ fn compute_line_diff(old_content: &str, new_content: &str) -> DocumentDiffRespon
             }
         } else {
             while old_idx < old_lines.len() {
-                result_old.push(DiffLine { content: old_lines[old_idx].to_string(), line_type: "removed".to_string() });
-                result_new.push(DiffLine { content: String::new(), line_type: "unchanged".to_string() });
+                result_old.push(DiffLine {
+                    content: old_lines[old_idx].to_string(),
+                    line_type: "removed".to_string(),
+                });
+                result_new.push(DiffLine {
+                    content: String::new(),
+                    line_type: "unchanged".to_string(),
+                });
                 removed += 1;
                 old_idx += 1;
             }
             while new_idx < new_lines.len() {
-                result_old.push(DiffLine { content: String::new(), line_type: "unchanged".to_string() });
-                result_new.push(DiffLine { content: new_lines[new_idx].to_string(), line_type: "added".to_string() });
+                result_old.push(DiffLine {
+                    content: String::new(),
+                    line_type: "unchanged".to_string(),
+                });
+                result_new.push(DiffLine {
+                    content: new_lines[new_idx].to_string(),
+                    line_type: "added".to_string(),
+                });
                 added += 1;
                 new_idx += 1;
             }
@@ -218,14 +267,20 @@ fn compute_line_diff(old_content: &str, new_content: &str) -> DocumentDiffRespon
     DocumentDiffResponse {
         old_lines: result_old,
         new_lines: result_new,
-        stats: DiffStats { added, removed, unchanged },
+        stats: DiffStats {
+            added,
+            removed,
+            unchanged,
+        },
     }
 }
 
 fn longest_common_subsequence<'a>(old: &[&'a str], new: &[&'a str]) -> Vec<&'a str> {
     let m = old.len();
     let n = new.len();
-    if m == 0 || n == 0 { return Vec::new(); }
+    if m == 0 || n == 0 {
+        return Vec::new();
+    }
 
     let mut dp = vec![vec![0usize; n + 1]; m + 1];
     for i in 1..=m {

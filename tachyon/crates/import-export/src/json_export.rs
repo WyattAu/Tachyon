@@ -106,11 +106,7 @@ mod tests {
         }
     }
 
-    fn test_doc_with_metadata(
-        id: &str,
-        title: &str,
-        content: &str,
-    ) -> ExportableDocument {
+    fn test_doc_with_metadata(id: &str, title: &str, content: &str) -> ExportableDocument {
         let mut meta = BTreeMap::new();
         meta.insert("author".to_string(), serde_json::json!("test-user"));
         ExportableDocument {
@@ -149,7 +145,8 @@ mod tests {
             test_doc("3", "Third Doc", "Content 3"),
         ];
         let bytes = exporter.export(docs).unwrap();
-        let parsed: Vec<serde_json::Value> = serde_json::from_str(&String::from_utf8(bytes).unwrap()).unwrap();
+        let parsed: Vec<serde_json::Value> =
+            serde_json::from_str(&String::from_utf8(bytes).unwrap()).unwrap();
 
         assert_eq!(parsed.len(), 3);
         assert_eq!(parsed[0]["id"], "1");
@@ -162,7 +159,8 @@ mod tests {
         let exporter = JsonExporter::new().with_metadata();
         let docs = vec![test_doc_with_metadata("1", "With Meta", "Content")];
         let bytes = exporter.export(docs).unwrap();
-        let parsed: Vec<serde_json::Value> = serde_json::from_str(&String::from_utf8(bytes).unwrap()).unwrap();
+        let parsed: Vec<serde_json::Value> =
+            serde_json::from_str(&String::from_utf8(bytes).unwrap()).unwrap();
 
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0]["metadata"]["author"], "test-user");
@@ -175,7 +173,8 @@ mod tests {
         let exporter = JsonExporter::new();
         let docs = vec![test_doc_with_metadata("1", "Strip Meta", "Content")];
         let bytes = exporter.export(docs).unwrap();
-        let parsed: Vec<serde_json::Value> = serde_json::from_str(&String::from_utf8(bytes).unwrap()).unwrap();
+        let parsed: Vec<serde_json::Value> =
+            serde_json::from_str(&String::from_utf8(bytes).unwrap()).unwrap();
 
         assert!(parsed[0].get("metadata").is_none());
     }
@@ -238,6 +237,9 @@ mod tests {
         assert_eq!(imported[0].content, original[0].content);
         assert_eq!(imported[0].tags, original[0].tags);
         assert_eq!(imported[1].id, original[1].id);
-        assert_eq!(imported[1].metadata.as_ref().unwrap()["author"], "test-user");
+        assert_eq!(
+            imported[1].metadata.as_ref().unwrap()["author"],
+            "test-user"
+        );
     }
 }

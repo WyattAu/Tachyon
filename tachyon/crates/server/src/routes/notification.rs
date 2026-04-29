@@ -86,7 +86,10 @@ pub async fn list_notifications(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let count = notifications.len();
-    Ok(Json(NotificationListResponse { notifications, count }))
+    Ok(Json(NotificationListResponse {
+        notifications,
+        count,
+    }))
 }
 
 pub async fn unread_count(
@@ -102,8 +105,12 @@ pub async fn mark_notification_read(
     Path(notification_id): Path<String>,
     State(state): State<NotificationState>,
 ) -> Result<Json<MarkReadResponse>, (StatusCode, String)> {
-    let id = uuid::Uuid::parse_str(&notification_id)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid notification ID: {}", e)))?;
+    let id = uuid::Uuid::parse_str(&notification_id).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            format!("Invalid notification ID: {}", e),
+        )
+    })?;
     let read = NotificationRepository::mark_read(&state.pool, id, uuid::Uuid::nil())
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;

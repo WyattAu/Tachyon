@@ -55,7 +55,12 @@ impl UserRecord {
 impl From<UserRecord> for User {
     fn from(r: UserRecord) -> Self {
         let id = UserId::from_uuid(r.id);
-        let mut user = User::new(id, r.username, r.display_name.unwrap_or_default(), UserRecord::parse_role(&r.role));
+        let mut user = User::new(
+            id,
+            r.username,
+            r.display_name.unwrap_or_default(),
+            UserRecord::parse_role(&r.role),
+        );
         user.email = r.email;
         user.user_type = UserRecord::parse_user_type(&r.user_type);
         user.is_active = Some(r.is_active);
@@ -90,7 +95,9 @@ impl UserRepository {
             RETURNING *
         "#;
 
-        let password_hash = user.password_hash.as_deref()
+        let password_hash = user
+            .password_hash
+            .as_deref()
             .ok_or_else(|| DatabaseError::ValidationError("password_hash is required".into()))?;
 
         let mut conn = self.pool.acquire().await?;
@@ -109,14 +116,24 @@ impl UserRepository {
             .await
             .map_err(|e| {
                 let msg = e.to_string();
-                if msg.contains("unique") || msg.contains("duplicate")
+                if msg.contains("unique")
+                    || msg.contains("duplicate")
                     || msg.contains("users_username_key")
                     || msg.contains("users_email_key")
                 {
                     if msg.contains("email") {
-                        DatabaseError::duplicate("user", format!("Email already exists: {}", user.email.as_deref().unwrap_or("")))
+                        DatabaseError::duplicate(
+                            "user",
+                            format!(
+                                "Email already exists: {}",
+                                user.email.as_deref().unwrap_or("")
+                            ),
+                        )
                     } else {
-                        DatabaseError::duplicate("user", format!("Username already exists: {}", user.username))
+                        DatabaseError::duplicate(
+                            "user",
+                            format!("Username already exists: {}", user.username),
+                        )
                     }
                 } else {
                     DatabaseError::QueryError(msg)
@@ -433,9 +450,15 @@ impl UserRepository {
         info!("Seeding initial admin user: {}", username);
 
         let user_id = tachyon_core::generate_user_id();
-        let mut user = User::new(user_id, username.to_string(), display_name.to_string(), UserRole::Admin);
+        let mut user = User::new(
+            user_id,
+            username.to_string(),
+            display_name.to_string(),
+            UserRole::Admin,
+        );
         user.email = Some(email.to_string());
-        user.set_password(password).map_err(|e| DatabaseError::ValidationError(e.to_string()))?;
+        user.set_password(password)
+            .map_err(|e| DatabaseError::ValidationError(e.to_string()))?;
 
         let created = self.create(&user).await?;
         Ok(Some(created))
@@ -452,14 +475,29 @@ mod tests {
         assert!(matches!(UserRecord::parse_role("editor"), UserRole::Editor));
         assert!(matches!(UserRecord::parse_role("writer"), UserRole::Writer));
         assert!(matches!(UserRecord::parse_role("reader"), UserRole::Reader));
-        assert!(matches!(UserRecord::parse_role("unknown"), UserRole::Reader));
+        assert!(matches!(
+            UserRecord::parse_role("unknown"),
+            UserRole::Reader
+        ));
     }
 
     #[test]
     fn test_user_record_parse_user_type() {
-        assert!(matches!(UserRecord::parse_user_type("regular"), UserType::Regular));
-        assert!(matches!(UserRecord::parse_user_type("service"), UserType::Service));
-        assert!(matches!(UserRecord::parse_user_type("system"), UserType::System));
-        assert!(matches!(UserRecord::parse_user_type("unknown"), UserType::Regular));
+        assert!(matches!(
+            UserRecord::parse_user_type("regular"),
+            UserType::Regular
+        ));
+        assert!(matches!(
+            UserRecord::parse_user_type("service"),
+            UserType::Service
+        ));
+        assert!(matches!(
+            UserRecord::parse_user_type("system"),
+            UserType::System
+        ));
+        assert!(matches!(
+            UserRecord::parse_user_type("unknown"),
+            UserType::Regular
+        ));
     }
 }

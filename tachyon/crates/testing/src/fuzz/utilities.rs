@@ -98,10 +98,7 @@ fn test_sanitize_string_random_input_no_panic() {
         assert!(!result.contains('>'), "input: {:?}", input);
     }
 
-    let inputs_with_unmatched = [
-        "multiple << >>> <<< tags",
-        "unclosed <tag",
-    ];
+    let inputs_with_unmatched = ["multiple << >>> <<< tags", "unclosed <tag"];
 
     for input in &inputs_with_unmatched {
         let _ = sanitize_string(input);
@@ -185,7 +182,9 @@ fn test_format_parse_iso8601_roundtrip() {
         chrono::Utc::now(),
         chrono::Utc::now() - chrono::Duration::days(365),
         chrono::Utc::now() + chrono::Duration::days(365),
-        chrono::DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z").unwrap().with_timezone(&chrono::Utc),
+        chrono::DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc),
     ];
 
     for dt in &times {

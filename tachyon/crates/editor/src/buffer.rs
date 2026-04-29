@@ -7,9 +7,7 @@ pub struct TextBuffer {
 
 impl TextBuffer {
     pub fn new() -> Self {
-        Self {
-            rope: Rope::new(),
-        }
+        Self { rope: Rope::new() }
     }
 
     #[allow(clippy::should_implement_trait)]

@@ -6,16 +6,16 @@ mod i18n;
 mod markdown;
 mod pages;
 mod storage;
-mod types;
 mod styles;
+mod types;
 pub mod websocket;
 
+use crate::api::ApiClient;
+use components::{provide_auth_context, AppErrorBoundary, AppShell, AuthGuard, ThemeInitializer};
 use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
-use components::{AppShell, AuthGuard, provide_auth_context, AppErrorBoundary, ThemeInitializer};
-use crate::api::ApiClient;
-use storage::{BrowserStore, sync::SyncEngine};
+use storage::{sync::SyncEngine, BrowserStore};
 
 // Mount the Leptos app to the browser DOM.
 // wasm-bindgen calls this automatically when the WASM module loads.
@@ -55,7 +55,11 @@ pub fn App() -> impl IntoView {
 
     // Toggle theme function - also applies to document
     let toggle_theme = move || {
-        let new_theme = if theme.get() == "light" { "dark" } else { "light" };
+        let new_theme = if theme.get() == "light" {
+            "dark"
+        } else {
+            "light"
+        };
         set_theme.set(new_theme.to_string());
 
         // Apply theme to html element

@@ -168,17 +168,21 @@ pub async fn create_review(
         let document_id = document_id.clone();
         let review_id = review.id.clone();
         tokio::spawn(async move {
-            let _ = NotificationRepository::create(&pool, CreateNotification {
-                user_id: reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
-                notification_type: "review_requested".to_string(),
-                title: format!("Review requested on {}", document_id),
-                body: None,
-                link: Some(format!("/documents/{}/reviews/{}", document_id, review_id)),
-                metadata: Some(serde_json::json!({
-                    "document_id": document_id,
-                    "review_id": review_id,
-                })),
-            }).await;
+            let _ = NotificationRepository::create(
+                &pool,
+                CreateNotification {
+                    user_id: reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
+                    notification_type: "review_requested".to_string(),
+                    title: format!("Review requested on {}", document_id),
+                    body: None,
+                    link: Some(format!("/documents/{}/reviews/{}", document_id, review_id)),
+                    metadata: Some(serde_json::json!({
+                        "document_id": document_id,
+                        "review_id": review_id,
+                    })),
+                },
+            )
+            .await;
         });
     }
 
@@ -202,7 +206,9 @@ pub async fn list_reviews(
         )
     })?;
 
-    Ok(Json(reviews.into_iter().map(ReviewResponse::from).collect()))
+    Ok(Json(
+        reviews.into_iter().map(ReviewResponse::from).collect(),
+    ))
 }
 
 /// Update a review's status (approve, reject, request changes, cancel)
@@ -241,14 +247,12 @@ pub async fn update_review(
         )
         .await
         .map_err(|e| {
-            let (status_code, code) = if matches!(
-                e,
-                tachyon_database::DatabaseError::ValidationError(_)
-            ) {
-                (StatusCode::CONFLICT, "TRANSITION_ERROR")
-            } else {
-                (StatusCode::NOT_FOUND, "NOT_FOUND")
-            };
+            let (status_code, code) =
+                if matches!(e, tachyon_database::DatabaseError::ValidationError(_)) {
+                    (StatusCode::CONFLICT, "TRANSITION_ERROR")
+                } else {
+                    (StatusCode::NOT_FOUND, "NOT_FOUND")
+                };
             (
                 status_code,
                 Json(ErrorResponse {
@@ -287,17 +291,21 @@ pub async fn update_review(
         let review_status = body.status.clone();
         let review_id = review_id.clone();
         tokio::spawn(async move {
-            let _ = NotificationRepository::create(&pool, CreateNotification {
-                user_id: reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
-                notification_type,
-                title: format!("Review {} for document", review_status),
-                body: summary,
-                link: Some(format!("/reviews/{}", review_id)),
-                metadata: Some(serde_json::json!({
-                    "review_id": review_id,
-                    "status": review_status,
-                })),
-            }).await;
+            let _ = NotificationRepository::create(
+                &pool,
+                CreateNotification {
+                    user_id: reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
+                    notification_type,
+                    title: format!("Review {} for document", review_status),
+                    body: summary,
+                    link: Some(format!("/reviews/{}", review_id)),
+                    metadata: Some(serde_json::json!({
+                        "review_id": review_id,
+                        "status": review_status,
+                    })),
+                },
+            )
+            .await;
         });
     }
 
@@ -337,17 +345,21 @@ pub async fn create_comment(
         let review_id = review_id.clone();
         let comment_id = comment.id.clone();
         tokio::spawn(async move {
-            let _ = NotificationRepository::create(&pool, CreateNotification {
-                user_id: author_id.parse().unwrap_or(uuid::Uuid::nil()),
-                notification_type: "review_commented".to_string(),
-                title: format!("New comment on review {}", review_id),
-                body: Some(content),
-                link: Some(format!("/reviews/{}/comments", review_id)),
-                metadata: Some(serde_json::json!({
-                    "review_id": review_id,
-                    "comment_id": comment_id,
-                })),
-            }).await;
+            let _ = NotificationRepository::create(
+                &pool,
+                CreateNotification {
+                    user_id: author_id.parse().unwrap_or(uuid::Uuid::nil()),
+                    notification_type: "review_commented".to_string(),
+                    title: format!("New comment on review {}", review_id),
+                    body: Some(content),
+                    link: Some(format!("/reviews/{}/comments", review_id)),
+                    metadata: Some(serde_json::json!({
+                        "review_id": review_id,
+                        "comment_id": comment_id,
+                    })),
+                },
+            )
+            .await;
         });
     }
 
@@ -371,7 +383,9 @@ pub async fn list_comments(
         )
     })?;
 
-    Ok(Json(comments.into_iter().map(CommentResponse::from).collect()))
+    Ok(Json(
+        comments.into_iter().map(CommentResponse::from).collect(),
+    ))
 }
 
 /// Get review status summary for a document
@@ -419,10 +433,22 @@ pub fn create_review_router() -> axum::Router<ReviewState> {
     axum::Router::new()
         .route("/documents/{document_id}/reviews", post(create_review))
         .route("/documents/{document_id}/reviews", get(list_reviews))
-        .route("/documents/{document_id}/reviews/status", get(get_review_status))
-        .route("/documents/{document_id}/reviews/{review_id}", put(update_review))
-        .route("/documents/{document_id}/reviews/{review_id}/comments", post(create_comment))
-        .route("/documents/{document_id}/reviews/{review_id}/comments", get(list_comments))
+        .route(
+            "/documents/{document_id}/reviews/status",
+            get(get_review_status),
+        )
+        .route(
+            "/documents/{document_id}/reviews/{review_id}",
+            put(update_review),
+        )
+        .route(
+            "/documents/{document_id}/reviews/{review_id}/comments",
+            post(create_comment),
+        )
+        .route(
+            "/documents/{document_id}/reviews/{review_id}/comments",
+            get(list_comments),
+        )
 }
 
 // ============================================================================

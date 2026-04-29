@@ -1,11 +1,11 @@
 // Tags Page
 // Browse all tags, view documents per tag, search/filter
 
+use crate::api::ApiClient;
+use crate::components::{BreadcrumbItem, Breadcrumbs};
+use crate::types::{SearchResultItem, TagInfo};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use crate::api::ApiClient;
-use crate::types::{TagInfo, SearchResultItem};
-use crate::components::{BreadcrumbItem, Breadcrumbs};
 
 // ============================================================================
 // Page Component

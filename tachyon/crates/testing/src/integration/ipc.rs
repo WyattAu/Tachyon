@@ -4,5 +4,5 @@
 
 #[test]
 fn test_ipc_stub() {
-    assert!(true);
+    // Placeholder for future IPC integration tests
 }

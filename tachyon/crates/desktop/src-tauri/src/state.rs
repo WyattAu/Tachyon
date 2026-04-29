@@ -35,8 +35,7 @@ pub struct DesktopState {
 }
 
 /// Connection status for the desktop client
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ConnectionStatus {
     /// Not connected
     #[default]
@@ -48,7 +47,6 @@ pub enum ConnectionStatus {
     /// Connection error
     Error,
 }
-
 
 impl std::fmt::Display for ConnectionStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

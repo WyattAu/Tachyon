@@ -1,8 +1,4 @@
-use axum::{
-    extract::Request,
-    middleware::Next,
-    response::Response,
-};
+use axum::{extract::Request, middleware::Next, response::Response};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -11,10 +7,7 @@ pub struct RequestTracingState {
     pub metrics: Arc<crate::middleware::metrics::RequestMetrics>,
 }
 
-pub async fn request_logging_middleware(
-    request: Request,
-    next: Next,
-) -> Response {
+pub async fn request_logging_middleware(request: Request, next: Next) -> Response {
     let method = request.method().clone();
     let path = request.uri().path().to_string();
     let query = request.uri().query().map(|q| q.to_string());
@@ -132,7 +125,9 @@ pub async fn request_logging_with_metrics(
         .and_then(|v| v.to_str().ok())
         .unwrap_or("?");
 
-    state.metrics.record_request(duration.as_millis() as u64, status);
+    state
+        .metrics
+        .record_request(duration.as_millis() as u64, status);
 
     tracing::info!(
         request_id = %response_request_id,

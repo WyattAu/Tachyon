@@ -83,7 +83,12 @@ async fn deliver_with_retry(
     Ok(())
 }
 
-pub async fn deliver_event(pool: DatabasePool, http_client: reqwest::Client, event_type: &str, payload: &serde_json::Value) {
+pub async fn deliver_event(
+    pool: DatabasePool,
+    http_client: reqwest::Client,
+    event_type: &str,
+    payload: &serde_json::Value,
+) {
     let webhooks = match WebhookRepository::get_active_by_event(&pool, event_type).await {
         Ok(w) => w,
         Err(e) => {
@@ -121,8 +126,12 @@ pub async fn deliver_event(pool: DatabasePool, http_client: reqwest::Client, eve
             )
             .await;
 
-            if let Err(e) = WebhookRepository::update_last_triggered(&pool_clone, webhook_id).await {
-                warn!("Failed to update last_triggered_at for webhook {}: {}", webhook_id, e);
+            if let Err(e) = WebhookRepository::update_last_triggered(&pool_clone, webhook_id).await
+            {
+                warn!(
+                    "Failed to update last_triggered_at for webhook {}: {}",
+                    webhook_id, e
+                );
             }
         });
     }

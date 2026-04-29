@@ -1,14 +1,14 @@
 // System tray for Tauri desktop application
 // Provides tray icon with context menu for common actions
 
-use tauri::{
-    AppHandle, Manager, Emitter,
-    menu::{Menu, MenuItem, PredefinedMenuItem, CheckMenuItem},
-    tray::TrayIconBuilder,
-};
-use crate::state::DesktopStateManager;
 use crate::events::EventEmitter;
 use crate::events::NotificationLevel;
+use crate::state::DesktopStateManager;
+use tauri::{
+    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
+    tray::TrayIconBuilder,
+    AppHandle, Emitter, Manager,
+};
 
 /// Build and install the system tray icon and menu.
 ///
@@ -20,22 +20,54 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let hide_i = MenuItem::with_id(app, "hide", "Hide Window", true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sync_now_i = MenuItem::with_id(app, "sync_now", "Sync Now", true, None::<&str>)?;
-    let auto_sync_i = CheckMenuItem::with_id(app, "auto_sync", "Auto-Sync", true, true, None::<&str>)?;
+    let auto_sync_i =
+        CheckMenuItem::with_id(app, "auto_sync", "Auto-Sync", true, true, None::<&str>)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
-    let import_obsidian_i = MenuItem::with_id(app, "import_obsidian", "Import Obsidian Vault...", true, None::<&str>)?;
-    let import_zip_i = MenuItem::with_id(app, "import_zip", "Import Markdown ZIP...", true, None::<&str>)?;
-    let export_md_i = MenuItem::with_id(app, "export_md", "Export as Markdown ZIP...", true, None::<&str>)?;
-    let export_html_i = MenuItem::with_id(app, "export_html", "Export as HTML ZIP...", true, None::<&str>)?;
+    let import_obsidian_i = MenuItem::with_id(
+        app,
+        "import_obsidian",
+        "Import Obsidian Vault...",
+        true,
+        None::<&str>,
+    )?;
+    let import_zip_i = MenuItem::with_id(
+        app,
+        "import_zip",
+        "Import Markdown ZIP...",
+        true,
+        None::<&str>,
+    )?;
+    let export_md_i = MenuItem::with_id(
+        app,
+        "export_md",
+        "Export as Markdown ZIP...",
+        true,
+        None::<&str>,
+    )?;
+    let export_html_i = MenuItem::with_id(
+        app,
+        "export_html",
+        "Export as HTML ZIP...",
+        true,
+        None::<&str>,
+    )?;
     let sep3 = PredefinedMenuItem::separator(app)?;
     let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
     let menu = Menu::with_items(
         app,
         &[
-            &show_i, &hide_i, &sep1,
-            &sync_now_i, &auto_sync_i, &sep2,
-            &import_obsidian_i, &import_zip_i,
-            &export_md_i, &export_html_i, &sep3,
+            &show_i,
+            &hide_i,
+            &sep1,
+            &sync_now_i,
+            &auto_sync_i,
+            &sep2,
+            &import_obsidian_i,
+            &import_zip_i,
+            &export_md_i,
+            &export_html_i,
+            &sep3,
             &quit_i,
         ],
     )?;
@@ -129,9 +161,12 @@ fn emit_tray_action(app: &AppHandle, action: &str) {
     struct TrayAction {
         action: String,
     }
-    let _ = app.emit("tray-action", TrayAction {
-        action: action.to_string(),
-    });
+    let _ = app.emit(
+        "tray-action",
+        TrayAction {
+            action: action.to_string(),
+        },
+    );
 }
 
 // ============================================================================
@@ -146,8 +181,15 @@ mod tests {
     fn test_tray_event_id_routing() {
         // Verify that all event IDs match the menu item IDs
         let known_ids = [
-            "show", "hide", "sync_now", "auto_sync",
-            "import_obsidian", "import_zip", "export_md", "export_html", "quit",
+            "show",
+            "hide",
+            "sync_now",
+            "auto_sync",
+            "import_obsidian",
+            "import_zip",
+            "export_md",
+            "export_html",
+            "quit",
         ];
         for id in &known_ids {
             assert!(!id.is_empty(), "Tray event ID must not be empty");

@@ -1,9 +1,9 @@
 // Catalog Page
 // Project/Service Catalog page with API integration
 
-use leptos::prelude::*;
 use crate::api::ApiClient;
 use crate::types::{CatalogStats, Project};
+use leptos::prelude::*;
 
 /// Catalog page component - displays project catalog
 #[component]
@@ -12,7 +12,7 @@ pub fn CatalogPage() -> impl IntoView {
     let api_client = ApiClient::default();
     let api_client_stats = api_client.clone();
     let api_client_projects = api_client.clone();
-    
+
     // Fetch catalog stats
     let stats_resource = LocalResource::new(move || {
         let client = api_client_stats.clone();
@@ -24,13 +24,11 @@ pub fn CatalogPage() -> impl IntoView {
             })
         }
     });
-    
+
     // Fetch projects
     let projects_resource = LocalResource::new(move || {
         let client = api_client_projects.clone();
-        async move {
-            client.list_projects().await.unwrap_or_default()
-        }
+        async move { client.list_projects().await.unwrap_or_default() }
     });
 
     view! {
@@ -52,7 +50,7 @@ pub fn CatalogPage() -> impl IntoView {
                         })
                     }}
                 </Suspense>
-                
+
                 <Suspense fallback={view! { <StatsCardSkeleton /> }}>
                     {move || {
                         stats_resource.get().map(|stats| {
@@ -66,7 +64,7 @@ pub fn CatalogPage() -> impl IntoView {
                         })
                     }}
                 </Suspense>
-                
+
                 <Suspense fallback={view! { <StatsCardSkeleton /> }}>
                     {move || {
                         stats_resource.get().map(|stats| {
@@ -188,13 +186,16 @@ fn ProjectsGridSkeleton() -> impl IntoView {
 #[component]
 fn ProjectCard(project: Project) -> impl IntoView {
     let tags = project.tags.clone();
-    let description = project.description.clone().unwrap_or_else(|| "No description".to_string());
+    let description = project
+        .description
+        .clone()
+        .unwrap_or_else(|| "No description".to_string());
     let truncated_desc = if description.len() > 100 {
         format!("{}...", &description[..100])
     } else {
         description
     };
-    
+
     view! {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 hover:border-blue-500 transition-colors cursor-pointer">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{project.name}</h3>

@@ -493,7 +493,7 @@ mod tests {
         let user_id = crate::id::generate_user_id();
 
         let node = Node::new(
-            node_id.clone(),
+            node_id,
             NodeType::Concept,
             "Test Concept".to_string(),
             user_id,
@@ -512,7 +512,7 @@ mod tests {
         let user_id = crate::id::generate_user_id();
 
         let mut node = Node::new(node_id, NodeType::Document, "Test".to_string(), user_id);
-        node.add_relationship(target_id.clone(), RelationshipType::References);
+        node.add_relationship(target_id, RelationshipType::References);
 
         assert_eq!(node.relationships.len(), 1);
         assert_eq!(node.relationships[0].target_node_id, target_id);
@@ -526,10 +526,10 @@ mod tests {
 
         // Valid node
         let node = Node::new(
-            node_id.clone(),
+            node_id,
             NodeType::Concept,
             "Valid Title".to_string(),
-            user_id.clone(),
+            user_id,
         )
         .with_content("Content".to_string());
         assert!(node.validate().is_ok());

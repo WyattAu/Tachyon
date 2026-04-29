@@ -62,8 +62,7 @@ fn row_to_document_metadata(row: sqlx::postgres::PgRow) -> DatabaseResult<Docume
     })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SearchFilters {
     pub content_type: Option<String>,
     pub status: Option<String>,
@@ -74,7 +73,6 @@ pub struct SearchFilters {
     pub date_from: Option<DateTime<Utc>>,
     pub date_to: Option<DateTime<Utc>>,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {
@@ -205,7 +203,9 @@ impl SearchRepository {
             ORDER BY rank DESC, d.updated_at DESC
             LIMIT ${} OFFSET ${}
             "#,
-            where_clause, param_count, param_count + 1
+            where_clause,
+            param_count,
+            param_count + 1
         );
 
         let count_sql = format!(
@@ -527,7 +527,10 @@ impl SearchRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        info!("Rebuilt search index for {} documents", result.rows_affected());
+        info!(
+            "Rebuilt search index for {} documents",
+            result.rows_affected()
+        );
         Ok(result.rows_affected())
     }
 }

@@ -1,15 +1,15 @@
 // Query Processing Module
 // Query parsing and execution for search operations
 
-use crate::IndexManager;
 use crate::error::{SearchError, SearchResult};
 use crate::types::{SearchRequest, Suggestion, SuggestionCategory};
+use crate::IndexManager;
 use std::sync::Arc;
 use tantivy::{
-    DocAddress, Searcher, TantivyDocument,
     collector::TopDocs,
     query::{Query, QueryParser},
     schema::*,
+    DocAddress, Searcher, TantivyDocument,
 };
 
 /// Query engine for parsing and executing search queries
@@ -371,14 +371,12 @@ impl QueryEngine {
         let prefix_query = tantivy::query::PhrasePrefixQuery::new(terms);
 
         let collector = TopDocs::with_limit(limit);
-        let top_docs = searcher
-            .search(&prefix_query, &collector)
-            .map_err(|e| {
-                SearchError::query(
-                    "SUGGESTION_EXECUTION_ERROR",
-                    format!("Suggestion search failed: {}", e),
-                )
-            })?;
+        let top_docs = searcher.search(&prefix_query, &collector).map_err(|e| {
+            SearchError::query(
+                "SUGGESTION_EXECUTION_ERROR",
+                format!("Suggestion search failed: {}", e),
+            )
+        })?;
 
         let id_field = schema.get_field("id").map_err(|e| {
             SearchError::query("FIELD_ERROR", format!("Failed to get id field: {}", e))
@@ -467,7 +465,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_suggest_zero_limit_returns_nothing() {
-        let (engine, _dir) = setup_index_with_docs(vec![make_doc("Rust Programming", "content")]).await;
+        let (engine, _dir) =
+            setup_index_with_docs(vec![make_doc("Rust Programming", "content")]).await;
 
         let results = engine.suggest("rust", 0).await.unwrap();
         assert!(results.is_empty());
@@ -561,7 +560,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_suggest_whitespace_only_prefix() {
-        let (engine, _dir) = setup_index_with_docs(vec![make_doc("Rust Programming", "content")]).await;
+        let (engine, _dir) =
+            setup_index_with_docs(vec![make_doc("Rust Programming", "content")]).await;
 
         let results = engine.suggest("   ", 10).await.unwrap();
         assert!(results.is_empty());

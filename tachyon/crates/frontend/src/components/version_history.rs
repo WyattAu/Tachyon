@@ -6,18 +6,15 @@
 
 #![allow(dead_code)]
 
-use leptos::prelude::*;
 use crate::api::ApiClient;
 use crate::types::DocumentVersion;
+use leptos::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 /// Version History component - displays list of document versions with diff view
 #[component]
-pub fn VersionHistory(
-    document_id: String,
-    on_rollback: Option<Callback<String>>,
-) -> impl IntoView {
+pub fn VersionHistory(document_id: String, on_rollback: Option<Callback<String>>) -> impl IntoView {
     let api_client = Rc::new(RefCell::new(ApiClient::default()));
     let (selected_version, set_selected_version) = signal(None::<i32>);
     let (compare_version, set_compare_version) = signal(None::<i32>);
@@ -29,9 +26,7 @@ pub fn VersionHistory(
         move || {
             let client = api_client.borrow().clone();
             let doc_id = document_id.clone();
-            async move {
-                client.list_versions(&doc_id).await.unwrap_or_default()
-            }
+            async move { client.list_versions(&doc_id).await.unwrap_or_default() }
         }
     });
 
@@ -45,7 +40,7 @@ pub fn VersionHistory(
 
     let doc_id_for_list = document_id.clone();
     let doc_id_for_diff = document_id.clone();
-    
+
     view! {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
@@ -93,7 +88,7 @@ fn DiffViewSection(
         if show_diff.get() {
             let v1 = selected_version.get();
             let v2 = compare_version.get();
-            
+
             if let (Some(ver1), Some(ver2)) = (v1, v2) {
                 view! {
                     <div class="border-t border-gray-200 dark:border-gray-700">
@@ -103,7 +98,8 @@ fn DiffViewSection(
                             version2=ver2
                         />
                     </div>
-                }.into_any()
+                }
+                .into_any()
             } else {
                 view! {
                     <div class="p-4 border-t border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400">
@@ -130,36 +126,40 @@ fn VersionList(
 ) -> impl IntoView {
     move || {
         let versions = versions_resource.get();
-        versions.map(|versions| {
-            if versions.is_empty() {
-                view! {
-                    <div class="p-4 text-center text-gray-500 dark:text-gray-400">
-                        "No version history available"
-                    </div>
-                }.into_any()
-            } else {
-                let on_rb = on_rollback.clone();
-                view! {
-                    <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-                        <For
-                            each=move || versions.clone()
-                            key=|v| v.id.clone()
-                            let:version
-                        >
-                            <VersionItem
-                                version=version
-                                selected_version=selected_version
-                                set_selected_version=set_selected_version
-                                compare_version=compare_version
-                                set_compare_version=set_compare_version
-                                show_diff=show_diff
-                                on_rollback=on_rb.clone()
-                            />
-                        </For>
-                    </ul>
-                }.into_any()
-            }
-        }).unwrap_or_else(|| view! { <div></div> }.into_any())
+        versions
+            .map(|versions| {
+                if versions.is_empty() {
+                    view! {
+                        <div class="p-4 text-center text-gray-500 dark:text-gray-400">
+                            "No version history available"
+                        </div>
+                    }
+                    .into_any()
+                } else {
+                    let on_rb = on_rollback.clone();
+                    view! {
+                        <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                            <For
+                                each=move || versions.clone()
+                                key=|v| v.id.clone()
+                                let:version
+                            >
+                                <VersionItem
+                                    version=version
+                                    selected_version=selected_version
+                                    set_selected_version=set_selected_version
+                                    compare_version=compare_version
+                                    set_compare_version=set_compare_version
+                                    show_diff=show_diff
+                                    on_rollback=on_rb.clone()
+                                />
+                            </For>
+                        </ul>
+                    }
+                    .into_any()
+                }
+            })
+            .unwrap_or_else(|| view! { <div></div> }.into_any())
     }
 }
 
@@ -175,10 +175,13 @@ fn VersionItem(
 ) -> impl IntoView {
     let version_id = version.id.clone();
     let version_number = version.version_number;
-    let commit_msg = version.commit_message.clone().unwrap_or_else(|| "No commit message".to_string());
+    let commit_msg = version
+        .commit_message
+        .clone()
+        .unwrap_or_else(|| "No commit message".to_string());
     let created_at = format_timestamp(&version.created_at);
     let created_by = version.created_by.clone();
-    
+
     let is_selected = move || selected_version.get() == Some(version_number);
     let is_compare = move || compare_version.get() == Some(version_number);
 
@@ -208,7 +211,7 @@ fn VersionItem(
                     } else {
                         view! { <div></div> }.into_any()
                     }}
-                    
+
                     <div class="flex-1">
                         <div class="flex items-center gap-2">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
@@ -226,7 +229,7 @@ fn VersionItem(
                         </p>
                     </div>
                 </div>
-                
+
                 {move || if !show_diff.get() {
                     let vid = version_id.clone();
                     let on_rb = on_rollback.clone();
@@ -248,13 +251,9 @@ fn VersionItem(
 
 /// Version Diff View component - displays side-by-side diff between two versions
 #[component]
-pub fn VersionDiffView(
-    document_id: String,
-    version1: i32,
-    version2: i32,
-) -> impl IntoView {
+pub fn VersionDiffView(document_id: String, version1: i32, version2: i32) -> impl IntoView {
     let api_client = Rc::new(RefCell::new(ApiClient::default()));
-    
+
     let diff_resource = LocalResource::new({
         let api_client = api_client.clone();
         let document_id = document_id.clone();
@@ -266,7 +265,7 @@ pub fn VersionDiffView(
             async move {
                 let result1 = client.get_version(&doc_id, v1).await;
                 let result2 = client.get_version(&doc_id, v2).await;
-                
+
                 match (result1, result2) {
                     (Ok(ver1), Ok(ver2)) => Some((ver1, ver2)),
                     _ => None,
@@ -280,7 +279,7 @@ pub fn VersionDiffView(
             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 "Comparing v"{version1}" with v"{version2}
             </h4>
-            
+
             <Suspense fallback=view! { <div class="text-gray-500">"Loading diff..."</div> }>
                 {move || {
                     diff_resource.get().map(|maybe_versions| {
@@ -321,20 +320,20 @@ struct DiffResult {
 fn compute_diff(old_content: &str, new_content: &str) -> DiffResult {
     let old_lines: Vec<&str> = old_content.lines().collect();
     let new_lines: Vec<&str> = new_content.lines().collect();
-    
+
     let mut result_old = Vec::new();
     let mut result_new = Vec::new();
-    
+
     let lcs = longest_common_subsequence(&old_lines, &new_lines);
-    
+
     let mut old_idx = 0;
     let mut new_idx = 0;
     let mut lcs_idx = 0;
-    
+
     while old_idx < old_lines.len() || new_idx < new_lines.len() {
         if lcs_idx < lcs.len() {
             let lcs_line = lcs[lcs_idx];
-            
+
             while old_idx < old_lines.len() && old_lines[old_idx] != lcs_line {
                 result_old.push(DiffLine {
                     content: old_lines[old_idx].to_string(),
@@ -346,7 +345,7 @@ fn compute_diff(old_content: &str, new_content: &str) -> DiffResult {
                 });
                 old_idx += 1;
             }
-            
+
             while new_idx < new_lines.len() && new_lines[new_idx] != lcs_line {
                 result_old.push(DiffLine {
                     content: String::new(),
@@ -358,7 +357,7 @@ fn compute_diff(old_content: &str, new_content: &str) -> DiffResult {
                 });
                 new_idx += 1;
             }
-            
+
             if old_idx < old_lines.len() && new_idx < new_lines.len() {
                 result_old.push(DiffLine {
                     content: old_lines[old_idx].to_string(),
@@ -384,7 +383,7 @@ fn compute_diff(old_content: &str, new_content: &str) -> DiffResult {
                 });
                 old_idx += 1;
             }
-            
+
             while new_idx < new_lines.len() {
                 result_old.push(DiffLine {
                     content: String::new(),
@@ -398,7 +397,7 @@ fn compute_diff(old_content: &str, new_content: &str) -> DiffResult {
             }
         }
     }
-    
+
     DiffResult {
         old_lines: result_old,
         new_lines: result_new,
@@ -409,13 +408,13 @@ fn compute_diff(old_content: &str, new_content: &str) -> DiffResult {
 fn longest_common_subsequence<'a>(old: &[&'a str], new: &[&'a str]) -> Vec<&'a str> {
     let m = old.len();
     let n = new.len();
-    
+
     if m == 0 || n == 0 {
         return Vec::new();
     }
-    
+
     let mut dp = vec![vec![0; n + 1]; m + 1];
-    
+
     for i in 1..=m {
         for j in 1..=n {
             if old[i - 1] == new[j - 1] {
@@ -425,11 +424,11 @@ fn longest_common_subsequence<'a>(old: &[&'a str], new: &[&'a str]) -> Vec<&'a s
             }
         }
     }
-    
+
     let mut result = Vec::new();
     let mut i = m;
     let mut j = n;
-    
+
     while i > 0 && j > 0 {
         if old[i - 1] == new[j - 1] {
             result.push(old[i - 1]);
@@ -441,7 +440,7 @@ fn longest_common_subsequence<'a>(old: &[&'a str], new: &[&'a str]) -> Vec<&'a s
             j -= 1;
         }
     }
-    
+
     result.reverse();
     result
 }
@@ -450,7 +449,7 @@ fn longest_common_subsequence<'a>(old: &[&'a str], new: &[&'a str]) -> Vec<&'a s
 fn render_diff(diff: DiffResult) -> AnyView {
     let old_lines = diff.old_lines;
     let new_lines = diff.new_lines;
-    
+
     view! {
         <div class="grid grid-cols-2 gap-4 text-sm font-mono">
             <div class="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
@@ -481,7 +480,7 @@ fn render_diff(diff: DiffResult) -> AnyView {
                     }).collect::<Vec<_>>()}
                 </div>
             </div>
-            
+
             <div class="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
                 <div class="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400">
                     "New Version"
@@ -511,7 +510,7 @@ fn render_diff(diff: DiffResult) -> AnyView {
                 </div>
             </div>
         </div>
-        
+
         <div class="mt-3 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
             <span class="flex items-center gap-1">
                 <span class="w-3 h-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded"></span>
@@ -660,7 +659,13 @@ mod tests {
     #[test]
     fn test_compute_diff_replaced_line() {
         let diff = compute_diff("old", "new");
-        assert!(diff.old_lines.iter().any(|l| l.line_type == DiffLineType::Removed));
-        assert!(diff.new_lines.iter().any(|l| l.line_type == DiffLineType::Added));
+        assert!(diff
+            .old_lines
+            .iter()
+            .any(|l| l.line_type == DiffLineType::Removed));
+        assert!(diff
+            .new_lines
+            .iter()
+            .any(|l| l.line_type == DiffLineType::Added));
     }
 }

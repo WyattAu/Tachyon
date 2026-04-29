@@ -1,8 +1,4 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, Json};
 use serde::Serialize;
 use std::time::Instant;
 
@@ -34,11 +30,14 @@ pub(crate) async fn health_check(State(state): State<crate::HealthState>) -> Jso
     let redis_check = check_redis(&state.redis_enabled).await;
 
     Json(HealthResponse {
-        status: if db_check.status == "ok" && (redis_check.status == "ok" || redis_check.status == "disabled") {
+        status: if db_check.status == "ok"
+            && (redis_check.status == "ok" || redis_check.status == "disabled")
+        {
             "healthy"
         } else {
             "degraded"
-        }.to_string(),
+        }
+        .to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_secs: state.start_time.elapsed().as_secs(),
         checks: HealthChecks {
@@ -48,13 +47,18 @@ pub(crate) async fn health_check(State(state): State<crate::HealthState>) -> Jso
     })
 }
 
-pub(crate) async fn readiness_check(State(state): State<crate::HealthState>) -> (StatusCode, Json<serde_json::Value>) {
+pub(crate) async fn readiness_check(
+    State(state): State<crate::HealthState>,
+) -> (StatusCode, Json<serde_json::Value>) {
     let db_ok = state.pool.execute("SELECT 1").await.is_ok();
 
     if db_ok {
         (StatusCode::OK, Json(serde_json::json!({"status": "ready"})))
     } else {
-        (StatusCode::SERVICE_UNAVAILABLE, Json(serde_json::json!({"status": "not ready", "error": "database unreachable"})))
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({"status": "not ready", "error": "database unreachable"})),
+        )
     }
 }
 

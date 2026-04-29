@@ -8,18 +8,18 @@
 
 mod build;
 mod error;
+pub mod i18n;
 mod manifest;
 mod render;
 mod rss;
 mod sitemap;
 mod templates;
-pub mod i18n;
 
 pub use build::SiteGenerator;
 pub use error::{SsgError, SsgResult};
-pub use manifest::{BuildResult, ColorTheme, NavLink, SsgDocument, SiteConfig, TranslationConfig};
-pub use templates::{DEFAULT_BASE_TEMPLATE, DEFAULT_DOC_TEMPLATE, DEFAULT_INDEX_TEMPLATE};
 pub use i18n::{language_display_name, text_direction};
+pub use manifest::{BuildResult, ColorTheme, NavLink, SiteConfig, SsgDocument, TranslationConfig};
+pub use templates::{DEFAULT_BASE_TEMPLATE, DEFAULT_DOC_TEMPLATE, DEFAULT_INDEX_TEMPLATE};
 
 pub mod slug {
     pub fn slugify(s: &str) -> String {
@@ -127,8 +127,10 @@ mod tests {
 
     #[test]
     fn test_ssg_with_tag_grouping() {
-        let mut config = SiteConfig::default();
-        config.group_by_tag = true;
+        let config = SiteConfig {
+            group_by_tag: true,
+            ..Default::default()
+        };
 
         let generator = SiteGenerator::new(config);
         let docs = sample_documents();
@@ -218,13 +220,11 @@ mod tests {
     fn test_ssg_multi_language_build() {
         let config = SiteConfig {
             language: "en".to_string(),
-            translations: vec![
-                TranslationConfig {
-                    language: "zh".to_string(),
-                    name: "中文".to_string(),
-                    base_url: "https://docs.example.com/zh".to_string(),
-                },
-            ],
+            translations: vec![TranslationConfig {
+                language: "zh".to_string(),
+                name: "中文".to_string(),
+                base_url: "https://docs.example.com/zh".to_string(),
+            }],
             ..Default::default()
         };
         let generator = SiteGenerator::new(config);

@@ -7,13 +7,17 @@
 use tachyon_core::{generate_document_id, generate_user_id};
 #[allow(unused_imports)]
 use tachyon_search::{
+    types::{
+        FieldDefinition, FieldType, QueryType, RangeValue, SortOrder, Suggestion,
+        SuggestionCategory,
+    },
     SearchDocument, SearchRequest,
-    types::{FieldDefinition, FieldType, QueryType, RangeValue, SortOrder, Suggestion, SuggestionCategory},
 };
 
 #[test]
 fn test_search_request_random_query_no_panic() {
-    let long_query = "very long query string that exceeds normal length".to_string() + &"word ".repeat(1000);
+    let long_query =
+        "very long query string that exceeds normal length".to_string() + &"word ".repeat(1000);
     let repeated_a = "a".repeat(10000);
     let inputs = vec![
         "",

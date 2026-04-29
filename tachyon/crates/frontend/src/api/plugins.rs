@@ -23,7 +23,11 @@ impl ApiClient {
         self.post(&url, request).await
     }
 
-    pub async fn update_plugin(&self, plugin_id: &str, request: &UpdatePluginRequest) -> Result<Plugin, ApiError> {
+    pub async fn update_plugin(
+        &self,
+        plugin_id: &str,
+        request: &UpdatePluginRequest,
+    ) -> Result<Plugin, ApiError> {
         let url = format!("{}/plugins/{}", self.base_url, plugin_id);
         self.put(&url, request).await
     }

@@ -191,7 +191,9 @@ impl DocumentRepository {
             .execute(&mut *conn)
             .await
             .map_err(|e| {
-                if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
+                if e.to_string().contains("duplicate key")
+                    || e.to_string().contains("UNIQUE constraint")
+                {
                     DatabaseError::duplicate(
                         "document",
                         format!("Document ID {} already exists", metadata.id),
@@ -230,7 +232,10 @@ impl DocumentRepository {
     }
 
     /// Get multiple documents by ID in a single query
-    pub async fn get_by_ids_batch(&self, ids: &[DocumentId]) -> DatabaseResult<Vec<DocumentMetadata>> {
+    pub async fn get_by_ids_batch(
+        &self,
+        ids: &[DocumentId],
+    ) -> DatabaseResult<Vec<DocumentMetadata>> {
         if ids.is_empty() {
             return Ok(vec![]);
         }
@@ -347,7 +352,10 @@ impl DocumentRepository {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> DatabaseResult<Vec<DocumentMetadata>> {
-        let base_sql = format!("{} WHERE author_id = $1::uuid ORDER BY updated_at DESC", DOCUMENT_SELECT_SQL);
+        let base_sql = format!(
+            "{} WHERE author_id = $1::uuid ORDER BY updated_at DESC",
+            DOCUMENT_SELECT_SQL
+        );
         let (sql, limit_val, offset_val) = apply_pagination(&base_sql, limit, offset);
 
         let mut conn = self.pool.acquire().await?;
@@ -382,7 +390,10 @@ impl DocumentRepository {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> DatabaseResult<Vec<DocumentMetadata>> {
-        let base_sql = format!("{} WHERE project_id = $1::uuid ORDER BY updated_at DESC", DOCUMENT_SELECT_SQL);
+        let base_sql = format!(
+            "{} WHERE project_id = $1::uuid ORDER BY updated_at DESC",
+            DOCUMENT_SELECT_SQL
+        );
         let (sql, limit_val, offset_val) = apply_pagination(&base_sql, limit, offset);
 
         let mut conn = self.pool.acquire().await?;
@@ -460,7 +471,7 @@ impl DocumentRepository {
             let mut conn = self.pool.acquire().await?;
             let tag_json = serde_json::to_string(&vec![tag])
                 .map_err(|e| DatabaseError::SerializationError(e.to_string()))?;
-            
+
             let rows = query(&select_sql)
                 .bind(&tag_json)
                 .bind(limit)
@@ -593,7 +604,10 @@ impl DocumentRepository {
     }
 
     /// Find a document by its content hash (for deduplication).
-    pub async fn get_by_content_hash(&self, content_hash: &str) -> DatabaseResult<Option<DocumentMetadata>> {
+    pub async fn get_by_content_hash(
+        &self,
+        content_hash: &str,
+    ) -> DatabaseResult<Option<DocumentMetadata>> {
         let select_sql = format!("{} WHERE content_hash = $1 LIMIT 1", DOCUMENT_SELECT_SQL);
         let mut conn = self.pool.acquire().await?;
         let row = query(&select_sql)
@@ -729,7 +743,9 @@ impl RepositoryRepository {
             .execute(&mut *conn)
             .await
             .map_err(|e| {
-                if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
+                if e.to_string().contains("duplicate key")
+                    || e.to_string().contains("UNIQUE constraint")
+                {
                     DatabaseError::duplicate(
                         "repository",
                         format!("Repository ID {} already exists", metadata.id),
@@ -863,7 +879,10 @@ impl RepositoryRepository {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> DatabaseResult<Vec<RepositoryMetadata>> {
-        let base_sql = format!("{} WHERE owner_id = $1::uuid ORDER BY updated_at DESC", REPOSITORY_SELECT_SQL);
+        let base_sql = format!(
+            "{} WHERE owner_id = $1::uuid ORDER BY updated_at DESC",
+            REPOSITORY_SELECT_SQL
+        );
         let (sql, limit_val, offset_val) = apply_pagination(&base_sql, limit, offset);
 
         let mut conn = self.pool.acquire().await?;
@@ -892,7 +911,8 @@ impl RepositoryRepository {
     /// # Returns
     /// Result indicating success or error
     pub async fn update_document_count(&self, id: &RepositoryId, delta: i64) -> DatabaseResult<()> {
-        let update_sql = "UPDATE repositories SET document_count = document_count + $1 WHERE id = $2::uuid";
+        let update_sql =
+            "UPDATE repositories SET document_count = document_count + $1 WHERE id = $2::uuid";
 
         let mut conn = self.pool.acquire().await?;
         query(update_sql)
@@ -944,7 +964,16 @@ fn apply_pagination(
 ) -> (String, Option<i64>, Option<i64>) {
     let effective_limit = limit.unwrap_or(100);
     let effective_offset = offset.unwrap_or(0);
-    (format!("{} LIMIT ${} OFFSET ${}", base_sql, count_placeholders(base_sql) + 1, count_placeholders(base_sql) + 2), Some(effective_limit), Some(effective_offset))
+    (
+        format!(
+            "{} LIMIT ${} OFFSET ${}",
+            base_sql,
+            count_placeholders(base_sql) + 1,
+            count_placeholders(base_sql) + 2
+        ),
+        Some(effective_limit),
+        Some(effective_offset),
+    )
 }
 
 /// Count the number of $N placeholders in a SQL query

@@ -172,8 +172,13 @@ impl SpaceRepository {
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| {
-                if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
-                    DatabaseError::duplicate("space", format!("Space '{}' already exists", req.name))
+                if e.to_string().contains("duplicate key")
+                    || e.to_string().contains("UNIQUE constraint")
+                {
+                    DatabaseError::duplicate(
+                        "space",
+                        format!("Space '{}' already exists", req.name),
+                    )
                 } else {
                     DatabaseError::QueryError(e.to_string())
                 }
@@ -290,7 +295,11 @@ impl SpaceRepository {
 
         let spaces: Vec<Space> = match (has_owner, has_parent, has_visibility) {
             (true, true, true) => {
-                let pid_bind = if parent_id.unwrap().is_empty() { None::<String> } else { parent_id.map(|s| s.to_string()) };
+                let pid_bind = if parent_id.unwrap().is_empty() {
+                    None::<String>
+                } else {
+                    parent_id.map(|s| s.to_string())
+                };
                 query_as(&select_sql)
                     .bind(owner_id.unwrap())
                     .bind(owner_id.unwrap())
@@ -303,7 +312,11 @@ impl SpaceRepository {
                     .map_err(|e| DatabaseError::QueryError(e.to_string()))?
             }
             (true, true, false) => {
-                let pid_bind = if parent_id.unwrap().is_empty() { None::<String> } else { parent_id.map(|s| s.to_string()) };
+                let pid_bind = if parent_id.unwrap().is_empty() {
+                    None::<String>
+                } else {
+                    parent_id.map(|s| s.to_string())
+                };
                 query_as(&select_sql)
                     .bind(owner_id.unwrap())
                     .bind(owner_id.unwrap())
@@ -314,29 +327,29 @@ impl SpaceRepository {
                     .await
                     .map_err(|e| DatabaseError::QueryError(e.to_string()))?
             }
-            (true, false, true) => {
-                query_as(&select_sql)
-                    .bind(owner_id.unwrap())
-                    .bind(owner_id.unwrap())
-                    .bind(visibility.unwrap())
-                    .bind(limit)
-                    .bind(offset)
-                    .fetch_all(&mut *conn)
-                    .await
-                    .map_err(|e| DatabaseError::QueryError(e.to_string()))?
-            }
-            (true, false, false) => {
-                query_as(&select_sql)
-                    .bind(owner_id.unwrap())
-                    .bind(owner_id.unwrap())
-                    .bind(limit)
-                    .bind(offset)
-                    .fetch_all(&mut *conn)
-                    .await
-                    .map_err(|e| DatabaseError::QueryError(e.to_string()))?
-            }
+            (true, false, true) => query_as(&select_sql)
+                .bind(owner_id.unwrap())
+                .bind(owner_id.unwrap())
+                .bind(visibility.unwrap())
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?,
+            (true, false, false) => query_as(&select_sql)
+                .bind(owner_id.unwrap())
+                .bind(owner_id.unwrap())
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?,
             (false, true, true) => {
-                let pid_bind = if parent_id.unwrap().is_empty() { None::<String> } else { parent_id.map(|s| s.to_string()) };
+                let pid_bind = if parent_id.unwrap().is_empty() {
+                    None::<String>
+                } else {
+                    parent_id.map(|s| s.to_string())
+                };
                 query_as(&select_sql)
                     .bind(pid_bind)
                     .bind(visibility.unwrap())
@@ -347,7 +360,11 @@ impl SpaceRepository {
                     .map_err(|e| DatabaseError::QueryError(e.to_string()))?
             }
             (false, true, false) => {
-                let pid_bind = if parent_id.unwrap().is_empty() { None::<String> } else { parent_id.map(|s| s.to_string()) };
+                let pid_bind = if parent_id.unwrap().is_empty() {
+                    None::<String>
+                } else {
+                    parent_id.map(|s| s.to_string())
+                };
                 query_as(&select_sql)
                     .bind(pid_bind)
                     .bind(limit)
@@ -356,23 +373,19 @@ impl SpaceRepository {
                     .await
                     .map_err(|e| DatabaseError::QueryError(e.to_string()))?
             }
-            (false, false, true) => {
-                query_as(&select_sql)
-                    .bind(visibility.unwrap())
-                    .bind(limit)
-                    .bind(offset)
-                    .fetch_all(&mut *conn)
-                    .await
-                    .map_err(|e| DatabaseError::QueryError(e.to_string()))?
-            }
-            (false, false, false) => {
-                query_as(&select_sql)
-                    .bind(limit)
-                    .bind(offset)
-                    .fetch_all(&mut *conn)
-                    .await
-                    .map_err(|e| DatabaseError::QueryError(e.to_string()))?
-            }
+            (false, false, true) => query_as(&select_sql)
+                .bind(visibility.unwrap())
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?,
+            (false, false, false) => query_as(&select_sql)
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?,
         };
 
         debug!("Found {} spaces", spaces.len());
@@ -381,7 +394,11 @@ impl SpaceRepository {
 
     /// List top-level spaces (no parent) for a user
     #[instrument(skip(self))]
-    pub async fn list_root_spaces(&self, user_id: &str, limit: Option<i64>) -> DatabaseResult<Vec<Space>> {
+    pub async fn list_root_spaces(
+        &self,
+        user_id: &str,
+        limit: Option<i64>,
+    ) -> DatabaseResult<Vec<Space>> {
         let limit = limit.unwrap_or(100);
         let select_sql = format!(
             "{} WHERE (owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $1::uuid)) \
@@ -403,7 +420,11 @@ impl SpaceRepository {
 
     /// List child spaces of a given parent
     #[instrument(skip(self))]
-    pub async fn list_child_spaces(&self, parent_id: &str, user_id: &str) -> DatabaseResult<Vec<Space>> {
+    pub async fn list_child_spaces(
+        &self,
+        parent_id: &str,
+        user_id: &str,
+    ) -> DatabaseResult<Vec<Space>> {
         let select_sql = format!(
             "{} WHERE parent_id = $1::uuid AND \
              (owner_id = $2::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $2::uuid)) \
@@ -560,7 +581,10 @@ impl SpaceRepository {
 
     /// Count documents for multiple spaces in a single query
     #[instrument(skip(self))]
-    pub async fn count_documents_batch(&self, space_ids: &[String]) -> DatabaseResult<HashMap<String, i64>> {
+    pub async fn count_documents_batch(
+        &self,
+        space_ids: &[String],
+    ) -> DatabaseResult<HashMap<String, i64>> {
         if space_ids.is_empty() {
             return Ok(HashMap::new());
         }
@@ -584,8 +608,13 @@ impl SpaceRepository {
 
     /// Move a document to a space
     #[instrument(skip(self))]
-    pub async fn move_document(&self, document_id: &str, space_id: Option<&str>) -> DatabaseResult<()> {
-        let update_sql = "UPDATE documents SET space_id = $1::uuid, updated_at = now() WHERE id = $2::uuid";
+    pub async fn move_document(
+        &self,
+        document_id: &str,
+        space_id: Option<&str>,
+    ) -> DatabaseResult<()> {
+        let update_sql =
+            "UPDATE documents SET space_id = $1::uuid, updated_at = now() WHERE id = $2::uuid";
 
         let mut conn = self.pool.acquire().await?;
         query(update_sql)
@@ -602,7 +631,11 @@ impl SpaceRepository {
     // -- Member management --
 
     #[instrument(skip(self, req))]
-    pub async fn add_member(&self, space_id: &str, req: AddSpaceMemberRequest) -> DatabaseResult<SpaceMember> {
+    pub async fn add_member(
+        &self,
+        space_id: &str,
+        req: AddSpaceMemberRequest,
+    ) -> DatabaseResult<SpaceMember> {
         let id = uuid::Uuid::new_v4().to_string();
         let role = req.role.unwrap_or_else(|| "viewer".to_string());
 
@@ -622,8 +655,13 @@ impl SpaceRepository {
             .fetch_optional(&mut *conn)
             .await
             .map_err(|e| {
-                if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
-                    DatabaseError::duplicate("space_member", "User is already a member of this space")
+                if e.to_string().contains("duplicate key")
+                    || e.to_string().contains("UNIQUE constraint")
+                {
+                    DatabaseError::duplicate(
+                        "space_member",
+                        "User is already a member of this space",
+                    )
                 } else {
                     DatabaseError::QueryError(e.to_string())
                 }
@@ -659,7 +697,12 @@ impl SpaceRepository {
     }
 
     #[instrument(skip(self, req))]
-    pub async fn update_member(&self, space_id: &str, user_id: &str, req: UpdateSpaceMemberRequest) -> DatabaseResult<SpaceMember> {
+    pub async fn update_member(
+        &self,
+        space_id: &str,
+        user_id: &str,
+        req: UpdateSpaceMemberRequest,
+    ) -> DatabaseResult<SpaceMember> {
         let update_sql = r#"
             UPDATE space_members SET role = $1
             WHERE space_id = $2::uuid AND user_id = $3::uuid
@@ -679,7 +722,10 @@ impl SpaceRepository {
         }
 
         // Re-fetch with user info
-        let select_sql = format!("{} WHERE sm.space_id = $1::uuid AND sm.user_id = $2::uuid", SPACE_MEMBER_SELECT_SQL);
+        let select_sql = format!(
+            "{} WHERE sm.space_id = $1::uuid AND sm.user_id = $2::uuid",
+            SPACE_MEMBER_SELECT_SQL
+        );
         let member: SpaceMember = query_as(&select_sql)
             .bind(space_id)
             .bind(user_id)
@@ -687,13 +733,17 @@ impl SpaceRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        info!("Updated member {} role to {} in space {}", user_id, req.role, space_id);
+        info!(
+            "Updated member {} role to {} in space {}",
+            user_id, req.role, space_id
+        );
         Ok(member)
     }
 
     #[instrument(skip(self))]
     pub async fn remove_member(&self, space_id: &str, user_id: &str) -> DatabaseResult<()> {
-        let delete_sql = "DELETE FROM space_members WHERE space_id = $1::uuid AND user_id = $2::uuid";
+        let delete_sql =
+            "DELETE FROM space_members WHERE space_id = $1::uuid AND user_id = $2::uuid";
 
         let mut conn = self.pool.acquire().await?;
         let result = query(delete_sql)

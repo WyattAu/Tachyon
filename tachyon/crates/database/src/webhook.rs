@@ -31,7 +31,7 @@ impl WebhookRepository {
         let result = query_as::<_, Webhook>(
             r#"INSERT INTO webhooks (url, events, secret)
               VALUES ($1, $2, $3)
-              RETURNING id, url, events, secret, active, created_at, last_triggered_at"#
+              RETURNING id, url, events, secret, active, created_at, last_triggered_at"#,
         )
         .bind(&webhook.url)
         .bind(&webhook.events)
@@ -47,7 +47,7 @@ impl WebhookRepository {
         let results = query_as::<_, Webhook>(
             r#"SELECT id, url, events, secret, active, created_at, last_triggered_at
               FROM webhooks
-              ORDER BY created_at DESC LIMIT 100"#
+              ORDER BY created_at DESC LIMIT 100"#,
         )
         .fetch_all(&mut *conn)
         .await
@@ -65,12 +65,15 @@ impl WebhookRepository {
         Ok(result.rows_affected() > 0)
     }
 
-    pub async fn get_active_by_event(pool: &DatabasePool, event: &str) -> DatabaseResult<Vec<Webhook>> {
+    pub async fn get_active_by_event(
+        pool: &DatabasePool,
+        event: &str,
+    ) -> DatabaseResult<Vec<Webhook>> {
         let mut conn = pool.acquire().await?;
         let results = query_as::<_, Webhook>(
             r#"SELECT id, url, events, secret, active, created_at, last_triggered_at
               FROM webhooks
-              WHERE active = true AND $1 = ANY(events) LIMIT 50"#
+              WHERE active = true AND $1 = ANY(events) LIMIT 50"#,
         )
         .bind(event)
         .fetch_all(&mut *conn)

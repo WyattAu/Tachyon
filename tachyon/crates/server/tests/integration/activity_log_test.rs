@@ -1,12 +1,9 @@
 use tachyon_database::{ActivityRepository, CreateActivityEvent};
 
-use crate::common::setup::{
-    create_test_pool, create_test_user, setup_database, teardown_database,
-};
+use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database};
 
 fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err()
-        && std::env::var("TEST_DATABASE_URL").is_err()
+    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
 }
 
 #[tokio::test]
@@ -135,8 +132,14 @@ async fn test_activity_ordering_most_recent_first() {
         .expect("Failed to list activities");
 
     assert!(events.len() >= 2);
-    assert_eq!(events[0].event_type, "second_event", "Most recent event should be first");
-    assert!(events[0].created_at >= events[1].created_at, "Events should be ordered by created_at DESC");
+    assert_eq!(
+        events[0].event_type, "second_event",
+        "Most recent event should be first"
+    );
+    assert!(
+        events[0].created_at >= events[1].created_at,
+        "Events should be ordered by created_at DESC"
+    );
 
     teardown_database(&pool).await;
 }
@@ -242,7 +245,7 @@ async fn test_list_activities_by_actor() {
         .await
         .expect("Failed to list activities by actor");
 
-    assert!(events.len() >= 1);
+    assert!(!events.is_empty());
     for event in &events {
         assert_eq!(event.actor_id, user.id.as_uuid());
     }

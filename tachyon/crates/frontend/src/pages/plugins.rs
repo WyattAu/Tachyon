@@ -1,10 +1,10 @@
 // Plugins Page
 // Plugin management - browse, install, enable/disable, uninstall
 
+use crate::api::ApiClient;
+use crate::types::{CreatePluginRequest, Plugin, UpdatePluginRequest};
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
-use crate::api::ApiClient;
-use crate::types::{Plugin, CreatePluginRequest, UpdatePluginRequest};
 
 // ---------------------------------------------------------------------------
 // Plugins Page
@@ -27,7 +27,10 @@ pub fn PluginsPage() -> impl IntoView {
         let enabled_only = show_enabled_only.get();
         let _ = refresh_counter.get();
         async move {
-            client.list_plugins(if enabled_only { Some(true) } else { None }).await.unwrap_or_default()
+            client
+                .list_plugins(if enabled_only { Some(true) } else { None })
+                .await
+                .unwrap_or_default()
         }
     });
 
@@ -173,7 +176,7 @@ pub fn PluginsPage() -> impl IntoView {
                     </p>
                 </div>
                 <button
-                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors 
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
                            flex items-center gap-2"
                     on:click={move |_| set_show_install_modal.set(true)}
                 >
@@ -208,7 +211,12 @@ fn PluginRow(
     on_toggle: Callback<()>,
 ) -> impl IntoView {
     let desc = plugin.description.clone().unwrap_or_default();
-    let installed = plugin.installed_at.split('T').next().unwrap_or("").to_string();
+    let installed = plugin
+        .installed_at
+        .split('T')
+        .next()
+        .unwrap_or("")
+        .to_string();
 
     let runtime_badge_class = match plugin.runtime_type.as_str() {
         "builtin" => "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300",
@@ -220,7 +228,8 @@ fn PluginRow(
         let d = desc.clone();
         view! {
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{d}</p>
-        }.into_any()
+        }
+        .into_any()
     } else {
         view! { <div class="mt-1"></div> }.into_any()
     };
@@ -231,12 +240,13 @@ fn PluginRow(
             <div class="flex flex-wrap gap-1 mt-2">
                 {tags.into_iter().take(4).map(|tag| {
                     view! {
-                        <span class="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 
+                        <span class="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700
                                      text-gray-600 dark:text-gray-300 rounded">{tag}</span>
                     }
                 }).collect::<Vec<_>>()}
             </div>
-        }.into_any()
+        }
+        .into_any()
     } else {
         view! { <div></div> }.into_any()
     };
@@ -292,7 +302,7 @@ fn PluginRow(
                         )}></span>
                     </button>
                     <button
-                        class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 
+                        class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200
                                hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                         on:click={move |_| on_edit.run(())}
                     >
@@ -302,7 +312,7 @@ fn PluginRow(
                         </svg>
                     </button>
                     <button
-                        class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 
+                        class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50
                                dark:hover:bg-red-900/30 rounded transition-colors"
                         on:click={move |_| on_delete.run(())}
                     >
@@ -350,7 +360,11 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
 
         let api = ApiClient::default();
         let ep_str = ext_points.get();
-        let parsed_eps: Vec<String> = ep_str.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+        let parsed_eps: Vec<String> = ep_str
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
         let desc_val = description.get();
         let auth_val = author.get();
         let home_val = homepage.get();
@@ -359,19 +373,41 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
         let save_cb = on_save;
 
         spawn_local(async move {
-            let result = api.create_plugin(&CreatePluginRequest {
-                name: n,
-                description: if desc_val.is_empty() { None } else { Some(desc_val) },
-                version: v,
-                author: if auth_val.is_empty() { None } else { Some(auth_val) },
-                homepage: if home_val.is_empty() { None } else { Some(home_val) },
-                license: if lic_val.is_empty() { None } else { Some(lic_val) },
-                extension_points: if parsed_eps.is_empty() { None } else { Some(parsed_eps) },
-                manifest: None,
-                runtime_type: Some(rt_val),
-                entry_point: None,
-                enabled: Some(false),
-            }).await;
+            let result = api
+                .create_plugin(&CreatePluginRequest {
+                    name: n,
+                    description: if desc_val.is_empty() {
+                        None
+                    } else {
+                        Some(desc_val)
+                    },
+                    version: v,
+                    author: if auth_val.is_empty() {
+                        None
+                    } else {
+                        Some(auth_val)
+                    },
+                    homepage: if home_val.is_empty() {
+                        None
+                    } else {
+                        Some(home_val)
+                    },
+                    license: if lic_val.is_empty() {
+                        None
+                    } else {
+                        Some(lic_val)
+                    },
+                    extension_points: if parsed_eps.is_empty() {
+                        None
+                    } else {
+                        Some(parsed_eps)
+                    },
+                    manifest: None,
+                    runtime_type: Some(rt_val),
+                    entry_point: None,
+                    enabled: Some(false),
+                })
+                .await;
             set_submitting.set(false);
             match result {
                 Ok(_) => save_cb.run(()),
@@ -389,11 +425,23 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
         })
     };
 
-    let btn_label = move || if submitting.get() { "Installing..." } else { "Install" };
-    let btn_class = move || format!(
-        "px-4 py-2 text-sm text-white rounded-lg {}",
-        if submitting.get() { "bg-blue-400 cursor-not-allowed" } else { "bg-blue-600 hover:bg-blue-700" }
-    );
+    let btn_label = move || {
+        if submitting.get() {
+            "Installing..."
+        } else {
+            "Install"
+        }
+    };
+    let btn_class = move || {
+        format!(
+            "px-4 py-2 text-sm text-white rounded-lg {}",
+            if submitting.get() {
+                "bg-blue-400 cursor-not-allowed"
+            } else {
+                "bg-blue-600 hover:bg-blue-700"
+            }
+        )
+    };
 
     view! {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
@@ -402,7 +450,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                  on:click={move |ev| ev.stop_propagation()}>
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">"Install Plugin"</h2>
-                    <button class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg 
+                    <button class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg
                                hover:bg-gray-100 dark:hover:bg-gray-700"
                             on:click={move |_| on_cancel.run(())}>
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -420,7 +468,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                                 "Name" <span class="text-red-500">"*"</span>
                             </label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="my-plugin" prop:value={name.get()}
@@ -431,7 +479,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                                 "Version" <span class="text-red-500">"*"</span>
                             </label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="0.1.0" prop:value={version.get()}
@@ -442,7 +490,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Description"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="What does this plugin do?" prop:value={description.get()}
@@ -453,7 +501,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Author"</label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="Author name" prop:value={author.get()}
@@ -462,7 +510,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"License"</label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="MIT" prop:value={license.get()}
@@ -473,7 +521,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Homepage"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="https://github.com/user/plugin" prop:value={homepage.get()}
@@ -483,7 +531,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Runtime"</label>
                         <select
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={runtime_type.get()}
@@ -497,7 +545,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Extension Points"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="Comma-separated: editor:command, document:on-save"
@@ -510,7 +558,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                 </div>
 
                 <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-                    <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 
+                    <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300
                                    dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                         on:click={move |_| on_cancel.run(())}>"Cancel"</button>
                     <button class={btn_class} disabled={submitting.get()} on:click={handle_submit}>{btn_label}</button>
@@ -525,7 +573,11 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
 // ---------------------------------------------------------------------------
 
 #[component]
-fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()>) -> impl IntoView {
+fn EditPluginModal(
+    plugin: Plugin,
+    on_save: Callback<()>,
+    on_cancel: Callback<()>,
+) -> impl IntoView {
     let (description, set_description) = signal(plugin.description.clone().unwrap_or_default());
     let (version, set_version) = signal(plugin.version.clone());
     let (author, set_author) = signal(plugin.author.clone().unwrap_or_default());
@@ -541,7 +593,11 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
         set_submitting.set(true);
         let api = ApiClient::default();
         let ep_str = ext_points.get();
-        let parsed_eps: Vec<String> = ep_str.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+        let parsed_eps: Vec<String> = ep_str
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
         let desc_val = description.get();
         let ver_val = version.get();
         let auth_val = author.get();
@@ -551,15 +607,40 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
         let save_cb = on_save;
 
         spawn_local(async move {
-            let result = api.update_plugin(&tid, &UpdatePluginRequest {
-                description: if desc_val.is_empty() { None } else { Some(desc_val) },
-                version: Some(ver_val),
-                author: if auth_val.is_empty() { None } else { Some(auth_val) },
-                homepage: if home_val.is_empty() { None } else { Some(home_val) },
-                license: if lic_val.is_empty() { None } else { Some(lic_val) },
-                extension_points: if parsed_eps.is_empty() { None } else { Some(parsed_eps) },
-                ..Default::default()
-            }).await;
+            let result = api
+                .update_plugin(
+                    &tid,
+                    &UpdatePluginRequest {
+                        description: if desc_val.is_empty() {
+                            None
+                        } else {
+                            Some(desc_val)
+                        },
+                        version: Some(ver_val),
+                        author: if auth_val.is_empty() {
+                            None
+                        } else {
+                            Some(auth_val)
+                        },
+                        homepage: if home_val.is_empty() {
+                            None
+                        } else {
+                            Some(home_val)
+                        },
+                        license: if lic_val.is_empty() {
+                            None
+                        } else {
+                            Some(lic_val)
+                        },
+                        extension_points: if parsed_eps.is_empty() {
+                            None
+                        } else {
+                            Some(parsed_eps)
+                        },
+                        ..Default::default()
+                    },
+                )
+                .await;
             set_submitting.set(false);
             match result {
                 Ok(_) => save_cb.run(()),
@@ -577,11 +658,23 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
         })
     };
 
-    let btn_label = move || if submitting.get() { "Saving..." } else { "Save" };
-    let btn_class = move || format!(
-        "px-4 py-2 text-sm text-white rounded-lg {}",
-        if submitting.get() { "bg-blue-400 cursor-not-allowed" } else { "bg-blue-600 hover:bg-blue-700" }
-    );
+    let btn_label = move || {
+        if submitting.get() {
+            "Saving..."
+        } else {
+            "Save"
+        }
+    };
+    let btn_class = move || {
+        format!(
+            "px-4 py-2 text-sm text-white rounded-lg {}",
+            if submitting.get() {
+                "bg-blue-400 cursor-not-allowed"
+            } else {
+                "bg-blue-600 hover:bg-blue-700"
+            }
+        )
+    };
 
     view! {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
@@ -595,7 +688,7 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
                         </h2>
                         <p class="text-xs text-gray-400 font-mono">{format!("v{}", plugin.version)}</p>
                     </div>
-                    <button class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg 
+                    <button class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg
                                hover:bg-gray-100 dark:hover:bg-gray-700"
                         on:click={move |_| on_cancel.run(())}>
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -608,7 +701,7 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Version"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={version.get()}
@@ -617,7 +710,7 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Description"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={description.get()}
@@ -627,7 +720,7 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Author"</label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 prop:value={author.get()}
@@ -636,7 +729,7 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"License"</label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 prop:value={license.get()}
@@ -646,7 +739,7 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Extension Points"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="Comma-separated" prop:value={ext_points.get()}
@@ -654,7 +747,7 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
                     </div>
                 </div>
                 <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-                    <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 
+                    <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300
                                    dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                         on:click={move |_| on_cancel.run(())}>"Cancel"</button>
                     <button class={btn_class} disabled={submitting.get()} on:click={handle_submit}>{btn_label}</button>
@@ -669,7 +762,11 @@ fn EditPluginModal(plugin: Plugin, on_save: Callback<()>, on_cancel: Callback<()
 // ---------------------------------------------------------------------------
 
 #[component]
-fn DeletePluginModal(id: String, on_confirm: Callback<()>, on_cancel: Callback<()>) -> impl IntoView {
+fn DeletePluginModal(
+    id: String,
+    on_confirm: Callback<()>,
+    on_cancel: Callback<()>,
+) -> impl IntoView {
     let (error, set_error) = signal(None::<String>);
     let (submitting, set_submitting) = signal(false);
 
@@ -699,10 +796,16 @@ fn DeletePluginModal(id: String, on_confirm: Callback<()>, on_cancel: Callback<(
         })
     };
 
-    let btn_class = move || format!(
-        "px-4 py-2 text-sm text-white rounded-lg {}",
-        if submitting.get() { "bg-red-400 cursor-not-allowed" } else { "bg-red-600 hover:bg-red-700" }
-    );
+    let btn_class = move || {
+        format!(
+            "px-4 py-2 text-sm text-white rounded-lg {}",
+            if submitting.get() {
+                "bg-red-400 cursor-not-allowed"
+            } else {
+                "bg-red-600 hover:bg-red-700"
+            }
+        )
+    };
 
     view! {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
@@ -711,7 +814,7 @@ fn DeletePluginModal(id: String, on_confirm: Callback<()>, on_cancel: Callback<(
                  on:click={move |ev| ev.stop_propagation()}>
                 <div class="p-6">
                     <div class="flex items-center gap-3 mb-4">
-                        <div class="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full 
+                        <div class="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full
                                     flex items-center justify-center">
                             <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -727,7 +830,7 @@ fn DeletePluginModal(id: String, on_confirm: Callback<()>, on_cancel: Callback<(
                     </div>
                     {error_view}
                     <div class="flex justify-end gap-3 mt-6">
-                        <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 
+                        <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300
                                        dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                             on:click={move |_| on_cancel.run(())}>"Cancel"</button>
                         <button class={btn_class} disabled={submitting.get()} on:click={handle_delete}>

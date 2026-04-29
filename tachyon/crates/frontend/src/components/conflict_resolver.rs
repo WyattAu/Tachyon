@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
-use leptos::prelude::*;
 use crate::api::ApiClient;
 use crate::types::ConflictInfo;
+use leptos::prelude::*;
 use std::sync::{Arc, Mutex};
 
 #[component]
@@ -58,7 +58,12 @@ pub fn ConflictResolver(
                 let merge = i.merge_result.as_ref();
                 set_is_clean.set(merge.as_ref().is_some_and(|m| m.status == "clean"));
                 set_conflict_count.set(merge.as_ref().map_or(0, |m| m.conflict_count));
-                set_merge_content.set(merge.as_ref().map(|m| m.content.clone()).unwrap_or_default());
+                set_merge_content.set(
+                    merge
+                        .as_ref()
+                        .map(|m| m.content.clone())
+                        .unwrap_or_default(),
+                );
                 set_current_content.set(i.current_content.clone().unwrap_or_default());
                 set_incoming_content.set(i.incoming_content.clone().unwrap_or_default());
             }
@@ -152,7 +157,10 @@ pub fn ConflictResolver(
             let set_er = set_er;
             wasm_bindgen_futures::spawn_local(async move {
                 set_rs.set(true);
-                match api.resolve_conflict(&doc_id, "manual", Some(&content)).await {
+                match api
+                    .resolve_conflict(&doc_id, "manual", Some(&content))
+                    .await
+                {
                     Ok(_) => {
                         set_er.set(None);
                         if let Some(cb) = on_resolved_cb {
@@ -169,9 +177,27 @@ pub fn ConflictResolver(
     };
 
     let loading_cls = move || if loading.get() { "" } else { "hidden" };
-    let _error_cls = move || if error_msg.get().is_some() && !loading.get() { "" } else { "hidden" };
-    let no_conflict_cls = move || if !loading.get() && error_msg.get().is_none() && !has_conflict.get() { "" } else { "hidden" };
-    let conflict_cls = move || if !loading.get() && error_msg.get().is_none() && has_conflict.get() { "" } else { "hidden" };
+    let _error_cls = move || {
+        if error_msg.get().is_some() && !loading.get() {
+            ""
+        } else {
+            "hidden"
+        }
+    };
+    let no_conflict_cls = move || {
+        if !loading.get() && error_msg.get().is_none() && !has_conflict.get() {
+            ""
+        } else {
+            "hidden"
+        }
+    };
+    let conflict_cls = move || {
+        if !loading.get() && error_msg.get().is_none() && has_conflict.get() {
+            ""
+        } else {
+            "hidden"
+        }
+    };
 
     view! {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">

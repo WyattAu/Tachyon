@@ -1,11 +1,10 @@
 // Integration tests for SEO routes (robots.txt, sitemap.xml, document pages)
 use axum::{
     body::Body,
-    http::{Request, StatusCode, header},
-    Router,
+    http::{header, Request, StatusCode},
 };
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -40,8 +39,14 @@ async fn test_robots_txt() {
     }
     let text = common::read_body_string(response).await;
 
-    assert!(text.contains("User-agent"), "robots.txt should contain User-agent directive");
-    assert!(text.contains("Disallow") || text.contains("Allow"), "robots.txt should contain Disallow or Allow");
+    assert!(
+        text.contains("User-agent"),
+        "robots.txt should contain User-agent directive"
+    );
+    assert!(
+        text.contains("Disallow") || text.contains("Allow"),
+        "robots.txt should contain Disallow or Allow"
+    );
 }
 
 #[tokio::test]
@@ -75,7 +80,10 @@ async fn test_sitemap_xml() {
     }
     let text = common::read_body_string(response).await;
 
-    assert!(text.contains("<?xml") || text.contains("urlset"), "sitemap should be XML with urlset");
+    assert!(
+        text.contains("<?xml") || text.contains("urlset"),
+        "sitemap should be XML with urlset"
+    );
 }
 
 #[tokio::test]
@@ -102,8 +110,7 @@ async fn test_document_page_not_found() {
 
     // Non-existent document should return 404 or a rendered error page
     assert!(
-        response.status() == StatusCode::NOT_FOUND
-            || response.status() == StatusCode::OK, // May render error page as 200
+        response.status() == StatusCode::NOT_FOUND || response.status() == StatusCode::OK, // May render error page as 200
         "Expected 404 or 200, got {}",
         response.status()
     );
@@ -137,16 +144,20 @@ async fn test_document_page_with_valid_doc() {
                 .uri("/api/v1/documents")
                 .header("Content-Type", "application/json")
                 .header("Authorization", common::auth_header(&auth.token))
-                .body(Body::from(json!({
-                    "title": &format!("SEO Test Doc {}", unique),
-                    "content": "# Hello\n\nThis is an SEO test document.",
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "title": &format!("SEO Test Doc {}", unique),
+                        "content": "# Hello\n\nThis is an SEO test document.",
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
         .expect("Document creation failed");
 
-    if create_response.status() == StatusCode::CREATED || create_response.status() == StatusCode::OK {
+    if create_response.status() == StatusCode::CREATED || create_response.status() == StatusCode::OK
+    {
         let body = common::read_body_json(create_response).await;
         let doc_id = body["id"].as_str().or_else(|| body["document_id"].as_str());
 

@@ -3,10 +3,7 @@
 use leptos::prelude::*;
 
 #[component]
-pub fn LoadingSpinner(
-    #[prop(default = 8)]
-    size: usize,
-) -> impl IntoView {
+pub fn LoadingSpinner(#[prop(default = 8)] size: usize) -> impl IntoView {
     let size_class = match size {
         0..=4 => "w-4 h-4 border-2",
         5..=8 => "w-8 h-8 border-2",
@@ -25,10 +22,7 @@ pub fn LoadingSpinner(
 }
 
 #[component]
-pub fn LoadingPage(
-    #[prop(default = "Loading...".to_string())]
-    message: String,
-) -> impl IntoView {
+pub fn LoadingPage(#[prop(default = "Loading...".to_string())] message: String) -> impl IntoView {
     view! {
         <div class="flex flex-col items-center justify-center py-20 gap-4">
             <div class="w-10 h-10 border-[3px] border-gray-300 dark:border-gray-600 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin"></div>

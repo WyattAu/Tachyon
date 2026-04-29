@@ -1,6 +1,6 @@
+use crate::api::ApiClient;
 use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
-use crate::api::ApiClient;
 
 #[wasm_bindgen]
 extern "C" {
@@ -27,7 +27,12 @@ enum SettingsTab {
 pub fn SettingsPage() -> impl IntoView {
     let active_tab = RwSignal::new(SettingsTab::Profile);
 
-    let tabs = [SettingsTab::Profile, SettingsTab::Account, SettingsTab::Preferences, SettingsTab::Danger];
+    let tabs = [
+        SettingsTab::Profile,
+        SettingsTab::Account,
+        SettingsTab::Preferences,
+        SettingsTab::Danger,
+    ];
 
     view! {
         <div class="max-w-3xl">
@@ -60,8 +65,11 @@ pub fn SettingsPage() -> impl IntoView {
 
 fn tab_button_class(active: SettingsTab, tab: SettingsTab) -> String {
     let base = "px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors";
-    if active == tab { format!("{} border-blue-500 text-blue-600 dark:text-blue-400", base) }
-    else { format!("{} border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300", base) }
+    if active == tab {
+        format!("{} border-blue-500 text-blue-600 dark:text-blue-400", base)
+    } else {
+        format!("{} border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300", base)
+    }
 }
 
 impl SettingsTab {
@@ -88,13 +96,23 @@ fn ProfileTab() -> impl IntoView {
         wasm_bindgen_futures::spawn_local(async move {
             match api.get_current_user().await {
                 Ok(user) => {
-                    let name = user.get("display_name").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                    let mail = user.get("email").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let name = user
+                        .get("display_name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let mail = user
+                        .get("email")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
                     set_display_name.set(name);
                     set_email.set(mail);
                     set_profile_loaded.set(true);
                 }
-                Err(_) => { set_profile_loaded.set(true); }
+                Err(_) => {
+                    set_profile_loaded.set(true);
+                }
             }
         });
     });
@@ -108,8 +126,16 @@ fn ProfileTab() -> impl IntoView {
         let set_msg = set_profile_msg;
         let set_saving = set_saving_profile;
         wasm_bindgen_futures::spawn_local(async move {
-            let dn = if name.is_empty() { None } else { Some(name.as_str()) };
-            let em = if mail.is_empty() { None } else { Some(mail.as_str()) };
+            let dn = if name.is_empty() {
+                None
+            } else {
+                Some(name.as_str())
+            };
+            let em = if mail.is_empty() {
+                None
+            } else {
+                Some(mail.as_str())
+            };
             match client.update_profile(dn, em).await {
                 Ok(_) => set_msg.set("Profile saved successfully.".to_string()),
                 Err(e) => set_msg.set(format!("Failed to save: {}", e)),
@@ -359,7 +385,11 @@ fn DangerTab() -> impl IntoView {
 }
 
 #[component]
-fn SettingsSection(title: &'static str, description: &'static str, children: Children) -> impl IntoView {
+fn SettingsSection(
+    title: &'static str,
+    description: &'static str,
+    children: Children,
+) -> impl IntoView {
     view! {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
             <div class="mb-4">
@@ -372,8 +402,15 @@ fn SettingsSection(title: &'static str, description: &'static str, children: Chi
 }
 
 #[component]
-fn ThemeOption<F>(label: &'static str, value: &'static str, current_theme: String, on_change: F) -> impl IntoView
-where F: Fn(String) + 'static + Clone {
+fn ThemeOption<F>(
+    label: &'static str,
+    value: &'static str,
+    current_theme: String,
+    on_change: F,
+) -> impl IntoView
+where
+    F: Fn(String) + 'static + Clone,
+{
     let is_selected = current_theme == value;
     let value_str = value.to_string();
     let on_change_clone = on_change.clone();
@@ -391,7 +428,9 @@ where F: Fn(String) + 'static + Clone {
 
 #[component]
 fn ToggleSwitch<F>(enabled: bool, on_toggle: F) -> impl IntoView
-where F: Fn(leptos::ev::MouseEvent) + 'static {
+where
+    F: Fn(leptos::ev::MouseEvent) + 'static,
+{
     view! {
         <button type="button" on:click=on_toggle
             class=move || if enabled {
@@ -411,7 +450,9 @@ where F: Fn(leptos::ev::MouseEvent) + 'static {
 fn get_stored_theme() -> String {
     if let Some(window) = web_sys::window() {
         if let Ok(Some(storage)) = window.local_storage() {
-            if let Ok(Some(theme)) = storage.get_item("tachyon-theme") { return theme; }
+            if let Ok(Some(theme)) = storage.get_item("tachyon-theme") {
+                return theme;
+            }
         }
     }
     "light".to_string()
@@ -426,12 +467,19 @@ fn save_theme_to_storage(theme: &str) {
 }
 
 fn apply_theme(theme: &str) {
-    let effective_theme = if theme == "system" { get_system_theme() } else { theme.to_string() };
+    let effective_theme = if theme == "system" {
+        get_system_theme()
+    } else {
+        theme.to_string()
+    };
     if let Some(window) = web_sys::window() {
         if let Some(document) = window.document() {
             if let Some(html) = document.document_element() {
-                if effective_theme == "dark" { let _ = html.class_list().add_1("dark"); }
-                else { let _ = html.class_list().remove_1("dark"); }
+                if effective_theme == "dark" {
+                    let _ = html.class_list().add_1("dark");
+                } else {
+                    let _ = html.class_list().remove_1("dark");
+                }
             }
         }
     }
@@ -439,7 +487,9 @@ fn apply_theme(theme: &str) {
 
 fn get_system_theme() -> String {
     if let Ok(Some(media_query)) = match_media("(prefers-color-scheme: dark)") {
-        if media_query.matches() { return "dark".to_string(); }
+        if media_query.matches() {
+            return "dark".to_string();
+        }
     }
     "light".to_string()
 }

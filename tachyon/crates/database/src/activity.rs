@@ -30,7 +30,10 @@ pub struct CreateActivityEvent {
 pub struct ActivityRepository;
 
 impl ActivityRepository {
-    pub async fn create(pool: &DatabasePool, event: CreateActivityEvent) -> DatabaseResult<ActivityEvent> {
+    pub async fn create(
+        pool: &DatabasePool,
+        event: CreateActivityEvent,
+    ) -> DatabaseResult<ActivityEvent> {
         let metadata = event.metadata.unwrap_or(serde_json::json!({}));
         let mut conn = pool.acquire().await?;
         let result = query_as::<_, ActivityEvent>(
@@ -50,7 +53,11 @@ impl ActivityRepository {
         Ok(result)
     }
 
-    pub async fn list_recent(pool: &DatabasePool, limit: i64, offset: i64) -> DatabaseResult<Vec<ActivityEvent>> {
+    pub async fn list_recent(
+        pool: &DatabasePool,
+        limit: i64,
+        offset: i64,
+    ) -> DatabaseResult<Vec<ActivityEvent>> {
         let mut conn = pool.acquire().await?;
         let results = query_as::<_, ActivityEvent>(
             r#"SELECT id, actor_id, event_type, target_type, target_id, description, metadata, created_at
@@ -66,7 +73,12 @@ impl ActivityRepository {
         Ok(results)
     }
 
-    pub async fn list_by_target(pool: &DatabasePool, target_type: &str, target_id: Uuid, limit: i64) -> DatabaseResult<Vec<ActivityEvent>> {
+    pub async fn list_by_target(
+        pool: &DatabasePool,
+        target_type: &str,
+        target_id: Uuid,
+        limit: i64,
+    ) -> DatabaseResult<Vec<ActivityEvent>> {
         let mut conn = pool.acquire().await?;
         let results = query_as::<_, ActivityEvent>(
             r#"SELECT id, actor_id, event_type, target_type, target_id, description, metadata, created_at
@@ -84,7 +96,11 @@ impl ActivityRepository {
         Ok(results)
     }
 
-    pub async fn list_by_actor(pool: &DatabasePool, actor_id: Uuid, limit: i64) -> DatabaseResult<Vec<ActivityEvent>> {
+    pub async fn list_by_actor(
+        pool: &DatabasePool,
+        actor_id: Uuid,
+        limit: i64,
+    ) -> DatabaseResult<Vec<ActivityEvent>> {
         let mut conn = pool.acquire().await?;
         let results = query_as::<_, ActivityEvent>(
             r#"SELECT id, actor_id, event_type, target_type, target_id, description, metadata, created_at
@@ -138,7 +154,10 @@ mod tests {
         let event: CreateActivityEvent = serde_json::from_str(json).unwrap();
         assert_eq!(event.event_type, "document_updated");
         assert!(event.metadata.is_some());
-        assert_eq!(event.metadata.unwrap()["fields_changed"], serde_json::json!(["title"]));
+        assert_eq!(
+            event.metadata.unwrap()["fields_changed"],
+            serde_json::json!(["title"])
+        );
     }
 
     #[test]

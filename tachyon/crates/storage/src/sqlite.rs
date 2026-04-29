@@ -9,9 +9,9 @@ use sqlx::{sqlite::SqliteConnectOptions, Row};
 use std::future::Future;
 use std::pin::Pin;
 use std::str::FromStr;
-use tachyon_core::id::{DocumentId, UserId, generate_document_id};
+use tachyon_core::id::{generate_document_id, DocumentId, UserId};
 use tachyon_core::types::document::{
-    Document, DocumentContent, DocumentMetadata, DocumentStatus, DocumentStats, DocumentVisibility,
+    Document, DocumentContent, DocumentMetadata, DocumentStats, DocumentStatus, DocumentVisibility,
 };
 use tachyon_core::types::storage::{
     DocumentListSummary, DocumentStore, ListParams, ListResult, SortDirection, SortField,
@@ -40,11 +40,11 @@ impl SqliteStore {
             .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
             .foreign_keys(true);
 
-        let pool = sqlx::SqlitePool::connect_with(options)
-            .await
-            .map_err(|e| StorageError::Unavailable {
+        let pool = sqlx::SqlitePool::connect_with(options).await.map_err(|e| {
+            StorageError::Unavailable {
                 reason: format!("Failed to open SQLite database: {}", e),
-            })?;
+            }
+        })?;
 
         Self::init_schema(&pool).await?;
 
@@ -60,11 +60,11 @@ impl SqliteStore {
             .create_if_missing(true)
             .foreign_keys(true);
 
-        let pool = sqlx::SqlitePool::connect_with(options)
-            .await
-            .map_err(|e| StorageError::Unavailable {
+        let pool = sqlx::SqlitePool::connect_with(options).await.map_err(|e| {
+            StorageError::Unavailable {
                 reason: format!("Failed to open in-memory SQLite: {}", e),
-            })?;
+            }
+        })?;
 
         Self::init_schema(&pool).await?;
 
@@ -144,9 +144,11 @@ impl SqliteStore {
             message: format!("Invalid document ID: {}", id_str),
         })?;
 
-        let author_str: &str = row.try_get("author_id").map_err(|e| StorageError::Internal {
-            message: format!("Failed to read author_id: {}", e),
-        })?;
+        let author_str: &str = row
+            .try_get("author_id")
+            .map_err(|e| StorageError::Internal {
+                message: format!("Failed to read author_id: {}", e),
+            })?;
         let author_id = UserId::parse_str(author_str).map_err(|_| StorageError::Internal {
             message: format!("Invalid author ID: {}", author_str),
         })?;
@@ -161,9 +163,11 @@ impl SqliteStore {
             _ => DocumentStatus::Draft,
         };
 
-        let vis_str: &str = row.try_get("visibility").map_err(|e| StorageError::Internal {
-            message: format!("Failed to read visibility: {}", e),
-        })?;
+        let vis_str: &str = row
+            .try_get("visibility")
+            .map_err(|e| StorageError::Internal {
+                message: format!("Failed to read visibility: {}", e),
+            })?;
         let visibility = match vis_str {
             "public" => DocumentVisibility::Public,
             "restricted" => DocumentVisibility::Restricted,
@@ -185,8 +189,16 @@ impl SqliteStore {
         let updated_at_str: &str = row.try_get("updated_at").unwrap_or("");
         let published_at_str: Option<&str> = row.try_get("published_at").unwrap_or(None);
 
-        let created_at = if !created_at_str.is_empty() { parse_datetime(created_at_str) } else { Utc::now() };
-        let updated_at = if !updated_at_str.is_empty() { parse_datetime(updated_at_str) } else { Utc::now() };
+        let created_at = if !created_at_str.is_empty() {
+            parse_datetime(created_at_str)
+        } else {
+            Utc::now()
+        };
+        let updated_at = if !updated_at_str.is_empty() {
+            parse_datetime(updated_at_str)
+        } else {
+            Utc::now()
+        };
         let published_at = published_at_str.map(parse_datetime);
 
         let tags_str: &str = row.try_get("tags").unwrap_or("[]");
@@ -204,7 +216,11 @@ impl SqliteStore {
             id,
             metadata: DocumentMetadata {
                 title,
-                slug: if slug.is_empty() { None } else { Some(slug.to_string()) },
+                slug: if slug.is_empty() {
+                    None
+                } else {
+                    Some(slug.to_string())
+                },
                 author_id,
                 description: row.try_get("description").unwrap_or(None),
                 tags,
@@ -228,9 +244,10 @@ impl SqliteStore {
 
     fn compute_stats(content: &DocumentContent) -> (i64, i64) {
         match content {
-            DocumentContent::Markdown { content } | DocumentContent::Text { content } => {
-                (content.split_whitespace().count() as i64, content.chars().count() as i64)
-            }
+            DocumentContent::Markdown { content } | DocumentContent::Text { content } => (
+                content.split_whitespace().count() as i64,
+                content.chars().count() as i64,
+            ),
             DocumentContent::Binary { content, .. } => {
                 (0, content.as_ref().map_or(0, |v| v.len()) as i64)
             }
@@ -257,7 +274,9 @@ fn parse_datetime(s: &str) -> DateTime<Utc> {
             chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f")
                 .map(|ndt| ndt.and_utc())
         })
-        .or_else(|_| chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S").map(|ndt| ndt.and_utc()))
+        .or_else(|_| {
+            chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S").map(|ndt| ndt.and_utc())
+        })
         .unwrap_or_else(|_| Utc::now())
 }
 
@@ -359,9 +378,7 @@ impl DocumentStore for SqliteStore {
 
             match row {
                 Some(row) => Self::row_to_document(&row),
-                None => Err(StorageError::NotFound {
-                    id: id_str_clone,
-                }),
+                None => Err(StorageError::NotFound { id: id_str_clone }),
             }
         })
     }
@@ -401,9 +418,7 @@ impl DocumentStore for SqliteStore {
             })?;
 
             if result.rows_affected() == 0 {
-                return Err(StorageError::NotFound {
-                    id: id_str_clone,
-                });
+                return Err(StorageError::NotFound { id: id_str_clone });
             }
 
             self.get_document(id).await
@@ -446,9 +461,7 @@ impl DocumentStore for SqliteStore {
             })?;
 
             if result.rows_affected() == 0 {
-                return Err(StorageError::NotFound {
-                    id: id_str_clone,
-                });
+                return Err(StorageError::NotFound { id: id_str_clone });
             }
 
             self.get_document(id).await
@@ -463,16 +476,14 @@ impl DocumentStore for SqliteStore {
             let id_str = id.as_str();
             let now = to_rfc3339(&Utc::now());
 
-            sqlx::query(
-                "UPDATE documents SET status = 'deleted', updated_at = ?1 WHERE id = ?2",
-            )
-            .bind(&now)
-            .bind(&id_str)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| StorageError::Internal {
-                message: format!("Failed to delete document: {}", e),
-            })?;
+            sqlx::query("UPDATE documents SET status = 'deleted', updated_at = ?1 WHERE id = ?2")
+                .bind(&now)
+                .bind(&id_str)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| StorageError::Internal {
+                    message: format!("Failed to delete document: {}", e),
+                })?;
 
             Ok(())
         })
@@ -543,7 +554,11 @@ impl DocumentStore for SqliteStore {
 
             // Full-text search using LIKE (simpler than FTS5 trigger sync issues)
             if let Some(ref query) = params.query {
-                conditions.push(format!("(title LIKE ?{} OR content LIKE ?{})", bind_values.len() + 1, bind_values.len() + 2));
+                conditions.push(format!(
+                    "(title LIKE ?{} OR content LIKE ?{})",
+                    bind_values.len() + 1,
+                    bind_values.len() + 2
+                ));
                 let pattern = format!("%{}%", query);
                 bind_values.push(pattern.clone());
                 bind_values.push(pattern);
@@ -599,20 +614,14 @@ impl DocumentStore for SqliteStore {
                 bind_values.len() + 2,
             );
 
-            let count_sql = format!(
-                "SELECT COUNT(*) as cnt FROM documents {}",
-                where_sql
-            );
+            let count_sql = format!("SELECT COUNT(*) as cnt FROM documents {}", where_sql);
 
             // Execute count query
             let mut count_query = sqlx::query_scalar::<_, i64>(&count_sql);
             for val in &bind_values {
                 count_query = count_query.bind(val.clone());
             }
-            let total: i64 = count_query
-                .fetch_one(&self.pool)
-                .await
-                .unwrap_or(0);
+            let total: i64 = count_query.fetch_one(&self.pool).await.unwrap_or(0);
 
             // Execute data query
             let mut data_query = sqlx::query(&select_sql);
@@ -621,12 +630,13 @@ impl DocumentStore for SqliteStore {
             }
             data_query = data_query.bind(limit).bind(offset);
 
-            let rows = data_query
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| StorageError::Internal {
-                    message: format!("Failed to list documents: {}", e),
-                })?;
+            let rows =
+                data_query
+                    .fetch_all(&self.pool)
+                    .await
+                    .map_err(|e| StorageError::Internal {
+                        message: format!("Failed to list documents: {}", e),
+                    })?;
 
             let mut items = Vec::new();
             for row in rows {
@@ -666,33 +676,29 @@ impl DocumentStore for SqliteStore {
         &'a self,
     ) -> Pin<Box<dyn Future<Output = StorageResult<DocumentListSummary>> + Send + 'a>> {
         Box::pin(async move {
-            let total: i64 = sqlx::query_scalar(
-                "SELECT COUNT(*) FROM documents WHERE status != 'deleted'",
-            )
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
+            let total: i64 =
+                sqlx::query_scalar("SELECT COUNT(*) FROM documents WHERE status != 'deleted'")
+                    .fetch_one(&self.pool)
+                    .await
+                    .unwrap_or(0);
 
-            let draft_count: i64 = sqlx::query_scalar(
-                "SELECT COUNT(*) FROM documents WHERE status = 'draft'",
-            )
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
+            let draft_count: i64 =
+                sqlx::query_scalar("SELECT COUNT(*) FROM documents WHERE status = 'draft'")
+                    .fetch_one(&self.pool)
+                    .await
+                    .unwrap_or(0);
 
-            let published_count: i64 = sqlx::query_scalar(
-                "SELECT COUNT(*) FROM documents WHERE status = 'published'",
-            )
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
+            let published_count: i64 =
+                sqlx::query_scalar("SELECT COUNT(*) FROM documents WHERE status = 'published'")
+                    .fetch_one(&self.pool)
+                    .await
+                    .unwrap_or(0);
 
-            let archived_count: i64 = sqlx::query_scalar(
-                "SELECT COUNT(*) FROM documents WHERE status = 'archived'",
-            )
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
+            let archived_count: i64 =
+                sqlx::query_scalar("SELECT COUNT(*) FROM documents WHERE status = 'archived'")
+                    .fetch_one(&self.pool)
+                    .await
+                    .unwrap_or(0);
 
             let total_word_count: i64 = sqlx::query_scalar(
                 "SELECT COALESCE(SUM(word_count), 0) FROM documents WHERE status != 'deleted'",
@@ -759,7 +765,9 @@ impl DocumentStore for SqliteStore {
         })
     }
 
-    fn is_available<'a>(&'a self) -> Pin<Box<dyn Future<Output = StorageResult<bool>> + Send + 'a>> {
+    fn is_available<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = StorageResult<bool>> + Send + 'a>> {
         Box::pin(async move {
             match sqlx::query("SELECT 1").execute(&self.pool).await {
                 Ok(_) => Ok(true),
@@ -782,7 +790,9 @@ mod tests {
     use tachyon_core::id::generate_user_id;
 
     async fn make_store() -> SqliteStore {
-        SqliteStore::in_memory().await.expect("Failed to create in-memory store")
+        SqliteStore::in_memory()
+            .await
+            .expect("Failed to create in-memory store")
     }
 
     fn make_user_id() -> UserId {
@@ -804,7 +814,10 @@ mod tests {
         assert_eq!(doc.metadata.title, "Test Document");
         assert!(!doc.id.as_str().is_empty());
 
-        let fetched = store.get_document(&doc.id).await.expect("Failed to get document");
+        let fetched = store
+            .get_document(&doc.id)
+            .await
+            .expect("Failed to get document");
         assert_eq!(fetched.id, doc.id);
         assert_eq!(fetched.metadata.title, "Test Document");
     }
@@ -829,7 +842,10 @@ mod tests {
         let metadata = DocumentMetadata::new("Test".to_string(), user_id);
         let content = DocumentContent::markdown("Original".to_string());
 
-        let doc = store.create_document(metadata, content).await.expect("create");
+        let doc = store
+            .create_document(metadata, content)
+            .await
+            .expect("create");
 
         let new_content = DocumentContent::markdown("Updated content".to_string());
         let updated = store
@@ -847,7 +863,10 @@ mod tests {
         let metadata = DocumentMetadata::new("Old Title".to_string(), user_id);
         let content = DocumentContent::markdown("Content".to_string());
 
-        let doc = store.create_document(metadata, content).await.expect("create");
+        let doc = store
+            .create_document(metadata, content)
+            .await
+            .expect("create");
 
         let mut new_meta = doc.metadata.clone();
         new_meta.title = "New Title".to_string();
@@ -860,7 +879,10 @@ mod tests {
             .expect("update");
 
         assert_eq!(updated.metadata.title, "New Title");
-        assert_eq!(updated.metadata.description, Some("A description".to_string()));
+        assert_eq!(
+            updated.metadata.description,
+            Some("A description".to_string())
+        );
         assert_eq!(updated.metadata.tags.len(), 2);
     }
 
@@ -871,7 +893,10 @@ mod tests {
         let metadata = DocumentMetadata::new("To Delete".to_string(), user_id);
         let content = DocumentContent::markdown("Content".to_string());
 
-        let doc = store.create_document(metadata, content).await.expect("create");
+        let doc = store
+            .create_document(metadata, content)
+            .await
+            .expect("create");
         store.delete_document(&doc.id).await.expect("delete");
 
         let result = store
@@ -888,7 +913,10 @@ mod tests {
         let metadata = DocumentMetadata::new("Gone".to_string(), user_id);
         let content = DocumentContent::markdown("Content".to_string());
 
-        let doc = store.create_document(metadata, content).await.expect("create");
+        let doc = store
+            .create_document(metadata, content)
+            .await
+            .expect("create");
         store
             .permanently_delete_document(&doc.id)
             .await
@@ -947,20 +975,23 @@ mod tests {
 
         let m1 = DocumentMetadata::new("Rust Programming".to_string(), user_id);
         store
-            .create_document(m1, DocumentContent::markdown("Rust is a systems language".to_string()))
+            .create_document(
+                m1,
+                DocumentContent::markdown("Rust is a systems language".to_string()),
+            )
             .await
             .unwrap();
 
         let m2 = DocumentMetadata::new("Python Guide".to_string(), user_id);
         store
-            .create_document(m2, DocumentContent::markdown("Python is easy to learn".to_string()))
+            .create_document(
+                m2,
+                DocumentContent::markdown("Python is easy to learn".to_string()),
+            )
             .await
             .unwrap();
 
-        let results = store
-            .search_documents("Rust", 1, 10)
-            .await
-            .expect("search");
+        let results = store.search_documents("Rust", 1, 10).await.expect("search");
         assert_eq!(results.total, 1);
         assert_eq!(results.items[0].metadata.title, "Rust Programming");
     }

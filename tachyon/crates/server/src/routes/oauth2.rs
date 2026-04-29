@@ -15,12 +15,12 @@
 
 use axum::{
     extract::{Query, State},
-    response::{Redirect, IntoResponse, Response},
+    response::{IntoResponse, Redirect, Response},
     routing::get,
     Router,
 };
 use serde::{Deserialize, Serialize};
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 use crate::config::OAuth2Config;
 
@@ -79,10 +79,13 @@ pub struct OAuthUserInfo {
 async fn google_authorize(State(state): State<OAuth2State>) -> Response {
     let client_id = match &state.config.google_client_id {
         Some(id) => id.clone(),
-        None => return axum::Json(serde_json::json!({
-            "error": "Google OAuth2 is not configured",
-            "message": "Set TACHYON_GOOGLE_CLIENT_ID and TACHYON_GOOGLE_CLIENT_SECRET"
-        })).into_response(),
+        None => {
+            return axum::Json(serde_json::json!({
+                "error": "Google OAuth2 is not configured",
+                "message": "Set TACHYON_GOOGLE_CLIENT_ID and TACHYON_GOOGLE_CLIENT_SECRET"
+            }))
+            .into_response()
+        }
     };
 
     let redirect_uri = build_redirect_uri(&state.config, "google");
@@ -107,22 +110,36 @@ async fn google_callback(
         return axum::Json(serde_json::json!({
             "error": error,
             "description": query.error_description,
-        })).into_response();
+        }))
+        .into_response();
     }
 
     let client_id = match &state.config.google_client_id {
         Some(id) => id.clone(),
-        None => return axum::Json(serde_json::json!({"error": "Google OAuth2 not configured"})).into_response(),
+        None => {
+            return axum::Json(serde_json::json!({"error": "Google OAuth2 not configured"}))
+                .into_response()
+        }
     };
     let client_secret = match &state.config.google_client_secret {
         Some(s) => s.clone(),
-        None => return axum::Json(serde_json::json!({"error": "Google OAuth2 not configured"})).into_response(),
+        None => {
+            return axum::Json(serde_json::json!({"error": "Google OAuth2 not configured"}))
+                .into_response()
+        }
     };
 
     let redirect_uri = build_redirect_uri(&state.config, "google");
 
     // Exchange code for token
-    let token_resp = exchange_google_code(&state.client, &client_id, &client_secret, &redirect_uri, &query.code).await;
+    let token_resp = exchange_google_code(
+        &state.client,
+        &client_id,
+        &client_secret,
+        &redirect_uri,
+        &query.code,
+    )
+    .await;
     let access_token = match token_resp {
         Ok(data) => data["access_token"].as_str().unwrap_or("").to_string(),
         Err(e) => {
@@ -130,7 +147,8 @@ async fn google_callback(
             return axum::Json(serde_json::json!({
                 "error": "token_exchange_failed",
                 "message": e.to_string(),
-            })).into_response();
+            }))
+            .into_response();
         }
     };
 
@@ -143,7 +161,8 @@ async fn google_callback(
             return axum::Json(serde_json::json!({
                 "error": "user_info_failed",
                 "message": e.to_string(),
-            })).into_response();
+            }))
+            .into_response();
         }
     };
 
@@ -184,10 +203,15 @@ async fn exchange_google_code(
         return Err(format!("Token endpoint returned {}: {}", status, body));
     }
 
-    resp.json().await.map_err(|e| format!("Failed to parse token response: {}", e))
+    resp.json()
+        .await
+        .map_err(|e| format!("Failed to parse token response: {}", e))
 }
 
-async fn fetch_google_user_info(client: &reqwest::Client, access_token: &str) -> Result<OAuthUserInfo, String> {
+async fn fetch_google_user_info(
+    client: &reqwest::Client,
+    access_token: &str,
+) -> Result<OAuthUserInfo, String> {
     let resp = client
         .get("https://www.googleapis.com/oauth2/v2/userinfo")
         .bearer_auth(access_token)
@@ -195,7 +219,9 @@ async fn fetch_google_user_info(client: &reqwest::Client, access_token: &str) ->
         .await
         .map_err(|e| format!("HTTP error: {}", e))?;
 
-    let data: serde_json::Value = resp.json().await
+    let data: serde_json::Value = resp
+        .json()
+        .await
         .map_err(|e| format!("Failed to parse user info: {}", e))?;
 
     Ok(OAuthUserInfo {
@@ -215,10 +241,13 @@ async fn fetch_google_user_info(client: &reqwest::Client, access_token: &str) ->
 async fn github_authorize(State(state): State<OAuth2State>) -> Response {
     let client_id = match &state.config.github_client_id {
         Some(id) => id.clone(),
-        None => return axum::Json(serde_json::json!({
-            "error": "GitHub OAuth2 is not configured",
-            "message": "Set TACHYON_GITHUB_CLIENT_ID and TACHYON_GITHUB_CLIENT_SECRET"
-        })).into_response(),
+        None => {
+            return axum::Json(serde_json::json!({
+                "error": "GitHub OAuth2 is not configured",
+                "message": "Set TACHYON_GITHUB_CLIENT_ID and TACHYON_GITHUB_CLIENT_SECRET"
+            }))
+            .into_response()
+        }
     };
 
     let redirect_uri = build_redirect_uri(&state.config, "github");
@@ -243,22 +272,36 @@ async fn github_callback(
         return axum::Json(serde_json::json!({
             "error": error,
             "description": query.error_description,
-        })).into_response();
+        }))
+        .into_response();
     }
 
     let client_id = match &state.config.github_client_id {
         Some(id) => id.clone(),
-        None => return axum::Json(serde_json::json!({"error": "GitHub OAuth2 not configured"})).into_response(),
+        None => {
+            return axum::Json(serde_json::json!({"error": "GitHub OAuth2 not configured"}))
+                .into_response()
+        }
     };
     let client_secret = match &state.config.github_client_secret {
         Some(s) => s.clone(),
-        None => return axum::Json(serde_json::json!({"error": "GitHub OAuth2 not configured"})).into_response(),
+        None => {
+            return axum::Json(serde_json::json!({"error": "GitHub OAuth2 not configured"}))
+                .into_response()
+        }
     };
 
     let redirect_uri = build_redirect_uri(&state.config, "github");
 
     // Exchange code for token
-    let token_resp = exchange_github_code(&state.client, &client_id, &client_secret, &redirect_uri, &query.code).await;
+    let token_resp = exchange_github_code(
+        &state.client,
+        &client_id,
+        &client_secret,
+        &redirect_uri,
+        &query.code,
+    )
+    .await;
     let access_token = match token_resp {
         Ok(token) => token,
         Err(e) => {
@@ -266,7 +309,8 @@ async fn github_callback(
             return axum::Json(serde_json::json!({
                 "error": "token_exchange_failed",
                 "message": e.to_string(),
-            })).into_response();
+            }))
+            .into_response();
         }
     };
 
@@ -279,7 +323,8 @@ async fn github_callback(
             return axum::Json(serde_json::json!({
                 "error": "user_info_failed",
                 "message": e.to_string(),
-            })).into_response();
+            }))
+            .into_response();
         }
     };
 
@@ -301,7 +346,6 @@ async fn exchange_github_code(
     redirect_uri: &str,
     code: &str,
 ) -> Result<String, String> {
-
     // GitHub uses JSON accept header for token endpoint
     let resp = client
         .post("https://github.com/login/oauth/access_token")
@@ -322,7 +366,9 @@ async fn exchange_github_code(
         return Err(format!("Token endpoint returned {}: {}", status, body));
     }
 
-    let data: serde_json::Value = resp.json().await
+    let data: serde_json::Value = resp
+        .json()
+        .await
         .map_err(|e| format!("Failed to parse token response: {}", e))?;
 
     data["access_token"]
@@ -331,8 +377,10 @@ async fn exchange_github_code(
         .ok_or_else(|| "No access_token in response".to_string())
 }
 
-async fn fetch_github_user_info(client: &reqwest::Client, access_token: &str) -> Result<OAuthUserInfo, String> {
-
+async fn fetch_github_user_info(
+    client: &reqwest::Client,
+    access_token: &str,
+) -> Result<OAuthUserInfo, String> {
     // Fetch user profile
     let resp = client
         .get("https://api.github.com/user")
@@ -342,7 +390,9 @@ async fn fetch_github_user_info(client: &reqwest::Client, access_token: &str) ->
         .await
         .map_err(|e| format!("HTTP error: {}", e))?;
 
-    let data: serde_json::Value = resp.json().await
+    let data: serde_json::Value = resp
+        .json()
+        .await
         .map_err(|e| format!("Failed to parse user info: {}", e))?;
 
     // Fetch primary email (GitHub returns public emails by default)
@@ -352,14 +402,18 @@ async fn fetch_github_user_info(client: &reqwest::Client, access_token: &str) ->
         .map(|s| s.to_string())
         .unwrap_or_else(|| {
             // Use login@github.com as fallback if no public email
-            format!("{}@github.users.noreply", data["login"].as_str().unwrap_or("unknown"))
+            format!(
+                "{}@github.users.noreply",
+                data["login"].as_str().unwrap_or("unknown")
+            )
         });
 
     Ok(OAuthUserInfo {
         provider: "github".to_string(),
         provider_user_id: data["id"].as_u64().unwrap_or(0).to_string(),
         email,
-        name: data["name"].as_str()
+        name: data["name"]
+            .as_str()
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| data["login"].as_str().unwrap_or("Unknown"))
             .to_string(),
@@ -402,25 +456,25 @@ async fn issue_token_for_oauth_user(state: &OAuth2State, user: OAuthUserInfo) ->
     let token = jsonwebtoken::encode(&header, &claims, &key);
 
     match token {
-        Ok(token_string) => {
-            axum::Json(serde_json::json!({
-                "access_token": token_string,
-                "token_type": "Bearer",
-                "expires_in": state.jwt_expiration_secs,
-                "user": {
-                    "provider": user.provider,
-                    "email": user.email,
-                    "name": user.name,
-                    "avatar_url": user.avatar_url,
-                },
-            })).into_response()
-        }
+        Ok(token_string) => axum::Json(serde_json::json!({
+            "access_token": token_string,
+            "token_type": "Bearer",
+            "expires_in": state.jwt_expiration_secs,
+            "user": {
+                "provider": user.provider,
+                "email": user.email,
+                "name": user.name,
+                "avatar_url": user.avatar_url,
+            },
+        }))
+        .into_response(),
         Err(e) => {
             error!(error = %e, "Failed to generate JWT for OAuth user");
             axum::Json(serde_json::json!({
                 "error": "token_generation_failed",
                 "message": e.to_string(),
-            })).into_response()
+            }))
+            .into_response()
         }
     }
 }
@@ -430,7 +484,9 @@ async fn issue_token_for_oauth_user(state: &OAuth2State, user: OAuthUserInfo) ->
 // ============================================================================
 
 fn build_redirect_uri(config: &OAuth2Config, provider: &str) -> String {
-    let base = config.redirect_base_url.as_deref()
+    let base = config
+        .redirect_base_url
+        .as_deref()
         .unwrap_or("http://localhost:8080");
     format!("{}/api/v1/auth/oauth2/{}/callback", base, provider)
 }

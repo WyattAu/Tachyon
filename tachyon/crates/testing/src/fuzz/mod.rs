@@ -2,7 +2,7 @@
 //!
 //! This module contains fuzzing tests using cargo-fuzz and libfuzzer.
 
-pub mod utilities;
+pub mod rbac;
 pub mod repository;
 pub mod search;
-pub mod rbac;
+pub mod utilities;

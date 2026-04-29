@@ -1,13 +1,13 @@
 use std::time::Duration;
 
-use axum::{Router, routing::get};
+use axum::{routing::get, Router};
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpListener;
 use tokio_tungstenite::tungstenite::Message;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, GetString, ReadTxn, Text, Transact};
 
-use tachyon_server::websocket::{CrdtConnectionManager, handle_crdt_websocket_upgrade};
+use tachyon_server::websocket::{handle_crdt_websocket_upgrade, CrdtConnectionManager};
 
 // ============================================================================
 // Helpers
@@ -99,7 +99,10 @@ async fn test_websocket_connect() {
     let url = format!("ws://{}/ws/crdt/test-doc-connect", addr);
 
     let (ws_stream, response) = tokio_tungstenite::connect_async(&url).await.unwrap();
-    assert!(response.status().is_success(), "WebSocket upgrade should succeed");
+    assert!(
+        response.status().is_success(),
+        "WebSocket upgrade should succeed"
+    );
     let (_write, mut read) = ws_stream.split();
 
     tokio::select! {
@@ -288,10 +291,7 @@ async fn test_initial_state_sent_to_new_client() {
     drop(txn);
 
     let txn = doc2.transact();
-    assert_eq!(
-        text2.get_string(&txn),
-        "Initial content from client 1"
-    );
+    assert_eq!(text2.get_string(&txn), "Initial content from client 1");
 }
 
 #[tokio::test]
@@ -450,19 +450,13 @@ async fn test_crdt_manager_direct() {
     drop(txn);
 
     manager.apply_update(doc_id, &update).unwrap();
-    assert_eq!(
-        manager.get_text(doc_id).unwrap(),
-        "Direct test content"
-    );
+    assert_eq!(manager.get_text(doc_id).unwrap(), "Direct test content");
 
     let state = manager.get_state(doc_id).unwrap();
     assert!(!state.is_empty());
 
     manager.set_text(doc_id, "Completely new text").unwrap();
-    assert_eq!(
-        manager.get_text(doc_id).unwrap(),
-        "Completely new text"
-    );
+    assert_eq!(manager.get_text(doc_id).unwrap(), "Completely new text");
 
     // Non-existent document returns empty string
     assert_eq!(manager.get_text("nonexistent").unwrap(), "");

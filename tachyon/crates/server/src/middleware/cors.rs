@@ -13,24 +13,32 @@ pub fn create_cors_layer(config: &ServerConfig) -> CorsLayer {
     let allow_origin = if config.cors.allowed_origins.contains(&"*".to_string()) {
         AllowOrigin::any()
     } else {
-        let origins: Vec<HeaderValue> = config.cors.allowed_origins
+        let origins: Vec<HeaderValue> = config
+            .cors
+            .allowed_origins
             .iter()
             .filter_map(|origin| origin.parse().ok())
             .collect();
         AllowOrigin::list(origins)
     };
 
-    let allow_methods: Vec<Method> = config.cors.allowed_methods
+    let allow_methods: Vec<Method> = config
+        .cors
+        .allowed_methods
         .iter()
         .filter_map(|m| m.parse().ok())
         .collect();
 
-    let allow_headers: Vec<axum::http::HeaderName> = config.cors.allowed_headers
+    let allow_headers: Vec<axum::http::HeaderName> = config
+        .cors
+        .allowed_headers
         .iter()
         .filter_map(|h| h.parse().ok())
         .collect();
 
-    let expose_headers: Vec<axum::http::HeaderName> = config.cors.exposed_headers
+    let expose_headers: Vec<axum::http::HeaderName> = config
+        .cors
+        .exposed_headers
         .iter()
         .filter_map(|h| h.parse().ok())
         .collect();

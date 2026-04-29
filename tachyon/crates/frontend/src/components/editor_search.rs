@@ -1,11 +1,8 @@
-use tachyon_editor::Editor;
 use leptos::prelude::*;
+use tachyon_editor::Editor;
 
 #[component]
-pub fn EditorSearch(
-    editor: RwSignal<Editor>,
-    show: RwSignal<bool>,
-) -> impl IntoView {
+pub fn EditorSearch(editor: RwSignal<Editor>, show: RwSignal<bool>) -> impl IntoView {
     let search_query = RwSignal::new(String::new());
     let replace_query = RwSignal::new(String::new());
     let case_sensitive = RwSignal::new(false);

@@ -59,7 +59,10 @@ impl SyncOperation {
             "delete" => Self::Delete,
             "permanent_delete" => Self::PermanentDelete,
             _ => {
-                warn!("Unknown sync operation '{}', defaulting to update_content", s);
+                warn!(
+                    "Unknown sync operation '{}', defaulting to update_content",
+                    s
+                );
                 Self::UpdateContent
             }
         }
@@ -185,11 +188,11 @@ impl SyncQueue {
             .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
             .foreign_keys(true);
 
-        let pool = sqlx::SqlitePool::connect_with(options)
-            .await
-            .map_err(|e| StorageError::Unavailable {
+        let pool = sqlx::SqlitePool::connect_with(options).await.map_err(|e| {
+            StorageError::Unavailable {
                 reason: format!("Failed to open SQLite database for sync queue: {}", e),
-            })?;
+            }
+        })?;
 
         Self::init_schema(&pool).await?;
 
@@ -204,11 +207,11 @@ impl SyncQueue {
             })?
             .create_if_missing(true);
 
-        let pool = sqlx::SqlitePool::connect_with(options)
-            .await
-            .map_err(|e| StorageError::Unavailable {
+        let pool = sqlx::SqlitePool::connect_with(options).await.map_err(|e| {
+            StorageError::Unavailable {
                 reason: format!("Failed to open in-memory SQLite: {}", e),
-            })?;
+            }
+        })?;
 
         Self::init_schema(&pool).await?;
 
@@ -371,15 +374,13 @@ impl SyncQueue {
 
     /// Mark an entry as successfully synced.
     pub async fn mark_synced(&self, entry_id: &str) -> Result<(), StorageError> {
-        sqlx::query(
-            "UPDATE sync_queue SET status = 'synced' WHERE id = ?1",
-        )
-        .bind(entry_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| StorageError::Internal {
-            message: format!("Failed to mark entry synced: {}", e),
-        })?;
+        sqlx::query("UPDATE sync_queue SET status = 'synced' WHERE id = ?1")
+            .bind(entry_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| StorageError::Internal {
+                message: format!("Failed to mark entry synced: {}", e),
+            })?;
         Ok(())
     }
 
@@ -454,14 +455,25 @@ impl SyncQueue {
 
         Ok(SyncQueueEntry {
             id: row.try_get::<&str, _>("id").unwrap_or_default().to_string(),
-            operation: SyncOperation::from_str_lossy(row.try_get::<&str, _>("operation").unwrap_or("")),
-            document_id: row.try_get::<&str, _>("document_id").unwrap_or_default().to_string(),
-            payload: row.try_get::<Option<&str>, _>("payload").unwrap_or(None).map(|s| s.to_string()),
+            operation: SyncOperation::from_str_lossy(
+                row.try_get::<&str, _>("operation").unwrap_or(""),
+            ),
+            document_id: row
+                .try_get::<&str, _>("document_id")
+                .unwrap_or_default()
+                .to_string(),
+            payload: row
+                .try_get::<Option<&str>, _>("payload")
+                .unwrap_or(None)
+                .map(|s| s.to_string()),
             status: SyncEntryStatus::from_str_lossy(row.try_get::<&str, _>("status").unwrap_or("")),
             retry_count: row.try_get::<i32, _>("retry_count").unwrap_or(0) as u32,
             created_at,
             last_attempt_at,
-            last_error: row.try_get::<Option<&str>, _>("last_error").unwrap_or(None).map(|s| s.to_string()),
+            last_error: row
+                .try_get::<Option<&str>, _>("last_error")
+                .unwrap_or(None)
+                .map(|s| s.to_string()),
         })
     }
 }
@@ -479,7 +491,14 @@ mod tests {
         let queue = SyncQueue::in_memory().await.unwrap();
         assert!(queue.is_available().await);
 
-        let id = queue.enqueue(SyncOperation::Create, "doc-1", Some(r#"{"title":"Hello"}"#.to_string())).await.unwrap();
+        let id = queue
+            .enqueue(
+                SyncOperation::Create,
+                "doc-1",
+                Some(r#"{"title":"Hello"}"#.to_string()),
+            )
+            .await
+            .unwrap();
         assert!(!id.is_empty());
 
         let entries = queue.pending_entries(10).await.unwrap();
@@ -492,7 +511,10 @@ mod tests {
     #[tokio::test]
     async fn test_state_transitions() {
         let queue = SyncQueue::in_memory().await.unwrap();
-        let id = queue.enqueue(SyncOperation::UpdateContent, "doc-2", None).await.unwrap();
+        let id = queue
+            .enqueue(SyncOperation::UpdateContent, "doc-2", None)
+            .await
+            .unwrap();
 
         // Pending → InFlight
         queue.mark_in_flight(&id).await.unwrap();
@@ -512,7 +534,10 @@ mod tests {
     #[tokio::test]
     async fn test_failure_and_retry() {
         let queue = SyncQueue::in_memory().await.unwrap();
-        let id = queue.enqueue(SyncOperation::Delete, "doc-3", None).await.unwrap();
+        let id = queue
+            .enqueue(SyncOperation::Delete, "doc-3", None)
+            .await
+            .unwrap();
 
         queue.mark_in_flight(&id).await.unwrap();
         queue.mark_failed(&id, "connection refused").await.unwrap();
@@ -532,9 +557,18 @@ mod tests {
     async fn test_summary() {
         let queue = SyncQueue::in_memory().await.unwrap();
 
-        queue.enqueue(SyncOperation::Create, "d1", None).await.unwrap();
-        queue.enqueue(SyncOperation::UpdateContent, "d2", None).await.unwrap();
-        queue.enqueue(SyncOperation::Delete, "d3", None).await.unwrap();
+        queue
+            .enqueue(SyncOperation::Create, "d1", None)
+            .await
+            .unwrap();
+        queue
+            .enqueue(SyncOperation::UpdateContent, "d2", None)
+            .await
+            .unwrap();
+        queue
+            .enqueue(SyncOperation::Delete, "d3", None)
+            .await
+            .unwrap();
 
         let summary = queue.summary().await.unwrap();
         assert_eq!(summary.pending_count, 3);
@@ -549,7 +583,10 @@ mod tests {
     async fn test_purge_synced() {
         let queue = SyncQueue::in_memory().await.unwrap();
 
-        let id = queue.enqueue(SyncOperation::Create, "d1", None).await.unwrap();
+        let id = queue
+            .enqueue(SyncOperation::Create, "d1", None)
+            .await
+            .unwrap();
         queue.mark_in_flight(&id).await.unwrap();
         queue.mark_synced(&id).await.unwrap();
 
@@ -563,8 +600,14 @@ mod tests {
     #[tokio::test]
     async fn test_clear() {
         let queue = SyncQueue::in_memory().await.unwrap();
-        queue.enqueue(SyncOperation::Create, "d1", None).await.unwrap();
-        queue.enqueue(SyncOperation::Delete, "d2", None).await.unwrap();
+        queue
+            .enqueue(SyncOperation::Create, "d1", None)
+            .await
+            .unwrap();
+        queue
+            .enqueue(SyncOperation::Delete, "d2", None)
+            .await
+            .unwrap();
 
         queue.clear().await.unwrap();
         let summary = queue.summary().await.unwrap();
@@ -575,11 +618,38 @@ mod tests {
     async fn test_multiple_operations() {
         let queue = SyncQueue::in_memory().await.unwrap();
 
-        queue.enqueue(SyncOperation::Create, "new-doc", Some(r#"{"title":"New"}"#.to_string())).await.unwrap();
-        queue.enqueue(SyncOperation::UpdateContent, "existing-doc", Some(r#"{"content":"edited"}"#.to_string())).await.unwrap();
-        queue.enqueue(SyncOperation::UpdateMetadata, "existing-doc", Some(r#"{"title":"Renamed"}"#.to_string())).await.unwrap();
-        queue.enqueue(SyncOperation::Delete, "old-doc", None).await.unwrap();
-        queue.enqueue(SyncOperation::PermanentDelete, "gone-doc", None).await.unwrap();
+        queue
+            .enqueue(
+                SyncOperation::Create,
+                "new-doc",
+                Some(r#"{"title":"New"}"#.to_string()),
+            )
+            .await
+            .unwrap();
+        queue
+            .enqueue(
+                SyncOperation::UpdateContent,
+                "existing-doc",
+                Some(r#"{"content":"edited"}"#.to_string()),
+            )
+            .await
+            .unwrap();
+        queue
+            .enqueue(
+                SyncOperation::UpdateMetadata,
+                "existing-doc",
+                Some(r#"{"title":"Renamed"}"#.to_string()),
+            )
+            .await
+            .unwrap();
+        queue
+            .enqueue(SyncOperation::Delete, "old-doc", None)
+            .await
+            .unwrap();
+        queue
+            .enqueue(SyncOperation::PermanentDelete, "gone-doc", None)
+            .await
+            .unwrap();
 
         let entries = queue.pending_entries(10).await.unwrap();
         assert_eq!(entries.len(), 5);

@@ -1,11 +1,10 @@
 // Integration tests for role management routes
 use axum::{
     body::Body,
-    http::{Request, StatusCode, header},
-    Router,
+    http::{Request, StatusCode},
 };
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -96,7 +95,8 @@ async fn test_list_roles() {
         .expect("Request failed");
 
     assert!(
-        response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
+        response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
         "Expected OK or INTERNAL_SERVER_ERROR, got {}",
         response.status()
     );
@@ -105,11 +105,19 @@ async fn test_list_roles() {
     }
     let body = common::read_body_json(response).await;
 
-    let roles = body["roles"].as_array()
+    let roles = body["roles"]
+        .as_array()
         .or_else(|| body["data"].as_array())
         .or_else(|| body.as_array());
-    assert!(roles.is_some(), "Response should contain roles array, got: {}", body);
-    assert!(!roles.unwrap().is_empty(), "Should have at least one role after seeding");
+    assert!(
+        roles.is_some(),
+        "Response should contain roles array, got: {}",
+        body
+    );
+    assert!(
+        !roles.unwrap().is_empty(),
+        "Should have at least one role after seeding"
+    );
 }
 
 #[tokio::test]
@@ -202,7 +210,8 @@ async fn test_get_role_by_id() {
         .await
         .expect("Role creation failed");
 
-    if create_response.status() == StatusCode::CREATED || create_response.status() == StatusCode::OK {
+    if create_response.status() == StatusCode::CREATED || create_response.status() == StatusCode::OK
+    {
         let body = common::read_body_json(create_response).await;
         let role_id = body["id"].as_str().or_else(|| body["role_id"].as_str());
 
@@ -271,7 +280,8 @@ async fn test_update_role() {
         .await
         .expect("Role creation failed");
 
-    if create_response.status() == StatusCode::CREATED || create_response.status() == StatusCode::OK {
+    if create_response.status() == StatusCode::CREATED || create_response.status() == StatusCode::OK
+    {
         let body = common::read_body_json(create_response).await;
         let role_id = body["id"].as_str().or_else(|| body["role_id"].as_str());
 
@@ -342,7 +352,8 @@ async fn test_delete_role() {
         .await
         .expect("Role creation failed");
 
-    if create_response.status() == StatusCode::CREATED || create_response.status() == StatusCode::OK {
+    if create_response.status() == StatusCode::CREATED || create_response.status() == StatusCode::OK
+    {
         let body = common::read_body_json(create_response).await;
         let role_id = body["id"].as_str().or_else(|| body["role_id"].as_str());
 

@@ -70,7 +70,8 @@ impl Highlighter {
             heading_re: Regex::new(r"^(#{1,6})\s").unwrap(),
             bold_italic_re: Regex::new(r"\*\*\*[^*]+\*\*\*|___[^_]+___").unwrap(),
             bold_re: Regex::new(r"\*\*[^*]+\*\*|__[^_]+__").unwrap(),
-            italic_re: Regex::new(r"(?:^|\s)\*[^*\n]+\*|\*[^*\n]+\*(?:\s|$)|^_[^_\n]+_|_[^_\n]+_$").unwrap(),
+            italic_re: Regex::new(r"(?:^|\s)\*[^*\n]+\*|\*[^*\n]+\*(?:\s|$)|^_[^_\n]+_|_[^_\n]+_$")
+                .unwrap(),
             code_inline_re: Regex::new(r"`([^`]+)`").unwrap(),
             code_block_start_re: Regex::new(r"^(`{3,}).*").unwrap(),
             code_block_end_re: Regex::new(r"^(`{3,})\s*$").unwrap(),

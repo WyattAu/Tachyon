@@ -453,51 +453,168 @@ impl Enforcer {
     }
 
     fn seed_default_policies(&self) {
-        let admin_policy = Policy::new("default-admin", "Admin Full Access", PolicyType::Rbac)
+        let admin_policy =
+            Policy::new("default-admin", "Admin Full Access", PolicyType::Rbac).add_rule(
+                PolicyRule::new("admin-all", "role:admin", "*", "*", Effect::Allow),
+            );
+
+        let editor_policy = Policy::new("default-editor", "Editor Access", PolicyType::Rbac)
             .add_rule(PolicyRule::new(
-                "admin-all",
-                "role:admin",
-                "*",
-                "*",
+                "editor-doc-read",
+                "role:editor",
+                "document:*",
+                "read",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "editor-doc-write",
+                "role:editor",
+                "document:*",
+                "write",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "editor-doc-edit",
+                "role:editor",
+                "document:*",
+                "edit",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "editor-doc-delete",
+                "role:editor",
+                "document:*",
+                "delete",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "editor-space-read",
+                "role:editor",
+                "space:*",
+                "read",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "editor-space-write",
+                "role:editor",
+                "space:*",
+                "write",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "editor-node-read",
+                "role:editor",
+                "node:*",
+                "read",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "editor-node-write",
+                "role:editor",
+                "node:*",
+                "write",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "editor-node-edit",
+                "role:editor",
+                "node:*",
+                "edit",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "editor-node-delete",
+                "role:editor",
+                "node:*",
+                "delete",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "editor-search-read",
+                "role:editor",
+                "search:*",
+                "read",
                 Effect::Allow,
             ));
 
-        let editor_policy = Policy::new("default-editor", "Editor Access", PolicyType::Rbac)
-            .add_rule(PolicyRule::new("editor-doc-read", "role:editor", "document:*", "read", Effect::Allow))
-            .add_rule(PolicyRule::new("editor-doc-write", "role:editor", "document:*", "write", Effect::Allow))
-            .add_rule(PolicyRule::new("editor-doc-edit", "role:editor", "document:*", "edit", Effect::Allow))
-            .add_rule(PolicyRule::new("editor-doc-delete", "role:editor", "document:*", "delete", Effect::Allow))
-            .add_rule(PolicyRule::new("editor-space-read", "role:editor", "space:*", "read", Effect::Allow))
-            .add_rule(PolicyRule::new("editor-space-write", "role:editor", "space:*", "write", Effect::Allow))
-            .add_rule(PolicyRule::new("editor-node-read", "role:editor", "node:*", "read", Effect::Allow))
-            .add_rule(PolicyRule::new("editor-node-write", "role:editor", "node:*", "write", Effect::Allow))
-            .add_rule(PolicyRule::new("editor-node-edit", "role:editor", "node:*", "edit", Effect::Allow))
-            .add_rule(PolicyRule::new("editor-node-delete", "role:editor", "node:*", "delete", Effect::Allow))
-            .add_rule(PolicyRule::new("editor-search-read", "role:editor", "search:*", "read", Effect::Allow));
-
         let writer_policy = Policy::new("default-writer", "Writer Access", PolicyType::Rbac)
-            .add_rule(PolicyRule::new("writer-doc-read", "role:writer", "document:*", "read", Effect::Allow))
-            .add_rule(PolicyRule::new("writer-doc-write", "role:writer", "document:*", "write", Effect::Allow))
-            .add_rule(PolicyRule::new("writer-space-read", "role:writer", "space:*", "read", Effect::Allow))
-            .add_rule(PolicyRule::new("writer-node-read", "role:writer", "node:*", "read", Effect::Allow))
-            .add_rule(PolicyRule::new("writer-node-write", "role:writer", "node:*", "write", Effect::Allow))
-            .add_rule(PolicyRule::new("writer-search-read", "role:writer", "search:*", "read", Effect::Allow));
+            .add_rule(PolicyRule::new(
+                "writer-doc-read",
+                "role:writer",
+                "document:*",
+                "read",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "writer-doc-write",
+                "role:writer",
+                "document:*",
+                "write",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "writer-space-read",
+                "role:writer",
+                "space:*",
+                "read",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "writer-node-read",
+                "role:writer",
+                "node:*",
+                "read",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "writer-node-write",
+                "role:writer",
+                "node:*",
+                "write",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "writer-search-read",
+                "role:writer",
+                "search:*",
+                "read",
+                Effect::Allow,
+            ));
 
         let reader_policy = Policy::new("default-reader", "Reader Access", PolicyType::Rbac)
-            .add_rule(PolicyRule::new("reader-doc-read", "role:reader", "document:*", "read", Effect::Allow))
-            .add_rule(PolicyRule::new("reader-space-read", "role:reader", "space:*", "read", Effect::Allow))
-            .add_rule(PolicyRule::new("reader-node-read", "role:reader", "node:*", "read", Effect::Allow))
-            .add_rule(PolicyRule::new("reader-search-read", "role:reader", "search:*", "read", Effect::Allow));
+            .add_rule(PolicyRule::new(
+                "reader-doc-read",
+                "role:reader",
+                "document:*",
+                "read",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "reader-space-read",
+                "role:reader",
+                "space:*",
+                "read",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "reader-node-read",
+                "role:reader",
+                "node:*",
+                "read",
+                Effect::Allow,
+            ))
+            .add_rule(PolicyRule::new(
+                "reader-search-read",
+                "role:reader",
+                "search:*",
+                "read",
+                Effect::Allow,
+            ));
 
         // Add policies directly to the engine's internal map to avoid
         // blocking_write() on the cache (which panics inside async runtime).
         // The cache is empty at this point so invalidation is unnecessary.
-        let policies = [
-            admin_policy,
-            editor_policy,
-            writer_policy,
-            reader_policy,
-        ];
+        let policies = [admin_policy, editor_policy, writer_policy, reader_policy];
         for policy in policies {
             self.policy_engine.add_policy_no_invalidate(policy);
         }

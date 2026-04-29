@@ -69,8 +69,7 @@ pub fn WikilinkAutocomplete(
             "ArrowDown" => {
                 ev.prevent_default();
                 ev.stop_propagation();
-                let count = completions
-                    .with(|c| c.as_ref().map(|v| v.len()).unwrap_or(0));
+                let count = completions.with(|c| c.as_ref().map(|v| v.len()).unwrap_or(0));
                 if count > 0 {
                     let idx = highlighted_idx.get();
                     set_highlighted_idx.set((idx + 1) % count);
@@ -79,8 +78,7 @@ pub fn WikilinkAutocomplete(
             "ArrowUp" => {
                 ev.prevent_default();
                 ev.stop_propagation();
-                let count = completions
-                    .with(|c| c.as_ref().map(|v| v.len()).unwrap_or(0));
+                let count = completions.with(|c| c.as_ref().map(|v| v.len()).unwrap_or(0));
                 if count > 0 {
                     let idx = highlighted_idx.get();
                     set_highlighted_idx.set(idx.saturating_sub(1));

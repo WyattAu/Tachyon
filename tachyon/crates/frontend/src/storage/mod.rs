@@ -138,7 +138,11 @@ impl BrowserStore {
                         }
                         Err(e) => {
                             web_sys::console::log_1(
-                                &format!("[BrowserStore] IndexedDB init failed, using localStorage: {}", e).into(),
+                                &format!(
+                                    "[BrowserStore] IndexedDB init failed, using localStorage: {}",
+                                    e
+                                )
+                                .into(),
                             );
                         }
                     }
@@ -149,7 +153,11 @@ impl BrowserStore {
                 }
                 Err(e) => {
                     web_sys::console::log_1(
-                        &format!("[BrowserStore] IndexedDB unavailable, using localStorage: {}", e).into(),
+                        &format!(
+                            "[BrowserStore] IndexedDB unavailable, using localStorage: {}",
+                            e
+                        )
+                        .into(),
                     );
                 }
             }
@@ -183,18 +191,20 @@ impl BrowserStore {
         }
 
         // Async: persist to IndexedDB if ready
-        let docs = self.documents.lock()
+        let docs = self
+            .documents
+            .lock()
             .ok()
-            .and_then(|docs| {
-                serde_json::to_string(&*docs).ok()
-            });
+            .and_then(|docs| serde_json::to_string(&*docs).ok());
         let idb_ready_val = self.idb_ready.lock().map(|r| *r).unwrap_or(false);
 
         if idb_ready_val {
             if let Some(json) = docs {
                 wasm_bindgen_futures::spawn_local(async move {
                     if let Ok(idb) = indexeddb::IndexedDBStore::open().await {
-                        if let Ok(map) = serde_json::from_str::<HashMap<String, StoredDocument>>(&json) {
+                        if let Ok(map) =
+                            serde_json::from_str::<HashMap<String, StoredDocument>>(&json)
+                        {
                             for (_, doc) in map {
                                 let _ = idb.put(doc).await;
                             }
@@ -316,7 +326,9 @@ impl BrowserStore {
         let idb_ready_val = self.idb_ready.lock().map(|r| *r).unwrap_or(false);
         if idb_ready_val {
             wasm_bindgen_futures::spawn_local(async move {
-                if let Ok(idb) = indexeddb::IndexedDBStore::open().await { let _ = idb.clear().await; }
+                if let Ok(idb) = indexeddb::IndexedDBStore::open().await {
+                    let _ = idb.clear().await;
+                }
             });
         }
     }
@@ -589,7 +601,13 @@ mod tests {
         assert_eq!(SyncState::Idle, SyncState::Idle);
         assert_eq!(SyncState::Offline, SyncState::Offline);
         assert_ne!(SyncState::Idle, SyncState::Syncing);
-        assert_eq!(SyncState::Error("err".to_string()), SyncState::Error("err".to_string()));
-        assert_ne!(SyncState::Error("a".to_string()), SyncState::Error("b".to_string()));
+        assert_eq!(
+            SyncState::Error("err".to_string()),
+            SyncState::Error("err".to_string())
+        );
+        assert_ne!(
+            SyncState::Error("a".to_string()),
+            SyncState::Error("b".to_string())
+        );
     }
 }

@@ -558,7 +558,7 @@ mod tests {
     fn test_user_creation() {
         let user_id = crate::id::generate_user_id();
         let user = User::new(
-            user_id.clone(),
+            user_id,
             "testuser".to_string(),
             "Test User".to_string(),
             UserRole::Writer,
@@ -607,16 +607,12 @@ mod tests {
     #[test]
     fn test_user_builder() {
         let user_id = crate::id::generate_user_id();
-        let user = UserBuilder::new(
-            user_id.clone(),
-            "testuser".to_string(),
-            "Test User".to_string(),
-        )
-        .email("test@example.com".to_string())
-        .role(UserRole::Editor)
-        .active(true)
-        .build()
-        .expect("Should build user");
+        let user = UserBuilder::new(user_id, "testuser".to_string(), "Test User".to_string())
+            .email("test@example.com".to_string())
+            .role(UserRole::Editor)
+            .active(true)
+            .build()
+            .expect("Should build user");
 
         assert_eq!(user.username, "testuser");
         assert_eq!(user.email, Some("test@example.com".to_string()));

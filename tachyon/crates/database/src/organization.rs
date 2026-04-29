@@ -132,7 +132,11 @@ impl OrganizationRepository {
     // -- Organization CRUD --
 
     #[instrument(skip(self, req))]
-    pub async fn create(&self, owner_id: &str, req: CreateOrganizationRequest) -> DatabaseResult<Organization> {
+    pub async fn create(
+        &self,
+        owner_id: &str,
+        req: CreateOrganizationRequest,
+    ) -> DatabaseResult<Organization> {
         let id = uuid::Uuid::new_v4().to_string();
         let now = Utc::now();
         let slug = slug::slugify(&req.name);
@@ -169,8 +173,13 @@ impl OrganizationRepository {
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| {
-                if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
-                    DatabaseError::duplicate("organization", format!("Organization '{}' already exists", req.name))
+                if e.to_string().contains("duplicate key")
+                    || e.to_string().contains("UNIQUE constraint")
+                {
+                    DatabaseError::duplicate(
+                        "organization",
+                        format!("Organization '{}' already exists", req.name),
+                    )
                 } else {
                     DatabaseError::QueryError(e.to_string())
                 }
@@ -279,7 +288,11 @@ impl OrganizationRepository {
     }
 
     #[instrument(skip(self, req))]
-    pub async fn update(&self, id: &str, req: UpdateOrganizationRequest) -> DatabaseResult<Organization> {
+    pub async fn update(
+        &self,
+        id: &str,
+        req: UpdateOrganizationRequest,
+    ) -> DatabaseResult<Organization> {
         let existing = self.get_by_id(id).await?;
         let now = Utc::now();
 
@@ -357,7 +370,11 @@ impl OrganizationRepository {
     }
 
     #[instrument(skip(self))]
-    pub async fn count_for_user(&self, user_id: &str, include_personal: bool) -> DatabaseResult<i64> {
+    pub async fn count_for_user(
+        &self,
+        user_id: &str,
+        include_personal: bool,
+    ) -> DatabaseResult<i64> {
         let (count_sql, _) = if include_personal {
             (
                 "SELECT COUNT(*) as count FROM organizations WHERE owner_id = $1::uuid OR id IN (SELECT organization_id FROM organization_members WHERE user_id = $1::uuid)",
@@ -383,7 +400,11 @@ impl OrganizationRepository {
     // -- Member management --
 
     #[instrument(skip(self, req))]
-    pub async fn add_member(&self, org_id: &str, req: AddOrganizationMemberRequest) -> DatabaseResult<OrganizationMember> {
+    pub async fn add_member(
+        &self,
+        org_id: &str,
+        req: AddOrganizationMemberRequest,
+    ) -> DatabaseResult<OrganizationMember> {
         let id = uuid::Uuid::new_v4().to_string();
         let role = req.role.unwrap_or_else(|| "viewer".to_string());
 
@@ -403,8 +424,13 @@ impl OrganizationRepository {
             .fetch_optional(&mut *conn)
             .await
             .map_err(|e| {
-                if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
-                    DatabaseError::duplicate("organization_member", "User is already a member of this organization")
+                if e.to_string().contains("duplicate key")
+                    || e.to_string().contains("UNIQUE constraint")
+                {
+                    DatabaseError::duplicate(
+                        "organization_member",
+                        "User is already a member of this organization",
+                    )
                 } else {
                     DatabaseError::QueryError(e.to_string())
                 }
@@ -423,7 +449,12 @@ impl OrganizationRepository {
     }
 
     #[instrument(skip(self))]
-    pub async fn list_members(&self, org_id: &str, limit: Option<i64>, offset: Option<i64>) -> DatabaseResult<Vec<OrganizationMember>> {
+    pub async fn list_members(
+        &self,
+        org_id: &str,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> DatabaseResult<Vec<OrganizationMember>> {
         let limit = limit.unwrap_or(100);
         let offset = offset.unwrap_or(0);
         let select_sql = format!(
@@ -444,7 +475,12 @@ impl OrganizationRepository {
     }
 
     #[instrument(skip(self, req))]
-    pub async fn update_member(&self, org_id: &str, user_id: &str, req: UpdateOrganizationMemberRequest) -> DatabaseResult<OrganizationMember> {
+    pub async fn update_member(
+        &self,
+        org_id: &str,
+        user_id: &str,
+        req: UpdateOrganizationMemberRequest,
+    ) -> DatabaseResult<OrganizationMember> {
         let update_sql = r#"
             UPDATE organization_members SET role = $1
             WHERE organization_id = $2::uuid AND user_id = $3::uuid
@@ -475,7 +511,10 @@ impl OrganizationRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        info!("Updated member {} role to {} in org {}", user_id, req.role, org_id);
+        info!(
+            "Updated member {} role to {} in org {}",
+            user_id, req.role, org_id
+        );
         Ok(member)
     }
 
@@ -523,7 +562,11 @@ impl OrganizationRepository {
 
     /// Get the role of a user in an organization
     #[instrument(skip(self))]
-    pub async fn get_member_role(&self, org_id: &str, user_id: &str) -> DatabaseResult<Option<String>> {
+    pub async fn get_member_role(
+        &self,
+        org_id: &str,
+        user_id: &str,
+    ) -> DatabaseResult<Option<String>> {
         // Owner check first
         let org = self.get_by_id(org_id).await?;
         if org.owner_id == user_id {
@@ -565,7 +608,10 @@ impl OrganizationRepository {
 
     /// Count members for multiple organizations in a single query
     #[instrument(skip(self))]
-    pub async fn count_members_batch(&self, org_ids: &[String]) -> DatabaseResult<HashMap<String, i64>> {
+    pub async fn count_members_batch(
+        &self,
+        org_ids: &[String],
+    ) -> DatabaseResult<HashMap<String, i64>> {
         if org_ids.is_empty() {
             return Ok(HashMap::new());
         }

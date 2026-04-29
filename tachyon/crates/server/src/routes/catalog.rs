@@ -11,8 +11,8 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tachyon_database::{
-    CatalogRepository, CatalogStats, Component, CreateComponentRequest,
-    CreateProjectRequest, Project, ProjectMember,
+    CatalogRepository, CatalogStats, Component, CreateComponentRequest, CreateProjectRequest,
+    Project, ProjectMember,
 };
 use tracing::{debug, info, instrument};
 
@@ -119,7 +119,10 @@ pub async fn create_project(
         }
         Err(e) => {
             debug!("Failed to create project: {}", e);
-            (StatusCode::BAD_REQUEST, Json(ApiResponse::<Project>::error(e.to_string())))
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<Project>::error(e.to_string())),
+            )
         }
     }
 }
@@ -136,20 +139,26 @@ pub async fn list_projects(
     let projects = if let Some(search) = &params.search {
         state.repo().search_projects(search, params.limit).await
     } else {
-        state.repo().list_projects(
-            params.project_type.as_deref(),
-            params.owner_id.as_deref(),
-            params.status.as_deref(),
-            params.limit,
-            params.offset,
-        ).await
+        state
+            .repo()
+            .list_projects(
+                params.project_type.as_deref(),
+                params.owner_id.as_deref(),
+                params.status.as_deref(),
+                params.limit,
+                params.offset,
+            )
+            .await
     };
 
     match projects {
         Ok(projects) => (StatusCode::OK, Json(ApiResponse::success(projects))),
         Err(e) => {
             debug!("Failed to list projects: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<Vec<Project>>::error(e.to_string())))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::<Vec<Project>>::error(e.to_string())),
+            )
         }
     }
 }
@@ -166,7 +175,10 @@ pub async fn get_project(
         Ok(project) => (StatusCode::OK, Json(ApiResponse::success(project))),
         Err(e) => {
             debug!("Project not found: {}", e);
-            (StatusCode::NOT_FOUND, Json(ApiResponse::<Project>::error(e.to_string())))
+            (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse::<Project>::error(e.to_string())),
+            )
         }
     }
 }
@@ -183,7 +195,10 @@ pub async fn get_project_by_slug(
         Ok(project) => (StatusCode::OK, Json(ApiResponse::success(project))),
         Err(e) => {
             debug!("Project not found: {}", e);
-            (StatusCode::NOT_FOUND, Json(ApiResponse::<Project>::error(e.to_string())))
+            (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse::<Project>::error(e.to_string())),
+            )
         }
     }
 }
@@ -208,7 +223,10 @@ pub async fn update_project(
         }
         Err(e) => {
             debug!("Failed to update project: {}", e);
-            (StatusCode::BAD_REQUEST, Json(ApiResponse::<Project>::error(e.to_string())))
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<Project>::error(e.to_string())),
+            )
         }
     }
 }
@@ -224,11 +242,17 @@ pub async fn delete_project(
     match state.repo().delete_project(&id).await {
         Ok(()) => {
             info!("Project deleted successfully: {}", id);
-            (StatusCode::OK, Json(ApiResponse::success(serde_json::json!({ "deleted": true }))))
+            (
+                StatusCode::OK,
+                Json(ApiResponse::success(serde_json::json!({ "deleted": true }))),
+            )
         }
         Err(e) => {
             debug!("Failed to delete project: {}", e);
-            (StatusCode::NOT_FOUND, Json(ApiResponse::<serde_json::Value>::error(e.to_string())))
+            (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse::<serde_json::Value>::error(e.to_string())),
+            )
         }
     }
 }
@@ -243,7 +267,10 @@ pub async fn create_component(
     State(state): State<CatalogState>,
     Json(request): Json<CreateComponentRequest>,
 ) -> impl IntoResponse {
-    info!("Creating component: {} for project: {}", request.name, request.project_id);
+    info!(
+        "Creating component: {} for project: {}",
+        request.name, request.project_id
+    );
 
     let id = uuid::Uuid::new_v4().to_string();
     let component = request.to_component(id);
@@ -255,7 +282,10 @@ pub async fn create_component(
         }
         Err(e) => {
             debug!("Failed to create component: {}", e);
-            (StatusCode::BAD_REQUEST, Json(ApiResponse::<Component>::error(e.to_string())))
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<Component>::error(e.to_string())),
+            )
         }
     }
 }
@@ -272,7 +302,10 @@ pub async fn get_component(
         Ok(component) => (StatusCode::OK, Json(ApiResponse::success(component))),
         Err(e) => {
             debug!("Component not found: {}", e);
-            (StatusCode::NOT_FOUND, Json(ApiResponse::<Component>::error(e.to_string())))
+            (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse::<Component>::error(e.to_string())),
+            )
         }
     }
 }
@@ -289,7 +322,10 @@ pub async fn list_project_components(
         Ok(components) => (StatusCode::OK, Json(ApiResponse::success(components))),
         Err(e) => {
             debug!("Failed to list components: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<Vec<Component>>::error(e.to_string())))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::<Vec<Component>>::error(e.to_string())),
+            )
         }
     }
 }
@@ -305,11 +341,17 @@ pub async fn delete_component(
     match state.repo().delete_component(&id).await {
         Ok(()) => {
             info!("Component deleted successfully: {}", id);
-            (StatusCode::OK, Json(ApiResponse::success(serde_json::json!({ "deleted": true }))))
+            (
+                StatusCode::OK,
+                Json(ApiResponse::success(serde_json::json!({ "deleted": true }))),
+            )
         }
         Err(e) => {
             debug!("Failed to delete component: {}", e);
-            (StatusCode::NOT_FOUND, Json(ApiResponse::<serde_json::Value>::error(e.to_string())))
+            (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse::<serde_json::Value>::error(e.to_string())),
+            )
         }
     }
 }
@@ -325,7 +367,10 @@ pub async fn add_project_member(
     Path(project_id): Path<String>,
     Json(request): Json<AddMemberRequest>,
 ) -> impl IntoResponse {
-    info!("Adding member {} to project {}", request.user_id, project_id);
+    info!(
+        "Adding member {} to project {}",
+        request.user_id, project_id
+    );
 
     let member = ProjectMember {
         id: 0, // Auto-generated
@@ -343,7 +388,10 @@ pub async fn add_project_member(
         }
         Err(e) => {
             debug!("Failed to add member: {}", e);
-            (StatusCode::BAD_REQUEST, Json(ApiResponse::<ProjectMember>::error(e.to_string())))
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<ProjectMember>::error(e.to_string())),
+            )
         }
     }
 }
@@ -360,7 +408,10 @@ pub async fn list_project_members(
         Ok(members) => (StatusCode::OK, Json(ApiResponse::success(members))),
         Err(e) => {
             debug!("Failed to list members: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<Vec<ProjectMember>>::error(e.to_string())))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::<Vec<ProjectMember>>::error(e.to_string())),
+            )
         }
     }
 }
@@ -373,14 +424,24 @@ pub async fn remove_project_member(
 ) -> impl IntoResponse {
     info!("Removing member {} from project {}", user_id, project_id);
 
-    match state.repo().remove_project_member(&project_id, &user_id).await {
+    match state
+        .repo()
+        .remove_project_member(&project_id, &user_id)
+        .await
+    {
         Ok(()) => {
             info!("Member removed successfully");
-            (StatusCode::OK, Json(ApiResponse::success(serde_json::json!({ "removed": true }))))
+            (
+                StatusCode::OK,
+                Json(ApiResponse::success(serde_json::json!({ "removed": true }))),
+            )
         }
         Err(e) => {
             debug!("Failed to remove member: {}", e);
-            (StatusCode::NOT_FOUND, Json(ApiResponse::<serde_json::Value>::error(e.to_string())))
+            (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse::<serde_json::Value>::error(e.to_string())),
+            )
         }
     }
 }
@@ -391,16 +452,17 @@ pub async fn remove_project_member(
 
 /// Get catalog statistics
 #[instrument(skip(state))]
-pub async fn get_catalog_stats(
-    State(state): State<CatalogState>,
-) -> impl IntoResponse {
+pub async fn get_catalog_stats(State(state): State<CatalogState>) -> impl IntoResponse {
     debug!("Getting catalog statistics");
 
     match state.repo().get_stats().await {
         Ok(stats) => (StatusCode::OK, Json(ApiResponse::success(stats))),
         Err(e) => {
             debug!("Failed to get stats: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<CatalogStats>::error(e.to_string())))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::<CatalogStats>::error(e.to_string())),
+            )
         }
     }
 }
@@ -436,11 +498,17 @@ pub fn create_catalog_router() -> Router<CatalogState> {
         .route("/components", post(create_component))
         .route("/components/{id}", get(get_component))
         .route("/components/{id}", delete(delete_component))
-        .route("/projects/{project_id}/components", get(list_project_components))
+        .route(
+            "/projects/{project_id}/components",
+            get(list_project_components),
+        )
         // Members
         .route("/projects/{project_id}/members", post(add_project_member))
         .route("/projects/{project_id}/members", get(list_project_members))
-        .route("/projects/{project_id}/members/{user_id}", delete(remove_project_member))
+        .route(
+            "/projects/{project_id}/members/{user_id}",
+            delete(remove_project_member),
+        )
         // Stats
         .route("/catalog/stats", get(get_catalog_stats))
 }

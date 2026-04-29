@@ -165,7 +165,7 @@ impl DocumentReviewRepository {
             ) VALUES ($1::uuid, $2::uuid, $3, 'pending', $4::uuid, $5, $6)
             RETURNING id::text as id, document_id::text as document_id, version_number,
                       status, reviewer_id::text as reviewer_id, summary, created_at, resolved_at
-            "#
+            "#,
         )
         .bind(&id)
         .bind(&req.document_id)
@@ -177,7 +177,10 @@ impl DocumentReviewRepository {
         .await
         .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        info!("Review created: {} for document {}", review.id, req.document_id);
+        info!(
+            "Review created: {} for document {}",
+            review.id, req.document_id
+        );
         Ok(review)
     }
 
@@ -209,7 +212,11 @@ impl DocumentReviewRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        debug!("Found {} reviews for document {}", reviews.len(), document_id);
+        debug!(
+            "Found {} reviews for document {}",
+            reviews.len(),
+            document_id
+        );
         Ok(reviews)
     }
 
@@ -229,7 +236,12 @@ impl DocumentReviewRepository {
             "rejected" => ReviewStatus::Rejected,
             "changes_requested" => ReviewStatus::ChangesRequested,
             "cancelled" => ReviewStatus::Cancelled,
-            _ => return Err(DatabaseError::ValidationError(format!("Unknown review status: {}", current.status))),
+            _ => {
+                return Err(DatabaseError::ValidationError(format!(
+                    "Unknown review status: {}",
+                    current.status
+                )))
+            }
         };
 
         if !current_status.can_transition_to(&req.status) {
@@ -240,7 +252,10 @@ impl DocumentReviewRepository {
         }
 
         let now = Utc::now();
-        let is_resolved = matches!(req.status, ReviewStatus::Approved | ReviewStatus::Rejected | ReviewStatus::Cancelled);
+        let is_resolved = matches!(
+            req.status,
+            ReviewStatus::Approved | ReviewStatus::Rejected | ReviewStatus::Cancelled
+        );
 
         let resolved_at: Option<DateTime<Utc>> = if is_resolved { Some(now) } else { None };
 
@@ -251,7 +266,7 @@ impl DocumentReviewRepository {
             WHERE id = $1::uuid
             RETURNING id::text as id, document_id::text as document_id, version_number,
                       status, reviewer_id::text as reviewer_id, summary, created_at, resolved_at
-            "#
+            "#,
         )
         .bind(id)
         .bind(req.status.to_string())
@@ -314,7 +329,7 @@ impl DocumentReviewRepository {
             VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5)
             RETURNING id::text as id, review_id::text as review_id,
                       author_id::text as author_id, content, created_at
-            "#
+            "#,
         )
         .bind(&id)
         .bind(&req.review_id)
@@ -378,7 +393,10 @@ mod tests {
     fn test_review_status_display() {
         assert_eq!(ReviewStatus::Pending.to_string(), "pending");
         assert_eq!(ReviewStatus::Approved.to_string(), "approved");
-        assert_eq!(ReviewStatus::ChangesRequested.to_string(), "changes_requested");
+        assert_eq!(
+            ReviewStatus::ChangesRequested.to_string(),
+            "changes_requested"
+        );
     }
 
     #[test]

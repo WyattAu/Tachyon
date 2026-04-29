@@ -440,13 +440,7 @@ mod tests {
         let target_id = crate::id::generate_node_id();
         let user_id = crate::id::generate_user_id();
 
-        let edge = Edge::new(
-            edge_id.clone(),
-            source_id.clone(),
-            target_id.clone(),
-            EdgeType::References,
-            user_id,
-        );
+        let edge = Edge::new(edge_id, source_id, target_id, EdgeType::References, user_id);
 
         assert_eq!(edge.id, edge_id);
         assert_eq!(edge.source_id, source_id);
@@ -465,20 +459,14 @@ mod tests {
         let edge = Edge::new(
             crate::id::generate_edge_id(),
             crate::id::generate_node_id(),
-            node_id.clone(),
+            node_id,
             EdgeType::RelatedTo,
             user_id,
         );
         assert!(edge.validate().is_ok());
 
         // Self-referencing edge
-        let invalid_edge = Edge::new(
-            edge_id,
-            node_id.clone(),
-            node_id,
-            EdgeType::References,
-            user_id,
-        );
+        let invalid_edge = Edge::new(edge_id, node_id, node_id, EdgeType::References, user_id);
         assert!(invalid_edge.validate().is_err());
     }
 
@@ -489,13 +477,7 @@ mod tests {
         let target_id = crate::id::generate_node_id();
         let user_id = crate::id::generate_user_id();
 
-        let edge = Edge::new(
-            edge_id.clone(),
-            source_id.clone(),
-            target_id.clone(),
-            EdgeType::DependsOn,
-            user_id,
-        );
+        let edge = Edge::new(edge_id, source_id, target_id, EdgeType::DependsOn, user_id);
         let reversed = edge.reversed();
 
         assert_eq!(reversed.source_id, target_id);

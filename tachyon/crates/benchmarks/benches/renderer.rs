@@ -10,7 +10,10 @@ fn generate_medium_md() -> String {
         md.push_str("- List item 1\n- List item 2\n- List item 3\n\n");
         md.push_str("| Column A | Column B | Column C |\n|----------|----------|----------|\n");
         for j in 0..5 {
-            md.push_str(&format!("| data {}-{} | data {}-{} | data {}-{} |\n", i, j, i, j, i, j));
+            md.push_str(&format!(
+                "| data {}-{} | data {}-{} | data {}-{} |\n",
+                i, j, i, j, i, j
+            ));
         }
         md.push_str("\n```rust\nfn example() -> u32 {\n    42\n}\n```\n\n");
     }
@@ -21,7 +24,10 @@ fn generate_large_md() -> String {
     let mut md = String::from("# Large Document\n\n");
     md.push_str("This is a large-sized markdown document for benchmarking.\n\n");
     for i in 0..200 {
-        md.push_str(&format!("## Section {}: Heading with **formatting**\n\n", i));
+        md.push_str(&format!(
+            "## Section {}: Heading with **formatting**\n\n",
+            i
+        ));
         md.push_str(&format!(
             "Paragraph {} with **bold**, *italic*, `code`, [links](https://example.com), and ~~strikethrough~~ text.\n\n",
             i
@@ -29,7 +35,9 @@ fn generate_large_md() -> String {
         md.push_str("> This is a blockquote for section.\n>\n> With multiple lines.\n\n");
         md.push_str(&format!(
             "1. Ordered item {}\n2. Ordered item {}\n3. Ordered item {}\n\n",
-            i * 3, i * 3 + 1, i * 3 + 2
+            i * 3,
+            i * 3 + 1,
+            i * 3 + 2
         ));
         md.push_str("| Header 1 | Header 2 | Header 3 | Header 4 |\n");
         md.push_str("|----------|----------|----------|----------|\n");

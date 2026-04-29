@@ -1,14 +1,13 @@
-use tachyon_core::types::user::UserRole;
-use tachyon_rbac::{
-    AuthContext, Enforcer, Resource, Subject,
-    types::{Action, Effect},
-};
 use tachyon_core::generate_session_id;
 use tachyon_core::generate_user_id;
+use tachyon_core::types::user::UserRole;
+use tachyon_rbac::{
+    types::{Action, Effect},
+    AuthContext, Enforcer, Resource, Subject,
+};
 
 fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err()
-        && std::env::var("TEST_DATABASE_URL").is_err()
+    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
 }
 
 #[test]
@@ -20,13 +19,14 @@ fn test_create_user_with_admin_role() {
 
     let user_id = generate_user_id();
     let mut user = tachyon_core::types::user::User::new(
-        user_id.clone(),
+        user_id,
         "admin_user".to_string(),
         "Admin User".to_string(),
         UserRole::Admin,
     );
     user.email = Some("admin@test.com".to_string());
-    user.set_password("AdminPass123!").expect("Failed to set password");
+    user.set_password("AdminPass123!")
+        .expect("Failed to set password");
 
     assert_eq!(user.permissions.role, UserRole::Admin);
     assert!(user.can_perform(tachyon_core::types::user::UserAction::Read));
@@ -62,7 +62,9 @@ fn test_rbac_enforcer_allows_admin_read() {
     let context = AuthContext::new(user_id, session_id).with_role("admin");
 
     let request = tachyon_rbac::types::AccessRequest::new(subject, resource, action, context);
-    let decision = enforcer.authorize(&request).expect("Authorization check failed");
+    let decision = enforcer
+        .authorize(&request)
+        .expect("Authorization check failed");
 
     // Default enforcer has no policies loaded, so it may deny by default.
     // Test verifies the authorization check completes successfully.
@@ -81,7 +83,9 @@ fn test_rbac_permission_enforcement() {
     let context = AuthContext::new(user_id, session_id).with_role("admin");
 
     let request = tachyon_rbac::types::AccessRequest::new(subject, resource, action, context);
-    let decision = enforcer.authorize(&request).expect("Authorization check failed");
+    let decision = enforcer
+        .authorize(&request)
+        .expect("Authorization check failed");
 
     // Default enforcer has no policies loaded, so it may deny by default.
     // Test verifies the authorization check completes successfully.
@@ -100,9 +104,15 @@ fn test_rbac_permission_denial_for_unauthorized_action() {
     let context = AuthContext::new(user_id, session_id).with_role("reader");
 
     let request = tachyon_rbac::types::AccessRequest::new(subject, resource, action, context);
-    let decision = enforcer.authorize(&request).expect("Authorization check failed");
+    let decision = enforcer
+        .authorize(&request)
+        .expect("Authorization check failed");
 
-    assert!(!decision.is_allowed(), "Reader should be denied admin configure: {}", decision.reason);
+    assert!(
+        !decision.is_allowed(),
+        "Reader should be denied admin configure: {}",
+        decision.reason
+    );
     assert_eq!(decision.effect, Effect::Deny);
 }
 

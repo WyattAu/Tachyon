@@ -1,10 +1,10 @@
 use axum::{
     body::Body,
-    http::{Request, StatusCode, header},
+    http::{header, Request, StatusCode},
 };
-use tower::ServiceExt;
-use serde_json::json;
 use http_body_util::BodyExt;
+use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -77,7 +77,10 @@ async fn test_jwt_validation_valid_token() {
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::OK || response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::INTERNAL_SERVER_ERROR || response.status() == StatusCode::NOT_FOUND,
+        response.status() == StatusCode::OK
+            || response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR
+            || response.status() == StatusCode::NOT_FOUND,
         "Expected OK, UNAUTHORIZED, INTERNAL_SERVER_ERROR, or NOT_FOUND, got {}",
         response.status()
     );
@@ -119,7 +122,9 @@ async fn test_jwt_expired_token_rejected() {
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+        response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::NOT_FOUND,
         "Expected UNAUTHORIZED, OK, or NOT_FOUND (no auth middleware in test router), got {}",
         response.status()
     );
@@ -147,7 +152,9 @@ async fn test_jwt_invalid_token_rejected() {
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+        response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::NOT_FOUND,
         "Expected UNAUTHORIZED, OK, or NOT_FOUND (no auth middleware in test router), got {}",
         response.status()
     );
@@ -175,7 +182,9 @@ async fn test_jwt_malformed_token_rejected() {
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+        response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::NOT_FOUND,
         "Expected UNAUTHORIZED, OK, or NOT_FOUND (no auth middleware in test router), got {}",
         response.status()
     );
@@ -202,7 +211,9 @@ async fn test_missing_auth_header_rejected() {
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+        response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::NOT_FOUND,
         "Expected UNAUTHORIZED, OK, or NOT_FOUND (no auth middleware in test router), got {}",
         response.status()
     );
@@ -224,12 +235,15 @@ async fn test_login_with_wrong_password() {
                 .method("POST")
                 .uri("/api/v1/auth/register")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "email": format!("wrongpass_{}@example.com", unique),
-                    "password": "CorrectPass123!",
-                    "username": format!("wrongpass_{}", unique),
-                    "display_name": format!("Wrong Pass User {}", unique)
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "email": format!("wrongpass_{}@example.com", unique),
+                        "password": "CorrectPass123!",
+                        "username": format!("wrongpass_{}", unique),
+                        "display_name": format!("Wrong Pass User {}", unique)
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -242,10 +256,13 @@ async fn test_login_with_wrong_password() {
                 .method("POST")
                 .uri("/api/v1/auth/login")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "username": format!("wrongpass_{}", unique),
-                    "password": "WrongPassword!"
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "username": format!("wrongpass_{}", unique),
+                        "password": "WrongPassword!"
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -253,8 +270,14 @@ async fn test_login_with_wrong_password() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body_bytes = response.into_body().collect().await.expect("failed to read body").to_bytes();
-    let body: serde_json::Value = serde_json::from_slice(&body_bytes).expect("body should be valid JSON");
+    let body_bytes = response
+        .into_body()
+        .collect()
+        .await
+        .expect("failed to read body")
+        .to_bytes();
+    let body: serde_json::Value =
+        serde_json::from_slice(&body_bytes).expect("body should be valid JSON");
     assert_eq!(body["success"], false);
 }
 

@@ -6,7 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tachyon_core::compute_content_hash;
-use tachyon_database::{DocumentRepository, init_with_migrations};
+use tachyon_database::{init_with_migrations, DocumentRepository};
 use tachyon_renderer::context::{RenderContext, RenderMetadata};
 use tachyon_renderer::page::{render_full_page, render_full_page_with_template, SiteConfig};
 use tachyon_renderer::{RenderConfig, Renderer, TemplateEngine};
@@ -138,7 +138,9 @@ impl BuildCommand {
             println!("Database URL: {}", database_url);
         }
 
-        let docs = if database_url.starts_with("postgres://") || database_url.starts_with("postgresql://") {
+        let docs = if database_url.starts_with("postgres://")
+            || database_url.starts_with("postgresql://")
+        {
             println!("Initializing database...");
             let pool = init_with_migrations(&database_url)
                 .await
@@ -187,9 +189,8 @@ impl BuildCommand {
 
         if self.clean && self.output_dir.exists() {
             println!("Cleaning output directory...");
-            fs::remove_dir_all(&self.output_dir).map_err(|e| {
-                CliError::io(&self.output_dir, format!("Failed to clean: {}", e))
-            })?;
+            fs::remove_dir_all(&self.output_dir)
+                .map_err(|e| CliError::io(&self.output_dir, format!("Failed to clean: {}", e)))?;
         }
 
         fs::create_dir_all(self.output_dir.join("docs")).map_err(|e| {
@@ -212,22 +213,23 @@ impl BuildCommand {
             base_url: self.base_url.clone(),
             theme_color: "#2563eb".to_string(),
             og_image: None,
-            template_dir: self.template.as_ref().map(|p| p.to_string_lossy().to_string()),
+            template_dir: self
+                .template
+                .as_ref()
+                .map(|p| p.to_string_lossy().to_string()),
         };
 
         let template_engine = match &self.template {
-            Some(path) if path.exists() => {
-                match TemplateEngine::from_directory(path) {
-                    Ok(engine) => {
-                        println!("Loaded template engine from: {}", path.display());
-                        Some(engine)
-                    }
-                    Err(e) => {
-                        eprintln!("Warning: Failed to load template engine from '{}': {}. Falling back to hardcoded template.", path.display(), e);
-                        None
-                    }
+            Some(path) if path.exists() => match TemplateEngine::from_directory(path) {
+                Ok(engine) => {
+                    println!("Loaded template engine from: {}", path.display());
+                    Some(engine)
                 }
-            }
+                Err(e) => {
+                    eprintln!("Warning: Failed to load template engine from '{}': {}. Falling back to hardcoded template.", path.display(), e);
+                    None
+                }
+            },
             Some(path) => {
                 eprintln!("Warning: Template directory '{}' does not exist. Falling back to hardcoded template.", path.display());
                 None
@@ -304,7 +306,12 @@ impl BuildCommand {
         }
 
         println!("Generating index page...");
-        generate_index(&self.output_dir, &docs, &site_config, template_engine.as_ref())?;
+        generate_index(
+            &self.output_dir,
+            &docs,
+            &site_config,
+            template_engine.as_ref(),
+        )?;
 
         println!("Generating sitemap...");
         generate_sitemap(&self.output_dir, &docs, &self.base_url)?;
@@ -312,7 +319,12 @@ impl BuildCommand {
         println!("Writing build manifest...");
         write_manifest(&self.output_dir, &new_manifest)?;
 
-        let removed = remove_stale(&self.output_dir, &load_manifest(&self.output_dir), &new_manifest, self.verbose)?;
+        let removed = remove_stale(
+            &self.output_dir,
+            &load_manifest(&self.output_dir),
+            &new_manifest,
+            self.verbose,
+        )?;
 
         let elapsed = start.elapsed();
 
@@ -346,7 +358,11 @@ impl BuildCommand {
                 return Ok(url);
             }
 
-            let db_path = self.repo_path.join(".tachyon").join("db").join("tachyon.db");
+            let db_path = self
+                .repo_path
+                .join(".tachyon")
+                .join("db")
+                .join("tachyon.db");
 
             if let Some(parent) = db_path.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| {
@@ -365,19 +381,20 @@ impl BuildCommand {
         self.collect_markdown_files(&self.repo_path, &mut docs)?;
         docs.sort_by(|a, b| a.slug.as_str().cmp(b.slug.as_str()));
         if self.verbose {
-            println!("  Scanned {} markdown files from {}", docs.len(), self.repo_path.display());
+            println!(
+                "  Scanned {} markdown files from {}",
+                docs.len(),
+                self.repo_path.display()
+            );
         }
         Ok(docs)
     }
 
     fn collect_markdown_files(&self, dir: &Path, docs: &mut Vec<DocInfo>) -> CliResult<()> {
-        let mut entries: Vec<_> = fs::read_dir(dir).map_err(|e| {
-            CliError::io(dir, format!("Failed to read directory: {}", e))
-        })?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| {
-            CliError::io(dir, format!("Failed to read directory entry: {}", e))
-        })?;
+        let mut entries: Vec<_> = fs::read_dir(dir)
+            .map_err(|e| CliError::io(dir, format!("Failed to read directory: {}", e)))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| CliError::io(dir, format!("Failed to read directory entry: {}", e)))?;
 
         entries.sort_by_key(|e| e.file_name());
 
@@ -387,7 +404,11 @@ impl BuildCommand {
             if path.is_dir() {
                 let name = path.file_name().map(|n| n.to_string_lossy().to_string());
                 if let Some(ref name) = name {
-                    if name.starts_with('.') || name == "node_modules" || name == "target" || name == "dist" {
+                    if name.starts_with('.')
+                        || name == "node_modules"
+                        || name == "target"
+                        || name == "dist"
+                    {
                         continue;
                     }
                 }
@@ -426,7 +447,11 @@ impl BuildCommand {
             slug,
             title,
             content,
-            description: if description.is_empty() { None } else { Some(description) },
+            description: if description.is_empty() {
+                None
+            } else {
+                Some(description)
+            },
             tags,
             updated_at: now.clone(),
             created_at: now,
@@ -492,8 +517,9 @@ fn render_document(
     };
 
     if let Some(engine) = template_engine {
-        render_full_page_with_template(&ctx, site, engine, "document.html")
-            .map_err(|e| CliError::build(format!("Template render failed for '{}': {}", doc.slug, e)))
+        render_full_page_with_template(&ctx, site, engine, "document.html").map_err(|e| {
+            CliError::build(format!("Template render failed for '{}': {}", doc.slug, e))
+        })
     } else {
         Ok(render_full_page(&ctx, site))
     }
@@ -539,7 +565,10 @@ fn generate_index(
                     )
                 })
                 .collect();
-            format!(r#"<div class="flex flex-wrap gap-1 mt-1">{}</div>"#, tags.join(""))
+            format!(
+                r#"<div class="flex flex-wrap gap-1 mt-1">{}</div>"#,
+                tags.join("")
+            )
         };
 
         items.push_str(&format!(
@@ -701,7 +730,9 @@ mod tests {
 
     #[test]
     fn test_build_command_from_args_defaults() {
-        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false, None);
+        let cmd = BuildCommand::from_args(
+            None, None, None, None, None, None, false, false, false, None,
+        );
         assert_eq!(cmd.repo_path, PathBuf::from("."));
         assert_eq!(cmd.output_dir, PathBuf::from("dist"));
         assert!(cmd.database_url.is_none());
@@ -730,7 +761,10 @@ mod tests {
         );
         assert_eq!(cmd.repo_path, PathBuf::from("/repo"));
         assert_eq!(cmd.output_dir, PathBuf::from("/out"));
-        assert_eq!(cmd.database_url, Some("postgres://localhost/db".to_string()));
+        assert_eq!(
+            cmd.database_url,
+            Some("postgres://localhost/db".to_string())
+        );
         assert_eq!(cmd.site_title, "My Site");
         assert_eq!(cmd.site_description, "My Desc");
         assert_eq!(cmd.base_url, "https://example.com");
@@ -831,7 +865,11 @@ mod tests {
         let dir = tempdir().unwrap();
         fs::write(dir.path().join("README.md"), "# Readme\n").unwrap();
         fs::create_dir_all(dir.path().join("sub")).unwrap();
-        fs::write(dir.path().join("sub").join("guide.md"), "---\ntitle: Guide\n---\n\nGuide content").unwrap();
+        fs::write(
+            dir.path().join("sub").join("guide.md"),
+            "---\ntitle: Guide\n---\n\nGuide content",
+        )
+        .unwrap();
 
         let cmd = BuildCommand::from_args(
             Some(dir.path().to_path_buf()),
@@ -910,10 +948,7 @@ mod tests {
         assert_eq!(loaded.build_time, manifest.build_time);
         assert_eq!(loaded.commit_hash, manifest.commit_hash);
         assert_eq!(loaded.documents.len(), 1);
-        assert_eq!(
-            loaded.documents["getting-started"].content_hash,
-            "deadbeef"
-        );
+        assert_eq!(loaded.documents["getting-started"].content_hash, "deadbeef");
     }
 
     #[test]
@@ -925,7 +960,10 @@ mod tests {
 
     #[test]
     fn test_escape_html() {
-        assert_eq!(escape_html("<script>alert('xss')</script>"), "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;");
+        assert_eq!(
+            escape_html("<script>alert('xss')</script>"),
+            "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;"
+        );
         assert_eq!(escape_html("Hello & <World>"), "Hello &amp; &lt;World&gt;");
         assert_eq!(escape_html("plain text"), "plain text");
     }
@@ -935,7 +973,11 @@ mod tests {
         let dir = tempdir().unwrap();
         let output = dir.path().join("dist");
         fs::create_dir_all(output.join("docs").join("old-doc")).unwrap();
-        fs::write(output.join("docs").join("old-doc").join("index.html"), "old").unwrap();
+        fs::write(
+            output.join("docs").join("old-doc").join("index.html"),
+            "old",
+        )
+        .unwrap();
 
         let prev = BuildManifest {
             build_time: "2026-01-01T00:00:00+00:00".to_string(),
@@ -967,7 +1009,9 @@ mod tests {
 
     #[test]
     fn test_command_name_and_description() {
-        let cmd = BuildCommand::from_args(None, None, None, None, None, None, false, false, false, None);
+        let cmd = BuildCommand::from_args(
+            None, None, None, None, None, None, false, false, false, None,
+        );
         assert_eq!(cmd.name(), "build");
         assert!(cmd.description().contains("static site"));
     }

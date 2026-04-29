@@ -4,9 +4,8 @@
 
 #[allow(unused_imports)]
 use tachyon_core::{
-    Id, IdParseError,
     generate_document_id, generate_edge_id, generate_node_id, generate_repository_id,
-    generate_session_id, generate_tag_id, generate_user_id,
+    generate_session_id, generate_tag_id, generate_user_id, Id, IdParseError,
 };
 
 #[test]
@@ -66,7 +65,7 @@ fn test_id_clone_and_copy() {
     let id = Id::new();
     let copied = id;
     assert_eq!(id, copied);
-    let cloned = id.clone();
+    let cloned = id;
     assert_eq!(id, cloned);
 }
 

@@ -12,19 +12,15 @@ pub struct S3Storage {
 
 impl S3Storage {
     pub fn new(config: &StorageConfig) -> Result<Self, StorageError> {
-        let bucket = config
-            .s3_bucket
-            .clone()
-            .ok_or(StorageError::BackendError(
-                "S3 bucket not configured".to_string(),
-            ))?;
+        let bucket = config.s3_bucket.clone().ok_or(StorageError::BackendError(
+            "S3 bucket not configured".to_string(),
+        ))?;
         let region = config
             .s3_region
             .clone()
             .unwrap_or_else(|| "us-east-1".to_string());
 
-        let client_ready =
-            config.s3_access_key.is_some() && config.s3_secret_key.is_some();
+        let client_ready = config.s3_access_key.is_some() && config.s3_secret_key.is_some();
 
         Ok(Self {
             bucket,
@@ -50,12 +46,7 @@ impl StorageBackend for S3Storage {
         }
 
         let url = match &self.endpoint {
-            Some(endpoint) => format!(
-                "{}/{}/{}",
-                endpoint.trim_end_matches('/'),
-                self.bucket,
-                key
-            ),
+            Some(endpoint) => format!("{}/{}/{}", endpoint.trim_end_matches('/'), self.bucket, key),
             None => format!(
                 "https://{}.s3.{}.amazonaws.com/{}",
                 self.bucket, self.region, key
@@ -103,11 +94,7 @@ impl StorageBackend for S3Storage {
         ))
     }
 
-    async fn presigned_url(
-        &self,
-        key: &str,
-        expires_in_secs: u64,
-    ) -> Result<String, StorageError> {
+    async fn presigned_url(&self, key: &str, expires_in_secs: u64) -> Result<String, StorageError> {
         if !self.client_ready {
             return Err(StorageError::BackendError(
                 "S3 client not configured".to_string(),
@@ -115,12 +102,7 @@ impl StorageBackend for S3Storage {
         }
 
         let url = match &self.endpoint {
-            Some(endpoint) => format!(
-                "{}/{}/{}",
-                endpoint.trim_end_matches('/'),
-                self.bucket,
-                key
-            ),
+            Some(endpoint) => format!("{}/{}/{}", endpoint.trim_end_matches('/'), self.bucket, key),
             None => format!(
                 "https://{}.s3.{}.amazonaws.com/{}",
                 self.bucket, self.region, key

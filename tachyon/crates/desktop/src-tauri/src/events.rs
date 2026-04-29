@@ -1,19 +1,17 @@
 // Event handling for Tauri
 // Provides event emission from Rust backend to WebView
 
-use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter};
-use tachyon_core::{ErrorResult, TachyonError};
 use crate::state::ConnectionStatus;
+use serde::{Deserialize, Serialize};
+use tachyon_core::{ErrorResult, TachyonError};
+use tauri::{AppHandle, Emitter};
 
 /// Event types emitted from Rust backend to WebView
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum DesktopEvent {
     /// Connection status changed
-    ConnectionStatusChanged {
-        status: ConnectionStatus,
-    },
+    ConnectionStatusChanged { status: ConnectionStatus },
     /// Authentication status changed
     AuthStatusChanged {
         authenticated: bool,
@@ -25,25 +23,16 @@ pub enum DesktopEvent {
         message: Option<String>,
     },
     /// Document updated
-    DocumentUpdated {
-        document_id: String,
-        version: u64,
-    },
+    DocumentUpdated { document_id: String, version: u64 },
     /// Node updated
-    NodeUpdated {
-        node_id: String,
-        version: u64,
-    },
+    NodeUpdated { node_id: String, version: u64 },
     /// Repository status changed
     RepositoryStatusChanged {
         repository_id: Option<String>,
         status: RepositoryStatus,
     },
     /// File changed in local repository
-    FileChanged {
-        path: String,
-        kind: FileChangeKind,
-    },
+    FileChanged { path: String, kind: FileChangeKind },
     /// Error occurred
     Error {
         category: String,
@@ -165,7 +154,10 @@ impl DesktopEvent {
     /// # Arguments
     /// * `repository_id` - Repository ID if available
     /// * `status` - Repository status
-    pub fn repository_status_changed(repository_id: Option<String>, status: RepositoryStatus) -> Self {
+    pub fn repository_status_changed(
+        repository_id: Option<String>,
+        status: RepositoryStatus,
+    ) -> Self {
         Self::RepositoryStatusChanged {
             repository_id,
             status,
@@ -202,7 +194,11 @@ impl DesktopEvent {
     /// * `level` - Notification level
     /// * `title` - Notification title
     /// * `message` - Notification message
-    pub fn notification(level: NotificationLevel, title: impl Into<String>, message: impl Into<String>) -> Self {
+    pub fn notification(
+        level: NotificationLevel,
+        title: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
         Self::Notification {
             level,
             title: title.into(),
@@ -242,9 +238,9 @@ impl EventEmitter {
             DesktopEvent::Notification { .. } => "notification",
         };
 
-        self.app_handle
-            .emit(event_name, event)
-            .map_err(|e| TachyonError::internal("EMIT_ERROR", format!("Failed to emit event: {}", e)))
+        self.app_handle.emit(event_name, event).map_err(|e| {
+            TachyonError::internal("EMIT_ERROR", format!("Failed to emit event: {}", e))
+        })
     }
 
     /// Emit connection status changed event
@@ -260,7 +256,11 @@ impl EventEmitter {
     /// # Arguments
     /// * `authenticated` - Whether the user is authenticated
     /// * `user_id` - User ID if authenticated
-    pub fn emit_auth_status_changed(&self, authenticated: bool, user_id: Option<String>) -> ErrorResult<()> {
+    pub fn emit_auth_status_changed(
+        &self,
+        authenticated: bool,
+        user_id: Option<String>,
+    ) -> ErrorResult<()> {
         self.emit(DesktopEvent::auth_status_changed(authenticated, user_id))
     }
 
@@ -269,7 +269,11 @@ impl EventEmitter {
     /// # Arguments
     /// * `status` - Sync status
     /// * `message` - Optional status message
-    pub fn emit_sync_status_changed(&self, status: SyncStatus, message: Option<String>) -> ErrorResult<()> {
+    pub fn emit_sync_status_changed(
+        &self,
+        status: SyncStatus,
+        message: Option<String>,
+    ) -> ErrorResult<()> {
         self.emit(DesktopEvent::sync_status_changed(status, message))
     }
 
@@ -278,7 +282,11 @@ impl EventEmitter {
     /// # Arguments
     /// * `document_id` - Document ID
     /// * `version` - Document version
-    pub fn emit_document_updated(&self, document_id: impl Into<String>, version: u64) -> ErrorResult<()> {
+    pub fn emit_document_updated(
+        &self,
+        document_id: impl Into<String>,
+        version: u64,
+    ) -> ErrorResult<()> {
         self.emit(DesktopEvent::document_updated(document_id, version))
     }
 
@@ -296,8 +304,15 @@ impl EventEmitter {
     /// # Arguments
     /// * `repository_id` - Repository ID if available
     /// * `status` - Repository status
-    pub fn emit_repository_status_changed(&self, repository_id: Option<String>, status: RepositoryStatus) -> ErrorResult<()> {
-        self.emit(DesktopEvent::repository_status_changed(repository_id, status))
+    pub fn emit_repository_status_changed(
+        &self,
+        repository_id: Option<String>,
+        status: RepositoryStatus,
+    ) -> ErrorResult<()> {
+        self.emit(DesktopEvent::repository_status_changed(
+            repository_id,
+            status,
+        ))
     }
 
     /// Emit file changed event
@@ -305,7 +320,11 @@ impl EventEmitter {
     /// # Arguments
     /// * `path` - File path
     /// * `kind` - Change kind
-    pub fn emit_file_changed(&self, path: impl Into<String>, kind: FileChangeKind) -> ErrorResult<()> {
+    pub fn emit_file_changed(
+        &self,
+        path: impl Into<String>,
+        kind: FileChangeKind,
+    ) -> ErrorResult<()> {
         self.emit(DesktopEvent::file_changed(path, kind))
     }
 
@@ -323,7 +342,12 @@ impl EventEmitter {
     /// * `level` - Notification level
     /// * `title` - Notification title
     /// * `message` - Notification message
-    pub fn emit_notification(&self, level: NotificationLevel, title: impl Into<String>, message: impl Into<String>) -> ErrorResult<()> {
+    pub fn emit_notification(
+        &self,
+        level: NotificationLevel,
+        title: impl Into<String>,
+        message: impl Into<String>,
+    ) -> ErrorResult<()> {
         self.emit(DesktopEvent::notification(level, title, message))
     }
 }
@@ -351,7 +375,10 @@ mod tests {
     fn test_desktop_event_auth_status_changed() {
         let event = DesktopEvent::auth_status_changed(true, Some("user-123".to_string()));
         match event {
-            DesktopEvent::AuthStatusChanged { authenticated, user_id } => {
+            DesktopEvent::AuthStatusChanged {
+                authenticated,
+                user_id,
+            } => {
                 assert!(authenticated);
                 assert_eq!(user_id, Some("user-123".to_string()));
             }
@@ -363,7 +390,10 @@ mod tests {
     fn test_desktop_event_document_updated() {
         let event = DesktopEvent::document_updated("doc-123", 42);
         match event {
-            DesktopEvent::DocumentUpdated { document_id, version } => {
+            DesktopEvent::DocumentUpdated {
+                document_id,
+                version,
+            } => {
                 assert_eq!(document_id, "doc-123");
                 assert_eq!(version, 42);
             }
@@ -385,9 +415,14 @@ mod tests {
 
     #[test]
     fn test_desktop_event_notification() {
-        let event = DesktopEvent::notification(NotificationLevel::Warning, "Warning", "File modified");
+        let event =
+            DesktopEvent::notification(NotificationLevel::Warning, "Warning", "File modified");
         match event {
-            DesktopEvent::Notification { level, title, message } => {
+            DesktopEvent::Notification {
+                level,
+                title,
+                message,
+            } => {
                 assert_eq!(level, NotificationLevel::Warning);
                 assert_eq!(title, "Warning");
                 assert_eq!(message, "File modified");
@@ -401,7 +436,11 @@ mod tests {
         let error = TachyonError::validation("TEST_ERROR", "Test error message");
         let event = DesktopEvent::error(&error);
         match event {
-            DesktopEvent::Error { category, code, message } => {
+            DesktopEvent::Error {
+                category,
+                code,
+                message,
+            } => {
                 assert_eq!(category, "VALIDATION");
                 assert_eq!(code, "TEST_ERROR");
                 assert_eq!(message, "Test error message");

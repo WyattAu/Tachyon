@@ -1,7 +1,7 @@
 use axum::body::Body;
-use axum::http::{Request, StatusCode, header};
-use tower::ServiceExt;
+use axum::http::{header, Request, StatusCode};
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -39,13 +39,16 @@ async fn test_create_document() {
                 .uri("/api/v1/documents")
                 .header("Content-Type", "application/json")
                 .header(header::AUTHORIZATION, common::auth_header(&auth.token))
-                .body(Body::from(json!({
-                    "title": format!("Test Document {}", unique),
-                    "slug": format!("test-doc-{}", unique),
-                    "content_type": "Markdown",
-                    "visibility": "Private",
-                    "status": "Draft"
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "title": format!("Test Document {}", unique),
+                        "slug": format!("test-doc-{}", unique),
+                        "content_type": "Markdown",
+                        "visibility": "Private",
+                        "status": "Draft"
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -73,7 +76,7 @@ async fn test_read_document() {
         .clone()
         .oneshot(
             Request::builder()
-                .uri(&format!("/api/v1/documents/{}", fake_id))
+                .uri(format!("/api/v1/documents/{}", fake_id))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -102,11 +105,14 @@ async fn test_update_document() {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(&format!("/api/v1/documents/{}", fake_id))
+                .uri(format!("/api/v1/documents/{}", fake_id))
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "title": "Updated Title"
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "title": "Updated Title"
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -134,7 +140,7 @@ async fn test_delete_document() {
         .oneshot(
             Request::builder()
                 .method("DELETE")
-                .uri(&format!("/api/v1/documents/{}", fake_id))
+                .uri(format!("/api/v1/documents/{}", fake_id))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -168,10 +174,7 @@ async fn test_list_documents_with_filters() {
         .await
         .unwrap();
 
-    assert!(
-        response.status() == StatusCode::OK
-            || response.status() == StatusCode::UNAUTHORIZED
-    );
+    assert!(response.status() == StatusCode::OK || response.status() == StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

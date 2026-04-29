@@ -408,7 +408,7 @@ fn test_full_static_site_build() {
     create_test_repo(repo_dir.path()).unwrap();
 
     // Simulate full build workflow
-    let _build_steps = vec![
+    let _build_steps = [
         "create_output_structure",
         "copy_static_files",
         "generate_documentation",

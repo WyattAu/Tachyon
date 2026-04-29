@@ -1,10 +1,13 @@
 #![allow(clippy::redundant_locals)]
-use std::sync::Arc;
-use leptos::prelude::*;
-use wasm_bindgen::JsCast;
 use crate::api::ApiClient;
 use crate::components::EmptySearch;
-use crate::types::{GlobalSearchResponse, SearchResultItem, ProjectSearchResultItem, CreateSavedSearchRequest, SearchFilters};
+use crate::types::{
+    CreateSavedSearchRequest, GlobalSearchResponse, ProjectSearchResultItem, SearchFilters,
+    SearchResultItem,
+};
+use leptos::prelude::*;
+use std::sync::Arc;
+use wasm_bindgen::JsCast;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SearchCategory {
@@ -48,22 +51,41 @@ pub fn SearchPage() -> impl IntoView {
             let page = current_page.get();
             let _sort = sort_by.get();
             let mut f = SearchFilters::default();
-            if let Some(s) = selected_status.get() { f.status = Some(s); }
-            if let Some(v) = selected_visibility.get() { f.visibility = Some(v); }
+            if let Some(s) = selected_status.get() {
+                f.status = Some(s);
+            }
+            if let Some(v) = selected_visibility.get() {
+                f.visibility = Some(v);
+            }
             let tags = selected_tags.get();
-            if !tags.is_empty() { f.tags = Some(tags); }
+            if !tags.is_empty() {
+                f.tags = Some(tags);
+            }
             let df = date_from.get();
-            if !df.is_empty() { f.date_from = Some(df); }
+            if !df.is_empty() {
+                f.date_from = Some(df);
+            }
             let dt = date_to.get();
-            if !dt.is_empty() { f.date_to = Some(dt); }
+            if !dt.is_empty() {
+                f.date_to = Some(dt);
+            }
             async move {
-                if q.is_empty() { None }
-                else if cat == SearchCategory::All {
-                    client.global_search(&q, Some(&f), Some(page), Some(20)).await.ok()
+                if q.is_empty() {
+                    None
+                } else if cat == SearchCategory::All {
+                    client
+                        .global_search(&q, Some(&f), Some(page), Some(20))
+                        .await
+                        .ok()
                 } else {
-                    client.search(&q, Some(&f), Some(page), Some(20)).await.ok().map(|r| {
-                        GlobalSearchResponse { documents: r, projects: vec![] }
-                    })
+                    client
+                        .search(&q, Some(&f), Some(page), Some(20))
+                        .await
+                        .ok()
+                        .map(|r| GlobalSearchResponse {
+                            documents: r,
+                            projects: vec![],
+                        })
                 }
             }
         }
@@ -96,10 +118,18 @@ pub fn SearchPage() -> impl IntoView {
             let q = val.clone();
             let client_inner = client.clone();
             wasm_bindgen_futures::spawn_local(async move {
-                if q.len() < 2 { suggs.set(Vec::new()); return; }
+                if q.len() < 2 {
+                    suggs.set(Vec::new());
+                    return;
+                }
                 match client_inner.search_suggest(&q, Some(5)).await {
-                    Ok(items) => { suggs.set(items); show_sugg.set(true); }
-                    Err(_) => { suggs.set(Vec::new()); }
+                    Ok(items) => {
+                        suggs.set(items);
+                        show_sugg.set(true);
+                    }
+                    Err(_) => {
+                        suggs.set(Vec::new());
+                    }
                 }
             });
         });
@@ -127,20 +157,36 @@ pub fn SearchPage() -> impl IntoView {
         Arc::new(move || {
             let client = api_client.clone();
             let q = query.get();
-            if q.is_empty() { return; }
+            if q.is_empty() {
+                return;
+            }
             let mut f = SearchFilters::default();
-            if let Some(s) = selected_status.get() { f.status = Some(s); }
-            if let Some(v) = selected_visibility.get() { f.visibility = Some(v); }
+            if let Some(s) = selected_status.get() {
+                f.status = Some(s);
+            }
+            if let Some(v) = selected_visibility.get() {
+                f.visibility = Some(v);
+            }
             let tags = selected_tags.get();
-            if !tags.is_empty() { f.tags = Some(tags); }
+            if !tags.is_empty() {
+                f.tags = Some(tags);
+            }
             let df = date_from.get();
-            if !df.is_empty() { f.date_from = Some(df); }
+            if !df.is_empty() {
+                f.date_from = Some(df);
+            }
             let dt = date_to.get();
-            if !dt.is_empty() { f.date_to = Some(dt); }
+            if !dt.is_empty() {
+                f.date_to = Some(dt);
+            }
             let name = q.clone();
             let q2 = q.clone();
             wasm_bindgen_futures::spawn_local(async move {
-                let request = CreateSavedSearchRequest { name, query: q2, filters: Some(f) };
+                let request = CreateSavedSearchRequest {
+                    name,
+                    query: q2,
+                    filters: Some(f),
+                };
                 let _ = client.create_saved_search(&request).await;
             });
         })

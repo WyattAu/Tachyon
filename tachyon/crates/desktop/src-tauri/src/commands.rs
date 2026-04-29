@@ -3,13 +3,13 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-use tauri::{State, AppHandle};
 use tachyon_core::{DocumentStore, TachyonError};
+use tauri::{AppHandle, State};
 
-use crate::state::{DesktopStateManager, DesktopState, ConnectionStatus, DesktopAppState};
 use crate::events::EventEmitter;
-use crate::file_dialog::{FileDialogManager, FileDialogOptions, FileContent, FileWriteResult};
+use crate::file_dialog::{FileContent, FileDialogManager, FileDialogOptions, FileWriteResult};
 use crate::filesystem;
+use crate::state::{ConnectionStatus, DesktopAppState, DesktopState, DesktopStateManager};
 use crate::sync::{AutoSyncManager, SyncResult};
 use crate::EmbeddedServerState;
 
@@ -64,8 +64,7 @@ pub struct SyncRequest {
 /// Get current state
 #[tauri::command]
 pub async fn get_state(state: State<'_, DesktopStateManager>) -> Result<DesktopState, String> {
-    state.get_state()
-        .map_err(|e| e.to_string())
+    state.get_state().map_err(|e| e.to_string())
 }
 
 /// Set server URL
@@ -75,12 +74,14 @@ pub async fn set_server_url(
     state: State<'_, DesktopStateManager>,
     app: AppHandle,
 ) -> Result<(), String> {
-    state.set_server_url(url.clone())
+    state
+        .set_server_url(url.clone())
         .map_err(|e| e.to_string())?;
 
     // Emit connection status changed event
     let emitter = EventEmitter::new(app);
-    emitter.emit_connection_status_changed(ConnectionStatus::Connecting)
+    emitter
+        .emit_connection_status_changed(ConnectionStatus::Connecting)
         .map_err(|e| e.to_string())?;
 
     Ok(())
@@ -113,7 +114,8 @@ pub async fn authenticate(
     }
 
     // Get server URL from state
-    let server_url = state.get_state()
+    let server_url = state
+        .get_state()
         .map(|s| s.server_url.clone())
         .unwrap_or_else(|_| "http://localhost:8080".to_string());
 
@@ -121,16 +123,20 @@ pub async fn authenticate(
     match authenticate_with_server(&server_url, &request).await {
         Ok((token, user_id)) => {
             // Update state with authentication info
-            state.set_auth_token(Some(token.clone()))
+            state
+                .set_auth_token(Some(token.clone()))
                 .map_err(|e| e.to_string())?;
-            state.set_user_id(Some(user_id.clone()))
+            state
+                .set_user_id(Some(user_id.clone()))
                 .map_err(|e| e.to_string())?;
-            state.set_connection_status(ConnectionStatus::Connected)
+            state
+                .set_connection_status(ConnectionStatus::Connected)
                 .map_err(|e| e.to_string())?;
 
             // Emit authentication status changed event
             let emitter = EventEmitter::new(app);
-            emitter.emit_auth_status_changed(true, Some(user_id.clone()))
+            emitter
+                .emit_auth_status_changed(true, Some(user_id.clone()))
                 .map_err(|e| e.to_string())?;
 
             Ok(AuthResponse {
@@ -143,7 +149,7 @@ pub async fn authenticate(
         Err(e) => {
             // Update connection status to error
             let _ = state.set_connection_status(ConnectionStatus::Error);
-            
+
             Ok(AuthResponse {
                 success: false,
                 token: None,
@@ -168,14 +174,14 @@ async fn authenticate_with_server(
 ) -> Result<(String, String), String> {
     use reqwest::Client;
     use serde_json::json;
-    
+
     let client: Client = Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-    
+
     let auth_url = format!("{}/api/v1/auth/login", server_url.trim_end_matches('/'));
-    
+
     let response = client
         .post(&auth_url)
         .json(&json!({
@@ -185,35 +191,39 @@ async fn authenticate_with_server(
         .send()
         .await
         .map_err(|e| format!("Authentication request failed: {}", e))?;
-    
+
     if !response.status().is_success() {
         let status = response.status();
         let body: String = response.text().await.unwrap_or_default();
         return Err(format!("Authentication failed ({}): {}", status, body));
     }
-    
+
     // Parse the response
     #[derive(serde::Deserialize)]
     struct AuthResponseBody {
         token: Option<String>,
         user_id: Option<String>,
-        access_token: Option<String>,  // Alternative field names
+        access_token: Option<String>, // Alternative field names
         id: Option<String>,
     }
-    
-    let body: AuthResponseBody = response.json::<AuthResponseBody>().await
+
+    let body: AuthResponseBody = response
+        .json::<AuthResponseBody>()
+        .await
         .map_err(|e| format!("Failed to parse authentication response: {}", e))?;
-    
+
     // Extract token (check multiple possible field names)
-    let token = body.token
+    let token = body
+        .token
         .or(body.access_token)
         .ok_or_else(|| "No token in authentication response".to_string())?;
-    
+
     // Extract user ID (check multiple possible field names)
-    let user_id = body.user_id
+    let user_id = body
+        .user_id
         .or(body.id)
         .unwrap_or_else(|| format!("user_{}", uuid::Uuid::new_v4()));
-    
+
     Ok((token, user_id))
 }
 
@@ -233,18 +243,18 @@ async fn authenticate_with_server(
 fn authenticate_local_first(username: &str) -> Result<(String, String), String> {
     // Generate a deterministic user ID based on username
     use sha2::{Digest, Sha256};
-    
+
     let mut hasher = Sha256::new();
     hasher.update(username.as_bytes());
     hasher.update(b"tachyon-local-user");
     let hash = hasher.finalize();
     let user_id = format!("local_{}", hex::encode(&hash[..16]));
-    
+
     // Generate a local session token
     let token = format!("local_{}", uuid::Uuid::new_v4());
-    
+
     tracing::info!("Created local-first session for user: {}", username);
-    
+
     Ok((token, user_id))
 }
 
@@ -270,13 +280,16 @@ pub async fn authenticate_with_fallback(
         let (token, user_id) = authenticate_local_first(&request.username)?;
         return Ok((token, user_id, true));
     }
-    
+
     // Try server authentication first
     match authenticate_with_server(server_url, request).await {
         Ok((token, user_id)) => Ok((token, user_id, false)),
         Err(e) => {
-            tracing::warn!("Server authentication failed, falling back to local-first: {}", e);
-            
+            tracing::warn!(
+                "Server authentication failed, falling back to local-first: {}",
+                e
+            );
+
             // Fall back to local-first mode
             let (token, user_id) = authenticate_local_first(&request.username)?;
             Ok((token, user_id, true))
@@ -286,20 +299,17 @@ pub async fn authenticate_with_fallback(
 
 /// Logout
 #[tauri::command]
-pub async fn logout(
-    state: State<'_, DesktopStateManager>,
-    app: AppHandle,
-) -> Result<(), String> {
-    state.set_auth_token(None)
-        .map_err(|e| e.to_string())?;
-    state.set_user_id(None)
-        .map_err(|e| e.to_string())?;
-    state.set_connection_status(ConnectionStatus::Disconnected)
+pub async fn logout(state: State<'_, DesktopStateManager>, app: AppHandle) -> Result<(), String> {
+    state.set_auth_token(None).map_err(|e| e.to_string())?;
+    state.set_user_id(None).map_err(|e| e.to_string())?;
+    state
+        .set_connection_status(ConnectionStatus::Disconnected)
         .map_err(|e| e.to_string())?;
 
     // Emit authentication status changed event
     let emitter = EventEmitter::new(app);
-    emitter.emit_auth_status_changed(false, None)
+    emitter
+        .emit_auth_status_changed(false, None)
         .map_err(|e| e.to_string())?;
 
     Ok(())
@@ -312,7 +322,9 @@ pub async fn open_file_dialog(
     app: AppHandle,
 ) -> Result<crate::file_dialog::FileDialogResult, String> {
     let manager = FileDialogManager::new(app);
-    manager.open_file_dialog(options).await
+    manager
+        .open_file_dialog(options)
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -323,19 +335,17 @@ pub async fn save_file_dialog(
     app: AppHandle,
 ) -> Result<crate::file_dialog::FileDialogResult, String> {
     let manager = FileDialogManager::new(app);
-    manager.save_file_dialog(options).await
+    manager
+        .save_file_dialog(options)
+        .await
         .map_err(|e| e.to_string())
 }
 
 /// Read file content
 #[tauri::command]
-pub async fn read_file(
-    path: String,
-    app: AppHandle,
-) -> Result<FileContent, String> {
+pub async fn read_file(path: String, app: AppHandle) -> Result<FileContent, String> {
     let manager = FileDialogManager::new(app);
-    manager.read_file(path).await
-        .map_err(|e| e.to_string())
+    manager.read_file(path).await.map_err(|e| e.to_string())
 }
 
 /// Write file content
@@ -346,40 +356,33 @@ pub async fn write_file(
     app: AppHandle,
 ) -> Result<FileWriteResult, String> {
     let manager = FileDialogManager::new(app);
-    manager.write_file(path, content).await
+    manager
+        .write_file(path, content)
+        .await
         .map_err(|e| e.to_string())
 }
 
 /// Check if file exists
 #[tauri::command]
-pub async fn file_exists(
-    path: String,
-    app: AppHandle,
-) -> Result<bool, String> {
+pub async fn file_exists(path: String, app: AppHandle) -> Result<bool, String> {
     let manager = FileDialogManager::new(app);
-    manager.file_exists(path).await
-        .map_err(|e| e.to_string())
+    manager.file_exists(path).await.map_err(|e| e.to_string())
 }
 
 /// Delete file
 #[tauri::command]
-pub async fn delete_file(
-    path: String,
-    app: AppHandle,
-) -> Result<(), String> {
+pub async fn delete_file(path: String, app: AppHandle) -> Result<(), String> {
     let manager = FileDialogManager::new(app);
-    manager.delete_file(path).await
-        .map_err(|e| e.to_string())
+    manager.delete_file(path).await.map_err(|e| e.to_string())
 }
 
 /// Create directory
 #[tauri::command]
-pub async fn create_directory(
-    path: String,
-    app: AppHandle,
-) -> Result<(), String> {
+pub async fn create_directory(path: String, app: AppHandle) -> Result<(), String> {
     let manager = FileDialogManager::new(app);
-    manager.create_directory(path).await
+    manager
+        .create_directory(path)
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -391,7 +394,8 @@ pub async fn set_repository_path(
 ) -> Result<(), String> {
     use std::path::PathBuf;
     let path = PathBuf::from(request.repository_path);
-    state.set_repository_path(Some(path))
+    state
+        .set_repository_path(Some(path))
         .map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -403,12 +407,14 @@ pub async fn initialize_repository(
     _sync_manager: State<'_, AutoSyncManager>,
 ) -> Result<(), String> {
     // Get the configured repository path from state
-    let repo_path = state.get_state()
+    let repo_path = state
+        .get_state()
         .map(|s| s.repository_path.clone())
         .map_err(|e| e.to_string())?;
 
-    let path = repo_path
-        .ok_or_else(|| "Repository path not configured. Call set_repository_path first.".to_string())?;
+    let path = repo_path.ok_or_else(|| {
+        "Repository path not configured. Call set_repository_path first.".to_string()
+    })?;
 
     // Use spawn_blocking because git2::Repository is not Send.
     // initialize_repository() calls Repository::init(path) which creates
@@ -421,8 +427,12 @@ pub async fn initialize_repository(
         }
         // git2::Repository::init is a quick filesystem operation; we don't
         // need the full AutoSyncManager for this — just init the repo.
-        git2::Repository::init(&path_for_thread)
-            .map_err(|e| TachyonError::git("INIT_ERROR", format!("Failed to initialize repository: {}", e)))?;
+        git2::Repository::init(&path_for_thread).map_err(|e| {
+            TachyonError::git(
+                "INIT_ERROR",
+                format!("Failed to initialize repository: {}", e),
+            )
+        })?;
         Ok::<(), TachyonError>(())
     })
     .await
@@ -436,7 +446,9 @@ pub async fn commit_pending(
     sync_manager: State<'_, AutoSyncManager>,
     app: AppHandle,
 ) -> Result<SyncResult, String> {
-    let result = sync_manager.commit_pending().await
+    let result = sync_manager
+        .commit_pending()
+        .await
         .map_err(|e| e.to_string())?;
 
     // Emit sync status changed event
@@ -447,7 +459,8 @@ pub async fn commit_pending(
         crate::sync::SyncStatus::Failed => EventSyncStatus::Failed,
         _ => EventSyncStatus::Idle,
     };
-    emitter.emit_sync_status_changed(event_status, result.error.clone())
+    emitter
+        .emit_sync_status_changed(event_status, result.error.clone())
         .map_err(|e| e.to_string())?;
 
     Ok(result)
@@ -463,13 +476,16 @@ pub async fn push_to_remote(
     let remote_name = request.remote_name.as_deref().unwrap_or("origin");
     let branch_name = request.branch_name.as_deref().unwrap_or("main");
 
-    let result = sync_manager.push_to_remote(remote_name, branch_name).await
+    let result = sync_manager
+        .push_to_remote(remote_name, branch_name)
+        .await
         .map_err(|e| e.to_string())?;
 
     // Emit sync status changed event
     let emitter = EventEmitter::new(app);
     use crate::events::SyncStatus as EventSyncStatus;
-    emitter.emit_sync_status_changed(EventSyncStatus::Success, result.error.clone())
+    emitter
+        .emit_sync_status_changed(EventSyncStatus::Success, result.error.clone())
         .map_err(|e| e.to_string())?;
 
     Ok(result)
@@ -485,13 +501,16 @@ pub async fn pull_from_remote(
     let remote_name = request.remote_name.as_deref().unwrap_or("origin");
     let branch_name = request.branch_name.as_deref().unwrap_or("main");
 
-    let result = sync_manager.pull_from_remote(remote_name, branch_name).await
+    let result = sync_manager
+        .pull_from_remote(remote_name, branch_name)
+        .await
         .map_err(|e| e.to_string())?;
 
     // Emit sync status changed event
     let emitter = EventEmitter::new(app);
     use crate::events::SyncStatus as EventSyncStatus;
-    emitter.emit_sync_status_changed(EventSyncStatus::Success, result.error.clone())
+    emitter
+        .emit_sync_status_changed(EventSyncStatus::Success, result.error.clone())
         .map_err(|e| e.to_string())?;
 
     Ok(result)
@@ -507,38 +526,28 @@ pub async fn get_sync_status(
 
 /// Get commit queue size
 #[tauri::command]
-pub async fn get_queue_size(
-    sync_manager: State<'_, AutoSyncManager>,
-) -> Result<usize, String> {
+pub async fn get_queue_size(sync_manager: State<'_, AutoSyncManager>) -> Result<usize, String> {
     Ok(sync_manager.get_queue_size().await)
 }
 
 /// Clear commit queue
 #[tauri::command]
-pub async fn clear_queue(
-    sync_manager: State<'_, AutoSyncManager>,
-) -> Result<(), String> {
+pub async fn clear_queue(sync_manager: State<'_, AutoSyncManager>) -> Result<(), String> {
     sync_manager.clear_queue().await;
     Ok(())
 }
 
 /// Enable auto-sync
 #[tauri::command]
-pub async fn enable_auto_sync(
-    state: State<'_, DesktopStateManager>,
-) -> Result<(), String> {
-    state.set_auto_sync(true)
-        .map_err(|e| e.to_string())?;
+pub async fn enable_auto_sync(state: State<'_, DesktopStateManager>) -> Result<(), String> {
+    state.set_auto_sync(true).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 /// Disable auto-sync
 #[tauri::command]
-pub async fn disable_auto_sync(
-    state: State<'_, DesktopStateManager>,
-) -> Result<(), String> {
-    state.set_auto_sync(false)
-        .map_err(|e| e.to_string())?;
+pub async fn disable_auto_sync(state: State<'_, DesktopStateManager>) -> Result<(), String> {
+    state.set_auto_sync(false).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -548,7 +557,9 @@ pub async fn queue_file_change(
     path: String,
     sync_manager: State<'_, AutoSyncManager>,
 ) -> Result<(), String> {
-    sync_manager.queue_file_change(path).await
+    sync_manager
+        .queue_file_change(path)
+        .await
         .map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -591,29 +602,20 @@ pub async fn show_info_dialog(
 
 /// Check authentication status
 #[tauri::command]
-pub async fn is_authenticated(
-    state: State<'_, DesktopStateManager>,
-) -> Result<bool, String> {
-    state.is_authenticated()
-        .map_err(|e| e.to_string())
+pub async fn is_authenticated(state: State<'_, DesktopStateManager>) -> Result<bool, String> {
+    state.is_authenticated().map_err(|e| e.to_string())
 }
 
 /// Check connection status
 #[tauri::command]
-pub async fn is_connected(
-    state: State<'_, DesktopStateManager>,
-) -> Result<bool, String> {
-    state.is_connected()
-        .map_err(|e| e.to_string())
+pub async fn is_connected(state: State<'_, DesktopStateManager>) -> Result<bool, String> {
+    state.is_connected().map_err(|e| e.to_string())
 }
 
 /// Check if repository is configured
 #[tauri::command]
-pub async fn has_repository(
-    state: State<'_, DesktopStateManager>,
-) -> Result<bool, String> {
-    state.has_repository()
-        .map_err(|e| e.to_string())
+pub async fn has_repository(state: State<'_, DesktopStateManager>) -> Result<bool, String> {
+    state.has_repository().map_err(|e| e.to_string())
 }
 
 /// Start the file watcher for automatic change detection
@@ -623,15 +625,18 @@ pub async fn start_file_watcher(
     sync_manager: State<'_, AutoSyncManager>,
     app: AppHandle,
 ) -> Result<(), String> {
-    sync_manager.start_file_watcher(interval_secs)
+    sync_manager
+        .start_file_watcher(interval_secs)
         .map_err(|e| e.to_string())?;
 
     let emitter = EventEmitter::new(app);
-    emitter.emit_notification(
-        crate::events::NotificationLevel::Info,
-        "File Watcher Started",
-        "Watching repository for changes",
-    ).map_err(|e| e.to_string())?;
+    emitter
+        .emit_notification(
+            crate::events::NotificationLevel::Info,
+            "File Watcher Started",
+            "Watching repository for changes",
+        )
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -642,24 +647,25 @@ pub async fn stop_file_watcher(
     sync_manager: State<'_, AutoSyncManager>,
     app: AppHandle,
 ) -> Result<(), String> {
-    sync_manager.stop_file_watcher()
+    sync_manager
+        .stop_file_watcher()
         .map_err(|e| e.to_string())?;
 
     let emitter = EventEmitter::new(app);
-    emitter.emit_notification(
-        crate::events::NotificationLevel::Info,
-        "File Watcher Stopped",
-        "No longer watching for file changes",
-    ).map_err(|e| e.to_string())?;
+    emitter
+        .emit_notification(
+            crate::events::NotificationLevel::Info,
+            "File Watcher Stopped",
+            "No longer watching for file changes",
+        )
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
 
 /// Check if the file watcher is running
 #[tauri::command]
-pub async fn is_file_watching(
-    sync_manager: State<'_, AutoSyncManager>,
-) -> Result<bool, String> {
+pub async fn is_file_watching(sync_manager: State<'_, AutoSyncManager>) -> Result<bool, String> {
     Ok(sync_manager.is_watching())
 }
 
@@ -843,9 +849,7 @@ pub async fn open_path(path: String) -> Result<(), String> {
 ///
 /// Returns 0 if the server has not been started.
 #[tauri::command]
-pub fn get_embedded_server_port(
-    state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>,
-) -> u16 {
+pub fn get_embedded_server_port(state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>) -> u16 {
     match state.lock() {
         Ok(s) => s.port,
         Err(e) => {
@@ -869,9 +873,9 @@ pub async fn start_embedded_server(
 ) -> Result<u16, String> {
     // Prevent double-start
     {
-        let s = state.lock().map_err(|e| {
-            format!("Failed to lock embedded server state: {}", e)
-        })?;
+        let s = state
+            .lock()
+            .map_err(|e| format!("Failed to lock embedded server state: {}", e))?;
         if s.started {
             return Ok(s.port);
         }
@@ -904,16 +908,13 @@ pub async fn start_embedded_server(
         }
     };
 
-    let port = listener
-        .local_addr()
-        .map(|a| a.port())
-        .unwrap_or(0);
+    let port = listener.local_addr().map(|a| a.port()).unwrap_or(0);
 
     // Update state
     {
-        let mut s = state.lock().map_err(|e| {
-            format!("Failed to lock embedded server state: {}", e)
-        })?;
+        let mut s = state
+            .lock()
+            .map_err(|e| format!("Failed to lock embedded server state: {}", e))?;
         s.port = port;
         s.started = true;
     }
@@ -941,9 +942,7 @@ pub async fn start_embedded_server(
 /// the state as not started. The actual server task will terminate
 /// when the Tauri app exits.
 #[tauri::command]
-pub fn stop_embedded_server(
-    state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>,
-) -> bool {
+pub fn stop_embedded_server(state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>) -> bool {
     let mut s = match state.lock() {
         Ok(s) => s,
         Err(e) => {
@@ -984,16 +983,18 @@ pub async fn get_local_db_stats(
 
     let path = match db_path {
         Some(ref p) => p.clone(),
-        None => return Ok(LocalDbStats {
-            is_available: false,
-            total_documents: 0,
-            draft_count: 0,
-            published_count: 0,
-            archived_count: 0,
-            total_word_count: 0,
-            total_tags: 0,
-            database_path: None,
-        }),
+        None => {
+            return Ok(LocalDbStats {
+                is_available: false,
+                total_documents: 0,
+                draft_count: 0,
+                published_count: 0,
+                archived_count: 0,
+                total_word_count: 0,
+                total_tags: 0,
+                database_path: None,
+            })
+        }
     };
 
     let store = tachyon_storage::SqliteStore::open(&path)
@@ -1066,9 +1067,7 @@ pub async fn init_local_database(
 
 /// Get all tags from the local database
 #[tauri::command]
-pub async fn get_local_tags(
-    state: State<'_, DesktopStateManager>,
-) -> Result<Vec<String>, String> {
+pub async fn get_local_tags(state: State<'_, DesktopStateManager>) -> Result<Vec<String>, String> {
     let desktop_state = state.get_state().map_err(|e| e.to_string())?;
 
     let path = match &desktop_state.database_path {
@@ -1080,7 +1079,10 @@ pub async fn get_local_tags(
         .await
         .map_err(|e| format!("Failed to open local database: {}", e))?;
 
-    store.get_all_tags().await.map_err(|e| format!("Failed to get tags: {}", e))
+    store
+        .get_all_tags()
+        .await
+        .map_err(|e| format!("Failed to get tags: {}", e))
 }
 
 /// Search local documents
@@ -1110,11 +1112,7 @@ pub async fn search_local_documents(
         .map_err(|e| format!("Failed to open local database: {}", e))?;
 
     let result = store
-        .search_documents(
-            &query,
-            page.unwrap_or(1),
-            page_size.unwrap_or(20),
-        )
+        .search_documents(&query, page.unwrap_or(1), page_size.unwrap_or(20))
         .await
         .map_err(|e| format!("Failed to search local documents: {}", e))?;
 
@@ -1133,7 +1131,7 @@ pub async fn search_local_documents(
 #[tauri::command]
 pub async fn sync_enqueue(
     state: State<'_, DesktopStateManager>,
-    operation: String,       // "create" | "update_content" | "update_metadata" | "delete" | "permanent_delete"
+    operation: String, // "create" | "update_content" | "update_metadata" | "delete" | "permanent_delete"
     document_id: String,
     payload: Option<String>, // JSON: full metadata+content for create, partial for updates
 ) -> Result<String, String> {
@@ -1156,11 +1154,17 @@ pub async fn sync_enqueue(
         _ => return Err(format!("Unknown sync operation: {}", operation)),
     };
 
-    let entry_id = queue.enqueue(op, &document_id, payload)
+    let entry_id = queue
+        .enqueue(op, &document_id, payload)
         .await
         .map_err(|e| format!("Failed to enqueue sync entry: {}", e))?;
 
-    tracing::info!("Enqueued sync entry {} ({} on {})", entry_id, operation, document_id);
+    tracing::info!(
+        "Enqueued sync entry {} ({} on {})",
+        entry_id,
+        operation,
+        document_id
+    );
     Ok(entry_id)
 }
 
@@ -1179,7 +1183,10 @@ pub async fn sync_queue_summary(
         .await
         .map_err(|e| format!("Failed to open sync queue: {}", e))?;
 
-    queue.summary().await.map_err(|e| format!("Failed to get sync queue summary: {}", e))
+    queue
+        .summary()
+        .await
+        .map_err(|e| format!("Failed to get sync queue summary: {}", e))
 }
 
 /// Get pending sync entries (oldest first).
@@ -1198,7 +1205,8 @@ pub async fn sync_queue_pending(
         .await
         .map_err(|e| format!("Failed to open sync queue: {}", e))?;
 
-    queue.pending_entries(limit.unwrap_or(50))
+    queue
+        .pending_entries(limit.unwrap_or(50))
         .await
         .map_err(|e| format!("Failed to get pending entries: {}", e))
 }
@@ -1219,7 +1227,8 @@ pub async fn sync_mark_synced(
         .await
         .map_err(|e| format!("Failed to open sync queue: {}", e))?;
 
-    queue.mark_synced(&entry_id)
+    queue
+        .mark_synced(&entry_id)
         .await
         .map_err(|e| format!("Failed to mark entry synced: {}", e))
 }
@@ -1241,16 +1250,15 @@ pub async fn sync_mark_failed(
         .await
         .map_err(|e| format!("Failed to open sync queue: {}", e))?;
 
-    queue.mark_failed(&entry_id, &error)
+    queue
+        .mark_failed(&entry_id, &error)
         .await
         .map_err(|e| format!("Failed to mark entry failed: {}", e))
 }
 
 /// Purge successfully synced entries from the queue.
 #[tauri::command]
-pub async fn sync_purge_synced(
-    state: State<'_, DesktopStateManager>,
-) -> Result<u64, String> {
+pub async fn sync_purge_synced(state: State<'_, DesktopStateManager>) -> Result<u64, String> {
     let desktop_state = state.get_state().map_err(|e| e.to_string())?;
     let path = match &desktop_state.database_path {
         Some(p) => p.clone(),
@@ -1261,7 +1269,10 @@ pub async fn sync_purge_synced(
         .await
         .map_err(|e| format!("Failed to open sync queue: {}", e))?;
 
-    queue.purge_synced().await.map_err(|e| format!("Failed to purge synced entries: {}", e))
+    queue
+        .purge_synced()
+        .await
+        .map_err(|e| format!("Failed to purge synced entries: {}", e))
 }
 
 // ============================================================================
@@ -1282,7 +1293,8 @@ pub async fn set_connection_status(
         _ => return Err(format!("Unknown connection status: {}", status)),
     };
 
-    state.set_connection_status(conn_status)
+    state
+        .set_connection_status(conn_status)
         .map_err(|e| e.to_string())?;
 
     tracing::info!("Connection status changed to: {}", status);
@@ -1291,9 +1303,7 @@ pub async fn set_connection_status(
 
 /// Check if the app is currently online (has a connected status).
 #[tauri::command]
-pub async fn is_online(
-    state: State<'_, DesktopStateManager>,
-) -> Result<bool, String> {
+pub async fn is_online(state: State<'_, DesktopStateManager>) -> Result<bool, String> {
     state.is_connected().map_err(|e| e.to_string())
 }
 
@@ -1332,16 +1342,20 @@ pub async fn authenticate_offline(
     let token = format!("local_{}", uuid::Uuid::new_v4());
 
     // Update state with local auth
-    state.set_auth_token(Some(token.clone()))
+    state
+        .set_auth_token(Some(token.clone()))
         .map_err(|e| e.to_string())?;
-    state.set_user_id(Some(user_id.clone()))
+    state
+        .set_user_id(Some(user_id.clone()))
         .map_err(|e| e.to_string())?;
-    state.set_connection_status(ConnectionStatus::Disconnected)
+    state
+        .set_connection_status(ConnectionStatus::Disconnected)
         .map_err(|e| e.to_string())?;
 
     // Emit auth status changed event
     let emitter = EventEmitter::new(app);
-    emitter.emit_auth_status_changed(true, Some(user_id.clone()))
+    emitter
+        .emit_auth_status_changed(true, Some(user_id.clone()))
         .map_err(|e| e.to_string())?;
 
     tracing::info!("Created local-first session for user: {}", username);

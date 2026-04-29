@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
-use leptos::prelude::*;
 use crate::api::ApiClient;
 use crate::types::DocumentTemplate;
+use leptos::prelude::*;
 
 #[component]
 pub fn TemplateSelector(
@@ -18,15 +18,16 @@ pub fn TemplateSelector(
         let client = api_client.clone();
         let cat = selected_category.get();
         async move {
-            client.list_templates(cat.as_deref()).await.unwrap_or_default()
+            client
+                .list_templates(cat.as_deref())
+                .await
+                .unwrap_or_default()
         }
     });
 
     let categories_resource = LocalResource::new(move || {
         let client = api_client_for_categories.clone();
-        async move {
-            client.list_template_categories().await.unwrap_or_default()
-        }
+        async move { client.list_template_categories().await.unwrap_or_default() }
     });
 
     let on_select_for_grid = on_select;
@@ -108,7 +109,7 @@ pub fn TemplateSelector(
                                                 let on_select = on_select_for_grid;
                                                 view! {
                                                     <div
-                                                        class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg 
+                                                        class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg
                                                                hover:border-blue-500 cursor-pointer transition-colors"
                                                         on:click={move |_| set_preview_template.set(Some(tmpl_for_click.clone()))}
                                                     >
@@ -128,7 +129,7 @@ pub fn TemplateSelector(
                                                         <div class="mt-2 flex flex-wrap gap-1">
                                                             {template.tags.into_iter().map(|tag| {
                                                                 view! {
-                                                                    <span class="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 
+                                                                    <span class="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700
                                                                                  text-gray-600 dark:text-gray-300 rounded">
                                                                         {tag}
                                                                     </span>
@@ -136,7 +137,7 @@ pub fn TemplateSelector(
                                                             }).collect::<Vec<_>>()}
                                                         </div>
                                                         <button
-                                                            class="mt-3 px-3 py-1 text-sm bg-blue-600 text-white rounded 
+                                                            class="mt-3 px-3 py-1 text-sm bg-blue-600 text-white rounded
                                                                    hover:bg-blue-700 transition-colors"
                                                             on:click={move |ev| {
                                                                 ev.stop_propagation();
@@ -186,7 +187,7 @@ pub fn TemplateSelector(
                                 </div>
                                 <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
                                     <button
-                                        class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 
+                                        class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600
                                                rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                                         on:click={move |_| set_preview_template.set(None)}
                                     >
@@ -220,7 +221,7 @@ pub fn TemplateCard(
 
     view! {
         <div
-            class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 
+            class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700
                    hover:border-blue-500 cursor-pointer transition-colors"
             on:click={move |_| on_select.run(template_for_click.clone())}
         >
@@ -236,7 +237,7 @@ pub fn TemplateCard(
             {if let Some(cat) = &template.category {
                 let cat = cat.clone();
                 view! {
-                    <span class="mt-2 inline-block px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 
+                    <span class="mt-2 inline-block px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900
                                  text-blue-600 dark:text-blue-300 rounded">
                         {cat}
                     </span>

@@ -7,7 +7,7 @@ use axum::{
     response::{IntoResponse, Json, Response},
 };
 use serde::{Deserialize, Serialize};
-use tachyon_ssg::{SiteConfig as SsgSiteConfig, SiteGenerator, SsgDocument, BuildResult};
+use tachyon_ssg::{BuildResult, SiteConfig as SsgSiteConfig, SiteGenerator, SsgDocument};
 use tracing::{info, warn};
 
 /// State for SSG routes
@@ -104,7 +104,8 @@ pub struct SsgErrorResponse {
 pub async fn get_ssg_config() -> Json<SsgConfigResponse> {
     Json(SsgConfigResponse {
         site_title: "Tachyon".to_string(),
-        site_description: "A deterministic, high-performance knowledge management system".to_string(),
+        site_description: "A deterministic, high-performance knowledge management system"
+            .to_string(),
         base_url: "http://localhost:8080".to_string(),
         theme: "auto".to_string(),
         nav_links: vec![],
@@ -118,17 +119,21 @@ pub async fn build_site(
 ) -> Result<Json<SsgBuildResponse>, (StatusCode, Json<SsgErrorResponse>)> {
     info!("SSG build request received");
 
-    let documents = fetch_documents_for_ssg(&state.pool, req.project_id.as_deref(), req.limit.unwrap_or(0))
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(SsgErrorResponse {
-                    code: "FETCH_ERROR".to_string(),
-                    message: format!("Failed to fetch documents: {}", e),
-                }),
-            )
-        })?;
+    let documents = fetch_documents_for_ssg(
+        &state.pool,
+        req.project_id.as_deref(),
+        req.limit.unwrap_or(0),
+    )
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(SsgErrorResponse {
+                code: "FETCH_ERROR".to_string(),
+                message: format!("Failed to fetch documents: {}", e),
+            }),
+        )
+    })?;
 
     if documents.is_empty() {
         return Err((
@@ -142,15 +147,22 @@ pub async fn build_site(
 
     let ssg_config = SsgSiteConfig {
         title: req.title.unwrap_or_else(|| "Tachyon Docs".to_string()),
-        description: req.description.unwrap_or_else(|| "A knowledge base built with Tachyon".to_string()),
-        base_url: req.base_url.unwrap_or_else(|| "https://docs.example.com".to_string()),
+        description: req
+            .description
+            .unwrap_or_else(|| "A knowledge base built with Tachyon".to_string()),
+        base_url: req
+            .base_url
+            .unwrap_or_else(|| "https://docs.example.com".to_string()),
         theme: req.theme.unwrap_or_else(|| "auto".to_string()),
         custom_css: req.custom_css,
         nav_links: req
             .nav_links
             .unwrap_or_default()
             .into_iter()
-            .map(|l| tachyon_ssg::NavLink { label: l.label, href: l.href })
+            .map(|l| tachyon_ssg::NavLink {
+                label: l.label,
+                href: l.href,
+            })
             .collect(),
         group_by_tag: req.group_by_tag.unwrap_or(false),
         ..Default::default()
@@ -183,8 +195,7 @@ pub async fn build_site(
 
     info!(
         "SSG build complete: {} pages, {}ms",
-        build_result.pages,
-        build_result.build_time_ms,
+        build_result.pages, build_result.build_time_ms,
     );
 
     Ok(Json(SsgBuildResponse {
@@ -194,9 +205,7 @@ pub async fn build_site(
 }
 
 /// GET /api/v1/ssg/download — Download the generated site as ZIP
-pub async fn download_site(
-    State(state): State<SsgState>,
-) -> Response {
+pub async fn download_site(State(state): State<SsgState>) -> Response {
     let documents = fetch_documents_for_ssg(&state.pool, None, 0)
         .await
         .unwrap_or_else(|_| {
@@ -219,7 +228,10 @@ pub async fn download_site(
     match tokio::task::spawn_blocking(move || generator.build_to_zip(&documents)).await {
         Ok(Ok((zip_bytes, _result))) => {
             let headers = [
-                (axum::http::header::CONTENT_TYPE, "application/zip".to_string()),
+                (
+                    axum::http::header::CONTENT_TYPE,
+                    "application/zip".to_string(),
+                ),
                 (
                     axum::http::header::CONTENT_DISPOSITION,
                     "attachment; filename=\"tachyon-site.zip\"".to_string(),
@@ -245,7 +257,7 @@ pub async fn download_site(
 /// Row type for fetching documents from the database.
 #[derive(Debug, sqlx::FromRow)]
 struct DocRow {
-#[cfg(feature = "staging")]
+    #[cfg(feature = "staging")]
     id: String,
     title: String,
     slug: String,
@@ -264,16 +276,20 @@ async fn fetch_documents_for_ssg(
 ) -> Result<Vec<SsgDocument>, String> {
     let limit_val = if limit > 0 { limit as i64 } else { 10000i64 };
 
-    let mut conn = pool.acquire().await.map_err(|e| format!("Failed to acquire connection: {}", e))?;
+    let mut conn = pool
+        .acquire()
+        .await
+        .map_err(|e| format!("Failed to acquire connection: {}", e))?;
 
     let rows: Vec<DocRow> = if let Some(pid) = project_id {
-        let pid_uuid = uuid::Uuid::parse_str(pid).map_err(|e| format!("Invalid project_id: {}", e))?;
+        let pid_uuid =
+            uuid::Uuid::parse_str(pid).map_err(|e| format!("Invalid project_id: {}", e))?;
         sqlx::query_as::<_, DocRow>(
             "SELECT id::text, title, slug, content, description, tags, created_at, updated_at \
              FROM documents \
              WHERE status = 'published' AND project_id = $1 \
              ORDER BY updated_at DESC \
-             LIMIT $2"
+             LIMIT $2",
         )
         .bind(pid_uuid)
         .bind(limit_val)
@@ -285,7 +301,7 @@ async fn fetch_documents_for_ssg(
              FROM documents \
              WHERE status = 'published' \
              ORDER BY updated_at DESC \
-             LIMIT $1"
+             LIMIT $1",
         )
         .bind(limit_val)
         .fetch_all(&mut *conn)
@@ -298,9 +314,11 @@ async fn fetch_documents_for_ssg(
         let tags: Vec<String> = row
             .tags
             .and_then(|t| {
-                t.as_array().map(|arr| arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect())
+                t.as_array().map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
             })
             .unwrap_or_default();
 

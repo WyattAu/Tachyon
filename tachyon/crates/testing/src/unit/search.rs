@@ -6,9 +6,9 @@
 use tachyon_core::{generate_document_id, generate_user_id};
 #[allow(unused_imports)]
 use tachyon_search::{
+    types::{BooleanOperator, QueryType, Suggestion, SuggestionCategory},
     BatchIndexRequest, FieldDefinition, FieldType, IndexConfig, SearchDocument, SearchRequest,
     SearchResponse, SortOrder,
-    types::{BooleanOperator, QueryType, Suggestion, SuggestionCategory},
 };
 
 #[allow(dead_code)]
@@ -32,7 +32,8 @@ fn test_search_document_creation() {
 
 #[test]
 fn test_search_document_with_tags() {
-    let doc = make_search_doc("Title", "Content").with_tags(vec!["rust".to_string(), "web".to_string()]);
+    let doc =
+        make_search_doc("Title", "Content").with_tags(vec!["rust".to_string(), "web".to_string()]);
     assert_eq!(doc.tags.len(), 2);
     assert_eq!(doc.tags[0], "rust");
 }
@@ -216,7 +217,10 @@ fn test_suggestion_tag() {
 
 #[test]
 fn test_batch_index_request() {
-    let docs = vec![make_search_doc("A", "Content A"), make_search_doc("B", "Content B")];
+    let docs = vec![
+        make_search_doc("A", "Content A"),
+        make_search_doc("B", "Content B"),
+    ];
     let req = BatchIndexRequest::new(docs).with_clear_before_index(true);
     assert_eq!(req.documents.len(), 2);
     assert!(req.clear_before_index);

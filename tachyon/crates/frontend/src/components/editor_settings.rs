@@ -125,7 +125,11 @@ pub fn EditorSettings(
         if let Some(window) = web_sys::window() {
             if let Some(doc) = window.document() {
                 if let Ok(event) = doc.create_event("CustomEvent") {
-                    event.init_event_with_bubbles_and_cancelable("tachyon:settings-changed", true, true);
+                    event.init_event_with_bubbles_and_cancelable(
+                        "tachyon:settings-changed",
+                        true,
+                        true,
+                    );
                     let _ = window.dispatch_event(&event);
                 }
             }
@@ -188,11 +192,13 @@ pub fn EditorSettings(
         dispatch_settings_changed();
     };
 
-    let toggle_bool = move |key: fn(&mut EditorSettingsData, bool)| move |ev: leptos::ev::Event| {
-        let val = event_target_checked(&ev);
-        settings.update(|s| key(s, val));
-        persist();
-        dispatch_settings_changed();
+    let toggle_bool = move |key: fn(&mut EditorSettingsData, bool)| {
+        move |ev: leptos::ev::Event| {
+            let val = event_target_checked(&ev);
+            settings.update(|s| key(s, val));
+            persist();
+            dispatch_settings_changed();
+        }
     };
 
     let toggle_word_wrap = toggle_bool(|s, v| s.word_wrap = v);

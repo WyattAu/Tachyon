@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use crate::api::ApiClient;
 use super::{BrowserStore, LocalDocument, StoredDocument, SyncState, SyncStatus};
+use crate::api::ApiClient;
 use leptos::prelude::*;
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::JsCast;
@@ -111,10 +111,8 @@ impl SyncEngine {
                         }
                     });
                 });
-                let _ = window.add_event_listener_with_callback(
-                    "online",
-                    closure.as_ref().unchecked_ref(),
-                );
+                let _ = window
+                    .add_event_listener_with_callback("online", closure.as_ref().unchecked_ref());
                 closure.forget();
             }
 
@@ -127,10 +125,8 @@ impl SyncEngine {
                     }
                     sync_state.set(SyncState::Offline);
                 });
-                let _ = window.add_event_listener_with_callback(
-                    "offline",
-                    closure.as_ref().unchecked_ref(),
-                );
+                let _ = window
+                    .add_event_listener_with_callback("offline", closure.as_ref().unchecked_ref());
                 closure.forget();
             }
         }
@@ -230,18 +226,16 @@ impl SyncEngine {
                         }
                     }
                 }
-                SyncStatus::PendingDelete => {
-                    match api.delete_document(&sd.document.id).await {
-                        Ok(()) => {
+                SyncStatus::PendingDelete => match api.delete_document(&sd.document.id).await {
+                    Ok(()) => {
+                        store.delete(&sd.document.id);
+                    }
+                    Err(e) => {
+                        if e.to_string().contains("404") {
                             store.delete(&sd.document.id);
                         }
-                        Err(e) => {
-                            if e.to_string().contains("404") {
-                                store.delete(&sd.document.id);
-                            }
-                        }
                     }
-                }
+                },
                 SyncStatus::Conflict | SyncStatus::Synced => {}
             }
         }

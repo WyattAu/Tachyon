@@ -11,8 +11,8 @@ use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
-use tracing::{info, warn};
 use tachyon_database::error::DatabaseError;
+use tracing::{info, warn};
 
 use crate::truelayer::{TrueLayerClient, TrueLayerError};
 
@@ -39,10 +39,12 @@ struct ProrationResult {
 }
 
 fn verify_webhook_signature(payload: &[u8], signature_header: &str, secret: &str) -> bool {
-    let sig_part = signature_header.strip_prefix("v1=").unwrap_or(signature_header);
+    let sig_part = signature_header
+        .strip_prefix("v1=")
+        .unwrap_or(signature_header);
 
-    let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
-        .expect("HMAC can take key of any size");
+    let mut mac =
+        HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
     mac.update(payload);
 
     let expected = hex::encode(mac.finalize().into_bytes());
@@ -108,9 +110,27 @@ impl Plan {
     pub fn features(&self) -> Vec<&'static str> {
         match self {
             Plan::Free => vec!["Basic editor", "5GB storage", "Community support"],
-            Plan::Pro => vec!["Advanced editor", "50GB storage", "SSG export", "Plugin system", "Email support"],
-            Plan::Team => vec!["Everything in Pro", "Collaboration", "Admin panel", "Audit logs", "Priority support"],
-            Plan::Enterprise => vec!["Everything in Team", "SSO/SAML", "Custom integrations", "SLA", "Dedicated support"],
+            Plan::Pro => vec![
+                "Advanced editor",
+                "50GB storage",
+                "SSG export",
+                "Plugin system",
+                "Email support",
+            ],
+            Plan::Team => vec![
+                "Everything in Pro",
+                "Collaboration",
+                "Admin panel",
+                "Audit logs",
+                "Priority support",
+            ],
+            Plan::Enterprise => vec![
+                "Everything in Team",
+                "SSO/SAML",
+                "Custom integrations",
+                "SLA",
+                "Dedicated support",
+            ],
         }
     }
 }
@@ -263,21 +283,43 @@ fn plan_price(plan: &str) -> u64 {
 
 fn plan_max_docs(plan: &str) -> usize {
     match plan {
-        "free" => 100, "pro" => 10_000, "team" => 100_000, _ => usize::MAX,
+        "free" => 100,
+        "pro" => 10_000,
+        "team" => 100_000,
+        _ => usize::MAX,
     }
 }
 
 fn plan_max_members(plan: &str) -> usize {
     match plan {
-        "free" => 1, "pro" => 5, "team" => 50, _ => usize::MAX,
+        "free" => 1,
+        "pro" => 5,
+        "team" => 50,
+        _ => usize::MAX,
     }
 }
 
 fn plan_features(plan: &str) -> Vec<String> {
     match plan {
-        "free" => vec!["Basic editor".into(), "5GB storage".into(), "Community support".into()],
-        "pro" => vec!["Advanced editor".into(), "50GB storage".into(), "SSG export".into(), "Plugin system".into(), "Email support".into()],
-        "team" => vec!["Everything in Pro".into(), "Collaboration".into(), "Admin panel".into(), "Audit logs".into(), "Priority support".into()],
+        "free" => vec![
+            "Basic editor".into(),
+            "5GB storage".into(),
+            "Community support".into(),
+        ],
+        "pro" => vec![
+            "Advanced editor".into(),
+            "50GB storage".into(),
+            "SSG export".into(),
+            "Plugin system".into(),
+            "Email support".into(),
+        ],
+        "team" => vec![
+            "Everything in Pro".into(),
+            "Collaboration".into(),
+            "Admin panel".into(),
+            "Audit logs".into(),
+            "Priority support".into(),
+        ],
         _ => vec![],
     }
 }
@@ -329,7 +371,10 @@ fn validate_plan_name(plan: &str) -> Result<(), (StatusCode, Json<BillingErrorRe
             StatusCode::BAD_REQUEST,
             Json(BillingErrorResponse {
                 code: "INVALID_PLAN".to_string(),
-                message: format!("Invalid plan '{}'. Must be one of: free, pro, team, enterprise", plan),
+                message: format!(
+                    "Invalid plan '{}'. Must be one of: free, pro, team, enterprise",
+                    plan
+                ),
             }),
         ));
     }
@@ -379,7 +424,11 @@ fn calculate_proration(
     now: DateTime<Utc>,
 ) -> ProrationResult {
     let total_days = (billing_end - billing_start).num_days();
-    let total_days = if total_days <= 0 { 1.0 } else { total_days as f64 };
+    let total_days = if total_days <= 0 {
+        1.0
+    } else {
+        total_days as f64
+    };
     let days_used = (now - billing_start).num_days();
     let days_used = if days_used < 0 { 0.0 } else { days_used as f64 };
     let days_remaining = (total_days - days_used).max(0.0);
@@ -410,7 +459,11 @@ pub async fn list_plans() -> Json<PlansResponse> {
             price_monthly_cents: Plan::Free.price_monthly(),
             max_documents: Plan::Free.max_documents(),
             max_members: Plan::Free.max_members(),
-            features: Plan::Free.features().iter().map(|s| s.to_string()).collect(),
+            features: Plan::Free
+                .features()
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
         },
         PlanInfo {
             name: "pro".to_string(),
@@ -424,14 +477,22 @@ pub async fn list_plans() -> Json<PlansResponse> {
             price_monthly_cents: Plan::Team.price_monthly(),
             max_documents: Plan::Team.max_documents(),
             max_members: Plan::Team.max_members(),
-            features: Plan::Team.features().iter().map(|s| s.to_string()).collect(),
+            features: Plan::Team
+                .features()
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
         },
         PlanInfo {
             name: "enterprise".to_string(),
             price_monthly_cents: Plan::Enterprise.price_monthly(),
             max_documents: Plan::Enterprise.max_documents(),
             max_members: Plan::Enterprise.max_members(),
-            features: Plan::Enterprise.features().iter().map(|s| s.to_string()).collect(),
+            features: Plan::Enterprise
+                .features()
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
         },
     ];
     Json(PlansResponse { plans })
@@ -442,18 +503,27 @@ pub async fn create_subscription(
     State(state): State<BillingState>,
     Json(req): Json<CreateSubscriptionRequest>,
 ) -> Result<Json<SubscriptionResponse>, (StatusCode, Json<BillingErrorResponse>)> {
-    info!("Creating {} subscription for org {}",
-          req.plan,
-          req.organization_id);
+    info!(
+        "Creating {} subscription for org {}",
+        req.plan, req.organization_id
+    );
 
     let repo = tachyon_database::SubscriptionRepository::new(state.pool.clone());
-    let sub = repo.create(tachyon_database::CreateSubscriptionRequest {
-        organization_id: req.organization_id.clone(),
-        plan: req.plan.clone(),
-    }).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(BillingErrorResponse {
-        code: "DB_ERROR".to_string(),
-        message: e.to_string(),
-    })))?;
+    let sub = repo
+        .create(tachyon_database::CreateSubscriptionRequest {
+            organization_id: req.organization_id.clone(),
+            plan: req.plan.clone(),
+        })
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(BillingErrorResponse {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                }),
+            )
+        })?;
 
     let plan_details = PlanDetails {
         name: sub.plan.clone(),
@@ -463,7 +533,10 @@ pub async fn create_subscription(
         features: plan_features(&sub.plan),
     };
 
-    Ok(Json(SubscriptionResponse { subscription: sub, plan_details }))
+    Ok(Json(SubscriptionResponse {
+        subscription: sub,
+        plan_details,
+    }))
 }
 
 /// GET /api/v1/billing/subscriptions/{org_id} — Get subscription
@@ -474,15 +547,21 @@ pub async fn get_subscription(
     let repo = tachyon_database::SubscriptionRepository::new(state.pool.clone());
     let sub = repo.get_by_org(&org_id).await.map_err(|e| {
         if matches!(e, DatabaseError::NotFound { .. }) {
-            (StatusCode::NOT_FOUND, Json(BillingErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: "No subscription found".to_string(),
-            }))
+            (
+                StatusCode::NOT_FOUND,
+                Json(BillingErrorResponse {
+                    code: "NOT_FOUND".to_string(),
+                    message: "No subscription found".to_string(),
+                }),
+            )
         } else {
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(BillingErrorResponse {
-                code: "DB_ERROR".to_string(),
-                message: e.to_string(),
-            }))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(BillingErrorResponse {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                }),
+            )
         }
     })?;
 
@@ -494,7 +573,10 @@ pub async fn get_subscription(
         features: plan_features(&sub.plan),
     };
 
-    Ok(Json(SubscriptionResponse { subscription: sub, plan_details }))
+    Ok(Json(SubscriptionResponse {
+        subscription: sub,
+        plan_details,
+    }))
 }
 
 /// GET /api/v1/billing/invoices/{org_id} — List invoices
@@ -519,7 +601,7 @@ pub async fn get_usage(
     let pool = state.pool.inner();
 
     let documents_total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM documents WHERE organization_id = $1 AND deleted_at IS NULL"
+        "SELECT COUNT(*) FROM documents WHERE organization_id = $1 AND deleted_at IS NULL",
     )
     .bind(&org_id)
     .fetch_one(pool)
@@ -543,13 +625,12 @@ pub async fn get_usage(
     .await
     .unwrap_or(0);
 
-    let members_total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM organization_members WHERE organization_id = $1"
-    )
-    .bind(&org_id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or(1);
+    let members_total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM organization_members WHERE organization_id = $1")
+            .bind(&org_id)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(1);
 
     let plan = sqlx::query_scalar::<_, String>(
         "SELECT plan FROM subscriptions WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 1"
@@ -590,15 +671,21 @@ pub async fn change_plan(
     let repo = tachyon_database::SubscriptionRepository::new(state.pool.clone());
     let sub = repo.get_by_org(&req.organization_id).await.map_err(|e| {
         if matches!(e, DatabaseError::NotFound { .. }) {
-            (StatusCode::NOT_FOUND, Json(BillingErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: "No subscription found".to_string(),
-            }))
+            (
+                StatusCode::NOT_FOUND,
+                Json(BillingErrorResponse {
+                    code: "NOT_FOUND".to_string(),
+                    message: "No subscription found".to_string(),
+                }),
+            )
         } else {
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(BillingErrorResponse {
-                code: "DB_ERROR".to_string(),
-                message: e.to_string(),
-            }))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(BillingErrorResponse {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                }),
+            )
         }
     })?;
 
@@ -620,32 +707,51 @@ pub async fn change_plan(
 
             if let Some(truelayer) = state.truelayer.as_ref() {
                 let reference = format!("upgrade-{}-{}", sub.id, uuid::Uuid::new_v4());
-                let payment_result = truelayer.create_payment(
-                    sub.payment_method_id.as_deref().unwrap_or(""),
-                    prorated_cents as u64,
-                    &reference,
-                ).await.map_err(truelayer_error_response)?;
+                let payment_result = truelayer
+                    .create_payment(
+                        sub.payment_method_id.as_deref().unwrap_or(""),
+                        prorated_cents as u64,
+                        &reference,
+                    )
+                    .await
+                    .map_err(truelayer_error_response)?;
 
-                let updated = repo.update(&sub.id, tachyon_database::UpdateSubscriptionRequest {
-                    plan: Some(req.new_plan.clone()),
-                    status: None,
-                    cancel_at_period_end: None,
-                    payment_method_id: None,
-                }).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(BillingErrorResponse {
-                    code: "DB_ERROR".to_string(),
-                    message: e.to_string(),
-                })))?;
+                let updated = repo
+                    .update(
+                        &sub.id,
+                        tachyon_database::UpdateSubscriptionRequest {
+                            plan: Some(req.new_plan.clone()),
+                            status: None,
+                            cancel_at_period_end: None,
+                            payment_method_id: None,
+                        },
+                    )
+                    .await
+                    .map_err(|e| {
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(BillingErrorResponse {
+                                code: "DB_ERROR".to_string(),
+                                message: e.to_string(),
+                            }),
+                        )
+                    })?;
 
                 let invoice_repo = tachyon_database::InvoiceRepository::new(state.pool.clone());
-                let _ = invoice_repo.create(tachyon_database::CreateInvoiceRequest {
-                    subscription_id: updated.id.clone(),
-                    organization_id: req.organization_id.clone(),
-                    amount_cents: prorated_cents,
-                    currency: "GBP".to_string(),
-                    description: format!("Upgrade from {} to {}", old_plan, req.new_plan),
-                }).await;
+                let _ = invoice_repo
+                    .create(tachyon_database::CreateInvoiceRequest {
+                        subscription_id: updated.id.clone(),
+                        organization_id: req.organization_id.clone(),
+                        amount_cents: prorated_cents,
+                        currency: "GBP".to_string(),
+                        description: format!("Upgrade from {} to {}", old_plan, req.new_plan),
+                    })
+                    .await;
 
-                info!("Plan upgrade: {} -> {} for org {} (payment {})", old_plan, req.new_plan, req.organization_id, payment_result.id);
+                info!(
+                    "Plan upgrade: {} -> {} for org {} (payment {})",
+                    old_plan, req.new_plan, req.organization_id, payment_result.id
+                );
 
                 Ok(Json(ChangePlanResponse {
                     subscription_id: updated.id,
@@ -657,17 +763,31 @@ pub async fn change_plan(
                     next_billing_date: Some(sub.current_period_end.to_rfc3339()),
                 }))
             } else {
-                let updated = repo.update(&sub.id, tachyon_database::UpdateSubscriptionRequest {
-                    plan: Some(req.new_plan.clone()),
-                    status: None,
-                    cancel_at_period_end: None,
-                    payment_method_id: None,
-                }).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(BillingErrorResponse {
-                    code: "DB_ERROR".to_string(),
-                    message: e.to_string(),
-                })))?;
+                let updated = repo
+                    .update(
+                        &sub.id,
+                        tachyon_database::UpdateSubscriptionRequest {
+                            plan: Some(req.new_plan.clone()),
+                            status: None,
+                            cancel_at_period_end: None,
+                            payment_method_id: None,
+                        },
+                    )
+                    .await
+                    .map_err(|e| {
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(BillingErrorResponse {
+                                code: "DB_ERROR".to_string(),
+                                message: e.to_string(),
+                            }),
+                        )
+                    })?;
 
-                info!("Plan upgrade (free): {} -> {} for org {}", old_plan, req.new_plan, req.organization_id);
+                info!(
+                    "Plan upgrade (free): {} -> {} for org {}",
+                    old_plan, req.new_plan, req.organization_id
+                );
 
                 Ok(Json(ChangePlanResponse {
                     subscription_id: updated.id,
@@ -681,7 +801,10 @@ pub async fn change_plan(
             }
         }
         TransitionType::Downgrade => {
-            info!("Plan downgrade scheduled: {} -> {} for org {} (effective at period end)", old_plan, req.new_plan, req.organization_id);
+            info!(
+                "Plan downgrade scheduled: {} -> {} for org {} (effective at period end)",
+                old_plan, req.new_plan, req.organization_id
+            );
 
             Ok(Json(ChangePlanResponse {
                 subscription_id: sub.id,
@@ -704,25 +827,44 @@ pub async fn cancel_subscription(
     let repo = tachyon_database::SubscriptionRepository::new(state.pool.clone());
     let sub = repo.get_by_org(&org_id).await.map_err(|e| {
         if matches!(e, DatabaseError::NotFound { .. }) {
-            (StatusCode::NOT_FOUND, Json(BillingErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: "No subscription found".to_string(),
-            }))
+            (
+                StatusCode::NOT_FOUND,
+                Json(BillingErrorResponse {
+                    code: "NOT_FOUND".to_string(),
+                    message: "No subscription found".to_string(),
+                }),
+            )
         } else {
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(BillingErrorResponse {
-                code: "DB_ERROR".to_string(),
-                message: e.to_string(),
-            }))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(BillingErrorResponse {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                }),
+            )
         }
     })?;
 
-    let updated = repo.update(&sub.id, tachyon_database::UpdateSubscriptionRequest {
-        cancel_at_period_end: Some(true),
-        plan: None, status: None, payment_method_id: None,
-    }).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(BillingErrorResponse {
-        code: "DB_ERROR".to_string(),
-        message: e.to_string(),
-    })))?;
+    let updated = repo
+        .update(
+            &sub.id,
+            tachyon_database::UpdateSubscriptionRequest {
+                cancel_at_period_end: Some(true),
+                plan: None,
+                status: None,
+                payment_method_id: None,
+            },
+        )
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(BillingErrorResponse {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                }),
+            )
+        })?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -741,27 +883,39 @@ pub async fn create_mandate(
     Json(req): Json<CreateMandateRequest>,
 ) -> Result<Json<MandateResponse>, (StatusCode, Json<BillingErrorResponse>)> {
     let truelayer = state.truelayer.as_ref().ok_or_else(|| {
-        (StatusCode::SERVICE_UNAVAILABLE, Json(BillingErrorResponse {
-            code: "PAYMENTS_DISABLED".to_string(),
-            message: "Payment processing is not enabled".to_string(),
-        }))
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(BillingErrorResponse {
+                code: "PAYMENTS_DISABLED".to_string(),
+                message: "Payment processing is not enabled".to_string(),
+            }),
+        )
     })?;
 
-    let result = truelayer.create_payment_mandate(&req.organization_id, &req.return_url)
+    let result = truelayer
+        .create_payment_mandate(&req.organization_id, &req.return_url)
         .await
         .map_err(truelayer_error_response)?;
 
     let repo = tachyon_database::SubscriptionRepository::new(state.pool.clone());
     if let Ok(sub) = repo.get_by_org(&req.organization_id).await {
-        let _ = repo.update(&sub.id, tachyon_database::UpdateSubscriptionRequest {
-            payment_method_id: Some(result.id.clone()),
-            plan: None,
-            status: None,
-            cancel_at_period_end: None,
-        }).await;
+        let _ = repo
+            .update(
+                &sub.id,
+                tachyon_database::UpdateSubscriptionRequest {
+                    payment_method_id: Some(result.id.clone()),
+                    plan: None,
+                    status: None,
+                    cancel_at_period_end: None,
+                },
+            )
+            .await;
     }
 
-    info!("Created mandate {} for org {}", result.id, req.organization_id);
+    info!(
+        "Created mandate {} for org {}",
+        result.id, req.organization_id
+    );
 
     Ok(Json(MandateResponse {
         mandate_id: result.id,
@@ -776,13 +930,17 @@ pub async fn get_mandate_status(
     axum::extract::Path(mandate_id): axum::extract::Path<String>,
 ) -> Result<Json<MandateStatusResponse>, (StatusCode, Json<BillingErrorResponse>)> {
     let truelayer = state.truelayer.as_ref().ok_or_else(|| {
-        (StatusCode::SERVICE_UNAVAILABLE, Json(BillingErrorResponse {
-            code: "PAYMENTS_DISABLED".to_string(),
-            message: "Payment processing is not enabled".to_string(),
-        }))
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(BillingErrorResponse {
+                code: "PAYMENTS_DISABLED".to_string(),
+                message: "Payment processing is not enabled".to_string(),
+            }),
+        )
     })?;
 
-    let result = truelayer.get_mandate_status(&mandate_id)
+    let result = truelayer
+        .get_mandate_status(&mandate_id)
         .await
         .map_err(truelayer_error_response)?;
 
@@ -798,36 +956,47 @@ pub async fn create_payment(
     Json(req): Json<CreatePaymentRequest>,
 ) -> Result<Json<PaymentResponse>, (StatusCode, Json<BillingErrorResponse>)> {
     let truelayer = state.truelayer.as_ref().ok_or_else(|| {
-        (StatusCode::SERVICE_UNAVAILABLE, Json(BillingErrorResponse {
-            code: "PAYMENTS_DISABLED".to_string(),
-            message: "Payment processing is not enabled".to_string(),
-        }))
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(BillingErrorResponse {
+                code: "PAYMENTS_DISABLED".to_string(),
+                message: "Payment processing is not enabled".to_string(),
+            }),
+        )
     })?;
 
     let reference = format!("payment-{}", uuid::Uuid::new_v4());
-    let result = truelayer.create_payment(&req.mandate_id, req.amount_cents, &reference)
+    let result = truelayer
+        .create_payment(&req.mandate_id, req.amount_cents, &reference)
         .await
         .map_err(truelayer_error_response)?;
 
     let invoice_repo = tachyon_database::InvoiceRepository::new(state.pool.clone());
     let sub_repo = tachyon_database::SubscriptionRepository::new(state.pool.clone());
 
-    let subscription_id = sub_repo.get_by_org(&req.organization_id)
+    let subscription_id = sub_repo
+        .get_by_org(&req.organization_id)
         .await
         .map(|s| s.id)
         .unwrap_or_default();
 
-    if let Ok(_invoice) = invoice_repo.create(tachyon_database::CreateInvoiceRequest {
-        subscription_id: subscription_id.clone(),
-        organization_id: req.organization_id.clone(),
-        amount_cents: req.amount_cents as i64,
-        currency: "GBP".to_string(),
-        description: format!("Payment {}", result.id),
-    }).await {
+    if let Ok(_invoice) = invoice_repo
+        .create(tachyon_database::CreateInvoiceRequest {
+            subscription_id: subscription_id.clone(),
+            organization_id: req.organization_id.clone(),
+            amount_cents: req.amount_cents as i64,
+            currency: "GBP".to_string(),
+            description: format!("Payment {}", result.id),
+        })
+        .await
+    {
         info!("Created invoice for payment {}", result.id);
     }
 
-    info!("Created payment {} for org {} ({} pence)", result.id, req.organization_id, req.amount_cents);
+    info!(
+        "Created payment {} for org {} ({} pence)",
+        result.id, req.organization_id, req.amount_cents
+    );
 
     Ok(Json(PaymentResponse {
         payment_id: result.id,
@@ -842,13 +1011,17 @@ pub async fn get_payment_status(
     axum::extract::Path(payment_id): axum::extract::Path<String>,
 ) -> Result<Json<PaymentStatusResponse>, (StatusCode, Json<BillingErrorResponse>)> {
     let truelayer = state.truelayer.as_ref().ok_or_else(|| {
-        (StatusCode::SERVICE_UNAVAILABLE, Json(BillingErrorResponse {
-            code: "PAYMENTS_DISABLED".to_string(),
-            message: "Payment processing is not enabled".to_string(),
-        }))
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(BillingErrorResponse {
+                code: "PAYMENTS_DISABLED".to_string(),
+                message: "Payment processing is not enabled".to_string(),
+            }),
+        )
     })?;
 
-    let result = truelayer.get_payment_status(&payment_id)
+    let result = truelayer
+        .get_payment_status(&payment_id)
         .await
         .map_err(truelayer_error_response)?;
 
@@ -900,13 +1073,19 @@ pub async fn webhook_handler(
     }
 
     let payload: WebhookPayload = serde_json::from_str(&body).map_err(|e| {
-        (StatusCode::BAD_REQUEST, Json(BillingErrorResponse {
-            code: "INVALID_PAYLOAD".to_string(),
-            message: format!("Invalid webhook payload: {}", e),
-        }))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(BillingErrorResponse {
+                code: "INVALID_PAYLOAD".to_string(),
+                message: format!("Invalid webhook payload: {}", e),
+            }),
+        )
     })?;
 
-    info!("Received TrueLayer webhook: {} ({})", payload.event_type, payload.event_id);
+    info!(
+        "Received TrueLayer webhook: {} ({})",
+        payload.event_type, payload.event_id
+    );
 
     match payload.event_type.as_str() {
         "mandate_approved" | "mandate_active" => {
@@ -916,13 +1095,21 @@ pub async fn webhook_handler(
                 if let Ok(sub) = repo.list_all().await {
                     for sub in sub {
                         if sub.payment_method_id.as_deref() == Some(mandate_id) {
-                            let _ = repo.update(&sub.id, tachyon_database::UpdateSubscriptionRequest {
-                                status: Some(status.to_string()),
-                                plan: None,
-                                cancel_at_period_end: None,
-                                payment_method_id: None,
-                            }).await;
-                            info!("Updated subscription {} mandate status to {}", sub.id, status);
+                            let _ = repo
+                                .update(
+                                    &sub.id,
+                                    tachyon_database::UpdateSubscriptionRequest {
+                                        status: Some(status.to_string()),
+                                        plan: None,
+                                        cancel_at_period_end: None,
+                                        payment_method_id: None,
+                                    },
+                                )
+                                .await;
+                            info!(
+                                "Updated subscription {} mandate status to {}",
+                                sub.id, status
+                            );
                             break;
                         }
                     }
@@ -962,7 +1149,10 @@ pub fn create_billing_router() -> axum::Router<BillingState> {
         .route("/billing/plans", get(list_plans))
         .route("/billing/subscriptions", post(create_subscription))
         .route("/billing/subscriptions/{org_id}", get(get_subscription))
-        .route("/billing/subscriptions/{org_id}/cancel", post(cancel_subscription))
+        .route(
+            "/billing/subscriptions/{org_id}/cancel",
+            post(cancel_subscription),
+        )
         .route("/billing/subscription/change-plan", post(change_plan))
         .route("/billing/invoices/{org_id}", get(list_invoices))
         .route("/billing/usage/{org_id}", get(get_usage))
@@ -981,7 +1171,11 @@ mod tests {
     #[test]
     fn test_validate_plan_name_valid() {
         for plan in &["free", "pro", "team", "enterprise"] {
-            assert!(validate_plan_name(plan).is_ok(), "plan '{}' should be valid", plan);
+            assert!(
+                validate_plan_name(plan).is_ok(),
+                "plan '{}' should be valid",
+                plan
+            );
         }
     }
 
@@ -994,19 +1188,46 @@ mod tests {
 
     #[test]
     fn test_validate_plan_transition_upgrades() {
-        assert_eq!(validate_plan_transition("free", "pro").unwrap(), TransitionType::Upgrade);
-        assert_eq!(validate_plan_transition("free", "team").unwrap(), TransitionType::Upgrade);
-        assert_eq!(validate_plan_transition("free", "enterprise").unwrap(), TransitionType::Upgrade);
-        assert_eq!(validate_plan_transition("pro", "team").unwrap(), TransitionType::Upgrade);
-        assert_eq!(validate_plan_transition("pro", "enterprise").unwrap(), TransitionType::Upgrade);
-        assert_eq!(validate_plan_transition("team", "enterprise").unwrap(), TransitionType::Upgrade);
+        assert_eq!(
+            validate_plan_transition("free", "pro").unwrap(),
+            TransitionType::Upgrade
+        );
+        assert_eq!(
+            validate_plan_transition("free", "team").unwrap(),
+            TransitionType::Upgrade
+        );
+        assert_eq!(
+            validate_plan_transition("free", "enterprise").unwrap(),
+            TransitionType::Upgrade
+        );
+        assert_eq!(
+            validate_plan_transition("pro", "team").unwrap(),
+            TransitionType::Upgrade
+        );
+        assert_eq!(
+            validate_plan_transition("pro", "enterprise").unwrap(),
+            TransitionType::Upgrade
+        );
+        assert_eq!(
+            validate_plan_transition("team", "enterprise").unwrap(),
+            TransitionType::Upgrade
+        );
     }
 
     #[test]
     fn test_validate_plan_transition_downgrades() {
-        assert_eq!(validate_plan_transition("pro", "free").unwrap(), TransitionType::Downgrade);
-        assert_eq!(validate_plan_transition("team", "pro").unwrap(), TransitionType::Downgrade);
-        assert_eq!(validate_plan_transition("team", "free").unwrap(), TransitionType::Downgrade);
+        assert_eq!(
+            validate_plan_transition("pro", "free").unwrap(),
+            TransitionType::Downgrade
+        );
+        assert_eq!(
+            validate_plan_transition("team", "pro").unwrap(),
+            TransitionType::Downgrade
+        );
+        assert_eq!(
+            validate_plan_transition("team", "free").unwrap(),
+            TransitionType::Downgrade
+        );
     }
 
     #[test]

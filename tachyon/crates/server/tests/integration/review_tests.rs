@@ -2,10 +2,9 @@
 use axum::{
     body::Body,
     http::{Request, StatusCode},
-    Router,
 };
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -51,7 +50,9 @@ async fn test_create_review() {
 
     if doc_response.status() == StatusCode::CREATED || doc_response.status() == StatusCode::OK {
         let doc_body = common::read_body_json(doc_response).await;
-        let doc_id = doc_body["id"].as_str().or_else(|| doc_body["document_id"].as_str());
+        let doc_id = doc_body["id"]
+            .as_str()
+            .or_else(|| doc_body["document_id"].as_str());
 
         if let Some(id) = doc_id {
             let response = app

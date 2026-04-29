@@ -8,9 +8,9 @@ use axum::{
 use tachyon_core::DocumentId;
 use tachyon_database::{DatabasePool, DocumentRepository};
 use tachyon_renderer::{
-    RenderConfig, Renderer,
     context::{AuthorInfo, RenderContext, RenderMetadata},
-    page::{SiteConfig as RendererSiteConfig, render_full_page},
+    page::{render_full_page, SiteConfig as RendererSiteConfig},
+    RenderConfig, Renderer,
 };
 
 /// Shared state for SEO routes
@@ -141,7 +141,8 @@ pub async fn serve_document_page(
             return (
                 StatusCode::NOT_FOUND,
                 Html("<h1>404 — Document Not Found</h1>".to_string()),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
@@ -152,7 +153,8 @@ pub async fn serve_document_page(
             return (
                 StatusCode::NOT_FOUND,
                 Html("<h1>404 — Document Not Found</h1>".to_string()),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
@@ -161,7 +163,8 @@ pub async fn serve_document_page(
         return (
             StatusCode::NOT_FOUND,
             Html("<h1>404 — Document Not Found</h1>".to_string()),
-        ).into_response();
+        )
+            .into_response();
     }
 
     // Render markdown to HTML
@@ -176,9 +179,7 @@ pub async fn serve_document_page(
     };
 
     // Parse tags
-    let tags: Vec<String> = metadata
-        .parse_tags()
-        .unwrap_or_default();
+    let tags: Vec<String> = metadata.parse_tags().unwrap_or_default();
 
     // Build RenderContext
     let mut ctx = RenderContext::new(metadata.title.clone(), html);

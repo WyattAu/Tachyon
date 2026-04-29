@@ -48,7 +48,10 @@ impl OnboardingRepository {
     }
 
     #[instrument(skip(self))]
-    pub async fn get_user_created_at(&self, user_id: &str) -> DatabaseResult<Option<chrono::DateTime<chrono::Utc>>> {
+    pub async fn get_user_created_at(
+        &self,
+        user_id: &str,
+    ) -> DatabaseResult<Option<chrono::DateTime<chrono::Utc>>> {
         let sql = "SELECT created_at FROM users WHERE id::text = $1";
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query(sql)
@@ -114,9 +117,7 @@ impl OnboardingRepository {
 
     #[instrument(skip(self))]
     pub async fn complete_step(&self, user_id: &str, step_id: &str) -> DatabaseResult<()> {
-        let valid_step = ONBOARDING_STEPS
-            .iter()
-            .any(|(id, _)| *id == step_id);
+        let valid_step = ONBOARDING_STEPS.iter().any(|(id, _)| *id == step_id);
         if !valid_step {
             return Err(DatabaseError::validation_error(format!(
                 "Invalid step_id: {}",
@@ -208,11 +209,12 @@ mod tests {
         let step = ONBOARDING_STEPS
             .iter()
             .find(|(id, _)| *id == "create_first_document");
-        assert_eq!(step.map(|(_, name)| *name), Some("Create Your First Document"));
+        assert_eq!(
+            step.map(|(_, name)| *name),
+            Some("Create Your First Document")
+        );
 
-        let step = ONBOARDING_STEPS
-            .iter()
-            .find(|(id, _)| *id == "invite_team");
+        let step = ONBOARDING_STEPS.iter().find(|(id, _)| *id == "invite_team");
         assert_eq!(step.map(|(_, name)| *name), Some("Invite Your Team"));
     }
 
@@ -221,8 +223,16 @@ mod tests {
         let status = OnboardingStatus {
             completed: false,
             steps: vec![
-                OnboardingStep { id: "s1".into(), name: "Step 1".into(), completed: false },
-                OnboardingStep { id: "s2".into(), name: "Step 2".into(), completed: true },
+                OnboardingStep {
+                    id: "s1".into(),
+                    name: "Step 1".into(),
+                    completed: false,
+                },
+                OnboardingStep {
+                    id: "s2".into(),
+                    name: "Step 2".into(),
+                    completed: true,
+                },
             ],
             current_step: 0,
         };
@@ -236,8 +246,16 @@ mod tests {
         let status = OnboardingStatus {
             completed: true,
             steps: vec![
-                OnboardingStep { id: "s1".into(), name: "Step 1".into(), completed: true },
-                OnboardingStep { id: "s2".into(), name: "Step 2".into(), completed: true },
+                OnboardingStep {
+                    id: "s1".into(),
+                    name: "Step 1".into(),
+                    completed: true,
+                },
+                OnboardingStep {
+                    id: "s2".into(),
+                    name: "Step 2".into(),
+                    completed: true,
+                },
             ],
             current_step: 2,
         };
@@ -259,9 +277,7 @@ mod tests {
     #[test]
     fn test_onboarding_invalid_step_id() {
         let invalid_id = "nonexistent_step";
-        let valid = ONBOARDING_STEPS
-            .iter()
-            .any(|(id, _)| *id == invalid_id);
+        let valid = ONBOARDING_STEPS.iter().any(|(id, _)| *id == invalid_id);
         assert!(!valid);
     }
 }

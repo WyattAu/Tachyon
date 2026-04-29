@@ -2,26 +2,36 @@ use std::path::{Path, PathBuf};
 
 use chrono::Utc;
 use regex::Regex;
-use tachyon_core::{
-    compute_content_hash, generate_document_id, FileChangeEvent, FileChangeKind,
-};
 use tachyon_core::id::DocumentId;
+use tachyon_core::{compute_content_hash, generate_document_id, FileChangeEvent, FileChangeKind};
 use tachyon_database::{DatabasePool, DocumentMetadata, DocumentRepository};
 use tachyon_renderer::{RenderConfig, Renderer};
 use tracing::{debug, info, warn};
 
 #[derive(Debug)]
 pub enum SyncResult {
-    Created { id: String, slug: String },
+    Created {
+        id: String,
+        slug: String,
+    },
     Updated {
         id: String,
         slug: String,
         hash_changed: bool,
         conflict: bool,
     },
-    Deleted { id: String, slug: String },
-    Skipped { path: PathBuf, reason: String },
-    Error { path: PathBuf, message: String },
+    Deleted {
+        id: String,
+        slug: String,
+    },
+    Skipped {
+        path: PathBuf,
+        reason: String,
+    },
+    Error {
+        path: PathBuf,
+        message: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -222,11 +232,19 @@ impl FileSyncService {
                 ),
                 Err(e) => {
                     warn!("Render failed for {}: {}", path.display(), e);
-                    (existing.html.clone(), existing.word_count, existing.character_count)
+                    (
+                        existing.html.clone(),
+                        existing.word_count,
+                        existing.character_count,
+                    )
                 }
             }
         } else {
-            (existing.html.clone(), existing.word_count, existing.character_count)
+            (
+                existing.html.clone(),
+                existing.word_count,
+                existing.character_count,
+            )
         };
 
         let mut metadata = existing;
@@ -309,7 +327,11 @@ impl FileSyncService {
             };
         }
 
-        info!("Document deleted (file removed): {} -> {}", path.display(), slug);
+        info!(
+            "Document deleted (file removed): {} -> {}",
+            path.display(),
+            slug
+        );
         SyncResult::Deleted { id, slug }
     }
 
@@ -464,13 +486,19 @@ mod tests {
     #[test]
     fn test_derive_slug_from_path_simple() {
         let path = Path::new("docs/API Reference.md");
-        assert_eq!(FileSyncService::derive_slug_from_path(path), "docs-api-reference");
+        assert_eq!(
+            FileSyncService::derive_slug_from_path(path),
+            "docs-api-reference"
+        );
     }
 
     #[test]
     fn test_derive_slug_from_path_nested() {
         let path = Path::new("docs/guides/setup.md");
-        assert_eq!(FileSyncService::derive_slug_from_path(path), "docs-guides-setup");
+        assert_eq!(
+            FileSyncService::derive_slug_from_path(path),
+            "docs-guides-setup"
+        );
     }
 
     #[test]
@@ -482,19 +510,28 @@ mod tests {
     #[test]
     fn test_derive_slug_from_path_underscores() {
         let path = Path::new("notes/my_notes.md");
-        assert_eq!(FileSyncService::derive_slug_from_path(path), "notes-my-notes");
+        assert_eq!(
+            FileSyncService::derive_slug_from_path(path),
+            "notes-my-notes"
+        );
     }
 
     #[test]
     fn test_derive_slug_from_path_multiple_hyphens() {
         let path = Path::new("some--weird---name.md");
-        assert_eq!(FileSyncService::derive_slug_from_path(path), "some-weird-name");
+        assert_eq!(
+            FileSyncService::derive_slug_from_path(path),
+            "some-weird-name"
+        );
     }
 
     #[test]
     fn test_derive_slug_from_path_hidden_dirs_excluded() {
         let path = Path::new(".git/refs/heads/main.md");
-        assert_eq!(FileSyncService::derive_slug_from_path(path), "refs-heads-main");
+        assert_eq!(
+            FileSyncService::derive_slug_from_path(path),
+            "refs-heads-main"
+        );
     }
 
     #[test]

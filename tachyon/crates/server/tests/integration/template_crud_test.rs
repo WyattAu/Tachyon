@@ -1,12 +1,9 @@
 use tachyon_database::{CreateTemplateRequest, TemplateRepository, UpdateTemplateRequest};
 
-use crate::common::setup::{
-    create_test_pool, create_test_user, setup_database, teardown_database,
-};
+use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database};
 
 fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err()
-        && std::env::var("TEST_DATABASE_URL").is_err()
+    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
 }
 
 #[tokio::test]
@@ -37,7 +34,10 @@ async fn test_create_template() {
 
     assert!(!template.id.is_empty());
     assert_eq!(template.name, "Meeting Notes");
-    assert_eq!(template.description.as_deref(), Some("Template for meeting notes"));
+    assert_eq!(
+        template.description.as_deref(),
+        Some("Template for meeting notes")
+    );
     assert_eq!(template.category.as_deref(), Some("productivity"));
 
     let tags = template.parse_tags().expect("Failed to parse tags");
@@ -73,7 +73,10 @@ async fn test_get_template_by_id() {
         .await
         .expect("Failed to create template");
 
-    let fetched = repo.get_by_id(&created.id).await.expect("Failed to get template by ID");
+    let fetched = repo
+        .get_by_id(&created.id)
+        .await
+        .expect("Failed to get template by ID");
     assert_eq!(fetched.id, created.id);
     assert_eq!(fetched.name, "Get Test Template");
 
@@ -106,7 +109,10 @@ async fn test_get_template_by_name() {
     .await
     .expect("Failed to create template");
 
-    let fetched = repo.get_by_name(&unique_name).await.expect("Failed to get template by name");
+    let fetched = repo
+        .get_by_name(&unique_name)
+        .await
+        .expect("Failed to get template by name");
     assert_eq!(fetched.name, unique_name);
 
     teardown_database(&pool).await;
@@ -139,7 +145,10 @@ async fn test_list_templates() {
         .expect("Failed to create template");
     }
 
-    let all = repo.list(None, Some(10), None).await.expect("Failed to list templates");
+    let all = repo
+        .list(None, Some(10), None)
+        .await
+        .expect("Failed to list templates");
     assert!(all.len() >= 3);
 
     let filtered = repo
@@ -227,7 +236,9 @@ async fn test_delete_template() {
         .await
         .expect("Failed to create template");
 
-    repo.delete(&created.id).await.expect("Failed to delete template");
+    repo.delete(&created.id)
+        .await
+        .expect("Failed to delete template");
 
     let result = repo.get_by_id(&created.id).await;
     assert!(result.is_err(), "Deleted template should not be found");
@@ -263,7 +274,10 @@ async fn test_template_count() {
     let total = repo.count(None).await.expect("Failed to count templates");
     assert!(total >= 1);
 
-    let by_category = repo.count(Some("test")).await.expect("Failed to count by category");
+    let by_category = repo
+        .count(Some("test"))
+        .await
+        .expect("Failed to count by category");
     assert!(by_category >= 1);
 
     teardown_database(&pool).await;

@@ -689,7 +689,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn test_policy_precedence() {
         let engine = PolicyEngine::new();
 

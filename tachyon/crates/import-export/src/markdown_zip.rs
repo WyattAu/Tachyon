@@ -371,7 +371,7 @@ mod tests {
         let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
 
         for (name, content) in files {
-            zip.start_file(name, options.clone()).unwrap();
+            zip.start_file(name, options).unwrap();
             zip.write_all(content.as_bytes()).unwrap();
         }
 

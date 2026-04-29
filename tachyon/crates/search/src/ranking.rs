@@ -479,7 +479,7 @@ impl ResultAggregator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::SearchDocument;
+
     use tachyon_core::id::{DocumentId, UserId};
 
     #[test]
@@ -501,7 +501,7 @@ mod tests {
     #[test]
     fn test_rank_results_by_score() {
         let ranker = BM25Ranker::new();
-        let mut results = vec![
+        let results = vec![
             SearchResponseItem {
                 document_id: DocumentId::new(),
                 title: "Doc 1".to_string(),
@@ -534,7 +534,7 @@ mod tests {
     #[test]
     fn test_rank_results_by_date() {
         let ranker = BM25Ranker::new();
-        let mut results = vec![
+        let results = vec![
             SearchResponseItem {
                 document_id: DocumentId::new(),
                 title: "Doc 1".to_string(),
@@ -634,7 +634,7 @@ mod tests {
 
         let doc_id = DocumentId::new();
         let doc = SearchResponseItem {
-            document_id: doc_id.clone(),
+            document_id: doc_id,
             title: "Test Doc".to_string(),
             snippet: "Test".to_string(),
             score: 1.0,

@@ -1,7 +1,7 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use tower::ServiceExt;
 use tachyon_server::routes::create_router;
+use tower::ServiceExt;
 
 fn skip_without_db() -> bool {
     std::env::var("TEST_DATABASE_URL").is_err()
@@ -44,7 +44,7 @@ async fn test_get_document_not_found() {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(&format!("/api/v1/documents/{}", fake_id))
+                .uri(format!("/api/v1/documents/{}", fake_id))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -52,8 +52,7 @@ async fn test_get_document_not_found() {
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::NOT_FOUND
-            || response.status() == StatusCode::UNAUTHORIZED
+        response.status() == StatusCode::NOT_FOUND || response.status() == StatusCode::UNAUTHORIZED
     );
 }
 
@@ -100,7 +99,7 @@ async fn test_delete_document_not_found() {
         .oneshot(
             Request::builder()
                 .method("DELETE")
-                .uri(&format!("/api/v1/documents/{}", fake_id))
+                .uri(format!("/api/v1/documents/{}", fake_id))
                 .body(Body::empty())
                 .unwrap(),
         )

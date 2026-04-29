@@ -366,7 +366,7 @@ mod tests {
             .compression_method(zip::CompressionMethod::Stored);
 
         for (name, content) in files {
-            zip.start_file(name, options.clone()).unwrap();
+            zip.start_file(name, options).unwrap();
             zip.write_all(content.as_bytes()).unwrap();
         }
 

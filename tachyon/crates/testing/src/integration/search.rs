@@ -7,8 +7,8 @@
 use tachyon_core::{generate_document_id, generate_user_id};
 #[allow(unused_imports)]
 use tachyon_search::{
-    FieldDefinition, FieldType, IndexConfig, SearchDocument, SearchRequest, SearchResponse,
-    SortOrder, types::QueryType, types::BooleanOperator,
+    types::BooleanOperator, types::QueryType, FieldDefinition, FieldType, IndexConfig,
+    SearchDocument, SearchRequest, SearchResponse, SortOrder,
 };
 
 #[test]
@@ -67,8 +67,7 @@ fn test_structured_query_construction() {
         ],
     };
 
-    let request = SearchRequest::new("")
-        .with_structured_query(bool_query);
+    let request = SearchRequest::new("").with_structured_query(bool_query);
 
     assert!(request.validate().is_ok());
     assert!(request.structured_query.is_some());

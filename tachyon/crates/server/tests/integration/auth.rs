@@ -1,10 +1,10 @@
 use axum::body::Body;
-use axum::http::{Request, StatusCode, header};
-use tower::ServiceExt;
-use tachyon_server::routes::create_router;
-use serde_json::json;
+use axum::http::{header, Request, StatusCode};
 #[allow(unused_imports)]
 use http_body_util::BodyExt;
+use serde_json::json;
+use tachyon_server::routes::create_router;
+use tower::ServiceExt;
 
 fn skip_without_db() -> bool {
     std::env::var("TEST_DATABASE_URL").is_err()
@@ -55,8 +55,12 @@ async fn test_login_missing_credentials() {
         .unwrap();
 
     // Missing required fields returns 422 (Unprocessable Entity) from serde validation
-    assert!(response.status() == StatusCode::OK || response.status() == StatusCode::UNPROCESSABLE_ENTITY,
-        "Expected 200 or 422, got {}", response.status());
+    assert!(
+        response.status() == StatusCode::OK
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY,
+        "Expected 200 or 422, got {}",
+        response.status()
+    );
 }
 
 #[tokio::test]
@@ -87,8 +91,14 @@ async fn test_login_invalid_credentials() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body_bytes = response.into_body().collect().await.expect("failed to read body").to_bytes();
-    let body: serde_json::Value = serde_json::from_slice(&body_bytes).expect("body should be valid JSON");
+    let body_bytes = response
+        .into_body()
+        .collect()
+        .await
+        .expect("failed to read body")
+        .to_bytes();
+    let body: serde_json::Value =
+        serde_json::from_slice(&body_bytes).expect("body should be valid JSON");
     assert_eq!(body["success"], false);
 }
 
@@ -111,7 +121,9 @@ async fn test_protected_endpoint_without_token() {
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+        response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::NOT_FOUND,
         "Expected UNAUTHORIZED, OK, or NOT_FOUND (no auth middleware in test router), got {}",
         response.status()
     );
@@ -137,7 +149,10 @@ async fn test_protected_endpoint_with_invalid_token() {
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
+        response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::NOT_FOUND
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
         "Expected UNAUTHORIZED, OK, NOT_FOUND, or INTERNAL_SERVER_ERROR, got {}",
         response.status()
     );
@@ -195,7 +210,5 @@ async fn test_register_with_valid_data() {
         .await
         .unwrap();
 
-    assert!(
-        response.status() == StatusCode::OK || response.status() == StatusCode::CONFLICT
-    );
+    assert!(response.status() == StatusCode::OK || response.status() == StatusCode::CONFLICT);
 }

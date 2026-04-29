@@ -1,7 +1,7 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -22,10 +22,13 @@ async fn test_create_organization() {
                 .method("POST")
                 .uri("/api/v1/organizations")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "name": format!("Test Org {}", unique),
-                    "description": "Integration test organization"
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "name": format!("Test Org {}", unique),
+                        "description": "Integration test organization"
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -82,11 +85,14 @@ async fn test_update_organization() {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(&format!("/api/v1/organizations/{}", fake_id))
+                .uri(format!("/api/v1/organizations/{}", fake_id))
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "name": "Updated Org"
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "name": "Updated Org"
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -114,7 +120,7 @@ async fn test_delete_organization() {
         .oneshot(
             Request::builder()
                 .method("DELETE")
-                .uri(&format!("/api/v1/organizations/{}", fake_id))
+                .uri(format!("/api/v1/organizations/{}", fake_id))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -142,7 +148,7 @@ async fn test_list_members() {
         .clone()
         .oneshot(
             Request::builder()
-                .uri(&format!("/api/v1/organizations/{}/members", fake_id))
+                .uri(format!("/api/v1/organizations/{}/members", fake_id))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -173,12 +179,15 @@ async fn test_add_member() {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(&format!("/api/v1/organizations/{}/members", org_id))
+                .uri(format!("/api/v1/organizations/{}/members", org_id))
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "user_id": user_id,
-                    "role": "viewer"
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "user_id": user_id,
+                        "role": "viewer"
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await

@@ -33,7 +33,10 @@ impl EmailService {
         Self {
             client: reqwest::Client::new(),
             smtp_url: config.smtp_url.clone(),
-            from_address: config.smtp_from.clone().unwrap_or_else(|| "noreply@tachyon.app".to_string()),
+            from_address: config
+                .smtp_from
+                .clone()
+                .unwrap_or_else(|| "noreply@tachyon.app".to_string()),
         }
     }
 
@@ -41,14 +44,17 @@ impl EmailService {
         if self.smtp_url.is_none() {
             tracing::info!(
                 "Email not configured, skipping: to={}, subject={}",
-                message.to, message.subject
+                message.to,
+                message.subject
             );
             return Ok(());
         }
 
         tracing::info!(
             "Sending email: to={}, subject={}, body_len={}",
-            message.to, message.subject, message.body_html.len()
+            message.to,
+            message.subject,
+            message.body_html.len()
         );
 
         Ok(())
@@ -65,8 +71,7 @@ impl EmailService {
     pub async fn send_notification(
         &self,
         to: &str,
-        #[allow(unused_variables)]
-        notification_type: &str,
+        #[allow(unused_variables)] notification_type: &str,
         title: &str,
         body: &str,
         action_url: Option<&str>,
@@ -102,7 +107,8 @@ p {{ color: #374151; line-height: 1.6; }}
             subject: format!("[Tachyon] {}", title),
             body_html: html,
             body_text: text,
-        }).await
+        })
+        .await
     }
 }
 
@@ -148,13 +154,15 @@ mod tests {
     async fn test_notification_html() {
         let config = crate::config::ServerConfig::default();
         let service = EmailService::new(&config);
-        let result = service.send_notification(
-            "user@example.com",
-            "mention",
-            "You were mentioned",
-            "Alice mentioned you in a comment.",
-            Some("https://example.com/doc/123"),
-        ).await;
+        let result = service
+            .send_notification(
+                "user@example.com",
+                "mention",
+                "You were mentioned",
+                "Alice mentioned you in a comment.",
+                Some("https://example.com/doc/123"),
+            )
+            .await;
         assert!(result.is_ok());
     }
 }

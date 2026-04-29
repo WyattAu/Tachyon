@@ -9,7 +9,6 @@ use axum::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-
 /// Ecosystem state
 #[derive(Clone)]
 pub struct EcosystemState {
@@ -158,17 +157,23 @@ pub async fn update_notification_preferences(
     let notification_type = req.notification_type.clone();
     let channel = req.channel.clone();
     let repo = tachyon_database::NotificationPreferenceRepository::new(state.pool.clone());
-    let pref = repo.upsert(tachyon_database::UpsertNotificationPrefRequest {
-        notification_type: req.notification_type,
-        enabled: req.enabled,
-        channel: req.channel,
-    }, &user_id).await.unwrap_or_else(|_| tachyon_database::NotificationPreference {
-        user_id: user_id.clone(),
-        notification_type,
-        enabled: req.enabled,
-        channel,
-        updated_at: chrono::Utc::now(),
-    });
+    let pref = repo
+        .upsert(
+            tachyon_database::UpsertNotificationPrefRequest {
+                notification_type: req.notification_type,
+                enabled: req.enabled,
+                channel: req.channel,
+            },
+            &user_id,
+        )
+        .await
+        .unwrap_or_else(|_| tachyon_database::NotificationPreference {
+            user_id: user_id.clone(),
+            notification_type,
+            enabled: req.enabled,
+            channel,
+            updated_at: chrono::Utc::now(),
+        });
     Json(pref)
 }
 
@@ -177,10 +182,11 @@ pub async fn update_notification_preferences(
 // ============================================================================
 
 /// GET /api/v2/webhooks/logs — Get webhook delivery logs
-pub async fn get_webhook_logs(
-    State(_state): State<EcosystemState>,
-) -> Json<WebhookLogsResponse> {
-    Json(WebhookLogsResponse { logs: vec![], total: 0 })
+pub async fn get_webhook_logs(State(_state): State<EcosystemState>) -> Json<WebhookLogsResponse> {
+    Json(WebhookLogsResponse {
+        logs: vec![],
+        total: 0,
+    })
 }
 
 // ============================================================================
@@ -192,7 +198,13 @@ pub fn create_ecosystem_router() -> axum::Router<EcosystemState> {
 
     axum::Router::new()
         .route("/v2/info", get(api_info))
-        .route("/v2/notifications/preferences/{user_id}", get(get_notification_preferences))
-        .route("/v2/notifications/preferences/{user_id}", put(update_notification_preferences))
+        .route(
+            "/v2/notifications/preferences/{user_id}",
+            get(get_notification_preferences),
+        )
+        .route(
+            "/v2/notifications/preferences/{user_id}",
+            put(update_notification_preferences),
+        )
         .route("/v2/webhooks/logs", get(get_webhook_logs))
 }

@@ -1,15 +1,13 @@
 #![allow(dead_code, clippy::redundant_locals)]
 
-use leptos::prelude::*;
 use crate::api::ApiClient;
 use crate::types::Attachment;
+use leptos::prelude::*;
 use std::sync::{Arc, Mutex};
 use wasm_bindgen_futures::spawn_local;
 
 #[component]
-pub fn AttachmentManager(
-    document_id: String,
-) -> impl IntoView {
+pub fn AttachmentManager(document_id: String) -> impl IntoView {
     let api_client = Arc::new(Mutex::new(ApiClient::default()));
     let (uploading, set_uploading) = signal(false);
     let (error_msg, set_error_msg) = signal(None::<String>);
@@ -25,9 +23,7 @@ pub fn AttachmentManager(
             let _ = refresh_counter.get();
             let client = api_client.lock().unwrap().clone();
             let doc_id = document_id.clone();
-            async move {
-                client.list_attachments(&doc_id).await.unwrap_or_default()
-            }
+            async move { client.list_attachments(&doc_id).await.unwrap_or_default() }
         }
     });
 

@@ -202,7 +202,11 @@ pub async fn create_node(
         deactivated_at: None,
     };
 
-    let created = state.repo().create_node(&node).await.map_err(|e| db_err(&e))?;
+    let created = state
+        .repo()
+        .create_node(&node)
+        .await
+        .map_err(|e| db_err(&e))?;
 
     info!("Node created: {}", created.id);
     Ok(Json(created))
@@ -214,7 +218,11 @@ pub async fn get_node(
 ) -> Result<Json<GraphNode>, ApiError> {
     debug!("Getting node: {}", node_id);
 
-    let node = state.repo().get_node_by_id(&node_id).await.map_err(|e| db_err(&e))?;
+    let node = state
+        .repo()
+        .get_node_by_id(&node_id)
+        .await
+        .map_err(|e| db_err(&e))?;
 
     Ok(Json(node))
 }
@@ -336,7 +344,11 @@ pub async fn create_edge(
         deactivated_at: None,
     };
 
-    let created = state.repo().create_edge(&edge).await.map_err(|e| db_err(&e))?;
+    let created = state
+        .repo()
+        .create_edge(&edge)
+        .await
+        .map_err(|e| db_err(&e))?;
 
     info!("Edge created: {}", created.id);
     Ok(Json(created))
@@ -419,7 +431,12 @@ pub async fn query_graph(
 
     let edges = state
         .repo()
-        .get_neighbors(&req.source_id, direction, req.edge_type.as_deref(), max_depth)
+        .get_neighbors(
+            &req.source_id,
+            direction,
+            req.edge_type.as_deref(),
+            max_depth,
+        )
         .await
         .map_err(|e| db_err(&e))?;
 
@@ -465,25 +482,27 @@ pub async fn get_graph_at_time(
     Query(params): Query<std::collections::HashMap<String, String>>,
     State(state): State<NodeState>,
 ) -> Result<Json<GraphQueryResponse>, ApiError> {
-    let at_str = params
-        .get("at")
-        .ok_or_else(|| (
+    let at_str = params.get("at").ok_or_else(|| {
+        (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
                 code: "VALIDATION_ERROR".into(),
                 message: "Missing required query parameter: at (ISO 8601 timestamp)".into(),
             }),
-        ))?;
+        )
+    })?;
 
     let at: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(at_str)
         .map(|dt| dt.with_timezone(&chrono::Utc))
-        .map_err(|e| (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".into(),
-                message: format!("Invalid timestamp format: {}", e),
-            }),
-        ))?;
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    code: "VALIDATION_ERROR".into(),
+                    message: format!("Invalid timestamp format: {}", e),
+                }),
+            )
+        })?;
 
     info!("Querying graph state at: {}", at);
 
@@ -508,41 +527,49 @@ pub async fn get_graph_diff(
     Query(params): Query<std::collections::HashMap<String, String>>,
     State(state): State<NodeState>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let from_str = params.get("from").ok_or_else(|| (
-        StatusCode::BAD_REQUEST,
-        Json(ErrorResponse {
-            code: "VALIDATION_ERROR".into(),
-            message: "Missing required query parameter: from (ISO 8601 timestamp)".into(),
-        }),
-    ))?;
+    let from_str = params.get("from").ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "VALIDATION_ERROR".into(),
+                message: "Missing required query parameter: from (ISO 8601 timestamp)".into(),
+            }),
+        )
+    })?;
 
-    let to_str = params.get("to").ok_or_else(|| (
-        StatusCode::BAD_REQUEST,
-        Json(ErrorResponse {
-            code: "VALIDATION_ERROR".into(),
-            message: "Missing required query parameter: to (ISO 8601 timestamp)".into(),
-        }),
-    ))?;
+    let to_str = params.get("to").ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: "VALIDATION_ERROR".into(),
+                message: "Missing required query parameter: to (ISO 8601 timestamp)".into(),
+            }),
+        )
+    })?;
 
     let from: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(from_str)
         .map(|dt| dt.with_timezone(&chrono::Utc))
-        .map_err(|e| (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".into(),
-                message: format!("Invalid 'from' timestamp: {}", e),
-            }),
-        ))?;
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    code: "VALIDATION_ERROR".into(),
+                    message: format!("Invalid 'from' timestamp: {}", e),
+                }),
+            )
+        })?;
 
     let to: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(to_str)
         .map(|dt| dt.with_timezone(&chrono::Utc))
-        .map_err(|e| (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".into(),
-                message: format!("Invalid 'to' timestamp: {}", e),
-            }),
-        ))?;
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    code: "VALIDATION_ERROR".into(),
+                    message: format!("Invalid 'to' timestamp: {}", e),
+                }),
+            )
+        })?;
 
     if from >= to {
         return Err((
@@ -562,7 +589,9 @@ pub async fn get_graph_diff(
         .await
         .map_err(|e| db_err(&e))?;
 
-    Ok(Json(serde_json::to_value(diff).unwrap_or(serde_json::json!({}))))
+    Ok(Json(
+        serde_json::to_value(diff).unwrap_or(serde_json::json!({})),
+    ))
 }
 
 // ============================================================================

@@ -99,8 +99,11 @@ impl GraphExtractor {
         }
 
         if self.config.extract_headings {
-            let headings =
-                Self::parse_markdown_headings(body, self.config.min_heading_level, self.config.max_heading_level);
+            let headings = Self::parse_markdown_headings(
+                body,
+                self.config.min_heading_level,
+                self.config.max_heading_level,
+            );
             let heading_result = self
                 .process_headings(&graph_repo, &doc_node_id, &headings, document_id)
                 .await;
@@ -236,7 +239,11 @@ impl GraphExtractor {
     // Markdown heading parsing
     // -----------------------------------------------------------------------
 
-    pub fn parse_markdown_headings(content: &str, min_level: u32, max_level: u32) -> Vec<(u32, String)> {
+    pub fn parse_markdown_headings(
+        content: &str,
+        min_level: u32,
+        max_level: u32,
+    ) -> Vec<(u32, String)> {
         content
             .lines()
             .filter_map(|line| {
@@ -342,7 +349,10 @@ impl GraphExtractor {
             seen.insert(tag.clone());
 
             let tag_slug = format!("tag:{}", Self::slugify(tag));
-            let tag_node_id = match self.get_or_create_concept_node(graph_repo, tag, &tag_slug).await {
+            let tag_node_id = match self
+                .get_or_create_concept_node(graph_repo, tag, &tag_slug)
+                .await
+            {
                 Ok(id) => id,
                 Err(e) => {
                     result.errors.push(format!("tag '{}': {}", tag, e));
@@ -351,7 +361,14 @@ impl GraphExtractor {
             };
 
             match self
-                .create_edge_if_missing(graph_repo, doc_node_id, &tag_node_id, "tagged_with", Some(tag), 1.5)
+                .create_edge_if_missing(
+                    graph_repo,
+                    doc_node_id,
+                    &tag_node_id,
+                    "tagged_with",
+                    Some(tag),
+                    1.5,
+                )
                 .await
             {
                 Ok(true) => result.edges_created += 1,
@@ -398,7 +415,9 @@ impl GraphExtractor {
             {
                 Ok(true) => result.edges_created += 1,
                 Ok(false) => result.nodes_skipped += 1,
-                Err(e) => result.errors.push(format!("heading edge '{}': {}", text, e)),
+                Err(e) => result
+                    .errors
+                    .push(format!("heading edge '{}': {}", text, e)),
             }
 
             if let Err(e) = graph_repo
@@ -417,7 +436,9 @@ impl GraphExtractor {
                 )
                 .await
             {
-                result.errors.push(format!("heading props '{}': {}", text, e));
+                result
+                    .errors
+                    .push(format!("heading props '{}': {}", text, e));
             }
         }
 
@@ -435,7 +456,10 @@ impl GraphExtractor {
         let mut result = ExtractionResult::default();
 
         for (text, url) in links {
-            let is_internal = url.starts_with('/') || (!url.starts_with("http://") && !url.starts_with("https://") && !url.contains('.'));
+            let is_internal = url.starts_with('/')
+                || (!url.starts_with("http://")
+                    && !url.starts_with("https://")
+                    && !url.contains('.'));
 
             if is_internal {
                 let target_slug = url.trim_start_matches('/');
@@ -477,7 +501,9 @@ impl GraphExtractor {
                         debug!("Internal link target not found: {}", target_slug);
                     }
                     Err(e) => {
-                        result.errors.push(format!("link lookup '{}': {}", target_slug, e));
+                        result
+                            .errors
+                            .push(format!("link lookup '{}': {}", target_slug, e));
                     }
                 }
             } else {
@@ -488,7 +514,9 @@ impl GraphExtractor {
                 {
                     Ok(id) => id,
                     Err(e) => {
-                        result.errors.push(format!("reference node '{}': {}", url, e));
+                        result
+                            .errors
+                            .push(format!("reference node '{}': {}", url, e));
                         continue;
                     }
                 };
@@ -506,7 +534,9 @@ impl GraphExtractor {
                 {
                     Ok(true) => result.edges_created += 1,
                     Ok(false) => result.nodes_skipped += 1,
-                    Err(e) => result.errors.push(format!("reference edge '{}': {}", url, e)),
+                    Err(e) => result
+                        .errors
+                        .push(format!("reference edge '{}': {}", url, e)),
                 }
             }
         }
@@ -684,8 +714,14 @@ mod tests {
         let content = "Check out [Rust](https://rust-lang.org) and [this doc](/notes/something).";
         let links = GraphExtractor::parse_markdown_links(content);
         assert_eq!(links.len(), 2);
-        assert_eq!(links[0], ("Rust".to_string(), "https://rust-lang.org".to_string()));
-        assert_eq!(links[1], ("this doc".to_string(), "/notes/something".to_string()));
+        assert_eq!(
+            links[0],
+            ("Rust".to_string(), "https://rust-lang.org".to_string())
+        );
+        assert_eq!(
+            links[1],
+            ("this doc".to_string(), "/notes/something".to_string())
+        );
     }
 
     #[test]
@@ -700,8 +736,7 @@ mod tests {
 
     #[test]
     fn test_extract_tags_from_frontmatter() {
-        let yaml: serde_yaml::Value =
-            serde_yaml::from_str("tags: [rust, web, api]").unwrap();
+        let yaml: serde_yaml::Value = serde_yaml::from_str("tags: [rust, web, api]").unwrap();
         let tags = GraphExtractor::extract_tags_from_frontmatter(&yaml);
         assert_eq!(tags, vec!["rust", "web", "api"]);
     }
@@ -716,7 +751,13 @@ mod tests {
     #[test]
     fn test_slugify() {
         assert_eq!(GraphExtractor::slugify("Hello World"), "hello-world");
-        assert_eq!(GraphExtractor::slugify("Rust & WebAssembly"), "rust-webassembly");
-        assert_eq!(GraphExtractor::slugify("  multiple   spaces  "), "multiple-spaces");
+        assert_eq!(
+            GraphExtractor::slugify("Rust & WebAssembly"),
+            "rust-webassembly"
+        );
+        assert_eq!(
+            GraphExtractor::slugify("  multiple   spaces  "),
+            "multiple-spaces"
+        );
     }
 }

@@ -152,7 +152,9 @@ impl PresenceRepository {
         let existing = self
             .get_by_user_and_document(user_id, document_id)
             .await
-            .map_err(|_| DatabaseError::not_found("presence", format!("{}/{}", user_id, document_id)))?;
+            .map_err(|_| {
+                DatabaseError::not_found("presence", format!("{}/{}", user_id, document_id))
+            })?;
 
         let status = req.status.unwrap_or(existing.status);
         let cursor_section = req.cursor_section.or(existing.cursor_section);
@@ -255,7 +257,8 @@ impl PresenceRepository {
     /// Returns true if a record was actually deleted.
     #[instrument(skip(self))]
     pub async fn remove(&self, user_id: &str, document_id: &str) -> DatabaseResult<bool> {
-        let sql = "DELETE FROM document_presence WHERE user_id = $1::uuid AND document_id = $2::uuid";
+        let sql =
+            "DELETE FROM document_presence WHERE user_id = $1::uuid AND document_id = $2::uuid";
 
         let result = sqlx::query(sql)
             .bind(user_id)

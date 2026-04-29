@@ -13,14 +13,10 @@ pub fn ResponsiveContainer(children: Children) -> impl IntoView {
 
 #[component]
 pub fn ResponsiveGrid(
-    #[prop(default = 1)]
-    sm_cols: u32,
-    #[prop(default = 2)]
-    md_cols: u32,
-    #[prop(default = 3)]
-    lg_cols: u32,
-    #[prop(default = 4)]
-    gap: u32,
+    #[prop(default = 1)] sm_cols: u32,
+    #[prop(default = 2)] md_cols: u32,
+    #[prop(default = 3)] lg_cols: u32,
+    #[prop(default = 4)] gap: u32,
     children: Children,
 ) -> impl IntoView {
     let sm = match sm_cols {

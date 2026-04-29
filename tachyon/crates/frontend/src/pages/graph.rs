@@ -1,13 +1,13 @@
 // Knowledge Graph Page
 // Visual exploration of the knowledge graph with stats, node/edge browsing, and force-directed visualization
 
-use leptos::prelude::*;
-use leptos::task::spawn_local;
-use wasm_bindgen::JsCast;
 use crate::api::ApiClient;
 use crate::components::{BreadcrumbItem, Breadcrumbs};
+use leptos::prelude::*;
+use leptos::task::spawn_local;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use wasm_bindgen::JsCast;
 
 // ============================================================================
 // Types
@@ -257,10 +257,18 @@ fn svg_event_to_coords(ev: &web_sys::MouseEvent) -> Option<(f64, f64)> {
         .dyn_into::<js_sys::Function>()
         .ok()?;
     let rect = get_bcr.call0(svg_js).ok()?;
-    let left = js_sys::Reflect::get(&rect, &js_sys::JsString::from("left")).ok()?.as_f64()?;
-    let top = js_sys::Reflect::get(&rect, &js_sys::JsString::from("top")).ok()?.as_f64()?;
-    let width = js_sys::Reflect::get(&rect, &js_sys::JsString::from("width")).ok()?.as_f64()?;
-    let height = js_sys::Reflect::get(&rect, &js_sys::JsString::from("height")).ok()?.as_f64()?;
+    let left = js_sys::Reflect::get(&rect, &js_sys::JsString::from("left"))
+        .ok()?
+        .as_f64()?;
+    let top = js_sys::Reflect::get(&rect, &js_sys::JsString::from("top"))
+        .ok()?
+        .as_f64()?;
+    let width = js_sys::Reflect::get(&rect, &js_sys::JsString::from("width"))
+        .ok()?
+        .as_f64()?;
+    let height = js_sys::Reflect::get(&rect, &js_sys::JsString::from("height"))
+        .ok()?
+        .as_f64()?;
 
     let scale_x = vb_w / width;
     let scale_y = vb_h / height;
@@ -324,7 +332,8 @@ pub fn GraphPage() -> impl IntoView {
             match client.get_graph_stats().await {
                 Ok(data) => {
                     let s: GraphStats = serde_json::from_value(data).unwrap_or(GraphStats {
-                        node_count: 0, edge_count: 0,
+                        node_count: 0,
+                        edge_count: 0,
                         nodes_by_type: serde_json::json!({}),
                         edges_by_type: serde_json::json!({}),
                         avg_degree: 0.0,
@@ -373,12 +382,17 @@ pub fn GraphPage() -> impl IntoView {
         spawn_local(async move {
             let client = ApiClient::default();
 
-            let all_nodes = match client.list_graph_nodes(None, None, Some(1), Some(200)).await {
+            let all_nodes = match client
+                .list_graph_nodes(None, None, Some(1), Some(200))
+                .await
+            {
                 Ok(data) => {
                     if let Some(items) = data.get("items").and_then(|v| v.as_array()) {
                         items
                             .iter()
-                            .filter_map(|item| serde_json::from_value::<GraphNode>(item.clone()).ok())
+                            .filter_map(|item| {
+                                serde_json::from_value::<GraphNode>(item.clone()).ok()
+                            })
                             .collect::<Vec<_>>()
                     } else {
                         Vec::new()
@@ -411,9 +425,10 @@ pub fn GraphPage() -> impl IntoView {
                                     (edge.target_id.clone(), edge.source_id.clone())
                                 };
                                 if edge_set.insert(key) {
-                                    if let (Some(&src_idx), Some(&tgt_idx)) =
-                                        (id_to_idx.get(&edge.source_id), id_to_idx.get(&edge.target_id))
-                                    {
+                                    if let (Some(&src_idx), Some(&tgt_idx)) = (
+                                        id_to_idx.get(&edge.source_id),
+                                        id_to_idx.get(&edge.target_id),
+                                    ) {
                                         if src_idx != tgt_idx {
                                             collected_edges.push(SimEdge {
                                                 source: src_idx,
@@ -433,7 +448,8 @@ pub fn GraphPage() -> impl IntoView {
                 .iter()
                 .enumerate()
                 .map(|(i, n)| {
-                    let angle = (i as f64) * 2.0 * std::f64::consts::PI / (all_nodes.len() as f64).max(1.0);
+                    let angle =
+                        (i as f64) * 2.0 * std::f64::consts::PI / (all_nodes.len() as f64).max(1.0);
                     let radius = 200.0 + (i as f64 % 10.0) * 20.0;
                     SimNode {
                         index: i,

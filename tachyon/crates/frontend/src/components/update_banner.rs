@@ -4,8 +4,8 @@
 #![allow(dead_code)]
 
 use leptos::prelude::*;
-use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::spawn_local;
 
 #[derive(Debug, Clone)]
 pub struct UpdateInfo {
@@ -17,7 +17,8 @@ pub struct UpdateInfo {
 
 async fn check_for_update_tauri() -> Option<UpdateInfo> {
     let window = web_sys::window()?;
-    let tauri = js_sys::Reflect::get(&window, &js_sys::JsString::from("__TAURI_INTERNALS__")).ok()?;
+    let tauri =
+        js_sys::Reflect::get(&window, &js_sys::JsString::from("__TAURI_INTERNALS__")).ok()?;
 
     let invoke_fn = js_sys::Reflect::get(&tauri, &js_sys::JsString::from("invoke")).ok()?;
     let invoke_fn = invoke_fn.dyn_into::<js_sys::Function>().ok()?;
@@ -26,9 +27,7 @@ async fn check_for_update_tauri() -> Option<UpdateInfo> {
     let command = js_sys::JsString::from("check_for_update");
     let args = js_sys::Array::new();
 
-    let result = invoke_fn
-        .call2(&this, &command, &args)
-        .ok()?;
+    let result = invoke_fn.call2(&this, &command, &args).ok()?;
 
     let obj = result.dyn_into::<js_sys::Object>().ok()?;
 
@@ -60,9 +59,13 @@ async fn check_for_update_tauri() -> Option<UpdateInfo> {
 
 fn download_update_tauri() {
     if let Some(window) = web_sys::window() {
-        if let Ok(tauri) = js_sys::Reflect::get(&window, &js_sys::JsString::from("__TAURI_INTERNALS__")) {
+        if let Ok(tauri) =
+            js_sys::Reflect::get(&window, &js_sys::JsString::from("__TAURI_INTERNALS__"))
+        {
             if !tauri.is_undefined() && !tauri.is_null() {
-                if let Ok(invoke_fn) = js_sys::Reflect::get(&tauri, &js_sys::JsString::from("invoke")) {
+                if let Ok(invoke_fn) =
+                    js_sys::Reflect::get(&tauri, &js_sys::JsString::from("invoke"))
+                {
                     if let Ok(invoke_fn) = invoke_fn.dyn_into::<js_sys::Function>() {
                         let this = js_sys::Object::new();
                         let command = js_sys::JsString::from("download_and_install_update");
@@ -77,23 +80,35 @@ fn download_update_tauri() {
 
 fn listen_download_progress(set_progress: WriteSignal<u32>) {
     if let Some(window) = web_sys::window() {
-        if let Ok(tauri) = js_sys::Reflect::get(&window, &js_sys::JsString::from("__TAURI_INTERNALS__")) {
+        if let Ok(tauri) =
+            js_sys::Reflect::get(&window, &js_sys::JsString::from("__TAURI_INTERNALS__"))
+        {
             if !tauri.is_undefined() && !tauri.is_null() {
-                if let Ok(listen_fn) = js_sys::Reflect::get(&tauri, &js_sys::JsString::from("listen")) {
+                if let Ok(listen_fn) =
+                    js_sys::Reflect::get(&tauri, &js_sys::JsString::from("listen"))
+                {
                     if let Ok(listen_fn) = listen_fn.dyn_into::<js_sys::Function>() {
                         let this = js_sys::Object::new();
                         let event_name = js_sys::JsString::from("update-download-progress");
 
-                        let closure = wasm_bindgen::closure::Closure::<dyn Fn(wasm_bindgen::JsValue)>::new(move |event: wasm_bindgen::JsValue| {
-                            let payload = js_sys::Reflect::get(&event, &js_sys::JsString::from("payload")).ok();
-                            if let Some(payload) = payload {
-                                if let Some(progress) = payload.as_f64() {
-                                    set_progress.set(progress as u32);
-                                }
-                            }
-                        });
+                        let closure =
+                            wasm_bindgen::closure::Closure::<dyn Fn(wasm_bindgen::JsValue)>::new(
+                                move |event: wasm_bindgen::JsValue| {
+                                    let payload = js_sys::Reflect::get(
+                                        &event,
+                                        &js_sys::JsString::from("payload"),
+                                    )
+                                    .ok();
+                                    if let Some(payload) = payload {
+                                        if let Some(progress) = payload.as_f64() {
+                                            set_progress.set(progress as u32);
+                                        }
+                                    }
+                                },
+                            );
 
-                        let _ = listen_fn.call2(&this, &event_name, closure.as_ref().unchecked_ref());
+                        let _ =
+                            listen_fn.call2(&this, &event_name, closure.as_ref().unchecked_ref());
                         closure.forget();
                     }
                 }
@@ -150,7 +165,10 @@ pub fn UpdateBanner() -> impl IntoView {
 
         match info {
             Some(ref info) if info.available => {
-                let latest = info.latest_version.clone().unwrap_or_else(|| "unknown".to_string());
+                let latest = info
+                    .latest_version
+                    .clone()
+                    .unwrap_or_else(|| "unknown".to_string());
                 let notes = info.release_notes.clone();
 
                 if is_downloading {

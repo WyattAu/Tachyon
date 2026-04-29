@@ -285,7 +285,10 @@ impl AuthorizationCache {
 
             self.cache.retain(|_k, v| {
                 // Evict if expired OR if we haven't evicted enough yet
-                let elapsed = now.signed_duration_since(v.cached_at).num_seconds().unsigned_abs();
+                let elapsed = now
+                    .signed_duration_since(v.cached_at)
+                    .num_seconds()
+                    .unsigned_abs();
                 let is_expired = elapsed >= v.ttl;
 
                 // Keep if: not expired AND (we've evicted enough OR entry is new)
@@ -463,7 +466,7 @@ mod tests {
 
         let subject = Subject::new("user", "user123");
         let resource = Resource::new("document", "doc123");
-        let action = Action::new("read");
+        let _action = Action::new("read");
 
         // Insert entries for same subject
         for i in 0..3 {

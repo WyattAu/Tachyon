@@ -2,10 +2,9 @@
 use axum::{
     body::Body,
     http::{Request, StatusCode},
-    Router,
 };
-use tower::ServiceExt;
 use serde_json::json;
+use tower::ServiceExt;
 
 use crate::common;
 
@@ -51,7 +50,9 @@ async fn test_create_node() {
         .expect("Request failed");
 
     assert!(
-        response.status() == StatusCode::CREATED || response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
+        response.status() == StatusCode::CREATED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
         "Expected CREATED, OK, or INTERNAL_SERVER_ERROR, got {}",
         response.status()
     );
@@ -90,7 +91,8 @@ async fn test_list_nodes() {
         .expect("Request failed");
 
     assert!(
-        response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
+        response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
         "Expected OK or INTERNAL_SERVER_ERROR, got {}",
         response.status()
     );
@@ -103,12 +105,18 @@ async fn test_list_nodes() {
         "Response should contain nodes array, got: {}",
         body
     );
-    let nodes = body["nodes"].as_array()
+    let nodes = body["nodes"]
+        .as_array()
         .or_else(|| body["data"].as_array())
         .or_else(|| body.as_array());
     if let Some(_arr) = nodes {
-        assert!(body["total"].is_number() || body["count"].is_number() || body["total_count"].is_number(),
-            "Response should contain total/count, got: {}", body);
+        assert!(
+            body["total"].is_number()
+                || body["count"].is_number()
+                || body["total_count"].is_number(),
+            "Response should contain total/count, got: {}",
+            body
+        );
     }
 }
 

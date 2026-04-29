@@ -11,7 +11,7 @@ pub mod ranking;
 pub mod types;
 
 // Re-export common types for convenience
-pub use api::{SearchApiState, create_router};
+pub use api::{create_router, SearchApiState};
 pub use error::{ErrorCategory, SearchError, SearchResult};
 pub use indexer::IndexManager;
 pub use query::QueryEngine;

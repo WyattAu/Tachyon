@@ -12,14 +12,14 @@
 
 #![allow(clippy::duplicate_mod)]
 
-pub mod unit;
-pub mod integration;
-pub mod fuzz;
 pub mod benchmarks;
 pub mod common;
+pub mod fuzz;
+pub mod integration;
+pub mod unit;
 
-pub use proptest;
 pub use mockall;
+pub use proptest;
 pub use serial_test;
 pub use tokio_test;
 pub use wiremock;
@@ -48,10 +48,13 @@ pub struct TestApp {
 
 impl TestApp {
     pub async fn new() -> Self {
-        let database_url = std::env::var("TEST_DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://tachyon:tachyon@localhost:5432/tachyon_test".to_string());
+        let database_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://tachyon:tachyon@localhost:5432/tachyon_test".to_string()
+        });
 
-        let pool = tachyon_database::init_with_migrations(&database_url).await.ok();
+        let pool = tachyon_database::init_with_migrations(&database_url)
+            .await
+            .ok();
 
         let router = tachyon_server::routes::create_router().await;
 
@@ -139,10 +142,13 @@ pub mod db_helpers {
     use tachyon_database::DatabasePool;
 
     pub async fn setup_test_pool() -> Option<DatabasePool> {
-        let database_url = std::env::var("TEST_DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://tachyon:tachyon@localhost:5432/tachyon_test".to_string());
+        let database_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://tachyon:tachyon@localhost:5432/tachyon_test".to_string()
+        });
 
-        tachyon_database::init_with_migrations(&database_url).await.ok()
+        tachyon_database::init_with_migrations(&database_url)
+            .await
+            .ok()
     }
 
     pub async fn cleanup_test_data(pool: &DatabasePool) {
@@ -170,7 +176,8 @@ pub mod assertions {
     use serde_json::Value;
 
     pub fn assert_json_field(json: &Value, field: &str, expected: &str) {
-        let actual = json.get(field)
+        let actual = json
+            .get(field)
             .and_then(|v| v.as_str())
             .unwrap_or_else(|| panic!("Field '{}' not found or not a string in JSON", field));
         assert_eq!(actual, expected, "Field '{}' mismatch", field);

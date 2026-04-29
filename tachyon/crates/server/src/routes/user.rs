@@ -5,20 +5,20 @@
 // The pluggable AuthProvider trait allows swapping authentication strategies
 // (local password, OAuth, API keys) without changing route handlers.
 
+use crate::config::GuestConfig;
 use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::Json,
 };
-use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use sqlx::Row;
 use tachyon_core::{User, UserId, UserRole};
 use tachyon_database::{DatabasePool, RefreshTokenRepository, UserRepository};
 use tracing::{debug, info, instrument, warn};
-use crate::config::GuestConfig;
 
 // ============================================================================
 // JWT Claims
@@ -435,7 +435,8 @@ pub async fn register(
         Ok(created) => {
             info!("User registered: {} ({})", created.username, created.id);
 
-            let token = match state.generate_jwt(&created.id.to_string(), created.permissions.role) {
+            let token = match state.generate_jwt(&created.id.to_string(), created.permissions.role)
+            {
                 Ok(t) => t,
                 Err(e) => {
                     warn!("Failed to generate JWT after registration: {}", e);
@@ -452,7 +453,14 @@ pub async fn register(
             let refresh_repo = state.refresh_token_repo();
             let raw_refresh = state.generate_refresh_token();
             let refresh_hash = hash_refresh_token(&raw_refresh);
-            if let Err(e) = refresh_repo.create(&created.id.to_string(), &refresh_hash, REFRESH_TOKEN_EXPIRATION_SECS as i64).await {
+            if let Err(e) = refresh_repo
+                .create(
+                    &created.id.to_string(),
+                    &refresh_hash,
+                    REFRESH_TOKEN_EXPIRATION_SECS as i64,
+                )
+                .await
+            {
                 warn!("Failed to create refresh token after registration: {}", e);
             }
 
@@ -471,7 +479,8 @@ pub async fn register(
         }
         Err(e) => {
             let msg = e.to_string();
-            if msg.contains("already exists") || msg.contains("duplicate") || msg.contains("unique") {
+            if msg.contains("already exists") || msg.contains("duplicate") || msg.contains("unique")
+            {
                 Err((
                     StatusCode::CONFLICT,
                     Json(UserErrorResponse {
@@ -552,7 +561,8 @@ pub async fn create_user(
         Ok(created) => Ok(Json(UserResponse::from(created))),
         Err(e) => {
             let msg = e.to_string();
-            if msg.contains("already exists") || msg.contains("duplicate") || msg.contains("unique") {
+            if msg.contains("already exists") || msg.contains("duplicate") || msg.contains("unique")
+            {
                 Err((
                     StatusCode::CONFLICT,
                     Json(UserErrorResponse {
@@ -626,7 +636,16 @@ pub async fn update_user(
     });
 
     let repo = state.user_repo();
-    match repo.update(&id, req.display_name.as_deref(), req.email.as_deref(), role, req.is_active).await {
+    match repo
+        .update(
+            &id,
+            req.display_name.as_deref(),
+            req.email.as_deref(),
+            role,
+            req.is_active,
+        )
+        .await
+    {
         Ok(user) => Ok(Json(UserResponse::from(user))),
         Err(_) => Err((
             StatusCode::NOT_FOUND,
@@ -706,9 +725,7 @@ pub async fn get_me(
     State(state): State<UserState>,
     headers: HeaderMap,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<UserErrorResponse>)> {
-    let auth_header = headers
-        .get("authorization")
-        .and_then(|h| h.to_str().ok());
+    let auth_header = headers.get("authorization").and_then(|h| h.to_str().ok());
 
     let token = match auth_header {
         Some(h) if h.starts_with("Bearer ") => &h[7..],
@@ -769,9 +786,7 @@ pub async fn update_me(
     headers: HeaderMap,
     Json(req): Json<UpdateProfileRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<UserErrorResponse>)> {
-    let auth_header = headers
-        .get("authorization")
-        .and_then(|h| h.to_str().ok());
+    let auth_header = headers.get("authorization").and_then(|h| h.to_str().ok());
 
     let token = match auth_header {
         Some(h) if h.starts_with("Bearer ") => &h[7..],
@@ -815,7 +830,13 @@ pub async fn update_me(
     let uid = tachyon_core::UserId::from_uuid(user_id);
     let repo = state.user_repo();
     match repo
-        .update(&uid, req.display_name.as_deref(), req.email.as_deref(), None, None)
+        .update(
+            &uid,
+            req.display_name.as_deref(),
+            req.email.as_deref(),
+            None,
+            None,
+        )
         .await
     {
         Ok(user) => Ok(Json(UserResponse::from(user))),
@@ -924,7 +945,10 @@ pub async fn authenticate(
     match user.verify(&req.password) {
         Ok(true) => {}
         Ok(false) | Err(_) => {
-            debug!("Authentication failed: invalid password for user {}", user.username);
+            debug!(
+                "Authentication failed: invalid password for user {}",
+                user.username
+            );
             return Ok(Json(AuthenticateResponse {
                 success: false,
                 user_id: None,
@@ -1004,7 +1028,14 @@ pub async fn authenticate(
     let refresh_repo = state.refresh_token_repo();
     let raw_refresh = state.generate_refresh_token();
     let refresh_hash = hash_refresh_token(&raw_refresh);
-    if let Err(e) = refresh_repo.create(&user.id.to_string(), &refresh_hash, REFRESH_TOKEN_EXPIRATION_SECS as i64).await {
+    if let Err(e) = refresh_repo
+        .create(
+            &user.id.to_string(),
+            &refresh_hash,
+            REFRESH_TOKEN_EXPIRATION_SECS as i64,
+        )
+        .await
+    {
         warn!("Failed to create refresh token: {}", e);
     }
 
@@ -1029,9 +1060,7 @@ pub async fn auth_status(
     State(state): State<UserState>,
     headers: HeaderMap,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<UserErrorResponse>)> {
-    let auth_header = headers
-        .get("authorization")
-        .and_then(|h| h.to_str().ok());
+    let auth_header = headers.get("authorization").and_then(|h| h.to_str().ok());
 
     match auth_header {
         Some(auth_str) if auth_str.starts_with("Bearer ") => {
@@ -1181,7 +1210,14 @@ pub async fn refresh_token_handler(
 
     let new_raw_refresh = state.generate_refresh_token();
     let new_hash = hash_refresh_token(&new_raw_refresh);
-    if let Err(e) = repo.create(&user.id.to_string(), &new_hash, REFRESH_TOKEN_EXPIRATION_SECS as i64).await {
+    if let Err(e) = repo
+        .create(
+            &user.id.to_string(),
+            &new_hash,
+            REFRESH_TOKEN_EXPIRATION_SECS as i64,
+        )
+        .await
+    {
         warn!("Failed to create refresh token: {}", e);
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,

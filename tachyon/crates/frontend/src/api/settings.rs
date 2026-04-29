@@ -12,11 +12,23 @@ impl ApiClient {
         actor_id: Option<&str>,
     ) -> Result<serde_json::Value, ApiError> {
         let mut params = vec![];
-        if let Some(p) = page { params.push(format!("page={}", p)); }
-        if let Some(ps) = page_size { params.push(format!("page_size={}", ps)); }
-        if let Some(a) = action { params.push(format!("action={}", a)); }
-        if let Some(aid) = actor_id { params.push(format!("actor_id={}", aid)); }
-        let query = if params.is_empty() { String::new() } else { format!("?{}", params.join("&")) };
+        if let Some(p) = page {
+            params.push(format!("page={}", p));
+        }
+        if let Some(ps) = page_size {
+            params.push(format!("page_size={}", ps));
+        }
+        if let Some(a) = action {
+            params.push(format!("action={}", a));
+        }
+        if let Some(aid) = actor_id {
+            params.push(format!("actor_id={}", aid));
+        }
+        let query = if params.is_empty() {
+            String::new()
+        } else {
+            format!("?{}", params.join("&"))
+        };
         let url = format!("{}/audit{}", self.base_url, query);
         self.get(&url).await
     }
@@ -26,7 +38,10 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    pub async fn create_role(&self, request: &serde_json::Value) -> Result<serde_json::Value, ApiError> {
+    pub async fn create_role(
+        &self,
+        request: &serde_json::Value,
+    ) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/roles", self.base_url);
         self.post(&url, request).await
     }

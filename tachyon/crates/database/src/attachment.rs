@@ -63,9 +63,9 @@ impl AttachmentRepository {
 
     async fn ensure_upload_dir(&self) -> DatabaseResult<()> {
         if !self.upload_dir.exists() {
-            fs::create_dir_all(&self.upload_dir)
-                .await
-                .map_err(|e| DatabaseError::InternalError(format!("Failed to create upload directory: {}", e)))?;
+            fs::create_dir_all(&self.upload_dir).await.map_err(|e| {
+                DatabaseError::InternalError(format!("Failed to create upload directory: {}", e))
+            })?;
         }
         Ok(())
     }
@@ -88,7 +88,7 @@ impl AttachmentRepository {
         let mut file = fs::File::create(&storage_path)
             .await
             .map_err(|e| DatabaseError::InternalError(format!("Failed to create file: {}", e)))?;
-        
+
         file.write_all(&req.content)
             .await
             .map_err(|e| DatabaseError::InternalError(format!("Failed to write file: {}", e)))?;
@@ -114,14 +114,17 @@ impl AttachmentRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        info!("Attachment created: {} for document {}", req.filename, req.document_id);
+        info!(
+            "Attachment created: {} for document {}",
+            req.filename, req.document_id
+        );
         Ok(attachment)
     }
 
     #[instrument(skip(self))]
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<Attachment> {
         let select_sql = format!("{} WHERE id = $1::uuid", ATTACHMENT_SELECT_SQL);
-        
+
         let mut conn = self.pool.acquire().await?;
         let attachment: Option<Attachment> = query_as(&select_sql)
             .bind(id)
@@ -146,14 +149,18 @@ impl AttachmentRepository {
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        debug!("Found {} attachments for document {}", attachments.len(), document_id);
+        debug!(
+            "Found {} attachments for document {}",
+            attachments.len(),
+            document_id
+        );
         Ok(attachments)
     }
 
     #[instrument(skip(self))]
     pub async fn get_content(&self, id: &str) -> DatabaseResult<(Attachment, Vec<u8>)> {
         let attachment = self.get_by_id(id).await?;
-        
+
         let content = fs::read(&attachment.storage_path)
             .await
             .map_err(|e| DatabaseError::InternalError(format!("Failed to read file: {}", e)))?;
@@ -168,7 +175,9 @@ impl AttachmentRepository {
         if fs::metadata(&attachment.storage_path).await.is_ok() {
             fs::remove_file(&attachment.storage_path)
                 .await
-                .map_err(|e| DatabaseError::InternalError(format!("Failed to delete file: {}", e)))?;
+                .map_err(|e| {
+                    DatabaseError::InternalError(format!("Failed to delete file: {}", e))
+                })?;
         }
 
         let delete_sql = "DELETE FROM document_attachments WHERE id = $1::uuid";
@@ -254,7 +263,10 @@ mod tests {
 
     #[test]
     fn test_sanitize_filename_path_traversal() {
-        assert_eq!(sanitize_filename("../../../etc/passwd"), ".._.._.._etc_passwd");
+        assert_eq!(
+            sanitize_filename("../../../etc/passwd"),
+            ".._.._.._etc_passwd"
+        );
     }
 
     #[test]
@@ -274,7 +286,10 @@ mod tests {
 
     #[test]
     fn test_sanitize_filename_dots_and_dashes() {
-        assert_eq!(sanitize_filename(".hidden-file.tar.gz"), ".hidden-file.tar.gz");
+        assert_eq!(
+            sanitize_filename(".hidden-file.tar.gz"),
+            ".hidden-file.tar.gz"
+        );
     }
 
     #[test]

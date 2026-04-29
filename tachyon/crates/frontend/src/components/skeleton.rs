@@ -3,10 +3,7 @@
 use leptos::prelude::*;
 
 #[component]
-pub fn SkeletonText(
-    #[prop(default = 3)]
-    lines: usize,
-) -> impl IntoView {
+pub fn SkeletonText(#[prop(default = 3)] lines: usize) -> impl IntoView {
     view! {
         <div class="space-y-2 animate-pulse">
             {(0..lines).map(|i| {
@@ -41,10 +38,8 @@ pub fn SkeletonCard() -> impl IntoView {
 
 #[component]
 pub fn SkeletonTable(
-    #[prop(default = 5)]
-    rows: usize,
-    #[prop(default = 4)]
-    cols: usize,
+    #[prop(default = 5)] rows: usize,
+    #[prop(default = 4)] cols: usize,
 ) -> impl IntoView {
     view! {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse">
@@ -101,10 +96,7 @@ pub fn SkeletonEditor() -> impl IntoView {
 }
 
 #[component]
-pub fn SkeletonDocumentList(
-    #[prop(default = 5)]
-    items: usize,
-) -> impl IntoView {
+pub fn SkeletonDocumentList(#[prop(default = 5)] items: usize) -> impl IntoView {
     view! {
         <div>
             <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-4 animate-pulse"></div>

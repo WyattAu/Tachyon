@@ -192,11 +192,7 @@ impl ServeCommand {
     }
 
     /// Run file watcher for auto-sync (optional, gated behind --watch).
-    async fn run_file_watcher(
-        watch_path: PathBuf,
-        database_url: String,
-        shutdown: ShutdownSignal,
-    ) {
+    async fn run_file_watcher(watch_path: PathBuf, database_url: String, shutdown: ShutdownSignal) {
         if !watch_path.exists() {
             eprintln!("Watch path does not exist: {}", watch_path.display());
             return;
@@ -252,7 +248,10 @@ impl ServeCommand {
 
         let initial_events = watcher.scan_initial();
         if !initial_events.is_empty() {
-            println!("Initial scan: found {} markdown files", initial_events.len());
+            println!(
+                "Initial scan: found {} markdown files",
+                initial_events.len()
+            );
             for event in &initial_events {
                 Self::sync_and_report(&sync_service, event).await;
             }
@@ -294,7 +293,12 @@ impl ServeCommand {
             SyncResult::Created { id, slug } => {
                 println!("[watch]   -> created document: {} (slug: {})", id, slug);
             }
-            SyncResult::Updated { id, slug, hash_changed, conflict } => {
+            SyncResult::Updated {
+                id,
+                slug,
+                hash_changed,
+                conflict,
+            } => {
                 let mut msg = format!("[watch]   -> updated document: {} (slug: {})", id, slug);
                 if !hash_changed {
                     msg.push_str(" (no content change)");
@@ -326,14 +330,27 @@ impl Command for ServeCommand {
         println!("========================");
         println!("Host: {}", server_config.host);
         println!("Port: {}", server_config.port);
-        println!("Database: {}", if server_config.database_url.is_empty() {
-            server_config.database_path.as_deref().unwrap_or("not configured")
-        } else {
-            // Don't log the full URL with password
-            server_config.database_url.split('@').next_back().unwrap_or("configured")
-        });
+        println!(
+            "Database: {}",
+            if server_config.database_url.is_empty() {
+                server_config
+                    .database_path
+                    .as_deref()
+                    .unwrap_or("not configured")
+            } else {
+                // Don't log the full URL with password
+                server_config
+                    .database_url
+                    .split('@')
+                    .next_back()
+                    .unwrap_or("configured")
+            }
+        );
         if self.options.watch {
-            let watch_path = self.options.watch_path.clone()
+            let watch_path = self
+                .options
+                .watch_path
+                .clone()
                 .unwrap_or_else(|| PathBuf::from("."));
             println!("Watch: {}", watch_path.display());
         }
@@ -386,7 +403,8 @@ impl Command for ServeCommand {
                 let effective_watch_path = watch_path.unwrap_or_else(|| PathBuf::from("."));
                 let shutdown_for_watch = shutdown.clone();
                 Some(tokio::spawn(async move {
-                    Self::run_file_watcher(effective_watch_path, database_url, shutdown_for_watch).await;
+                    Self::run_file_watcher(effective_watch_path, database_url, shutdown_for_watch)
+                        .await;
                 }))
             } else {
                 None
@@ -456,7 +474,10 @@ mod tests {
 
         assert_eq!(cmd.options.host, "0.0.0.0");
         assert_eq!(cmd.options.port, 9000);
-        assert_eq!(cmd.options.database_url, Some("postgres://localhost/test".to_string()));
+        assert_eq!(
+            cmd.options.database_url,
+            Some("postgres://localhost/test".to_string())
+        );
         assert_eq!(cmd.options.max_body_size, Some(1024));
         assert_eq!(cmd.options.timeout, Some(60));
         assert!(cmd.options.watch);

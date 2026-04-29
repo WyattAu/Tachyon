@@ -1,10 +1,10 @@
 // Admin Roles Management Page
 // Role management interface for administrators
 
-use leptos::prelude::*;
-use serde::Deserialize;
-use leptos::task::spawn_local;
 use crate::api::ApiClient;
+use leptos::prelude::*;
+use leptos::task::spawn_local;
+use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Role {
@@ -53,7 +53,10 @@ async fn create_role_req(req: CreateRoleRequest) -> Result<Role, String> {
 
 async fn delete_role_req(id: i64) -> Result<(), String> {
     let client = ApiClient::default();
-    client.delete_role(&id.to_string()).await.map_err(|e| e.to_string())
+    client
+        .delete_role(&id.to_string())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[component]
@@ -107,7 +110,11 @@ pub fn RolesPage() -> impl IntoView {
         spawn_local(async move {
             let req = CreateRoleRequest {
                 name,
-                description: if description.is_empty() { None } else { Some(description) },
+                description: if description.is_empty() {
+                    None
+                } else {
+                    Some(description)
+                },
                 permissions,
             };
             match create_role_req(req).await {
@@ -133,7 +140,8 @@ pub fn RolesPage() -> impl IntoView {
             match delete_role_req(id).await {
                 Ok(()) => {
                     let current_roles = roles.get();
-                    let updated: Vec<Role> = current_roles.into_iter().filter(|r| r.id != id).collect();
+                    let updated: Vec<Role> =
+                        current_roles.into_iter().filter(|r| r.id != id).collect();
                     set_roles.set(updated);
                 }
                 Err(e) => {
