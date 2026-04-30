@@ -5,8 +5,8 @@ description = "WASM plugin runtime for Tachyon"
 edition = "2021"
 
 [dependencies]
-wasmtime = "18"
-wasmtime-wasi = "18"
+wasmtime = "44"
+wasmtime-wasi = "44"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

@@ -1,6 +1,6 @@
 use tachyon_database::{CreateTemplateRequest, TemplateRepository, UpdateTemplateRequest};
 
-use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database};
+use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database, teardown_test_user};
 
 fn skip_without_db() -> bool {
     std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
@@ -44,7 +44,7 @@ async fn test_create_template() {
     assert!(tags.contains(&"meeting".to_string()));
     assert!(tags.contains(&"notes".to_string()));
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -80,7 +80,7 @@ async fn test_get_template_by_id() {
     assert_eq!(fetched.id, created.id);
     assert_eq!(fetched.name, "Get Test Template");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -115,7 +115,7 @@ async fn test_get_template_by_name() {
         .expect("Failed to get template by name");
     assert_eq!(fetched.name, unique_name);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -157,7 +157,7 @@ async fn test_list_templates() {
         .expect("Failed to list templates by category");
     assert!(filtered.len() >= 3);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -207,7 +207,7 @@ async fn test_update_template() {
     let tags = updated.parse_tags().expect("Failed to parse tags");
     assert!(tags.contains(&"updated".to_string()));
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -243,7 +243,7 @@ async fn test_delete_template() {
     let result = repo.get_by_id(&created.id).await;
     assert!(result.is_err(), "Deleted template should not be found");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -280,5 +280,5 @@ async fn test_template_count() {
         .expect("Failed to count by category");
     assert!(by_category >= 1);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }

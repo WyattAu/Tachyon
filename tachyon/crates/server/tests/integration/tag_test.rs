@@ -2,6 +2,7 @@ use tachyon_database::DocumentRepository;
 
 use crate::common::setup::{
     create_test_document, create_test_pool, create_test_user, setup_database, teardown_database,
+    teardown_test_user,
 };
 
 fn skip_without_db() -> bool {
@@ -48,7 +49,7 @@ async fn test_list_tags_from_document() {
     assert!(fetched_tags.contains(&"integration".to_string()));
     assert!(fetched_tags.contains(&"tag-test".to_string()));
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -81,7 +82,7 @@ async fn test_tag_creation_on_document_create() {
         .expect("Failed to search by nonexistent tag");
     assert!(no_results.is_empty());
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -120,5 +121,5 @@ async fn test_multiple_tags_per_document() {
     assert!(fetched_tags.contains(&"rust".to_string()));
     assert!(fetched_tags.contains(&"database".to_string()));
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }

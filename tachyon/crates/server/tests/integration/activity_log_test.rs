@@ -1,6 +1,6 @@
 use tachyon_database::{ActivityRepository, CreateActivityEvent};
 
-use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database};
+use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database, teardown_test_user};
 
 fn skip_without_db() -> bool {
     std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
@@ -43,7 +43,7 @@ async fn test_create_activity_event() {
     assert_eq!(event.description, "Created a new test document");
     assert!(event.metadata["document_title"].is_string());
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -81,7 +81,7 @@ async fn test_list_activities() {
 
     assert!(events.len() >= 3, "Should have at least 3 activity events");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -141,7 +141,7 @@ async fn test_activity_ordering_most_recent_first() {
         "Events should be ordered by created_at DESC"
     );
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -196,7 +196,7 @@ async fn test_list_activities_by_target() {
         assert_eq!(event.target_type, "document");
     }
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -250,7 +250,7 @@ async fn test_list_activities_by_actor() {
         assert_eq!(event.actor_id, user.id.as_uuid());
     }
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -282,7 +282,7 @@ async fn test_activity_event_without_metadata() {
 
     assert_eq!(event.metadata, serde_json::json!({}));
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -324,5 +324,5 @@ async fn test_list_activities_with_pagination() {
         .expect("Failed to list page 2");
     assert_eq!(page2.len(), 2);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }

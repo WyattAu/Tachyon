@@ -2,6 +2,7 @@ use tachyon_database::DocumentRepository;
 
 use crate::common::setup::{
     create_test_document, create_test_pool, create_test_user, setup_database, teardown_database,
+    teardown_test_user,
 };
 
 fn skip_without_db() -> bool {
@@ -29,7 +30,7 @@ async fn test_create_document() {
     assert_eq!(doc.status, "draft");
     assert_eq!(doc.visibility, "private");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -55,7 +56,7 @@ async fn test_get_document_by_id() {
     assert_eq!(fetched.title, doc.title);
     assert_eq!(fetched.author_id, doc.author_id);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -90,7 +91,7 @@ async fn test_update_document_title_and_content() {
     assert_eq!(fetched.title, "Updated Title");
     assert_eq!(fetched.status, "published");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -127,7 +128,7 @@ async fn test_update_document_metadata() {
     assert_eq!(fetched.visibility, "public");
     assert_eq!(fetched.word_count, 100);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -158,7 +159,7 @@ async fn test_list_documents() {
         .expect("Failed to list documents page 1");
     assert_eq!(paged.len(), 1);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -197,7 +198,7 @@ async fn test_list_documents_with_pagination() {
         .expect("Failed to list page 3");
     assert!(!page3.is_empty());
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -226,7 +227,7 @@ async fn test_list_documents_by_author() {
         assert_eq!(doc.author_id, user.id.as_str());
     }
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -252,7 +253,7 @@ async fn test_delete_document() {
     let result = repo.get_by_id(&doc_id).await;
     assert!(result.is_err(), "Deleted document should not be found");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -272,5 +273,5 @@ async fn test_document_tags() {
     let tags: Vec<String> = doc.parse_tags().expect("Failed to parse tags");
     assert!(tags.contains(&"test".to_string()));
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }

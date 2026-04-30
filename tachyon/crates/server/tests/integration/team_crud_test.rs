@@ -1,6 +1,6 @@
 use tachyon_database::{Team, TeamRepository};
 
-use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database};
+use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database, teardown_test_user};
 
 fn skip_without_db() -> bool {
     std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
@@ -37,7 +37,7 @@ async fn test_create_team() {
     assert_eq!(created.owner_id, user.id.as_str());
     assert!(created.description.is_some());
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -64,7 +64,7 @@ async fn test_get_team_by_id() {
     assert_eq!(fetched.id, created.id);
     assert_eq!(fetched.name, "Get Test Team");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -90,7 +90,7 @@ async fn test_get_team_by_slug() {
         .expect("Failed to get team by slug");
     assert_eq!(fetched.id, created.id);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -120,7 +120,7 @@ async fn test_list_teams() {
         .expect("Failed to list teams");
     assert!(teams.len() >= 2);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -152,7 +152,7 @@ async fn test_update_team() {
     assert_eq!(updated.name, "After Update");
     assert_eq!(updated.description.as_deref(), Some("Updated description"));
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -179,7 +179,7 @@ async fn test_delete_team() {
     let result = repo.get_by_id(&created.id).await;
     assert!(result.is_err(), "Deleted team should not be found");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -217,7 +217,7 @@ async fn test_add_and_list_team_members() {
         .expect("Failed to list team members");
     assert!(!members.is_empty());
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &owner.username).await;
 }
 
 #[tokio::test]
@@ -258,5 +258,5 @@ async fn test_remove_team_member() {
         .expect("Failed to check membership");
     assert!(!is_member);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &owner.username).await;
 }

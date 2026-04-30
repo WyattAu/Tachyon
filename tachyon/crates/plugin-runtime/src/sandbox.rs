@@ -4,12 +4,9 @@ use crate::error::PluginRuntimeError;
 use crate::PluginRuntimeResult;
 use serde_json::Value;
 use std::path::Path;
-use wasmtime::component::ResourceTable;
 use wasmtime::*;
-use wasmtime_wasi::preview2::preview1::{
-    add_to_linker_sync, WasiPreview1Adapter, WasiPreview1View,
-};
-use wasmtime_wasi::preview2::{WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::p1::{self, WasiP1Ctx};
+use wasmtime_wasi::WasiCtxBuilder;
 
 #[derive(Debug, Clone)]
 pub struct SandboxConfig {
@@ -42,30 +39,6 @@ pub struct PluginOutput {
     pub stderr: String,
 }
 
-struct PluginWasiState {
-    table: ResourceTable,
-    ctx: WasiCtx,
-    adapter: WasiPreview1Adapter,
-}
-
-impl WasiView for PluginWasiState {
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.table
-    }
-    fn ctx(&mut self) -> &mut WasiCtx {
-        &mut self.ctx
-    }
-}
-
-impl WasiPreview1View for PluginWasiState {
-    fn adapter(&self) -> &WasiPreview1Adapter {
-        &self.adapter
-    }
-    fn adapter_mut(&mut self) -> &mut WasiPreview1Adapter {
-        &mut self.adapter
-    }
-}
-
 pub struct PluginSandbox {
     wasm_path: std::path::PathBuf,
     config: SandboxConfig,
@@ -93,23 +66,16 @@ impl PluginSandbox {
         let engine = Engine::new(&engine_config)
             .map_err(|e| PluginRuntimeError::Runtime(format!("Engine creation: {}", e)))?;
 
-        let wasi_ctx = if self.config.enable_wasi {
-            WasiCtxBuilder::new()
+        let mut wasi_builder = WasiCtxBuilder::new();
+        if self.config.enable_wasi {
+            wasi_builder
                 .inherit_stdin()
                 .inherit_stdout()
-                .inherit_stderr()
-                .build()
-        } else {
-            WasiCtxBuilder::new().build()
-        };
+                .inherit_stderr();
+        }
+        let wasi_ctx = wasi_builder.build_p1();
 
-        let state = PluginWasiState {
-            table: ResourceTable::new(),
-            ctx: wasi_ctx,
-            adapter: WasiPreview1Adapter::new(),
-        };
-
-        let mut store = Store::new(&engine, state);
+        let mut store = Store::new(&engine, wasi_ctx);
         store
             .set_fuel(self.config.max_fuel)
             .map_err(|e| PluginRuntimeError::Runtime(format!("Fuel setup: {}", e)))?;
@@ -126,17 +92,15 @@ impl PluginSandbox {
         };
 
         let mut linker = Linker::new(&engine);
-        add_to_linker_sync(&mut linker)
+        p1::add_to_linker_sync(&mut linker, |t| t)
             .map_err(|e| PluginRuntimeError::Runtime(format!("WASI linker: {}", e)))?;
 
         let instance = linker
             .instantiate(&mut store, &module)
             .map_err(|e| PluginRuntimeError::Execution(format!("Instantiation failed: {}", e)))?;
 
-        let call_entry =
-            |name: &str, store: &mut Store<PluginWasiState>, instance: &Instance| match instance
-                .get_typed_func::<(), ()>(&mut *store, name)
-            {
+        let call_entry = |name: &str, store: &mut Store<WasiP1Ctx>, instance: &Instance| {
+            match instance.get_typed_func::<(), ()>(&mut *store, name) {
                 Ok(func) => func.call(store, ()).map_err(|e| {
                     let err_str = e.to_string();
                     if err_str.contains("fuel") || err_str.contains("trap") {
@@ -149,7 +113,8 @@ impl PluginSandbox {
                     "entry point '{}' not found",
                     name
                 ))),
-            };
+            }
+        };
 
         if instance.get_export(&mut store, "_start").is_some() {
             call_entry("_start", &mut store, &instance)?;

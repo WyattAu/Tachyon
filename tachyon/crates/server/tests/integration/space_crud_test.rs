@@ -3,6 +3,7 @@ use tachyon_database::SpaceRepository;
 
 use crate::common::setup::{
     create_test_pool, create_test_space, create_test_user, setup_database, teardown_database,
+    teardown_test_user,
 };
 
 fn skip_without_db() -> bool {
@@ -43,7 +44,7 @@ async fn test_create_space() {
     assert_eq!(space.description.as_deref(), Some("A test space"));
     assert_eq!(space.owner_id, user.id.as_str());
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -68,7 +69,7 @@ async fn test_get_space_by_id() {
     assert_eq!(fetched.id, space.id);
     assert_eq!(fetched.name, space.name);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -94,7 +95,7 @@ async fn test_list_root_spaces() {
 
     assert!(spaces.len() >= 2, "Should have at least 2 root spaces");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -119,7 +120,7 @@ async fn test_list_spaces_with_filters() {
 
     assert!(!spaces.is_empty());
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -163,7 +164,7 @@ async fn test_create_child_space() {
     assert_eq!(children.len(), 1);
     assert_eq!(children[0].id, child.id);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -202,7 +203,7 @@ async fn test_update_space() {
     assert_eq!(updated.visibility, "public");
     assert_eq!(updated.sort_order, 5);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -227,7 +228,7 @@ async fn test_delete_space() {
     let result = repo.get_by_id(&space.id).await;
     assert!(result.is_err(), "Deleted space should not be found");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -252,5 +253,5 @@ async fn test_space_count() {
         .expect("Failed to count spaces");
     assert!(count >= 2);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }

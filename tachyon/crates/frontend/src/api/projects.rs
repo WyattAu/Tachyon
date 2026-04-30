@@ -4,12 +4,6 @@ use super::*;
 ///
 /// Reserved for future use: project catalog and management.
 impl ApiClient {
-    #[allow(dead_code)]
-    pub async fn get_catalog_stats_raw(&self) -> Result<serde_json::Value, ApiError> {
-        let url = format!("{}/catalog/stats", self.base_url);
-        self.get(&url).await
-    }
-
     pub async fn get_catalog_stats(&self) -> Result<CatalogStats, ApiError> {
         let url = format!("{}/catalog/stats", self.base_url);
         let response: ApiResponse<CatalogStats> = self.get(&url).await?;

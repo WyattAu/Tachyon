@@ -29,15 +29,25 @@ pub async fn setup_database(_pool: &DatabasePool) {
         .expect("Failed to run migrations for integration tests");
 }
 
+/// Teardown all test data. Only safe with `--test-threads=1`.
 pub async fn teardown_database(pool: &DatabasePool) {
-    // TRUNCATE ... CASCADE handles all FK dependencies automatically.
-    // We only need to truncate the root tables; everything else cascades.
     let root_tables = ["users", "teams"];
     for table in &root_tables {
         let _ = pool
             .execute(&format!("TRUNCATE TABLE {} CASCADE", table))
             .await;
     }
+}
+
+/// Teardown a specific test user and all their cascading data.
+/// Safe for parallel test execution.
+pub async fn teardown_test_user(pool: &DatabasePool, username: &str) {
+    let _ = pool
+        .execute(&format!(
+            "DELETE FROM users WHERE username = '{}'",
+            username.replace('\'', "''")
+        ))
+        .await;
 }
 
 pub async fn create_test_user(pool: &DatabasePool) -> User {

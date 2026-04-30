@@ -4,7 +4,7 @@ use tachyon_database::{DocumentRepository, RepositoryRepository, SpaceRepository
 
 use crate::common::setup::{
     create_test_document, create_test_pool, create_test_repository, create_test_space,
-    create_test_user, setup_database, teardown_database,
+    create_test_user, setup_database, teardown_database, teardown_test_user,
 };
 
 fn skip_without_db() -> bool {
@@ -54,7 +54,7 @@ async fn test_user_crud_lifecycle() {
     let result = repo.get_by_id(&user.id).await;
     assert!(result.is_err(), "Deleted user should not be found");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -104,7 +104,7 @@ async fn test_document_crud_lifecycle() {
         .await;
     assert!(result.is_err(), "Deleted document should not be found");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -159,7 +159,7 @@ async fn test_space_crud_lifecycle() {
     let result = space_repo.get_by_id(&space.id).await;
     assert!(result.is_err(), "Deleted space should not be found");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -207,5 +207,5 @@ async fn test_repository_crud_lifecycle() {
         println!("Note: repository delete failed");
     }
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }

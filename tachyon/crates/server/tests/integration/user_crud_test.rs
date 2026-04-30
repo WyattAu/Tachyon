@@ -1,7 +1,7 @@
 use tachyon_core::types::user::UserRole;
 use tachyon_database::UserRepository;
 
-use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database};
+use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database, teardown_test_user};
 
 fn skip_without_db() -> bool {
     std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
@@ -25,7 +25,7 @@ async fn test_create_user() {
     assert!(user.email.is_some());
     assert!(user.is_active.unwrap_or(false));
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -51,7 +51,7 @@ async fn test_get_user_by_id() {
     assert_eq!(fetched.display_name, created.display_name);
     assert_eq!(fetched.email, created.email);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &created.username).await;
 }
 
 #[tokio::test]
@@ -75,7 +75,7 @@ async fn test_get_user_by_email() {
         .expect("Failed to get user by email");
     assert_eq!(fetched.id, created.id);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &created.username).await;
 }
 
 #[tokio::test]
@@ -98,7 +98,7 @@ async fn test_get_user_by_username() {
         .expect("Failed to get user by username");
     assert_eq!(fetched.id, created.id);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &created.username).await;
 }
 
 #[tokio::test]
@@ -112,7 +112,7 @@ async fn test_list_users() {
     setup_database(&pool).await;
     let _ = teardown_database(&pool).await;
 
-    create_test_user(&pool).await;
+    let user = create_test_user(&pool).await;
     create_test_user(&pool).await;
 
     let repo = UserRepository::new(pool.clone());
@@ -127,7 +127,7 @@ async fn test_list_users() {
     assert!(total_paged >= 2);
     assert_eq!(users_paged.len(), 1);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -141,7 +141,7 @@ async fn test_list_users_with_role_filter() {
     setup_database(&pool).await;
     let _ = teardown_database(&pool).await;
 
-    create_test_user(&pool).await;
+    let user = create_test_user(&pool).await;
 
     let repo = UserRepository::new(pool.clone());
     let (users, total) = repo
@@ -152,7 +152,7 @@ async fn test_list_users_with_role_filter() {
     assert!(!users.is_empty());
     assert_eq!(users[0].permissions.role, UserRole::Admin);
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -189,7 +189,7 @@ async fn test_update_user() {
         .expect("Failed to refetch user");
     assert_eq!(fetched.display_name, "Updated Name");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -219,7 +219,7 @@ async fn test_delete_user() {
     let result = repo.get_by_id(&user.id).await;
     assert!(result.is_err(), "Deleted user should not be found");
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
 
 #[tokio::test]
@@ -247,5 +247,5 @@ async fn test_user_exists() {
         .await
         .expect("Failed to check existence"));
 
-    teardown_database(&pool).await;
+    teardown_test_user(&pool, &user.username).await;
 }
