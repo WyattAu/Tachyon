@@ -108,7 +108,7 @@ jobs:
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
           TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --test integration -- --test-threads=1
+        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --test integration
 
   build:
     name: Build Release

@@ -1,7 +1,7 @@
 use tachyon_database::DocumentRepository;
 
 use crate::common::setup::{
-    create_test_document, create_test_pool, create_test_user, setup_database, teardown_database,
+    create_test_document, create_test_pool, create_test_user, setup_database,
     teardown_test_user,
 };
 
@@ -18,8 +18,6 @@ async fn test_create_document() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let doc = create_test_document(&pool, &user.id.as_str()).await;
 
@@ -42,8 +40,6 @@ async fn test_get_document_by_id() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let doc = create_test_document(&pool, &user.id.as_str()).await;
     let repo = DocumentRepository::new(pool.clone());
@@ -68,8 +64,6 @@ async fn test_update_document_title_and_content() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let mut doc = create_test_document(&pool, &user.id.as_str()).await;
     let repo = DocumentRepository::new(pool.clone());
@@ -103,8 +97,6 @@ async fn test_update_document_metadata() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let mut doc = create_test_document(&pool, &user.id.as_str()).await;
     let repo = DocumentRepository::new(pool.clone());
@@ -140,8 +132,6 @@ async fn test_list_documents() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     create_test_document(&pool, &user.id.as_str()).await;
     create_test_document(&pool, &user.id.as_str()).await;
@@ -171,8 +161,6 @@ async fn test_list_documents_with_pagination() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     for _ in 0..5 {
         create_test_document(&pool, &user.id.as_str()).await;
@@ -210,8 +198,6 @@ async fn test_list_documents_by_author() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     create_test_document(&pool, &user.id.as_str()).await;
     create_test_document(&pool, &user.id.as_str()).await;
@@ -239,8 +225,6 @@ async fn test_delete_document() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let doc = create_test_document(&pool, &user.id.as_str()).await;
     let repo = DocumentRepository::new(pool.clone());
@@ -265,8 +249,6 @@ async fn test_document_tags() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let doc = create_test_document(&pool, &user.id.as_str()).await;
 

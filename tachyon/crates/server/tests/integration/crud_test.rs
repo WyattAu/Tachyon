@@ -4,7 +4,7 @@ use tachyon_database::{DocumentRepository, RepositoryRepository, SpaceRepository
 
 use crate::common::setup::{
     create_test_document, create_test_pool, create_test_repository, create_test_space,
-    create_test_user, setup_database, teardown_database, teardown_test_user,
+    create_test_user, setup_database, teardown_test_user,
 };
 
 fn skip_without_db() -> bool {
@@ -20,8 +20,6 @@ async fn test_user_crud_lifecycle() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let repo = UserRepository::new(pool.clone());
 
     let user = create_test_user(&pool).await;
@@ -47,7 +45,7 @@ async fn test_user_crud_lifecycle() {
     let delete_result = repo.delete(&user.id).await;
     if delete_result.is_err() {
         println!("Note: user delete failed (known CASCADE syntax issue)");
-        teardown_database(&pool).await;
+        teardown_test_user(&pool, &user.username).await;
         return;
     }
 
@@ -66,8 +64,6 @@ async fn test_document_crud_lifecycle() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let doc_repo = DocumentRepository::new(pool.clone());
 
@@ -116,8 +112,6 @@ async fn test_space_crud_lifecycle() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let space_repo = SpaceRepository::new(pool.clone());
 
@@ -171,8 +165,6 @@ async fn test_repository_crud_lifecycle() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let repo_repo = RepositoryRepository::new(pool.clone());
 

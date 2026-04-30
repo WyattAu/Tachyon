@@ -72,7 +72,13 @@ async fn test_list_teams() {
     }
 
     let app = common::create_test_app().await;
-    let auth = common::create_test_user(&app, "listuser", "listuser@test.com", "Password123!")
+    let unique = uuid::Uuid::new_v4();
+    let auth = common::create_test_user(
+        &app,
+        &format!("listuser_{}", unique),
+        &format!("listuser_{}@test.com", unique),
+        "Password123!",
+    )
         .await
         .expect("Failed to create test user");
 

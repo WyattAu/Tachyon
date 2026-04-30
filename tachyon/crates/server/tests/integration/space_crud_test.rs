@@ -2,7 +2,7 @@ use tachyon_database::space::{CreateSpaceRequest, UpdateSpaceRequest};
 use tachyon_database::SpaceRepository;
 
 use crate::common::setup::{
-    create_test_pool, create_test_space, create_test_user, setup_database, teardown_database,
+    create_test_pool, create_test_space, create_test_user, setup_database,
     teardown_test_user,
 };
 
@@ -19,8 +19,6 @@ async fn test_create_space() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let repo = SpaceRepository::new(pool.clone());
 
@@ -56,8 +54,6 @@ async fn test_get_space_by_id() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let space = create_test_space(&pool, &user.id.as_str()).await;
     let repo = SpaceRepository::new(pool.clone());
@@ -81,8 +77,6 @@ async fn test_list_root_spaces() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     create_test_space(&pool, &user.id.as_str()).await;
     create_test_space(&pool, &user.id.as_str()).await;
@@ -107,8 +101,6 @@ async fn test_list_spaces_with_filters() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     create_test_space(&pool, &user.id.as_str()).await;
 
@@ -132,8 +124,6 @@ async fn test_create_child_space() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let parent = create_test_space(&pool, &user.id.as_str()).await;
     let repo = SpaceRepository::new(pool.clone());
@@ -176,8 +166,6 @@ async fn test_update_space() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let space = create_test_space(&pool, &user.id.as_str()).await;
     let repo = SpaceRepository::new(pool.clone());
@@ -215,8 +203,6 @@ async fn test_delete_space() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let space = create_test_space(&pool, &user.id.as_str()).await;
     let repo = SpaceRepository::new(pool.clone());
@@ -240,8 +226,6 @@ async fn test_space_count() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     create_test_space(&pool, &user.id.as_str()).await;
     create_test_space(&pool, &user.id.as_str()).await;

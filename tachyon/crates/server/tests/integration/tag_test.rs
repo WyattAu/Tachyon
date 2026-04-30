@@ -1,7 +1,7 @@
 use tachyon_database::DocumentRepository;
 
 use crate::common::setup::{
-    create_test_document, create_test_pool, create_test_user, setup_database, teardown_database,
+    create_test_document, create_test_pool, create_test_user, setup_database,
     teardown_test_user,
 };
 
@@ -18,8 +18,6 @@ async fn test_list_tags_from_document() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
 
     let mut doc = create_test_document(&pool, &user.id.as_str()).await;
@@ -61,8 +59,6 @@ async fn test_tag_creation_on_document_create() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let _doc = create_test_document(&pool, &user.id.as_str()).await;
     let repo = DocumentRepository::new(pool.clone());
@@ -94,8 +90,6 @@ async fn test_multiple_tags_per_document() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let doc = create_test_document(&pool, &user.id.as_str()).await;
     let repo = DocumentRepository::new(pool.clone());

@@ -1,15 +1,17 @@
 use tachyon_database::{Team, TeamRepository};
 
-use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database, teardown_test_user};
+use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_test_user};
 
 fn skip_without_db() -> bool {
     std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
 }
 
 fn make_team(owner_id: &str, name: &str) -> Team {
+    let unique = uuid::Uuid::new_v4().as_simple().to_string();
+    let unique_name = format!("{} {}", name, unique);
     Team::new(
-        name.to_string(),
-        name.to_lowercase().replace(' ', "-"),
+        unique_name.clone(),
+        unique_name.to_lowercase().replace(' ', "-"),
         owner_id.to_string(),
     )
     .with_description(format!("{} team description", name))
@@ -24,8 +26,6 @@ async fn test_create_team() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let repo = TeamRepository::new(pool.clone());
 
@@ -33,7 +33,7 @@ async fn test_create_team() {
     let created = repo.create(&team).await.expect("Failed to create team");
 
     assert!(!created.id.is_empty());
-    assert_eq!(created.name, "Engineering");
+    assert!(created.name.starts_with("Engineering"));
     assert_eq!(created.owner_id, user.id.as_str());
     assert!(created.description.is_some());
 
@@ -49,8 +49,6 @@ async fn test_get_team_by_id() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let repo = TeamRepository::new(pool.clone());
 
@@ -62,7 +60,7 @@ async fn test_get_team_by_id() {
         .await
         .expect("Failed to get team by ID");
     assert_eq!(fetched.id, created.id);
-    assert_eq!(fetched.name, "Get Test Team");
+    assert!(fetched.name.starts_with("Get Test Team"));
 
     teardown_test_user(&pool, &user.username).await;
 }
@@ -76,8 +74,6 @@ async fn test_get_team_by_slug() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let repo = TeamRepository::new(pool.clone());
 
@@ -89,6 +85,7 @@ async fn test_get_team_by_slug() {
         .await
         .expect("Failed to get team by slug");
     assert_eq!(fetched.id, created.id);
+    assert!(fetched.slug.starts_with("slug-team"));
 
     teardown_test_user(&pool, &user.username).await;
 }
@@ -102,8 +99,6 @@ async fn test_list_teams() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let repo = TeamRepository::new(pool.clone());
 
@@ -132,8 +127,6 @@ async fn test_update_team() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let repo = TeamRepository::new(pool.clone());
 
@@ -141,7 +134,8 @@ async fn test_update_team() {
     let created = repo.create(&team).await.expect("Failed to create team");
 
     let mut updated_team = created.clone();
-    updated_team.name = "After Update".to_string();
+    let updated_name = format!("After Update {}", uuid::Uuid::new_v4().as_simple());
+    updated_team.name = updated_name.clone();
     updated_team.description = Some("Updated description".to_string());
     updated_team.updated_at = chrono::Utc::now();
 
@@ -149,7 +143,7 @@ async fn test_update_team() {
         .update(&updated_team)
         .await
         .expect("Failed to update team");
-    assert_eq!(updated.name, "After Update");
+    assert!(updated.name.starts_with("After Update"));
     assert_eq!(updated.description.as_deref(), Some("Updated description"));
 
     teardown_test_user(&pool, &user.username).await;
@@ -164,8 +158,6 @@ async fn test_delete_team() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let repo = TeamRepository::new(pool.clone());
 
@@ -191,8 +183,6 @@ async fn test_add_and_list_team_members() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let owner = create_test_user(&pool).await;
     let member_user = create_test_user(&pool).await;
     let repo = TeamRepository::new(pool.clone());
@@ -218,6 +208,7 @@ async fn test_add_and_list_team_members() {
     assert!(!members.is_empty());
 
     teardown_test_user(&pool, &owner.username).await;
+    teardown_test_user(&pool, &member_user.username).await;
 }
 
 #[tokio::test]
@@ -229,8 +220,6 @@ async fn test_remove_team_member() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let owner = create_test_user(&pool).await;
     let member_user = create_test_user(&pool).await;
     let repo = TeamRepository::new(pool.clone());
@@ -259,4 +248,5 @@ async fn test_remove_team_member() {
     assert!(!is_member);
 
     teardown_test_user(&pool, &owner.username).await;
+    teardown_test_user(&pool, &member_user.username).await;
 }

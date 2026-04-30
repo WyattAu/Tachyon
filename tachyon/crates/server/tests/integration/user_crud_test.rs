@@ -1,7 +1,7 @@
 use tachyon_core::types::user::UserRole;
 use tachyon_database::UserRepository;
 
-use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_database, teardown_test_user};
+use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_test_user};
 
 fn skip_without_db() -> bool {
     std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
@@ -16,8 +16,6 @@ async fn test_create_user() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     assert!(!user.id.as_str().is_empty());
     assert!(user.username.starts_with("testuser_"));
@@ -37,8 +35,6 @@ async fn test_get_user_by_id() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let created = create_test_user(&pool).await;
     let repo = UserRepository::new(pool.clone());
 
@@ -63,8 +59,6 @@ async fn test_get_user_by_email() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let created = create_test_user(&pool).await;
     let repo = UserRepository::new(pool.clone());
 
@@ -87,8 +81,6 @@ async fn test_get_user_by_username() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let created = create_test_user(&pool).await;
     let repo = UserRepository::new(pool.clone());
 
@@ -110,10 +102,8 @@ async fn test_list_users() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
-    create_test_user(&pool).await;
+    let user2 = create_test_user(&pool).await;
 
     let repo = UserRepository::new(pool.clone());
     let (users, total) = repo.list(1, 10, None).await.expect("Failed to list users");
@@ -128,6 +118,7 @@ async fn test_list_users() {
     assert_eq!(users_paged.len(), 1);
 
     teardown_test_user(&pool, &user.username).await;
+    teardown_test_user(&pool, &user2.username).await;
 }
 
 #[tokio::test]
@@ -139,8 +130,6 @@ async fn test_list_users_with_role_filter() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
 
     let repo = UserRepository::new(pool.clone());
@@ -164,23 +153,23 @@ async fn test_update_user() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
+    let unique = uuid::Uuid::new_v4();
+    let updated_email = format!("updated_{}@test.com", unique);
     let repo = UserRepository::new(pool.clone());
 
     let updated = repo
         .update(
             &user.id,
             Some("Updated Name"),
-            Some("updated@test.com"),
+            Some(&updated_email),
             Some(UserRole::Editor),
             Some(true),
         )
         .await
         .expect("Failed to update user");
     assert_eq!(updated.display_name, "Updated Name");
-    assert_eq!(updated.email.as_deref(), Some("updated@test.com"));
+    assert_eq!(updated.email.as_deref(), Some(updated_email.as_str()));
     assert_eq!(updated.permissions.role, UserRole::Editor);
 
     let fetched = repo
@@ -201,8 +190,6 @@ async fn test_delete_user() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let repo = UserRepository::new(pool.clone());
 
@@ -212,7 +199,7 @@ async fn test_delete_user() {
             "Note: delete failed (known issue with CASCADE syntax): {:?}",
             e
         );
-        teardown_database(&pool).await;
+        teardown_test_user(&pool, &user.username).await;
         return;
     }
 
@@ -231,8 +218,6 @@ async fn test_user_exists() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-    let _ = teardown_database(&pool).await;
-
     let user = create_test_user(&pool).await;
     let repo = UserRepository::new(pool.clone());
 
