@@ -611,10 +611,16 @@ impl ServerConfig {
                 }
             }
             if self.cors.allowed_origins.contains(&"*".to_string()) {
-                warnings.push(
-                    "CORS is enabled with wildcard origin - this should be restricted in production"
-                        .to_string(),
-                );
+                if self.security.is_development() {
+                    warnings.push(
+                        "CORS is enabled with wildcard origin - this should be restricted in production"
+                            .to_string(),
+                    );
+                } else {
+                    errors.push(
+                        "CORS wildcard origin (*) is not allowed in production. Set TACHYON_CORS_ALLOWED_ORIGINS to specific origins.".to_string(),
+                    );
+                }
             }
         }
 

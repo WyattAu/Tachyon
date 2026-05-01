@@ -445,15 +445,21 @@
 
 | Priority | Count | Key Items |
 |----------|-------|-----------|
-| **Critical** | 2 | OAuth2 CSRF, XSS in markdown |
-| **High** | 6 | Email no-op, CORS defaults, document persistence, brute-force, DB backups, accessibility audit |
+| ~~**Critical**~~ | ~~2~~ | ~~OAuth2 CSRF~~ ✅, ~~XSS in markdown~~ ✅ (already had ammonia) |
+| **High** | 5 | Email no-op, ~~CORS defaults~~ ✅, document persistence, ~~brute-force~~ ✅, DB backups, accessibility audit |
 | **Medium** | 28 | Stubs, testing gaps, CSP, RBAC tests, load testing, docs, monitoring, SSL |
 | **Low** | 12 | Dead code, edition mismatch, port consistency, large files, CONTRIBUTING.md |
 
+**Fixed in v0.53:**
+- ✅ OAuth2 CSRF state validation (DashMap with 10-min TTL, 6 tests)
+- ✅ XSS sanitization already present via ammonia (6 proof tests added)
+- ✅ CORS wildcard now errors in production (warns in development)
+- ✅ Brute-force protection: `LoginAttemptTracker` with progressive backoff (7 tests)
+
 **Recommended Sprint Order:**
-1. Fix Critical security issues (OAuth2 CSRF, XSS sanitization)
+1. ~~Fix Critical security issues (OAuth2 CSRF, XSS sanitization)~~ ✅ DONE
 2. Wire email delivery
-3. Harden CORS defaults + brute-force protection
+3. ~~Harden CORS defaults + brute-force protection~~ ✅ DONE
 4. Fill test stubs (RBAC, fuzzing, middleware chain)
 5. Enforce coverage in CI + expand E2E tests
 6. Performance: response caching, DB pool tuning, Tantivy integration

@@ -8,6 +8,7 @@ use axum::{
     response::Response,
     Json,
 };
+use dashmap::DashMap;
 use deadpool_redis::{redis::AsyncCommands, Pool as RedisPool, Runtime};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -471,6 +472,122 @@ pub fn default_rules() -> Vec<RateLimitRule> {
     ]
 }
 
+// ============================================================================
+// Brute-Force Protection: Login Attempt Tracker
+// ============================================================================
+
+/// Tracks failed login attempts per IP address with progressive backoff.
+///
+/// After exceeding the threshold, further login attempts from that IP are blocked
+/// for an increasing duration. Successful logins reset the counter.
+///
+/// Thresholds:
+/// - 5 failures: 1 minute lockout
+/// - 10 failures: 5 minute lockout
+/// - 20 failures: 15 minute lockout
+/// - 50 failures: 1 hour lockout
+/// - 100+ failures: 24 hour lockout
+///
+/// Counters decay after the lockout period expires.
+#[derive(Debug, Clone)]
+pub struct LoginAttemptTracker {
+    /// Maps IP address → (failed_count, first_failure_timestamp)
+    attempts: Arc<DashMap<String, (u32, Instant)>>,
+}
+
+/// Lockout tiers: (failure_threshold, lockout_duration_seconds)
+const LOCKOUT_TIERS: &[(u32, u64)] = &[
+    (5, 60),      // 5 failures → 1 min
+    (10, 300),    // 10 failures → 5 min
+    (20, 900),    // 20 failures → 15 min
+    (50, 3600),   // 50 failures → 1 hour
+    (100, 86400), // 100 failures → 24 hours
+];
+
+impl LoginAttemptTracker {
+    pub fn new() -> Self {
+        Self {
+            attempts: Arc::new(DashMap::new()),
+        }
+    }
+
+    /// Record a failed login attempt from the given IP.
+    /// Returns the lockout duration in seconds if the IP is now locked out, or `None` if allowed.
+    pub fn record_failure(&self, ip: &str) -> Option<u64> {
+        let mut entry = self
+            .attempts
+            .entry(ip.to_string())
+            .or_insert_with(|| (0, Instant::now()));
+
+        entry.0 += 1;
+        // Reset timestamp on each failure within the same window
+        entry.1 = Instant::now();
+
+        self.calculate_lockout(entry.0)
+    }
+
+    /// Record a successful login from the given IP. Resets the failure counter.
+    pub fn record_success(&self, ip: &str) {
+        self.attempts.remove(ip);
+    }
+
+    /// Check if the given IP is currently locked out.
+    /// Returns the remaining lockout time in seconds if locked, or `None` if allowed.
+    pub fn check_lockout(&self, ip: &str) -> Option<u64> {
+        let entry = self.attempts.get(ip)?;
+        let (count, first_failure) = entry.value();
+
+        let lockout_secs = self.calculate_lockout(*count)?;
+        let elapsed = first_failure.elapsed().as_secs();
+
+        if elapsed >= lockout_secs {
+            // Lockout expired — clean up
+            drop(entry);
+            self.attempts.remove(ip);
+            None
+        } else {
+            Some(lockout_secs - elapsed)
+        }
+    }
+
+    /// Calculate the lockout duration based on failure count.
+    fn calculate_lockout(&self, count: u32) -> Option<u64> {
+        let mut lockout_secs = 0u64;
+        for &(threshold, duration) in LOCKOUT_TIERS {
+            if count >= threshold {
+                lockout_secs = duration;
+            }
+        }
+        if lockout_secs > 0 {
+            Some(lockout_secs)
+        } else {
+            None
+        }
+    }
+
+    /// Clean up expired entries. Call periodically (e.g., every 60s).
+    pub fn cleanup(&self) {
+        let max_lockout = LOCKOUT_TIERS.last().map(|(_, d)| *d).unwrap_or(86400);
+        self.attempts.retain(|_: &String, (_, first_failure): &mut (u32, Instant)| {
+            first_failure.elapsed().as_secs() < max_lockout
+        });
+    }
+
+    /// Get the current failure count for an IP (for monitoring/debugging).
+    pub fn failure_count(&self, ip: &str) -> u32 {
+        self.attempts
+            .get(ip)
+            .map(|e: dashmap::mapref::one::Ref<String, (u32, Instant)>| e.value().0)
+            .unwrap_or(0)
+    }
+}
+
+impl Default for LoginAttemptTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -531,5 +648,110 @@ mod tests {
         assert!(result.is_ok());
         let info = result.unwrap();
         assert!(info.retry_after.is_some());
+    }
+
+    // ── Login Attempt Tracker Tests ──────────────────────────────────────
+
+    #[test]
+    fn test_login_tracker_no_lockout_under_threshold() {
+        let tracker = LoginAttemptTracker::new();
+
+        // 4 failures should not trigger lockout
+        for _ in 0..4 {
+            assert!(
+                tracker.record_failure("1.2.3.4").is_none(),
+                "Under 5 failures should not lock out"
+            );
+        }
+        assert_eq!(tracker.failure_count("1.2.3.4"), 4);
+    }
+
+    #[test]
+    fn test_login_tracker_first_lockout_tier() {
+        let tracker = LoginAttemptTracker::new();
+
+        // First 4 failures should not lock out
+        for _ in 0..4 {
+            assert!(
+                tracker.record_failure("1.2.3.4").is_none(),
+                "Under 5 failures should not lock out"
+            );
+        }
+
+        // 5th failure triggers 60s lockout
+        let lockout = tracker.record_failure("1.2.3.4");
+        assert_eq!(lockout, Some(60), "5 failures should trigger 60s lockout");
+    }
+
+    #[test]
+    fn test_login_tracker_progressive_lockout() {
+        let tracker = LoginAttemptTracker::new();
+
+        // 10 failures → 300s
+        for _ in 0..10 {
+            tracker.record_failure("1.2.3.4");
+        }
+        let lockout = tracker.check_lockout("1.2.3.4");
+        assert_eq!(lockout, Some(300), "10 failures should trigger 5min lockout");
+
+        // 20 failures → 900s
+        for _ in 0..10 {
+            tracker.record_failure("1.2.3.4");
+        }
+        let lockout = tracker.check_lockout("1.2.3.4");
+        assert_eq!(lockout, Some(900), "20 failures should trigger 15min lockout");
+    }
+
+    #[test]
+    fn test_login_tracker_success_resets_counter() {
+        let tracker = LoginAttemptTracker::new();
+
+        for _ in 0..5 {
+            tracker.record_failure("1.2.3.4");
+        }
+        assert!(tracker.check_lockout("1.2.3.4").is_some());
+
+        tracker.record_success("1.2.3.4");
+        assert!(
+            tracker.check_lockout("1.2.3.4").is_none(),
+            "Success should reset lockout"
+        );
+        assert_eq!(tracker.failure_count("1.2.3.4"), 0);
+    }
+
+    #[test]
+    fn test_login_tracker_ip_isolation() {
+        let tracker = LoginAttemptTracker::new();
+
+        for _ in 0..10 {
+            tracker.record_failure("1.2.3.4");
+        }
+
+        // Different IP should not be affected
+        assert!(
+            tracker.check_lockout("5.6.7.8").is_none(),
+            "Different IP should not be locked out"
+        );
+    }
+
+    #[test]
+    fn test_login_tracker_unknown_ip_no_lockout() {
+        let tracker = LoginAttemptTracker::new();
+        assert!(
+            tracker.check_lockout("never-seen-ip").is_none(),
+            "Unknown IP should not be locked out"
+        );
+    }
+
+    #[test]
+    fn test_login_tracker_cleanup() {
+        let tracker = LoginAttemptTracker::new();
+
+        tracker.record_failure("1.2.3.4");
+        assert_eq!(tracker.attempts.len(), 1);
+
+        // Cleanup should not remove entries that haven't expired
+        tracker.cleanup();
+        assert_eq!(tracker.attempts.len(), 1);
     }
 }

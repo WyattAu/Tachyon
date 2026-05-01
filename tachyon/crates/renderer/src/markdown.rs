@@ -475,6 +475,92 @@ Some more text.
         assert_eq!(targets, vec!["Foo", "Bar", "After"]);
     }
 
+    // ── XSS Sanitization Tests ──────────────────────────────────────────
+
+    #[test]
+    fn test_xss_script_tag_stripped() {
+        let parser = MarkdownParser::new();
+        let markdown = r#"<script>alert("xss")</script>"#;
+        let result = parser.parse(markdown, OutputFormat::Html).unwrap();
+
+        assert!(
+            !result.content.contains("<script"),
+            "Script tags must be stripped by ammonia sanitization, got: {}",
+            result.content
+        );
+        assert!(
+            !result.content.contains("alert"),
+            "Script content must be stripped, got: {}",
+            result.content
+        );
+    }
+
+    #[test]
+    fn test_xss_event_handler_stripped() {
+        let parser = MarkdownParser::new();
+        // pulldown-cmark treats raw HTML as Event::Html, which ammonia then sanitizes
+        let markdown = r#"<img src=x onerror="alert('xss')">"#;
+        let result = parser.parse(markdown, OutputFormat::Html).unwrap();
+
+        assert!(
+            !result.content.contains("onerror"),
+            "Event handlers must be stripped by ammonia, got: {}",
+            result.content
+        );
+    }
+
+    #[test]
+    fn test_xss_javascript_uri_stripped() {
+        let parser = MarkdownParser::new();
+        let markdown = r#"[click me](javascript:alert('xss'))"#;
+        let result = parser.parse(markdown, OutputFormat::Html).unwrap();
+
+        assert!(
+            !result.content.contains("javascript:"),
+            "javascript: URIs must be stripped by ammonia, got: {}",
+            result.content
+        );
+    }
+
+    #[test]
+    fn test_xss_iframe_stripped() {
+        let parser = MarkdownParser::new();
+        let markdown = r#"<iframe src="https://evil.com"></iframe>"#;
+        let result = parser.parse(markdown, OutputFormat::Html).unwrap();
+
+        assert!(
+            !result.content.contains("<iframe"),
+            "iframe tags must be stripped by ammonia, got: {}",
+            result.content
+        );
+    }
+
+    #[test]
+    fn test_xss_svg_onload_stripped() {
+        let parser = MarkdownParser::new();
+        let markdown = r#"<svg onload="alert('xss')"><circle r="40"/></svg>"#;
+        let result = parser.parse(markdown, OutputFormat::Html).unwrap();
+
+        assert!(
+            !result.content.contains("onload"),
+            "SVG onload handlers must be stripped by ammonia, got: {}",
+            result.content
+        );
+    }
+
+    #[test]
+    fn test_safe_content_preserved_after_sanitization() {
+        let parser = MarkdownParser::new();
+        let markdown = "# Hello\n\nParagraph with **bold** and *italic*.\n\n```rust\nfn main() {}\n```\n\n[link](https://example.com)";
+        let result = parser.parse(markdown, OutputFormat::Html).unwrap();
+
+        assert!(result.content.contains("<h1>"));
+        assert!(result.content.contains("<strong>bold</strong>"));
+        assert!(result.content.contains("<em>italic</em>"));
+        assert!(result.content.contains("<code"));
+        assert!(result.content.contains("href=\"https://example.com\""));
+    }
+
     #[test]
     fn test_image_rendering() {
         let parser = MarkdownParser::new();

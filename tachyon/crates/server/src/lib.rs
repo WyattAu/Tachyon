@@ -478,6 +478,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         config: config.oauth2.clone(),
         pool: pool.clone(),
         client: http_client.clone(),
+        csrf_states: std::sync::Arc::new(dashmap::DashMap::new()),
     };
     let oauth2_router = create_oauth2_router().with_state(oauth2_state);
     let password_reset_state = PasswordResetState {
