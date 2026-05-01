@@ -22,30 +22,43 @@ const TEMPLATE_SELECT_SQL: &str = r#"
     FROM document_templates
 "#;
 
+/// A reusable document template stored in the `document_templates` table.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct DocumentTemplate {
+    /// Primary key (UUID).
     pub id: String,
+    /// Human-readable template name (unique).
     pub name: String,
+    /// Optional short description.
     pub description: Option<String>,
+    /// Template body content (Markdown / richtext).
     pub content: String,
+    /// Free-form category label for grouping.
     pub category: Option<String>,
+    /// JSON-encoded array of tag strings.
     pub tags: String,
+    /// Row-creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// Last-update timestamp.
     pub updated_at: DateTime<Utc>,
+    /// User ID of the creator (UUID string).
     pub created_by: String,
 }
 
 impl DocumentTemplate {
+    /// Deserialize the `tags` JSON column into a `Vec<String>`.
     pub fn parse_tags(&self) -> DatabaseResult<Vec<String>> {
         serde_json::from_str(&self.tags)
             .map_err(|e| DatabaseError::SerializationError(e.to_string()))
     }
 
+    /// Serialize a tag slice to a JSON string for storage.
     pub fn serialize_tags(tags: &[String]) -> DatabaseResult<String> {
         serde_json::to_string(tags).map_err(|e| DatabaseError::SerializationError(e.to_string()))
     }
 }
 
+/// Request body for creating a new document template.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateTemplateRequest {
     pub name: String,
@@ -56,6 +69,7 @@ pub struct CreateTemplateRequest {
     pub created_by: String,
 }
 
+/// Partial update payload for an existing template.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateTemplateRequest {
     pub name: Option<String>,
@@ -65,16 +79,22 @@ pub struct UpdateTemplateRequest {
     pub tags: Option<Vec<String>>,
 }
 
+/// Repository for persisting and querying document templates.
 #[derive(Clone)]
 pub struct TemplateRepository {
     pool: DatabasePool,
 }
 
 impl TemplateRepository {
+    /// Create a new template repository backed by `pool`.
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
+    /// Insert a new template. Returns the persisted row.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::Duplicate` if a template with the same name already exists.
     #[instrument(skip(self, req))]
     pub async fn create(&self, req: CreateTemplateRequest) -> DatabaseResult<DocumentTemplate> {
         let id = uuid::Uuid::new_v4().to_string();
@@ -118,6 +138,7 @@ impl TemplateRepository {
         Ok(template)
     }
 
+    /// Retrieve a template by its UUID.
     #[instrument(skip(self))]
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<DocumentTemplate> {
         let select_sql = format!("{} WHERE id = $1::uuid", TEMPLATE_SELECT_SQL);
@@ -132,6 +153,7 @@ impl TemplateRepository {
         template.ok_or_else(|| DatabaseError::not_found("template", id))
     }
 
+    /// Retrieve a template by its unique name.
     #[instrument(skip(self))]
     pub async fn get_by_name(&self, name: &str) -> DatabaseResult<DocumentTemplate> {
         let select_sql = format!("{} WHERE name = $1", TEMPLATE_SELECT_SQL);
@@ -146,6 +168,7 @@ impl TemplateRepository {
         template.ok_or_else(|| DatabaseError::not_found("template", name))
     }
 
+    /// List templates, optionally filtered by `category`.
     #[instrument(skip(self))]
     pub async fn list(
         &self,
@@ -196,6 +219,7 @@ impl TemplateRepository {
         Ok(templates)
     }
 
+    /// Apply a partial update to an existing template.
     #[instrument(skip(self, req))]
     pub async fn update(
         &self,
@@ -238,6 +262,7 @@ impl TemplateRepository {
         Ok(template)
     }
 
+    /// Permanently delete a template by UUID.
     #[instrument(skip(self))]
     pub async fn delete(&self, id: &str) -> DatabaseResult<()> {
         let delete_sql = "DELETE FROM document_templates WHERE id = $1::uuid";
@@ -257,6 +282,7 @@ impl TemplateRepository {
         Ok(())
     }
 
+    /// Return all distinct category values currently in use.
     #[instrument(skip(self))]
     pub async fn list_categories(&self) -> DatabaseResult<Vec<String>> {
         let select_sql = "SELECT DISTINCT category FROM document_templates WHERE category IS NOT NULL ORDER BY category";
@@ -270,6 +296,7 @@ impl TemplateRepository {
         Ok(rows.iter().filter_map(|r| r.get("category")).collect())
     }
 
+    /// Count templates, optionally filtered by `category`.
     #[instrument(skip(self))]
     pub async fn count(&self, category: Option<&str>) -> DatabaseResult<i64> {
         let (count_sql, has_category) = match category {

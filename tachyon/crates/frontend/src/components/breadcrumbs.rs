@@ -9,7 +9,7 @@ pub struct BreadcrumbItem {
 #[component]
 pub fn Breadcrumbs(items: Vec<BreadcrumbItem>) -> impl IntoView {
     view! {
-        <nav class="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
+        <nav class="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4" aria-label="Breadcrumb">
             <For
                 each=move || items.clone()
                 key=|item| item.label.clone()

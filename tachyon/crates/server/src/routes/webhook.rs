@@ -48,6 +48,11 @@ pub struct ErrorResponse {
     pub message: String,
 }
 
+/// Create a new outgoing webhook.
+///
+/// `POST /api/v1/webhooks`
+///
+/// Requires at least one event type in the `events` array.
 pub async fn create_webhook(
     State(state): State<WebhookState>,
     Json(body): Json<CreateWebhookBody>,
@@ -85,6 +90,9 @@ pub async fn create_webhook(
     Ok(Json(WebhookResponse::from(webhook)))
 }
 
+/// List all outgoing webhooks.
+///
+/// `GET /api/v1/webhooks`
 pub async fn list_webhooks(
     State(state): State<WebhookState>,
 ) -> Result<Json<Vec<WebhookResponse>>, (StatusCode, Json<ErrorResponse>)> {
@@ -103,6 +111,9 @@ pub async fn list_webhooks(
     ))
 }
 
+/// Delete an outgoing webhook.
+///
+/// `DELETE /api/v1/webhooks/{id}`
 pub async fn delete_webhook(
     Path(id): Path<String>,
     State(state): State<WebhookState>,

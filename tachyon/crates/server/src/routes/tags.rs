@@ -20,6 +20,11 @@ pub struct TagsResponse {
     pub total: usize,
 }
 
+/// List all tags with document counts.
+///
+/// `GET /api/v1/tags`
+///
+/// Returns up to 100 tags ordered by usage count (descending).
 pub async fn list_tags(
     State(state): State<TagsState>,
 ) -> Result<Json<TagsResponse>, (StatusCode, String)> {

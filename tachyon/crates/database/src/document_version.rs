@@ -20,35 +20,51 @@ const VERSION_SELECT_SQL: &str = r#"
     FROM document_versions
 "#;
 
+/// A snapshot of a document at a specific point in time.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct DocumentVersion {
+    /// Primary key (UUID).
     pub id: String,
+    /// Parent document ID.
     pub document_id: String,
+    /// Monotonically increasing version number.
     pub version_number: i32,
+    /// Full document content at this version.
     pub content: String,
+    /// Optional commit message describing the change.
     pub commit_message: Option<String>,
+    /// When this version was created.
     pub created_at: DateTime<Utc>,
+    /// User ID of the author of this version.
     pub created_by: String,
 }
 
+/// Payload for creating a new document version.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateVersionRequest {
+    /// Parent document ID.
     pub document_id: String,
+    /// Full document content to snapshot.
     pub content: String,
+    /// Optional commit message.
     pub commit_message: Option<String>,
+    /// User ID of the author.
     pub created_by: String,
 }
 
+/// Repository for document version history.
 #[derive(Clone)]
 pub struct DocumentVersionRepository {
     pool: DatabasePool,
 }
 
 impl DocumentVersionRepository {
+    /// Create a new document version repository backed by `pool`.
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
+    /// Create a new version, auto-incrementing the version number.
     #[instrument(skip(self))]
     pub async fn create(&self, req: CreateVersionRequest) -> DatabaseResult<DocumentVersion> {
         let mut conn = self.pool.acquire().await?;
@@ -92,6 +108,7 @@ impl DocumentVersionRepository {
         Ok(version)
     }
 
+    /// Retrieve a version by its UUID.
     #[instrument(skip(self))]
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<DocumentVersion> {
         let select_sql = format!("{} WHERE id = $1::uuid", VERSION_SELECT_SQL);
@@ -106,6 +123,7 @@ impl DocumentVersionRepository {
         version.ok_or_else(|| DatabaseError::not_found("document_version", id))
     }
 
+    /// Retrieve a specific version of a document by version number.
     #[instrument(skip(self))]
     pub async fn get_by_version_number(
         &self,
@@ -133,6 +151,7 @@ impl DocumentVersionRepository {
         })
     }
 
+    /// List versions for a document, newest first.
     #[instrument(skip(self))]
     pub async fn list_by_document(
         &self,
@@ -161,6 +180,7 @@ impl DocumentVersionRepository {
         Ok(versions)
     }
 
+    /// Get the most recent version of a document.
     #[instrument(skip(self))]
     pub async fn get_latest(&self, document_id: &str) -> DatabaseResult<DocumentVersion> {
         let select_sql = format!(
@@ -178,6 +198,7 @@ impl DocumentVersionRepository {
         version.ok_or_else(|| DatabaseError::not_found("document_version", document_id))
     }
 
+    /// Permanently delete a version by UUID.
     #[instrument(skip(self))]
     pub async fn delete(&self, id: &str) -> DatabaseResult<()> {
         let delete_sql = "DELETE FROM document_versions WHERE id = $1::uuid";
@@ -197,6 +218,7 @@ impl DocumentVersionRepository {
         Ok(())
     }
 
+    /// Count versions for a document.
     #[instrument(skip(self))]
     pub async fn count_by_document(&self, document_id: &str) -> DatabaseResult<i64> {
         let count_sql =

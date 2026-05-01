@@ -5,35 +5,54 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query_as, FromRow};
 use uuid::Uuid;
 
+/// A user-facing notification stored in the `notifications` table.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Notification {
+    /// Primary key (UUID).
     pub id: Uuid,
+    /// Target user ID.
     pub user_id: Uuid,
     #[sqlx(rename = "type")]
     #[serde(rename = "type")]
+    /// Notification kind (e.g. `review_requested`, `system`).
     pub notification_type: String,
+    /// Short summary shown in the UI.
     pub title: String,
+    /// Optional longer body text.
     pub body: Option<String>,
+    /// Optional deep-link URL.
     pub link: Option<String>,
+    /// Whether the user has read this notification.
     pub read: bool,
+    /// Arbitrary JSON payload tied to the notification.
     pub metadata: serde_json::Value,
+    /// Row-creation timestamp.
     pub created_at: DateTime<Utc>,
 }
 
+/// Payload for creating a new notification.
 #[derive(Debug, Deserialize)]
 pub struct CreateNotification {
+    /// Target user ID.
     pub user_id: Uuid,
     #[serde(rename = "type")]
+    /// Notification kind.
     pub notification_type: String,
+    /// Short summary.
     pub title: String,
+    /// Optional body text.
     pub body: Option<String>,
+    /// Optional deep-link URL.
     pub link: Option<String>,
+    /// Arbitrary JSON payload.
     pub metadata: Option<serde_json::Value>,
 }
 
+/// Stateless repository for notification persistence (takes `&DatabasePool` per call).
 pub struct NotificationRepository;
 
 impl NotificationRepository {
+    /// Insert a new notification and return the persisted row.
     pub async fn create(
         pool: &DatabasePool,
         notification: CreateNotification,
@@ -57,6 +76,9 @@ impl NotificationRepository {
         Ok(result)
     }
 
+    /// List notifications for a user, newest first.
+    ///
+    /// When `include_read` is `false`, only unread notifications are returned.
     pub async fn list_for_user(
         pool: &DatabasePool,
         user_id: Uuid,
@@ -98,6 +120,7 @@ impl NotificationRepository {
         }
     }
 
+    /// Count unread notifications for a user.
     pub async fn get_unread_count(pool: &DatabasePool, user_id: Uuid) -> DatabaseResult<i64> {
         let mut conn = pool.acquire().await?;
         let row: (i64,) = sqlx::query_as(
@@ -110,6 +133,7 @@ impl NotificationRepository {
         Ok(row.0)
     }
 
+    /// Mark a single notification as read. Returns `true` if the row was updated.
     pub async fn mark_read(
         pool: &DatabasePool,
         notification_id: Uuid,
@@ -127,6 +151,7 @@ impl NotificationRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    /// Mark all unread notifications for a user as read. Returns the number of rows updated.
     pub async fn mark_all_read(pool: &DatabasePool, user_id: Uuid) -> DatabaseResult<u64> {
         let mut conn = pool.acquire().await?;
         let result = sqlx::query(

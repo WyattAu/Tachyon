@@ -15,19 +15,33 @@ use tracing::{debug, info, instrument, warn};
 /// `tachyon_core::types::user::User` is provided via `From` impls.
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct UserRecord {
+    /// Primary key (UUID v7).
     pub id: uuid::Uuid,
+    /// Unique login handle.
     pub username: String,
+    /// Human-readable name shown in the UI.
     pub display_name: Option<String>,
+    /// Verified email address (unique when present).
     pub email: Option<String>,
+    /// Argon2id password hash.
     pub password_hash: String,
+    /// Role stored as TEXT: `admin`, `editor`, `writer`, `reader`.
     pub role: String,
+    /// Account classification stored as TEXT: `regular`, `service`, `system`.
     pub user_type: String,
+    /// Whether the account is currently active.
     pub is_active: bool,
+    /// Row-creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// Last-update timestamp.
     pub updated_at: DateTime<Utc>,
+    /// Base32-encoded TOTP secret (present when 2FA is configured).
     pub totp_secret: Option<String>,
+    /// Whether time-based one-time password 2FA is enabled.
     pub totp_enabled: bool,
+    /// Single-use recovery codes for TOTP.
     pub totp_backup_codes: Option<Vec<String>>,
+    /// When the user last verified their TOTP setup.
     pub totp_verified_at: Option<DateTime<Utc>>,
 }
 

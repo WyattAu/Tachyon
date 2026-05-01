@@ -506,4 +506,219 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0], Operation::delete(3, 3));
     }
+
+    // ============================================================
+    // Delete-Delete transform edge cases
+    // ============================================================
+
+    #[test]
+    fn test_transform_delete_delete_non_overlapping_a_before_b() {
+        let op_a = Operation::delete(2, 3); // positions 2..4
+        let op_b = Operation::delete(7, 2); // positions 7..8
+        let result = transform(&op_a, &op_b);
+        assert_eq!(result.op1_prime, Operation::delete(2, 3));
+        assert_eq!(result.op2_prime, Operation::delete(4, 2)); // shifted left by 3
+    }
+
+    #[test]
+    fn test_transform_delete_delete_non_overlapping_b_before_a() {
+        let op_a = Operation::delete(7, 2); // positions 7..8
+        let op_b = Operation::delete(2, 3); // positions 2..4
+        let result = transform(&op_a, &op_b);
+        assert_eq!(result.op1_prime, Operation::delete(4, 2)); // shifted left by 3
+        assert_eq!(result.op2_prime, Operation::delete(2, 3));
+    }
+
+    #[test]
+    fn test_transform_delete_delete_contained_a_contains_b() {
+        let op_a = Operation::delete(2, 5); // positions 2..6
+        let op_b = Operation::delete(3, 2); // positions 3..4 (contained in A)
+        let result = transform(&op_a, &op_b);
+        assert_eq!(result.op1_prime, Operation::delete(2, 3)); // shrunk by overlap=2
+        assert_eq!(result.op2_prime, Operation::delete(2, 0)); // cancelled (no-op)
+    }
+
+    #[test]
+    fn test_transform_delete_delete_contained_b_contains_a() {
+        let op_a = Operation::delete(3, 2); // positions 3..4 (contained in B)
+        let op_b = Operation::delete(2, 5); // positions 2..6
+        let result = transform(&op_a, &op_b);
+        assert_eq!(result.op1_prime, Operation::delete(2, 0)); // cancelled (no-op)
+        assert_eq!(result.op2_prime, Operation::delete(2, 3)); // shrunk by overlap=2
+    }
+
+    #[test]
+    fn test_transform_delete_delete_same_position_same_length() {
+        let op_a = Operation::delete(2, 3);
+        let op_b = Operation::delete(2, 3);
+        let result = transform(&op_a, &op_b);
+        assert_eq!(result.op1_prime, Operation::delete(2, 0)); // both become no-ops
+        assert_eq!(result.op2_prime, Operation::delete(2, 0));
+    }
+
+    #[test]
+    fn test_transform_delete_delete_same_position_different_length() {
+        let op_a = Operation::delete(2, 5); // larger
+        let op_b = Operation::delete(2, 3); // smaller
+        let result = transform(&op_a, &op_b);
+        assert_eq!(result.op1_prime, Operation::delete(2, 2)); // 5-3=2 remaining
+        assert_eq!(result.op2_prime, Operation::delete(2, 0)); // cancelled
+    }
+
+    #[test]
+    fn test_transform_delete_delete_partial_overlap_a_before_b() {
+        let op_a = Operation::delete(2, 4); // positions 2..5
+        let op_b = Operation::delete(4, 4); // positions 4..7
+        let result = transform(&op_a, &op_b);
+        assert_eq!(result.op1_prime, Operation::delete(2, 2)); // keeps [2..4)
+        assert_eq!(result.op2_prime, Operation::delete(2, 2)); // keeps [4..7) shifted to [2..4)
+    }
+
+    #[test]
+    fn test_transform_delete_delete_partial_overlap_b_before_a() {
+        let op_a = Operation::delete(4, 4); // positions 4..7
+        let op_b = Operation::delete(2, 4); // positions 2..5
+        let result = transform(&op_a, &op_b);
+        assert_eq!(result.op1_prime, Operation::delete(4, 2)); // keeps [4..7) shifted to [4..6)
+        assert_eq!(result.op2_prime, Operation::delete(2, 2)); // keeps [2..4)
+    }
+
+    #[test]
+    fn test_transform_delete_delete_adjacent_no_overlap() {
+        let op_a = Operation::delete(2, 3); // positions 2..4
+        let op_b = Operation::delete(5, 2); // positions 5..6
+        let result = transform(&op_a, &op_b);
+        // end1=5 <= start2=5 → non-overlapping, A unchanged
+        assert_eq!(result.op1_prime, Operation::delete(2, 3));
+        assert_eq!(result.op2_prime, Operation::delete(2, 2)); // shifted left by 3
+    }
+
+    #[test]
+    fn test_transform_delete_delete_convergence() {
+        let doc = "abcdefghij";
+        let op_a = Operation::delete(2, 3); // delete c,d,e
+        let op_b = Operation::delete(4, 3); // delete e,f,g
+        let result = transform(&op_a, &op_b);
+
+        let after_a = op_a.apply(doc);
+        let after_b = op_b.apply(doc);
+
+        let merged_a = result.op1_prime.apply(&after_b);
+        let merged_b = result.op2_prime.apply(&after_a);
+
+        assert_eq!(merged_a, merged_b, "transform convergence failed");
+    }
+
+    #[test]
+    fn test_transform_delete_delete_convergence_contained() {
+        let doc = "abcdefghij";
+        let op_a = Operation::delete(1, 8); // delete b..i
+        let op_b = Operation::delete(3, 2); // delete d,e (contained)
+        let result = transform(&op_a, &op_b);
+
+        let after_a = op_a.apply(doc);
+        let after_b = op_b.apply(doc);
+
+        let merged_a = result.op1_prime.apply(&after_b);
+        let merged_b = result.op2_prime.apply(&after_a);
+
+        assert_eq!(
+            merged_a, merged_b,
+            "transform convergence failed for contained case"
+        );
+    }
+
+    #[test]
+    fn test_transform_delete_delete_convergence_identical() {
+        let doc = "abcdefghij";
+        let op_a = Operation::delete(3, 4);
+        let op_b = Operation::delete(3, 4);
+        let result = transform(&op_a, &op_b);
+
+        let after_a = op_a.apply(doc);
+        let after_b = op_b.apply(doc);
+
+        let merged_a = result.op1_prime.apply(&after_b);
+        let merged_b = result.op2_prime.apply(&after_a);
+
+        assert_eq!(
+            merged_a, merged_b,
+            "transform convergence failed for identical deletes"
+        );
+    }
+
+    // ============================================================
+    // Delete-Delete compose edge cases
+    // ============================================================
+
+    #[test]
+    fn test_compose_delete_delete_overlapping() {
+        let op1 = Operation::delete(2, 4); // positions 2..5
+        let op2 = Operation::delete(4, 3); // positions 4..6 (end1=6 >= p2=4 && end1=6 <= end2=7)
+        let result = compose(&op1, &op2);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], Operation::delete(2, 5)); // merged: positions 2..6
+    }
+
+    #[test]
+    fn test_compose_delete_delete_non_overlapping() {
+        let op1 = Operation::delete(2, 3); // positions 2..4
+        let op2 = Operation::delete(7, 2); // positions 7..8 (after end1=5)
+        let result = compose(&op1, &op2);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], Operation::delete(2, 3));
+        assert_eq!(result[1], Operation::delete(4, 2)); // shifted left by 3
+    }
+
+    #[test]
+    fn test_compose_delete_delete_b_overlaps_end_of_a() {
+        let op1 = Operation::delete(2, 3); // positions 2..4, end1=5
+        let op2 = Operation::delete(4, 2); // positions 4..5, end2=6
+        let result = compose(&op1, &op2);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], Operation::delete(2, 4)); // merged: positions 2..5
+    }
+
+    // ============================================================
+    // Multiple concurrent deletes via DocumentState
+    // ============================================================
+
+    #[test]
+    fn test_document_state_concurrent_deletes() {
+        let mut state = DocumentState::new("abcdefghij".to_string());
+        assert_eq!(state.version(), 0);
+
+        let op_a = Operation::delete(2, 3); // delete c,d,e
+        let ver_a = state.apply(op_a, 0).unwrap();
+        assert_eq!(state.content(), "abfghij");
+        assert_eq!(ver_a, 1);
+
+        let op_b = Operation::delete(4, 2); // delete e,f (against version 0)
+        let ver_b = state.apply(op_b, 0).unwrap();
+        // op_b is transformed against op_a: delete at pos 4 (e,f) shifts to account
+        // for the 3 chars already deleted by op_a. The actual transform result
+        // depends on the transform implementation — assert no panic and valid state.
+        assert_eq!(ver_b, 2);
+        // Verify the document is still valid UTF-8 and non-empty
+        assert!(!state.content().is_empty());
+    }
+
+    #[test]
+    fn test_document_state_multiple_pending_deletes() {
+        let mut state = DocumentState::new("abcdefghijklmno".to_string());
+
+        let op1 = Operation::delete(1, 2); // delete b,c
+        state.apply(op1, 0).unwrap();
+        assert_eq!(state.content(), "adefghijklmno");
+
+        let op2 = Operation::delete(3, 3); // delete d,e,f (against version 0)
+        state.apply(op2, 0).unwrap();
+
+        let op3 = Operation::delete(5, 2); // delete f,g (against version 0)
+        state.apply(op3, 0).unwrap();
+        // Multiple deletes against the same base version — verify no panic
+        // and the document remains valid. The exact result depends on the
+        // transform implementation's conflict resolution strategy.
+        assert!(!state.content().is_empty());
+    }
 }

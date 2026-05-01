@@ -69,6 +69,9 @@ pub struct ErrorResponse {
     pub message: String,
 }
 
+/// List all roles.
+///
+/// `GET /api/v1/roles`
 pub async fn list_roles(
     State(state): State<RoleState>,
 ) -> Result<Json<Vec<RoleResponse>>, (StatusCode, Json<ErrorResponse>)> {
@@ -87,6 +90,9 @@ pub async fn list_roles(
     Ok(Json(roles.into_iter().map(RoleResponse::from).collect()))
 }
 
+/// Get a role by ID.
+///
+/// `GET /api/v1/roles/{role_id}`
 pub async fn get_role(
     Path(role_id): Path<i64>,
     State(state): State<RoleState>,
@@ -106,6 +112,11 @@ pub async fn get_role(
     Ok(Json(RoleResponse::from(role)))
 }
 
+/// Create a new role.
+///
+/// `POST /api/v1/roles`
+///
+/// Validates that the role name is 1–50 characters.
 pub async fn create_role(
     State(state): State<RoleState>,
     Json(req): Json<CreateRoleRequest>,
@@ -142,6 +153,11 @@ pub async fn create_role(
     Ok(Json(RoleResponse::from(created)))
 }
 
+/// Update a role.
+///
+/// `PUT /api/v1/roles/{role_id}`
+///
+/// System roles cannot be modified.
 pub async fn update_role(
     Path(role_id): Path<i64>,
     State(state): State<RoleState>,
@@ -193,6 +209,11 @@ pub async fn update_role(
     Ok(Json(RoleResponse::from(updated)))
 }
 
+/// Delete a role.
+///
+/// `DELETE /api/v1/roles/{role_id}`
+///
+/// System roles and roles still assigned to users cannot be deleted.
 pub async fn delete_role(
     Path(role_id): Path<i64>,
     State(state): State<RoleState>,
@@ -212,6 +233,11 @@ pub async fn delete_role(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Seed default roles into the database.
+///
+/// `POST /api/v1/roles/seed`
+///
+/// Creates the built-in system roles (owner, admin, editor, viewer) if they do not exist.
 pub async fn seed_default_roles(
     State(state): State<RoleState>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {

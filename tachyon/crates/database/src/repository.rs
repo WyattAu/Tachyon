@@ -231,7 +231,9 @@ impl DocumentRepository {
         }
     }
 
-    /// Get multiple documents by ID in a single query
+    /// Get multiple documents by ID in a single query.
+    ///
+    /// Returns an empty vec if `ids` is empty.
     pub async fn get_by_ids_batch(
         &self,
         ids: &[DocumentId],

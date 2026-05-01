@@ -10,6 +10,7 @@ use tachyon_core::id::SessionId;
 use tachyon_core::types::session::Session;
 use tracing::{debug, info, instrument};
 
+/// Parse a string as a UUID, returning a descriptive validation error on failure.
 fn parse_uuid(s: &str, field: &str) -> Result<uuid::Uuid, DatabaseError> {
     uuid::Uuid::parse_str(s)
         .map_err(|e| DatabaseError::ValidationError(format!("Invalid {} UUID: {}", field, e)))

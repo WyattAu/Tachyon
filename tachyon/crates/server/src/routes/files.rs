@@ -307,6 +307,11 @@ fn should_show(name: &str, is_dir: bool, show_all: bool) -> bool {
     is_allowed_ext(name)
 }
 
+/// List files and directories.
+///
+/// `GET /api/v1/files/list?path=...&all=...`
+///
+/// Returns entries sorted with directories first. Supports `path` and `all` query parameters.
 pub async fn list_directory(
     State(state): State<FilesState>,
     Query(params): Query<ListQuery>,
@@ -395,6 +400,12 @@ fn parse_frontmatter(content: &str) -> (Option<serde_json::Value>, &str) {
     }
 }
 
+/// Read a file's contents.
+///
+/// `GET /api/v1/files/read?path=...`
+///
+/// Returns JSON with content, size, encoding, and parsed YAML frontmatter for text files.
+/// Returns raw binary content for image/PDF files.
 pub async fn read_file(
     State(state): State<FilesState>,
     Query(params): Query<ReadQuery>,
@@ -425,7 +436,7 @@ pub async fn read_file(
             .header(header::CONTENT_TYPE, content_type)
             .header(header::CONTENT_LENGTH, size.to_string())
             .body(axum::body::Body::from(data))
-            .unwrap();
+            .map_err(|e| internal_error(format!("Failed to build response: {}", e)))?;
         return Ok(response);
     }
 
@@ -446,6 +457,11 @@ pub async fn read_file(
     .into_response())
 }
 
+/// Search files by name (recursive).
+///
+/// `GET /api/v1/files/search?query=...&path=...`
+///
+/// Performs a case-insensitive filename search under the specified path (defaults to root).
 pub async fn search_files(
     State(state): State<FilesState>,
     Query(params): Query<SearchQuery>,
@@ -526,6 +542,11 @@ fn walk_dir_search<'a>(
     })
 }
 
+/// Get a recursive directory tree.
+///
+/// `GET /api/v1/files/tree?path=...&depth=...`
+///
+/// Returns a nested tree structure. Maximum depth is 5 (defaults to 2).
 pub async fn get_tree(
     State(state): State<FilesState>,
     Query(params): Query<TreeQuery>,
@@ -626,6 +647,11 @@ fn build_tree<'a>(
     })
 }
 
+/// Get file system statistics.
+///
+/// `GET /api/v1/files/stats`
+///
+/// Returns total files, directories, size, file type breakdown, and top 10 largest files.
 pub async fn get_stats(State(state): State<FilesState>) -> Result<Json<StatsResponse>, ApiError> {
     let root = tokio::fs::canonicalize(&state.root_path)
         .await
@@ -734,6 +760,11 @@ fn walk_dir_stats<'a>(
     })
 }
 
+/// Get recently modified files.
+///
+/// `GET /api/v1/files/recent?limit=...`
+///
+/// Returns files sorted by modification time. Default limit is 20, max 100.
 pub async fn get_recent_files(
     State(state): State<FilesState>,
     Query(params): Query<RecentQuery>,
@@ -813,6 +844,12 @@ fn walk_dir_recent<'a>(
     })
 }
 
+/// Upload a file.
+///
+/// `POST /api/v1/files/upload`
+///
+/// Accepts multipart form data. Validates file extension and content type.
+/// Maximum file size is 50 MB.
 pub async fn upload_file(
     State(state): State<FilesState>,
     mut multipart: Multipart,

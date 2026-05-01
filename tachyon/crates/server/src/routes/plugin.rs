@@ -110,6 +110,11 @@ pub struct ErrorResponse {
 // Handlers
 // ============================================================================
 
+/// List installed plugins.
+///
+/// `GET /api/v1/plugins`
+///
+/// Supports `enabled`, `runtime_type`, `limit`, and `offset` query filters.
 pub async fn list_plugins(
     Query(query): Query<PluginQuery>,
     State(state): State<PluginState>,
@@ -138,6 +143,9 @@ pub async fn list_plugins(
     ))
 }
 
+/// Get a plugin by ID.
+///
+/// `GET /api/v1/plugins/{plugin_id}`
 pub async fn get_plugin(
     Path(plugin_id): Path<String>,
     State(state): State<PluginState>,
@@ -156,6 +164,11 @@ pub async fn get_plugin(
     Ok(Json(PluginResponse::from(plugin)))
 }
 
+/// Install a new plugin.
+///
+/// `POST /api/v1/plugins`
+///
+/// Requires `name` and `version` fields.
 pub async fn create_plugin(
     State(state): State<PluginState>,
     Json(body): Json<CreatePluginBody>,
@@ -210,6 +223,12 @@ pub async fn create_plugin(
     Ok(Json(PluginResponse::from(plugin)))
 }
 
+/// Update a plugin.
+///
+/// `PUT /api/v1/plugins/{plugin_id}`
+///
+/// Accepts partial updates for description, version, author, homepage, license,
+/// extension points, manifest, entry point, and enabled state.
 pub async fn update_plugin(
     Path(plugin_id): Path<String>,
     State(state): State<PluginState>,
@@ -247,6 +266,9 @@ pub async fn update_plugin(
     Ok(Json(PluginResponse::from(plugin)))
 }
 
+/// Uninstall a plugin.
+///
+/// `DELETE /api/v1/plugins/{plugin_id}`
 pub async fn delete_plugin(
     Path(plugin_id): Path<String>,
     State(state): State<PluginState>,

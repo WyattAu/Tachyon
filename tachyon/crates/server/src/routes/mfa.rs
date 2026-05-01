@@ -74,6 +74,12 @@ fn db_error(e: impl std::fmt::Display) -> Error {
     internal_error()
 }
 
+/// Initiate TOTP MFA setup for the authenticated user.
+///
+/// `POST /api/v1/auth/mfa/enable`
+///
+/// Generates a new TOTP secret, QR code URI, and 10 backup codes.
+/// MFA is not active until the user verifies a code via the verify endpoint.
 #[instrument(skip(state))]
 pub async fn enable_mfa(
     State(state): State<UserState>,
@@ -115,6 +121,11 @@ pub async fn enable_mfa(
     }))
 }
 
+/// Verify a TOTP code to complete MFA setup.
+///
+/// `POST /api/v1/auth/mfa/verify`
+///
+/// Accepts a 6-digit TOTP code. On success, enables MFA for the user.
 #[instrument(skip(state))]
 pub async fn verify_mfa(
     State(state): State<UserState>,
@@ -159,6 +170,11 @@ pub async fn verify_mfa(
     Ok(Json(serde_json::json!({"enabled": true})))
 }
 
+/// Disable MFA for the authenticated user.
+///
+/// `POST /api/v1/auth/mfa/disable`
+///
+/// Requires a valid TOTP code to confirm the action. Clears the secret and backup codes.
 #[instrument(skip(state))]
 pub async fn disable_mfa(
     State(state): State<UserState>,
@@ -210,6 +226,11 @@ pub async fn disable_mfa(
     Ok(Json(serde_json::json!({"enabled": false})))
 }
 
+/// Authenticate with MFA during login.
+///
+/// `POST /api/v1/auth/mfa/authenticate`
+///
+/// Accepts a TOTP code or a backup code. On success, issues access and refresh tokens.
 #[instrument(skip(state))]
 pub async fn mfa_authenticate(
     State(state): State<UserState>,

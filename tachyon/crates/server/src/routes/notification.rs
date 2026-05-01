@@ -67,6 +67,11 @@ pub struct MarkAllReadResponse {
     pub updated: u64,
 }
 
+/// List notifications for the current user.
+///
+/// `GET /api/v1/notifications`
+///
+/// Supports `limit`, `offset`, and `include_read` query parameters.
 pub async fn list_notifications(
     State(state): State<NotificationState>,
     Query(query): Query<ListNotificationsQuery>,
@@ -92,6 +97,9 @@ pub async fn list_notifications(
     }))
 }
 
+/// Get the unread notification count.
+///
+/// `GET /api/v1/notifications/unread-count`
 pub async fn unread_count(
     State(state): State<NotificationState>,
 ) -> Result<Json<UnreadCountResponse>, (StatusCode, String)> {
@@ -101,6 +109,9 @@ pub async fn unread_count(
     Ok(Json(UnreadCountResponse { count }))
 }
 
+/// Mark a single notification as read.
+///
+/// `POST /api/v1/notifications/{id}/read`
 pub async fn mark_notification_read(
     Path(notification_id): Path<String>,
     State(state): State<NotificationState>,
@@ -117,6 +128,9 @@ pub async fn mark_notification_read(
     Ok(Json(MarkReadResponse { read }))
 }
 
+/// Mark all notifications as read.
+///
+/// `POST /api/v1/notifications/read-all`
 pub async fn mark_all_read(
     State(state): State<NotificationState>,
 ) -> Result<Json<MarkAllReadResponse>, (StatusCode, String)> {

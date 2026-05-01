@@ -121,7 +121,11 @@ pub struct ErrorResponse {
 // Handlers
 // ============================================================================
 
-/// Create a new review request for a document
+/// Create a new review request for a document.
+///
+/// `POST /api/v1/documents/{document_id}/reviews`
+///
+/// Sends a notification to the assigned reviewer and triggers a `review_created` webhook.
 pub async fn create_review(
     Path(document_id): Path<String>,
     State(state): State<ReviewState>,
@@ -189,7 +193,9 @@ pub async fn create_review(
     Ok(Json(ReviewResponse::from(review)))
 }
 
-/// List all reviews for a document
+/// List all reviews for a document.
+///
+/// `GET /api/v1/documents/{document_id}/reviews`
 pub async fn list_reviews(
     Path(document_id): Path<String>,
     State(state): State<ReviewState>,
@@ -211,7 +217,12 @@ pub async fn list_reviews(
     ))
 }
 
-/// Update a review's status (approve, reject, request changes, cancel)
+/// Update a review's status.
+///
+/// `PUT /api/v1/documents/{document_id}/reviews/{review_id}`
+///
+/// Valid statuses: `approved`, `rejected`, `changes_requested`, `cancelled`.
+/// Triggers a webhook event and notification on status change.
 pub async fn update_review(
     Path(review_id): Path<String>,
     State(state): State<ReviewState>,
@@ -312,7 +323,11 @@ pub async fn update_review(
     Ok(Json(ReviewResponse::from(review)))
 }
 
-/// Add a comment to a review
+/// Add a comment to a review.
+///
+/// `POST /api/v1/documents/{document_id}/reviews/{review_id}/comments`
+///
+/// Sends a `review_commented` notification to the review author.
 pub async fn create_comment(
     Path(review_id): Path<String>,
     State(state): State<ReviewState>,
@@ -366,7 +381,9 @@ pub async fn create_comment(
     Ok(Json(CommentResponse::from(comment)))
 }
 
-/// List comments on a review
+/// List comments on a review.
+///
+/// `GET /api/v1/documents/{document_id}/reviews/{review_id}/comments`
 pub async fn list_comments(
     Path(review_id): Path<String>,
     State(state): State<ReviewState>,
@@ -388,7 +405,11 @@ pub async fn list_comments(
     ))
 }
 
-/// Get review status summary for a document
+/// Get review status summary for a document.
+///
+/// `GET /api/v1/documents/{document_id}/reviews/status`
+///
+/// Returns the pending review count and the latest review status.
 pub async fn get_review_status(
     Path(document_id): Path<String>,
     State(state): State<ReviewState>,

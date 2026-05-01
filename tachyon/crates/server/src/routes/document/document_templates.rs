@@ -60,6 +60,11 @@ pub struct TemplateQuery {
     pub category: Option<String>,
 }
 
+/// List document templates.
+///
+/// `GET /api/v1/templates`
+///
+/// Supports an optional `category` query parameter to filter results.
 pub async fn list_templates(
     Query(query): Query<TemplateQuery>,
     State(state): State<DocumentState>,
@@ -84,6 +89,9 @@ pub async fn list_templates(
     ))
 }
 
+/// Get a template by ID.
+///
+/// `GET /api/v1/templates/{template_id}`
 pub async fn get_template(
     Path(template_id): Path<String>,
     State(state): State<DocumentState>,
@@ -103,6 +111,9 @@ pub async fn get_template(
     Ok(Json(TemplateResponse::from(template)))
 }
 
+/// Create a new document template.
+///
+/// `POST /api/v1/templates`
 pub async fn create_template(
     State(state): State<DocumentState>,
     Json(body): Json<CreateTemplateBody>,
@@ -135,6 +146,11 @@ pub async fn create_template(
     Ok(Json(TemplateResponse::from(template)))
 }
 
+/// Update a document template.
+///
+/// `PUT /api/v1/templates/{template_id}`
+///
+/// Accepts partial updates for name, description, content, category, and tags.
 pub async fn update_template(
     Path(template_id): Path<String>,
     State(state): State<DocumentState>,
@@ -168,6 +184,9 @@ pub async fn update_template(
     Ok(Json(TemplateResponse::from(template)))
 }
 
+/// Delete a document template.
+///
+/// `DELETE /api/v1/templates/{template_id}`
 pub async fn delete_template(
     Path(template_id): Path<String>,
     State(state): State<DocumentState>,

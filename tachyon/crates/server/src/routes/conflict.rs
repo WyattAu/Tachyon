@@ -34,6 +34,11 @@ pub struct MergeResultInfo {
     pub conflict_count: usize,
 }
 
+/// Get conflict information for a document.
+///
+/// `GET /api/v1/documents/{document_id}/conflict`
+///
+/// Returns whether a conflict is detected and, if so, a 3-way merge result.
 pub async fn get_conflict_info(
     Path(document_id): Path<String>,
     axum::extract::State(state): axum::extract::State<ConflictState>,
@@ -101,6 +106,12 @@ pub async fn get_conflict_info(
     }))
 }
 
+/// Resolve a document conflict.
+///
+/// `POST /api/v1/documents/{document_id}/conflict/resolve`
+///
+/// Accepts a resolution strategy: `ours`, `theirs`, or `manual` (requires `content`).
+/// Clears the conflict flag on the document.
 pub async fn resolve_conflict(
     Path(document_id): Path<String>,
     axum::extract::State(state): axum::extract::State<ConflictState>,

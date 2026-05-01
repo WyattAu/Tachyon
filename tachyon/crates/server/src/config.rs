@@ -535,54 +535,104 @@ impl ServerConfig {
     /// Validate configuration
     ///
     /// # Returns
-    /// Result indicating valid configuration or error
-    pub fn validate(&self) -> Result<(), String> {
+    /// `Ok(())` if all checks pass, `Err(Vec<String>)` with all error messages otherwise.
+    pub fn validate(&self) -> Result<(), Vec<String>> {
+        let mut errors = Vec::new();
+        let mut warnings = Vec::new();
+
         if self.host.is_empty() {
-            return Err("Host cannot be empty".to_string());
+            errors.push("Host cannot be empty".to_string());
         }
 
         if self.port == 0 {
-            return Err("Port must be greater than 0".to_string());
+            errors.push("Port must be greater than 0".to_string());
+        }
+
+        if !self.database_url.is_empty()
+            && !self.database_url.starts_with("postgres://")
+            && !self.database_url.starts_with("postgresql://")
+        {
+            errors.push(
+                "Database URL must start with postgres:// or postgresql://".to_string(),
+            );
         }
 
         if self.enable_tls {
             if self.tls_cert_path.is_none()
                 || self.tls_cert_path.as_ref().is_none_or(|p| p.is_empty())
             {
-                return Err("TLS certificate path required when TLS is enabled".to_string());
+                errors.push(
+                    "TLS certificate path required when TLS is enabled".to_string(),
+                );
             }
             if self.tls_key_path.is_none()
                 || self.tls_key_path.as_ref().is_none_or(|p| p.is_empty())
             {
-                return Err("TLS key path required when TLS is enabled".to_string());
+                errors.push("TLS key path required when TLS is enabled".to_string());
             }
         }
 
         if self.jwt.secret.len() < 32 {
-            return Err("JWT secret must be at least 32 characters".to_string());
+            errors.push("JWT secret must be at least 32 characters".to_string());
+        } else if self.jwt.secret.len() < 64 {
+            warnings.push(
+                "JWT secret is less than 64 characters; consider using a longer secret for better security".to_string(),
+            );
         }
 
         if self.jwt.expiration_secs == 0 {
-            return Err("JWT expiration must be greater than 0".to_string());
+            errors.push("JWT expiration must be greater than 0".to_string());
         }
 
         if self.cache_size_mb == 0 {
-            return Err("Cache size must be greater than 0".to_string());
+            errors.push("Cache size must be greater than 0".to_string());
         }
 
         if self.jwt.secret == "change-this-secret-key-in-production" {
-            return Err(
+            errors.push(
                 "JWT secret must be changed from default value. Set TACHYON_JWT_SECRET environment variable.".to_string(),
             );
         }
 
-        if self.cors.enabled && self.cors.allowed_origins.contains(&"*".to_string()) {
-            tracing::warn!(
-                "CORS is enabled with wildcard origin - this should be restricted in production"
-            );
+        if self.cors.enabled {
+            for origin in &self.cors.allowed_origins {
+                if origin != "*"
+                    && !origin.starts_with("http://")
+                    && !origin.starts_with("https://")
+                {
+                    warnings.push(format!(
+                        "CORS origin '{}' does not look like a valid URL",
+                        origin
+                    ));
+                }
+            }
+            if self.cors.allowed_origins.contains(&"*".to_string()) {
+                warnings.push(
+                    "CORS is enabled with wildcard origin - this should be restricted in production"
+                        .to_string(),
+                );
+            }
         }
 
-        Ok(())
+        if let Some(ref level) = self.log.level {
+            const VALID_LEVELS: &[&str] = &["trace", "debug", "info", "warn", "error"];
+            if !VALID_LEVELS.contains(&level.as_str()) {
+                warnings.push(format!(
+                    "Log level '{}' is not a standard value (expected: trace, debug, info, warn, error)",
+                    level
+                ));
+            }
+        }
+
+        for w in &warnings {
+            tracing::warn!(config_warning = %w, "Configuration warning");
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 

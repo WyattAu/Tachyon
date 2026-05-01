@@ -103,7 +103,12 @@ pub struct ErrorResponse {
 // Handlers
 // ============================================================================
 
-/// List organizations for a user
+/// List organizations for a user.
+///
+/// `GET /api/v1/organizations`
+///
+/// Uses the authenticated user's ID by default. Supports `user_id`, `include_personal`,
+/// `limit`, and `offset` query parameters.
 pub async fn list_organizations(
     Extension(auth): Extension<AuthContext>,
     Query(query): Query<OrganizationQuery>,
@@ -139,7 +144,9 @@ pub async fn list_organizations(
     Ok(Json(responses))
 }
 
-/// Get a single organization by ID
+/// Get a single organization by ID.
+///
+/// `GET /api/v1/organizations/{id}`
 pub async fn get_organization(
     Path(id): Path<String>,
     State(state): State<OrganizationState>,
@@ -154,7 +161,11 @@ pub async fn get_organization(
     Ok(Json(OrganizationResponse::from_org(org, member_count)))
 }
 
-/// Create a new organization
+/// Create a new organization.
+///
+/// `POST /api/v1/organizations`
+///
+/// The authenticated user becomes the organization owner.
 pub async fn create_organization(
     Extension(auth): Extension<AuthContext>,
     State(state): State<OrganizationState>,
@@ -192,7 +203,11 @@ pub async fn create_organization(
     Ok(Json(OrganizationResponse::from_org(org, member_count)))
 }
 
-/// Update an organization
+/// Update an organization.
+///
+/// `PUT /api/v1/organizations/{id}`
+///
+/// Accepts partial updates for name, description, icon, logo, default role, max members, and settings.
 pub async fn update_organization(
     Path(id): Path<String>,
     State(state): State<OrganizationState>,
@@ -220,7 +235,11 @@ pub async fn update_organization(
     Ok(Json(OrganizationResponse::from_org(org, member_count)))
 }
 
-/// Delete an organization
+/// Delete an organization.
+///
+/// `DELETE /api/v1/organizations/{id}`
+///
+/// Cannot delete the personal organization.
 pub async fn delete_organization(
     Path(id): Path<String>,
     State(state): State<OrganizationState>,
@@ -243,7 +262,9 @@ pub async fn delete_organization(
 
 // -- Member management --
 
-/// List members of an organization
+/// List members of an organization.
+///
+/// `GET /api/v1/organizations/{org_id}/members`
 pub async fn list_members(
     Path(org_id): Path<String>,
     Query(query): Query<OrganizationQuery>,
@@ -263,7 +284,9 @@ pub async fn list_members(
     ))
 }
 
-/// Add a member to an organization
+/// Add a member to an organization.
+///
+/// `POST /api/v1/organizations/{org_id}/members`
 pub async fn add_member(
     Path(org_id): Path<String>,
     State(state): State<OrganizationState>,
@@ -297,7 +320,9 @@ pub async fn add_member(
     Ok(Json(OrganizationMemberResponse::from(member)))
 }
 
-/// Update a member's role in an organization
+/// Update a member's role in an organization.
+///
+/// `PUT /api/v1/organizations/{org_id}/members/{user_id}`
 pub async fn update_member(
     Path((org_id, user_id)): Path<(String, String)>,
     State(state): State<OrganizationState>,
@@ -321,7 +346,9 @@ pub async fn update_member(
     Ok(Json(OrganizationMemberResponse::from(member)))
 }
 
-/// Remove a member from an organization
+/// Remove a member from an organization.
+///
+/// `DELETE /api/v1/organizations/{org_id}/members/{user_id}`
 pub async fn remove_member(
     Path((org_id, user_id)): Path<(String, String)>,
     State(state): State<OrganizationState>,

@@ -32,6 +32,9 @@ impl From<tachyon_database::Attachment> for AttachmentResponse {
     }
 }
 
+/// List attachments for a document.
+///
+/// `GET /api/v1/documents/{document_id}/attachments`
 pub async fn list_attachments(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -56,6 +59,11 @@ pub async fn list_attachments(
     ))
 }
 
+/// Upload an attachment to a document.
+///
+/// `POST /api/v1/documents/{document_id}/attachments`
+///
+/// Accepts multipart form data with a single file field.
 pub async fn upload_attachment(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -115,6 +123,11 @@ pub async fn upload_attachment(
     ))
 }
 
+/// Download an attachment.
+///
+/// `GET /api/v1/documents/{document_id}/attachments/{attachment_id}`
+///
+/// Returns the raw file content with appropriate `Content-Type` and `Content-Disposition` headers.
 pub async fn download_attachment(
     Path((_document_id, attachment_id)): Path<(String, String)>,
     State(state): State<DocumentState>,
@@ -142,6 +155,9 @@ pub async fn download_attachment(
     Ok((headers, content))
 }
 
+/// Delete an attachment.
+///
+/// `DELETE /api/v1/documents/{document_id}/attachments/{attachment_id}`
 pub async fn delete_attachment(
     Path((_document_id, attachment_id)): Path<(String, String)>,
     State(state): State<DocumentState>,

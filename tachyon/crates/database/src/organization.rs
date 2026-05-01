@@ -27,30 +27,46 @@ const ORG_SELECT_SQL: &str = r#"
     FROM organizations
 "#;
 
+/// An organization (team or company) for multi-tenant document scoping.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Organization {
+    /// Primary key (UUID).
     pub id: String,
+    /// Display name.
     pub name: String,
+    /// URL-friendly identifier derived from the name.
     pub slug: String,
+    /// Optional description.
     pub description: Option<String>,
+    /// Icon identifier used in the UI.
     pub icon: String,
+    /// Optional logo image URL.
     pub logo_url: Option<String>,
+    /// User ID of the organization owner.
     pub owner_id: String,
+    /// Default role assigned to new members.
     pub default_role: String,
+    /// Maximum member count (`-1` for unlimited).
     pub max_members: i32,
+    /// Whether this is a personal (auto-created) org.
     pub is_personal: bool,
+    /// JSON-encoded organization settings blob.
     pub settings: String,
+    /// Row-creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// Last-update timestamp.
     pub updated_at: DateTime<Utc>,
 }
 
 impl Organization {
+    /// Deserialize the `settings` JSON column into a [`serde_json::Value`].
     pub fn parse_settings(&self) -> DatabaseResult<serde_json::Value> {
         serde_json::from_str(&self.settings)
             .map_err(|e| DatabaseError::SerializationError(e.to_string()))
     }
 }
 
+/// Request body for creating a new organization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateOrganizationRequest {
     pub name: String,
@@ -61,6 +77,7 @@ pub struct CreateOrganizationRequest {
     pub max_members: Option<i32>,
 }
 
+/// Partial update payload for an existing organization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateOrganizationRequest {
     pub name: Option<String>,
@@ -91,25 +108,37 @@ const ORG_MEMBER_SELECT_SQL: &str = r#"
     LEFT JOIN users u ON u.id = om.user_id
 "#;
 
+/// A user's membership record within an organization.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct OrganizationMember {
+    /// Primary key (UUID).
     pub id: String,
+    /// Organization this membership belongs to.
     pub organization_id: String,
+    /// Member's user ID.
     pub user_id: String,
+    /// Role within the organization (e.g. `owner`, `admin`, `viewer`).
     pub role: String,
+    /// When the user joined.
     pub joined_at: DateTime<Utc>,
+    /// User ID of the person who issued the invite (if applicable).
     pub invited_by: Option<String>,
+    /// Joined user's username (populated via LEFT JOIN).
     pub username: Option<String>,
+    /// Joined user's display name.
     pub display_name: Option<String>,
+    /// Joined user's avatar URL.
     pub avatar_url: Option<String>,
 }
 
+/// Request body for adding a member to an organization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddOrganizationMemberRequest {
     pub user_id: String,
     pub role: Option<String>,
 }
 
+/// Request body for updating a member's role.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateOrganizationMemberRequest {
     pub role: String,
@@ -119,18 +148,23 @@ pub struct UpdateOrganizationMemberRequest {
 // Repository
 // ============================================================================
 
+/// Repository for organization and membership persistence.
 #[derive(Clone)]
 pub struct OrganizationRepository {
     pool: DatabasePool,
 }
 
 impl OrganizationRepository {
+    /// Create a new organization repository backed by `pool`.
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
     // -- Organization CRUD --
 
+    /// Create an organization and auto-add the owner as a member.
+    ///
+    /// The `slug` is derived from `req.name` via [`slug::slugify`].
     #[instrument(skip(self, req))]
     pub async fn create(
         &self,
@@ -201,6 +235,7 @@ impl OrganizationRepository {
         Ok(org)
     }
 
+    /// Retrieve an organization by UUID.
     #[instrument(skip(self))]
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<Organization> {
         let select_sql = format!("{} WHERE id = $1::uuid", ORG_SELECT_SQL);
@@ -215,6 +250,7 @@ impl OrganizationRepository {
         org.ok_or_else(|| DatabaseError::not_found("organization", id))
     }
 
+    /// Retrieve an organization by its URL slug.
     #[instrument(skip(self))]
     pub async fn get_by_slug(&self, slug: &str) -> DatabaseResult<Organization> {
         let select_sql = format!("{} WHERE slug = $1", ORG_SELECT_SQL);
@@ -287,6 +323,7 @@ impl OrganizationRepository {
         Ok(orgs)
     }
 
+    /// Apply a partial update to an existing organization.
     #[instrument(skip(self, req))]
     pub async fn update(
         &self,
@@ -343,6 +380,7 @@ impl OrganizationRepository {
         Ok(org)
     }
 
+    /// Delete a non-personal organization. Returns an error for personal orgs.
     #[instrument(skip(self))]
     pub async fn delete(&self, id: &str) -> DatabaseResult<()> {
         let org = self.get_by_id(id).await?;
@@ -399,6 +437,7 @@ impl OrganizationRepository {
 
     // -- Member management --
 
+    /// Add a user as a member of an organization.
     #[instrument(skip(self, req))]
     pub async fn add_member(
         &self,
@@ -448,6 +487,7 @@ impl OrganizationRepository {
         Ok(member)
     }
 
+    /// List members of an organization with pagination.
     #[instrument(skip(self))]
     pub async fn list_members(
         &self,
@@ -518,6 +558,7 @@ impl OrganizationRepository {
         Ok(member)
     }
 
+    /// Remove a member from an organization.
     #[instrument(skip(self))]
     pub async fn remove_member(&self, org_id: &str, user_id: &str) -> DatabaseResult<()> {
         let delete_sql = "DELETE FROM organization_members WHERE organization_id = $1::uuid AND user_id = $2::uuid";

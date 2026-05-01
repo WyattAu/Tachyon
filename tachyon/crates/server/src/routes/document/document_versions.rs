@@ -38,6 +38,11 @@ pub struct CreateVersionBody {
     pub commit_message: Option<String>,
 }
 
+/// List document versions.
+///
+/// `GET /api/v1/documents/{document_id}/versions`
+///
+/// Returns up to 50 most recent versions.
 pub async fn list_versions(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -62,6 +67,9 @@ pub async fn list_versions(
     ))
 }
 
+/// Get a specific document version.
+///
+/// `GET /api/v1/documents/{document_id}/versions/{version_number}`
 pub async fn get_version(
     Path((document_id, version_number)): Path<(String, i32)>,
     State(state): State<DocumentState>,
@@ -84,6 +92,11 @@ pub async fn get_version(
     Ok(Json(VersionResponse::from(version)))
 }
 
+/// Create a new document version (snapshot).
+///
+/// `POST /api/v1/documents/{document_id}/versions`
+///
+/// Saves a snapshot of the document content with an optional commit message.
 pub async fn create_version(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -139,6 +152,12 @@ pub struct DiffStats {
     pub unchanged: usize,
 }
 
+/// Compute a line-level diff between two document versions.
+///
+/// `GET /api/v1/documents/{document_id}/versions/{v1}/diff/{v2}`
+///
+/// Returns old/new line arrays with `added`, `removed`, or `unchanged` type annotations
+/// and diff statistics.
 pub async fn diff_versions(
     Path((document_id, v1, v2)): Path<(String, i32, i32)>,
     State(state): State<DocumentState>,

@@ -5,27 +5,41 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query_as, FromRow};
 use uuid::Uuid;
 
+/// An outgoing webhook subscription stored in `webhooks`.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Webhook {
+    /// Primary key (UUID).
     pub id: Uuid,
+    /// Target URL that receives POST payloads.
     pub url: String,
+    /// Event types this webhook is subscribed to.
     pub events: Vec<String>,
+    /// HMAC secret used to sign payloads (optional).
     pub secret: Option<String>,
+    /// Whether the webhook is currently active.
     pub active: bool,
+    /// Row-creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// When the webhook was last successfully triggered.
     pub last_triggered_at: Option<DateTime<Utc>>,
 }
 
+/// Payload for creating a new webhook.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateWebhook {
+    /// Target URL.
     pub url: String,
+    /// Event types to subscribe to.
     pub events: Vec<String>,
+    /// Optional HMAC signing secret.
     pub secret: Option<String>,
 }
 
+/// Stateless repository for webhook persistence (takes `&DatabasePool` per call).
 pub struct WebhookRepository;
 
 impl WebhookRepository {
+    /// Register a new webhook and return the persisted row.
     pub async fn create(pool: &DatabasePool, webhook: CreateWebhook) -> DatabaseResult<Webhook> {
         let mut conn = pool.acquire().await?;
         let result = query_as::<_, Webhook>(
@@ -42,6 +56,7 @@ impl WebhookRepository {
         Ok(result)
     }
 
+    /// List all webhooks (up to 100), newest first.
     pub async fn list(pool: &DatabasePool) -> DatabaseResult<Vec<Webhook>> {
         let mut conn = pool.acquire().await?;
         let results = query_as::<_, Webhook>(
@@ -55,6 +70,7 @@ impl WebhookRepository {
         Ok(results)
     }
 
+    /// Delete a webhook by UUID. Returns `true` if a row was removed.
     pub async fn delete(pool: &DatabasePool, id: Uuid) -> DatabaseResult<bool> {
         let mut conn = pool.acquire().await?;
         let result = sqlx::query("DELETE FROM webhooks WHERE id = $1")
@@ -65,6 +81,7 @@ impl WebhookRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    /// Return all active webhooks subscribed to the given event type.
     pub async fn get_active_by_event(
         pool: &DatabasePool,
         event: &str,
@@ -82,6 +99,7 @@ impl WebhookRepository {
         Ok(results)
     }
 
+    /// Update `last_triggered_at` to now for a webhook.
     pub async fn update_last_triggered(pool: &DatabasePool, id: Uuid) -> DatabaseResult<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query("UPDATE webhooks SET last_triggered_at = NOW() WHERE id = $1")

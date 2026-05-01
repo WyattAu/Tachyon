@@ -182,6 +182,17 @@ pub struct AppState {
 /// This is the single entry point for building a Tachyon server,
 /// used by both `tachyon-server` (binary) and `tachyon serve` (CLI).
 pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
+    if let Err(errors) = config.validate() {
+        for e in &errors {
+            tracing::error!(config_error = %e, "Configuration validation failed");
+        }
+        anyhow::bail!(
+            "Configuration validation failed with {} error(s):\n  {}",
+            errors.len(),
+            errors.join("\n  ")
+        );
+    }
+
     use crate::routes::activity::ActivityState;
     use crate::routes::catalog::CatalogState;
     use crate::routes::conflict::ConflictState;

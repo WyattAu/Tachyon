@@ -4,17 +4,25 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use tracing::instrument;
 
+/// A single step in the onboarding flow.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OnboardingStep {
+    /// Machine-readable step identifier (e.g. `create_first_document`).
     pub id: String,
+    /// Human-readable step label.
     pub name: String,
+    /// Whether the user has completed this step.
     pub completed: bool,
 }
 
+/// Snapshot of a user's current onboarding progress.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OnboardingStatus {
+    /// `true` when all steps are complete (or the shortcut condition is met).
     pub completed: bool,
+    /// Ordered list of all onboarding steps with their completion state.
     pub steps: Vec<OnboardingStep>,
+    /// Index of the first incomplete step (equal to `steps.len()` when all done).
     pub current_step: usize,
 }
 
@@ -25,16 +33,19 @@ const ONBOARDING_STEPS: &[(&str, &str)] = &[
     ("explore_features", "Explore Features"),
 ];
 
+/// Repository for tracking new-user onboarding progress.
 #[derive(Clone)]
 pub struct OnboardingRepository {
     pool: DatabasePool,
 }
 
 impl OnboardingRepository {
+    /// Create a new onboarding repository backed by `pool`.
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
+    /// Count documents authored by a user (used to determine auto-completion).
     #[instrument(skip(self))]
     pub async fn get_user_document_count(&self, user_id: &str) -> DatabaseResult<i64> {
         let sql = "SELECT COUNT(*) as count FROM documents WHERE author_id::text = $1";
@@ -47,6 +58,7 @@ impl OnboardingRepository {
         Ok(row.get("count"))
     }
 
+    /// Look up when a user's account was created.
     #[instrument(skip(self))]
     pub async fn get_user_created_at(
         &self,
@@ -65,6 +77,7 @@ impl OnboardingRepository {
         }
     }
 
+    /// Build the full [`OnboardingStatus`] for a user.
     #[instrument(skip(self))]
     pub async fn get_onboarding_status(&self, user_id: &str) -> DatabaseResult<OnboardingStatus> {
         let doc_count = self.get_user_document_count(user_id).await?;
@@ -115,6 +128,10 @@ impl OnboardingRepository {
         })
     }
 
+    /// Mark a single onboarding step as completed.
+    ///
+    /// Silently returns `Ok(())` if onboarding is already complete or the step
+    /// is already recorded.
     #[instrument(skip(self))]
     pub async fn complete_step(&self, user_id: &str, step_id: &str) -> DatabaseResult<()> {
         let valid_step = ONBOARDING_STEPS.iter().any(|(id, _)| *id == step_id);
@@ -178,6 +195,7 @@ impl OnboardingRepository {
         Ok(())
     }
 
+    /// Returns `true` if the user has completed all onboarding steps.
     #[instrument(skip(self))]
     pub async fn is_onboarded(&self, user_id: &str) -> DatabaseResult<bool> {
         let status = self.get_onboarding_status(user_id).await?;

@@ -11,6 +11,11 @@ use super::{
     DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState, ErrorResponse,
 };
 
+/// Search documents by full-text query.
+///
+/// `GET /api/v1/documents/search`
+///
+/// Requires a non-empty `search` query parameter. Supports `page` and `page_size` pagination.
 pub async fn search_documents(
     Query(query): Query<DocumentQuery>,
     State(state): State<DocumentState>,
@@ -106,6 +111,12 @@ pub struct BacklinkItem {
     pub updated_at: String,
 }
 
+/// Get documents that link to the given document.
+///
+/// `GET /api/v1/documents/{document_id}/backlinks`
+///
+/// Queries the `outgoing_links` JSONB column to find all documents referencing
+/// this document by title. Returns up to 50 backlinks ordered by update time.
 pub async fn get_backlinks(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,

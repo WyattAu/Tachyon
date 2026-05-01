@@ -13,6 +13,7 @@ pub struct UserPreferencesRepository {
 }
 
 impl UserPreferencesRepository {
+    /// Create a new user preferences repository backed by `pool`.
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }

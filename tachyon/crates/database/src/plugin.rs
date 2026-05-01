@@ -132,12 +132,14 @@ pub struct UpdatePluginRequest {
 // Repository
 // ============================================================================
 
+/// Repository for managing installed plugins.
 #[derive(Clone)]
 pub struct PluginRepository {
     pool: DatabasePool,
 }
 
 impl PluginRepository {
+    /// Create a new plugin repository backed by `pool`.
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }

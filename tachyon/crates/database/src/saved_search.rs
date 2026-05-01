@@ -8,18 +8,27 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, FromRow, Row};
 use tracing::{debug, info, instrument};
 
+/// A user's persistent search query stored in `saved_searches`.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct SavedSearch {
+    /// Primary key (UUID).
     pub id: String,
+    /// Owning user ID (UUID string).
     pub user_id: String,
+    /// User-given label for the saved search.
     pub name: String,
+    /// The raw search query text.
     pub query: String,
+    /// JSON-encoded [`SearchFilters`], if any.
     pub filters: Option<String>,
+    /// Row-creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// Last-update timestamp.
     pub updated_at: DateTime<Utc>,
 }
 
 impl SavedSearch {
+    /// Deserialize the `filters` JSON column into [`SearchFilters`].
     pub fn parse_filters(&self) -> DatabaseResult<Option<super::search::SearchFilters>> {
         match &self.filters {
             Some(f) => {
@@ -31,6 +40,7 @@ impl SavedSearch {
         }
     }
 
+    /// Serialize [`SearchFilters`] to a JSON string for storage.
     pub fn serialize_filters(
         filters: &Option<super::search::SearchFilters>,
     ) -> DatabaseResult<Option<String>> {
@@ -45,6 +55,7 @@ impl SavedSearch {
     }
 }
 
+/// Request body for creating a new saved search.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateSavedSearchRequest {
     pub user_id: String,
@@ -53,6 +64,7 @@ pub struct CreateSavedSearchRequest {
     pub filters: Option<super::search::SearchFilters>,
 }
 
+/// Partial update payload for an existing saved search.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateSavedSearchRequest {
     pub name: Option<String>,
@@ -60,16 +72,19 @@ pub struct UpdateSavedSearchRequest {
     pub filters: Option<super::search::SearchFilters>,
 }
 
+/// Repository for persisting and querying saved searches.
 #[derive(Clone)]
 pub struct SavedSearchRepository {
     pool: DatabasePool,
 }
 
 impl SavedSearchRepository {
+    /// Create a new saved search repository backed by `pool`.
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
+    /// Insert a new saved search.
     #[instrument(skip(self))]
     pub async fn create(&self, request: CreateSavedSearchRequest) -> DatabaseResult<SavedSearch> {
         let id = uuid::Uuid::new_v4().to_string();
@@ -108,6 +123,7 @@ impl SavedSearchRepository {
         Ok(saved_search)
     }
 
+    /// Retrieve a saved search by UUID.
     #[instrument(skip(self))]
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<SavedSearch> {
         let sql = r#"
@@ -129,6 +145,7 @@ impl SavedSearchRepository {
         }
     }
 
+    /// List all saved searches for a user, newest first.
     #[instrument(skip(self))]
     pub async fn list_by_user(&self, user_id: &str) -> DatabaseResult<Vec<SavedSearch>> {
         let sql = r#"
@@ -153,6 +170,7 @@ impl SavedSearchRepository {
         Ok(saved_searches)
     }
 
+    /// Apply a partial update to an existing saved search.
     #[instrument(skip(self))]
     pub async fn update(
         &self,
@@ -189,6 +207,7 @@ impl SavedSearchRepository {
         Ok(saved_search)
     }
 
+    /// Permanently delete a saved search by UUID.
     #[instrument(skip(self))]
     pub async fn delete(&self, id: &str) -> DatabaseResult<()> {
         let sql = "DELETE FROM saved_searches WHERE id = $1::uuid";
@@ -208,6 +227,7 @@ impl SavedSearchRepository {
         Ok(())
     }
 
+    /// Count saved searches for a user.
     #[instrument(skip(self))]
     pub async fn count_by_user(&self, user_id: &str) -> DatabaseResult<i64> {
         let sql = "SELECT COUNT(*) as count FROM saved_searches WHERE user_id = $1::uuid";

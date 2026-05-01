@@ -53,6 +53,11 @@ pub struct ErrorResponse {
     pub message: String,
 }
 
+/// Get the current user's onboarding status.
+///
+/// `GET /api/v1/onboarding/status`
+///
+/// Returns which steps are completed and the current step index.
 pub async fn get_onboarding_status(
     State(state): State<OnboardingState>,
 ) -> Result<Json<OnboardingStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -74,6 +79,9 @@ pub async fn get_onboarding_status(
     }))
 }
 
+/// Mark an onboarding step as completed.
+///
+/// `POST /api/v1/onboarding/complete`
 pub async fn complete_step(
     State(state): State<OnboardingState>,
     Json(body): Json<CompleteStepRequest>,
@@ -96,6 +104,12 @@ pub async fn complete_step(
     }))
 }
 
+/// Create sample documents for onboarding.
+///
+/// `POST /api/v1/onboarding/sample-content`
+///
+/// Creates up to 5 sample documents (Welcome, Getting Started, Markdown Guide,
+/// Knowledge Graph, Keyboard Shortcuts) if the user has fewer than 3 documents.
 pub async fn create_sample_content(
     State(state): State<OnboardingState>,
 ) -> Result<Json<SampleContentResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -137,6 +151,11 @@ pub async fn create_sample_content(
     }))
 }
 
+/// Get onboarding suggestions.
+///
+/// `GET /api/v1/onboarding/suggestions`
+///
+/// Returns suggested tags, templates, and tips for new users.
 pub async fn get_suggestions(
     State(state): State<OnboardingState>,
 ) -> Result<Json<SuggestionsResponse>, (StatusCode, Json<ErrorResponse>)> {

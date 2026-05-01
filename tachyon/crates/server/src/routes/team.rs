@@ -120,6 +120,12 @@ pub struct ErrorResponse {
     pub message: String,
 }
 
+/// Create a new team.
+///
+/// `POST /api/v1/teams`
+///
+/// Validates the team name (1–100 characters) and slug (alphanumeric and hyphens).
+/// The authenticated user becomes the team owner and is assigned the "owner" role.
 pub async fn create_team(
     State(state): State<TeamState>,
     Json(req): Json<CreateTeamRequest>,
@@ -177,6 +183,9 @@ pub async fn create_team(
     Ok(Json(TeamResponse::from(created)))
 }
 
+/// Get a team by ID.
+///
+/// `GET /api/v1/teams/{team_id}`
 pub async fn get_team(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
@@ -196,6 +205,9 @@ pub async fn get_team(
     Ok(Json(TeamResponse::from(team)))
 }
 
+/// Get a team by its URL slug.
+///
+/// `GET /api/v1/teams/slug/{slug}`
 pub async fn get_team_by_slug(
     Path(slug): Path<String>,
     State(state): State<TeamState>,
@@ -215,6 +227,11 @@ pub async fn get_team_by_slug(
     Ok(Json(TeamResponse::from(team)))
 }
 
+/// List teams.
+///
+/// `GET /api/v1/teams`
+///
+/// Supports optional `owner_id` or `user_id` query parameters to filter results.
 pub async fn list_teams(
     Query(query): Query<TeamQuery>,
     State(state): State<TeamState>,
@@ -242,6 +259,11 @@ pub async fn list_teams(
     Ok(Json(teams.into_iter().map(TeamResponse::from).collect()))
 }
 
+/// Update a team.
+///
+/// `PUT /api/v1/teams/{team_id}`
+///
+/// Accepts partial updates for name, slug, and description.
 pub async fn update_team(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
@@ -283,6 +305,9 @@ pub async fn update_team(
     Ok(Json(TeamResponse::from(updated)))
 }
 
+/// Delete a team.
+///
+/// `DELETE /api/v1/teams/{team_id}`
 pub async fn delete_team(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
@@ -302,6 +327,9 @@ pub async fn delete_team(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// List members of a team.
+///
+/// `GET /api/v1/teams/{team_id}/members`
 pub async fn list_team_members(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
@@ -323,6 +351,11 @@ pub async fn list_team_members(
     ))
 }
 
+/// Add a member to a team.
+///
+/// `POST /api/v1/teams/{team_id}/members`
+///
+/// Requires a `user_id` and `role_name` in the request body.
 pub async fn add_team_member(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
@@ -358,6 +391,9 @@ pub async fn add_team_member(
     Ok(Json(TeamMemberResponse::from(created)))
 }
 
+/// Update a team member's role.
+///
+/// `PUT /api/v1/teams/{team_id}/members/{user_id}`
 pub async fn update_team_member(
     Path((team_id, user_id)): Path<(String, String)>,
     State(state): State<TeamState>,
@@ -396,6 +432,9 @@ pub async fn update_team_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Remove a member from a team.
+///
+/// `DELETE /api/v1/teams/{team_id}/members/{user_id}`
 pub async fn remove_team_member(
     Path((team_id, user_id)): Path<(String, String)>,
     State(state): State<TeamState>,

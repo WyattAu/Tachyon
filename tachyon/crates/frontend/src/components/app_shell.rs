@@ -374,8 +374,16 @@ where
                                     attr:aria-haspopup="true"
                                     attr:aria-expanded=move || if show_notifications.get() { "true" } else { "false" }
                                     attr:aria-controls="notification-panel"
+                                    attr:aria-label=move || {
+                                        let count = unread_count.get();
+                                        if count > 0 {
+                                            format!("Notifications ({} unread)", count)
+                                        } else {
+                                            "Notifications".to_string()
+                                        }
+                                    }
                                 >
-                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg class="h-5 w-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                     </svg>
                                     {move || if unread_count.get() > 0 {
@@ -560,8 +568,9 @@ pub fn NavLink(href: &'static str, label: &'static str, collapsed: bool) -> impl
             href=href
             class="flex items-center p-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
             title=label
+            attr:aria-label=label
         >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
             <Show when={move || !collapsed}>
