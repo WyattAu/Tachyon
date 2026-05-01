@@ -261,6 +261,7 @@ where
                             <button
                                 class="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                                 on:click=on_close_mobile_menu
+                                attr:aria-label="Close sidebar"
                             >
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -295,6 +296,7 @@ where
                         <button
                             on:click=move |_| set_sidebar_collapsed.update(|c| *c = !*c)
                             class="w-full p-3 min-h-[44px] text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center justify-center"
+                            attr:aria-label="Toggle sidebar"
                         >
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -322,6 +324,7 @@ where
                             <button
                                 class="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                                 on:click=on_toggle_mobile_menu
+                                attr:aria-label="Open menu"
                             >
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -335,6 +338,7 @@ where
                             <button
                                 on:click=move |_| set_search_open.set(true)
                                 class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors"
+                                attr:aria-label="Search documents"
                             >
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -367,6 +371,9 @@ where
                                 <button
                                     on:click={move |ev| on_toggle_notifications.run(ev)}
                                     class="relative p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                    attr:aria-haspopup="true"
+                                    attr:aria-expanded=move || if show_notifications.get() { "true" } else { "false" }
+                                    attr:aria-controls="notification-panel"
                                 >
                                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -382,6 +389,9 @@ where
                                     }}
                                 </button>
                                 <div
+                                    id="notification-panel"
+                                    role="menu"
+                                    tabindex="-1"
                                     class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
                                     style={move || if show_notifications.get() { "" } else { "display: none;" }}
                                 >
@@ -440,7 +450,7 @@ where
                                                                             } else {
                                                                                 view! { <div></div> }.into_any()
                                                                             }}
-                                                                            <span class="text-xs text-gray-400 dark:text-gray-500 mt-1 block">{time}</span>
+                                                                            <span class="text-xs text-gray-500 dark:text-gray-500 mt-1 block">{time}</span>
                                                                         </div>
                                                                         {if !is_read {
                                                                             let nid_clone = nid.clone();
@@ -480,6 +490,10 @@ where
                                     <button
                                         on:click={move |ev| on_toggle_menu.run(ev)}
                                         class="flex items-center gap-2 p-2 min-h-[44px] rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                        attr:aria-haspopup="true"
+                                        attr:aria-expanded=move || if show_user_menu.get() { "true" } else { "false" }
+                                        attr:aria-controls="user-menu-panel"
+                                        attr:aria-label="User menu"
                                     >
                                         <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                                             <span class="text-white text-sm font-medium">
@@ -494,6 +508,9 @@ where
                                         </div>
                                     </button>
                                     <div
+                                        id="user-menu-panel"
+                                        role="menu"
+                                        tabindex="-1"
                                         class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
                                         style={move || if show_user_menu.get() { "" } else { "display: none;" }}
                                     >

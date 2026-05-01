@@ -21,6 +21,10 @@ const SUB_SELECT: &str = r#"
     FROM subscriptions
 "#;
 
+/// An active or past subscription for an organization.
+///
+/// Tracks the current billing period, plan, and whether the subscription
+/// will cancel at the end of the period.
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct Subscription {
     pub id: String,
@@ -49,16 +53,31 @@ pub struct UpdateSubscriptionRequest {
     pub payment_method_id: Option<String>,
 }
 
+/// Repository for managing organization subscriptions.
 #[derive(Debug, Clone)]
 pub struct SubscriptionRepository {
     pool: DatabasePool,
 }
 
 impl SubscriptionRepository {
+    /// Create a new subscription repository backed by the given connection pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
+    /// Create an active subscription with a 30-day billing period.
+    ///
+    /// # Arguments
+    /// * `req` - Organization ID and plan name
+    ///
+    /// # Returns
+    /// The newly created `Subscription`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::QueryError` on SQL failures.
     #[instrument(skip(self))]
     pub async fn create(&self, req: CreateSubscriptionRequest) -> DatabaseResult<Subscription> {
         let sql = r#"
@@ -79,6 +98,16 @@ impl SubscriptionRepository {
             .map_err(|e| DatabaseError::query_error(e.to_string()))
     }
 
+    /// Retrieve the most recent subscription for an organization.
+    ///
+    /// # Arguments
+    /// * `organization_id` - UUID of the organization
+    ///
+    /// # Returns
+    /// The latest `Subscription`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::NotFound` if no subscription exists.
     #[instrument(skip(self))]
     pub async fn get_by_org(&self, organization_id: &str) -> DatabaseResult<Subscription> {
         let sql = format!(
@@ -164,6 +193,10 @@ const INV_SELECT: &str = r#"
     FROM invoices
 "#;
 
+/// An invoice associated with a subscription.
+///
+/// Stores the amount in minor currency units (cents), payment URL,
+/// and optional `paid_at` timestamp.
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct Invoice {
     pub id: String,
@@ -196,16 +229,31 @@ pub struct UpdateInvoiceRequest {
     pub payment_url: Option<String>,
 }
 
+/// Repository for managing subscription invoices.
 #[derive(Debug, Clone)]
 pub struct InvoiceRepository {
     pool: DatabasePool,
 }
 
 impl InvoiceRepository {
+    /// Create a new invoice repository backed by the given connection pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
+    /// Create an invoice for a subscription.
+    ///
+    /// # Arguments
+    /// * `req` - Invoice creation parameters
+    ///
+    /// # Returns
+    /// The newly created `Invoice`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::QueryError` on SQL failures.
     #[instrument(skip(self))]
     pub async fn create(&self, req: CreateInvoiceRequest) -> DatabaseResult<Invoice> {
         let sql = r#"

@@ -149,17 +149,17 @@ fn ProfileTab() -> impl IntoView {
             <SettingsSection title="Profile" description="Your account information">
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Display Name"</label>
-                        <input type="text" prop:value={move || display_name.get()}
+                        <label for="settings-display-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Display Name"</label>
+                        <input id="settings-display-name" type="text" prop:value={move || display_name.get()}
                             on:input=move |ev| set_display_name.set(event_target_value(&ev))
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                             disabled=move || !profile_loaded.get() />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Email"</label>
-                        <input type="email" prop:value={move || email.get()} readonly
+                        <label for="settings-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Email"</label>
+                        <input id="settings-email" type="email" prop:value={move || email.get()} readonly
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed" />
-                        <p class="text-xs text-gray-400 mt-1">"Email is read-only and managed by your authentication provider."</p>
+                        <p class="text-xs text-gray-500 mt-1">"Email is read-only and managed by your authentication provider."</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Avatar"</label>
@@ -232,20 +232,20 @@ fn AccountTab() -> impl IntoView {
             <SettingsSection title="Change Password" description="Update your password">
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Current Password"</label>
-                        <input type="password" prop:value={move || old_password.get()}
+                        <label for="settings-current-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Current Password"</label>
+                        <input id="settings-current-password" type="password" prop:value={move || old_password.get()}
                             on:input=move |ev| set_old_password.set(event_target_value(&ev))
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"New Password"</label>
-                        <input type="password" prop:value={move || new_password.get()}
+                        <label for="settings-new-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"New Password"</label>
+                        <input id="settings-new-password" type="password" prop:value={move || new_password.get()}
                             on:input=move |ev| set_new_password.set(event_target_value(&ev))
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Confirm New Password"</label>
-                        <input type="password" prop:value={move || confirm_password.get()}
+                        <label for="settings-confirm-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Confirm New Password"</label>
+                        <input id="settings-confirm-password" type="password" prop:value={move || confirm_password.get()}
                             on:input=move |ev| set_confirm_password.set(event_target_value(&ev))
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
                     </div>
@@ -312,7 +312,7 @@ fn PreferencesTab() -> impl IntoView {
                         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">"Email Notifications"</p>
                         <p class="text-sm text-gray-500 dark:text-gray-400">"Receive email updates about your activity"</p>
                     </div>
-                    <ToggleSwitch enabled=notifications_enabled.get() on_toggle=move |_| set_notifications_enabled.update(|e| *e = !*e) />
+                    <ToggleSwitch enabled=notifications_enabled.get() on_toggle=move |_| set_notifications_enabled.update(|e| *e = !*e) label="Email Notifications".to_string() />
                 </div>
             </SettingsSection>
             <SettingsSection title="Language" description="Select your preferred language">
@@ -365,7 +365,8 @@ fn DangerTab() -> impl IntoView {
                         <h3 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">"Delete Account"</h3>
                         <p class="text-sm text-red-700 dark:text-red-400 mb-4">"Once you delete your account, there is no going back. All your data will be permanently removed."</p>
                         <div class="space-y-3">
-                            <input type="text" placeholder="Type DELETE to confirm"
+                            <label for="settings-delete-confirm" class="sr-only">"Type DELETE to confirm account deletion"</label>
+                            <input id="settings-delete-confirm" type="text" placeholder="Type DELETE to confirm"
                                 prop:value={move || delete_confirm.get()}
                                 on:input=move |ev| set_delete_confirm.set(event_target_value(&ev))
                                 class="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500" />
@@ -427,12 +428,15 @@ where
 }
 
 #[component]
-fn ToggleSwitch<F>(enabled: bool, on_toggle: F) -> impl IntoView
+fn ToggleSwitch<F>(enabled: bool, on_toggle: F, label: String) -> impl IntoView
 where
     F: Fn(leptos::ev::MouseEvent) + 'static,
 {
     view! {
         <button type="button" on:click=on_toggle
+            role="switch"
+            attr:aria-checked=move || if enabled { "true" } else { "false" }
+            attr:aria-label=label.clone()
             class=move || if enabled {
                 "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-blue-600 transition-colors"
             } else {

@@ -2,6 +2,7 @@
 // Shows a multi-step wizard on first visit to guide new users
 // through setting up their Tachyon workspace.
 
+use crate::components::FocusTrap;
 use leptos::prelude::*;
 
 /// Onboarding wizard shown on first visit.
@@ -52,9 +53,12 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
     let is_last_step = move || step.get() == 3;
     let is_first_step = move || step.get() == 0;
 
+    let (trap_active, _) = signal(true);
+
     view! {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" attr:aria-modal="true" attr:aria-labelledby="onboarding-title">
+            <FocusTrap active=trap_active.into()>
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
                 // Progress bar
                 <div class="h-1 bg-gray-200 dark:bg-gray-700">
                     <div
@@ -73,7 +77,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                 </div>
-                                <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">"Welcome to Tachyon"</h2>
+                                <h2 id="onboarding-title" class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">"Welcome to Tachyon"</h2>
                                 <p class="text-gray-600 dark:text-gray-400 mb-6">
                                     "A fast, offline-first knowledge management system. Let's get you set up in a few quick steps."
                                 </p>
@@ -99,7 +103,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                         }.into_any(),
                         1 => view! {
                             <div>
-                                <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">"What should we call you?"</h2>
+                                <h2 id="onboarding-title" class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">"What should we call you?"</h2>
                                 <p class="text-gray-600 dark:text-gray-400 mb-6">
                                     "Your display name will be shown to collaborators."
                                 </p>
@@ -122,7 +126,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                         }.into_any(),
                         2 => view! {
                             <div>
-                                <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">"Name Your Workspace"</h2>
+                                <h2 id="onboarding-title" class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">"Name Your Workspace"</h2>
                                 <p class="text-gray-600 dark:text-gray-400 mb-6">
                                     "This is your personal space. You can create more workspaces later."
                                 </p>
@@ -149,7 +153,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
                                 </div>
-                                <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">"You're All Set!"</h2>
+                                <h2 id="onboarding-title" class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">"You're All Set!"</h2>
                                 <p class="text-gray-600 dark:text-gray-400 mb-6">
                                     "Your workspace is ready. Start by creating your first document or exploring the sidebar."
                                 </p>
@@ -224,7 +228,8 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                         ().into_any()
                     }
                 }}
-            </div>
+                </div>
+            </FocusTrap>
         </div>
     }
 }

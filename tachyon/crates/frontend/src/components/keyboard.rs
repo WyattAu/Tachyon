@@ -1,18 +1,19 @@
-use leptos::*;
+use leptos::prelude::*;
+use wasm_bindgen::JsCast;
 
 #[component]
 pub fn FocusTrap(
     active: Signal<bool>,
     children: Children,
 ) -> impl IntoView {
-    let container_ref = create_node_ref::<html::Div>();
+    let container_ref = NodeRef::new();
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         if !active.get() {
             return;
         }
 
-        let _ = container_ref.get().and_then(|el| {
+        let _ = container_ref.get().and_then(|el: web_sys::HtmlDivElement| {
             let focusable = el.query_selector(
                 "button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])"
             ).ok()??;
@@ -26,41 +27,4 @@ pub fn FocusTrap(
             {children()}
         </div>
     }
-}
-
-#[component]
-pub fn KeyboardShortcut(
-    key: String,
-    on_press: Callback<web_sys::KeyboardEvent>,
-    #[prop(default = true)]
-    active: bool,
-) -> impl IntoView {
-    let key_combo = key.clone();
-
-    leptos::window_event_listener(ev::keydown, move |ev: web_sys::KeyboardEvent| {
-        if !active {
-            return;
-        }
-
-        let parts: Vec<&str> = key_combo.split('+').collect();
-        let target_key = parts.last().unwrap_or(&"");
-
-        let ctrl = parts.contains(&"ctrl") || parts.contains(&"mod");
-        let shift = parts.contains(&"shift");
-        let alt = parts.contains(&"alt");
-
-        let key_match = ev.key().to_lowercase() == *target_key
-            || ev.code().to_lowercase() == *target_key;
-
-        if key_match
-            && (ctrl == ev.ctrl_key() || ctrl == ev.meta_key())
-            && shift == ev.shift_key()
-            && alt == ev.alt_key()
-        {
-            ev.prevent_default();
-            on_press.call(ev);
-        }
-    });
-
-    view! {}
 }

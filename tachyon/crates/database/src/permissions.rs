@@ -4,6 +4,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+/// Fine-grained permission levels used for role-based access control.
+///
+/// Permissions form a hierarchy: `Owner > Admin > Delete > Write > Read`.
+/// Higher-level permissions implicitly include all lower ones.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Permission {
@@ -37,6 +41,9 @@ impl Permission {
         }
     }
 
+    /// Return the numeric hierarchy level of this permission (1–5).
+    ///
+    /// Higher values represent broader access.
     pub fn level(&self) -> u8 {
         match self {
             Self::Read => 1,
@@ -47,6 +54,10 @@ impl Permission {
         }
     }
 
+    /// Check whether this permission level includes `other`.
+    ///
+    /// Returns `true` when `self.level() >= other.level()`, meaning
+    /// e.g. `Admin` includes `Write` but not vice versa.
     pub fn includes(&self, other: &Permission) -> bool {
         self.level() >= other.level()
     }
@@ -58,6 +69,11 @@ impl std::fmt::Display for Permission {
     }
 }
 
+/// A named role with a set of permission strings.
+///
+/// Roles can be system-defined (immutable) or custom. The
+/// [`has_permission`](Role::has_permission) method checks permission
+/// via both direct name match and the hierarchical level system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Role {
     pub id: i64,
@@ -88,6 +104,11 @@ impl Role {
         self
     }
 
+    /// Check whether this role grants a specific permission.
+    ///
+    /// A role with the "owner" permission grants everything. Otherwise the
+    /// check looks for a direct name match first, then falls back to the
+    /// hierarchical [`Permission::includes`] logic.
     pub fn has_permission(&self, permission: &Permission) -> bool {
         if self.permissions.contains("owner") {
             return true;
@@ -107,11 +128,13 @@ impl Role {
         false
     }
 
+    /// Add a permission to this role and bump `updated_at`.
     pub fn add_permission(&mut self, permission: Permission) {
         self.permissions.insert(permission.as_str().to_string());
         self.updated_at = chrono::Utc::now();
     }
 
+    /// Remove a permission from this role and bump `updated_at`.
     pub fn remove_permission(&mut self, permission: &Permission) {
         self.permissions.remove(permission.as_str());
         self.updated_at = chrono::Utc::now();

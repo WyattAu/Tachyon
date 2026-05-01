@@ -64,6 +64,11 @@ const REVIEW_SELECT_SQL: &str = r#"
     FROM document_reviews
 "#;
 
+/// A review request for a specific document version.
+///
+/// Reviews follow a state machine: `Pending` can transition to
+/// `Approved`, `Rejected`, `ChangesRequested`, or `Cancelled`.
+/// `ChangesRequested` can additionally transition to `Approved`/`Rejected`/`Cancelled`.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct DocumentReview {
     pub id: String,
@@ -124,18 +129,41 @@ pub struct CreateCommentRequest {
 // Repository
 // ============================================================================
 
+/// Repository for managing document review workflows and review comments.
+///
+/// Enforces status-transition rules and supports idempotent review creation
+/// (returns the existing pending review if one already exists for the same
+/// reviewer and document).
 #[derive(Clone)]
 pub struct DocumentReviewRepository {
     pool: DatabasePool,
 }
 
 impl DocumentReviewRepository {
+    /// Create a new review repository backed by the given connection pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
     // --- Reviews ---
 
+    /// Create a new review request for a document version.
+    ///
+    /// Idempotent: if a pending review already exists for the same
+    /// reviewer and document, the existing review is returned without
+    /// creating a duplicate.
+    ///
+    /// # Arguments
+    /// * `req` - Review creation parameters
+    ///
+    /// # Returns
+    /// The created or existing `DocumentReview`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::QueryError` on SQL failures.
     #[instrument(skip(self))]
     pub async fn create_review(&self, req: CreateReviewRequest) -> DatabaseResult<DocumentReview> {
         let mut conn = self.pool.acquire().await?;
@@ -220,6 +248,22 @@ impl DocumentReviewRepository {
         Ok(reviews)
     }
 
+    /// Transition a review to a new status.
+    ///
+    /// Validates the transition against the [`ReviewStatus::can_transition_to`]
+    /// state machine before applying. Terminal states (`Approved`, `Rejected`,
+    /// `Cancelled`) automatically set `resolved_at`.
+    ///
+    /// # Arguments
+    /// * `id` - UUID of the review
+    /// * `req` - New status and optional summary
+    ///
+    /// # Returns
+    /// The updated `DocumentReview`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::ValidationError` if the transition is invalid
+    /// or the current status is unknown.
     #[instrument(skip(self))]
     pub async fn update_review_status(
         &self,
@@ -280,6 +324,13 @@ impl DocumentReviewRepository {
         Ok(review)
     }
 
+    /// Count pending reviews for a document.
+    ///
+    /// # Arguments
+    /// * `document_id` - UUID of the document
+    ///
+    /// # Returns
+    /// The number of reviews currently in "pending" status.
     #[instrument(skip(self))]
     pub async fn get_pending_count(&self, document_id: &str) -> DatabaseResult<i64> {
         let mut conn = self.pool.acquire().await?;

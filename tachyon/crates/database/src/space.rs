@@ -28,6 +28,11 @@ const SPACE_SELECT_SQL: &str = r#"
     FROM spaces
 "#;
 
+/// A workspace or vault for organizing documents into hierarchies.
+///
+/// Spaces can be nested via `parent_id` and scoped to a specific owner
+/// or shared with members. Each space carries display metadata (icon,
+/// color) and a JSON `settings` blob.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Space {
     pub id: String,
@@ -121,18 +126,41 @@ pub struct UpdateSpaceMemberRequest {
 // Repository
 // ============================================================================
 
+/// Repository for managing spaces and their members.
+///
+/// Supports hierarchical space trees, member invitation, and
+/// document-to-space assignment.
 #[derive(Clone)]
 pub struct SpaceRepository {
     pool: DatabasePool,
 }
 
 impl SpaceRepository {
+    /// Create a new space repository backed by the given connection pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
     // -- Space CRUD --
 
+    /// Create a new space and automatically add the owner as a member.
+    ///
+    /// Generates a slug from the name and applies defaults for icon,
+    /// color, and visibility when not provided.
+    ///
+    /// # Arguments
+    /// * `owner_id` - UUID of the space owner
+    /// * `req` - Space creation parameters
+    ///
+    /// # Returns
+    /// The newly created `Space`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::Duplicate` if a space with the same name
+    /// already exists, or `DatabaseError::QueryError` on SQL failures.
     #[instrument(skip(self, req))]
     pub async fn create(&self, owner_id: &str, req: CreateSpaceRequest) -> DatabaseResult<Space> {
         let id = uuid::Uuid::new_v4().to_string();
@@ -200,6 +228,16 @@ impl SpaceRepository {
         Ok(space)
     }
 
+    /// Retrieve a space by its UUID.
+    ///
+    /// # Arguments
+    /// * `id` - UUID of the space
+    ///
+    /// # Returns
+    /// The matching `Space`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::NotFound` if no space exists with the given ID.
     #[instrument(skip(self))]
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<Space> {
         let select_sql = format!("{} WHERE id = $1::uuid", SPACE_SELECT_SQL);
@@ -232,6 +270,21 @@ impl SpaceRepository {
         space.ok_or_else(|| DatabaseError::not_found("space", slug))
     }
 
+    /// List spaces with optional filters for owner, parent, and visibility.
+    ///
+    /// When `owner_id` is provided the result includes both owned spaces and
+    /// spaces the user is a member of.
+    ///
+    /// # Arguments
+    /// * `owner_id` - Optional user UUID to scope results
+    /// * `parent_id` - Optional parent space UUID to filter children
+    /// * `visibility` - Optional visibility level (e.g. "private", "public")
+    /// * `include_member_spaces` - Reserved; currently handled via `owner_id`
+    /// * `limit` - Maximum number of results (default 100)
+    /// * `offset` - Number of results to skip
+    ///
+    /// # Returns
+    /// A vector of matching spaces ordered by sort order then name.
     #[instrument(skip(self))]
     pub async fn list(
         &self,
@@ -630,6 +683,19 @@ impl SpaceRepository {
 
     // -- Member management --
 
+    /// Add a user as a member of a space.
+    ///
+    /// Defaults to the "viewer" role when none is specified.
+    ///
+    /// # Arguments
+    /// * `space_id` - UUID of the space
+    /// * `req` - Member addition parameters (user_id and optional role)
+    ///
+    /// # Returns
+    /// The created `SpaceMember` with joined user profile info.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::Duplicate` if the user is already a member.
     #[instrument(skip(self, req))]
     pub async fn add_member(
         &self,
@@ -761,7 +827,14 @@ impl SpaceRepository {
         Ok(())
     }
 
-    /// Check if a user is a member of a space (or is the owner)
+    /// Check whether a user is a member of a space or is its owner.
+    ///
+    /// # Arguments
+    /// * `space_id` - UUID of the space
+    /// * `user_id` - UUID of the user
+    ///
+    /// # Returns
+    /// `true` if the user owns the space or is an explicit member.
     #[instrument(skip(self))]
     pub async fn is_member(&self, space_id: &str, user_id: &str) -> DatabaseResult<bool> {
         let check_sql = r#"

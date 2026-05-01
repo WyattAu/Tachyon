@@ -27,6 +27,8 @@ const COMMENT_SELECT_SQL: &str = r#"
     FROM document_comments
 "#;
 
+/// A comment on a document, optionally anchored to a specific section or
+/// line range. Supports threading via `parent_id` and `@mention` tracking.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Comment {
     pub id: String,
@@ -68,16 +70,39 @@ pub struct UpdateCommentRequest {
     pub resolved_by: Option<String>,
 }
 
+/// Repository for creating, querying, and managing document comments.
+///
+/// Automatically maintains the `comment_count` denormalized counter on
+/// the parent `documents` row when comments are created, resolved, or deleted.
 #[derive(Clone)]
 pub struct CommentRepository {
     pool: DatabasePool,
 }
 
 impl CommentRepository {
+    /// Create a new comment repository backed by the given connection pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
+    /// Create a new comment on a document.
+    ///
+    /// If `mentions` is not provided, `@mentions` are extracted
+    /// automatically from the content. Increments the document's
+    /// `comment_count` on success.
+    ///
+    /// # Arguments
+    /// * `req` - Comment creation parameters
+    ///
+    /// # Returns
+    /// The persisted `Comment`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::SerializationError` if mentions fail to
+    /// serialize, or `DatabaseError::QueryError` on SQL failures.
     #[instrument(skip(self, req))]
     pub async fn create(&self, req: CreateCommentRequest) -> DatabaseResult<Comment> {
         let id = uuid::Uuid::new_v4().to_string();
@@ -160,6 +185,17 @@ impl CommentRepository {
             .ok_or_else(|| DatabaseError::not_found("comment", id))
     }
 
+    /// List comments for a document with optional filtering.
+    ///
+    /// # Arguments
+    /// * `document_id` - UUID of the document
+    /// * `include_resolved` - When `false`, only "open" comments are returned
+    /// * `parent_id` - Optional parent comment UUID to filter a thread
+    /// * `limit` - Maximum number of results
+    /// * `offset` - Number of results to skip
+    ///
+    /// # Returns
+    /// A vector of comments ordered by creation date (newest first).
     #[instrument(skip(self))]
     pub async fn list_by_document(
         &self,
@@ -202,6 +238,20 @@ impl CommentRepository {
         Ok(comments)
     }
 
+    /// Update a comment's content, status, or resolution info.
+    ///
+    /// When transitioning to "resolved", sets `resolved_at` and decrements
+    /// the document's `comment_count`.
+    ///
+    /// # Arguments
+    /// * `id` - UUID of the comment
+    /// * `req` - Fields to update
+    ///
+    /// # Returns
+    /// The updated `Comment`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::NotFound` if the comment does not exist.
     #[instrument(skip(self, req))]
     pub async fn update(&self, id: &str, req: UpdateCommentRequest) -> DatabaseResult<Comment> {
         let existing = self.get_by_id(id).await?;

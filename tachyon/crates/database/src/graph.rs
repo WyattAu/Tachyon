@@ -88,11 +88,20 @@ impl From<&Edge> for GraphEdge {
 // Graph Repository
 // ============================================================================
 
+/// Repository for managing knowledge graph nodes and edges.
+///
+/// Provides CRUD operations for graph entities as well as traversal
+/// queries including shortest-path, neighbor search, and connected-component
+/// analysis.
 pub struct GraphRepository {
     pool: DatabasePool,
 }
 
 impl GraphRepository {
+    /// Create a new graph repository backed by the given connection pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
@@ -101,6 +110,17 @@ impl GraphRepository {
     // Node CRUD
     // ========================================================================
 
+    /// Insert a new node into the knowledge graph.
+    ///
+    /// # Arguments
+    /// * `node` - The node to create
+    ///
+    /// # Returns
+    /// The persisted node with its database-assigned ID and timestamps.
+    ///
+    /// # Errors
+    /// Returns a `DatabaseError::Duplicate` if the slug already exists,
+    /// or a `DatabaseError::QueryError` on other SQL failures.
     #[instrument(skip(self, node), fields(node_name = %node.name))]
     pub async fn create_node(&self, node: &GraphNode) -> DatabaseResult<GraphNode> {
         let sql = r#"
@@ -168,6 +188,17 @@ impl GraphRepository {
         Ok(record)
     }
 
+    /// Retrieve a single active node by its UUID.
+    ///
+    /// # Arguments
+    /// * `id` - UUID string of the node
+    ///
+    /// # Returns
+    /// The matching `GraphNode`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::NotFound` if no active node exists with the
+    /// given ID, or `DatabaseError::ValidationError` if `id` is not a valid UUID.
     #[instrument(skip(self))]
     pub async fn get_node_by_id(&self, id: &str) -> DatabaseResult<GraphNode> {
         let sql = "SELECT * FROM knowledge_graph_nodes WHERE id = $1 AND is_active = true";
@@ -412,6 +443,18 @@ impl GraphRepository {
     // Edge CRUD
     // ========================================================================
 
+    /// Insert a new edge into the knowledge graph.
+    ///
+    /// # Arguments
+    /// * `edge` - The edge to create (must reference existing node UUIDs)
+    ///
+    /// # Returns
+    /// The persisted edge with its database-assigned ID and timestamps.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::Duplicate` if an identical edge already exists,
+    /// `DatabaseError::ConstraintViolation` if source or target nodes are missing,
+    /// or `DatabaseError::QueryError` on other SQL failures.
     #[instrument(skip(self, edge), fields(edge_type = %edge.edge_type))]
     pub async fn create_edge(&self, edge: &GraphEdge) -> DatabaseResult<GraphEdge> {
         let sql = r#"
@@ -773,6 +816,24 @@ impl GraphRepository {
         Ok(records)
     }
 
+    /// Find the shortest path between two nodes using BFS.
+    ///
+    /// Traverses edges in both directions (undirected). The search is
+    /// bounded by `max_depth` (capped at 5).
+    ///
+    /// # Arguments
+    /// * `source_id` - UUID of the starting node
+    /// * `target_id` - UUID of the destination node
+    /// * `max_depth` - Maximum hop count to explore (clamped to 5)
+    ///
+    /// # Returns
+    /// An ordered list of node UUID strings from source to target.
+    /// Returns a single-element vector when source and target are the same.
+    /// Returns an empty vector when no path exists within the depth limit.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::ValidationError` if either UUID is invalid,
+    /// or `DatabaseError::QueryError` on SQL failures.
     #[instrument(skip(self))]
     pub async fn get_shortest_path(
         &self,
@@ -851,6 +912,17 @@ impl GraphRepository {
         Ok(records)
     }
 
+    /// Compute the connected components of the active knowledge graph.
+    ///
+    /// Loads all active nodes and edges into memory and runs BFS to
+    /// identify disjoint sub-graphs.
+    ///
+    /// # Returns
+    /// A vector of components, where each component is a vector of node
+    /// UUID strings. Returns an empty vector when the graph has no active nodes.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::QueryError` on SQL failures.
     pub async fn get_connected_components(&self) -> DatabaseResult<Vec<Vec<String>>> {
         let sql = "SELECT id FROM knowledge_graph_nodes WHERE is_active = true ORDER BY id";
         let mut conn = self.pool.acquire().await?;

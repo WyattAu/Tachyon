@@ -2,6 +2,7 @@
 
 pub mod activity_feed;
 pub mod app_shell;
+pub mod keyboard;
 pub mod attachments;
 pub mod auth_guard;
 pub mod breadcrumbs;
@@ -41,6 +42,7 @@ pub mod wikilink_autocomplete;
 
 pub use activity_feed::{Activity, ActivityFeed};
 pub use app_shell::AppShell;
+pub use keyboard::FocusTrap;
 pub use auth_guard::{provide_auth_context, AuthGuard};
 pub use breadcrumbs::{BreadcrumbItem, Breadcrumbs};
 pub use client_search::ClientSearch;

@@ -167,7 +167,7 @@ fn internal_error(msg: impl Into<String>) -> ApiError {
     )
 }
 
-fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ApiError> {
+async fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ApiError> {
     if let Err(e) = tachyon_core::validate_path(relative) {
         return Err(error(
             "INVALID_PATH",
@@ -177,7 +177,7 @@ fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ApiError> {
 
     let joined = root.join(relative.strip_prefix('/').unwrap_or(relative));
 
-    let canonical = joined.canonicalize().map_err(|e| {
+    let canonical = tokio::fs::canonicalize(&joined).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             not_found(format!("Path not found: {}", relative))
         } else {
@@ -185,7 +185,9 @@ fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ApiError> {
         }
     })?;
 
-    let root_canonical = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let root_canonical = tokio::fs::canonicalize(root)
+        .await
+        .unwrap_or_else(|_| root.to_path_buf());
     if !canonical.starts_with(&root_canonical) {
         return Err(error(
             "FORBIDDEN",
@@ -311,7 +313,7 @@ pub async fn list_directory(
 ) -> Result<Json<ListResponse>, ApiError> {
     let relative = params.path.as_deref().unwrap_or("/");
     let show_all = params.all.unwrap_or(false);
-    let target = resolve_path(&state.root_path, relative)?;
+    let target = resolve_path(&state.root_path, relative).await?;
 
     let metadata = fs::metadata(&target).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
@@ -397,7 +399,7 @@ pub async fn read_file(
     State(state): State<FilesState>,
     Query(params): Query<ReadQuery>,
 ) -> Result<Response, ApiError> {
-    let target = resolve_path(&state.root_path, &params.path)?;
+    let target = resolve_path(&state.root_path, &params.path).await?;
 
     let metadata = fs::metadata(&target).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
@@ -449,15 +451,14 @@ pub async fn search_files(
     Query(params): Query<SearchQuery>,
 ) -> Result<Json<SearchResponse>, ApiError> {
     let query_lower = params.query.to_lowercase();
-    let base = resolve_path(&state.root_path, params.path.as_deref().unwrap_or("/"))?;
+    let base = resolve_path(&state.root_path, params.path.as_deref().unwrap_or("/")).await?;
 
     if !base.is_dir() {
         return Err(error("NOT_DIRECTORY", "Specified path is not a directory"));
     }
 
-    let root_canonical = state
-        .root_path
-        .canonicalize()
+    let root_canonical = tokio::fs::canonicalize(&state.root_path)
+        .await
         .unwrap_or_else(|_| state.root_path.clone());
     let mut results = Vec::new();
     Box::pin(walk_dir_search(
@@ -531,7 +532,7 @@ pub async fn get_tree(
 ) -> Result<Json<TreeResponse>, ApiError> {
     let relative = params.path.as_deref().unwrap_or("/");
     let max_depth = params.depth.unwrap_or(2).min(5);
-    let target = resolve_path(&state.root_path, relative)?;
+    let target = resolve_path(&state.root_path, relative).await?;
 
     let metadata = fs::metadata(&target).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
@@ -545,9 +546,8 @@ pub async fn get_tree(
         return Err(error("NOT_DIRECTORY", "Path is not a directory"));
     }
 
-    let root_canonical = state
-        .root_path
-        .canonicalize()
+    let root_canonical = tokio::fs::canonicalize(&state.root_path)
+        .await
         .unwrap_or_else(|_| state.root_path.clone());
     let children = Box::pin(build_tree(&target, &root_canonical, 0, max_depth)).await?;
 
@@ -627,9 +627,8 @@ fn build_tree<'a>(
 }
 
 pub async fn get_stats(State(state): State<FilesState>) -> Result<Json<StatsResponse>, ApiError> {
-    let root = state
-        .root_path
-        .canonicalize()
+    let root = tokio::fs::canonicalize(&state.root_path)
+        .await
         .unwrap_or_else(|_| state.root_path.clone());
 
     let mut total_files = 0usize;
@@ -740,13 +739,12 @@ pub async fn get_recent_files(
     Query(params): Query<RecentQuery>,
 ) -> Result<Json<RecentResponse>, ApiError> {
     let limit = params.limit.unwrap_or(20).min(100);
-    let root = state
-        .root_path
-        .canonicalize()
+    let root = tokio::fs::canonicalize(&state.root_path)
+        .await
         .unwrap_or_else(|_| state.root_path.clone());
     let mut all_files = Vec::new();
 
-    Box::pin(walk_dir_recent(&root, &root, &mut all_files)).await?;
+    Box::pin(walk_dir_recent(&root, &root, &mut all_files, 10_000)).await?;
 
     all_files.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
     all_files.truncate(limit);
@@ -758,6 +756,7 @@ fn walk_dir_recent<'a>(
     dir: &'a PathBuf,
     root: &'a PathBuf,
     files: &'a mut Vec<RecentFileEntry>,
+    max_files: usize,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), ApiError>> + Send + 'a>> {
     Box::pin(async move {
         let mut entries = fs::read_dir(dir)
@@ -781,7 +780,10 @@ fn walk_dir_recent<'a>(
                 .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
 
             if meta.is_dir() {
-                Box::pin(walk_dir_recent(&entry.path(), root, files)).await?;
+                Box::pin(walk_dir_recent(&entry.path(), root, files, max_files)).await?;
+                if files.len() >= max_files {
+                    return Ok(());
+                }
             } else {
                 if !is_allowed_ext(&name) {
                     continue;
@@ -800,6 +802,10 @@ fn walk_dir_recent<'a>(
                     modified_at: format_modified(&meta),
                     size: meta.len(),
                 });
+
+                if files.len() >= max_files {
+                    return Ok(());
+                }
             }
         }
 

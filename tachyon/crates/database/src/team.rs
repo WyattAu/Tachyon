@@ -63,6 +63,10 @@ impl From<TeamMemberRecord> for TeamMember {
     }
 }
 
+/// A group of users collaborating within an organization.
+///
+/// Teams have an owner, optional avatar, and a JSON settings blob.
+/// Membership is managed separately via [`TeamMember`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Team {
     pub id: String,
@@ -98,6 +102,9 @@ impl Team {
     }
 }
 
+/// A user's membership within a team, including their assigned role.
+///
+/// Tracks who invited the member and when they joined.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TeamMember {
     pub id: i64,
@@ -174,16 +181,32 @@ fn parse_uuid(s: &str, field: &str) -> Result<uuid::Uuid, DatabaseError> {
         .map_err(|e| DatabaseError::ValidationError(format!("Invalid {} UUID: {}", field, e)))
 }
 
+/// Repository for managing teams, team membership, and roles.
 #[derive(Clone)]
 pub struct TeamRepository {
     pool: DatabasePool,
 }
 
 impl TeamRepository {
+    /// Create a new team repository backed by the given connection pool.
+    ///
+    /// # Arguments
+    /// * `pool` - Database connection pool
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
+    /// Persist a new team to the database.
+    ///
+    /// # Arguments
+    /// * `team` - The team to create (must have a valid UUID and owner)
+    ///
+    /// # Returns
+    /// The persisted `Team`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::ValidationError` if the team or owner UUID
+    /// is invalid, or `DatabaseError::QueryError` on SQL failures.
     pub async fn create(&self, team: &Team) -> DatabaseResult<Team> {
         let insert_sql = r#"
             INSERT INTO teams (id, name, slug, description, owner_id, avatar_url, settings, created_at, updated_at)
@@ -213,6 +236,16 @@ impl TeamRepository {
             .map(Team::from)
     }
 
+    /// Retrieve a team by its UUID.
+    ///
+    /// # Arguments
+    /// * `id` - UUID of the team
+    ///
+    /// # Returns
+    /// The matching `Team`.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::NotFound` if no team exists with the given ID.
     pub async fn get_by_id(&self, id: &str) -> DatabaseResult<Team> {
         let select_sql = "SELECT * FROM teams WHERE id = $1";
 
@@ -249,6 +282,13 @@ impl TeamRepository {
             .map(|records| records.into_iter().map(Team::from).collect())
     }
 
+    /// List all teams a user belongs to (as owner or member).
+    ///
+    /// # Arguments
+    /// * `user_id` - UUID of the user
+    ///
+    /// # Returns
+    /// A vector of teams ordered by creation date (newest first).
     pub async fn list_for_user(&self, user_id: &str) -> DatabaseResult<Vec<Team>> {
         let select_sql = r#"
             SELECT t.* FROM teams t
@@ -306,6 +346,16 @@ impl TeamRepository {
         Ok(())
     }
 
+    /// Add a member to a team with the specified role.
+    ///
+    /// # Arguments
+    /// * `member` - The team member to create
+    ///
+    /// # Returns
+    /// The persisted `TeamMember` with its database-assigned ID.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::QueryError` on SQL failures.
     pub async fn add_member(&self, member: &TeamMember) -> DatabaseResult<TeamMember> {
         let insert_sql = r#"
             INSERT INTO team_members (team_id, user_id, role_id, role_name, joined_at, invited_by)
@@ -391,6 +441,14 @@ impl TeamRepository {
         Ok(())
     }
 
+    /// Remove a member from a team.
+    ///
+    /// # Arguments
+    /// * `team_id` - UUID of the team
+    /// * `user_id` - UUID of the user to remove
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::NotFound` if the membership does not exist.
     pub async fn remove_member(&self, team_id: &str, user_id: &str) -> DatabaseResult<()> {
         let delete_sql = "DELETE FROM team_members WHERE team_id = $1 AND user_id = $2";
 

@@ -11,9 +11,12 @@ use axum::{
 use deadpool_redis::{redis::AsyncCommands, Pool as RedisPool, Runtime};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tracing::warn;
+
+static LAST_CLEANUP: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone)]
 pub struct RateLimitConfig {
@@ -167,6 +170,11 @@ impl InMemoryStore {
         Self {
             buckets: dashmap::DashMap::new(),
         }
+    }
+
+    fn cleanup(&self, window_secs: u64) {
+        let cutoff = Instant::now() - Duration::from_secs(window_secs * 2);
+        self.buckets.retain(|_, bucket| bucket.last_refill >= cutoff);
     }
 
     async fn check_rate_limit(&self, key: &str, limit: RateLimit) -> Result<RateLimitInfo, ()> {
@@ -346,6 +354,18 @@ pub async fn rate_limit_middleware(
 ) -> Result<Response, (StatusCode, Json<RateLimitErrorResponse>)> {
     if !state.config.enabled {
         return Ok(next.run(request).await);
+    }
+
+    if let RateLimitStore::InMemory(store) = &state.store {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let last = LAST_CLEANUP.load(Ordering::Relaxed);
+        if now.saturating_sub(last) > 60 {
+            LAST_CLEANUP.store(now, Ordering::Relaxed);
+            store.cleanup(state.config.cleanup_interval_secs);
+        }
     }
 
     let path = request.uri().path();
