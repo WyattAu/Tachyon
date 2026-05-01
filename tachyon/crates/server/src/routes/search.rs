@@ -213,6 +213,12 @@ async fn search_tantivy(
     }
 }
 
+/// Full-text search across documents with faceted filtering.
+///
+/// `GET /search?q=&page=&page_size=&content_type=&status=&visibility=&project_id=&author_id=&tags=&date_from=&date_to=`
+///
+/// Fuses results from PostgreSQL full-text search and Tantivy index.
+/// Response: 200 with `SearchResultsResponse` containing `results`, `total`, `page`, `page_size`, `facets`.
 pub async fn search(
     Query(query): Query<SearchQuery>,
     State(state): State<SearchState>,
@@ -768,6 +774,12 @@ fn default_suggest_limit() -> usize {
     10
 }
 
+/// Get search suggestions (autocomplete) from the Tantivy index.
+///
+/// `GET /search/suggest?q=&limit=`
+///
+/// Query params: `q` (required), `limit` (default 10).
+/// Response: 200 with `SuggestResponse` containing `query` and `suggestions`, or 503 if index unavailable.
 pub async fn suggest(
     Query(query): Query<SuggestQuery>,
     State(state): State<SearchState>,

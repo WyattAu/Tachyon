@@ -2,6 +2,7 @@ pub mod activity_log_test;
 pub mod activity_tests;
 mod auth;
 pub mod auth_flow_test;
+pub mod auth_middleware_test;
 pub mod auth_tests;
 pub mod billing_tests;
 pub mod catalog_tests;

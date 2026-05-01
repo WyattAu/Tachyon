@@ -116,7 +116,7 @@ pub fn ClientSearch(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> impl
                 on:keydown=on_escape
             >
                 <div class="flex items-center px-4 border-b border-gray-200 dark:border-gray-700 gap-3">
-                    <svg class="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-5 w-5 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <input
@@ -138,7 +138,7 @@ pub fn ClientSearch(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> impl
                         </button>
                     </Show>
                     <Show when={move || searching.get()}>
-                        <svg class="h-4 w-4 text-gray-400 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                        <svg class="h-4 w-4 text-gray-400 animate-spin flex-shrink-0" aria-hidden="true" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -231,7 +231,7 @@ pub fn ClientSearch(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> impl
                         } else {
                             view! {
                                 <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                                    <svg class="h-5 w-5 animate-spin mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                                    <svg class="h-5 w-5 animate-spin mx-auto mb-2" aria-hidden="true" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>

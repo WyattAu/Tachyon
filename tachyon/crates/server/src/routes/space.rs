@@ -108,6 +108,11 @@ pub struct ErrorResponse {
 // Handlers
 // ============================================================================
 
+/// List spaces with optional filters.
+///
+/// `GET /spaces?owner_id=&parent_id=&visibility=&limit=&offset=`
+///
+/// Response: 200 with `Vec<SpaceResponse>`, or 500 on error.
 pub async fn list_spaces(
     Query(query): Query<SpaceQuery>,
     State(state): State<SpaceState>,
@@ -207,6 +212,11 @@ pub async fn list_child_spaces(
     Ok(Json(responses))
 }
 
+/// Get a space by ID.
+///
+/// `GET /spaces/{space_id}`
+///
+/// Response: 200 with `SpaceResponse`, or 404 on error.
 pub async fn get_space(
     Path(space_id): Path<String>,
     State(state): State<SpaceState>,
@@ -239,6 +249,12 @@ pub async fn get_default_space(
     Ok(Json(SpaceResponse::from_space(space, doc_count)))
 }
 
+/// Create a new space.
+///
+/// `POST /spaces`
+///
+/// Request body: JSON with `name` (required), optional `description`, `icon`, `color`, `parent_id`, `visibility`.
+/// Response: 201 with `SpaceResponse`, or 400/500 on error.
 pub async fn create_space(
     State(state): State<SpaceState>,
     Json(body): Json<CreateSpaceBody>,
@@ -271,6 +287,12 @@ pub async fn create_space(
     Ok(Json(SpaceResponse::from_space(space, doc_count)))
 }
 
+/// Update a space by ID.
+///
+/// `PUT /spaces/{space_id}`
+///
+/// Request body: JSON with optional `name`, `description`, `icon`, `color`, `parent_id`, `visibility`, `sort_order`.
+/// Response: 200 with `SpaceResponse`, or 500 on error.
 pub async fn update_space(
     Path(space_id): Path<String>,
     State(state): State<SpaceState>,
@@ -299,6 +321,11 @@ pub async fn update_space(
     Ok(Json(SpaceResponse::from_space(space, doc_count)))
 }
 
+/// Delete a space by ID.
+///
+/// `DELETE /spaces/{space_id}`
+///
+/// Response: 204 No Content, or 404 on error.
 pub async fn delete_space(
     Path(space_id): Path<String>,
     State(state): State<SpaceState>,

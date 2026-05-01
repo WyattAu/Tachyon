@@ -88,6 +88,11 @@ impl From<&Edge> for GraphEdge {
 // Graph Repository
 // ============================================================================
 
+#[derive(sqlx::FromRow)]
+struct BfsPathRow {
+    path: Vec<uuid::Uuid>,
+}
+
 /// Repository for managing knowledge graph nodes and edges.
 ///
 /// Provides CRUD operations for graph entities as well as traversal
@@ -816,7 +821,11 @@ impl GraphRepository {
         Ok(records)
     }
 
-    /// Find the shortest path between two nodes using BFS.
+    /// Find the shortest path between two nodes using a single recursive CTE.
+    ///
+    /// Replaces the previous iterative BFS (N+1 queries) with a single
+    /// PostgreSQL recursive CTE that computes shortest paths entirely in the
+    /// database, reducing round-trips from O(depth) to O(1).
     ///
     /// Traverses edges in both directions (undirected). The search is
     /// bounded by `max_depth` (capped at 5).
@@ -851,51 +860,45 @@ impl GraphRepository {
             return Ok(vec![source_id.to_string()]);
         }
 
-        let mut visited: HashSet<String> = HashSet::new();
-        let mut queue: VecDeque<(String, Vec<String>)> = VecDeque::new();
-        queue.push_back((source_id.to_string(), vec![source_id.to_string()]));
-        visited.insert(source_id.to_string());
+        let sql = r#"
+            WITH RECURSIVE bfs AS (
+                SELECT
+                    CASE WHEN e.source_id = $1 THEN e.target_id ELSE e.source_id END AS node_id,
+                    ARRAY[$1, CASE WHEN e.source_id = $1 THEN e.target_id ELSE e.source_id END] AS path,
+                    1 AS depth
+                FROM knowledge_graph_edges e
+                WHERE (e.source_id = $1 OR e.target_id = $1) AND e.is_active = true
+
+                UNION ALL
+
+                SELECT
+                    CASE WHEN e.source_id = b.node_id THEN e.target_id ELSE e.source_id END,
+                    b.path || CASE WHEN e.source_id = b.node_id THEN e.target_id ELSE e.source_id END,
+                    b.depth + 1
+                FROM bfs b
+                JOIN knowledge_graph_edges e ON (e.source_id = b.node_id OR e.target_id = b.node_id)
+                WHERE b.depth < $3
+                  AND e.is_active = true
+                  AND NOT (CASE WHEN e.source_id = b.node_id THEN e.target_id ELSE e.source_id END = ANY(b.path))
+            )
+            SELECT path FROM bfs WHERE node_id = $2
+            ORDER BY depth
+            LIMIT 1
+        "#;
 
         let mut conn = self.pool.acquire().await?;
+        let row = query_as::<_, BfsPathRow>(sql)
+            .bind(source)
+            .bind(target)
+            .bind(max_depth as i32)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        while let Some((current_id, path)) = queue.pop_front() {
-            if path.len() as u32 > max_depth {
-                continue;
-            }
-
-            let next_sql = "SELECT target_id FROM knowledge_graph_edges WHERE source_id = $1 AND is_active = true
-                            UNION
-                            SELECT source_id FROM knowledge_graph_edges WHERE target_id = $1 AND is_active = true";
-
-            let rows =
-                sqlx::query(next_sql)
-                    .bind(uuid::Uuid::parse_str(&current_id).map_err(|e| {
-                        DatabaseError::ValidationError(format!("Invalid UUID: {}", e))
-                    })?)
-                    .fetch_all(&mut *conn)
-                    .await
-                    .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
-
-            for row in rows {
-                let neighbor_id: uuid::Uuid = row.get(0);
-                let neighbor_str = neighbor_id.to_string();
-
-                if neighbor_str == target_id {
-                    let mut result = path.clone();
-                    result.push(neighbor_str);
-                    return Ok(result);
-                }
-
-                if !visited.contains(&neighbor_str) {
-                    visited.insert(neighbor_str.clone());
-                    let mut new_path = path.clone();
-                    new_path.push(neighbor_str.clone());
-                    queue.push_back((neighbor_str, new_path));
-                }
-            }
+        match row {
+            Some(r) => Ok(r.path.iter().map(|u| u.to_string()).collect()),
+            None => Ok(vec![]),
         }
-
-        Ok(vec![])
     }
 
     pub async fn get_node_edges(&self, node_id: &str) -> DatabaseResult<Vec<GraphEdge>> {

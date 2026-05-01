@@ -7,7 +7,7 @@ use crate::types::{FieldDefinition, FieldType, IndexConfig};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tantivy::{schema::*, Index, IndexReader, IndexWriter, ReloadPolicy, TantivyDocument};
 
 /// Index manager for Tantivy-based document indexing
@@ -25,6 +25,8 @@ pub struct IndexManager {
     config: IndexConfig,
     /// Default field names
     default_fields: DefaultFields,
+    /// Shared index writer, lazily created
+    writer: Arc<Mutex<Option<IndexWriter>>>,
 }
 
 /// Default field names used in the index
@@ -126,6 +128,7 @@ impl IndexManager {
             field_mappings,
             config,
             default_fields,
+            writer: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -145,6 +148,7 @@ impl IndexManager {
             field_mappings,
             config,
             default_fields,
+            writer: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -170,6 +174,21 @@ impl IndexManager {
         Ok(field)
     }
 
+    /// Execute an operation with the shared index writer, lazily creating it on first use.
+    fn with_writer<R>(
+        &self,
+        f: impl FnOnce(&mut IndexWriter) -> SearchResult<R>,
+    ) -> SearchResult<R> {
+        let mut guard = self.writer.lock().expect("writer lock poisoned");
+        if guard.is_none() {
+            let writer = self.index.writer(50_000_000).map_err(|e| {
+                SearchError::index("WRITER_ERROR", format!("Failed to create writer: {}", e))
+            })?;
+            *guard = Some(writer);
+        }
+        f(guard.as_mut().expect("writer initialized above"))
+    }
+
     /// Index a document
     ///
     /// # Arguments
@@ -184,105 +203,12 @@ impl IndexManager {
         &self,
         document: &crate::types::SearchDocument,
     ) -> SearchResult<()> {
-        let mut writer = self
-            .index
-            .writer::<TantivyDocument>(50_000_000)
-            .map_err(|e| {
-                SearchError::index("WRITER_ERROR", format!("Failed to get writer: {}", e))
-            })?;
-
-        let schema = self.index.schema();
-        let id_field = schema.get_field(&self.default_fields.id).map_err(|e| {
-            SearchError::index("FIELD_ERROR", format!("Failed to get id field: {}", e))
-        })?;
-        let title_field = schema.get_field(&self.default_fields.title).map_err(|e| {
-            SearchError::index("FIELD_ERROR", format!("Failed to get title field: {}", e))
-        })?;
-        let content_field = schema
-            .get_field(&self.default_fields.content)
-            .map_err(|e| {
-                SearchError::index("FIELD_ERROR", format!("Failed to get content field: {}", e))
-            })?;
-        let author_id_field = schema
-            .get_field(&self.default_fields.author_id)
-            .map_err(|e| {
-                SearchError::index(
-                    "FIELD_ERROR",
-                    format!("Failed to get author_id field: {}", e),
-                )
-            })?;
-        let repository_id_field = schema
-            .get_field(&self.default_fields.repository_id)
-            .map_err(|e| {
-                SearchError::index(
-                    "FIELD_ERROR",
-                    format!("Failed to get repository_id field: {}", e),
-                )
-            })?;
-        let tags_field = schema.get_field(&self.default_fields.tags).map_err(|e| {
-            SearchError::index("FIELD_ERROR", format!("Failed to get tags field: {}", e))
-        })?;
-        let created_at_field = schema
-            .get_field(&self.default_fields.created_at)
-            .map_err(|e| {
-                SearchError::index(
-                    "FIELD_ERROR",
-                    format!("Failed to get created_at field: {}", e),
-                )
-            })?;
-        let updated_at_field = schema
-            .get_field(&self.default_fields.updated_at)
-            .map_err(|e| {
-                SearchError::index(
-                    "FIELD_ERROR",
-                    format!("Failed to get updated_at field: {}", e),
-                )
-            })?;
-
-        let mut doc = TantivyDocument::default();
-
-        doc.add_text(id_field, document.id.to_string());
-        doc.add_text(title_field, &document.title);
-        doc.add_text(content_field, &document.content);
-        doc.add_text(author_id_field, document.author_id.to_string());
-
-        if let Some(repository_id) = &document.repository_id {
-            doc.add_text(repository_id_field, repository_id.to_string());
-        }
-
-        let tags_str = document.tags.join(" ");
-        if !tags_str.is_empty() {
-            doc.add_text(tags_field, &tags_str);
-        }
-
-        doc.add_date(
-            created_at_field,
-            tantivy::DateTime::from_timestamp_micros(document.created_at.timestamp_micros()),
-        );
-        doc.add_date(
-            updated_at_field,
-            tantivy::DateTime::from_timestamp_micros(document.updated_at.timestamp_micros()),
-        );
-
-        // Add custom field values
-        for (field_name, field) in &self.field_mappings {
-            if let Some(value) = document.custom_fields.get(field_name) {
-                Self::add_field_value_to_doc(&mut doc, *field, value)?;
-            }
-        }
-
-        writer.add_document(doc).map_err(|e| {
-            SearchError::index(
-                "ADD_DOCUMENT_ERROR",
-                format!("Failed to add document: {}", e),
-            )
-        })?;
-
-        writer
-            .commit()
-            .map_err(|e| SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e)))?;
-
-        Ok(())
+        self.with_writer(|writer| {
+            self.index_document_to_writer(writer, document)?;
+            writer.commit().map(|_| ()).map_err(|e| {
+                SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e))
+            })
+        })
     }
 
     /// Add a field value to a document
@@ -335,22 +261,17 @@ impl IndexManager {
         &self,
         documents: &[crate::types::SearchDocument],
     ) -> SearchResult<usize> {
-        let mut writer = self
-            .index
-            .writer::<TantivyDocument>(100_000_000)
-            .map_err(|e| {
-                SearchError::index("WRITER_ERROR", format!("Failed to get writer: {}", e))
+        self.with_writer(|writer| {
+            for document in documents {
+                self.index_document_to_writer(writer, document)?;
+            }
+
+            writer.commit().map_err(|e| {
+                SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e))
             })?;
 
-        for document in documents {
-            self.index_document_to_writer(&mut writer, document)?;
-        }
-
-        writer
-            .commit()
-            .map_err(|e| SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e)))?;
-
-        Ok(documents.len())
+            Ok(documents.len())
+        })
     }
 
     /// Index a document using an existing writer
@@ -464,26 +385,19 @@ impl IndexManager {
     /// # Errors
     /// Returns error if deletion fails
     pub async fn delete_document(&self, document_id: &str) -> SearchResult<()> {
-        let mut writer = self
-            .index
-            .writer::<TantivyDocument>(50_000_000)
-            .map_err(|e| {
-                SearchError::index("WRITER_ERROR", format!("Failed to get writer: {}", e))
+        self.with_writer(|writer| {
+            let schema = self.index.schema();
+            let id_field = schema.get_field(&self.default_fields.id).map_err(|e| {
+                SearchError::index("FIELD_ERROR", format!("Failed to get id field: {}", e))
             })?;
 
-        let schema = self.index.schema();
-        let id_field = schema.get_field(&self.default_fields.id).map_err(|e| {
-            SearchError::index("FIELD_ERROR", format!("Failed to get id field: {}", e))
-        })?;
+            let term = tantivy::Term::from_field_text(id_field, document_id);
+            writer.delete_term(term);
 
-        let term = tantivy::Term::from_field_text(id_field, document_id);
-        writer.delete_term(term);
-
-        writer
-            .commit()
-            .map_err(|e| SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e)))?;
-
-        Ok(())
+            writer.commit().map(|_| ()).map_err(|e| {
+                SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e))
+            })
+        })
     }
 
     /// Clear all documents from the index
@@ -494,20 +408,13 @@ impl IndexManager {
     /// # Errors
     /// Returns error if clearing fails
     pub async fn clear_index(&self) -> SearchResult<()> {
-        let mut writer = self
-            .index
-            .writer::<TantivyDocument>(50_000_000)
-            .map_err(|e| {
-                SearchError::index("WRITER_ERROR", format!("Failed to get writer: {}", e))
-            })?;
+        self.with_writer(|writer| {
+            let _ = writer.delete_all_documents();
 
-        let _ = writer.delete_all_documents();
-
-        writer
-            .commit()
-            .map_err(|e| SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e)))?;
-
-        Ok(())
+            writer.commit().map(|_| ()).map_err(|e| {
+                SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e))
+            })
+        })
     }
 
     /// Reload the index reader

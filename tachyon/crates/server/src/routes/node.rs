@@ -167,6 +167,12 @@ pub struct GraphQueryResponse {
 // Handlers
 // ============================================================================
 
+/// Create a new graph node.
+///
+/// `POST /nodes`
+///
+/// Request body: JSON with `name` (required), optional `node_type`, `description`, `content`, `visibility`, `weight`, `properties`, `project_id`, `document_id`, `slug`.
+/// Response: 200 with `GraphNode`, or 400/409/500 on error.
 pub async fn create_node(
     State(state): State<NodeState>,
     Json(req): Json<CreateNodeRequest>,
@@ -212,6 +218,11 @@ pub async fn create_node(
     Ok(Json(created))
 }
 
+/// Get a graph node by ID.
+///
+/// `GET /nodes/{node_id}`
+///
+/// Response: 200 with `GraphNode`, or 404 on error.
 pub async fn get_node(
     Path(node_id): Path<String>,
     State(state): State<NodeState>,
@@ -387,6 +398,15 @@ pub async fn delete_edge(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Query the graph: traverse neighbors or find shortest path.
+///
+/// `POST /graph/query`
+///
+/// Request body: JSON with `source_id` (required), optional `direction` ("incoming"/"outgoing"/"both"),
+/// `edge_type`, `depth` (default 3, max 5), `target_id` (for shortest path), `at` (point-in-time timestamp).
+/// If `target_id` is provided, returns the shortest path between source and target.
+/// Otherwise, returns all neighbors up to `depth` hops.
+/// Response: 200 with `GraphQueryResponse` containing `nodes`, `edges`, `node_count`, `edge_count`.
 pub async fn query_graph(
     State(state): State<NodeState>,
     Json(req): Json<GraphQueryRequest>,

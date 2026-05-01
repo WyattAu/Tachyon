@@ -1372,4 +1372,112 @@ mod tests {
         assert!(json.contains("immediate"));
         assert!(json.contains("6.5"));
     }
+
+    fn generate_hmac_sha256(secret: &str, payload: &[u8]) -> String {
+        let mut mac =
+            HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
+        mac.update(payload);
+        hex::encode(mac.finalize().into_bytes())
+    }
+
+    #[test]
+    fn test_verify_valid_signature() {
+        let secret = "test_secret";
+        let payload = r#"{"event": "payment.created"}"#;
+        let signature = generate_hmac_sha256(secret, payload.as_bytes());
+        let header = format!("v1={}", signature);
+        assert!(verify_webhook_signature(payload.as_bytes(), &header, secret));
+    }
+
+    #[test]
+    fn test_verify_valid_signature_without_prefix() {
+        let secret = "test_secret";
+        let payload = r#"{"event": "payment.created"}"#;
+        let signature = generate_hmac_sha256(secret, payload.as_bytes());
+        assert!(verify_webhook_signature(
+            payload.as_bytes(),
+            &signature,
+            secret
+        ));
+    }
+
+    #[test]
+    fn test_verify_invalid_signature() {
+        let secret = "test_secret";
+        let payload = r#"{"event": "payment.created"}"#;
+        assert!(!verify_webhook_signature(
+            payload.as_bytes(),
+            "v1=completely_wrong_signature",
+            secret
+        ));
+    }
+
+    #[test]
+    fn test_verify_different_secret_fails() {
+        let secret = "correct_secret";
+        let wrong_secret = "wrong_secret";
+        let payload = r#"{"event": "payment.created"}"#;
+        let signature = generate_hmac_sha256(wrong_secret, payload.as_bytes());
+        let header = format!("v1={}", signature);
+        assert!(!verify_webhook_signature(payload.as_bytes(), &header, secret));
+    }
+
+    #[test]
+    fn test_verify_empty_signature_fails() {
+        let secret = "test_secret";
+        let payload = r#"{"event": "payment.created"}"#;
+        assert!(!verify_webhook_signature(payload.as_bytes(), "", secret));
+    }
+
+    #[test]
+    fn test_verify_empty_payload() {
+        let secret = "test_secret";
+        let payload = b"";
+        let signature = generate_hmac_sha256(secret, payload);
+        let header = format!("v1={}", signature);
+        assert!(verify_webhook_signature(payload, &header, secret));
+    }
+
+    #[test]
+    fn test_verify_empty_payload_wrong_signature() {
+        let secret = "test_secret";
+        let payload = b"";
+        assert!(!verify_webhook_signature(
+            payload,
+            "v1=0000000000000000",
+            secret
+        ));
+    }
+
+    #[test]
+    fn test_verify_different_payload_fails() {
+        let secret = "test_secret";
+        let payload_a = r#"{"event": "payment.created"}"#;
+        let payload_b = r#"{"event": "payment.failed"}"#;
+        let signature = generate_hmac_sha256(secret, payload_a.as_bytes());
+        let header = format!("v1={}", signature);
+        assert!(!verify_webhook_signature(
+            payload_b.as_bytes(),
+            &header,
+            secret
+        ));
+    }
+
+    #[test]
+    fn test_verify_empty_secret() {
+        let secret = "";
+        let payload = r#"{"event": "payment.created"}"#;
+        let signature = generate_hmac_sha256(secret, payload.as_bytes());
+        let header = format!("v1={}", signature);
+        assert!(verify_webhook_signature(payload.as_bytes(), &header, secret));
+    }
+
+    #[test]
+    fn test_signature_is_constant_time() {
+        let secret = "test_secret";
+        let payload = r#"{"event": "payment.created"}"#;
+        let signature = generate_hmac_sha256(secret, payload.as_bytes());
+        let header = format!("v1={}", signature);
+        assert!(verify_webhook_signature(payload.as_bytes(), &header, secret));
+    }
 }

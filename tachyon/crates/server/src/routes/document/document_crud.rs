@@ -41,6 +41,12 @@ pub struct UpdateDocumentRequest {
     pub status: Option<String>,
 }
 
+/// Create a new document.
+///
+/// `POST /api/v1/documents`
+///
+/// Request body: JSON with `title` (required), `content`, `project_id`, `tags`, `visibility`.
+/// Response: 201 with the created `DocumentResponse`, or 400/401/500 on error.
 pub async fn create_document(
     State(state): State<DocumentState>,
     auth: Option<Extension<crate::middleware::AuthContext>>,
@@ -253,6 +259,11 @@ pub async fn create_document(
     Ok(Json(response))
 }
 
+/// Get a document by ID.
+///
+/// `GET /api/v1/documents/{document_id}`
+///
+/// Response: 200 with `DocumentResponse`, or 400 (invalid ID) / 404 on error.
 pub async fn get_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -306,6 +317,13 @@ pub async fn get_document(
     }
 }
 
+/// Update an existing document.
+///
+/// `PUT /api/v1/documents/{document_id}`
+///
+/// Request body: JSON with optional `title`, `content`, `tags`, `visibility`, `status`.
+/// Automatically creates a version snapshot when content changes.
+/// Response: 200 with updated `DocumentResponse`, or 400/404/500 on error.
 pub async fn update_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -502,6 +520,12 @@ pub async fn update_document(
     Ok(Json(response))
 }
 
+/// Delete a document by ID.
+///
+/// `DELETE /api/v1/documents/{document_id}`
+///
+/// Removes the document from the database and the Tantivy search index.
+/// Response: 204 No Content, or 400 (invalid ID) / 404 on error.
 pub async fn delete_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -557,6 +581,12 @@ pub async fn delete_document(
     }
 }
 
+/// List documents with pagination and optional filters.
+///
+/// `GET /api/v1/documents?page=&page_size=&author_id=&project_id=`
+///
+/// Query params: `page` (default 1), `page_size` (default 20, max 100), `author_id`, `project_id`.
+/// Response: 200 with `DocumentSearchResponse` containing `results`, `total`, `page`, `page_size`.
 pub async fn list_documents(
     Query(query): Query<DocumentQuery>,
     State(state): State<DocumentState>,
@@ -638,6 +668,11 @@ pub async fn list_documents(
     }
 }
 
+/// Get document metadata (key-value pairs) by ID.
+///
+/// `GET /api/v1/documents/{document_id}/metadata`
+///
+/// Response: 200 with a JSON object of metadata fields, or 400/404 on error.
 pub async fn get_document_metadata(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -690,6 +725,12 @@ pub async fn get_document_metadata(
     }
 }
 
+/// Render markdown to HTML.
+///
+/// `POST /api/v1/documents/render`
+///
+/// Request body: raw markdown string.
+/// Response: 200 with `html`, `word_count`, `character_count`, `heading_count`, `code_block_count`, `render_time_ms`.
 pub async fn render_markdown(
     body: String,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {

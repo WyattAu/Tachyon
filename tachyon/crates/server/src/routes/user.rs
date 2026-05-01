@@ -360,8 +360,13 @@ pub(crate) fn hash_refresh_token(token: &str) -> String {
 // Route Handlers
 // ============================================================================
 
-/// POST /auth/register
-/// Rate limit: 3 requests per minute per IP
+/// Register a new user.
+///
+/// `POST /auth/register`
+///
+/// Request body: JSON with `username` (3-50 chars), `display_name` (1-100 chars), `password` (8+ chars), optional `email`.
+/// Rate limit: 3 requests per minute per IP.
+/// Response: 200 with `AuthenticateResponse` (includes `access_token`, `refresh_token`, `user`), or 400/409/500 on error.
 #[instrument(skip(state), fields(username = %req.username))]
 pub async fn register(
     State(state): State<UserState>,
@@ -717,10 +722,12 @@ pub async fn list_users(
     }
 }
 
-/// GET /auth/me — return the current user's profile from the JWT token.
+/// Get the current authenticated user's profile.
 ///
-/// This endpoint sits under `/auth/` so the middleware bypasses it.
-/// We manually extract and validate the JWT from the Authorization header.
+/// `GET /auth/me`
+///
+/// Requires `Authorization: Bearer <token>` header.
+/// Response: 200 with `UserResponse`, or 401/404 on error.
 pub async fn get_me(
     State(state): State<UserState>,
     headers: HeaderMap,
@@ -780,7 +787,13 @@ pub async fn get_me(
     }
 }
 
-/// PUT /auth/me — update the current user's profile.
+/// Update the current authenticated user's profile.
+///
+/// `PUT /auth/me`
+///
+/// Requires `Authorization: Bearer <token>` header.
+/// Request body: JSON with optional `display_name`, `email`.
+/// Response: 200 with updated `UserResponse`, or 401/409/404 on error.
 pub async fn update_me(
     State(state): State<UserState>,
     headers: HeaderMap,
@@ -863,8 +876,13 @@ pub async fn update_me(
     }
 }
 
-/// POST /auth/login
-/// Rate limit: 5 requests per minute per IP
+/// Authenticate a user with username/email and password.
+///
+/// `POST /auth/login`
+///
+/// Request body: JSON with `username` (or email), `password`.
+/// Rate limit: 5 requests per minute per IP.
+/// Response: 200 with `AuthenticateResponse`. Returns `mfa_required: true` if MFA is enabled.
 pub async fn authenticate(
     State(state): State<UserState>,
     Json(req): Json<AuthenticateRequest>,
@@ -1121,8 +1139,14 @@ pub async fn logout(
     })))
 }
 
-/// POST /auth/refresh
-/// Rate limit: 10 requests per minute per IP
+/// Refresh an access token using a refresh token.
+///
+/// `POST /auth/refresh`
+///
+/// Request body: JSON with `refresh_token`.
+/// Rate limit: 10 requests per minute per IP.
+/// Revokes the old refresh token and issues a new access + refresh token pair.
+/// Response: 200 with `AuthenticateResponse`, or 401/500 on error.
 pub async fn refresh_token_handler(
     State(state): State<UserState>,
     Json(req): Json<RefreshRequest>,

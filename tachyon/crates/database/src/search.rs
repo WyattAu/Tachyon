@@ -324,8 +324,6 @@ impl SearchRepository {
         query_text: &str,
         _filters: &SearchFilters,
     ) -> DatabaseResult<SearchFacets> {
-        let mut conn = self.pool.acquire().await?;
-
         let base_where = "WHERE search_vector @@ websearch_to_tsquery('english', $1)";
 
         let content_types_sql = format!(
@@ -340,52 +338,72 @@ impl SearchRepository {
             "SELECT visibility as value, COUNT(*) as count FROM documents {} GROUP BY visibility ORDER BY count DESC",
             base_where
         );
-
-        let content_types: Vec<FacetCount> = query(&content_types_sql)
-            .bind(query_text)
-            .fetch_all(&mut *conn)
-            .await
-            .map_err(|e| DatabaseError::QueryError(e.to_string()))?
-            .into_iter()
-            .map(|row| FacetCount {
-                value: row.get("value"),
-                count: row.get("count"),
-            })
-            .collect();
-
-        let statuses: Vec<FacetCount> = query(&statuses_sql)
-            .bind(query_text)
-            .fetch_all(&mut *conn)
-            .await
-            .map_err(|e| DatabaseError::QueryError(e.to_string()))?
-            .into_iter()
-            .map(|row| FacetCount {
-                value: row.get("value"),
-                count: row.get("count"),
-            })
-            .collect();
-
-        let visibilities: Vec<FacetCount> = query(&visibilities_sql)
-            .bind(query_text)
-            .fetch_all(&mut *conn)
-            .await
-            .map_err(|e| DatabaseError::QueryError(e.to_string()))?
-            .into_iter()
-            .map(|row| FacetCount {
-                value: row.get("value"),
-                count: row.get("count"),
-            })
-            .collect();
-
         let tags_sql = format!(
             "SELECT DISTINCT jsonb_array_elements_text(tags) as value, COUNT(*) as count FROM documents {} GROUP BY value ORDER BY count DESC LIMIT 20",
             base_where
         );
-        let tags: Vec<FacetCount> = query(&tags_sql)
-            .bind(query_text)
-            .fetch_all(&mut *conn)
-            .await
-            .map_err(|e| DatabaseError::QueryError(e.to_string()))?
+
+        let mut conn1 = self.pool.acquire().await?;
+        let mut conn2 = self.pool.acquire().await?;
+        let mut conn3 = self.pool.acquire().await?;
+        let mut conn4 = self.pool.acquire().await?;
+
+        let (content_types_result, statuses_result, visibilities_result, tags_result) = tokio::join!(
+            async {
+                query(&content_types_sql)
+                    .bind(query_text)
+                    .fetch_all(&mut *conn1)
+                    .await
+                    .map_err(|e| DatabaseError::QueryError(e.to_string()))
+            },
+            async {
+                query(&statuses_sql)
+                    .bind(query_text)
+                    .fetch_all(&mut *conn2)
+                    .await
+                    .map_err(|e| DatabaseError::QueryError(e.to_string()))
+            },
+            async {
+                query(&visibilities_sql)
+                    .bind(query_text)
+                    .fetch_all(&mut *conn3)
+                    .await
+                    .map_err(|e| DatabaseError::QueryError(e.to_string()))
+            },
+            async {
+                query(&tags_sql)
+                    .bind(query_text)
+                    .fetch_all(&mut *conn4)
+                    .await
+                    .map_err(|e| DatabaseError::QueryError(e.to_string()))
+            },
+        );
+
+        let content_types = content_types_result?
+            .into_iter()
+            .map(|row| FacetCount {
+                value: row.get("value"),
+                count: row.get("count"),
+            })
+            .collect();
+
+        let statuses = statuses_result?
+            .into_iter()
+            .map(|row| FacetCount {
+                value: row.get("value"),
+                count: row.get("count"),
+            })
+            .collect();
+
+        let visibilities = visibilities_result?
+            .into_iter()
+            .map(|row| FacetCount {
+                value: row.get("value"),
+                count: row.get("count"),
+            })
+            .collect();
+
+        let tags = tags_result?
             .into_iter()
             .map(|row| FacetCount {
                 value: row.get("value"),

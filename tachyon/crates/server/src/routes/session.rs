@@ -57,6 +57,12 @@ pub struct SessionErrorResponse {
     pub message: String,
 }
 
+/// Create a new session for a user.
+///
+/// `POST /sessions`
+///
+/// Request body: JSON with `user_id` (required), optional `metadata`.
+/// Response: 200 with `SessionResponse`, or 400/500 on error.
 pub async fn create_session(
     State(state): State<SessionState>,
     Json(req): Json<CreateSessionRequest>,
@@ -105,6 +111,11 @@ pub async fn create_session(
     Ok(Json(response))
 }
 
+/// Get a session by ID.
+///
+/// `GET /sessions/{session_id}`
+///
+/// Response: 200 with `SessionResponse`, or 400/404/410 (expired) on error.
 pub async fn get_session(
     Path(session_id): Path<String>,
     State(state): State<SessionState>,
@@ -151,6 +162,11 @@ pub async fn get_session(
     }))
 }
 
+/// Validate whether a session is still active.
+///
+/// `GET /sessions/{session_id}/validate`
+///
+/// Response: 200 with `{"valid": bool, "session_id": string}`.
 pub async fn validate_session(
     Path(session_id): Path<String>,
     State(state): State<SessionState>,
@@ -185,6 +201,11 @@ pub async fn validate_session(
     }
 }
 
+/// Revoke a session by ID.
+///
+/// `DELETE /sessions/{session_id}`
+///
+/// Response: 204 No Content, or 400/404 on error.
 pub async fn revoke_session(
     Path(session_id): Path<String>,
     State(state): State<SessionState>,
@@ -216,6 +237,11 @@ pub async fn revoke_session(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// List all active sessions for a user.
+///
+/// `GET /users/{user_id}/sessions`
+///
+/// Response: 200 with `SessionListResponse` containing `sessions` and `total`, or 500 on error.
 pub async fn list_sessions(
     Path(user_id): Path<String>,
     State(state): State<SessionState>,
@@ -248,6 +274,11 @@ pub async fn list_sessions(
     Ok(Json(SessionListResponse { sessions, total }))
 }
 
+/// Revoke all sessions for a user.
+///
+/// `DELETE /users/{user_id}/sessions`
+///
+/// Response: 200 with `{"success": true, "revoked_count": N}`, or 500 on error.
 pub async fn revoke_all_sessions(
     Path(user_id): Path<String>,
     State(state): State<SessionState>,
