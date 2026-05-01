@@ -18,6 +18,7 @@ pub mod ssg;
 pub mod teams;
 pub mod templates;
 
+/// HTTP client for communicating with the Tachyon backend API.
 #[derive(Clone)]
 pub struct ApiClient {
     base_url: String,
@@ -57,6 +58,7 @@ impl Default for ApiClient {
 ///
 /// Reserved for future use: direct client instantiation (currently uses `default()`).
 impl ApiClient {
+    /// Create a new API client pointing at the given base URL.
     #[allow(dead_code)]
     pub fn new(base_url: &str) -> Self {
         Self {
@@ -65,14 +67,17 @@ impl ApiClient {
         }
     }
 
+    /// Store a bearer token for subsequent authenticated requests.
     pub fn set_auth_token(&self, token: String) {
         *self.auth_token.lock().unwrap_or_else(|e| e.into_inner()) = Some(token);
     }
 
+    /// Remove the stored bearer token, reverting to anonymous requests.
     pub fn clear_auth_token(&self) {
         *self.auth_token.lock().unwrap_or_else(|e| e.into_inner()) = None;
     }
 
+    /// Return a clone of the currently stored bearer token, if any.
     pub fn get_auth_token(&self) -> Option<String> {
         self.auth_token
             .lock()
@@ -80,6 +85,7 @@ impl ApiClient {
             .clone()
     }
 
+    /// Derive the WebSocket URL from the configured HTTP base URL.
     pub fn websocket_url(&self) -> String {
         self.base_url
             .replace("http://", "ws://")
@@ -87,6 +93,7 @@ impl ApiClient {
             .replace("/api/v1", "/ws")
     }
 
+    /// Create a new [`WebSocketClient`] connected to the backend WebSocket endpoint.
     pub fn websocket(&self) -> WebSocketClient {
         WebSocketClient::new(&self.websocket_url())
     }
@@ -283,14 +290,19 @@ impl ApiClient {
     }
 }
 
+/// Errors that can occur during API calls.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ApiError {
+    /// A network-level failure (e.g. timeout, DNS resolution).
     #[error("Network error: {0}")]
     Network(String),
+    /// Failure to serialize a request body or deserialize a response.
     #[error("Serialization error: {0}")]
     Serialization(String),
+    /// The server returned a non-success HTTP status code.
     #[error("API error: {0}")]
     Api(String),
+    /// The requested resource was not found.
     #[error("Not found: {0}")]
     NotFound(String),
 }

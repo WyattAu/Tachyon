@@ -47,6 +47,7 @@ struct ConnectedClient {
     room: String,
     #[allow(dead_code)]
     send: tokio::sync::mpsc::UnboundedSender<Message>,
+    last_seen: std::time::Instant,
 }
 
 /// Broadcast event for the relay.
@@ -172,6 +173,49 @@ impl CrdtConnectionManager {
         }
         Some(client.room)
     }
+
+    /// Update the last-seen timestamp for a client.
+    async fn touch_client(&self, client_id: &str) {
+        if let Some(client) = self.clients.write().await.get_mut(client_id) {
+            client.last_seen = std::time::Instant::now();
+        }
+    }
+
+    /// Remove clients whose last activity is older than `timeout_secs`.
+    ///
+    /// Cleans up orphaned entries from the clients map, room membership
+    /// lists, and per-document CRDT state for rooms with zero remaining clients.
+    pub async fn cleanup_stale_clients(&self, timeout_secs: u64) {
+        use tracing::info;
+
+        let timeout = std::time::Duration::from_secs(timeout_secs);
+        let stale_clients: Vec<(String, String)> = {
+            let clients = self.clients.read().await;
+            clients
+                .iter()
+                .filter(|(_, c)| c.last_seen.elapsed() > timeout)
+                .map(|(id, c)| (id.clone(), c.room.clone()))
+                .collect()
+        };
+
+        if stale_clients.is_empty() {
+            return;
+        }
+
+        let mut clients = self.clients.write().await;
+        let mut room_clients = self.room_clients.write().await;
+
+        for (client_id, room) in &stale_clients {
+            clients.remove(client_id);
+            if let Some(members) = room_clients.get_mut(room) {
+                members.retain(|id| id != client_id);
+                if members.is_empty() {
+                    room_clients.remove(room);
+                }
+            }
+            info!(client_id = %client_id, room = %room, "Cleaned up stale CRDT client");
+        }
+    }
 }
 
 impl Default for CrdtConnectionManager {
@@ -217,6 +261,7 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
             client_id: client_id.clone(),
             room: room.clone(),
             send: _tx,
+            last_seen: std::time::Instant::now(),
         };
         manager
             .clients
@@ -312,10 +357,12 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     let client_id_for_recv = client_id.clone();
     let broadcast_tx = manager.broadcast_tx.clone();
     let crdt_manager = manager.crdt_manager().clone();
+    let manager_for_recv = manager.clone();
     let recv_task = async move {
         while let Some(msg) = ws_receiver.next().await {
             match msg {
                 Ok(Message::Binary(data)) => {
+                    manager_for_recv.touch_client(&client_id_for_recv).await;
                     let data_vec: Vec<u8> = data.to_vec();
 
                     if data_vec.is_empty() {
@@ -526,6 +573,7 @@ mod tests {
                 client_id: "c1".to_string(),
                 room: "room1".to_string(),
                 send: tx1,
+                last_seen: std::time::Instant::now(),
             },
         );
         manager.clients.write().await.insert(
@@ -534,6 +582,7 @@ mod tests {
                 client_id: "c2".to_string(),
                 room: "room1".to_string(),
                 send: tx2,
+                last_seen: std::time::Instant::now(),
             },
         );
 

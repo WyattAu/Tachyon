@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use crate::api::ApiClient;
+use crate::components::FocusTrap;
 use crate::types::DocumentTemplate;
 use leptos::prelude::*;
 
@@ -166,44 +167,47 @@ pub fn TemplateSelector(
                     let on_select = on_select_for_modal;
                     view! {
                         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-                                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                                        {template_for_name}
-                                    </h3>
-                                    <button
-                                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                                        on:click={move |_| set_preview_template.set(None)}
-                                    >
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </button>
+                            <FocusTrap active=Signal::derive(move || preview_template.get().is_some())>
+                                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden" role="dialog" attr:aria-modal="true" attr:aria-label="Template preview">
+                                    <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                                            {template_for_name}
+                                        </h3>
+                                        <button
+                                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                                            attr:aria-label="Close"
+                                            on:click={move |_| set_preview_template.set(None)}
+                                        >
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="p-4 overflow-auto max-h-[60vh]">
+                                        <pre class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-mono">
+                                            {template_for_content}
+                                        </pre>
+                                    </div>
+                                    <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
+                                        <button
+                                            class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600
+                                                   rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                                            on:click={move |_| set_preview_template.set(None)}
+                                        >
+                                            "Cancel"
+                                        </button>
+                                        <button
+                                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                            on:click={move |_| {
+                                                on_select.run(template_for_use.clone());
+                                                set_preview_template.set(None);
+                                            }}
+                                        >
+                                            "Use Template"
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="p-4 overflow-auto max-h-[60vh]">
-                                    <pre class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-mono">
-                                        {template_for_content}
-                                    </pre>
-                                </div>
-                                <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
-                                    <button
-                                        class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600
-                                               rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                                        on:click={move |_| set_preview_template.set(None)}
-                                    >
-                                        "Cancel"
-                                    </button>
-                                    <button
-                                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                        on:click={move |_| {
-                                            on_select.run(template_for_use.clone());
-                                            set_preview_template.set(None);
-                                        }}
-                                    >
-                                        "Use Template"
-                                    </button>
-                                </div>
-                            </div>
+                            </FocusTrap>
                         </div>
                     }
                 })

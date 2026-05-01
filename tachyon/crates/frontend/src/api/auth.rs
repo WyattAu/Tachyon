@@ -4,6 +4,9 @@ use super::*;
 ///
 /// Reserved for future use: authentication flows from the frontend.
 impl ApiClient {
+    /// Authenticate with username and password.
+    ///
+    /// Returns the access token and user info on success.
     pub async fn login(
         &self,
         username: &str,
@@ -17,6 +20,9 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
+    /// Create a new account with username, email, and password.
+    ///
+    /// Returns the access token and user info on success.
     pub async fn register(
         &self,
         username: &str,
@@ -33,6 +39,7 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
+    /// Authenticate as an anonymous guest user.
     pub async fn guest_login(&self) -> Result<AuthenticateResponse, ApiError> {
         let url = format!("{}/auth/guest", self.base_url);
         self.post_empty_json(&url).await
@@ -44,6 +51,9 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Automatically sign in as a guest if guest access is enabled.
+    ///
+    /// Returns `true` if a guest session was created, `false` otherwise.
     #[allow(dead_code)]
     pub async fn auto_authenticate_guest(&self) -> Result<bool, ApiError> {
         if self.get_auth_token().is_some() {
@@ -71,11 +81,13 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Fetch the profile of the currently authenticated user.
     pub async fn get_current_user(&self) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/auth/me", self.base_url);
         self.get(&url).await
     }
 
+    /// Update the display name and/or email of the current user.
     pub async fn update_profile(
         &self,
         display_name: Option<&str>,
@@ -92,6 +104,7 @@ impl ApiClient {
         self.put(&url, &body).await
     }
 
+    /// Change the current user's password after verifying the old one.
     pub async fn change_password(
         &self,
         old_password: &str,
@@ -105,11 +118,13 @@ impl ApiClient {
         self.post_empty_json_accept_any(&url, &body).await
     }
 
+    /// Permanently delete the current user's account.
     pub async fn delete_account(&self) -> Result<(), ApiError> {
         let url = format!("{}/auth/me", self.base_url);
         self.delete(&url).await
     }
 
+    /// End the current session on the server.
     #[allow(dead_code)]
     pub async fn logout(&self) -> Result<(), ApiError> {
         let url = format!("{}/auth/logout", self.base_url);

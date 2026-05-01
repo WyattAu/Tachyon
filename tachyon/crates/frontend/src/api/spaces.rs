@@ -4,6 +4,7 @@ use super::*;
 ///
 /// Reserved for future use: workspace space management.
 impl ApiClient {
+    /// List spaces, optionally filtered by owner.
     pub async fn list_spaces(
         &self,
         owner_id: Option<&str>,
@@ -37,6 +38,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Fetch a single space by its ID.
     #[allow(dead_code)]
     pub async fn get_space(&self, space_id: &str) -> Result<crate::types::Space, ApiError> {
         let url = format!("{}/spaces/{}", self.base_url, space_id);
@@ -49,6 +51,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Create a new space with the given configuration.
     pub async fn create_space(
         &self,
         req: &crate::types::CreateSpaceRequest,
@@ -57,6 +60,7 @@ impl ApiClient {
         self.post(&url, req).await
     }
 
+    /// Update an existing space's metadata.
     pub async fn update_space(
         &self,
         space_id: &str,
@@ -66,11 +70,13 @@ impl ApiClient {
         self.put(&url, req).await
     }
 
+    /// Delete a space by its ID.
     pub async fn delete_space(&self, space_id: &str) -> Result<(), ApiError> {
         let url = format!("{}/spaces/{}", self.base_url, space_id);
         self.delete(&url).await
     }
 
+    /// List all members of a space.
     pub async fn list_space_members(
         &self,
         space_id: &str,
@@ -79,6 +85,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Add a member to a space.
     pub async fn add_space_member(
         &self,
         space_id: &str,
@@ -98,6 +105,7 @@ impl ApiClient {
         self.put(&url, req).await
     }
 
+    /// Remove a member from a space.
     pub async fn remove_space_member(&self, space_id: &str, user_id: &str) -> Result<(), ApiError> {
         let url = format!("{}/spaces/{}/members/{}", self.base_url, space_id, user_id);
         self.delete(&url).await

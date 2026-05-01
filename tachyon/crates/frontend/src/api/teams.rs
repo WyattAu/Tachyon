@@ -4,11 +4,13 @@ use super::*;
 ///
 /// Reserved for future use: team management interface.
 impl ApiClient {
+    /// List all teams the current user belongs to.
     pub async fn list_teams(&self) -> Result<Vec<serde_json::Value>, ApiError> {
         let url = format!("{}/teams", self.base_url);
         self.get(&url).await
     }
 
+    /// Create a new team with the given JSON configuration.
     pub async fn create_team(
         &self,
         request: &serde_json::Value,
@@ -17,6 +19,7 @@ impl ApiClient {
         self.post(&url, request).await
     }
 
+    /// List all members of a team.
     pub async fn list_team_members(
         &self,
         team_id: &str,
@@ -25,6 +28,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Invite a user to a team by email with the specified role.
     #[allow(dead_code)]
     pub async fn invite_team_member(
         &self,
@@ -37,6 +41,7 @@ impl ApiClient {
         self.post_empty_json_accept_any(&url, &body).await
     }
 
+    /// Remove a member from a team.
     #[allow(dead_code)]
     pub async fn remove_team_member(&self, team_id: &str, user_id: &str) -> Result<(), ApiError> {
         let url = format!("{}/teams/{}/members/{}", self.base_url, team_id, user_id);

@@ -4,6 +4,7 @@ use super::*;
 ///
 /// Reserved for future use: document CRUD from the frontend.
 impl ApiClient {
+    /// List documents with optional pagination.
     pub async fn list_documents(
         &self,
         page: Option<usize>,
@@ -20,16 +21,19 @@ impl ApiClient {
         Ok(response)
     }
 
+    /// Fetch a single document by its ID.
     pub async fn get_document(&self, document_id: &str) -> Result<Document, ApiError> {
         let url = format!("{}/documents/{}", self.base_url, document_id);
         self.get(&url).await
     }
 
+    /// Create a new document with the given JSON body.
     pub async fn create_document(&self, data: &serde_json::Value) -> Result<Document, ApiError> {
         let url = format!("{}/documents", self.base_url);
         self.post(&url, data).await
     }
 
+    /// Update an existing document by ID with the given JSON body.
     pub async fn update_document(
         &self,
         document_id: &str,
@@ -39,22 +43,26 @@ impl ApiClient {
         self.put(&url, data).await
     }
 
+    /// Delete a document by its ID.
     pub async fn delete_document(&self, document_id: &str) -> Result<(), ApiError> {
         let url = format!("{}/documents/{}", self.base_url, document_id);
         self.delete(&url).await
     }
 
+    /// Render markdown content to HTML via the server.
     pub async fn render_markdown(&self, content: &str) -> Result<RenderMarkdownResponse, ApiError> {
         let url = format!("{}/render/markdown", self.base_url);
         let body = serde_json::json!({ "content": content });
         self.post(&url, &body).await
     }
 
+    /// List all versions for a document.
     pub async fn list_versions(&self, document_id: &str) -> Result<Vec<DocumentVersion>, ApiError> {
         let url = format!("{}/documents/{}/versions", self.base_url, document_id);
         self.get(&url).await
     }
 
+    /// Fetch a specific version of a document by version number.
     pub async fn get_version(
         &self,
         document_id: &str,
@@ -193,6 +201,7 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
+    /// List documents that have the specified tag, with optional pagination.
     pub async fn list_documents_by_tag(
         &self,
         tag: &str,
@@ -206,6 +215,7 @@ impl ApiClient {
         self.search("", Some(&filters), page, page_size).await
     }
 
+    /// Get all documents that link to the given document.
     pub async fn get_backlinks(
         &self,
         document_id: &str,

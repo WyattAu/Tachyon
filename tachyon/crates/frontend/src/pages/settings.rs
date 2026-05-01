@@ -34,30 +34,76 @@ pub fn SettingsPage() -> impl IntoView {
         SettingsTab::Danger,
     ];
 
+    let tab_ids: [(&'static str, &'static str); 4] = [
+        ("settings-tab-profile", "settings-panel-profile"),
+        ("settings-tab-account", "settings-panel-account"),
+        ("settings-tab-preferences", "settings-panel-preferences"),
+        ("settings-tab-danger", "settings-panel-danger"),
+    ];
+
     view! {
         <div class="max-w-3xl">
             <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">"Settings"</h1>
-            <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto">
-                {tabs.iter().map(|tab| {
+            <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto" role="tablist"
+                on:keydown=move |ev: web_sys::KeyboardEvent| {
+                    let key = ev.key();
+                    if key == "ArrowRight" || key == "ArrowLeft" {
+                        ev.prevent_default();
+                        let current = active_tab.get();
+                        let current_idx = tabs.iter().position(|&t| t == current).unwrap_or(0);
+                        let new_idx = if key == "ArrowRight" {
+                            (current_idx + 1) % tabs.len()
+                        } else {
+                            current_idx.checked_sub(1).unwrap_or(tabs.len() - 1)
+                        };
+                        active_tab.set(tabs[new_idx]);
+                        if let Some(window) = web_sys::window() {
+                            if let Some(doc) = window.document() {
+                                let _ = doc.get_element_by_id(tab_ids[new_idx].0)
+                                    .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+                                    .and_then(|el| el.focus().ok());
+                            }
+                        }
+                    }
+                }
+            >
+                {tabs.iter().enumerate().map(|(i, tab)| {
                     let label = tab.label();
                     let t = *tab;
+                    let tab_id = tab_ids[i].0;
+                    let is_active = move || active_tab.get() == t;
                     view! {
-                        <button class={move || tab_button_class(active_tab.get(), t)}
-                            on:click=move |_| active_tab.set(t)>{label}</button>
+                        <button
+                            id={tab_id}
+                            class={move || tab_button_class(active_tab.get(), t)}
+                            role="tab"
+                            attr:aria-selected=move || if is_active() { "true" } else { "false" }
+                            attr:aria-controls={tab_ids[i].1}
+                            tabindex=move || if is_active() { 0 } else { -1 }
+                            on:click=move |_| active_tab.set(t)
+                        >{label}</button>
                     }
                 }).collect::<Vec<_>>()}
             </div>
             <Show when={move || active_tab.get() == SettingsTab::Profile}>
-                <ProfileTab />
+                <div id="settings-panel-profile" role="tabpanel" attr:aria-labelledby="settings-tab-profile">
+                    <ProfileTab />
+                </div>
             </Show>
             <Show when={move || active_tab.get() == SettingsTab::Account}>
-                <AccountTab />
+                <div id="settings-panel-account" role="tabpanel" attr:aria-labelledby="settings-tab-account">
+                    <AccountTab />
+                </div>
             </Show>
             <Show when={move || active_tab.get() == SettingsTab::Preferences}>
-                <PreferencesTab />
+                <div id="settings-panel-preferences" role="tabpanel" attr:aria-labelledby="settings-tab-preferences">
+                    <PreferencesTab />
+                </div>
             </Show>
             <Show when={move || active_tab.get() == SettingsTab::Danger}>
-                <DangerTab />
+                <div id="settings-panel-danger" role="tabpanel" attr:aria-labelledby="settings-tab-danger">
+                    <DangerTab />
+                </div>
             </Show>
         </div>
     }

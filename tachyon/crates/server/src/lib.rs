@@ -293,6 +293,28 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let connection_manager = ConnectionManager::new();
     let crdt_connection_manager = CrdtConnectionManager::new();
+
+    {
+        let cleanup_cm = connection_manager.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+            loop {
+                interval.tick().await;
+                cleanup_cm.cleanup_stale_clients(300).await;
+            }
+        });
+    }
+    {
+        let cleanup_crdt = crdt_connection_manager.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+            loop {
+                interval.tick().await;
+                cleanup_crdt.cleanup_stale_clients(300).await;
+            }
+        });
+    }
+
     let email = crate::email::EmailService::new(config);
 
     Ok(AppState {

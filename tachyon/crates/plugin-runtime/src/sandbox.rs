@@ -127,3 +127,109 @@ impl PluginSandbox {
         Ok(ctx.input.clone())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn make_test_config() -> SandboxConfig {
+        SandboxConfig {
+            max_fuel: 1_000_000,
+            memory_limit: 16 * 1024 * 1024,
+            enable_wasi: false,
+        }
+    }
+
+    fn make_plugin_context() -> PluginContext {
+        PluginContext {
+            hook: "test_hook".to_string(),
+            input: serde_json::json!({"key": "value"}),
+            timeout_ms: 5000,
+        }
+    }
+
+    #[test]
+    fn sandbox_new_with_nonexistent_path_returns_not_found() {
+        let path = PathBuf::from("/tmp/__nonexistent_wasm_file_12345__.wasm");
+        let config = make_test_config();
+        let result = PluginSandbox::new(&path, &config);
+        match result {
+            Err(PluginRuntimeError::NotFound(msg)) => {
+                assert!(msg.contains("__nonexistent_wasm_file_12345__"));
+            }
+            Err(other) => panic!("expected NotFound error, got: {:?}", other),
+            Ok(_) => panic!("expected error, got Ok"),
+        }
+    }
+
+    #[test]
+    fn sandbox_new_with_existing_file_succeeds() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let config = make_test_config();
+        let sandbox = PluginSandbox::new(tmp.path(), &config);
+        assert!(sandbox.is_ok());
+        let sb = sandbox.unwrap();
+        assert_eq!(sb.wasm_path, tmp.path());
+    }
+
+    #[test]
+    fn sandbox_execute_invalid_wasm_returns_compilation_error() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), b"not valid wasm").unwrap();
+        let config = make_test_config();
+        let sandbox = PluginSandbox::new(tmp.path(), &config).unwrap();
+        let ctx = make_plugin_context();
+        let result = sandbox.execute(&ctx);
+        match result {
+            Err(PluginRuntimeError::Compilation(msg)) => {
+                assert!(msg.contains("Failed to compile"));
+            }
+            Err(other) => panic!("expected Compilation error, got: {:?}", other),
+            Ok(_) => panic!("expected error, got Ok"),
+        }
+    }
+
+    #[test]
+    fn sandbox_execute_empty_wasm_returns_compilation_error() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), b"").unwrap();
+        let config = make_test_config();
+        let sandbox = PluginSandbox::new(tmp.path(), &config).unwrap();
+        let ctx = make_plugin_context();
+        let result = sandbox.execute(&ctx);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn sandbox_config_default_values() {
+        let config = SandboxConfig::default();
+        assert_eq!(config.max_fuel, 10_000_000);
+        assert_eq!(config.memory_limit, 64 * 1024 * 1024);
+        assert!(config.enable_wasi);
+    }
+
+    #[test]
+    fn plugin_output_fields() {
+        let output = PluginOutput {
+            data: serde_json::json!(42),
+            stdout: "hello".to_string(),
+            stderr: String::new(),
+        };
+        assert_eq!(output.data, 42);
+        assert_eq!(output.stdout, "hello");
+        assert!(output.stderr.is_empty());
+    }
+
+    #[test]
+    fn plugin_context_fields() {
+        let ctx = PluginContext {
+            hook: "on_save".to_string(),
+            input: serde_json::json!({"path": "/tmp/file.txt"}),
+            timeout_ms: 1000,
+        };
+        assert_eq!(ctx.hook, "on_save");
+        assert_eq!(ctx.timeout_ms, 1000);
+        assert_eq!(ctx.input["path"], "/tmp/file.txt");
+    }
+}

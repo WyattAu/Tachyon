@@ -4,6 +4,7 @@ use super::*;
 ///
 /// Reserved for future use: full-text search with filters and pagination.
 impl ApiClient {
+    /// Perform a full-text search with optional filters and pagination.
     pub async fn search(
         &self,
         query: &str,
@@ -54,6 +55,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Return type-ahead query suggestions based on a prefix.
     pub async fn search_suggest(
         &self,
         query: &str,
@@ -69,6 +71,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Search across all content types (documents, spaces, etc.) with filters.
     pub async fn global_search(
         &self,
         query: &str,
@@ -119,6 +122,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Save a search query for later reuse.
     pub async fn create_saved_search(
         &self,
         request: &CreateSavedSearchRequest,
@@ -127,6 +131,7 @@ impl ApiClient {
         self.post(&url, request).await
     }
 
+    /// List all saved searches for the current user.
     pub async fn list_saved_searches(&self) -> Result<Vec<SavedSearch>, ApiError> {
         let url = format!("{}/search/saved", self.base_url);
         self.get(&url).await
@@ -154,6 +159,7 @@ impl ApiClient {
         self.delete(&url).await
     }
 
+    /// List all tags used across documents.
     pub async fn list_tags(&self) -> Result<crate::types::TagsResponse, ApiError> {
         let url = format!("{}/tags", self.base_url);
         self.get(&url).await

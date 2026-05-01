@@ -4,11 +4,13 @@ use super::*;
 ///
 /// Reserved for future use: subscription and billing management.
 impl ApiClient {
+    /// List all available billing plans.
     pub async fn get_billing_plans(&self) -> Result<crate::types::BillingPlansResponse, ApiError> {
         let url = format!("{}/billing/plans", self.base_url);
         self.get(&url).await
     }
 
+    /// Fetch the current subscription for an organization.
     pub async fn get_subscription(
         &self,
         org_id: &str,
@@ -17,6 +19,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Subscribe an organization to the specified plan.
     pub async fn create_subscription(
         &self,
         org_id: &str,
@@ -27,11 +30,13 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
+    /// Cancel the subscription for an organization.
     pub async fn cancel_subscription(&self, org_id: &str) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/billing/subscriptions/{}/cancel", self.base_url, org_id);
         self.post_empty_json(&url).await
     }
 
+    /// List invoices for an organization.
     pub async fn get_invoices(
         &self,
         org_id: &str,
@@ -40,6 +45,7 @@ impl ApiClient {
         self.get(&url).await
     }
 
+    /// Fetch current resource usage for an organization.
     pub async fn get_usage(&self, org_id: &str) -> Result<crate::types::UsageResponse, ApiError> {
         let url = format!("{}/billing/usage/{}", self.base_url, org_id);
         self.get(&url).await

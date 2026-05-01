@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use crate::components::FocusTrap;
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -220,13 +221,14 @@ pub fn EditorSettings(
             view! {
                 <div class="editor-settings-overlay" on:keydown={on_keydown}>
                     <div class="editor-settings-backdrop" on:click={close}></div>
-                    <div class="editor-settings-panel">
-                        <div class="editor-settings-header">
-                            <h2 class="editor-settings-title">{"Editor Settings"}</h2>
-                            <button class="editor-settings-close" on:click={close} title="Close (Esc)">
-                                { "\u{2715}" }
-                            </button>
-                        </div>
+                    <FocusTrap active=visible.into()>
+                        <div class="editor-settings-panel" role="dialog" attr:aria-label="Editor Settings">
+                            <div class="editor-settings-header">
+                                <h2 class="editor-settings-title">{"Editor Settings"}</h2>
+                                <button class="editor-settings-close" on:click={close} attr:aria-label="Close settings">
+                                    { "\u{2715}" }
+                                </button>
+                            </div>
 
                         <div class="editor-settings-body">
 
@@ -557,6 +559,7 @@ pub fn EditorSettings(
 
                         </div>
                     </div>
+                    </FocusTrap>
                 </div>
             }.into_any()
         } else {

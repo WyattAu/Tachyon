@@ -1,3 +1,4 @@
+use crate::components::FocusTrap;
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use wasm_bindgen::JsCast;
@@ -236,107 +237,115 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
             class="fixed inset-0 z-50 flex items-start sm:justify-center pt-[10vh] sm:pt-[20vh] px-4"
             style={move || if open.get() { "" } else { "display: none;" }}
         >
-            <div
-                class="w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
-                on:click=on_modal_click
-                on:keydown=on_escape_keydown
-            >
-                <div class="flex items-center px-4 border-b border-gray-200 dark:border-gray-700">
-                    <svg class="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input
-                        type="text"
-                        placeholder="Search documents, commands..."
-                        class="w-full min-h-[44px] px-3 py-3 bg-transparent text-gray-900 dark:text-gray-100 outline-none"
-                        prop:value={move || query.get()}
-                        on:input=on_input
-                        on:keydown=on_keydown
-                    />
-                    <kbd class="text-xs text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 flex-shrink-0">"ESC"</kbd>
-                </div>
+            <FocusTrap active=open.into()>
+                <div
+                    class="w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+                    role="dialog"
+                    attr:aria-modal="true"
+                    attr:aria-label="Command palette"
+                    on:click=on_modal_click
+                    on:keydown=on_escape_keydown
+                >
+                    <div class="flex items-center px-4 border-b border-gray-200 dark:border-gray-700">
+                        <svg class="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                            type="text"
+                            placeholder="Search documents, commands..."
+                            attr:aria-label="Search commands"
+                            class="w-full min-h-[44px] px-3 py-3 bg-transparent text-gray-900 dark:text-gray-100 outline-none"
+                            prop:value={move || query.get()}
+                            on:input=on_input
+                            on:keydown=on_keydown
+                        />
+                        <kbd class="text-xs text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 flex-shrink-0">"ESC"</kbd>
+                    </div>
 
-                <div class="max-h-80 overflow-y-auto py-2">
-                    {move || {
-                        let items = filtered.get();
-                        if items.is_empty() {
-                            view! {
-                                <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                                    "No results found"
-                                </div>
-                            }.into_any()
-                        } else {
-                            let mut last_category = String::new();
-                            view! {
-                                <div>
-                                    {items.into_iter().enumerate().map(|(idx, cmd)| {
-                                        let show_category = cmd.category != last_category;
-                                        if show_category {
-                                            last_category = cmd.category.clone();
-                                        }
-                                        let is_selected = move || idx == selected.get();
-                                        let cmd_clone = cmd.clone();
-                                        let cmd_for_click = cmd.clone();
-                                        let on_click = move |_: leptos::ev::MouseEvent| {
-                                            execute_command(cmd_for_click.clone());
-                                        };
-                                        let category_label = if show_category { cmd.category.clone() } else { String::new() };
-                                        view! {
-                                            <>
-                                                {if show_category {
-                                                    view! {
-                                                        <div class="px-4 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                                                            {category_label}
-                                                        </div>
-                                                    }.into_any()
-                                                } else {
-                                                    view! { <div style="display:none"></div> }.into_any()
-                                                }}
-                                                <button
-                                                    class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors "
-                                                    class=("bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100", is_selected)
-                                                    class=("text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50", move || !is_selected())
-                                                    on:click=on_click
-                                                    on:mouseenter=move |_| set_selected.set(idx)
-                                                >
-                                                    {match cmd_clone.action_type.as_str() {
-                                                        "navigate" => view! {
-                                                            <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                                            </svg>
-                                                        }.into_any(),
-                                                        "toggle_theme" => view! {
-                                                            <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                                                            </svg>
-                                                        }.into_any(),
-                                                        "sign_out" => view! {
-                                                            <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                                            </svg>
-                                                        }.into_any(),
-                                                        _ => view! {
-                                                            <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                            </svg>
-                                                        }.into_any(),
+                    <div class="max-h-80 overflow-y-auto py-2" role="listbox" attr:aria-label="Command results">
+                        {move || {
+                            let items = filtered.get();
+                            if items.is_empty() {
+                                view! {
+                                    <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                                        "No results found"
+                                    </div>
+                                }.into_any()
+                            } else {
+                                let mut last_category = String::new();
+                                view! {
+                                    <div>
+                                        {items.into_iter().enumerate().map(|(idx, cmd)| {
+                                            let show_category = cmd.category != last_category;
+                                            if show_category {
+                                                last_category = cmd.category.clone();
+                                            }
+                                            let is_selected = move || idx == selected.get();
+                                            let cmd_clone = cmd.clone();
+                                            let cmd_for_click = cmd.clone();
+                                            let on_click = move |_: leptos::ev::MouseEvent| {
+                                                execute_command(cmd_for_click.clone());
+                                            };
+                                            let category_label = if show_category { cmd.category.clone() } else { String::new() };
+                                            view! {
+                                                <>
+                                                    {if show_category {
+                                                        view! {
+                                                            <div class="px-4 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                                                {category_label}
+                                                            </div>
+                                                        }.into_any()
+                                                    } else {
+                                                        view! { <div style="display:none"></div> }.into_any()
                                                     }}
-                                                    <span>{cmd_clone.label}</span>
-                                                </button>
-                                            </>
-                                        }
-                                    }).collect::<Vec<_>>()}
-                                </div>
-                            }.into_any()
-                        }
-                    }}
-                </div>
+                                                    <button
+                                                        class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors "
+                                                        class=("bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100", is_selected)
+                                                        class=("text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50", move || !is_selected())
+                                                        role="option"
+                                                        attr:aria-selected=move || if is_selected() { "true" } else { "false" }
+                                                        on:click=on_click
+                                                        on:mouseenter=move |_| set_selected.set(idx)
+                                                    >
+                                                        {match cmd_clone.action_type.as_str() {
+                                                            "navigate" => view! {
+                                                                <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                                </svg>
+                                                            }.into_any(),
+                                                            "toggle_theme" => view! {
+                                                                <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                                                </svg>
+                                                            }.into_any(),
+                                                            "sign_out" => view! {
+                                                                <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                                                </svg>
+                                                            }.into_any(),
+                                                            _ => view! {
+                                                                <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                                </svg>
+                                                            }.into_any(),
+                                                        }}
+                                                        <span>{cmd_clone.label}</span>
+                                                    </button>
+                                                </>
+                                            }
+                                        }).collect::<Vec<_>>()}
+                                    </div>
+                                }.into_any()
+                            }
+                        }}
+                    </div>
 
-                <div class="px-4 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400 text-center">
-                    <span class="hidden sm:inline">"\u{2191}\u{2193} Navigate \u{00b7} \u{21b5} Select \u{00b7} Esc Close"</span>
-                    <span class="sm:hidden">"Tap to select"</span>
+                    <div class="px-4 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400 text-center">
+                        <span class="hidden sm:inline">"\u{2191}\u{2193} Navigate \u{00b7} \u{21b5} Select \u{00b7} Esc Close"</span>
+                        <span class="sm:hidden">"Tap to select"</span>
+                    </div>
                 </div>
-            </div>
+            </FocusTrap>
         </div>
     }
 }

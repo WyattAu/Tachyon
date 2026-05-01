@@ -1,3 +1,4 @@
+use crate::components::FocusTrap;
 use leptos::prelude::*;
 use tachyon_editor::Editor;
 
@@ -86,62 +87,68 @@ pub fn EditorSearch(editor: RwSignal<Editor>, show: RwSignal<bool>) -> impl Into
     view! {
         {move || if show.get() {
             view! {
-                <div class="editor-search" on:keydown={on_keydown}>
-                    <div class="flex items-center gap-2 mb-2">
-                        <input
-                            type="text"
-                            class="editor-search-input"
-                            placeholder="Search..."
-                            prop:value={move || search_query.get()}
-                            on:input=move |ev| {
-                                search_query.set(event_target_value(&ev));
-                            }
-                        />
-                        <span class="editor-search-count">
-                            {move || {
-                                let total = match_count.get();
-                                let cur = current_match.get();
-                                if total == 0 {
-                                    "No results".to_string()
-                                } else {
-                                    format!("{} of {}", cur, total)
+                <FocusTrap active=show.into()>
+                    <div class="editor-search" role="dialog" attr:aria-label="Find and Replace" on:keydown={on_keydown}>
+                        <div class="flex items-center gap-2 mb-2">
+                            <label for="editor-search-input" class="sr-only">"Find"</label>
+                            <input
+                                id="editor-search-input"
+                                type="text"
+                                class="editor-search-input"
+                                placeholder="Search..."
+                                prop:value={move || search_query.get()}
+                                on:input=move |ev| {
+                                    search_query.set(event_target_value(&ev));
                                 }
-                            }}
-                        </span>
-                        <button class="editor-search-btn" on:click={go_prev}>{"\u{25B2}"}</button>
-                        <button class="editor-search-btn" on:click={go_next}>{"\u{25BC}"}</button>
-                        <button class="editor-search-btn" on:click={close}>{"\u{2715}"}</button>
-                    </div>
+                            />
+                            <span class="editor-search-count" attr:aria-live="polite">
+                                {move || {
+                                    let total = match_count.get();
+                                    let cur = current_match.get();
+                                    if total == 0 {
+                                        "No results".to_string()
+                                    } else {
+                                        format!("{} of {}", cur, total)
+                                    }
+                                }}
+                            </span>
+                            <button class="editor-search-btn" attr:aria-label="Previous match" on:click={go_prev}>{"\u{25B2}"}</button>
+                            <button class="editor-search-btn" attr:aria-label="Next match" on:click={go_next}>{"\u{25BC}"}</button>
+                            <button class="editor-search-btn" attr:aria-label="Close" on:click={close}>{"\u{2715}"}</button>
+                        </div>
 
-                    <div class="flex items-center gap-2 mb-2">
-                        <label class="editor-search-toggle">
-                            <input type="checkbox" prop:checked={move || case_sensitive.get()} on:change=move |ev| { case_sensitive.set(event_target_checked(&ev)); } />
-                            {"Aa"}
-                        </label>
-                        <label class="editor-search-toggle">
-                            <input type="checkbox" prop:checked={move || whole_word.get()} on:change=move |ev| { whole_word.set(event_target_checked(&ev)); } />
-                            {"W"}
-                        </label>
-                        <label class="editor-search-toggle">
-                            <input type="checkbox" prop:checked={move || use_regex.get()} on:change=move |ev| { use_regex.set(event_target_checked(&ev)); } />
-                            {".*"}
-                        </label>
-                    </div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <label class="editor-search-toggle">
+                                <input type="checkbox" attr:aria-label="Case sensitive" prop:checked={move || case_sensitive.get()} on:change=move |ev| { case_sensitive.set(event_target_checked(&ev)); } />
+                                {"Aa"}
+                            </label>
+                            <label class="editor-search-toggle">
+                                <input type="checkbox" attr:aria-label="Whole word" prop:checked={move || whole_word.get()} on:change=move |ev| { whole_word.set(event_target_checked(&ev)); } />
+                                {"W"}
+                            </label>
+                            <label class="editor-search-toggle">
+                                <input type="checkbox" attr:aria-label="Use regex" prop:checked={move || use_regex.get()} on:change=move |ev| { use_regex.set(event_target_checked(&ev)); } />
+                                {".*"}
+                            </label>
+                        </div>
 
-                    <div class="flex items-center gap-2">
-                        <input
-                            type="text"
-                            class="editor-search-input"
-                            placeholder="Replace..."
-                            prop:value={move || replace_query.get()}
-                            on:input=move |ev| {
-                                replace_query.set(event_target_value(&ev));
-                            }
-                        />
-                        <button class="editor-search-action-btn" on:click={do_replace}>{"Replace"}</button>
-                        <button class="editor-search-action-btn" on:click={do_replace_all}>{"All"}</button>
+                        <div class="flex items-center gap-2">
+                            <label for="editor-replace-input" class="sr-only">"Replace"</label>
+                            <input
+                                id="editor-replace-input"
+                                type="text"
+                                class="editor-search-input"
+                                placeholder="Replace..."
+                                prop:value={move || replace_query.get()}
+                                on:input=move |ev| {
+                                    replace_query.set(event_target_value(&ev));
+                                }
+                            />
+                            <button class="editor-search-action-btn" on:click={do_replace}>{"Replace"}</button>
+                            <button class="editor-search-action-btn" on:click={do_replace_all}>{"All"}</button>
+                        </div>
                     </div>
-                </div>
+                </FocusTrap>
             }.into_any()
         } else {
             ().into_any()

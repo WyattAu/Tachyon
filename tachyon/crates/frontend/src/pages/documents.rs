@@ -4,8 +4,8 @@
 use crate::api::ApiClient;
 use crate::components::{
     Activity, ActivityFeed, BreadcrumbItem, Breadcrumbs, ConflictResolver, EditorSearch,
-    EditorToolbar, EmptyDocuments, MarkdownPreview, NativeEditor, ReviewPanel, TableOfContents,
-    TemplateSelector, VersionHistory,
+    EditorToolbar, EmptyDocuments, FocusTrap, MarkdownPreview, NativeEditor, ReviewPanel,
+    TableOfContents, TemplateSelector, VersionHistory,
 };
 use crate::storage::sync::SyncEngine;
 use crate::storage::{
@@ -306,33 +306,35 @@ pub fn DocumentsPage() -> impl IntoView {
             {move || if show_create_modal.get() {
                 Some(view! {
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">"New Document"</h2>
-                            {move || create_error.get().map(|e| view! {
-                                <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">{e}</div>
-                            })}
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Start from template"</label>
-                                    <TemplateSelector on_select={Callback::new(move |t: DocumentTemplate| set_new_doc_title.set(t.name))} category={None} />
+                        <FocusTrap active={show_create_modal.into()}>
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md" role="dialog" attr:aria-modal="true" attr:aria-labelledby="new-doc-title">
+                                <h2 id="new-doc-title" class="text-xl font-bold text-gray-900 dark:text-white mb-4">"New Document"</h2>
+                                {move || create_error.get().map(|e| view! {
+                                    <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">{e}</div>
+                                })}
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Start from template"</label>
+                                        <TemplateSelector on_select={Callback::new(move |t: DocumentTemplate| set_new_doc_title.set(t.name))} category={None} />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Title"</label>
+                                        <input type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                            placeholder="Enter document title" prop:value={move || new_doc_title.get()}
+                                            on:input=move |ev| set_new_doc_title.set(event_target_value(&ev)) />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Title"</label>
-                                    <input type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                        placeholder="Enter document title" prop:value={move || new_doc_title.get()}
-                                        on:input=move |ev| set_new_doc_title.set(event_target_value(&ev)) />
+                                <div class="mt-6 flex justify-end gap-3">
+                                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                                        on:click=move |_| { set_show_create_modal.set(false); set_new_doc_title.set(String::new()); set_create_error.set(None); }>"Cancel"</button>
+                                    <button class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                        disabled={move || creating.get()}
+                                        on:click=move |ev| handle_create_document.get_value()(ev)>
+                                        {move || if creating.get() { "Creating..." } else { "Create" }}
+                                    </button>
                                 </div>
                             </div>
-                            <div class="mt-6 flex justify-end gap-3">
-                                <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-                                    on:click=move |_| { set_show_create_modal.set(false); set_new_doc_title.set(String::new()); set_create_error.set(None); }>"Cancel"</button>
-                                <button class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
-                                    disabled={move || creating.get()}
-                                    on:click=move |ev| handle_create_document.get_value()(ev)>
-                                    {move || if creating.get() { "Creating..." } else { "Create" }}
-                                </button>
-                            </div>
-                        </div>
+                        </FocusTrap>
                     </div>
                 })
             } else { None }}
@@ -1101,81 +1103,102 @@ pub fn DocumentEditPage() -> impl IntoView {
                     "w-0 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 transition-all duration-200 overflow-hidden"
                 }}
             >
-                <div class="flex border-b border-gray-200 dark:border-gray-700">
-                    <button
-                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
-                        on:click=move |_| set_sidebar_tab.set("activity".to_string())
-                    >
-                        "Activity"
-                    </button>
-                    <button
-                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
-                        on:click=move |_| set_sidebar_tab.set("history".to_string())
-                    >
-                        "History"
-                    </button>
-                    <button
-                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
-                        on:click=move |_| set_sidebar_tab.set("review".to_string())
-                    >
-                        "Review"
-                    </button>
-                    <button
-                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
-                        on:click=move |_| set_sidebar_tab.set("conflicts".to_string())
-                    >
-                        "Conflicts"
-                    </button>
-                    <button
-                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
-                        on:click=move |_| set_sidebar_tab.set("backlinks".to_string())
-                    >
-                        "Backlinks"
-                    </button>
-                    <button
-                        class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
-                        on:click=move |_| set_sidebar_tab.set("outline".to_string())
-                    >
-                        "Outline"
-                    </button>
+                <div class="flex border-b border-gray-200 dark:border-gray-700" role="tablist"
+                    on:keydown=move |ev: web_sys::KeyboardEvent| {
+                        let key = ev.key();
+                        if key == "ArrowRight" || key == "ArrowLeft" {
+                            ev.prevent_default();
+                            let sidebar_tabs = ["activity", "history", "review", "conflicts", "backlinks", "outline"];
+                            let current = sidebar_tab.get();
+                            let current_idx = sidebar_tabs.iter().position(|&t| t == current).unwrap_or(0);
+                            let new_idx = if key == "ArrowRight" {
+                                (current_idx + 1) % sidebar_tabs.len()
+                            } else {
+                                current_idx.checked_sub(1).unwrap_or(sidebar_tabs.len() - 1)
+                            };
+                            let new_tab = sidebar_tabs[new_idx];
+                            set_sidebar_tab.set(new_tab.to_string());
+                            if let Some(window) = web_sys::window() {
+                                if let Some(doc) = window.document() {
+                                    let btn_id = format!("sidebar-tab-{}", new_tab);
+                                    let _ = doc.get_element_by_id(&btn_id)
+                                        .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+                                        .and_then(|el| el.focus().ok());
+                                }
+                            }
+                        }
+                    }
+                >
+                    {["activity", "history", "review", "conflicts", "backlinks", "outline"].iter().map(|tab_name| {
+                        let name = (*tab_name).to_string();
+                        let name_for_active = name.clone();
+                        let name_for_click = name.clone();
+                        let name_for_onclick = name.clone();
+                        let btn_id = format!("sidebar-tab-{}", tab_name);
+                        let panel_id = format!("sidebar-panel-{}", tab_name);
+                        let label = match *tab_name {
+                            "activity" => "Activity",
+                            "history" => "History",
+                            "review" => "Review",
+                            "conflicts" => "Conflicts",
+                            "backlinks" => "Backlinks",
+                            "outline" => "Outline",
+                            _ => "Tab",
+                        };
+                        let is_active = move || sidebar_tab.get() == name_for_active;
+                        let is_active_for_tabindex = move || sidebar_tab.get() == name_for_click;
+                        view! {
+                            <button
+                                id={btn_id}
+                                class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
+                                role="tab"
+                                attr:aria-selected=move || if is_active() { "true" } else { "false" }
+                                attr:aria-controls={panel_id.clone()}
+                                tabindex=move || if is_active_for_tabindex() { 0 } else { -1 }
+                                on:click=move |_| set_sidebar_tab.set(name_for_onclick.clone())
+                            >
+                                {label}
+                            </button>
+                        }
+                    }).collect::<Vec<_>>()}
                 </div>
                 {move || {
                     let tab = sidebar_tab.get();
                     let doc_id = document_id();
                     if tab == "history" {
                         view! {
-                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                            <div id="sidebar-panel-history" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-history">
                                 <VersionHistory document_id={doc_id} on_rollback=None />
                             </div>
                         }.into_any()
                     } else if tab == "review" {
                         view! {
-                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                            <div id="sidebar-panel-review" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-review">
                                 <ReviewPanel document_id={doc_id} />
                             </div>
                         }.into_any()
                     } else if tab == "conflicts" {
                         view! {
-                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                            <div id="sidebar-panel-conflicts" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-conflicts">
                                 <ConflictResolver document_id={doc_id} />
                             </div>
                         }.into_any()
                     } else if tab == "backlinks" {
                         view! {
-                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                            <div id="sidebar-panel-backlinks" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-backlinks">
                                 <BacklinksPanel document_id={doc_id} />
                             </div>
                         }.into_any()
                     } else if tab == "outline" {
                         let content = doc_content.get();
                         view! {
-                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                            <div id="sidebar-panel-outline" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-outline">
                                 <TableOfContents markdown_content={content} />
                             </div>
                         }.into_any()
                     } else {
                         view! {
-                            <div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]">
+                            <div id="sidebar-panel-activity" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-activity">
                                 <ActivityFeed
                                     activities={activities.get()}
                                     max_items=20

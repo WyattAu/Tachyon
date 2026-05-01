@@ -45,6 +45,7 @@ struct ConnectedClient {
     user_id: Option<String>,
     user_name: Option<String>,
     rooms: Vec<String>,
+    last_seen: std::time::Instant,
 }
 
 #[derive(Clone)]
@@ -95,6 +96,7 @@ impl ConnectionManager {
             user_id: None,
             user_name: None,
             rooms: Vec::new(),
+            last_seen: std::time::Instant::now(),
         };
         self.clients.write().await.insert(client_id, client);
         info!("Client connected");
@@ -282,6 +284,73 @@ impl ConnectionManager {
             }
         }
     }
+
+    pub async fn touch_client(&self, client_id: &str) {
+        if let Some(client) = self.clients.write().await.get_mut(client_id) {
+            client.last_seen = std::time::Instant::now();
+        }
+    }
+
+    pub async fn cleanup_stale_clients(&self, timeout_secs: u64) {
+        let timeout = std::time::Duration::from_secs(timeout_secs);
+        let stale_clients: Vec<(String, Vec<String>)> = {
+            let clients = self.clients.read().await;
+            clients
+                .iter()
+                .filter(|(_, c)| c.last_seen.elapsed() > timeout)
+                .map(|(id, c)| (id.clone(), c.rooms.clone()))
+                .collect()
+        };
+
+        if stale_clients.is_empty() {
+            return;
+        }
+
+        let mut clients = self.clients.write().await;
+        let mut rooms = self.rooms.write().await;
+        let mut presence = self.document_presence.write().await;
+        let mut doc_states = self.document_states.write().await;
+
+        for (client_id, client_rooms) in &stale_clients {
+            clients.remove(client_id);
+
+            for room_id in client_rooms {
+                if let Some(members) = rooms.get_mut(room_id) {
+                    members.retain(|id| id != client_id);
+                    if members.is_empty() {
+                        rooms.remove(room_id);
+                    }
+                }
+
+                if let Some(doc_id) = room_id.strip_prefix("doc:") {
+                    if let Some(list) = presence.get_mut(doc_id) {
+                        list.retain(|p| p.client_id != *client_id);
+                        if list.is_empty() {
+                            presence.remove(doc_id);
+                        }
+                    }
+                }
+            }
+
+            info!(client_id = %client_id, "Cleaned up stale client");
+        }
+
+        let stale_doc_ids: Vec<String> = stale_clients
+            .iter()
+            .flat_map(|(_, rooms)| rooms.iter())
+            .filter_map(|r| r.strip_prefix("doc:").map(|s| s.to_string()))
+            .collect();
+
+        for doc_id in stale_doc_ids {
+            let has_members = rooms
+                .get(&format!("doc:{}", doc_id))
+                .map(|m| !m.is_empty())
+                .unwrap_or(false);
+            if !has_members {
+                doc_states.remove(&doc_id);
+            }
+        }
+    }
 }
 
 impl Default for ConnectionManager {
@@ -403,6 +472,7 @@ async fn handle_client_message(
     client_id: &str,
     msg: WebSocketMessage,
 ) {
+    manager.touch_client(client_id).await;
     match msg.message_type {
         MessageType::Join => {
             if let (Some(doc_id), Some(user_id)) = (&msg.document_id, &msg.user_id) {

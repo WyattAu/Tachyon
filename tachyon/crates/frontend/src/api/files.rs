@@ -4,6 +4,7 @@ use super::*;
 ///
 /// Reserved for future use: file upload and management.
 impl ApiClient {
+    /// Upload a file using multipart form data.
     #[allow(dead_code)]
     pub async fn upload_file(&self, file: &web_sys::File) -> Result<UploadResponse, ApiError> {
         use gloo_net::http::Request;
@@ -40,11 +41,13 @@ impl ApiClient {
         }
     }
 
+    /// List all file attachments for a document.
     pub async fn list_attachments(&self, document_id: &str) -> Result<Vec<Attachment>, ApiError> {
         let url = format!("{}/documents/{}/attachments", self.base_url, document_id);
         self.get(&url).await
     }
 
+    /// Upload a file as an attachment to a document.
     pub async fn upload_attachment(
         &self,
         document_id: &str,
@@ -84,6 +87,7 @@ impl ApiClient {
         }
     }
 
+    /// Delete an attachment from a document.
     pub async fn delete_attachment(
         &self,
         document_id: &str,

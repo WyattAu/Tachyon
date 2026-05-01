@@ -183,3 +183,194 @@ impl PluginRuntime {
         &self.plugins_dir
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_runtime() -> PluginRuntime {
+        let tmp = tempfile::TempDir::new().unwrap();
+        PluginRuntime::new(tmp.path())
+    }
+
+    fn make_loaded_plugin(name: &str, version: &str) -> LoadedPlugin {
+        LoadedPlugin {
+            name: name.to_string(),
+            version: version.to_string(),
+            runtime_type: "wasm".to_string(),
+            wasm_path: std::path::PathBuf::from("/nonexistent/plugin.wasm"),
+            extension_points: vec!["on_save".to_string()],
+            enabled: false,
+        }
+    }
+
+    fn make_loaded_plugin_with_wasm(name: &str, version: &str, wasm_path: &std::path::Path) -> LoadedPlugin {
+        LoadedPlugin {
+            name: name.to_string(),
+            version: version.to_string(),
+            runtime_type: "wasm".to_string(),
+            wasm_path: wasm_path.to_path_buf(),
+            extension_points: vec!["on_save".to_string()],
+            enabled: false,
+        }
+    }
+
+    #[test]
+    fn new_creates_plugins_dir() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let sub_dir = tmp.path().join("plugins");
+        let _runtime = PluginRuntime::new(&sub_dir);
+        assert!(sub_dir.exists());
+    }
+
+    #[test]
+    fn list_plugins_empty() {
+        let runtime = make_runtime();
+        assert!(runtime.list_plugins().is_empty());
+    }
+
+    #[test]
+    fn get_plugin_nonexistent_returns_none() {
+        let runtime = make_runtime();
+        assert!(runtime.get_plugin("missing", "1.0.0").is_none());
+    }
+
+    #[test]
+    fn invoke_hook_no_plugins_returns_empty() {
+        let runtime = make_runtime();
+        let results = runtime.invoke_hook("on_save", serde_json::json!({}), 1000);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn load_plugin_nonexistent_wasm_returns_error() {
+        let mut runtime = make_runtime();
+        let plugin = make_loaded_plugin("test", "1.0.0");
+        let result = runtime.load_plugin(plugin);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            PluginRuntimeError::NotFound(msg) => {
+                assert!(msg.contains("WASM file not found"));
+            }
+            other => panic!("expected NotFound, got: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn load_plugin_success() {
+        let mut runtime = make_runtime();
+        let wasm_file = tempfile::NamedTempFile::new().unwrap();
+        let plugin = make_loaded_plugin_with_wasm("test", "1.0.0", wasm_file.path());
+        let result = runtime.load_plugin(plugin);
+        assert!(result.is_ok());
+        assert_eq!(runtime.list_plugins().len(), 1);
+    }
+
+    #[test]
+    fn unload_plugin_nonexistent_returns_error() {
+        let mut runtime = make_runtime();
+        let result = runtime.unload_plugin("missing", "1.0.0");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            PluginRuntimeError::NotFound(msg) => assert!(msg.contains("Plugin not found")),
+            other => panic!("expected NotFound, got: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn enable_plugin_nonexistent_returns_error() {
+        let mut runtime = make_runtime();
+        let result = runtime.enable_plugin("missing", "1.0.0");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            PluginRuntimeError::NotFound(_) => {}
+            other => panic!("expected NotFound, got: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn disable_plugin_nonexistent_returns_error() {
+        let mut runtime = make_runtime();
+        let result = runtime.disable_plugin("missing", "1.0.0");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn load_then_get_plugin() {
+        let mut runtime = make_runtime();
+        let wasm_file = tempfile::NamedTempFile::new().unwrap();
+        let plugin = make_loaded_plugin_with_wasm("myplug", "2.0.0", wasm_file.path());
+        runtime.load_plugin(plugin).unwrap();
+        let retrieved = runtime.get_plugin("myplug", "2.0.0");
+        assert!(retrieved.is_some());
+        let p = retrieved.unwrap();
+        assert_eq!(p.name, "myplug");
+        assert_eq!(p.version, "2.0.0");
+    }
+
+    #[test]
+    fn enable_plugin_toggles_state() {
+        let mut runtime = make_runtime();
+        let wasm_file = tempfile::NamedTempFile::new().unwrap();
+        let plugin = make_loaded_plugin_with_wasm("toggle", "1.0.0", wasm_file.path());
+        runtime.load_plugin(plugin).unwrap();
+        assert!(!runtime.get_plugin("toggle", "1.0.0").unwrap().enabled);
+        runtime.enable_plugin("toggle", "1.0.0").unwrap();
+        assert!(runtime.get_plugin("toggle", "1.0.0").unwrap().enabled);
+        runtime.disable_plugin("toggle", "1.0.0").unwrap();
+        assert!(!runtime.get_plugin("toggle", "1.0.0").unwrap().enabled);
+    }
+
+    #[test]
+    fn unload_plugin_removes_from_list() {
+        let mut runtime = make_runtime();
+        let wasm_file = tempfile::NamedTempFile::new().unwrap();
+        let plugin = make_loaded_plugin_with_wasm("ephemeral", "1.0.0", wasm_file.path());
+        runtime.load_plugin(plugin).unwrap();
+        assert_eq!(runtime.list_plugins().len(), 1);
+        runtime.unload_plugin("ephemeral", "1.0.0").unwrap();
+        assert!(runtime.list_plugins().is_empty());
+        assert!(runtime.get_plugin("ephemeral", "1.0.0").is_none());
+    }
+
+    #[test]
+    fn invoke_hook_disabled_plugin_not_called() {
+        let mut runtime = make_runtime();
+        let wasm_file = tempfile::NamedTempFile::new().unwrap();
+        let plugin = LoadedPlugin {
+            name: "disabled".to_string(),
+            version: "1.0.0".to_string(),
+            runtime_type: "wasm".to_string(),
+            wasm_path: wasm_file.path().to_path_buf(),
+            extension_points: vec!["on_save".to_string()],
+            enabled: false,
+        };
+        runtime.load_plugin(plugin).unwrap();
+        let results = runtime.invoke_hook("on_save", serde_json::json!({}), 1000);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn invoke_hook_non_matching_extension_not_called() {
+        let mut runtime = make_runtime();
+        let wasm_file = tempfile::NamedTempFile::new().unwrap();
+        let plugin = LoadedPlugin {
+            name: "other".to_string(),
+            version: "1.0.0".to_string(),
+            runtime_type: "wasm".to_string(),
+            wasm_path: wasm_file.path().to_path_buf(),
+            extension_points: vec!["on_delete".to_string()],
+            enabled: true,
+        };
+        runtime.load_plugin(plugin).unwrap();
+        let results = runtime.invoke_hook("on_save", serde_json::json!({}), 1000);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn plugins_dir_returns_path() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let runtime = PluginRuntime::new(tmp.path());
+        assert_eq!(runtime.plugins_dir(), tmp.path());
+    }
+}
