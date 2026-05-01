@@ -1,0 +1,86 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install trunk
+        run: cargo install trunk --version 0.21.14
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: e2e-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: e2e-${{ runner.os }}-cargo-
+
+      - name: Start PostgreSQL
+        run: |
+          docker run -d --name tachyon-pg \
+            -e POSTGRES_USER=tachyon_test \
+            -e POSTGRES_PASSWORD=tachyon_test \
+            -e POSTGRES_DB=tachyon_test \
+            -p 5433:5432 \
+            postgres:16-alpine
+          sleep 3
+
+      - name: Build WASM frontend
+        working-directory: tachyon/crates/frontend
+        run: trunk build --release
+
+      - name: Build server
+        working-directory: tachyon
+        run: cargo build --release -p tachyon-server
+
+      - name: Start server
+        working-directory: tachyon
+        env:
+          DATABASE_URL: postgres://tachyon_test:tachyon_test@localhost:5433/tachyon_test
+          TACHYON_STATIC_DIR: crates/frontend/dist
+          TACHYON_PORT: 8080
+          TACHYON_JWT_SECRET: e2e-ci-secret-key-must-be-at-least-32-chars-long
+          RUST_LOG: warn
+        run: |
+          cargo run --release -p tachyon-server &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/health; then
+              echo "Server ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Install Playwright
+        working-directory: tachyon/e2e
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: tachyon/e2e
+        env:
+          E2E_BASE_URL: http://localhost:8080
+        run: npx playwright test --reporter=list
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: tachyon/e2e/playwright-report/

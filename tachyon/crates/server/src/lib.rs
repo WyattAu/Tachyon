@@ -584,8 +584,14 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let security_config = Arc::new(config.security.clone());
 
+    let static_dir = crate::config::static_dir();
+    let static_service = tower_http::services::ServeDir::new(&static_dir)
+        .fallback(tower_http::services::ServeFile::new(format!(
+            "{}/index.html",
+            static_dir
+        )));
+
     let mut router = Router::new()
-        .route("/", get(root_handler))
         .merge(health_router)
         .merge(metrics_router)
         .merge(seo_router)
@@ -627,7 +633,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         ));
     }
 
-    router
+    router.fallback_service(static_service)
 }
 
 /// Convenience function: initialize state and build the full router in one call.
@@ -762,21 +768,3 @@ pub fn install_metrics() -> &'static metrics_exporter_prometheus::PrometheusHand
     })
 }
 
-async fn root_handler() -> axum::response::Html<&'static str> {
-    axum::response::Html(
-        r#"<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Tachyon - A deterministic, high-performance knowledge management system with sub-15ms rendering and real-time collaboration.">
-    <title>Tachyon - Knowledge Management System</title>
-</head>
-<body>
-    <h1>Tachyon Knowledge Management System</h1>
-    <p>A deterministic, high-performance knowledge management system with sub-15ms rendering and real-time collaboration.</p>
-    <p><a href="/api/docs">API Documentation</a></p>
-</body>
-</html>"#,
-    )
-}

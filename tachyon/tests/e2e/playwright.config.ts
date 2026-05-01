@@ -12,7 +12,7 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/junit.xml' }]
   ],
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.BASE_URL || 'http://localhost:8080',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -40,8 +40,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'cargo run --release',
-    url: 'http://localhost:3000/health',
+    command: "bash -c 'cd ../../.. && TACHYON_STATIC_DIR=crates/frontend/dist cargo run -p tachyon-server'",
+    url: 'http://localhost:8080/health',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

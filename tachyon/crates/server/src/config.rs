@@ -503,6 +503,10 @@ impl Default for LogConfig {
     }
 }
 
+pub fn static_dir() -> String {
+    std::env::var("TACHYON_STATIC_DIR").unwrap_or_else(|_| "dist".to_string())
+}
+
 impl ServerConfig {
     /// Create a new server configuration
     pub fn new() -> Self {
@@ -867,5 +871,18 @@ mod tests {
     fn test_websocket_path() {
         let config = ServerConfig::default();
         assert_eq!(config.websocket_path(), "/ws");
+    }
+
+    #[test]
+    fn test_static_dir_default() {
+        std::env::remove_var("TACHYON_STATIC_DIR");
+        assert_eq!(static_dir(), "dist");
+    }
+
+    #[test]
+    fn test_static_dir_from_env() {
+        std::env::set_var("TACHYON_STATIC_DIR", "/var/www/html");
+        assert_eq!(static_dir(), "/var/www/html");
+        std::env::remove_var("TACHYON_STATIC_DIR");
     }
 }
