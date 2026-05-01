@@ -60,14 +60,24 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
-//!     // Initialize tracing
-//!     tracing_subscriber::fmt::init();
-//!
-//!     // Load configuration
+//!     // Load configuration from environment
 //!     let config = ServerConfig::from_env();
 //!
-//!     // Run server
-//!     run_server(config).await
+//!     // Validate configuration (fails fast on misconfiguration)
+//!     if let Err(errors) = config.validate() {
+//!         anyhow::bail!("Configuration errors: {:?}", errors);
+//!     }
+//!
+//!     // Initialize application state (database pool, search index, etc.)
+//!     let state = tachyon_server::init_app_state(&config).await?;
+//!
+//!     // Build the Axum router with all routes and middleware
+//!     let app = tachyon_server::build_app(state, &config);
+//!
+//!     // Serve with axum's listener
+//!     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
+//!     axum::serve(listener, app).await?;
+//!     Ok(())
 //! }
 //! ```
 //!

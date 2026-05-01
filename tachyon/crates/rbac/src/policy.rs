@@ -376,7 +376,8 @@ impl PolicyEngine {
     ///
     /// # Returns
     /// New PolicyEngine instance
-    pub fn with_cache_size(_cache_size: usize) -> Self {
+    #[cfg_attr(not(feature = "staging"), allow(unused_variables))]
+    pub fn with_cache_size(cache_size: usize) -> Self {
         Self {
             policies: DashMap::new(),
             cache: DashMap::new(),

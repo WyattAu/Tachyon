@@ -9,6 +9,9 @@ use axum::{
     response::Response,
 };
 
+#[cfg(feature = "staging")]
+use std::sync::Arc;
+
 #[derive(Debug, Clone)]
 pub struct SecurityHeadersConfig {
     pub content_security_policy: ContentSecurityPolicy,
@@ -415,6 +418,8 @@ pub struct SecurityHeadersState {
 
 impl SecurityHeadersState {
     pub fn new(_config: SecurityHeadersConfig) -> Self {
+        #[cfg(feature = "staging")]
+        let config = _config;
         Self {
             #[cfg(feature = "staging")]
             config: Arc::new(config),

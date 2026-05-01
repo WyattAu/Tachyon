@@ -369,7 +369,8 @@ impl ResultAggregator {
     ///
     /// # Arguments
     /// * `weights` - Field weights
-    pub fn new(_weights: FieldWeights) -> Self {
+    #[cfg_attr(not(feature = "staging"), allow(unused_variables))]
+    pub fn new(weights: FieldWeights) -> Self {
         Self {
             #[cfg(feature = "staging")]
             weights,
