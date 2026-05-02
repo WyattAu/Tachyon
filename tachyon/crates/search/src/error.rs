@@ -67,6 +67,11 @@ impl SearchError {
         Self::new(ErrorCategory::Index, code, message)
     }
 
+    /// Create an internal error (unexpected state, lock poisoning, etc.)
+    pub fn internal(message: impl Into<String>) -> Self {
+        Self::new(ErrorCategory::Internal, "INTERNAL_ERROR", message)
+    }
+
     /// Create a query error
     pub fn query(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self::new(ErrorCategory::Query, code, message)
@@ -176,6 +181,8 @@ pub enum ErrorCategory {
     Configuration,
     /// IO errors
     Io,
+    /// Internal errors (unexpected state, lock poisoning)
+    Internal,
 }
 
 impl fmt::Display for ErrorCategory {
@@ -187,6 +194,7 @@ impl fmt::Display for ErrorCategory {
             Self::Api => write!(f, "API"),
             Self::Configuration => write!(f, "CONFIG"),
             Self::Io => write!(f, "IO"),
+            Self::Internal => write!(f, "INTERNAL"),
         }
     }
 }

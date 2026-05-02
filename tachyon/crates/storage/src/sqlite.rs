@@ -569,7 +569,7 @@ impl DocumentStore for SqliteStore {
                 // Remove the json_each condition we added and replace with LIKE
                 if conditions.len() > 1 {
                     // Pop the json_each condition
-                    let last = conditions.pop().unwrap();
+                    let last = conditions.pop().unwrap_or_default();
                     if last.contains("json_each") {
                         // Replace with simple LIKE for each tag
                         for tag in &params.tags {

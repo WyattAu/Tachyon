@@ -179,28 +179,22 @@ impl TemplateRepository {
         let limit = limit.unwrap_or(50);
         let offset = offset.unwrap_or(0);
 
-        let (select_sql, has_category) = match category {
-            Some(_cat) => (
-                format!(
-                    "{} WHERE category = $1 ORDER BY name ASC LIMIT $2 OFFSET $3",
-                    TEMPLATE_SELECT_SQL
-                ),
-                true,
+        let select_sql = match category {
+            Some(_) => format!(
+                "{} WHERE category = $1 ORDER BY name ASC LIMIT $2 OFFSET $3",
+                TEMPLATE_SELECT_SQL
             ),
-            None => (
-                format!(
-                    "{} ORDER BY name ASC LIMIT $1 OFFSET $2",
-                    TEMPLATE_SELECT_SQL
-                ),
-                false,
+            None => format!(
+                "{} ORDER BY name ASC LIMIT $1 OFFSET $2",
+                TEMPLATE_SELECT_SQL
             ),
         };
 
         let mut conn = self.pool.acquire().await?;
 
-        let templates: Vec<DocumentTemplate> = if has_category {
+        let templates: Vec<DocumentTemplate> = if let Some(cat) = category {
             query_as(&select_sql)
-                .bind(category.unwrap())
+                .bind(cat)
                 .bind(limit)
                 .bind(offset)
                 .fetch_all(&mut *conn)
@@ -299,18 +293,15 @@ impl TemplateRepository {
     /// Count templates, optionally filtered by `category`.
     #[instrument(skip(self))]
     pub async fn count(&self, category: Option<&str>) -> DatabaseResult<i64> {
-        let (count_sql, has_category) = match category {
-            Some(_) => (
-                "SELECT COUNT(*) as count FROM document_templates WHERE category = $1",
-                true,
-            ),
-            None => ("SELECT COUNT(*) as count FROM document_templates", false),
+        let count_sql = match category {
+            Some(_) => "SELECT COUNT(*) as count FROM document_templates WHERE category = $1",
+            None => "SELECT COUNT(*) as count FROM document_templates",
         };
 
         let mut conn = self.pool.acquire().await?;
-        let row = if has_category {
+        let row = if let Some(cat) = category {
             query(count_sql)
-                .bind(category.unwrap())
+                .bind(cat)
                 .fetch_one(&mut *conn)
                 .await
                 .map_err(|e| DatabaseError::QueryError(e.to_string()))?

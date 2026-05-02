@@ -299,7 +299,7 @@ impl SpaceRepository {
         let offset = offset.unwrap_or(0);
         let _ = include_member_spaces; // handled via owner_id filter below
 
-        let (select_sql, has_owner, has_parent, has_visibility) = match (owner_id, parent_id, visibility) {
+        let (select_sql, _, _, _) = match (owner_id, parent_id, visibility) {
             (Some(_), Some(_), Some(_)) => (
                 format!("{} WHERE (owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $2::uuid)) \
                          AND parent_id $3::uuid AND visibility = $4 \
@@ -346,33 +346,33 @@ impl SpaceRepository {
 
         let mut conn = self.pool.acquire().await?;
 
-        let spaces: Vec<Space> = match (has_owner, has_parent, has_visibility) {
-            (true, true, true) => {
-                let pid_bind = if parent_id.unwrap().is_empty() {
+        let spaces: Vec<Space> = match (owner_id, parent_id, visibility) {
+            (Some(oid), Some(pid), Some(vis)) => {
+                let pid_bind = if pid.is_empty() {
                     None::<String>
                 } else {
-                    parent_id.map(|s| s.to_string())
+                    Some(pid.to_string())
                 };
                 query_as(&select_sql)
-                    .bind(owner_id.unwrap())
-                    .bind(owner_id.unwrap())
+                    .bind(oid)
+                    .bind(oid)
                     .bind(pid_bind)
-                    .bind(visibility.unwrap())
+                    .bind(vis)
                     .bind(limit)
                     .bind(offset)
                     .fetch_all(&mut *conn)
                     .await
                     .map_err(|e| DatabaseError::QueryError(e.to_string()))?
             }
-            (true, true, false) => {
-                let pid_bind = if parent_id.unwrap().is_empty() {
+            (Some(oid), Some(pid), None) => {
+                let pid_bind = if pid.is_empty() {
                     None::<String>
                 } else {
-                    parent_id.map(|s| s.to_string())
+                    Some(pid.to_string())
                 };
                 query_as(&select_sql)
-                    .bind(owner_id.unwrap())
-                    .bind(owner_id.unwrap())
+                    .bind(oid)
+                    .bind(oid)
                     .bind(pid_bind)
                     .bind(limit)
                     .bind(offset)
@@ -380,43 +380,43 @@ impl SpaceRepository {
                     .await
                     .map_err(|e| DatabaseError::QueryError(e.to_string()))?
             }
-            (true, false, true) => query_as(&select_sql)
-                .bind(owner_id.unwrap())
-                .bind(owner_id.unwrap())
-                .bind(visibility.unwrap())
+            (Some(oid), None, Some(vis)) => query_as(&select_sql)
+                .bind(oid)
+                .bind(oid)
+                .bind(vis)
                 .bind(limit)
                 .bind(offset)
                 .fetch_all(&mut *conn)
                 .await
                 .map_err(|e| DatabaseError::QueryError(e.to_string()))?,
-            (true, false, false) => query_as(&select_sql)
-                .bind(owner_id.unwrap())
-                .bind(owner_id.unwrap())
+            (Some(oid), None, None) => query_as(&select_sql)
+                .bind(oid)
+                .bind(oid)
                 .bind(limit)
                 .bind(offset)
                 .fetch_all(&mut *conn)
                 .await
                 .map_err(|e| DatabaseError::QueryError(e.to_string()))?,
-            (false, true, true) => {
-                let pid_bind = if parent_id.unwrap().is_empty() {
+            (None, Some(pid), Some(vis)) => {
+                let pid_bind = if pid.is_empty() {
                     None::<String>
                 } else {
-                    parent_id.map(|s| s.to_string())
+                    Some(pid.to_string())
                 };
                 query_as(&select_sql)
                     .bind(pid_bind)
-                    .bind(visibility.unwrap())
+                    .bind(vis)
                     .bind(limit)
                     .bind(offset)
                     .fetch_all(&mut *conn)
                     .await
                     .map_err(|e| DatabaseError::QueryError(e.to_string()))?
             }
-            (false, true, false) => {
-                let pid_bind = if parent_id.unwrap().is_empty() {
+            (None, Some(pid), None) => {
+                let pid_bind = if pid.is_empty() {
                     None::<String>
                 } else {
-                    parent_id.map(|s| s.to_string())
+                    Some(pid.to_string())
                 };
                 query_as(&select_sql)
                     .bind(pid_bind)
@@ -426,14 +426,14 @@ impl SpaceRepository {
                     .await
                     .map_err(|e| DatabaseError::QueryError(e.to_string()))?
             }
-            (false, false, true) => query_as(&select_sql)
-                .bind(visibility.unwrap())
+            (None, None, Some(vis)) => query_as(&select_sql)
+                .bind(vis)
                 .bind(limit)
                 .bind(offset)
                 .fetch_all(&mut *conn)
                 .await
                 .map_err(|e| DatabaseError::QueryError(e.to_string()))?,
-            (false, false, false) => query_as(&select_sql)
+            (None, None, None) => query_as(&select_sql)
                 .bind(limit)
                 .bind(offset)
                 .fetch_all(&mut *conn)
@@ -592,18 +592,15 @@ impl SpaceRepository {
 
     #[instrument(skip(self))]
     pub async fn count(&self, owner_id: Option<&str>) -> DatabaseResult<i64> {
-        let (count_sql, has_owner) = match owner_id {
-            Some(_) => (
-                "SELECT COUNT(*) as count FROM spaces WHERE owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $1::uuid)",
-                true,
-            ),
-            None => ("SELECT COUNT(*) as count FROM spaces", false),
+        let count_sql = match owner_id {
+            Some(_) => "SELECT COUNT(*) as count FROM spaces WHERE owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $1::uuid)",
+            None => "SELECT COUNT(*) as count FROM spaces",
         };
 
         let mut conn = self.pool.acquire().await?;
-        let row = if has_owner {
+        let row = if let Some(oid) = owner_id {
             query(count_sql)
-                .bind(owner_id.unwrap())
+                .bind(oid)
                 .fetch_one(&mut *conn)
                 .await
                 .map_err(|e| DatabaseError::QueryError(e.to_string()))?

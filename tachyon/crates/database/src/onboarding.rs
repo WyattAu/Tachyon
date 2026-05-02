@@ -164,13 +164,17 @@ impl OnboardingRepository {
 
         let onboarding = prefs
             .as_object_mut()
-            .unwrap()
+            .ok_or_else(|| {
+                DatabaseError::SerializationError("preferences is not a JSON object".to_string())
+            })?
             .entry("onboarding")
             .or_insert_with(|| serde_json::json!({}));
 
         let completed_steps = onboarding
             .as_object_mut()
-            .unwrap()
+            .ok_or_else(|| {
+                DatabaseError::SerializationError("onboarding is not a JSON object".to_string())
+            })?
             .entry("completed_steps")
             .or_insert_with(|| serde_json::json!([]));
 

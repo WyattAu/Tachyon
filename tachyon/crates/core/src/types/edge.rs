@@ -249,10 +249,13 @@ impl Edge {
     }
 
     /// Update edge weight
-    pub fn update_weight(&mut self, weight: EdgeWeight) {
-        weight.validate().expect("Invalid weight");
+    ///
+    /// Returns an error if the weight is invalid.
+    pub fn update_weight(&mut self, weight: EdgeWeight) -> Result<(), TachyonError> {
+        weight.validate()?;
         self.weight = Some(weight);
         self.metadata.touch();
+        Ok(())
     }
 
     /// Deactivate edge

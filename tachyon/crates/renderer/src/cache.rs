@@ -32,7 +32,7 @@ impl RenderCache {
     /// Create a new render cache with custom configuration
     pub fn with_config(config: CacheConfig) -> Self {
         let capacity = std::num::NonZeroUsize::new(config.max_entries.max(1))
-            .unwrap_or_else(|| std::num::NonZeroUsize::new(1).expect("1 is always non-zero"));
+            .unwrap_or(std::num::NonZeroUsize::MIN);
 
         let inner = LruCache::new(capacity);
 

@@ -179,14 +179,20 @@ impl IndexManager {
         &self,
         f: impl FnOnce(&mut IndexWriter) -> SearchResult<R>,
     ) -> SearchResult<R> {
-        let mut guard = self.writer.lock().expect("writer lock poisoned");
+        let mut guard = self
+            .writer
+            .lock()
+            .map_err(|_| SearchError::internal("Index writer lock poisoned"))?;
         if guard.is_none() {
             let writer = self.index.writer(50_000_000).map_err(|e| {
                 SearchError::index("WRITER_ERROR", format!("Failed to create writer: {}", e))
             })?;
             *guard = Some(writer);
         }
-        f(guard.as_mut().expect("writer initialized above"))
+        let writer = guard
+            .as_mut()
+            .ok_or_else(|| SearchError::internal("Index writer not initialized"))?;
+        f(writer)
     }
 
     /// Index a document
