@@ -7,13 +7,18 @@ pub(crate) struct PageContext<'a> {
     pub(crate) description: &'a str,
     pub(crate) body: &'a str,
     pub(crate) page_url: &'a str,
+    pub(crate) root_prefix: &'a str,
     pub(crate) author: Option<&'a str>,
+    // TODO(phase-2): wire or remove — template variable for page creation date
+    #[allow(dead_code)]
     pub(crate) created_at: &'a str,
     pub(crate) updated_at: &'a str,
     pub(crate) tags: &'a [String],
     pub(crate) nav_items: &'a [NavItem],
     pub(crate) current_slug: Option<&'a str>,
     pub(crate) language: &'a str,
+    // TODO(phase-2): wire or remove — template variable for language switcher
+    #[allow(dead_code)]
     pub(crate) language_switcher: &'a str,
 }
 
@@ -22,6 +27,8 @@ pub(crate) struct IndexContext<'a> {
     pub(crate) nav_items: &'a [NavItem],
     pub(crate) documents: &'a [DocCard],
     pub(crate) language: &'a str,
+    // TODO(phase-2): wire or remove — template variable for language switcher
+    #[allow(dead_code)]
     pub(crate) language_switcher: &'a str,
 }
 
@@ -30,9 +37,13 @@ pub(crate) struct CategoryContext<'a> {
     pub(crate) category_name: &'a str,
     pub(crate) documents: &'a [DocCard],
     pub(crate) language: &'a str,
+    // TODO(phase-2): wire or remove — template variable for language switcher
+    #[allow(dead_code)]
     pub(crate) language_switcher: &'a str,
 }
 
+// TODO(phase-2): wire or remove — navigation link rendering
+#[allow(dead_code)]
 pub(crate) struct NavItem {
     pub(crate) title: String,
     pub(crate) href: String,
@@ -44,6 +55,8 @@ pub(crate) struct DocCard {
     pub(crate) description: String,
     pub(crate) tags: Vec<String>,
     pub(crate) updated_at: String,
+    // TODO(phase-2): wire or remove — author display on document cards
+    #[allow(dead_code)]
     pub(crate) author: Option<String>,
 }
 
@@ -80,12 +93,25 @@ impl crate::build::SiteGenerator {
 
         let language_switcher = self.build_language_switcher(all_languages, &doc.slug, lang_prefix);
 
+        // Compute relative path prefix to site root from the page's directory.
+        // e.g., slug "docs_university/computing/algo" → depth 2 → "../../"
+        let root_prefix = if doc.slug.contains('/') {
+            let depth = doc.slug.matches('/').count();
+            std::iter::repeat_n("..", depth)
+                .collect::<Vec<_>>()
+                .join("/")
+                + "/"
+        } else {
+            String::new()
+        };
+
         let ctx = PageContext {
             site: &self.config,
             title: &doc.title,
             description: &description,
             body: &body_html,
             page_url: &page_url,
+            root_prefix: &root_prefix,
             author: doc.author.as_deref(),
             created_at: &doc.created_at.to_rfc3339(),
             updated_at: &doc.updated_at.to_rfc3339(),

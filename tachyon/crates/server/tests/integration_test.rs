@@ -1,13 +1,13 @@
 use axum::{
-    body::Body,
-    http::{header, Request, StatusCode},
     Router,
+    body::Body,
+    http::{Request, StatusCode, header},
 };
 use serde_json::json;
 use tower::ServiceExt;
 
 fn create_mock_app() -> Router {
-    use axum::routing::{delete, get, post, put};
+    use axum::routing::{delete, get, options, post, put};
 
     Router::new()
         .route("/health", get(|| async { StatusCode::OK }))
@@ -30,7 +30,11 @@ fn create_mock_app() -> Router {
             }),
         )
         .route(
-            "/api/v1/documents/:id",
+            "/api/v1/documents",
+            options(|| async { StatusCode::OK }),
+        )
+        .route(
+            "/api/v1/documents/{id}",
             get(|| async {
                 (
                     StatusCode::OK,
@@ -39,7 +43,7 @@ fn create_mock_app() -> Router {
             }),
         )
         .route(
-            "/api/v1/documents/:id",
+            "/api/v1/documents/{id}",
             put(|| async {
                 (
                     StatusCode::OK,
@@ -48,7 +52,7 @@ fn create_mock_app() -> Router {
             }),
         )
         .route(
-            "/api/v1/documents/:id",
+            "/api/v1/documents/{id}",
             delete(|| async { StatusCode::NO_CONTENT }),
         )
 }
@@ -207,11 +211,13 @@ async fn test_content_type_json() {
 
     let content_type = response.headers().get("content-type");
     assert!(content_type.is_some());
-    assert!(content_type
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .contains("application/json"));
+    assert!(
+        content_type
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .contains("application/json")
+    );
 }
 
 #[tokio::test]
