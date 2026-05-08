@@ -2,8 +2,7 @@ use tachyon_database::space::{CreateSpaceRequest, UpdateSpaceRequest};
 use tachyon_database::SpaceRepository;
 
 use crate::common::setup::{
-    create_test_pool, create_test_space, create_test_user, setup_database,
-    teardown_test_user,
+    create_test_pool, create_test_space, create_test_user, setup_database, teardown_test_user,
 };
 
 fn skip_without_db() -> bool {

@@ -1,6 +1,8 @@
 use tachyon_database::{ActivityRepository, CreateActivityEvent};
 
-use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_test_user};
+use crate::common::setup::{
+    create_test_pool, create_test_user, setup_database, teardown_test_user,
+};
 
 fn skip_without_db() -> bool {
     std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
@@ -15,7 +17,6 @@ async fn test_create_activity_event() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-
 
     let user = create_test_user(&pool).await;
     let target_id = uuid::Uuid::new_v4();
@@ -56,7 +57,6 @@ async fn test_list_activities() {
     let pool = create_test_pool().await;
     setup_database(&pool).await;
 
-
     let user = create_test_user(&pool).await;
 
     for i in 0..3 {
@@ -93,7 +93,6 @@ async fn test_activity_ordering_most_recent_first() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-
 
     let user = create_test_user(&pool).await;
 
@@ -154,7 +153,6 @@ async fn test_list_activities_by_target() {
     let pool = create_test_pool().await;
     setup_database(&pool).await;
 
-
     let user = create_test_user(&pool).await;
     let target_id = uuid::Uuid::new_v4();
 
@@ -208,7 +206,6 @@ async fn test_list_activities_by_actor() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-
 
     let user = create_test_user(&pool).await;
     let other_user = create_test_user(&pool).await;
@@ -264,7 +261,6 @@ async fn test_activity_event_without_metadata() {
     let pool = create_test_pool().await;
     setup_database(&pool).await;
 
-
     let user = create_test_user(&pool).await;
 
     let event = ActivityRepository::create(
@@ -295,7 +291,6 @@ async fn test_list_activities_with_pagination() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-
 
     let user = create_test_user(&pool).await;
 

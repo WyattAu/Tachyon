@@ -211,9 +211,10 @@ impl IndexManager {
     ) -> SearchResult<()> {
         self.with_writer(|writer| {
             self.index_document_to_writer(writer, document)?;
-            writer.commit().map(|_| ()).map_err(|e| {
-                SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e))
-            })
+            writer
+                .commit()
+                .map(|_| ())
+                .map_err(|e| SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e)))
         })
     }
 
@@ -400,9 +401,10 @@ impl IndexManager {
             let term = tantivy::Term::from_field_text(id_field, document_id);
             writer.delete_term(term);
 
-            writer.commit().map(|_| ()).map_err(|e| {
-                SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e))
-            })
+            writer
+                .commit()
+                .map(|_| ())
+                .map_err(|e| SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e)))
         })
     }
 
@@ -417,9 +419,10 @@ impl IndexManager {
         self.with_writer(|writer| {
             let _ = writer.delete_all_documents();
 
-            writer.commit().map(|_| ()).map_err(|e| {
-                SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e))
-            })
+            writer
+                .commit()
+                .map(|_| ())
+                .map_err(|e| SearchError::index("COMMIT_ERROR", format!("Failed to commit: {}", e)))
         })
     }
 

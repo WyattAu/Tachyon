@@ -34,6 +34,7 @@ harness = false
 tachyon-core = { path = "../core" }
 tachyon-server = { path = "../server" }
 tachyon-desktop = { path = "../desktop" }
+tachyon-desktop-app = { path = "../desktop/src-tauri" }
 tachyon-rbac = { path = "../rbac" }
 tachyon-search = { path = "../search" }
 tachyon-database = { path = "../database" }

@@ -201,7 +201,9 @@ mod tests {
     #[test]
     fn test_get_state_nonempty_after_set_text() {
         let manager = CrdtDocumentManager::new();
-        manager.set_text("doc-state-content", "some content").unwrap();
+        manager
+            .set_text("doc-state-content", "some content")
+            .unwrap();
         let doc_ref = manager.get_or_create("doc-state-content");
         let txn = doc_ref.doc.transact();
         let sv = yrs::StateVector::default();

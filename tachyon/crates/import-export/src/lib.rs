@@ -14,6 +14,7 @@ pub mod html_export;
 pub mod json_export;
 pub mod markdown_zip;
 pub mod obsidian;
+pub mod docusaurus;
 
 // Re-export commonly used types
 pub use error::{ImportExportError, ImportExportResult};
@@ -22,6 +23,7 @@ pub use html_export::{HtmlExportConfig, HtmlExportDocument, HtmlExporter};
 pub use json_export::{ExportableDocument, JsonExporter};
 pub use markdown_zip::{ExportDocument, MarkdownZipExporter, MarkdownZipImporter};
 pub use obsidian::ObsidianImporter;
+pub use docusaurus::DocusaurusImporter;
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

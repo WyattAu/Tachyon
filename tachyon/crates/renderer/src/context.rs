@@ -92,6 +92,10 @@ impl RenderContext {
     pub(crate) fn to_json(&self) -> Value {
         serde_json::to_value(self).unwrap_or(Value::Null)
     }
+    /// Convert to JSON Value for template engine use
+    pub fn to_json_value(&self) -> Value {
+        serde_json::to_value(self).unwrap_or(Value::Null)
+    }
 }
 
 impl Default for RenderContext {

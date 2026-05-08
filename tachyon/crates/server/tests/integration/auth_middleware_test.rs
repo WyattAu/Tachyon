@@ -35,7 +35,10 @@ async fn ok_handler() -> StatusCode {
     StatusCode::OK
 }
 
-async fn admin_permission_check(request: Request, next: Next) -> Result<axum::response::Response, StatusCode> {
+async fn admin_permission_check(
+    request: Request,
+    next: Next,
+) -> Result<axum::response::Response, StatusCode> {
     let auth_context = request
         .extensions()
         .get::<AuthContext>()
@@ -74,9 +77,7 @@ fn build_test_router(pool: tachyon_database::DatabasePool) -> Router {
 
     let admin_routes = Router::new()
         .route("/api/v1/admin/settings", get(ok_handler))
-        .layer(axum::middleware::from_fn(
-            admin_permission_check,
-        ));
+        .layer(axum::middleware::from_fn(admin_permission_check));
 
     let all_routes = Router::new()
         .merge(public_routes)
@@ -164,8 +165,9 @@ fn generate_jwt_wrong_secret(user_id: &str) -> String {
 }
 
 async fn setup_pool() -> tachyon_database::DatabasePool {
-    let db_url = std::env::var("TEST_DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://tachyon_test:tachyon_test@127.0.0.1:5433/tachyon_test".to_string());
+    let db_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
+        "postgres://tachyon_test:tachyon_test@127.0.0.1:5433/tachyon_test".to_string()
+    });
     tachyon_database::DatabasePool::new(&db_url)
         .await
         .expect("Failed to connect to test database")
@@ -175,9 +177,7 @@ fn skip_without_db() -> bool {
     std::env::var("TEST_DATABASE_URL").is_err()
 }
 
-async fn read_body_json(
-    response: axum::response::Response<Body>,
-) -> serde_json::Value {
+async fn read_body_json(response: axum::response::Response<Body>) -> serde_json::Value {
     let bytes = response
         .into_body()
         .collect()
@@ -464,12 +464,7 @@ async fn test_public_path_root_no_auth() {
 
     let response = app
         .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/")
-                .body(Body::empty())
-                .unwrap(),
-        )
+        .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
         .await
         .unwrap();
 

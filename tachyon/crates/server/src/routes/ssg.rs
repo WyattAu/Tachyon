@@ -258,7 +258,7 @@ pub async fn download_site(State(state): State<SsgState>) -> Response {
 #[derive(Debug, sqlx::FromRow)]
 struct DocRow {
     #[cfg(feature = "staging")]
-    id: String,
+    _id: String,
     title: String,
     slug: String,
     content: Option<String>,

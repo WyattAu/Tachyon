@@ -79,8 +79,8 @@ async fn test_list_teams() {
         &format!("listuser_{}@test.com", unique),
         "Password123!",
     )
-        .await
-        .expect("Failed to create test user");
+    .await
+    .expect("Failed to create test user");
 
     let mut created_count = 0;
     for i in 0..2 {

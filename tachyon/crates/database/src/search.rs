@@ -9,32 +9,6 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query, Row};
 use tracing::{debug, info, instrument};
 
-#[cfg(feature = "staging")]
-const DOCUMENT_SELECT_SQL: &str = r#"
-    SELECT 
-        id::text as id,
-        title,
-        slug,
-        author_id::text as author_id,
-        description,
-        tags::text as tags,
-        frontmatter::text as frontmatter,
-        project_id::text as project_id,
-        visibility,
-        status,
-        content_type,
-        word_count,
-        character_count,
-        read_count,
-        edit_count,
-        content,
-        html,
-        created_at,
-        updated_at,
-        published_at
-    FROM documents
-"#;
-
 fn row_to_document_metadata(row: sqlx::postgres::PgRow) -> DatabaseResult<DocumentMetadata> {
     Ok(DocumentMetadata {
         id: row.get("id"),

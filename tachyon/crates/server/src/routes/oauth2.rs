@@ -105,7 +105,10 @@ impl OAuth2State {
                 }
             }
             None => {
-                warn!(provider, "OAuth2 callback received with no matching state stored");
+                warn!(
+                    provider,
+                    "OAuth2 callback received with no matching state stored"
+                );
                 false
             }
         }
@@ -117,7 +120,11 @@ impl OAuth2State {
         self.csrf_states.retain(|provider, entry| {
             let elapsed = now.signed_duration_since(entry.created_at).num_seconds();
             if elapsed > CSRF_STATE_TTL_SECS {
-                info!(provider, elapsed_secs = elapsed, "Cleaning up expired OAuth2 CSRF state");
+                info!(
+                    provider,
+                    elapsed_secs = elapsed,
+                    "Cleaning up expired OAuth2 CSRF state"
+                );
                 false
             } else {
                 true
@@ -707,21 +714,30 @@ mod tests {
             },
         );
 
-        assert_eq!(nonce.len(), 64, "Nonce should be 32 bytes hex-encoded (64 chars)");
+        assert_eq!(
+            nonce.len(),
+            64,
+            "Nonce should be 32 bytes hex-encoded (64 chars)"
+        );
 
         // Simulate validation — same logic as validate_csrf_state
         let result = store.remove("google");
         match result {
             Some((_, entry)) => {
                 assert_eq!(entry.nonce, nonce, "Nonce should match");
-                let elapsed = Utc::now().signed_duration_since(entry.created_at).num_seconds();
+                let elapsed = Utc::now()
+                    .signed_duration_since(entry.created_at)
+                    .num_seconds();
                 assert!(elapsed <= CSRF_STATE_TTL_SECS, "Should not be expired");
             }
             None => panic!("State should exist"),
         }
 
         // State should be consumed — re-validation should fail
-        assert!(store.get("google").is_none(), "State should be consumed after validation");
+        assert!(
+            store.get("google").is_none(),
+            "State should be consumed after validation"
+        );
     }
 
     #[test]
@@ -775,7 +791,9 @@ mod tests {
         let result = store.remove("google");
         match result {
             Some((_, entry)) => {
-                let elapsed = Utc::now().signed_duration_since(entry.created_at).num_seconds();
+                let elapsed = Utc::now()
+                    .signed_duration_since(entry.created_at)
+                    .num_seconds();
                 assert!(elapsed > CSRF_STATE_TTL_SECS, "Should be expired");
             }
             None => panic!("State should exist"),
@@ -812,7 +830,10 @@ mod tests {
         // Cross-provider: nonces should be different
         let google_entry = store.get("google").unwrap();
         let github_entry = store.get("github").unwrap();
-        assert_ne!(google_entry.nonce, github_entry.nonce, "Nonces should be different per provider");
+        assert_ne!(
+            google_entry.nonce, github_entry.nonce,
+            "Nonces should be different per provider"
+        );
         drop(google_entry);
         drop(github_entry);
 

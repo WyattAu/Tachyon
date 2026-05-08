@@ -1,6 +1,8 @@
 use tachyon_database::{CreateTemplateRequest, TemplateRepository, UpdateTemplateRequest};
 
-use crate::common::setup::{create_test_pool, create_test_user, setup_database, teardown_test_user};
+use crate::common::setup::{
+    create_test_pool, create_test_user, setup_database, teardown_test_user,
+};
 
 fn skip_without_db() -> bool {
     std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
@@ -15,7 +17,6 @@ async fn test_create_template() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-
 
     let user = create_test_user(&pool).await;
     let repo = TemplateRepository::new(pool.clone());
@@ -57,7 +58,6 @@ async fn test_get_template_by_id() {
     let pool = create_test_pool().await;
     setup_database(&pool).await;
 
-
     let user = create_test_user(&pool).await;
     let repo = TemplateRepository::new(pool.clone());
 
@@ -93,7 +93,6 @@ async fn test_get_template_by_name() {
     let pool = create_test_pool().await;
     setup_database(&pool).await;
 
-
     let user = create_test_user(&pool).await;
     let repo = TemplateRepository::new(pool.clone());
 
@@ -127,7 +126,6 @@ async fn test_list_templates() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-
 
     let user = create_test_user(&pool).await;
     let repo = TemplateRepository::new(pool.clone());
@@ -169,7 +167,6 @@ async fn test_update_template() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-
 
     let user = create_test_user(&pool).await;
     let repo = TemplateRepository::new(pool.clone());
@@ -220,7 +217,6 @@ async fn test_delete_template() {
     let pool = create_test_pool().await;
     setup_database(&pool).await;
 
-
     let user = create_test_user(&pool).await;
     let repo = TemplateRepository::new(pool.clone());
 
@@ -255,7 +251,6 @@ async fn test_template_count() {
 
     let pool = create_test_pool().await;
     setup_database(&pool).await;
-
 
     let user = create_test_user(&pool).await;
     let repo = TemplateRepository::new(pool.clone());

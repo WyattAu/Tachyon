@@ -1386,7 +1386,11 @@ mod tests {
         let payload = r#"{"event": "payment.created"}"#;
         let signature = generate_hmac_sha256(secret, payload.as_bytes());
         let header = format!("v1={}", signature);
-        assert!(verify_webhook_signature(payload.as_bytes(), &header, secret));
+        assert!(verify_webhook_signature(
+            payload.as_bytes(),
+            &header,
+            secret
+        ));
     }
 
     #[test]
@@ -1419,7 +1423,11 @@ mod tests {
         let payload = r#"{"event": "payment.created"}"#;
         let signature = generate_hmac_sha256(wrong_secret, payload.as_bytes());
         let header = format!("v1={}", signature);
-        assert!(!verify_webhook_signature(payload.as_bytes(), &header, secret));
+        assert!(!verify_webhook_signature(
+            payload.as_bytes(),
+            &header,
+            secret
+        ));
     }
 
     #[test]
@@ -1469,7 +1477,11 @@ mod tests {
         let payload = r#"{"event": "payment.created"}"#;
         let signature = generate_hmac_sha256(secret, payload.as_bytes());
         let header = format!("v1={}", signature);
-        assert!(verify_webhook_signature(payload.as_bytes(), &header, secret));
+        assert!(verify_webhook_signature(
+            payload.as_bytes(),
+            &header,
+            secret
+        ));
     }
 
     #[test]
@@ -1478,6 +1490,10 @@ mod tests {
         let payload = r#"{"event": "payment.created"}"#;
         let signature = generate_hmac_sha256(secret, payload.as_bytes());
         let header = format!("v1={}", signature);
-        assert!(verify_webhook_signature(payload.as_bytes(), &header, secret));
+        assert!(verify_webhook_signature(
+            payload.as_bytes(),
+            &header,
+            secret
+        ));
     }
 }

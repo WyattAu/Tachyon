@@ -1,7 +1,7 @@
 use axum::{
-    Router,
     body::Body,
-    http::{Request, StatusCode, header},
+    http::{header, Request, StatusCode},
+    Router,
 };
 use serde_json::json;
 use tower::ServiceExt;
@@ -29,10 +29,7 @@ fn create_mock_app() -> Router {
                 )
             }),
         )
-        .route(
-            "/api/v1/documents",
-            options(|| async { StatusCode::OK }),
-        )
+        .route("/api/v1/documents", options(|| async { StatusCode::OK }))
         .route(
             "/api/v1/documents/{id}",
             get(|| async {
@@ -211,13 +208,11 @@ async fn test_content_type_json() {
 
     let content_type = response.headers().get("content-type");
     assert!(content_type.is_some());
-    assert!(
-        content_type
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .contains("application/json")
-    );
+    assert!(content_type
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .contains("application/json"));
 }
 
 #[tokio::test]

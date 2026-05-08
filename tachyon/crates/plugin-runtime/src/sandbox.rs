@@ -99,8 +99,10 @@ impl PluginSandbox {
             .instantiate(&mut store, &module)
             .map_err(|e| PluginRuntimeError::Execution(format!("Instantiation failed: {}", e)))?;
 
-        let call_entry = |name: &str, store: &mut Store<WasiP1Ctx>, instance: &Instance| {
-            match instance.get_typed_func::<(), ()>(&mut *store, name) {
+        let call_entry =
+            |name: &str, store: &mut Store<WasiP1Ctx>, instance: &Instance| match instance
+                .get_typed_func::<(), ()>(&mut *store, name)
+            {
                 Ok(func) => func.call(store, ()).map_err(|e| {
                     let err_str = e.to_string();
                     if err_str.contains("fuel") || err_str.contains("trap") {
@@ -113,8 +115,7 @@ impl PluginSandbox {
                     "entry point '{}' not found",
                     name
                 ))),
-            }
-        };
+            };
 
         if instance.get_export(&mut store, "_start").is_some() {
             call_entry("_start", &mut store, &instance)?;

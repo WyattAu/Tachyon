@@ -204,7 +204,11 @@ mod tests {
         }
     }
 
-    fn make_loaded_plugin_with_wasm(name: &str, version: &str, wasm_path: &std::path::Path) -> LoadedPlugin {
+    fn make_loaded_plugin_with_wasm(
+        name: &str,
+        version: &str,
+        wasm_path: &std::path::Path,
+    ) -> LoadedPlugin {
         LoadedPlugin {
             name: name.to_string(),
             version: version.to_string(),

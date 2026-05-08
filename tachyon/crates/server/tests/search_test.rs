@@ -7,12 +7,27 @@ use serde_json::json;
 use tachyon_server::routes::create_router;
 use tower::ServiceExt;
 
+fn skip_without_db() -> bool {
+    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
+}
+
 async fn create_test_app() -> Router {
     create_router().await
 }
 
-#[tokio::test]
-async fn test_search_endpoint_basic() {
+macro_rules! db_test {
+    ($name:ident, $($body:tt)*) => {
+        #[tokio::test]
+        async fn $name() {
+            if skip_without_db() {
+                return;
+            }
+            $($body)*
+        }
+    };
+}
+
+db_test!(test_search_endpoint_basic, {
     let app = create_test_app().await;
 
     let response = app
@@ -26,10 +41,9 @@ async fn test_search_endpoint_basic() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-}
+});
 
-#[tokio::test]
-async fn test_search_endpoint_with_filters() {
+db_test!(test_search_endpoint_with_filters, {
     let app = create_test_app().await;
 
     let response = app
@@ -43,10 +57,9 @@ async fn test_search_endpoint_with_filters() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-}
+});
 
-#[tokio::test]
-async fn test_search_endpoint_with_pagination() {
+db_test!(test_search_endpoint_with_pagination, {
     let app = create_test_app().await;
 
     let response = app
@@ -60,10 +73,9 @@ async fn test_search_endpoint_with_pagination() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-}
+});
 
-#[tokio::test]
-async fn test_search_endpoint_with_sorting() {
+db_test!(test_search_endpoint_with_sorting, {
     let app = create_test_app().await;
 
     let response = app
@@ -77,10 +89,9 @@ async fn test_search_endpoint_with_sorting() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-}
+});
 
-#[tokio::test]
-async fn test_search_endpoint_empty_query() {
+db_test!(test_search_endpoint_empty_query, {
     let app = create_test_app().await;
 
     let response = app
@@ -94,10 +105,9 @@ async fn test_search_endpoint_empty_query() {
         .unwrap();
 
     assert!(response.status() == StatusCode::OK || response.status() == StatusCode::BAD_REQUEST);
-}
+});
 
-#[tokio::test]
-async fn test_search_endpoint_missing_query() {
+db_test!(test_search_endpoint_missing_query, {
     let app = create_test_app().await;
 
     let response = app
@@ -111,10 +121,9 @@ async fn test_search_endpoint_missing_query() {
         .unwrap();
 
     assert!(response.status() == StatusCode::OK || response.status() == StatusCode::BAD_REQUEST);
-}
+});
 
-#[tokio::test]
-async fn test_advanced_search_endpoint() {
+db_test!(test_advanced_search_endpoint, {
     let app = create_test_app().await;
 
     let search_query = json!({
@@ -150,10 +159,9 @@ async fn test_advanced_search_endpoint() {
         .unwrap();
 
     assert!(response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND);
-}
+});
 
-#[tokio::test]
-async fn test_search_suggestions_endpoint() {
+db_test!(test_search_suggestions_endpoint, {
     let app = create_test_app().await;
 
     let response = app
@@ -167,10 +175,9 @@ async fn test_search_suggestions_endpoint() {
         .unwrap();
 
     assert!(response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND);
-}
+});
 
-#[tokio::test]
-async fn test_search_facets_endpoint() {
+db_test!(test_search_facets_endpoint, {
     let app = create_test_app().await;
 
     let response = app
@@ -184,10 +191,9 @@ async fn test_search_facets_endpoint() {
         .unwrap();
 
     assert!(response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND);
-}
+});
 
-#[tokio::test]
-async fn test_global_search_endpoint() {
+db_test!(test_global_search_endpoint, {
     let app = create_test_app().await;
 
     let response = app
@@ -201,10 +207,9 @@ async fn test_global_search_endpoint() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-}
+});
 
-#[tokio::test]
-async fn test_search_by_tags_endpoint() {
+db_test!(test_search_by_tags_endpoint, {
     let app = create_test_app().await;
 
     let response = app
@@ -218,10 +223,9 @@ async fn test_search_by_tags_endpoint() {
         .unwrap();
 
     assert!(response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND);
-}
+});
 
-#[tokio::test]
-async fn test_search_by_author_endpoint() {
+db_test!(test_search_by_author_endpoint, {
     let app = create_test_app().await;
     let author_id = uuid::Uuid::new_v4();
 
@@ -236,10 +240,9 @@ async fn test_search_by_author_endpoint() {
         .unwrap();
 
     assert!(response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND);
-}
+});
 
-#[tokio::test]
-async fn test_search_by_project_endpoint() {
+db_test!(test_search_by_project_endpoint, {
     let app = create_test_app().await;
     let project_id = uuid::Uuid::new_v4();
 
@@ -254,10 +257,9 @@ async fn test_search_by_project_endpoint() {
         .unwrap();
 
     assert!(response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND);
-}
+});
 
-#[tokio::test]
-async fn test_search_highlighting() {
+db_test!(test_search_highlighting, {
     let app = create_test_app().await;
 
     let response = app
@@ -271,4 +273,4 @@ async fn test_search_highlighting() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-}
+});

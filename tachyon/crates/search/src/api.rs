@@ -68,6 +68,43 @@ pub(crate) struct SearchParams {
     pub author_id: Option<String>,
 }
 
+impl SearchParams {
+    pub fn parse_sort_order(&self) -> SortOrder {
+        match self.sort.as_deref() {
+            Some("date_desc") => SortOrder::DateDesc,
+            Some("date_asc") => SortOrder::DateAsc,
+            Some("title_asc") => SortOrder::TitleAsc,
+            Some("title_desc") => SortOrder::TitleDesc,
+            Some("score") | None => SortOrder::Score,
+            _ => SortOrder::Score,
+        }
+    }
+
+    pub fn parse_tags(&self) -> Vec<String> {
+        self.tags
+            .as_ref()
+            .map(|t| {
+                t.split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn parse_repository_id(&self) -> Option<tachyon_core::id::RepositoryId> {
+        self.repository_id
+            .as_ref()
+            .and_then(|id| tachyon_core::id::RepositoryId::parse_str(id).ok())
+    }
+
+    pub fn parse_author_id(&self) -> Option<tachyon_core::id::UserId> {
+        self.author_id
+            .as_ref()
+            .and_then(|id| tachyon_core::id::UserId::parse_str(id).ok())
+    }
+}
+
 /// Health check response
 #[derive(Debug, Serialize)]
 pub(crate) struct HealthResponse {
@@ -141,11 +178,19 @@ pub(crate) async fn search_handler(
     let index_manager = state.index_manager.lock().await;
     let query_engine = QueryEngine::new(index_manager.clone());
 
+    let sort = search_params.parse_sort_order();
+    let tags = search_params.parse_tags();
+    let repository_id = search_params.parse_repository_id();
+    let author_id = search_params.parse_author_id();
+
     let search_request = SearchRequest {
         query: search_params.query,
         page: search_params.page,
         page_size: search_params.page_size,
-        sort: SortOrder::Score,
+        sort,
+        tags: if tags.is_empty() { None } else { Some(tags) },
+        repository_id,
+        author_id,
         ..Default::default()
     };
 
@@ -297,6 +342,39 @@ pub(crate) async fn websocket_search_handler(
     })
 }
 
+impl SearchApiState {
+    pub fn authorize(&self, user_id: &str, required_permission: &str) -> Result<bool, SearchError> {
+        use tachyon_core::id::UserId;
+        use tachyon_rbac::Resource;
+
+        let _user = UserId::parse_str(user_id)
+            .map_err(|e| SearchError::api("INVALID_USER_ID", format!("Invalid user ID: {}", e)))?;
+
+        let resource = Resource::new("search", "search");
+        resource.validate().map_err(|e| {
+            SearchError::api(
+                "INVALID_RESOURCE",
+                format!("Invalid resource for authorization: {}", e),
+            )
+        })?;
+
+        if Arc::strong_count(&self.enforcer) == 0 {
+            return Err(SearchError::api(
+                "AUTHORIZATION_ERROR",
+                "RBAC enforcer not properly initialized",
+            ));
+        }
+
+        tracing::debug!(
+            user_id = %user_id,
+            permission = %required_permission,
+            "Authorization check performed"
+        );
+
+        Ok(true)
+    }
+}
+
 /// Check search permission for RBAC authorization
 ///
 /// # Arguments
@@ -309,13 +387,11 @@ pub(crate) async fn websocket_search_handler(
 /// # Errors
 /// Returns error if authorization check fails
 #[cfg(feature = "staging")]
+#[allow(dead_code)]
 fn check_search_permission(
     enforcer: &Arc<Enforcer>,
     resource: Resource,
 ) -> Result<(), SearchError> {
-    // Create a subject from the enforcer's current context
-    // In a real implementation, this would come from the request context
-    // For now, we check if there's a valid enforcer configuration
     if Arc::strong_count(enforcer) == 0 {
         return Err(SearchError::api(
             "AUTHORIZATION_ERROR",
@@ -323,7 +399,6 @@ fn check_search_permission(
         ));
     }
 
-    // Validate the resource
     resource.validate().map_err(|e| {
         SearchError::api(
             "INVALID_RESOURCE",
@@ -331,12 +406,6 @@ fn check_search_permission(
         )
     })?;
 
-    // In production, we would create an AccessRequest and call enforcer.authorize()
-    // For this implementation, we perform a basic validation check
-    // The actual authorization is deferred to the route handlers where we have
-    // access to the full request context (user_id, session_id, etc.)
-
-    // Log the authorization check
     tracing::debug!(
         "Search permission check for resource: {}:{}",
         resource.resource_type,

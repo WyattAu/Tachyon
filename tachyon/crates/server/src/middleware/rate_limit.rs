@@ -175,7 +175,8 @@ impl InMemoryStore {
 
     fn cleanup(&self, window_secs: u64) {
         let cutoff = Instant::now() - Duration::from_secs(window_secs * 2);
-        self.buckets.retain(|_, bucket| bucket.last_refill >= cutoff);
+        self.buckets
+            .retain(|_, bucket| bucket.last_refill >= cutoff);
     }
 
     async fn check_rate_limit(&self, key: &str, limit: RateLimit) -> Result<RateLimitInfo, ()> {
@@ -568,9 +569,10 @@ impl LoginAttemptTracker {
     /// Clean up expired entries. Call periodically (e.g., every 60s).
     pub fn cleanup(&self) {
         let max_lockout = LOCKOUT_TIERS.last().map(|(_, d)| *d).unwrap_or(86400);
-        self.attempts.retain(|_: &String, (_, first_failure): &mut (u32, Instant)| {
-            first_failure.elapsed().as_secs() < max_lockout
-        });
+        self.attempts
+            .retain(|_: &String, (_, first_failure): &mut (u32, Instant)| {
+                first_failure.elapsed().as_secs() < max_lockout
+            });
     }
 
     /// Get the current failure count for an IP (for monitoring/debugging).
@@ -692,14 +694,22 @@ mod tests {
             tracker.record_failure("1.2.3.4");
         }
         let lockout = tracker.check_lockout("1.2.3.4");
-        assert_eq!(lockout, Some(300), "10 failures should trigger 5min lockout");
+        assert_eq!(
+            lockout,
+            Some(300),
+            "10 failures should trigger 5min lockout"
+        );
 
         // 20 failures → 900s
         for _ in 0..10 {
             tracker.record_failure("1.2.3.4");
         }
         let lockout = tracker.check_lockout("1.2.3.4");
-        assert_eq!(lockout, Some(900), "20 failures should trigger 15min lockout");
+        assert_eq!(
+            lockout,
+            Some(900),
+            "20 failures should trigger 15min lockout"
+        );
     }
 
     #[test]

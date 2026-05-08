@@ -1,0 +1,136 @@
+groups:
+  - name: tachyon_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(tachyon_requests_failed{job="tachyon"}[5m])
+            /
+            rate(tachyon_requests_total{job="tachyon"}[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High error rate on Tachyon ({{ $value | humanizePercentage }})"
+          description: |
+            Error rate is {{ $value | humanizePercentage }} over the last 5 minutes,
+            exceeding the 5% threshold.
+            Instance: {{ $labels.instance }}
+          runbook_url: "https://github.com/WyattAu/Tachyon/docs/runbooks/high-error-rate.md"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{job="tachyon"}[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High p99 latency on Tachyon ({{ $value | humanizeDuration }})"
+          description: |
+            The 99th percentile request latency is {{ $value | humanizeDuration }},
+            exceeding the 2s threshold over the last 5 minutes.
+            Instance: {{ $labels.instance }}
+          runbook_url: "https://github.com/WyattAu/Tachyon/docs/runbooks/high-latency.md"
+
+      - alert: DatabasePoolExhausted
+        expr: |
+          (
+            tachyon_db_pool_active{job="tachyon"}
+            /
+            tachyon_db_pool_max{job="tachyon"}
+          ) > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Database pool nearly exhausted ({{ $value | humanizePercentage }})"
+          description: |
+            Database connection pool utilization is {{ $value | humanizePercentage }},
+            exceeding 90% of max connections.
+            Active: {{ $labels.active }}, Max: {{ $labels.max }}
+            Instance: {{ $labels.instance }}
+          runbook_url: "https://github.com/WyattAu/Tachyon/docs/runbooks/db-pool-exhausted.md"
+
+      - alert: HighSlowQueryRate
+        expr: |
+          increase(tachyon_slow_queries_total{job="tachyon"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High slow query rate ({{ $value }} in 5m)"
+          description: |
+            {{ $value }} slow queries detected in the last 5 minutes,
+            exceeding the threshold of 10.
+            Instance: {{ $labels.instance }}
+          runbook_url: "https://github.com/WyattAu/Tachyon/docs/runbooks/slow-queries.md"
+
+      - alert: WebSocketDisconnectStorm
+        expr: |
+          increase(tachyon_ws_disconnects_total{job="tachyon"}[1m]) > 100
+        for: 1m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "WebSocket disconnect storm ({{ $value }} disconnects in 1m)"
+          description: |
+            {{ $value }} WebSocket disconnections detected in the last minute,
+            exceeding the threshold of 100. This may indicate a connectivity issue.
+            Instance: {{ $labels.instance }}
+          runbook_url: "https://github.com/WyattAu/Tachyon/docs/runbooks/ws-disconnect-storm.md"
+
+      - alert: ServiceDown
+        expr: up{job="tachyon"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Tachyon service is down"
+          description: |
+            The Tachyon server at {{ $labels.instance }} has been down for more
+            than 1 minute. Prometheus cannot scrape the metrics endpoint.
+          runbook_url: "https://github.com/WyattAu/Tachyon/docs/runbooks/service-down.md"
+
+      - alert: DatabaseNotReady
+        expr: |
+          up{job="tachyon"} == 1
+          and
+          (
+            rate(tachyon_requests_failed{job="tachyon"}[5m])
+            /
+            rate(tachyon_requests_total{job="tachyon"}[5m])
+          ) > 0.5
+        for: 3m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Tachyon returning >50% errors"
+          description: |
+            Tachyon at {{ $labels.instance }} is returning more than 50% errors.
+            This may indicate a database or infrastructure issue.
+          runbook_url: "https://github.com/WyattAu/Tachyon/docs/runbooks/service-down.md"
+
+      - alert: ConnectionPoolWaiting
+        expr: |
+          (tachyon_db_pool_size{job="tachyon"} - tachyon_db_pool_active{job="tachyon"} - tachyon_db_pool_idle{job="tachyon"}) > 5
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Connections waiting in pool ({{ $value }})"
+          description: |
+            {{ $value }} connections are waiting to acquire a database connection.
+            Consider increasing max_connections or optimizing query performance.
+            Instance: {{ $labels.instance }}
+          runbook_url: "https://github.com/WyattAu/Tachyon/docs/runbooks/db-pool-exhausted.md"

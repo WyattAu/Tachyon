@@ -2,7 +2,6 @@
 
 pub mod activity_feed;
 pub mod app_shell;
-pub mod keyboard;
 pub mod attachments;
 pub mod auth_guard;
 pub mod breadcrumbs;
@@ -21,6 +20,7 @@ pub mod editor_toolbar;
 pub mod empty_state;
 pub mod error_boundary;
 pub mod image_preview;
+pub mod keyboard;
 pub mod layout;
 pub mod loading;
 pub mod markdown_preview;
@@ -42,7 +42,6 @@ pub mod wikilink_autocomplete;
 
 pub use activity_feed::{Activity, ActivityFeed};
 pub use app_shell::AppShell;
-pub use keyboard::FocusTrap;
 pub use auth_guard::{provide_auth_context, AuthGuard};
 pub use breadcrumbs::{BreadcrumbItem, Breadcrumbs};
 pub use client_search::ClientSearch;
@@ -61,6 +60,7 @@ pub use editor_split::{EditorSplit, SplitMode};
 pub use editor_toolbar::EditorToolbar;
 pub use empty_state::{EmptyDocuments, EmptySearch};
 pub use error_boundary::AppErrorBoundary;
+pub use keyboard::FocusTrap;
 pub use loading::ButtonSpinner;
 pub use markdown_preview::MarkdownPreview;
 #[allow(unused_imports)]

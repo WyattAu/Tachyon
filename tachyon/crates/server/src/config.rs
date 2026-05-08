@@ -55,6 +55,12 @@ pub struct ServerConfig {
     /// From address for outgoing emails (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub smtp_from: Option<String>,
+    /// HTTP API URL for email delivery fallback (e.g., Mailgun/SendGrid)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email_http_api_url: Option<String>,
+    /// API key for HTTP email delivery
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email_http_api_key: Option<String>,
 }
 
 /// JWT configuration for token-based authentication
@@ -325,6 +331,8 @@ impl Default for ServerConfig {
             truelayer: TrueLayerConfig::default(),
             smtp_url: None,
             smtp_from: None,
+            email_http_api_url: None,
+            email_http_api_key: None,
         }
     }
 }
@@ -556,18 +564,14 @@ impl ServerConfig {
             && !self.database_url.starts_with("postgres://")
             && !self.database_url.starts_with("postgresql://")
         {
-            errors.push(
-                "Database URL must start with postgres:// or postgresql://".to_string(),
-            );
+            errors.push("Database URL must start with postgres:// or postgresql://".to_string());
         }
 
         if self.enable_tls {
             if self.tls_cert_path.is_none()
                 || self.tls_cert_path.as_ref().is_none_or(|p| p.is_empty())
             {
-                errors.push(
-                    "TLS certificate path required when TLS is enabled".to_string(),
-                );
+                errors.push("TLS certificate path required when TLS is enabled".to_string());
             }
             if self.tls_key_path.is_none()
                 || self.tls_key_path.as_ref().is_none_or(|p| p.is_empty())
@@ -780,6 +784,12 @@ impl ServerConfig {
         }
         if let Ok(val) = std::env::var("TACHYON_SMTP_FROM") {
             config.smtp_from = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_EMAIL_HTTP_API_URL") {
+            config.email_http_api_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_EMAIL_HTTP_API_KEY") {
+            config.email_http_api_key = Some(val);
         }
         if let Ok(val) = std::env::var("TACHYON_SECURITY_CSP_ENABLED") {
             config.security.csp_enabled = val != "0" && val != "false";

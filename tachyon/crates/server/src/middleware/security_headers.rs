@@ -413,7 +413,7 @@ impl CrossOriginResourcePolicy {
 #[derive(Clone)]
 pub struct SecurityHeadersState {
     #[cfg(feature = "staging")]
-    config: Arc<SecurityHeadersConfig>,
+    _config: Arc<SecurityHeadersConfig>,
 }
 
 impl SecurityHeadersState {
@@ -422,7 +422,7 @@ impl SecurityHeadersState {
         let config = _config;
         Self {
             #[cfg(feature = "staging")]
-            config: Arc::new(config),
+            _config: Arc::new(config),
         }
     }
 

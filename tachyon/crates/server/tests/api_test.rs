@@ -1,7 +1,7 @@
 use axum::{
-    Router,
     body::Body,
     http::{Request, StatusCode},
+    Router,
 };
 use serde_json::json;
 use tachyon_server::routes::create_router;
@@ -9,8 +9,7 @@ use tower::ServiceExt;
 
 /// Returns true when no PostgreSQL instance is reachable (CI / local dev without Docker).
 fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err()
-        && std::env::var("TEST_DATABASE_URL").is_err()
+    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
 }
 
 async fn create_test_app() -> Router {

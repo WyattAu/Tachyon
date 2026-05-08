@@ -361,7 +361,7 @@ impl Default for FieldWeights {
 pub struct ResultAggregator {
     /// Field weights for scoring
     #[cfg(feature = "staging")]
-    weights: FieldWeights,
+    _weights: FieldWeights,
 }
 
 impl ResultAggregator {
@@ -373,7 +373,7 @@ impl ResultAggregator {
     pub fn new(weights: FieldWeights) -> Self {
         Self {
             #[cfg(feature = "staging")]
-            weights,
+            _weights: weights,
         }
     }
 

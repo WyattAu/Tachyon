@@ -14,7 +14,7 @@ use tracing::{debug, instrument};
 pub struct MarkdownParser {
     /// Parsing options
     #[cfg(feature = "staging")]
-    options: MarkdownOptions,
+    _options: MarkdownOptions,
     /// Compiled pulldown-cmark options
     cmark_options: Options,
 }
@@ -30,7 +30,7 @@ impl MarkdownParser {
         let cmark_options = Self::build_cmark_options(&options);
         Self {
             #[cfg(feature = "staging")]
-            options,
+            _options: options,
             cmark_options,
         }
     }
