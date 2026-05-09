@@ -19,6 +19,8 @@ use tachyon_search::{
 };
 use tokio::sync::Mutex;
 use tracing::{info, warn};
+#[allow(unused_imports)]
+use utoipa::IntoParams;
 
 #[derive(Clone)]
 pub struct SearchState {
@@ -62,7 +64,7 @@ impl SearchState {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct SearchQuery {
     pub q: String,
     #[serde(default = "default_page")]
@@ -87,7 +89,7 @@ fn default_page_size() -> i64 {
     20
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SearchResultsResponse {
     pub results: Vec<SearchResultItem>,
     pub total: i64,
@@ -96,7 +98,7 @@ pub struct SearchResultsResponse {
     pub facets: SearchFacetsResponse,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SearchResultItem {
     pub id: String,
     pub title: String,
@@ -114,7 +116,7 @@ pub struct SearchResultItem {
     pub updated_at: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SearchFacetsResponse {
     pub content_types: Vec<FacetItem>,
     pub statuses: Vec<FacetItem>,
@@ -122,7 +124,7 @@ pub struct SearchFacetsResponse {
     pub tags: Vec<FacetItem>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct FacetItem {
     pub value: String,
     pub count: i64,
@@ -145,7 +147,7 @@ pub struct ProjectSearchResultItem {
     pub rank: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SavedSearchResponse {
     pub id: String,
     pub user_id: String,
@@ -171,14 +173,14 @@ impl From<SavedSearch> for SavedSearchResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateSavedSearchBody {
     pub name: String,
     pub query: String,
     pub filters: Option<SearchFilters>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateSavedSearchBody {
     pub name: Option<String>,
     pub query: Option<String>,
@@ -219,6 +221,16 @@ async fn search_tantivy(
 ///
 /// Fuses results from PostgreSQL full-text search and Tantivy index.
 /// Response: 200 with `SearchResultsResponse` containing `results`, `total`, `page`, `page_size`, `facets`.
+#[utoipa::path(
+    get,
+    path = "/api/v1/search",
+    params(SearchQuery),
+    responses(
+        (status = 200, description = "Search results", body = SearchResultsResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
 pub async fn search(
     Query(query): Query<SearchQuery>,
     State(state): State<SearchState>,
@@ -552,6 +564,16 @@ pub async fn global_search(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/search/saved",
+    request_body = CreateSavedSearchBody,
+    responses(
+        (status = 200, description = "Saved search created", body = SavedSearchResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
 pub async fn create_saved_search(
     State(state): State<SearchState>,
     Json(body): Json<CreateSavedSearchBody>,
@@ -582,6 +604,15 @@ pub async fn create_saved_search(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/search/saved",
+    responses(
+        (status = 200, description = "List of saved searches", body = Vec<SavedSearchResponse>),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
 pub async fn list_saved_searches(
     State(state): State<SearchState>,
 ) -> Result<Json<Vec<SavedSearchResponse>>, (StatusCode, Json<ErrorResponse>)> {
@@ -612,6 +643,18 @@ pub async fn list_saved_searches(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/search/saved/{id}",
+    params(
+        ("id" = String, Path, description = "Saved search ID"),
+    ),
+    responses(
+        (status = 200, description = "Saved search found", body = SavedSearchResponse),
+        (status = 404, description = "Not found"),
+    ),
+    tag = "search",
+)]
 pub async fn get_saved_search(
     Path(id): Path<String>,
     State(state): State<SearchState>,
@@ -631,6 +674,19 @@ pub async fn get_saved_search(
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/v1/search/saved/{id}",
+    params(
+        ("id" = String, Path, description = "Saved search ID"),
+    ),
+    request_body = UpdateSavedSearchBody,
+    responses(
+        (status = 200, description = "Saved search updated", body = SavedSearchResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
 pub async fn update_saved_search(
     Path(id): Path<String>,
     State(state): State<SearchState>,
@@ -659,6 +715,18 @@ pub async fn update_saved_search(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/search/saved/{id}",
+    params(
+        ("id" = String, Path, description = "Saved search ID"),
+    ),
+    responses(
+        (status = 204, description = "Saved search deleted"),
+        (status = 404, description = "Not found"),
+    ),
+    tag = "search",
+)]
 pub async fn delete_saved_search(
     Path(id): Path<String>,
     State(state): State<SearchState>,

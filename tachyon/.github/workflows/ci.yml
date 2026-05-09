@@ -167,3 +167,48 @@ jobs:
           name: e2e-results
           path: tachyon/e2e/test-results/
           retention-days: 7
+
+  wasm-size:
+    name: WASM Bundle Size
+    runs-on: ubuntu-latest
+    needs: check
+    env:
+      RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory,+mutable-globals"
+      WASM_SIZE_THRESHOLD: 5242880
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tachyon -> target
+          key: ${{ runner.os }}-cargo-
+      - name: Install trunk
+        run: cargo install trunk
+      - name: Build WASM and check size
+        working-directory: tachyon
+        run: bash scripts/build-wasm.sh
+      - name: Analyze WASM bloat
+        working-directory: tachyon
+        run: bash scripts/analyze-wasm-size.sh
+
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tachyon -> target
+          key: ${{ runner.os }}-cargo-
+      - name: Run benchmarks
+        working-directory: tachyon
+        run: cargo bench --workspace --exclude tachyon-frontend --exclude tachyon-testing -- --output-format bencher | tee benchmark-results.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: tachyon/benchmark-results.txt
+          retention-days: 30

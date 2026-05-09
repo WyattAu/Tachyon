@@ -20,7 +20,7 @@ use super::{
     DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState, ErrorResponse,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateDocumentRequest {
     pub title: String,
     #[serde(default)]
@@ -32,7 +32,7 @@ pub struct CreateDocumentRequest {
     pub visibility: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateDocumentRequest {
     pub title: Option<String>,
     pub content: Option<String>,
@@ -47,6 +47,17 @@ pub struct UpdateDocumentRequest {
 ///
 /// Request body: JSON with `title` (required), `content`, `project_id`, `tags`, `visibility`.
 /// Response: 201 with the created `DocumentResponse`, or 400/401/500 on error.
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents",
+    request_body = CreateDocumentRequest,
+    responses(
+        (status = 200, description = "Document created", body = DocumentResponse),
+        (status = 400, description = "Validation error"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "documents",
+)]
 pub async fn create_document(
     State(state): State<DocumentState>,
     auth: Option<Extension<crate::middleware::AuthContext>>,
@@ -264,6 +275,18 @@ pub async fn create_document(
 /// `GET /api/v1/documents/{document_id}`
 ///
 /// Response: 200 with `DocumentResponse`, or 400 (invalid ID) / 404 on error.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{document_id}",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "Document found", body = DocumentResponse),
+        (status = 404, description = "Document not found"),
+    ),
+    tag = "documents",
+)]
 pub async fn get_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -324,6 +347,19 @@ pub async fn get_document(
 /// Request body: JSON with optional `title`, `content`, `tags`, `visibility`, `status`.
 /// Automatically creates a version snapshot when content changes.
 /// Response: 200 with updated `DocumentResponse`, or 400/404/500 on error.
+#[utoipa::path(
+    put,
+    path = "/api/v1/documents/{document_id}",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    request_body = UpdateDocumentRequest,
+    responses(
+        (status = 200, description = "Document updated", body = DocumentResponse),
+        (status = 404, description = "Document not found"),
+    ),
+    tag = "documents",
+)]
 pub async fn update_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -526,6 +562,18 @@ pub async fn update_document(
 ///
 /// Removes the document from the database and the Tantivy search index.
 /// Response: 204 No Content, or 400 (invalid ID) / 404 on error.
+#[utoipa::path(
+    delete,
+    path = "/api/v1/documents/{document_id}",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 204, description = "Document deleted"),
+        (status = 404, description = "Document not found"),
+    ),
+    tag = "documents",
+)]
 pub async fn delete_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -587,6 +635,18 @@ pub async fn delete_document(
 ///
 /// Query params: `page` (default 1), `page_size` (default 20, max 100), `author_id`, `project_id`.
 /// Response: 200 with `DocumentSearchResponse` containing `results`, `total`, `page`, `page_size`.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents",
+    params(
+        DocumentQuery,
+    ),
+    responses(
+        (status = 200, description = "List of documents", body = DocumentSearchResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "documents",
+)]
 pub async fn list_documents(
     Query(query): Query<DocumentQuery>,
     State(state): State<DocumentState>,

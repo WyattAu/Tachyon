@@ -13,7 +13,7 @@ use tracing::{debug, info, instrument, warn};
 ///
 /// This maps 1:1 to the PostgreSQL `users` schema. Conversion to/from
 /// `tachyon_core::types::user::User` is provided via `From` impls.
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow, utoipa::ToSchema)]
 pub struct UserRecord {
     /// Primary key (UUID v7).
     pub id: uuid::Uuid,

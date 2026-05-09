@@ -88,7 +88,7 @@ pub struct ErrorResponse {
     pub details: Option<BTreeMap<String, String>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct DocumentQuery {
     pub page: Option<usize>,
     pub page_size: Option<usize>,
@@ -97,7 +97,7 @@ pub struct DocumentQuery {
     pub author_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct DocumentResponse {
     pub id: String,
     pub title: String,
@@ -160,7 +160,7 @@ impl From<Document> for DocumentResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct DocumentSearchResponse {
     pub results: Vec<DocumentResponse>,
     pub total: usize,

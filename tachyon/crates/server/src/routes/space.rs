@@ -12,6 +12,8 @@ use tachyon_database::{
     UpdateSpaceMemberRequest, UpdateSpaceRequest,
 };
 use tracing::info;
+#[allow(unused_imports)]
+use utoipa::IntoParams;
 
 #[derive(Clone)]
 pub struct SpaceState {
@@ -22,7 +24,7 @@ pub struct SpaceState {
 // Response / Request Types
 // ============================================================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SpaceResponse {
     pub id: String,
     pub name: String,
@@ -52,7 +54,7 @@ pub struct SpaceMemberResponse {
     pub joined_at: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateSpaceBody {
     pub name: String,
     pub description: Option<String>,
@@ -62,7 +64,7 @@ pub struct CreateSpaceBody {
     pub visibility: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateSpaceBody {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -73,7 +75,7 @@ pub struct UpdateSpaceBody {
     pub sort_order: Option<i32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct SpaceQuery {
     pub parent_id: Option<String>,
     pub visibility: Option<String>,
@@ -113,6 +115,16 @@ pub struct ErrorResponse {
 /// `GET /spaces?owner_id=&parent_id=&visibility=&limit=&offset=`
 ///
 /// Response: 200 with `Vec<SpaceResponse>`, or 500 on error.
+#[utoipa::path(
+    get,
+    path = "/api/v1/spaces",
+    params(SpaceQuery),
+    responses(
+        (status = 200, description = "List of spaces", body = Vec<SpaceResponse>),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "spaces",
+)]
 pub async fn list_spaces(
     Query(query): Query<SpaceQuery>,
     State(state): State<SpaceState>,
@@ -217,6 +229,18 @@ pub async fn list_child_spaces(
 /// `GET /spaces/{space_id}`
 ///
 /// Response: 200 with `SpaceResponse`, or 404 on error.
+#[utoipa::path(
+    get,
+    path = "/api/v1/spaces/{space_id}",
+    params(
+        ("space_id" = String, Path, description = "Space ID"),
+    ),
+    responses(
+        (status = 200, description = "Space found", body = SpaceResponse),
+        (status = 404, description = "Space not found"),
+    ),
+    tag = "spaces",
+)]
 pub async fn get_space(
     Path(space_id): Path<String>,
     State(state): State<SpaceState>,
@@ -255,6 +279,17 @@ pub async fn get_default_space(
 ///
 /// Request body: JSON with `name` (required), optional `description`, `icon`, `color`, `parent_id`, `visibility`.
 /// Response: 201 with `SpaceResponse`, or 400/500 on error.
+#[utoipa::path(
+    post,
+    path = "/api/v1/spaces",
+    request_body = CreateSpaceBody,
+    responses(
+        (status = 200, description = "Space created", body = SpaceResponse),
+        (status = 400, description = "Validation error"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "spaces",
+)]
 pub async fn create_space(
     State(state): State<SpaceState>,
     Json(body): Json<CreateSpaceBody>,
@@ -293,6 +328,19 @@ pub async fn create_space(
 ///
 /// Request body: JSON with optional `name`, `description`, `icon`, `color`, `parent_id`, `visibility`, `sort_order`.
 /// Response: 200 with `SpaceResponse`, or 500 on error.
+#[utoipa::path(
+    put,
+    path = "/api/v1/spaces/{space_id}",
+    params(
+        ("space_id" = String, Path, description = "Space ID"),
+    ),
+    request_body = UpdateSpaceBody,
+    responses(
+        (status = 200, description = "Space updated", body = SpaceResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "spaces",
+)]
 pub async fn update_space(
     Path(space_id): Path<String>,
     State(state): State<SpaceState>,
@@ -326,6 +374,18 @@ pub async fn update_space(
 /// `DELETE /spaces/{space_id}`
 ///
 /// Response: 204 No Content, or 404 on error.
+#[utoipa::path(
+    delete,
+    path = "/api/v1/spaces/{space_id}",
+    params(
+        ("space_id" = String, Path, description = "Space ID"),
+    ),
+    responses(
+        (status = 204, description = "Space deleted"),
+        (status = 404, description = "Space not found"),
+    ),
+    tag = "spaces",
+)]
 pub async fn delete_space(
     Path(space_id): Path<String>,
     State(state): State<SpaceState>,

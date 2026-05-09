@@ -35,7 +35,7 @@ tracing = { workspace = true }
 slug = "0.1"
 
 # OpenAPI schema generation
-utoipa = { version = "5", features = ["chrono"] }
+utoipa = { version = "5", features = ["chrono", "uuid"] }
 
 [features]
 staging = []

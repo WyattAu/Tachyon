@@ -125,6 +125,7 @@ pub mod crdt;
 pub mod email;
 pub mod error;
 pub mod graph_extractor;
+pub mod graphql;
 pub mod middleware;
 pub mod routes;
 pub mod storage;
@@ -367,6 +368,12 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         metrics: Arc::new(crate::middleware::metrics::RequestMetrics::new()),
         api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(60)),
     })
+}
+
+async fn graphql_playground() -> impl axum::response::IntoResponse {
+    axum::response::Html(async_graphql::http::playground_source(
+        async_graphql::http::GraphQLPlaygroundConfig::new("/graphql"),
+    ))
 }
 
 /// Build the full Axum router with all routes, middleware, and state.
@@ -629,6 +636,12 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         );
 
     router = router.merge(swagger_ui);
+
+    // GraphQL endpoint
+    let graphql_schema = graphql::build_schema();
+    router = router
+        .route_service("/graphql", async_graphql_axum::GraphQL::new(graphql_schema))
+        .route("/graphql/playground", get(graphql_playground));
 
     let auth_state = crate::middleware::AuthState::new(config.clone(), pool.clone());
     let auth_layer =

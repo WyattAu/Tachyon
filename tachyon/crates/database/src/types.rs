@@ -12,7 +12,7 @@ use std::collections::HashMap;
 // ============================================================================
 
 /// Database model for session persistence (PostgreSQL)
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, utoipa::ToSchema)]
 pub struct SessionRecord {
     /// Session ID
     pub id: String,
@@ -187,7 +187,7 @@ impl PolicyRecord {
 // ============================================================================
 
 /// Database model for document metadata
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, utoipa::ToSchema)]
 pub struct DocumentMetadata {
     /// Document ID
     pub id: String,
@@ -315,7 +315,7 @@ pub struct SearchIndex {
 // ============================================================================
 
 /// Database model for repository metadata
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, utoipa::ToSchema)]
 pub struct RepositoryMetadata {
     /// Repository ID
     pub id: String,

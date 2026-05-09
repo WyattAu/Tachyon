@@ -6,9 +6,14 @@
 #![allow(dead_code)]
 
 mod error;
+mod marketplace;
 mod sandbox;
 
 pub use error::{PluginRuntimeError, PluginRuntimeResult};
+pub use marketplace::{
+    MarketplaceError, MarketplaceResult, PluginCompatibility, PluginId, PluginInstallStatus,
+    PluginManifest, PluginMarketplace, PluginVersion,
+};
 pub use sandbox::{PluginContext, PluginOutput, PluginSandbox, SandboxConfig};
 
 use serde::{Deserialize, Serialize};

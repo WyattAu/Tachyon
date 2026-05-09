@@ -19,6 +19,8 @@ use sqlx::Row;
 use tachyon_core::{User, UserId, UserRole};
 use tachyon_database::{DatabasePool, RefreshTokenRepository, UserRepository};
 use tracing::{debug, info, instrument, warn};
+#[allow(unused_imports)]
+use utoipa::IntoParams;
 
 // ============================================================================
 // JWT Claims
@@ -172,7 +174,7 @@ pub struct RegisterRequest {
 }
 
 /// Request to create a new user (admin-only, can set role).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateUserRequest {
     /// Username
     pub username: String,
@@ -188,7 +190,7 @@ pub struct CreateUserRequest {
 }
 
 /// Request to update a user.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateUserRequest {
     /// Display name
     pub display_name: Option<String>,
@@ -275,7 +277,7 @@ pub struct AuthenticateResponse {
 }
 
 /// User response (never includes password_hash).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct UserResponse {
     /// User ID
     pub id: String,
@@ -315,7 +317,7 @@ impl From<User> for UserResponse {
 }
 
 /// User list response.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct UserListResponse {
     /// List of users
     pub users: Vec<UserResponse>,
@@ -328,7 +330,7 @@ pub struct UserListResponse {
 }
 
 /// Query parameters for user listing.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct UserQuery {
     /// Page number
     pub page: Option<usize>,
@@ -511,6 +513,17 @@ pub async fn register(
 ///
 /// Unlike `/auth/register`, this endpoint allows setting an arbitrary role
 /// and is intended for admin use.
+#[utoipa::path(
+    post,
+    path = "/api/v1/users",
+    request_body = CreateUserRequest,
+    responses(
+        (status = 200, description = "User created", body = UserResponse),
+        (status = 400, description = "Validation error"),
+        (status = 409, description = "Conflict"),
+    ),
+    tag = "users",
+)]
 pub async fn create_user(
     State(state): State<UserState>,
     Json(req): Json<CreateUserRequest>,
@@ -589,6 +602,18 @@ pub async fn create_user(
 }
 
 /// Get a user by ID.
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/{user_id}",
+    params(
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 200, description = "User found", body = UserResponse),
+        (status = 404, description = "User not found"),
+    ),
+    tag = "users",
+)]
 pub async fn get_user(
     Path(user_id): Path<String>,
     State(state): State<UserState>,
@@ -617,6 +642,19 @@ pub async fn get_user(
 }
 
 /// Update a user.
+#[utoipa::path(
+    put,
+    path = "/api/v1/users/{user_id}",
+    params(
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    request_body = UpdateUserRequest,
+    responses(
+        (status = 200, description = "User updated", body = UserResponse),
+        (status = 404, description = "User not found"),
+    ),
+    tag = "users",
+)]
 pub async fn update_user(
     Path(user_id): Path<String>,
     State(state): State<UserState>,
@@ -691,6 +729,16 @@ pub async fn delete_user(
 }
 
 /// List all users with pagination.
+#[utoipa::path(
+    get,
+    path = "/api/v1/users",
+    params(UserQuery),
+    responses(
+        (status = 200, description = "List of users", body = UserListResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "users",
+)]
 pub async fn list_users(
     Query(query): Query<UserQuery>,
     State(state): State<UserState>,
@@ -728,6 +776,15 @@ pub async fn list_users(
 ///
 /// Requires `Authorization: Bearer <token>` header.
 /// Response: 200 with `UserResponse`, or 401/404 on error.
+#[utoipa::path(
+    get,
+    path = "/api/v1/auth/me",
+    responses(
+        (status = 200, description = "Current user profile", body = UserResponse),
+        (status = 401, description = "Unauthorized"),
+    ),
+    tag = "users",
+)]
 pub async fn get_me(
     State(state): State<UserState>,
     headers: HeaderMap,

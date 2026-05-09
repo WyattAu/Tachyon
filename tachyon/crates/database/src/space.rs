@@ -33,7 +33,7 @@ const SPACE_SELECT_SQL: &str = r#"
 /// Spaces can be nested via `parent_id` and scoped to a specific owner
 /// or shared with members. Each space carries display metadata (icon,
 /// color) and a JSON `settings` blob.
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, utoipa::ToSchema)]
 pub struct Space {
     pub id: String,
     pub name: String,
