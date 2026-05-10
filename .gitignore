@@ -44,3 +44,17 @@ tachyon/crates/desktop/dist/
 # Editor JS dependencies (npm)
 tachyon/crates/frontend/editor/node_modules/
 tachyon/crates/frontend/editor/package-lock.json
+
+# Tantivy search index (runtime artifact)
+.tachyon/search_index/
+tachyon/.tachyon/search_index/
+
+# Cargo config (machine-specific)
+tachyon/.cargo/config.toml
+
+# Direnv profile symlinks (machine-specific)
+.direnv/flake-profile
+.direnv/flake-profile-*-link
+
+# GitHub workflow drafts
+.github/workflows/cd-new.yml
