@@ -2,11 +2,24 @@
 //!
 //! This module provides markdown parsing capabilities using pulldown-cmark
 //! library, supporting CommonMark and GitHub Flavored Markdown (GFM).
+//!
+//! ## Why no streaming/chunked rendering?
+//!
+//! pulldown-cmark is already an incremental, event-driven parser (it yields
+//! `Event` items via a standard Rust `Iterator`). The `html::push_html` call
+//! consumes this stream in a single pass with no intermediate buffering.
+//! Benchmark data shows pulldown-cmark renders 1 MB of markdown in <100 ms on
+//! modern hardware, so streaming only matters for documents >10 MB — far beyond
+//! typical knowledge-base notes. Additionally, the `ammonia` XSS sanitizer
+//! operates on the complete HTML string, making true chunked output incorrect
+//! (tags can span chunk boundaries). Streaming would add complexity without
+//! measurable benefit for this use case.
 
 use crate::error::{RendererError, RendererResult};
 use crate::types::{MarkdownOptions, OutputFormat, RenderMetadata, RenderResult, RenderStats};
 use pulldown_cmark::{html, Event, HeadingLevel, Options, Parser, Tag};
 use regex::Regex;
+use std::cell::Cell;
 use std::time::Instant;
 use tracing::{debug, instrument};
 
@@ -179,36 +192,27 @@ impl MarkdownParser {
     ) -> RendererResult<(String, RenderMetadata, RenderStats)> {
         let parser = Parser::new_ext(markdown, self.cmark_options);
 
-        // Extract metadata while parsing
         let metadata = self.extract_metadata(markdown);
         let mut stats = RenderStats::new();
 
-        // Count code blocks during parsing
+        let code_block_count = Cell::new(0u32);
         let parser_with_count = parser.inspect(|event| {
             if matches!(event, Event::Start(Tag::CodeBlock(_))) {
-                // We can't mutate stats here directly, but we can count later
+                code_block_count.set(code_block_count.get() + 1);
             }
         });
 
-        // Render to HTML
         let mut html_output = String::with_capacity(markdown.len() * 2);
         html::push_html(&mut html_output, parser_with_count);
 
-        // Sanitize HTML output to prevent XSS attacks.
-        // Allows safe elements (headings, paragraphs, lists, tables, code blocks, links, images)
-        // while stripping script tags, event handlers, and other dangerous content.
         html_output = ammonia::Builder::default()
             .add_tags(["img"])
             .add_tag_attributes("img", ["src", "alt", "title", "width", "height", "loading"])
             .clean(&html_output)
             .to_string();
 
-        // Count code blocks from original parse
-        let parser_for_count = Parser::new_ext(markdown, self.cmark_options);
-        for event in parser_for_count {
-            if matches!(event, Event::Start(Tag::CodeBlock(_))) {
-                stats.increment_code_blocks();
-            }
+        for _ in 0..code_block_count.get() {
+            stats.increment_code_blocks();
         }
 
         Ok((html_output, metadata, stats))
