@@ -88,6 +88,7 @@ pub struct NodeQuery {
 // ============================================================================
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateNodeRequest {
     pub name: String,
     pub node_type: Option<String>,
@@ -102,6 +103,7 @@ pub struct CreateNodeRequest {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateNodeRequest {
     pub name: Option<String>,
     pub slug: Option<String>,
@@ -113,6 +115,7 @@ pub struct UpdateNodeRequest {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateEdgeRequest {
     pub source_id: String,
     pub target_id: String,
@@ -126,6 +129,7 @@ pub struct CreateEdgeRequest {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct GraphQueryRequest {
     pub source_id: String,
     pub direction: Option<String>,

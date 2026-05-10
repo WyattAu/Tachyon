@@ -54,6 +54,7 @@ pub struct OrganizationMemberResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateOrganizationBody {
     pub name: String,
     pub description: Option<String>,
@@ -64,6 +65,7 @@ pub struct CreateOrganizationBody {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateOrganizationBody {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -83,12 +85,14 @@ pub struct OrganizationQuery {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct AddMemberBody {
     pub user_id: String,
     pub role: Option<String>,
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateMemberBody {
     pub role: String,
 }

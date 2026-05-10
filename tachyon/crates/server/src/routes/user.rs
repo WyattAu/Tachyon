@@ -175,6 +175,7 @@ pub struct RegisterRequest {
 
 /// Request to create a new user (admin-only, can set role).
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateUserRequest {
     /// Username
     pub username: String,
@@ -191,6 +192,7 @@ pub struct CreateUserRequest {
 
 /// Request to update a user.
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateUserRequest {
     /// Display name
     pub display_name: Option<String>,

@@ -174,6 +174,7 @@ impl From<SavedSearch> for SavedSearchResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateSavedSearchBody {
     pub name: String,
     pub query: String,
@@ -181,6 +182,7 @@ pub struct CreateSavedSearchBody {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateSavedSearchBody {
     pub name: Option<String>,
     pub query: Option<String>,

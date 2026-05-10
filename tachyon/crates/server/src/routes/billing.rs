@@ -153,6 +153,7 @@ pub struct UsageMetrics {
 // ============================================================================
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateSubscriptionRequest {
     pub organization_id: String,
     pub plan: String,
@@ -205,6 +206,7 @@ pub struct BillingErrorResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateMandateRequest {
     pub organization_id: String,
     pub return_url: String,
@@ -224,6 +226,7 @@ pub struct MandateStatusResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreatePaymentRequest {
     pub mandate_id: String,
     pub organization_id: String,
@@ -244,6 +247,7 @@ pub struct PaymentStatusResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ChangePlanRequest {
     pub organization_id: String,
     pub new_plan: String,

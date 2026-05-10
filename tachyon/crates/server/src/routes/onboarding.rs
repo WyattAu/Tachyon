@@ -17,6 +17,7 @@ pub struct OnboardingStatusResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CompleteStepRequest {
     pub step_id: String,
 }

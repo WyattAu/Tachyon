@@ -66,6 +66,7 @@ impl From<tachyon_database::Plugin> for PluginResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreatePluginBody {
     pub name: String,
     pub description: Option<String>,
@@ -81,6 +82,7 @@ pub struct CreatePluginBody {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdatePluginBody {
     pub description: Option<String>,
     pub version: Option<String>,
@@ -360,6 +362,7 @@ pub async fn delete_plugin(
 // ============================================================================
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct InvokeHookRequest {
     pub hook: String,
     pub input: serde_json::Value,

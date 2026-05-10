@@ -22,6 +22,7 @@ use super::{
 };
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateDocumentRequest {
     pub title: String,
     #[serde(default)]
@@ -34,6 +35,7 @@ pub struct CreateDocumentRequest {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateDocumentRequest {
     pub title: Option<String>,
     pub content: Option<String>,

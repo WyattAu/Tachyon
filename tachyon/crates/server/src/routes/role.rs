@@ -24,6 +24,7 @@ impl RoleState {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateRoleRequest {
     pub name: String,
     pub description: Option<String>,
@@ -31,6 +32,7 @@ pub struct CreateRoleRequest {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateRoleRequest {
     pub name: Option<String>,
     pub description: Option<String>,

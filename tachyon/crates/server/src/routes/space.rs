@@ -55,6 +55,7 @@ pub struct SpaceMemberResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateSpaceBody {
     pub name: String,
     pub description: Option<String>,
@@ -65,6 +66,7 @@ pub struct CreateSpaceBody {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateSpaceBody {
     pub name: Option<String>,
     pub description: Option<String>,

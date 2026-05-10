@@ -30,6 +30,7 @@ impl TeamState {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateTeamRequest {
     pub name: String,
     pub slug: String,
@@ -37,6 +38,7 @@ pub struct CreateTeamRequest {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateTeamRequest {
     pub name: Option<String>,
     pub slug: Option<String>,

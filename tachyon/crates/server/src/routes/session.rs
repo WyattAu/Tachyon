@@ -26,6 +26,7 @@ impl SessionState {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateSessionRequest {
     pub user_id: String,
     pub metadata: Option<serde_json::Value>,

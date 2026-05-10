@@ -107,6 +107,7 @@ pub struct CommentAnchor {
 // ============================================================================
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdatePresenceRequest {
     pub document_id: String,
     pub user_id: String,
@@ -122,6 +123,7 @@ pub struct PresenceResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateCommentRequest {
     pub document_id: String,
     pub content: String,
@@ -130,6 +132,7 @@ pub struct CreateCommentRequest {
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateCommentRequest {
     pub content: Option<String>,
     pub status: Option<CommentStatus>,
