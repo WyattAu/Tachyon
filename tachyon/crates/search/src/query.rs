@@ -416,6 +416,7 @@ impl QueryEngine {
 mod tests {
     use super::*;
     use crate::types::SearchDocument;
+    use proptest::prelude::*;
     use tachyon_core::id::{DocumentId, UserId};
     use tempfile::TempDir;
 
@@ -565,5 +566,78 @@ mod tests {
 
         let results = engine.suggest("   ", 10).await.unwrap();
         assert!(results.is_empty());
+    }
+
+    async fn run_roundtrip_via_engine(title: String, content_words: Vec<String>) {
+        let temp_dir = TempDir::new().unwrap();
+        let index_path = temp_dir.path().to_path_buf();
+        let index_manager = IndexManager::new(index_path).await.unwrap();
+
+        let content = content_words.join(" ");
+        let search_word = &content_words[0];
+
+        let doc = SearchDocument::new(
+            DocumentId::new(),
+            title.clone(),
+            content.clone(),
+            UserId::new(),
+        );
+        index_manager.index_document(&doc).await.unwrap();
+
+        let engine = QueryEngine::new(index_manager);
+        let request = SearchRequest::new(search_word);
+        let response = engine.search(&request).await.unwrap();
+
+        assert!(
+            !response.results.is_empty(),
+            "Search for '{}' in content '{}' returned no results",
+            search_word,
+            content
+        );
+    }
+
+    async fn run_empty_query_test() {
+        let temp_dir = TempDir::new().unwrap();
+        let index_path = temp_dir.path().to_path_buf();
+        let index_manager = IndexManager::new(index_path).await.unwrap();
+
+        let doc = SearchDocument::new(
+            DocumentId::new(),
+            "Test".to_string(),
+            "Some content here".to_string(),
+            UserId::new(),
+        );
+        index_manager.index_document(&doc).await.unwrap();
+
+        let engine = QueryEngine::new(index_manager);
+        let request = SearchRequest::new("");
+        let result = engine.search(&request).await;
+
+        assert!(result.is_err(), "Empty query should return an error");
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(20))]
+
+        #[test]
+        fn prop_index_search_roundtrip_via_query_engine(
+            title in "[a-zA-Z]{1,100}",
+            content_words in proptest::collection::vec("[a-zA-Z]{3,10}", 2..10),
+        ) {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(run_roundtrip_via_engine(title, content_words));
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(20))]
+
+        #[test]
+        fn prop_empty_query_returns_empty(
+            _dummy in 0u8..1u8,
+        ) {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(run_empty_query_test());
+        }
     }
 }

@@ -573,6 +573,7 @@ impl DocumentBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn test_document_status_transitions() {
@@ -702,5 +703,79 @@ mod tests {
         let mut stats = stats;
         stats.increment_read();
         assert_eq!(stats.read_count, 1);
+    }
+
+    proptest! {
+        #[test]
+        fn prop_valid_transitions_are_symmetric(start in prop::sample::select(vec![
+            DocumentStatus::Draft,
+            DocumentStatus::Published,
+            DocumentStatus::Archived,
+            DocumentStatus::Deleted,
+        ])) {
+            for target in start.valid_transitions() {
+                assert!(start.can_transition_to(target));
+            }
+            let all_statuses = [
+                DocumentStatus::Draft,
+                DocumentStatus::Published,
+                DocumentStatus::Archived,
+                DocumentStatus::Deleted,
+            ];
+            for status in &all_statuses {
+                let can = start.can_transition_to(*status);
+                let in_list = start.valid_transitions().contains(status);
+                assert_eq!(can, in_list);
+            }
+        }
+
+        #[test]
+        fn prop_transition_produces_valid_status(start in prop::sample::select(vec![
+            DocumentStatus::Draft,
+            DocumentStatus::Published,
+            DocumentStatus::Archived,
+            DocumentStatus::Deleted,
+        ])) {
+            let doc_id = crate::id::generate_document_id();
+            let user_id = crate::id::generate_user_id();
+            let content = DocumentContent::text("test".to_string());
+            let mut doc = Document::new(doc_id, "test".to_string(), user_id, content);
+            doc.status = start;
+
+            let transitions: Vec<Box<dyn FnOnce(&mut Document) -> Result<(), TachyonError>>> = vec![
+                Box::new(|d| d.publish()),
+                Box::new(|d| d.archive()),
+                Box::new(|d| d.delete()),
+                Box::new(|d| d.restore()),
+            ];
+
+            for transition in transitions {
+                let doc_id2 = crate::id::generate_document_id();
+                let user_id2 = crate::id::generate_user_id();
+                let content2 = DocumentContent::text("test".to_string());
+                let mut doc2 = Document::new(doc_id2, "test".to_string(), user_id2, content2);
+                doc2.status = start;
+                let result = transition(&mut doc2);
+                if result.is_ok() {
+                    let all_statuses = [
+                        DocumentStatus::Draft,
+                        DocumentStatus::Published,
+                        DocumentStatus::Archived,
+                        DocumentStatus::Deleted,
+                    ];
+                    assert!(all_statuses.contains(&doc2.status),
+                        "Transition from {:?} produced invalid status {:?}", start, doc2.status);
+                }
+            }
+        }
+
+        #[test]
+        fn prop_title_preserved_in_new(title in ".{0,1000}") {
+            let doc_id = crate::id::generate_document_id();
+            let user_id = crate::id::generate_user_id();
+            let content = DocumentContent::text("content".to_string());
+            let doc = Document::new(doc_id, title.clone(), user_id, content);
+            assert_eq!(doc.metadata.title, title);
+        }
     }
 }

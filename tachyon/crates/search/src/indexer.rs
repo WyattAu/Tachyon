@@ -494,6 +494,7 @@ impl IndexManager {
 mod tests {
     use super::*;
     use chrono::Utc;
+    use proptest::prelude::*;
     use tachyon_core::id::{DocumentId, RepositoryId, UserId};
     use tempfile::TempDir;
 
@@ -527,5 +528,53 @@ mod tests {
 
         let result = index_manager.index_document(&document).await;
         assert!(result.is_ok());
+    }
+
+    async fn run_roundtrip_test(title: String, content_words: Vec<String>) {
+        let temp_dir = TempDir::new().unwrap();
+        let index_path = temp_dir.path().to_path_buf();
+        let index_manager = IndexManager::new(index_path).await.unwrap();
+
+        let content = content_words.join(" ");
+        let unique_word = &content_words[0];
+
+        let doc = crate::types::SearchDocument::new(
+            DocumentId::new(),
+            title.clone(),
+            content.clone(),
+            UserId::new(),
+        );
+        index_manager.index_document(&doc).await.unwrap();
+
+        let reader = index_manager.reader().unwrap();
+        let searcher = reader.searcher();
+        let schema = index_manager.schema();
+        let content_field = schema.get_field("content").unwrap();
+
+        let query_parser =
+            tantivy::query::QueryParser::for_index(index_manager.index(), vec![content_field]);
+        let query = query_parser.parse_query(unique_word).unwrap();
+        let top_docs: Vec<(f32, _)> = searcher
+            .search(&query, &tantivy::collector::TopDocs::with_limit(10))
+            .unwrap();
+
+        assert!(
+            !top_docs.is_empty(),
+            "Search for word '{}' in content '{}' returned no results",
+            unique_word,
+            content
+        );
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(20))]
+        #[test]
+        fn prop_index_search_roundtrip(
+            title in "[a-zA-Z]{1,100}",
+            content_words in proptest::collection::vec("[a-zA-Z]{3,10}", 2..10),
+        ) {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(run_roundtrip_test(title, content_words));
+        }
     }
 }

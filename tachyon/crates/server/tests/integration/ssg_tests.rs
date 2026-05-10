@@ -239,3 +239,212 @@ async fn test_ssg_config_response_shape() {
     let body = common::read_body_json(response).await;
     assert!(body.is_object(), "Response should be a JSON object");
 }
+
+#[tokio::test]
+async fn test_ssg_config_contains_expected_fields() {
+    if common::skip_without_db() {
+        println!("Skipping: TEST_DATABASE_URL not set");
+        return;
+    }
+
+    let app = common::create_test_app().await;
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/ssg/config")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .expect("Request failed");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = common::read_body_json(response).await;
+
+    assert!(
+        body["site_title"].is_string(),
+        "site_title should be a string"
+    );
+    assert!(
+        !body["site_title"].as_str().unwrap().is_empty(),
+        "site_title should not be empty"
+    );
+    assert!(
+        body["site_description"].is_string(),
+        "site_description should be a string"
+    );
+    assert!(body["base_url"].is_string(), "base_url should be a string");
+    assert!(body["theme"].is_string(), "theme should be a string");
+    assert!(body["nav_links"].is_array(), "nav_links should be an array");
+}
+
+#[tokio::test]
+async fn test_ssg_config_consistency() {
+    if common::skip_without_db() {
+        println!("Skipping: TEST_DATABASE_URL not set");
+        return;
+    }
+
+    let app = common::create_test_app().await;
+
+    let response1 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/ssg/config")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .expect("Request failed");
+
+    let response2 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/ssg/config")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .expect("Request failed");
+
+    let body1 = common::read_body_json(response1).await;
+    let body2 = common::read_body_json(response2).await;
+
+    assert_eq!(
+        body1["site_title"], body2["site_title"],
+        "Config should be consistent across requests"
+    );
+    assert_eq!(
+        body1["theme"], body2["theme"],
+        "Theme should be consistent across requests"
+    );
+}
+
+#[tokio::test]
+async fn test_build_site_missing_body() {
+    if common::skip_without_db() {
+        println!("Skipping: TEST_DATABASE_URL not set");
+        return;
+    }
+
+    let app = common::create_test_app().await;
+    let unique = uuid::Uuid::new_v4();
+
+    let auth = common::register_and_login(
+        &app,
+        &format!("ssgnobody_{}", unique),
+        &format!("ssgnobody_{}@test.com", unique),
+        "Password123!",
+    )
+    .await
+    .expect("Failed to register/login test user");
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/ssg/build")
+                .header("Content-Type", "application/json")
+                .header("Authorization", common::auth_header(&auth.token))
+                .body(Body::from("{}"))
+                .unwrap(),
+        )
+        .await
+        .expect("Request failed");
+
+    assert!(
+        response.status() == StatusCode::BAD_REQUEST
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR
+            || response.status() == StatusCode::OK,
+        "Expected BAD_REQUEST (no documents), INTERNAL_SERVER_ERROR, or OK, got {}",
+        response.status()
+    );
+}
+
+#[tokio::test]
+async fn test_build_site_invalid_json() {
+    if common::skip_without_db() {
+        println!("Skipping: TEST_DATABASE_URL not set");
+        return;
+    }
+
+    let app = common::create_test_app().await;
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/ssg/build")
+                .header("Content-Type", "application/json")
+                .body(Body::from("{{invalid json"))
+                .unwrap(),
+        )
+        .await
+        .expect("Request failed");
+
+    assert!(
+        response.status() == StatusCode::BAD_REQUEST
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY,
+        "Expected BAD_REQUEST for invalid JSON, got {}",
+        response.status()
+    );
+}
+
+#[tokio::test]
+async fn test_ssg_build_response_shape() {
+    if common::skip_without_db() {
+        println!("Skipping: TEST_DATABASE_URL not set");
+        return;
+    }
+
+    let app = common::create_test_app().await;
+    let unique = uuid::Uuid::new_v4();
+
+    let auth = common::register_and_login(
+        &app,
+        &format!("ssgshape_{}", unique),
+        &format!("ssgshape_{}@test.com", unique),
+        "Password123!",
+    )
+    .await
+    .expect("Failed to register/login test user");
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/ssg/build")
+                .header("Content-Type", "application/json")
+                .header("Authorization", common::auth_header(&auth.token))
+                .body(Body::from(
+                    json!({
+                        "title": &format!("Shape Test {}", unique),
+                        "base_url": "https://example.com",
+                        "limit": 1
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .expect("Request failed");
+
+    if response.status() == StatusCode::OK {
+        let body = common::read_body_json(response).await;
+        assert!(body["success"].is_boolean(), "success should be a boolean");
+        assert!(
+            body["result"].is_object(),
+            "result should be an object when build succeeds"
+        );
+    }
+}

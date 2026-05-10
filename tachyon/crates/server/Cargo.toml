@@ -102,6 +102,7 @@ staging = []
 tokio-test = { workspace = true }
 wiremock = { workspace = true }
 serial_test = { workspace = true }
+proptest = { workspace = true }
 pretty_assertions = "1.4"
 assert_matches = "1.5"
 jsonwebtoken = "9"

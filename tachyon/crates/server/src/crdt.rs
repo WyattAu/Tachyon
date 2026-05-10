@@ -84,6 +84,7 @@ impl Default for CrdtDocumentManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     fn make_update(text: &str) -> Vec<u8> {
         let doc = Doc::new();
@@ -276,5 +277,110 @@ mod tests {
         let manager = CrdtDocumentManager::default();
         let _ = manager.get_or_create("default-doc");
         assert!(manager.get_text("default-doc").is_ok());
+    }
+
+    proptest! {
+        #[test]
+        fn prop_concurrent_insert_convergence(
+            part_a in ".{0,200}",
+            part_b in ".{0,200}",
+        ) {
+            let doc1 = Doc::new();
+            let doc2 = Doc::new();
+            let text1 = doc1.get_or_insert_text("content");
+            let text2 = doc2.get_or_insert_text("content");
+
+            {
+                let mut txn = doc1.transact_mut();
+                text1.insert(&mut txn, 0, &part_a);
+            }
+            {
+                let mut txn = doc2.transact_mut();
+                text2.insert(&mut txn, 0, &part_b);
+            }
+
+            let sv1 = doc1.transact().state_vector();
+            let sv2 = doc2.transact().state_vector();
+
+            let update1 = doc1.transact().encode_state_as_update_v1(&sv2);
+            let update2 = doc2.transact().encode_state_as_update_v1(&sv1);
+
+            {
+                let mut txn = doc1.transact_mut();
+                let u = yrs::Update::decode_v1(&update2).unwrap();
+                txn.apply_update(u).unwrap();
+            }
+            {
+                let mut txn = doc2.transact_mut();
+                let u = yrs::Update::decode_v1(&update1).unwrap();
+                txn.apply_update(u).unwrap();
+            }
+
+            let final1 = doc1.get_or_insert_text("content");
+            let final2 = doc2.get_or_insert_text("content");
+            let text_val1 = final1.get_string(&doc1.transact());
+            let text_val2 = final2.get_string(&doc2.transact());
+
+            assert_eq!(text_val1, text_val2,
+                "CRDT convergence failed after concurrent inserts");
+        }
+
+        #[test]
+        fn prop_concurrent_delete_convergence(
+            initial in "[a-zA-Z0-9]{20,200}",
+            delete_prefix_len in 0usize..5usize,
+        ) {
+            let doc1 = Doc::new();
+            let doc2 = Doc::new();
+            let text1 = doc1.get_or_insert_text("content");
+            let text2 = doc2.get_or_insert_text("content");
+
+            {
+                let mut txn = doc1.transact_mut();
+                text1.insert(&mut txn, 0, &initial);
+            }
+            {
+                let mut txn = doc2.transact_mut();
+                text2.insert(&mut txn, 0, &initial);
+            }
+
+            let prefix_del = delete_prefix_len.min(initial.len());
+            let suffix_del = (initial.len() - prefix_del).min(3);
+
+            {
+                let mut txn = doc1.transact_mut();
+                text1.remove_range(&mut txn, 0, prefix_del as u32);
+            }
+            {
+                let mut txn = doc2.transact_mut();
+                let start = (initial.len() - suffix_del) as u32;
+                text2.remove_range(&mut txn, start, suffix_del as u32);
+            }
+
+            let sv1 = doc1.transact().state_vector();
+            let sv2 = doc2.transact().state_vector();
+
+            let update1 = doc1.transact().encode_state_as_update_v1(&sv2);
+            let update2 = doc2.transact().encode_state_as_update_v1(&sv1);
+
+            {
+                let mut txn = doc1.transact_mut();
+                let u = yrs::Update::decode_v1(&update2).unwrap();
+                txn.apply_update(u).unwrap();
+            }
+            {
+                let mut txn = doc2.transact_mut();
+                let u = yrs::Update::decode_v1(&update1).unwrap();
+                txn.apply_update(u).unwrap();
+            }
+
+            let final1 = doc1.get_or_insert_text("content");
+            let final2 = doc2.get_or_insert_text("content");
+            let text_val1 = final1.get_string(&doc1.transact());
+            let text_val2 = final2.get_string(&doc2.transact());
+
+            assert_eq!(text_val1, text_val2,
+                "CRDT convergence failed after concurrent deletes");
+        }
     }
 }
