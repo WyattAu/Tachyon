@@ -25,18 +25,13 @@ impl SessionState {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateSessionRequest {
     pub user_id: String,
     pub metadata: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ValidateSessionRequest {
-    pub session_id: String,
-}
-
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SessionResponse {
     pub id: String,
     pub user_id: String,
@@ -45,13 +40,13 @@ pub struct SessionResponse {
     pub created_at: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SessionListResponse {
     pub sessions: Vec<SessionResponse>,
     pub total: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SessionErrorResponse {
     pub code: String,
     pub message: String,
@@ -63,6 +58,18 @@ pub struct SessionErrorResponse {
 ///
 /// Request body: JSON with `user_id` (required), optional `metadata`.
 /// Response: 200 with `SessionResponse`, or 400/500 on error.
+#[utoipa::path(
+    post,
+    path = "/sessions",
+    request_body(content = CreateSessionRequest, description = "Session creation request"),
+    responses(
+        (status = 200, description = "Session created", body = SessionResponse),
+        (status = 400, description = "Invalid user ID"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "sessions",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_session(
     State(state): State<SessionState>,
     Json(req): Json<CreateSessionRequest>,
@@ -116,6 +123,21 @@ pub async fn create_session(
 /// `GET /sessions/{session_id}`
 ///
 /// Response: 200 with `SessionResponse`, or 400/404/410 (expired) on error.
+#[utoipa::path(
+    get,
+    path = "/sessions/{session_id}",
+    params(
+        ("session_id" = String, Path, description = "Session ID"),
+    ),
+    responses(
+        (status = 200, description = "Session details", body = SessionResponse),
+        (status = 400, description = "Invalid session ID"),
+        (status = 404, description = "Session not found"),
+        (status = 410, description = "Session expired"),
+    ),
+    tag = "sessions",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_session(
     Path(session_id): Path<String>,
     State(state): State<SessionState>,
@@ -167,6 +189,19 @@ pub async fn get_session(
 /// `GET /sessions/{session_id}/validate`
 ///
 /// Response: 200 with `{"valid": bool, "session_id": string}`.
+#[utoipa::path(
+    get,
+    path = "/sessions/{session_id}/validate",
+    params(
+        ("session_id" = String, Path, description = "Session ID"),
+    ),
+    responses(
+        (status = 200, description = "Validation result", body = serde_json::Value),
+        (status = 400, description = "Invalid session ID"),
+    ),
+    tag = "sessions",
+    security(("bearer_auth" = [])),
+)]
 pub async fn validate_session(
     Path(session_id): Path<String>,
     State(state): State<SessionState>,
@@ -206,6 +241,20 @@ pub async fn validate_session(
 /// `DELETE /sessions/{session_id}`
 ///
 /// Response: 204 No Content, or 400/404 on error.
+#[utoipa::path(
+    delete,
+    path = "/sessions/{session_id}",
+    params(
+        ("session_id" = String, Path, description = "Session ID"),
+    ),
+    responses(
+        (status = 204, description = "Session revoked"),
+        (status = 400, description = "Invalid session ID"),
+        (status = 404, description = "Session not found"),
+    ),
+    tag = "sessions",
+    security(("bearer_auth" = [])),
+)]
 pub async fn revoke_session(
     Path(session_id): Path<String>,
     State(state): State<SessionState>,
@@ -242,6 +291,19 @@ pub async fn revoke_session(
 /// `GET /users/{user_id}/sessions`
 ///
 /// Response: 200 with `SessionListResponse` containing `sessions` and `total`, or 500 on error.
+#[utoipa::path(
+    get,
+    path = "/users/{user_id}/sessions",
+    params(
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 200, description = "List of active sessions", body = SessionListResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "sessions",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_sessions(
     Path(user_id): Path<String>,
     State(state): State<SessionState>,
@@ -279,6 +341,19 @@ pub async fn list_sessions(
 /// `DELETE /users/{user_id}/sessions`
 ///
 /// Response: 200 with `{"success": true, "revoked_count": N}`, or 500 on error.
+#[utoipa::path(
+    delete,
+    path = "/users/{user_id}/sessions",
+    params(
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 200, description = "All sessions revoked", body = serde_json::Value),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "sessions",
+    security(("bearer_auth" = [])),
+)]
 pub async fn revoke_all_sessions(
     Path(user_id): Path<String>,
     State(state): State<SessionState>,

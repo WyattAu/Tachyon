@@ -11,13 +11,13 @@ pub struct ConflictState {
     pub pool: DatabasePool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct ResolveConflictRequest {
     pub resolution: String,
     pub content: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ConflictInfo {
     pub document_id: String,
     pub has_conflict: bool,
@@ -27,7 +27,7 @@ pub struct ConflictInfo {
     pub merge_result: Option<MergeResultInfo>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct MergeResultInfo {
     pub status: String,
     pub content: String,
@@ -39,6 +39,20 @@ pub struct MergeResultInfo {
 /// `GET /api/v1/documents/{document_id}/conflict`
 ///
 /// Returns whether a conflict is detected and, if so, a 3-way merge result.
+#[utoipa::path(
+    get,
+    path = "/documents/{document_id}/conflict",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "Conflict information", body = ConflictInfo),
+        (status = 400, description = "Invalid document ID"),
+        (status = 404, description = "Document not found"),
+    ),
+    tag = "documents",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_conflict_info(
     Path(document_id): Path<String>,
     axum::extract::State(state): axum::extract::State<ConflictState>,
@@ -112,6 +126,22 @@ pub async fn get_conflict_info(
 ///
 /// Accepts a resolution strategy: `ours`, `theirs`, or `manual` (requires `content`).
 /// Clears the conflict flag on the document.
+#[utoipa::path(
+    post,
+    path = "/documents/{document_id}/conflict/resolve",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    request_body(content = ResolveConflictRequest, description = "Resolution strategy"),
+    responses(
+        (status = 200, description = "Conflict resolved", body = serde_json::Value),
+        (status = 400, description = "Invalid request or document ID"),
+        (status = 404, description = "Document not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "documents",
+    security(("bearer_auth" = [])),
+)]
 pub async fn resolve_conflict(
     Path(document_id): Path<String>,
     axum::extract::State(state): axum::extract::State<ConflictState>,
@@ -212,7 +242,7 @@ pub async fn resolve_conflict(
     })))
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
     pub code: String,
     pub message: String,

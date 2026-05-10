@@ -718,7 +718,7 @@ pub struct CatalogStats {
 }
 
 /// Request to create a new project
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CreateProjectRequest {
     /// Project name
     pub name: String,
@@ -782,7 +782,7 @@ impl CreateProjectRequest {
 }
 
 /// Request to create a new component
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CreateComponentRequest {
     /// Component name
     pub name: String,

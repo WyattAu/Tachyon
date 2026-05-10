@@ -115,7 +115,7 @@ pub struct CreatePluginRequest {
 }
 
 /// Update an existing plugin record
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, utoipa::ToSchema)]
 pub struct UpdatePluginRequest {
     pub description: Option<String>,
     pub version: Option<String>,

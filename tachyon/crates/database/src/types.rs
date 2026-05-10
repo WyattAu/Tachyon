@@ -482,7 +482,7 @@ pub struct ApiSpec {
 // ============================================================================
 
 /// Database model for knowledge graph nodes
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, utoipa::ToSchema)]
 pub struct GraphNode {
     /// Node ID
     pub id: String,
@@ -519,7 +519,7 @@ pub struct GraphNode {
 }
 
 /// Database model for knowledge graph edges
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, utoipa::ToSchema)]
 pub struct GraphEdge {
     /// Edge ID
     pub id: String,

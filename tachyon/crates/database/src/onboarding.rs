@@ -5,7 +5,7 @@ use sqlx::Row;
 use tracing::instrument;
 
 /// A single step in the onboarding flow.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OnboardingStep {
     /// Machine-readable step identifier (e.g. `create_first_document`).
     pub id: String,

@@ -9,6 +9,14 @@ mod error;
 mod marketplace;
 mod sandbox;
 
+#[cfg(feature = "registry-client")]
+pub mod registry_client;
+
+#[cfg(feature = "registry-client")]
+pub use registry_client::{
+    PluginDownloadResponse, PluginListResponse, RegistryClient, RegistryConfig, SearchQuery,
+};
+
 pub use error::{PluginRuntimeError, PluginRuntimeResult};
 pub use marketplace::{
     MarketplaceError, MarketplaceResult, PluginCompatibility, PluginId, PluginInstallStatus,

@@ -23,21 +23,21 @@ impl RoleState {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateRoleRequest {
     pub name: String,
     pub description: Option<String>,
     pub permissions: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateRoleRequest {
     pub name: Option<String>,
     pub description: Option<String>,
     pub permissions: Option<Vec<String>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct RoleResponse {
     pub id: i64,
     pub name: String,
@@ -63,7 +63,7 @@ impl From<RoleRecord> for RoleResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
     pub code: String,
     pub message: String,
@@ -72,6 +72,16 @@ pub struct ErrorResponse {
 /// List all roles.
 ///
 /// `GET /api/v1/roles`
+#[utoipa::path(
+    get,
+    path = "/roles",
+    responses(
+        (status = 200, description = "List of roles", body = Vec<RoleResponse>),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "roles",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_roles(
     State(state): State<RoleState>,
 ) -> Result<Json<Vec<RoleResponse>>, (StatusCode, Json<ErrorResponse>)> {
@@ -93,6 +103,19 @@ pub async fn list_roles(
 /// Get a role by ID.
 ///
 /// `GET /api/v1/roles/{role_id}`
+#[utoipa::path(
+    get,
+    path = "/roles/{role_id}",
+    params(
+        ("role_id" = i64, Path, description = "Role ID"),
+    ),
+    responses(
+        (status = 200, description = "Role details", body = RoleResponse),
+        (status = 404, description = "Role not found"),
+    ),
+    tag = "roles",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_role(
     Path(role_id): Path<i64>,
     State(state): State<RoleState>,
@@ -117,6 +140,18 @@ pub async fn get_role(
 /// `POST /api/v1/roles`
 ///
 /// Validates that the role name is 1–50 characters.
+#[utoipa::path(
+    post,
+    path = "/roles",
+    request_body(content = CreateRoleRequest, description = "Role creation request"),
+    responses(
+        (status = 200, description = "Role created", body = RoleResponse),
+        (status = 400, description = "Invalid role name"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "roles",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_role(
     State(state): State<RoleState>,
     Json(req): Json<CreateRoleRequest>,
@@ -158,6 +193,22 @@ pub async fn create_role(
 /// `PUT /api/v1/roles/{role_id}`
 ///
 /// System roles cannot be modified.
+#[utoipa::path(
+    put,
+    path = "/roles/{role_id}",
+    params(
+        ("role_id" = i64, Path, description = "Role ID"),
+    ),
+    request_body(content = UpdateRoleRequest, description = "Role update request"),
+    responses(
+        (status = 200, description = "Role updated", body = RoleResponse),
+        (status = 403, description = "Cannot modify system roles"),
+        (status = 404, description = "Role not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "roles",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_role(
     Path(role_id): Path<i64>,
     State(state): State<RoleState>,
@@ -214,6 +265,19 @@ pub async fn update_role(
 /// `DELETE /api/v1/roles/{role_id}`
 ///
 /// System roles and roles still assigned to users cannot be deleted.
+#[utoipa::path(
+    delete,
+    path = "/roles/{role_id}",
+    params(
+        ("role_id" = i64, Path, description = "Role ID"),
+    ),
+    responses(
+        (status = 204, description = "Role deleted"),
+        (status = 403, description = "Cannot delete role"),
+    ),
+    tag = "roles",
+    security(("bearer_auth" = [])),
+)]
 pub async fn delete_role(
     Path(role_id): Path<i64>,
     State(state): State<RoleState>,
@@ -238,6 +302,16 @@ pub async fn delete_role(
 /// `POST /api/v1/roles/seed`
 ///
 /// Creates the built-in system roles (owner, admin, editor, viewer) if they do not exist.
+#[utoipa::path(
+    post,
+    path = "/roles/seed",
+    responses(
+        (status = 200, description = "Default roles seeded", body = serde_json::Value),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "roles",
+    security(("bearer_auth" = [])),
+)]
 pub async fn seed_default_roles(
     State(state): State<RoleState>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {

@@ -9,7 +9,7 @@ use tracing::{debug, info};
 
 type ApiError = (StatusCode, Json<ErrorResponse>);
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
     pub code: String,
     pub message: String,
@@ -74,7 +74,7 @@ fn db_err(e: &DatabaseError) -> ApiError {
 // Query Parameters
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct NodeQuery {
     pub page: Option<usize>,
     pub page_size: Option<usize>,
@@ -87,7 +87,7 @@ pub struct NodeQuery {
 // Request Types
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateNodeRequest {
     pub name: String,
     pub node_type: Option<String>,
@@ -101,7 +101,7 @@ pub struct CreateNodeRequest {
     pub slug: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateNodeRequest {
     pub name: Option<String>,
     pub slug: Option<String>,
@@ -112,7 +112,7 @@ pub struct UpdateNodeRequest {
     pub properties: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateEdgeRequest {
     pub source_id: String,
     pub target_id: String,
@@ -125,7 +125,7 @@ pub struct CreateEdgeRequest {
     pub project_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct GraphQueryRequest {
     pub source_id: String,
     pub direction: Option<String>,
@@ -141,7 +141,7 @@ pub struct GraphQueryRequest {
 // Response Types
 // ============================================================================
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
 pub struct NodeListResponse {
     pub nodes: Vec<GraphNode>,
     pub total: i64,
@@ -149,13 +149,13 @@ pub struct NodeListResponse {
     pub page_size: usize,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
 pub struct EdgeListResponse {
     pub edges: Vec<GraphEdge>,
     pub total: usize,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
 pub struct GraphQueryResponse {
     pub nodes: Vec<GraphNode>,
     pub edges: Vec<GraphEdge>,
@@ -173,6 +173,18 @@ pub struct GraphQueryResponse {
 ///
 /// Request body: JSON with `name` (required), optional `node_type`, `description`, `content`, `visibility`, `weight`, `properties`, `project_id`, `document_id`, `slug`.
 /// Response: 200 with `GraphNode`, or 400/409/500 on error.
+#[utoipa::path(
+    post,
+    path = "/nodes",
+    request_body(content = CreateNodeRequest, description = "Node creation request"),
+    responses(
+        (status = 200, description = "Node created", body = tachyon_database::GraphNode),
+        (status = 400, description = "Validation error"),
+        (status = 409, description = "Conflict"),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_node(
     State(state): State<NodeState>,
     Json(req): Json<CreateNodeRequest>,
@@ -223,6 +235,19 @@ pub async fn create_node(
 /// `GET /nodes/{node_id}`
 ///
 /// Response: 200 with `GraphNode`, or 404 on error.
+#[utoipa::path(
+    get,
+    path = "/nodes/{node_id}",
+    params(
+        ("node_id" = String, Path, description = "Node ID"),
+    ),
+    responses(
+        (status = 200, description = "Node details", body = tachyon_database::GraphNode),
+        (status = 404, description = "Node not found"),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_node(
     Path(node_id): Path<String>,
     State(state): State<NodeState>,
@@ -238,6 +263,20 @@ pub async fn get_node(
     Ok(Json(node))
 }
 
+#[utoipa::path(
+    put,
+    path = "/nodes/{node_id}",
+    params(
+        ("node_id" = String, Path, description = "Node ID"),
+    ),
+    request_body(content = UpdateNodeRequest, description = "Node update request"),
+    responses(
+        (status = 200, description = "Node updated", body = tachyon_database::GraphNode),
+        (status = 404, description = "Node not found"),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_node(
     Path(node_id): Path<String>,
     State(state): State<NodeState>,
@@ -264,6 +303,19 @@ pub async fn update_node(
     Ok(Json(updated))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/nodes/{node_id}",
+    params(
+        ("node_id" = String, Path, description = "Node ID"),
+    ),
+    responses(
+        (status = 204, description = "Node deleted"),
+        (status = 404, description = "Node not found"),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
 pub async fn delete_node(
     Path(node_id): Path<String>,
     State(state): State<NodeState>,
@@ -280,6 +332,18 @@ pub async fn delete_node(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    get,
+    path = "/nodes",
+    params(
+        NodeQuery,
+    ),
+    responses(
+        (status = 200, description = "List of nodes", body = NodeListResponse),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_nodes(
     Query(query): Query<NodeQuery>,
     State(state): State<NodeState>,
@@ -309,6 +373,17 @@ pub async fn list_nodes(
     }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/edges",
+    request_body(content = CreateEdgeRequest, description = "Edge creation request"),
+    responses(
+        (status = 200, description = "Edge created", body = tachyon_database::GraphEdge),
+        (status = 400, description = "Validation error"),
+    ),
+    tag = "edges",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_edge(
     State(state): State<NodeState>,
     Json(req): Json<CreateEdgeRequest>,
@@ -365,6 +440,19 @@ pub async fn create_edge(
     Ok(Json(created))
 }
 
+#[utoipa::path(
+    get,
+    path = "/nodes/{node_id}/edges",
+    params(
+        ("node_id" = String, Path, description = "Node ID"),
+    ),
+    responses(
+        (status = 200, description = "Edges for node", body = EdgeListResponse),
+        (status = 404, description = "Node not found"),
+    ),
+    tag = "edges",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_node_edges(
     Path(node_id): Path<String>,
     State(state): State<NodeState>,
@@ -382,6 +470,19 @@ pub async fn get_node_edges(
     Ok(Json(EdgeListResponse { edges, total }))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/edges/{edge_id}",
+    params(
+        ("edge_id" = String, Path, description = "Edge ID"),
+    ),
+    responses(
+        (status = 204, description = "Edge deleted"),
+        (status = 404, description = "Edge not found"),
+    ),
+    tag = "edges",
+    security(("bearer_auth" = [])),
+)]
 pub async fn delete_edge(
     Path(edge_id): Path<String>,
     State(state): State<NodeState>,
@@ -407,6 +508,16 @@ pub async fn delete_edge(
 /// If `target_id` is provided, returns the shortest path between source and target.
 /// Otherwise, returns all neighbors up to `depth` hops.
 /// Response: 200 with `GraphQueryResponse` containing `nodes`, `edges`, `node_count`, `edge_count`.
+#[utoipa::path(
+    post,
+    path = "/graph/query",
+    request_body(content = GraphQueryRequest, description = "Graph query request"),
+    responses(
+        (status = 200, description = "Graph query result", body = GraphQueryResponse),
+    ),
+    tag = "graph",
+    security(("bearer_auth" = [])),
+)]
 pub async fn query_graph(
     State(state): State<NodeState>,
     Json(req): Json<GraphQueryRequest>,
@@ -481,6 +592,15 @@ pub async fn query_graph(
     }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/graph/stats",
+    responses(
+        (status = 200, description = "Graph statistics", body = serde_json::Value),
+    ),
+    tag = "graph",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_graph_stats(
     State(state): State<NodeState>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
@@ -498,6 +618,19 @@ pub async fn get_graph_stats(
 /// Query the graph state at a specific point in time.
 ///
 /// Returns all nodes and edges that were active at the given ISO 8601 timestamp.
+#[utoipa::path(
+    get,
+    path = "/graph/at",
+    params(
+        ("at" = String, Query, description = "ISO 8601 timestamp"),
+    ),
+    responses(
+        (status = 200, description = "Graph state at time", body = GraphQueryResponse),
+        (status = 400, description = "Missing or invalid timestamp"),
+    ),
+    tag = "graph",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_graph_at_time(
     Query(params): Query<std::collections::HashMap<String, String>>,
     State(state): State<NodeState>,
@@ -543,6 +676,20 @@ pub async fn get_graph_at_time(
 /// Compute the diff of the graph between two timestamps.
 ///
 /// Returns added/removed nodes and edges between `from` and `to` timestamps.
+#[utoipa::path(
+    get,
+    path = "/graph/diff",
+    params(
+        ("from" = String, Query, description = "ISO 8601 start timestamp"),
+        ("to" = String, Query, description = "ISO 8601 end timestamp"),
+    ),
+    responses(
+        (status = 200, description = "Graph diff between timestamps", body = serde_json::Value),
+        (status = 400, description = "Missing or invalid timestamps"),
+    ),
+    tag = "graph",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_graph_diff(
     Query(params): Query<std::collections::HashMap<String, String>>,
     State(state): State<NodeState>,

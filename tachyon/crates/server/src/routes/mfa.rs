@@ -13,24 +13,24 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use tracing::{info, instrument, warn};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct MfaEnableResponse {
     pub secret: String,
     pub qr_code_uri: String,
     pub backup_codes: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct MfaVerifyRequest {
     pub code: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct MfaDisableRequest {
     pub code: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct MfaAuthRequest {
     pub user_id: String,
     pub mfa_code: String,
@@ -80,6 +80,17 @@ fn db_error(e: impl std::fmt::Display) -> Error {
 ///
 /// Generates a new TOTP secret, QR code URI, and 10 backup codes.
 /// MFA is not active until the user verifies a code via the verify endpoint.
+#[utoipa::path(
+    post,
+    path = "/auth/mfa/enable",
+    responses(
+        (status = 200, description = "MFA setup initiated", body = MfaEnableResponse),
+        (status = 400, description = "Invalid request"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "auth",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn enable_mfa(
     State(state): State<UserState>,
@@ -126,6 +137,18 @@ pub async fn enable_mfa(
 /// `POST /api/v1/auth/mfa/verify`
 ///
 /// Accepts a 6-digit TOTP code. On success, enables MFA for the user.
+#[utoipa::path(
+    post,
+    path = "/auth/mfa/verify",
+    request_body = MfaVerifyRequest,
+    responses(
+        (status = 200, description = "MFA enabled", body = serde_json::Value),
+        (status = 400, description = "Invalid code or MFA not setup"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "auth",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn verify_mfa(
     State(state): State<UserState>,
@@ -175,6 +198,18 @@ pub async fn verify_mfa(
 /// `POST /api/v1/auth/mfa/disable`
 ///
 /// Requires a valid TOTP code to confirm the action. Clears the secret and backup codes.
+#[utoipa::path(
+    post,
+    path = "/auth/mfa/disable",
+    request_body = MfaDisableRequest,
+    responses(
+        (status = 200, description = "MFA disabled", body = serde_json::Value),
+        (status = 400, description = "Invalid code or MFA not enabled"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "auth",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn disable_mfa(
     State(state): State<UserState>,
@@ -231,6 +266,18 @@ pub async fn disable_mfa(
 /// `POST /api/v1/auth/mfa/authenticate`
 ///
 /// Accepts a TOTP code or a backup code. On success, issues access and refresh tokens.
+#[utoipa::path(
+    post,
+    path = "/auth/mfa/authenticate",
+    request_body = MfaAuthRequest,
+    responses(
+        (status = 200, description = "MFA authentication successful", body = serde_json::Value),
+        (status = 400, description = "Invalid code or MFA not setup"),
+        (status = 401, description = "Invalid MFA code"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "auth",
+)]
 #[instrument(skip(state))]
 pub async fn mfa_authenticate(
     State(state): State<UserState>,

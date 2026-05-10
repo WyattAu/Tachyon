@@ -12,7 +12,7 @@ pub struct WebhookState {
     pub pool: DatabasePool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct WebhookResponse {
     pub id: String,
     pub url: String,
@@ -35,14 +35,14 @@ impl From<tachyon_database::Webhook> for WebhookResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateWebhookBody {
     pub url: String,
     pub events: Vec<String>,
     pub secret: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
     pub code: String,
     pub message: String,
@@ -53,6 +53,18 @@ pub struct ErrorResponse {
 /// `POST /api/v1/webhooks`
 ///
 /// Requires at least one event type in the `events` array.
+#[utoipa::path(
+    post,
+    path = "/webhooks",
+    request_body(content = CreateWebhookBody, description = "Webhook creation request"),
+    responses(
+        (status = 200, description = "Webhook created", body = WebhookResponse),
+        (status = 400, description = "At least one event required"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "webhooks",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_webhook(
     State(state): State<WebhookState>,
     Json(body): Json<CreateWebhookBody>,
@@ -93,6 +105,16 @@ pub async fn create_webhook(
 /// List all outgoing webhooks.
 ///
 /// `GET /api/v1/webhooks`
+#[utoipa::path(
+    get,
+    path = "/webhooks",
+    responses(
+        (status = 200, description = "List of webhooks", body = Vec<WebhookResponse>),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "webhooks",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_webhooks(
     State(state): State<WebhookState>,
 ) -> Result<Json<Vec<WebhookResponse>>, (StatusCode, Json<ErrorResponse>)> {
@@ -114,6 +136,21 @@ pub async fn list_webhooks(
 /// Delete an outgoing webhook.
 ///
 /// `DELETE /api/v1/webhooks/{id}`
+#[utoipa::path(
+    delete,
+    path = "/webhooks/{id}",
+    params(
+        ("id" = String, Path, description = "Webhook ID"),
+    ),
+    responses(
+        (status = 204, description = "Webhook deleted"),
+        (status = 400, description = "Invalid webhook ID"),
+        (status = 404, description = "Webhook not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "webhooks",
+    security(("bearer_auth" = [])),
+)]
 pub async fn delete_webhook(
     Path(id): Path<String>,
     State(state): State<WebhookState>,

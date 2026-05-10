@@ -6,7 +6,7 @@ use sqlx::{query_as, FromRow};
 use uuid::Uuid;
 
 /// A user-facing notification stored in the `notifications` table.
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, utoipa::ToSchema)]
 pub struct Notification {
     /// Primary key (UUID).
     pub id: Uuid,

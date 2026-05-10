@@ -8,13 +8,13 @@ pub struct TagsState {
     pub pool: DatabasePool,
 }
 
-#[derive(Debug, Serialize, FromRow)]
+#[derive(Debug, Serialize, FromRow, utoipa::ToSchema)]
 pub struct TagInfo {
     pub tag: String,
     pub count: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct TagsResponse {
     pub tags: Vec<TagInfo>,
     pub total: usize,
@@ -25,6 +25,16 @@ pub struct TagsResponse {
 /// `GET /api/v1/tags`
 ///
 /// Returns up to 100 tags ordered by usage count (descending).
+#[utoipa::path(
+    get,
+    path = "/tags",
+    responses(
+        (status = 200, description = "Tags with document counts", body = TagsResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "documents",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_tags(
     State(state): State<TagsState>,
 ) -> Result<Json<TagsResponse>, (StatusCode, String)> {

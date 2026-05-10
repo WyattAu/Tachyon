@@ -39,30 +39,30 @@ impl NotificationState {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct ListNotificationsQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub include_read: Option<bool>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct NotificationListResponse {
     pub notifications: Vec<Notification>,
     pub count: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct UnreadCountResponse {
     pub count: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct MarkReadResponse {
     pub read: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct MarkAllReadResponse {
     pub updated: u64,
 }
@@ -72,6 +72,19 @@ pub struct MarkAllReadResponse {
 /// `GET /api/v1/notifications`
 ///
 /// Supports `limit`, `offset`, and `include_read` query parameters.
+#[utoipa::path(
+    get,
+    path = "/notifications",
+    params(
+        ListNotificationsQuery,
+    ),
+    responses(
+        (status = 200, description = "List of notifications", body = NotificationListResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "notifications",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_notifications(
     State(state): State<NotificationState>,
     Query(query): Query<ListNotificationsQuery>,
@@ -100,6 +113,16 @@ pub async fn list_notifications(
 /// Get the unread notification count.
 ///
 /// `GET /api/v1/notifications/unread-count`
+#[utoipa::path(
+    get,
+    path = "/notifications/unread-count",
+    responses(
+        (status = 200, description = "Unread notification count", body = UnreadCountResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "notifications",
+    security(("bearer_auth" = [])),
+)]
 pub async fn unread_count(
     State(state): State<NotificationState>,
 ) -> Result<Json<UnreadCountResponse>, (StatusCode, String)> {
@@ -112,6 +135,20 @@ pub async fn unread_count(
 /// Mark a single notification as read.
 ///
 /// `POST /api/v1/notifications/{id}/read`
+#[utoipa::path(
+    post,
+    path = "/notifications/{id}/read",
+    params(
+        ("id" = String, Path, description = "Notification ID"),
+    ),
+    responses(
+        (status = 200, description = "Notification marked as read", body = MarkReadResponse),
+        (status = 400, description = "Invalid notification ID"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "notifications",
+    security(("bearer_auth" = [])),
+)]
 pub async fn mark_notification_read(
     Path(notification_id): Path<String>,
     State(state): State<NotificationState>,
@@ -131,6 +168,16 @@ pub async fn mark_notification_read(
 /// Mark all notifications as read.
 ///
 /// `POST /api/v1/notifications/read-all`
+#[utoipa::path(
+    post,
+    path = "/notifications/read-all",
+    responses(
+        (status = 200, description = "All notifications marked as read", body = MarkAllReadResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "notifications",
+    security(("bearer_auth" = [])),
+)]
 pub async fn mark_all_read(
     State(state): State<NotificationState>,
 ) -> Result<Json<MarkAllReadResponse>, (StatusCode, String)> {

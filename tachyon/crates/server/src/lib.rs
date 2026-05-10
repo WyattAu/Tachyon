@@ -370,6 +370,14 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     })
 }
 
+async fn graphql_handler(
+    State(pool): State<tachyon_database::DatabasePool>,
+    request: async_graphql_axum::GraphQLRequest,
+) -> async_graphql_axum::GraphQLResponse {
+    let schema = graphql::build_schema_with_data(pool);
+    schema.execute(request.into_inner()).await.into()
+}
+
 async fn graphql_playground() -> impl axum::response::IntoResponse {
     axum::response::Html(async_graphql::http::playground_source(
         async_graphql::http::GraphQLPlaygroundConfig::new("/graphql"),
@@ -637,11 +645,12 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     router = router.merge(swagger_ui);
 
-    // GraphQL endpoint
-    let graphql_schema = graphql::build_schema();
-    router = router
-        .route_service("/graphql", async_graphql_axum::GraphQL::new(graphql_schema))
-        .route("/graphql/playground", get(graphql_playground));
+    // GraphQL endpoint (uses pool directly, AppState not available after destructure)
+    let graphql_router = axum::Router::new()
+        .route("/graphql", axum::routing::post(graphql_handler))
+        .route("/graphql/playground", get(graphql_playground))
+        .with_state(pool.clone());
+    router = router.merge(graphql_router);
 
     let auth_state = crate::middleware::AuthState::new(config.clone(), pool.clone());
     let auth_layer =

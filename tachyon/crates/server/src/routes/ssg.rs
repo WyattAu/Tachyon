@@ -27,7 +27,7 @@ impl SsgState {
 // ============================================================================
 
 /// SSG site configuration request
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct SsgBuildRequest {
     #[serde(alias = "site_title")]
     pub title: Option<String>,
@@ -42,7 +42,7 @@ pub struct SsgBuildRequest {
 }
 
 /// SSG configuration response
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SsgConfigResponse {
     pub site_title: String,
     pub site_description: String,
@@ -52,21 +52,21 @@ pub struct SsgConfigResponse {
 }
 
 /// Navigation link in SSG config
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct SsgNavLink {
     pub label: String,
     pub href: String,
 }
 
 /// SSG build response
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SsgBuildResponse {
     pub success: bool,
     pub result: SsgBuildResultWrapper,
 }
 
 /// Wrapper for BuildResult to use in JSON
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SsgBuildResultWrapper {
     pub pages: usize,
     pub category_pages: usize,
@@ -90,7 +90,7 @@ impl From<BuildResult> for SsgBuildResultWrapper {
 }
 
 /// Error response
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SsgErrorResponse {
     pub code: String,
     pub message: String,
@@ -101,6 +101,15 @@ pub struct SsgErrorResponse {
 // ============================================================================
 
 /// GET /api/v1/ssg/config — Return current SSG configuration
+#[utoipa::path(
+    get,
+    path = "/ssg/config",
+    responses(
+        (status = 200, description = "Current SSG configuration", body = SsgConfigResponse),
+    ),
+    tag = "ssg",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_ssg_config() -> Json<SsgConfigResponse> {
     Json(SsgConfigResponse {
         site_title: "Tachyon".to_string(),
@@ -113,6 +122,18 @@ pub async fn get_ssg_config() -> Json<SsgConfigResponse> {
 }
 
 /// POST /api/v1/ssg/build — Generate static site as ZIP
+#[utoipa::path(
+    post,
+    path = "/ssg/build",
+    request_body = SsgBuildRequest,
+    responses(
+        (status = 200, description = "Build successful", body = SsgBuildResponse),
+        (status = 400, description = "No documents found"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "ssg",
+    security(("bearer_auth" = [])),
+)]
 pub async fn build_site(
     State(state): State<SsgState>,
     Json(req): Json<SsgBuildRequest>,
@@ -205,6 +226,17 @@ pub async fn build_site(
 }
 
 /// GET /api/v1/ssg/download — Download the generated site as ZIP
+#[utoipa::path(
+    get,
+    path = "/ssg/download",
+    responses(
+        (status = 200, description = "ZIP file download", body = Vec<u8>),
+        (status = 204, description = "No documents found"),
+        (status = 500, description = "Build failed"),
+    ),
+    tag = "ssg",
+    security(("bearer_auth" = [])),
+)]
 pub async fn download_site(State(state): State<SsgState>) -> Response {
     let documents = fetch_documents_for_ssg(&state.pool, None, 0)
         .await

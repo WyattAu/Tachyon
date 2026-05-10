@@ -9,45 +9,45 @@ pub struct OnboardingState {
     pub pool: DatabasePool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct OnboardingStatusResponse {
     pub completed: bool,
     pub steps: Vec<tachyon_database::OnboardingStep>,
     pub current_step: usize,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CompleteStepRequest {
     pub step_id: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct CompleteStepResponse {
     pub success: bool,
     pub step_id: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SampleContentResponse {
     pub created: usize,
     pub skipped: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SuggestionsResponse {
     pub suggested_tags: Vec<String>,
     pub suggested_templates: Vec<TemplateSuggestion>,
     pub tips: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct TemplateSuggestion {
     pub id: String,
     pub name: String,
     pub description: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
     pub code: String,
     pub message: String,
@@ -58,6 +58,16 @@ pub struct ErrorResponse {
 /// `GET /api/v1/onboarding/status`
 ///
 /// Returns which steps are completed and the current step index.
+#[utoipa::path(
+    get,
+    path = "/onboarding/status",
+    responses(
+        (status = 200, description = "Onboarding status", body = OnboardingStatusResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "onboarding",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_onboarding_status(
     State(state): State<OnboardingState>,
 ) -> Result<Json<OnboardingStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -82,6 +92,18 @@ pub async fn get_onboarding_status(
 /// Mark an onboarding step as completed.
 ///
 /// `POST /api/v1/onboarding/complete`
+#[utoipa::path(
+    post,
+    path = "/onboarding/complete",
+    request_body(content = CompleteStepRequest, description = "Step completion request"),
+    responses(
+        (status = 200, description = "Step completed", body = CompleteStepResponse),
+        (status = 400, description = "Validation error"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "onboarding",
+    security(("bearer_auth" = [])),
+)]
 pub async fn complete_step(
     State(state): State<OnboardingState>,
     Json(body): Json<CompleteStepRequest>,
@@ -110,6 +132,16 @@ pub async fn complete_step(
 ///
 /// Creates up to 5 sample documents (Welcome, Getting Started, Markdown Guide,
 /// Knowledge Graph, Keyboard Shortcuts) if the user has fewer than 3 documents.
+#[utoipa::path(
+    post,
+    path = "/onboarding/sample-content",
+    responses(
+        (status = 200, description = "Sample content created", body = SampleContentResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "onboarding",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_sample_content(
     State(state): State<OnboardingState>,
 ) -> Result<Json<SampleContentResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -156,6 +188,15 @@ pub async fn create_sample_content(
 /// `GET /api/v1/onboarding/suggestions`
 ///
 /// Returns suggested tags, templates, and tips for new users.
+#[utoipa::path(
+    get,
+    path = "/onboarding/suggestions",
+    responses(
+        (status = 200, description = "Onboarding suggestions", body = SuggestionsResponse),
+    ),
+    tag = "onboarding",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_suggestions(
     State(state): State<OnboardingState>,
 ) -> Result<Json<SuggestionsResponse>, (StatusCode, Json<ErrorResponse>)> {

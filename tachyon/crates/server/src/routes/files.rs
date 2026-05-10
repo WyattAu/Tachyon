@@ -16,21 +16,21 @@ pub struct FilesState {
     pub uploads_dir: PathBuf,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 #[serde(rename_all = "snake_case")]
 struct ListQuery {
     path: Option<String>,
     all: Option<bool>,
 }
 
-#[derive(Debug, Serialize)]
-struct ListResponse {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct ListResponse {
     path: String,
     entries: Vec<EntryInfo>,
 }
 
-#[derive(Debug, Serialize)]
-struct EntryInfo {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct EntryInfo {
     name: String,
     is_dir: bool,
     size: u64,
@@ -38,13 +38,13 @@ struct EntryInfo {
     extension: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 struct ReadQuery {
     path: String,
 }
 
-#[derive(Debug, Serialize)]
-struct ReadResponse {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct ReadResponse {
     path: String,
     content: String,
     size: u64,
@@ -52,47 +52,47 @@ struct ReadResponse {
     frontmatter: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 struct SearchQuery {
     query: String,
     path: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
-struct SearchResponse {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SearchResponse {
     files: Vec<SearchResultEntry>,
 }
 
-#[derive(Debug, Serialize)]
-struct SearchResultEntry {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SearchResultEntry {
     path: String,
     name: String,
     is_dir: bool,
     modified_at: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 struct TreeQuery {
     path: Option<String>,
     depth: Option<usize>,
 }
 
-#[derive(Debug, Serialize)]
-struct TreeResponse {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct TreeResponse {
     path: String,
     tree: Vec<TreeNode>,
 }
 
-#[derive(Debug, Serialize)]
-struct TreeNode {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct TreeNode {
     name: String,
     path: String,
     is_dir: bool,
     children: Option<Vec<TreeNode>>,
 }
 
-#[derive(Debug, Serialize)]
-struct StatsResponse {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct StatsResponse {
     total_files: usize,
     total_dirs: usize,
     total_size_bytes: u64,
@@ -100,32 +100,32 @@ struct StatsResponse {
     largest_files: Vec<LargestFileEntry>,
 }
 
-#[derive(Debug, Serialize)]
-struct LargestFileEntry {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct LargestFileEntry {
     path: String,
     name: String,
     size: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 struct RecentQuery {
     limit: Option<usize>,
 }
 
-#[derive(Debug, Serialize)]
-struct RecentResponse {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct RecentResponse {
     files: Vec<RecentFileEntry>,
 }
 
-#[derive(Debug, Serialize)]
-struct RecentFileEntry {
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct RecentFileEntry {
     path: String,
     name: String,
     modified_at: String,
     size: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct UploadResponse {
     pub id: String,
     pub filename: String,
@@ -312,6 +312,20 @@ fn should_show(name: &str, is_dir: bool, show_all: bool) -> bool {
 /// `GET /api/v1/files/list?path=...&all=...`
 ///
 /// Returns entries sorted with directories first. Supports `path` and `all` query parameters.
+#[utoipa::path(
+    get,
+    path = "/files/list",
+    params(
+        ListQuery,
+    ),
+    responses(
+        (status = 200, description = "Directory listing", body = ListResponse),
+        (status = 400, description = "Invalid path"),
+        (status = 404, description = "Not found"),
+    ),
+    tag = "files",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_directory(
     State(state): State<FilesState>,
     Query(params): Query<ListQuery>,
@@ -406,6 +420,20 @@ fn parse_frontmatter(content: &str) -> (Option<serde_json::Value>, &str) {
 ///
 /// Returns JSON with content, size, encoding, and parsed YAML frontmatter for text files.
 /// Returns raw binary content for image/PDF files.
+#[utoipa::path(
+    get,
+    path = "/files/read",
+    params(
+        ReadQuery,
+    ),
+    responses(
+        (status = 200, description = "File content", body = serde_json::Value),
+        (status = 400, description = "Invalid path or is directory"),
+        (status = 404, description = "Not found"),
+    ),
+    tag = "files",
+    security(("bearer_auth" = [])),
+)]
 pub async fn read_file(
     State(state): State<FilesState>,
     Query(params): Query<ReadQuery>,
@@ -462,6 +490,19 @@ pub async fn read_file(
 /// `GET /api/v1/files/search?query=...&path=...`
 ///
 /// Performs a case-insensitive filename search under the specified path (defaults to root).
+#[utoipa::path(
+    get,
+    path = "/files/search",
+    params(
+        SearchQuery,
+    ),
+    responses(
+        (status = 200, description = "File search results", body = SearchResponse),
+        (status = 400, description = "Not a directory"),
+    ),
+    tag = "files",
+    security(("bearer_auth" = [])),
+)]
 pub async fn search_files(
     State(state): State<FilesState>,
     Query(params): Query<SearchQuery>,
@@ -547,6 +588,20 @@ fn walk_dir_search<'a>(
 /// `GET /api/v1/files/tree?path=...&depth=...`
 ///
 /// Returns a nested tree structure. Maximum depth is 5 (defaults to 2).
+#[utoipa::path(
+    get,
+    path = "/files/tree",
+    params(
+        TreeQuery,
+    ),
+    responses(
+        (status = 200, description = "Directory tree", body = TreeResponse),
+        (status = 400, description = "Invalid path"),
+        (status = 404, description = "Not found"),
+    ),
+    tag = "files",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_tree(
     State(state): State<FilesState>,
     Query(params): Query<TreeQuery>,
@@ -652,6 +707,16 @@ fn build_tree<'a>(
 /// `GET /api/v1/files/stats`
 ///
 /// Returns total files, directories, size, file type breakdown, and top 10 largest files.
+#[utoipa::path(
+    get,
+    path = "/files/stats",
+    responses(
+        (status = 200, description = "File system statistics", body = StatsResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "files",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_stats(State(state): State<FilesState>) -> Result<Json<StatsResponse>, ApiError> {
     let root = tokio::fs::canonicalize(&state.root_path)
         .await
@@ -765,6 +830,19 @@ fn walk_dir_stats<'a>(
 /// `GET /api/v1/files/recent?limit=...`
 ///
 /// Returns files sorted by modification time. Default limit is 20, max 100.
+#[utoipa::path(
+    get,
+    path = "/files/recent",
+    params(
+        RecentQuery,
+    ),
+    responses(
+        (status = 200, description = "Recently modified files", body = RecentResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "files",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_recent_files(
     State(state): State<FilesState>,
     Query(params): Query<RecentQuery>,
@@ -850,6 +928,17 @@ fn walk_dir_recent<'a>(
 ///
 /// Accepts multipart form data. Validates file extension and content type.
 /// Maximum file size is 50 MB.
+#[utoipa::path(
+    post,
+    path = "/files/upload",
+    responses(
+        (status = 200, description = "Upload successful", body = serde_json::Value),
+        (status = 400, description = "Invalid file or missing fields"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "files",
+    security(("bearer_auth" = [])),
+)]
 pub async fn upload_file(
     State(state): State<FilesState>,
     mut multipart: Multipart,

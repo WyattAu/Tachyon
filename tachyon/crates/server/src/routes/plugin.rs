@@ -7,8 +7,9 @@ use axum::{
     response::Json,
 };
 use serde::{Deserialize, Serialize};
-use tachyon_database::{CreatePluginRequest, DatabasePool, PluginRepository, UpdatePluginRequest};
-use tachyon_plugin_runtime::{HookResult, PluginRuntime};
+pub use tachyon_database::UpdatePluginRequest;
+use tachyon_database::{CreatePluginRequest, DatabasePool, PluginRepository};
+use tachyon_plugin_runtime::PluginRuntime;
 use tracing::info;
 
 #[derive(Clone)]
@@ -21,7 +22,7 @@ pub struct PluginState {
 // Response / Request Types
 // ============================================================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct PluginResponse {
     pub id: String,
     pub name: String,
@@ -64,7 +65,7 @@ impl From<tachyon_database::Plugin> for PluginResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreatePluginBody {
     pub name: String,
     pub description: Option<String>,
@@ -79,7 +80,7 @@ pub struct CreatePluginBody {
     pub enabled: Option<bool>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdatePluginBody {
     pub description: Option<String>,
     pub version: Option<String>,
@@ -92,7 +93,7 @@ pub struct UpdatePluginBody {
     pub enabled: Option<bool>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct PluginQuery {
     pub enabled: Option<bool>,
     pub runtime_type: Option<String>,
@@ -100,7 +101,7 @@ pub struct PluginQuery {
     pub offset: Option<i64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
     pub code: String,
     pub message: String,
@@ -115,6 +116,19 @@ pub struct ErrorResponse {
 /// `GET /api/v1/plugins`
 ///
 /// Supports `enabled`, `runtime_type`, `limit`, and `offset` query filters.
+#[utoipa::path(
+    get,
+    path = "/plugins",
+    params(
+        PluginQuery,
+    ),
+    responses(
+        (status = 200, description = "List of plugins", body = Vec<PluginResponse>),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "plugins",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_plugins(
     Query(query): Query<PluginQuery>,
     State(state): State<PluginState>,
@@ -146,6 +160,19 @@ pub async fn list_plugins(
 /// Get a plugin by ID.
 ///
 /// `GET /api/v1/plugins/{plugin_id}`
+#[utoipa::path(
+    get,
+    path = "/plugins/{plugin_id}",
+    params(
+        ("plugin_id" = String, Path, description = "Plugin ID"),
+    ),
+    responses(
+        (status = 200, description = "Plugin details", body = PluginResponse),
+        (status = 404, description = "Plugin not found"),
+    ),
+    tag = "plugins",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_plugin(
     Path(plugin_id): Path<String>,
     State(state): State<PluginState>,
@@ -169,6 +196,18 @@ pub async fn get_plugin(
 /// `POST /api/v1/plugins`
 ///
 /// Requires `name` and `version` fields.
+#[utoipa::path(
+    post,
+    path = "/plugins",
+    request_body(content = CreatePluginBody, description = "Plugin installation request"),
+    responses(
+        (status = 200, description = "Plugin installed", body = PluginResponse),
+        (status = 400, description = "Validation error"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "plugins",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_plugin(
     State(state): State<PluginState>,
     Json(body): Json<CreatePluginBody>,
@@ -229,6 +268,21 @@ pub async fn create_plugin(
 ///
 /// Accepts partial updates for description, version, author, homepage, license,
 /// extension points, manifest, entry point, and enabled state.
+#[utoipa::path(
+    put,
+    path = "/plugins/{plugin_id}",
+    params(
+        ("plugin_id" = String, Path, description = "Plugin ID"),
+    ),
+    request_body(content = UpdatePluginBody, description = "Plugin update request"),
+    responses(
+        (status = 200, description = "Plugin updated", body = PluginResponse),
+        (status = 404, description = "Plugin not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "plugins",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_plugin(
     Path(plugin_id): Path<String>,
     State(state): State<PluginState>,
@@ -269,6 +323,19 @@ pub async fn update_plugin(
 /// Uninstall a plugin.
 ///
 /// `DELETE /api/v1/plugins/{plugin_id}`
+#[utoipa::path(
+    delete,
+    path = "/plugins/{plugin_id}",
+    params(
+        ("plugin_id" = String, Path, description = "Plugin ID"),
+    ),
+    responses(
+        (status = 204, description = "Plugin uninstalled"),
+        (status = 404, description = "Plugin not found"),
+    ),
+    tag = "plugins",
+    security(("bearer_auth" = [])),
+)]
 pub async fn delete_plugin(
     Path(plugin_id): Path<String>,
     State(state): State<PluginState>,
@@ -292,7 +359,7 @@ pub async fn delete_plugin(
 // Invoke Hook
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct InvokeHookRequest {
     pub hook: String,
     pub input: serde_json::Value,
@@ -304,14 +371,24 @@ fn default_timeout() -> u64 {
     5000
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct InvokeHookResponse {
-    pub results: Vec<HookResult>,
+    pub results: Vec<serde_json::Value>,
     pub hook: String,
     pub plugins_invoked: usize,
 }
 
 /// POST /api/v1/plugins/invoke — Invoke a hook across all enabled plugins
+#[utoipa::path(
+    post,
+    path = "/plugins/invoke",
+    request_body(content = InvokeHookRequest, description = "Hook invocation request"),
+    responses(
+        (status = 200, description = "Hook results", body = InvokeHookResponse),
+    ),
+    tag = "plugins",
+    security(("bearer_auth" = [])),
+)]
 pub async fn invoke_hook(
     State(state): State<PluginState>,
     Json(req): Json<InvokeHookRequest>,
@@ -325,6 +402,11 @@ pub async fn invoke_hook(
         "Hook '{}' invoked across {} plugins",
         req.hook, plugins_invoked
     );
+
+    let results: Vec<serde_json::Value> = results
+        .into_iter()
+        .map(|r| serde_json::to_value(r).unwrap_or(serde_json::Value::Null))
+        .collect();
 
     Ok(Json(InvokeHookResponse {
         results,

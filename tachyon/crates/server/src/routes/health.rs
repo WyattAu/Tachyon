@@ -2,7 +2,7 @@ use axum::{extract::State, http::StatusCode, Json};
 use serde::Serialize;
 use std::time::Instant;
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct HealthResponse {
     pub status: String,
     pub version: String,
@@ -10,19 +10,27 @@ pub struct HealthResponse {
     pub checks: HealthChecks,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct HealthChecks {
     pub database: HealthCheck,
     pub redis: HealthCheck,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct HealthCheck {
     pub status: String,
     pub latency_ms: Option<u64>,
     pub error: Option<String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses(
+        (status = 200, description = "Health check result", body = HealthResponse),
+    ),
+    tag = "system",
+)]
 pub(crate) async fn health_check(State(state): State<crate::HealthState>) -> Json<HealthResponse> {
     let _start = Instant::now();
 
@@ -47,6 +55,15 @@ pub(crate) async fn health_check(State(state): State<crate::HealthState>) -> Jso
     })
 }
 
+#[utoipa::path(
+    get,
+    path = "/ready",
+    responses(
+        (status = 200, description = "Service is ready"),
+        (status = 503, description = "Database unreachable"),
+    ),
+    tag = "system",
+)]
 pub(crate) async fn readiness_check(
     State(state): State<crate::HealthState>,
 ) -> (StatusCode, Json<serde_json::Value>) {

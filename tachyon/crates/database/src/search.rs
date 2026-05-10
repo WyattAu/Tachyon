@@ -36,7 +36,7 @@ fn row_to_document_metadata(row: sqlx::postgres::PgRow) -> DatabaseResult<Docume
     })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, utoipa::ToSchema)]
 pub struct SearchFilters {
     pub content_type: Option<String>,
     pub status: Option<String>,

@@ -4,8 +4,16 @@ use async_graphql::{EmptySubscription, Schema};
 
 use super::types::{MutationRoot, QueryRoot};
 
-pub fn build_schema() -> Schema<QueryRoot, MutationRoot, EmptySubscription> {
+pub type TachyonSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
+
+pub fn build_schema() -> TachyonSchema {
     Schema::build(QueryRoot, MutationRoot, EmptySubscription).finish()
+}
+
+pub fn build_schema_with_data(pool: tachyon_database::DatabasePool) -> TachyonSchema {
+    Schema::build(QueryRoot, MutationRoot, EmptySubscription)
+        .data(pool)
+        .finish()
 }
 
 #[cfg(test)]

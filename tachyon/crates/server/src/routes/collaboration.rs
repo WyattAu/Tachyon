@@ -42,7 +42,7 @@ impl CollaborationState {
 // ============================================================================
 
 /// User presence information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PresenceInfo {
     pub user_id: String,
     pub user_name: String,
@@ -53,7 +53,7 @@ pub struct PresenceInfo {
     pub last_seen_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum PresenceStatus {
     Active,
@@ -61,7 +61,7 @@ pub enum PresenceStatus {
     Away,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CursorInfo {
     pub section: Option<String>,
     pub line: Option<u32>,
@@ -69,7 +69,7 @@ pub struct CursorInfo {
 }
 
 /// Inline comment on a document
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Comment {
     pub id: String,
     pub document_id: String,
@@ -87,14 +87,14 @@ pub struct Comment {
     pub resolved_by: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum CommentStatus {
     Open,
     Resolved,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CommentAnchor {
     pub section: Option<String>,
     pub line_start: Option<u32>,
@@ -106,7 +106,7 @@ pub struct CommentAnchor {
 // Request/Response types
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdatePresenceRequest {
     pub document_id: String,
     pub user_id: String,
@@ -115,13 +115,13 @@ pub struct UpdatePresenceRequest {
     pub cursor_position: Option<CursorInfo>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct PresenceResponse {
     pub document_id: String,
     pub users: Vec<PresenceInfo>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateCommentRequest {
     pub document_id: String,
     pub content: String,
@@ -129,24 +129,24 @@ pub struct CreateCommentRequest {
     pub parent_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateCommentRequest {
     pub content: Option<String>,
     pub status: Option<CommentStatus>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct CommentsResponse {
     pub comments: Vec<Comment>,
     pub total: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct MentionsResponse {
     pub mentions: Vec<MentionNotification>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct MentionNotification {
     pub id: String,
     pub user_id: String,
@@ -159,7 +159,7 @@ pub struct MentionNotification {
     pub read: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct CollaborationErrorResponse {
     pub code: String,
     pub message: String,
@@ -226,6 +226,17 @@ fn parse_datetime(s: &str) -> DateTime<Utc> {
 // ============================================================================
 
 /// PUT /api/v1/collaboration/presence — Update user presence
+#[utoipa::path(
+    put,
+    path = "/collaboration/presence",
+    request_body(content = UpdatePresenceRequest, description = "Presence update request"),
+    responses(
+        (status = 200, description = "Presence updated", body = PresenceResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "collaboration",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_presence(
     State(state): State<CollaborationState>,
     Json(req): Json<UpdatePresenceRequest>,
@@ -286,6 +297,19 @@ pub async fn update_presence(
 }
 
 /// GET /api/v1/collaboration/presence/{document_id} — Get presence for a document
+#[utoipa::path(
+    get,
+    path = "/collaboration/presence/{document_id}",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "Presence for document", body = PresenceResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "collaboration",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_presence(
     State(state): State<CollaborationState>,
     Path(document_id): Path<String>,
@@ -303,6 +327,20 @@ pub async fn get_presence(
 }
 
 /// DELETE /api/v1/collaboration/presence/{document_id}/{user_id} — Remove user presence
+#[utoipa::path(
+    delete,
+    path = "/collaboration/presence/{document_id}/{user_id}",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 204, description = "Presence removed"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "collaboration",
+    security(("bearer_auth" = [])),
+)]
 pub async fn remove_presence(
     State(state): State<CollaborationState>,
     Path((document_id, user_id)): Path<(String, String)>,
@@ -377,6 +415,19 @@ fn db_comment_to_comment(db: tachyon_database::comment::Comment) -> Comment {
 }
 
 /// GET /api/v1/collaboration/comments/{document_id} — List comments
+#[utoipa::path(
+    get,
+    path = "/collaboration/documents/{document_id}/comments",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "Document comments", body = CommentsResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "collaboration",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_comments(
     State(state): State<CollaborationState>,
     Path(document_id): Path<String>,
@@ -394,6 +445,17 @@ pub async fn list_comments(
 }
 
 /// POST /api/v1/collaboration/comments — Create a comment
+#[utoipa::path(
+    post,
+    path = "/collaboration/comments",
+    request_body(content = CreateCommentRequest, description = "Comment creation request"),
+    responses(
+        (status = 200, description = "Comment created", body = Comment),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "collaboration",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_comment(
     State(state): State<CollaborationState>,
     Json(req): Json<CreateCommentRequest>,
@@ -445,6 +507,21 @@ pub async fn create_comment(
 }
 
 /// PUT /api/v1/collaboration/comments/{comment_id} — Update a comment
+#[utoipa::path(
+    put,
+    path = "/collaboration/comments/{comment_id}",
+    params(
+        ("comment_id" = String, Path, description = "Comment ID"),
+    ),
+    request_body(content = UpdateCommentRequest, description = "Comment update request"),
+    responses(
+        (status = 200, description = "Comment updated", body = Comment),
+        (status = 404, description = "Comment not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "collaboration",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_comment(
     State(state): State<CollaborationState>,
     Path(comment_id): Path<String>,
@@ -476,6 +553,20 @@ pub async fn update_comment(
 }
 
 /// DELETE /api/v1/collaboration/comments/{comment_id} — Delete a comment
+#[utoipa::path(
+    delete,
+    path = "/collaboration/comments/{comment_id}",
+    params(
+        ("comment_id" = String, Path, description = "Comment ID"),
+    ),
+    responses(
+        (status = 204, description = "Comment deleted"),
+        (status = 404, description = "Comment not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "collaboration",
+    security(("bearer_auth" = [])),
+)]
 pub async fn delete_comment(
     State(state): State<CollaborationState>,
     Path(comment_id): Path<String>,
@@ -504,6 +595,18 @@ pub async fn delete_comment(
 // ============================================================================
 
 /// GET /api/v1/collaboration/mentions/{user_id} — Get mentions for a user
+#[utoipa::path(
+    get,
+    path = "/collaboration/mentions/{user_id}",
+    params(
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 200, description = "User mentions", body = MentionsResponse),
+    ),
+    tag = "collaboration",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_mentions(
     State(_state): State<CollaborationState>,
     Path(_user_id): Path<String>,

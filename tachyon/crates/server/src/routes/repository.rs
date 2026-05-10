@@ -69,7 +69,7 @@ impl Default for RepositoryState {
 }
 
 /// Request to initialize a repository
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct InitRepositoryRequest {
     /// Repository name
     pub name: String,
@@ -82,7 +82,7 @@ pub struct InitRepositoryRequest {
 }
 
 /// Request to clone a repository
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CloneRepositoryRequest {
     /// Source repository URL or ID
     pub source: String,
@@ -91,7 +91,7 @@ pub struct CloneRepositoryRequest {
 }
 
 /// Request to commit changes
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CommitRequest {
     /// Commit message
     pub message: String,
@@ -100,14 +100,14 @@ pub struct CommitRequest {
 }
 
 /// Request to push changes
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct PushRequest {
     /// Target branch
     pub branch: Option<String>,
 }
 
 /// Repository response
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct RepositoryResponse {
     /// Repository ID
     pub id: String,
@@ -152,7 +152,7 @@ impl From<RepositoryData> for RepositoryResponse {
 }
 
 /// Repository status response
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct RepositoryStatus {
     /// Repository ID
     pub repository_id: String,
@@ -171,7 +171,7 @@ pub struct RepositoryStatus {
 }
 
 /// Repository list response
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct RepositoryListResponse {
     /// List of repositories
     pub repositories: Vec<RepositoryResponse>,
@@ -180,7 +180,7 @@ pub struct RepositoryListResponse {
 }
 
 /// Error response
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct RepositoryErrorResponse {
     /// Error code
     pub code: String,
@@ -189,6 +189,16 @@ pub struct RepositoryErrorResponse {
 }
 
 /// Initialize a new repository
+#[utoipa::path(
+    post,
+    path = "/repositories/init",
+    request_body(content = InitRepositoryRequest, description = "Repository init request"),
+    responses(
+        (status = 200, description = "Repository initialized", body = RepositoryResponse),
+    ),
+    tag = "repositories",
+    security(("bearer_auth" = [])),
+)]
 pub async fn init_repository(
     State(state): State<RepositoryState>,
     Json(req): Json<InitRepositoryRequest>,
@@ -223,6 +233,17 @@ pub async fn init_repository(
 }
 
 /// Clone a repository
+#[utoipa::path(
+    post,
+    path = "/repositories/clone",
+    request_body(content = CloneRepositoryRequest, description = "Repository clone request"),
+    responses(
+        (status = 200, description = "Repository cloned", body = RepositoryResponse),
+        (status = 404, description = "Source repository not found"),
+    ),
+    tag = "repositories",
+    security(("bearer_auth" = [])),
+)]
 pub async fn clone_repository(
     State(state): State<RepositoryState>,
     Json(req): Json<CloneRepositoryRequest>,
@@ -275,6 +296,20 @@ pub async fn clone_repository(
 }
 
 /// Commit changes to a repository
+#[utoipa::path(
+    post,
+    path = "/repositories/{repository_id}/commit",
+    params(
+        ("repository_id" = String, Path, description = "Repository ID"),
+    ),
+    request_body(content = CommitRequest, description = "Commit request"),
+    responses(
+        (status = 200, description = "Commit created", body = serde_json::Value),
+        (status = 404, description = "Repository not found"),
+    ),
+    tag = "repositories",
+    security(("bearer_auth" = [])),
+)]
 pub async fn commit(
     Path(repository_id): Path<String>,
     State(state): State<RepositoryState>,
@@ -314,6 +349,21 @@ pub async fn commit(
 }
 
 /// Push changes to remote
+#[utoipa::path(
+    post,
+    path = "/repositories/{repository_id}/push",
+    params(
+        ("repository_id" = String, Path, description = "Repository ID"),
+    ),
+    request_body(content = PushRequest, description = "Push request"),
+    responses(
+        (status = 200, description = "Push successful", body = serde_json::Value),
+        (status = 404, description = "Repository not found"),
+        (status = 412, description = "Repository not initialized"),
+    ),
+    tag = "repositories",
+    security(("bearer_auth" = [])),
+)]
 pub async fn push(
     Path(repository_id): Path<String>,
     State(state): State<RepositoryState>,
@@ -364,6 +414,19 @@ pub async fn push(
 }
 
 /// Get repository status
+#[utoipa::path(
+    get,
+    path = "/repositories/{repository_id}/status",
+    params(
+        ("repository_id" = String, Path, description = "Repository ID"),
+    ),
+    responses(
+        (status = 200, description = "Repository status", body = RepositoryStatus),
+        (status = 404, description = "Repository not found"),
+    ),
+    tag = "repositories",
+    security(("bearer_auth" = [])),
+)]
 pub async fn status(
     Path(repository_id): Path<String>,
     State(state): State<RepositoryState>,
@@ -400,6 +463,15 @@ pub async fn status(
 }
 
 /// List all repositories
+#[utoipa::path(
+    get,
+    path = "/repositories",
+    responses(
+        (status = 200, description = "List of repositories", body = RepositoryListResponse),
+    ),
+    tag = "repositories",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_repositories(
     State(state): State<RepositoryState>,
 ) -> Result<Json<RepositoryListResponse>, (StatusCode, Json<RepositoryErrorResponse>)> {
@@ -423,6 +495,19 @@ pub async fn list_repositories(
 }
 
 /// Get repository by ID
+#[utoipa::path(
+    get,
+    path = "/repositories/{repository_id}",
+    params(
+        ("repository_id" = String, Path, description = "Repository ID"),
+    ),
+    responses(
+        (status = 200, description = "Repository details", body = RepositoryResponse),
+        (status = 404, description = "Repository not found"),
+    ),
+    tag = "repositories",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_repository(
     Path(repository_id): Path<String>,
     State(state): State<RepositoryState>,
@@ -447,6 +532,19 @@ pub async fn get_repository(
 }
 
 /// Delete a repository
+#[utoipa::path(
+    delete,
+    path = "/repositories/{repository_id}",
+    params(
+        ("repository_id" = String, Path, description = "Repository ID"),
+    ),
+    responses(
+        (status = 204, description = "Repository deleted"),
+        (status = 404, description = "Repository not found"),
+    ),
+    tag = "repositories",
+    security(("bearer_auth" = [])),
+)]
 pub async fn delete_repository(
     Path(repository_id): Path<String>,
     State(state): State<RepositoryState>,

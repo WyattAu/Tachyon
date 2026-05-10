@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query_as, FromRow};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, PartialEq, utoipa::ToSchema)]
 pub struct ActivityEvent {
     pub id: Uuid,
     pub actor_id: Uuid,
@@ -17,7 +17,7 @@ pub struct ActivityEvent {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateActivityEvent {
     pub actor_id: Uuid,
     pub event_type: String,

@@ -25,7 +25,7 @@ const SUB_SELECT: &str = r#"
 ///
 /// Tracks the current billing period, plan, and whether the subscription
 /// will cancel at the end of the period.
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Subscription {
     pub id: String,
     pub organization_id: String,
@@ -197,7 +197,7 @@ const INV_SELECT: &str = r#"
 ///
 /// Stores the amount in minor currency units (cents), payment URL,
 /// and optional `paid_at` timestamp.
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Invoice {
     pub id: String,
     pub subscription_id: String,
@@ -331,7 +331,7 @@ impl InvoiceRepository {
 // Notification Preferences
 // ============================================================================
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct NotificationPreference {
     pub user_id: String,
     pub notification_type: String,

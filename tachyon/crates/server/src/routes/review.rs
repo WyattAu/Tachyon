@@ -8,9 +8,10 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tachyon_database::{
-    CreateCommentRequest, CreateNotification, CreateReviewRequest, DatabasePool,
-    DocumentReviewRepository, NotificationRepository, ReviewStatus, UpdateReviewRequest,
+    CreateCommentRequest, CreateNotification, DatabasePool, DocumentReviewRepository,
+    NotificationRepository, ReviewStatus,
 };
+pub use tachyon_database::{CreateReviewRequest, UpdateReviewRequest};
 use tracing::info;
 
 // ============================================================================
@@ -33,7 +34,7 @@ impl ReviewState {
 // Response Types
 // ============================================================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ReviewResponse {
     pub id: String,
     pub document_id: String,
@@ -60,7 +61,7 @@ impl From<tachyon_database::DocumentReview> for ReviewResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct CommentResponse {
     pub id: String,
     pub review_id: String,
@@ -81,26 +82,26 @@ impl From<tachyon_database::ReviewComment> for CommentResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateReviewBody {
     pub version_number: Option<i32>,
     pub reviewer_id: String,
     pub summary: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateReviewBody {
     pub status: String,
     pub summary: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateCommentBody {
     pub author_id: String,
     pub content: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ReviewStatusResponse {
     pub pending_count: i64,
     pub latest_status: Option<String>,
@@ -110,7 +111,7 @@ pub struct ReviewStatusResponse {
 // Error Response (inline — avoids circular dep with document routes)
 // ============================================================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
     pub code: String,
     pub message: String,
@@ -126,6 +127,20 @@ pub struct ErrorResponse {
 /// `POST /api/v1/documents/{document_id}/reviews`
 ///
 /// Sends a notification to the assigned reviewer and triggers a `review_created` webhook.
+#[utoipa::path(
+    post,
+    path = "/documents/{document_id}/reviews",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    request_body(content = CreateReviewBody, description = "Review creation request"),
+    responses(
+        (status = 200, description = "Review created", body = ReviewResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "reviews",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_review(
     Path(document_id): Path<String>,
     State(state): State<ReviewState>,
@@ -196,6 +211,19 @@ pub async fn create_review(
 /// List all reviews for a document.
 ///
 /// `GET /api/v1/documents/{document_id}/reviews`
+#[utoipa::path(
+    get,
+    path = "/documents/{document_id}/reviews",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "List of reviews", body = Vec<ReviewResponse>),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "reviews",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_reviews(
     Path(document_id): Path<String>,
     State(state): State<ReviewState>,
@@ -223,6 +251,22 @@ pub async fn list_reviews(
 ///
 /// Valid statuses: `approved`, `rejected`, `changes_requested`, `cancelled`.
 /// Triggers a webhook event and notification on status change.
+#[utoipa::path(
+    put,
+    path = "/documents/{document_id}/reviews/{review_id}",
+    params(
+        ("review_id" = String, Path, description = "Review ID"),
+    ),
+    request_body(content = UpdateReviewBody, description = "Review status update"),
+    responses(
+        (status = 200, description = "Review updated", body = ReviewResponse),
+        (status = 400, description = "Invalid review status"),
+        (status = 404, description = "Review not found"),
+        (status = 409, description = "Invalid status transition"),
+    ),
+    tag = "reviews",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_review(
     Path(review_id): Path<String>,
     State(state): State<ReviewState>,
@@ -328,6 +372,20 @@ pub async fn update_review(
 /// `POST /api/v1/documents/{document_id}/reviews/{review_id}/comments`
 ///
 /// Sends a `review_commented` notification to the review author.
+#[utoipa::path(
+    post,
+    path = "/documents/{document_id}/reviews/{review_id}/comments",
+    params(
+        ("review_id" = String, Path, description = "Review ID"),
+    ),
+    request_body(content = CreateCommentBody, description = "Comment to create"),
+    responses(
+        (status = 200, description = "Comment created", body = CommentResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "reviews",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_comment(
     Path(review_id): Path<String>,
     State(state): State<ReviewState>,
@@ -384,6 +442,19 @@ pub async fn create_comment(
 /// List comments on a review.
 ///
 /// `GET /api/v1/documents/{document_id}/reviews/{review_id}/comments`
+#[utoipa::path(
+    get,
+    path = "/documents/{document_id}/reviews/{review_id}/comments",
+    params(
+        ("review_id" = String, Path, description = "Review ID"),
+    ),
+    responses(
+        (status = 200, description = "List of comments", body = Vec<CommentResponse>),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "reviews",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_comments(
     Path(review_id): Path<String>,
     State(state): State<ReviewState>,
@@ -410,6 +481,19 @@ pub async fn list_comments(
 /// `GET /api/v1/documents/{document_id}/reviews/status`
 ///
 /// Returns the pending review count and the latest review status.
+#[utoipa::path(
+    get,
+    path = "/documents/{document_id}/reviews/status",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "Review status summary", body = ReviewStatusResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "reviews",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_review_status(
     Path(document_id): Path<String>,
     State(state): State<ReviewState>,

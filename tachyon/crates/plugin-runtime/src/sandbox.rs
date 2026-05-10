@@ -6,6 +6,7 @@ use serde_json::Value;
 use std::path::Path;
 use wasmtime::*;
 use wasmtime_wasi::p1::{self, WasiP1Ctx};
+use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};
 use wasmtime_wasi::WasiCtxBuilder;
 
 #[derive(Debug, Clone)]
@@ -66,12 +67,16 @@ impl PluginSandbox {
         let engine = Engine::new(&engine_config)
             .map_err(|e| PluginRuntimeError::Runtime(format!("Engine creation: {}", e)))?;
 
+        let input_bytes = ctx.input.to_string().into_bytes();
+        let stdout_pipe = MemoryOutputPipe::new(1024 * 1024);
+        let stderr_pipe = MemoryOutputPipe::new(1024 * 1024);
+
         let mut wasi_builder = WasiCtxBuilder::new();
         if self.config.enable_wasi {
             wasi_builder
-                .inherit_stdin()
-                .inherit_stdout()
-                .inherit_stderr();
+                .stdin(MemoryInputPipe::new(input_bytes))
+                .stdout(stdout_pipe.clone())
+                .stderr(stderr_pipe.clone());
         }
         let wasi_ctx = wasi_builder.build_p1();
 
@@ -125,7 +130,20 @@ impl PluginSandbox {
             return Ok(ctx.input.clone());
         }
 
-        Ok(ctx.input.clone())
+        let stdout_bytes = stdout_pipe.contents();
+        let stdout_str = String::from_utf8_lossy(&stdout_bytes).to_string();
+
+        match serde_json::from_str::<Value>(&stdout_str) {
+            Ok(data) => Ok(data),
+            Err(_) => {
+                let trimmed = stdout_str.trim();
+                if trimmed.is_empty() {
+                    Ok(ctx.input.clone())
+                } else {
+                    Ok(serde_json::json!({ "output": trimmed }))
+                }
+            }
+        }
     }
 }
 

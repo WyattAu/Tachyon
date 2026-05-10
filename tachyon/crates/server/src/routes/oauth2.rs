@@ -145,7 +145,7 @@ pub fn create_oauth2_router() -> Router<OAuth2State> {
 // Query/Response types
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 struct CallbackQuery {
     code: String,
     /// CSRF state nonce — must match the value generated during the authorize step.
@@ -169,6 +169,15 @@ pub struct OAuthUserInfo {
 
 /// Redirect user to Google's consent screen.
 /// Generates a CSRF state nonce and includes it in the authorization URL.
+#[utoipa::path(
+    get,
+    path = "/auth/oauth2/google/authorize",
+    responses(
+        (status = 307, description = "Redirect to Google consent screen"),
+        (status = 200, description = "OAuth2 not configured", body = serde_json::Value),
+    ),
+    tag = "auth",
+)]
 async fn google_authorize(State(state): State<OAuth2State>) -> Response {
     let client_id = match &state.config.google_client_id {
         Some(id) => id.clone(),
@@ -200,6 +209,19 @@ async fn google_authorize(State(state): State<OAuth2State>) -> Response {
 
 /// Handle Google OAuth2 callback.
 /// Validates the CSRF state nonce before processing the authorization code.
+#[utoipa::path(
+    get,
+    path = "/auth/oauth2/google/callback",
+    params(
+        CallbackQuery,
+    ),
+    responses(
+        (status = 200, description = "OAuth2 token response", body = serde_json::Value),
+        (status = 307, description = "Redirect with token"),
+        (status = 400, description = "CSRF validation failed", body = serde_json::Value),
+    ),
+    tag = "auth",
+)]
 async fn google_callback(
     State(state): State<OAuth2State>,
     Query(query): Query<CallbackQuery>,
@@ -363,6 +385,15 @@ async fn fetch_google_user_info(
 
 /// Redirect user to GitHub's authorization page.
 /// Generates a CSRF state nonce and includes it in the authorization URL.
+#[utoipa::path(
+    get,
+    path = "/auth/oauth2/github/authorize",
+    responses(
+        (status = 307, description = "Redirect to GitHub authorization page"),
+        (status = 200, description = "OAuth2 not configured", body = serde_json::Value),
+    ),
+    tag = "auth",
+)]
 async fn github_authorize(State(state): State<OAuth2State>) -> Response {
     let client_id = match &state.config.github_client_id {
         Some(id) => id.clone(),
@@ -394,6 +425,19 @@ async fn github_authorize(State(state): State<OAuth2State>) -> Response {
 
 /// Handle GitHub OAuth2 callback.
 /// Validates the CSRF state nonce before processing the authorization code.
+#[utoipa::path(
+    get,
+    path = "/auth/oauth2/github/callback",
+    params(
+        CallbackQuery,
+    ),
+    responses(
+        (status = 200, description = "OAuth2 token response", body = serde_json::Value),
+        (status = 307, description = "Redirect with token"),
+        (status = 400, description = "CSRF validation failed", body = serde_json::Value),
+    ),
+    tag = "auth",
+)]
 async fn github_callback(
     State(state): State<OAuth2State>,
     Query(query): Query<CallbackQuery>,

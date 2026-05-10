@@ -26,7 +26,7 @@ impl EcosystemState {
 // ============================================================================
 
 /// API version info
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ApiInfo {
     pub version: String,
     pub api_version: String,
@@ -35,7 +35,7 @@ pub struct ApiInfo {
 }
 
 /// Feature flag
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct FeatureFlag {
     pub id: String,
     pub name: String,
@@ -49,19 +49,19 @@ pub struct FeatureFlag {
 // Types — Email Notifications
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateNotificationPrefRequest {
     pub notification_type: String,
     pub enabled: bool,
     pub channel: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct NotificationPrefsResponse {
     pub preferences: Vec<tachyon_database::NotificationPreference>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct EcosystemErrorResponse {
     pub code: String,
     pub message: String,
@@ -71,14 +71,14 @@ pub struct EcosystemErrorResponse {
 // Types — Webhook v2 (extended)
 // ============================================================================
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct WebhookEventFilter {
     pub event_types: Vec<String>,
     pub document_ids: Option<Vec<String>>,
     pub space_ids: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct WebhookDeliveryLog {
     pub id: String,
     pub webhook_id: String,
@@ -92,7 +92,7 @@ pub struct WebhookDeliveryLog {
     pub delivered_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum WebhookDeliveryStatus {
     Pending,
@@ -101,7 +101,7 @@ pub enum WebhookDeliveryStatus {
     Retrying,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct WebhookLogsResponse {
     pub logs: Vec<WebhookDeliveryLog>,
     pub total: usize,
@@ -112,6 +112,14 @@ pub struct WebhookLogsResponse {
 // ============================================================================
 
 /// GET /api/v2/info — Get API information
+#[utoipa::path(
+    get,
+    path = "/v2/info",
+    responses(
+        (status = 200, description = "API information", body = ApiInfo),
+    ),
+    tag = "system",
+)]
 pub async fn api_info() -> Json<ApiInfo> {
     Json(ApiInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
@@ -139,6 +147,18 @@ pub async fn api_info() -> Json<ApiInfo> {
 // ============================================================================
 
 /// GET /api/v2/notifications/preferences/{user_id} — Get notification preferences
+#[utoipa::path(
+    get,
+    path = "/v2/notifications/preferences/{user_id}",
+    params(
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 200, description = "Notification preferences", body = NotificationPrefsResponse),
+    ),
+    tag = "notifications",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_notification_preferences(
     State(state): State<EcosystemState>,
     Path(user_id): Path<String>,
@@ -149,6 +169,19 @@ pub async fn get_notification_preferences(
 }
 
 /// PUT /api/v2/notifications/preferences/{user_id} — Update notification preferences
+#[utoipa::path(
+    put,
+    path = "/v2/notifications/preferences/{user_id}",
+    params(
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    request_body(content = UpdateNotificationPrefRequest, description = "Notification preference update"),
+    responses(
+        (status = 200, description = "Preference updated", body = tachyon_database::NotificationPreference),
+    ),
+    tag = "notifications",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_notification_preferences(
     State(state): State<EcosystemState>,
     Path(user_id): Path<String>,
@@ -182,6 +215,15 @@ pub async fn update_notification_preferences(
 // ============================================================================
 
 /// GET /api/v2/webhooks/logs — Get webhook delivery logs
+#[utoipa::path(
+    get,
+    path = "/v2/webhooks/logs",
+    responses(
+        (status = 200, description = "Webhook delivery logs", body = WebhookLogsResponse),
+    ),
+    tag = "webhooks",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_webhook_logs(State(_state): State<EcosystemState>) -> Json<WebhookLogsResponse> {
     Json(WebhookLogsResponse {
         logs: vec![],

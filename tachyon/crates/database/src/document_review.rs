@@ -12,7 +12,7 @@ use tracing::{debug, info, instrument};
 // Review Types
 // ============================================================================
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ReviewStatus {
     Pending,
@@ -81,7 +81,7 @@ pub struct DocumentReview {
     pub resolved_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CreateReviewRequest {
     pub document_id: String,
     pub version_number: i32,
@@ -89,7 +89,7 @@ pub struct CreateReviewRequest {
     pub summary: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UpdateReviewRequest {
     pub status: ReviewStatus,
     pub summary: Option<String>,

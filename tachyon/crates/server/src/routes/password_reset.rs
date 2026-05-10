@@ -41,33 +41,33 @@ pub fn create_password_reset_router() -> Router<PasswordResetState> {
 // Request / Response types
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct PasswordResetRequest {
     pub email: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct PasswordResetConfirm {
     pub token: String,
     pub new_password: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct EmailVerifyRequest {
     pub email: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct EmailVerifyConfirm {
     pub token: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct MessageResponse {
     pub message: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
     pub code: String,
     pub message: String,
@@ -123,6 +123,16 @@ async fn send_email_webhook(client: &reqwest::Client, to: &str, subject: &str, b
 
 /// POST /auth/password-reset
 /// Rate limit: 3 requests per minute per IP
+#[utoipa::path(
+    post,
+    path = "/auth/password-reset/request",
+    request_body(content = PasswordResetRequest, description = "Password reset request"),
+    responses(
+        (status = 200, description = "Password reset email sent", body = MessageResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "auth",
+)]
 pub async fn request_password_reset(
     State(state): State<PasswordResetState>,
     Json(body): Json<PasswordResetRequest>,
@@ -185,6 +195,17 @@ pub async fn request_password_reset(
 
 /// POST /auth/password-reset/confirm
 /// Rate limit: 10 requests per minute per IP
+#[utoipa::path(
+    post,
+    path = "/auth/password-reset/confirm",
+    request_body(content = PasswordResetConfirm, description = "Password reset confirmation"),
+    responses(
+        (status = 200, description = "Password reset", body = MessageResponse),
+        (status = 400, description = "Invalid token or weak password"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "auth",
+)]
 pub async fn confirm_password_reset(
     State(state): State<PasswordResetState>,
     Json(body): Json<PasswordResetConfirm>,
@@ -273,6 +294,18 @@ pub async fn confirm_password_reset(
     }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/email-verify/request",
+    request_body(content = EmailVerifyRequest, description = "Email verification request"),
+    responses(
+        (status = 200, description = "Verification email sent", body = MessageResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "auth",
+    security(("bearer_auth" = [])),
+)]
 pub async fn request_email_verification(
     State(state): State<PasswordResetState>,
     headers: HeaderMap,
@@ -386,6 +419,17 @@ pub async fn request_email_verification(
     }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/email-verify/confirm",
+    request_body(content = EmailVerifyConfirm, description = "Email verification confirmation"),
+    responses(
+        (status = 200, description = "Email verified", body = MessageResponse),
+        (status = 400, description = "Invalid token"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "auth",
+)]
 pub async fn confirm_email_verification(
     State(state): State<PasswordResetState>,
     Json(body): Json<EmailVerifyConfirm>,

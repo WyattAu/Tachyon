@@ -68,14 +68,14 @@ impl<T: Serialize> ApiResponse<T> {
 }
 
 /// Pagination query parameters
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct PaginationParams {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }
 
 /// Combined query parameters (pagination + filters)
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct ProjectListParams {
     // Pagination
     pub limit: Option<i64>,
@@ -88,7 +88,7 @@ pub struct ProjectListParams {
 }
 
 /// Project filter parameters
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct ProjectFilters {
     pub project_type: Option<String>,
     pub owner_id: Option<String>,
@@ -101,6 +101,17 @@ pub struct ProjectFilters {
 // ============================================================================
 
 /// Create a new project
+#[utoipa::path(
+    post,
+    path = "/projects",
+    request_body(content = tachyon_database::CreateProjectRequest, description = "Project creation request"),
+    responses(
+        (status = 201, description = "Project created", body = serde_json::Value),
+        (status = 400, description = "Bad request"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn create_project(
     State(state): State<CatalogState>,
@@ -128,6 +139,19 @@ pub async fn create_project(
 }
 
 /// List all projects with optional filters
+#[utoipa::path(
+    get,
+    path = "/projects",
+    params(
+        ProjectListParams,
+    ),
+    responses(
+        (status = 200, description = "List of projects", body = serde_json::Value),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn list_projects(
     State(state): State<CatalogState>,
@@ -164,6 +188,19 @@ pub async fn list_projects(
 }
 
 /// Get a project by ID
+#[utoipa::path(
+    get,
+    path = "/projects/{id}",
+    params(
+        ("id" = String, Path, description = "Project ID"),
+    ),
+    responses(
+        (status = 200, description = "Project details", body = serde_json::Value),
+        (status = 404, description = "Project not found"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn get_project(
     State(state): State<CatalogState>,
@@ -184,6 +221,19 @@ pub async fn get_project(
 }
 
 /// Get a project by slug
+#[utoipa::path(
+    get,
+    path = "/projects/slug/{slug}",
+    params(
+        ("slug" = String, Path, description = "Project slug"),
+    ),
+    responses(
+        (status = 200, description = "Project by slug", body = serde_json::Value),
+        (status = 404, description = "Project not found"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn get_project_by_slug(
     State(state): State<CatalogState>,
@@ -204,6 +254,20 @@ pub async fn get_project_by_slug(
 }
 
 /// Update a project
+#[utoipa::path(
+    put,
+    path = "/projects/{id}",
+    params(
+        ("id" = String, Path, description = "Project ID"),
+    ),
+    request_body(content = tachyon_database::Project, description = "Project update"),
+    responses(
+        (status = 200, description = "Project updated", body = serde_json::Value),
+        (status = 400, description = "Bad request"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn update_project(
     State(state): State<CatalogState>,
@@ -232,6 +296,19 @@ pub async fn update_project(
 }
 
 /// Delete a project
+#[utoipa::path(
+    delete,
+    path = "/projects/{id}",
+    params(
+        ("id" = String, Path, description = "Project ID"),
+    ),
+    responses(
+        (status = 200, description = "Project deleted", body = serde_json::Value),
+        (status = 404, description = "Project not found"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn delete_project(
     State(state): State<CatalogState>,
@@ -262,6 +339,17 @@ pub async fn delete_project(
 // ============================================================================
 
 /// Create a new component
+#[utoipa::path(
+    post,
+    path = "/components",
+    request_body(content = tachyon_database::CreateComponentRequest, description = "Component creation request"),
+    responses(
+        (status = 201, description = "Component created", body = serde_json::Value),
+        (status = 400, description = "Bad request"),
+    ),
+    tag = "components",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn create_component(
     State(state): State<CatalogState>,
@@ -291,6 +379,19 @@ pub async fn create_component(
 }
 
 /// Get a component by ID
+#[utoipa::path(
+    get,
+    path = "/components/{id}",
+    params(
+        ("id" = String, Path, description = "Component ID"),
+    ),
+    responses(
+        (status = 200, description = "Component details", body = serde_json::Value),
+        (status = 404, description = "Component not found"),
+    ),
+    tag = "components",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn get_component(
     State(state): State<CatalogState>,
@@ -311,6 +412,19 @@ pub async fn get_component(
 }
 
 /// List components for a project
+#[utoipa::path(
+    get,
+    path = "/projects/{project_id}/components",
+    params(
+        ("project_id" = String, Path, description = "Project ID"),
+    ),
+    responses(
+        (status = 200, description = "Project components", body = serde_json::Value),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "components",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn list_project_components(
     State(state): State<CatalogState>,
@@ -331,6 +445,19 @@ pub async fn list_project_components(
 }
 
 /// Delete a component
+#[utoipa::path(
+    delete,
+    path = "/components/{id}",
+    params(
+        ("id" = String, Path, description = "Component ID"),
+    ),
+    responses(
+        (status = 200, description = "Component deleted", body = serde_json::Value),
+        (status = 404, description = "Component not found"),
+    ),
+    tag = "components",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn delete_component(
     State(state): State<CatalogState>,
@@ -361,6 +488,20 @@ pub async fn delete_component(
 // ============================================================================
 
 /// Add a member to a project
+#[utoipa::path(
+    post,
+    path = "/projects/{project_id}/members",
+    params(
+        ("project_id" = String, Path, description = "Project ID"),
+    ),
+    request_body(content = AddMemberRequest, description = "Add member request"),
+    responses(
+        (status = 201, description = "Member added", body = serde_json::Value),
+        (status = 400, description = "Bad request"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn add_project_member(
     State(state): State<CatalogState>,
@@ -397,6 +538,19 @@ pub async fn add_project_member(
 }
 
 /// List project members
+#[utoipa::path(
+    get,
+    path = "/projects/{project_id}/members",
+    params(
+        ("project_id" = String, Path, description = "Project ID"),
+    ),
+    responses(
+        (status = 200, description = "Project members", body = serde_json::Value),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn list_project_members(
     State(state): State<CatalogState>,
@@ -417,6 +571,20 @@ pub async fn list_project_members(
 }
 
 /// Remove a member from a project
+#[utoipa::path(
+    delete,
+    path = "/projects/{project_id}/members/{user_id}",
+    params(
+        ("project_id" = String, Path, description = "Project ID"),
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 200, description = "Member removed", body = serde_json::Value),
+        (status = 404, description = "Member not found"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn remove_project_member(
     State(state): State<CatalogState>,
@@ -451,6 +619,16 @@ pub async fn remove_project_member(
 // ============================================================================
 
 /// Get catalog statistics
+#[utoipa::path(
+    get,
+    path = "/catalog/stats",
+    responses(
+        (status = 200, description = "Catalog statistics", body = serde_json::Value),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
 #[instrument(skip(state))]
 pub async fn get_catalog_stats(State(state): State<CatalogState>) -> impl IntoResponse {
     debug!("Getting catalog statistics");
@@ -468,7 +646,7 @@ pub async fn get_catalog_stats(State(state): State<CatalogState>) -> impl IntoRe
 }
 
 /// Request to add a member
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AddMemberRequest {
     pub user_id: String,
     pub role: String,

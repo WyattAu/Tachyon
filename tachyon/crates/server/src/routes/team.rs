@@ -29,38 +29,38 @@ impl TeamState {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateTeamRequest {
     pub name: String,
     pub slug: String,
     pub description: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateTeamRequest {
     pub name: Option<String>,
     pub slug: Option<String>,
     pub description: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct AddMemberRequest {
     pub user_id: String,
     pub role_name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateMemberRequest {
     pub role_name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct TeamQuery {
     pub owner_id: Option<String>,
     pub user_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct TeamResponse {
     pub id: String,
     pub name: String,
@@ -89,7 +89,7 @@ impl From<Team> for TeamResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct TeamMemberResponse {
     pub id: i64,
     pub team_id: String,
@@ -114,7 +114,7 @@ impl From<TeamMember> for TeamMemberResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
     pub code: String,
     pub message: String,
@@ -126,6 +126,18 @@ pub struct ErrorResponse {
 ///
 /// Validates the team name (1–100 characters) and slug (alphanumeric and hyphens).
 /// The authenticated user becomes the team owner and is assigned the "owner" role.
+#[utoipa::path(
+    post,
+    path = "/teams",
+    request_body(content = CreateTeamRequest, description = "Team creation request"),
+    responses(
+        (status = 200, description = "Team created", body = TeamResponse),
+        (status = 400, description = "Validation error"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "teams",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_team(
     State(state): State<TeamState>,
     Json(req): Json<CreateTeamRequest>,
@@ -186,6 +198,19 @@ pub async fn create_team(
 /// Get a team by ID.
 ///
 /// `GET /api/v1/teams/{team_id}`
+#[utoipa::path(
+    get,
+    path = "/teams/{team_id}",
+    params(
+        ("team_id" = String, Path, description = "Team ID"),
+    ),
+    responses(
+        (status = 200, description = "Team details", body = TeamResponse),
+        (status = 404, description = "Team not found"),
+    ),
+    tag = "teams",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_team(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
@@ -208,6 +233,19 @@ pub async fn get_team(
 /// Get a team by its URL slug.
 ///
 /// `GET /api/v1/teams/slug/{slug}`
+#[utoipa::path(
+    get,
+    path = "/teams/slug/{slug}",
+    params(
+        ("slug" = String, Path, description = "Team slug"),
+    ),
+    responses(
+        (status = 200, description = "Team details", body = TeamResponse),
+        (status = 404, description = "Team not found"),
+    ),
+    tag = "teams",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_team_by_slug(
     Path(slug): Path<String>,
     State(state): State<TeamState>,
@@ -232,6 +270,19 @@ pub async fn get_team_by_slug(
 /// `GET /api/v1/teams`
 ///
 /// Supports optional `owner_id` or `user_id` query parameters to filter results.
+#[utoipa::path(
+    get,
+    path = "/teams",
+    params(
+        TeamQuery,
+    ),
+    responses(
+        (status = 200, description = "List of teams", body = Vec<TeamResponse>),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "teams",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_teams(
     Query(query): Query<TeamQuery>,
     State(state): State<TeamState>,
@@ -264,6 +315,21 @@ pub async fn list_teams(
 /// `PUT /api/v1/teams/{team_id}`
 ///
 /// Accepts partial updates for name, slug, and description.
+#[utoipa::path(
+    put,
+    path = "/teams/{team_id}",
+    params(
+        ("team_id" = String, Path, description = "Team ID"),
+    ),
+    request_body(content = UpdateTeamRequest, description = "Team update request"),
+    responses(
+        (status = 200, description = "Team updated", body = TeamResponse),
+        (status = 404, description = "Team not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "teams",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_team(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
@@ -308,6 +374,19 @@ pub async fn update_team(
 /// Delete a team.
 ///
 /// `DELETE /api/v1/teams/{team_id}`
+#[utoipa::path(
+    delete,
+    path = "/teams/{team_id}",
+    params(
+        ("team_id" = String, Path, description = "Team ID"),
+    ),
+    responses(
+        (status = 204, description = "Team deleted"),
+        (status = 404, description = "Team not found"),
+    ),
+    tag = "teams",
+    security(("bearer_auth" = [])),
+)]
 pub async fn delete_team(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
@@ -330,6 +409,19 @@ pub async fn delete_team(
 /// List members of a team.
 ///
 /// `GET /api/v1/teams/{team_id}/members`
+#[utoipa::path(
+    get,
+    path = "/teams/{team_id}/members",
+    params(
+        ("team_id" = String, Path, description = "Team ID"),
+    ),
+    responses(
+        (status = 200, description = "List of team members", body = Vec<TeamMemberResponse>),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "teams",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_team_members(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
@@ -356,6 +448,21 @@ pub async fn list_team_members(
 /// `POST /api/v1/teams/{team_id}/members`
 ///
 /// Requires a `user_id` and `role_name` in the request body.
+#[utoipa::path(
+    post,
+    path = "/teams/{team_id}/members",
+    params(
+        ("team_id" = String, Path, description = "Team ID"),
+    ),
+    request_body(content = AddMemberRequest, description = "Add member request"),
+    responses(
+        (status = 200, description = "Member added", body = TeamMemberResponse),
+        (status = 404, description = "Role not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "teams",
+    security(("bearer_auth" = [])),
+)]
 pub async fn add_team_member(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
@@ -394,6 +501,22 @@ pub async fn add_team_member(
 /// Update a team member's role.
 ///
 /// `PUT /api/v1/teams/{team_id}/members/{user_id}`
+#[utoipa::path(
+    put,
+    path = "/teams/{team_id}/members/{user_id}",
+    params(
+        ("team_id" = String, Path, description = "Team ID"),
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    request_body(content = UpdateMemberRequest, description = "Update member role"),
+    responses(
+        (status = 204, description = "Member role updated"),
+        (status = 404, description = "Role not found"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "teams",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_team_member(
     Path((team_id, user_id)): Path<(String, String)>,
     State(state): State<TeamState>,
@@ -435,6 +558,20 @@ pub async fn update_team_member(
 /// Remove a member from a team.
 ///
 /// `DELETE /api/v1/teams/{team_id}/members/{user_id}`
+#[utoipa::path(
+    delete,
+    path = "/teams/{team_id}/members/{user_id}",
+    params(
+        ("team_id" = String, Path, description = "Team ID"),
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 204, description = "Member removed"),
+        (status = 404, description = "Member not found"),
+    ),
+    tag = "teams",
+    security(("bearer_auth" = [])),
+)]
 pub async fn remove_team_member(
     Path((team_id, user_id)): Path<(String, String)>,
     State(state): State<TeamState>,

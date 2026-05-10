@@ -18,7 +18,7 @@ impl ActivityState {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct ListActivityQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
@@ -27,12 +27,26 @@ pub struct ListActivityQuery {
     pub actor_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ActivityListResponse {
     pub events: Vec<ActivityEvent>,
     pub count: usize,
 }
 
+#[utoipa::path(
+    get,
+    path = "/activity",
+    params(
+        ListActivityQuery,
+    ),
+    responses(
+        (status = 200, description = "Activity feed", body = ActivityListResponse),
+        (status = 400, description = "Invalid query parameter"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "activity",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_activity(
     State(state): State<ActivityState>,
     Query(query): Query<ListActivityQuery>,
@@ -63,6 +77,17 @@ pub async fn list_activity(
     Ok(Json(ActivityListResponse { events, count }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/activity",
+    request_body(content = tachyon_database::CreateActivityEvent, description = "Activity event to create"),
+    responses(
+        (status = 200, description = "Activity event created", body = tachyon_database::ActivityEvent),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "activity",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_activity(
     State(state): State<ActivityState>,
     Json(event): Json<CreateActivityEvent>,

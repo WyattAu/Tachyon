@@ -24,7 +24,7 @@ pub struct OrganizationState {
 // Response / Request Types
 // ============================================================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct OrganizationResponse {
     pub id: String,
     pub name: String,
@@ -41,7 +41,7 @@ pub struct OrganizationResponse {
     pub updated_at: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct OrganizationMemberResponse {
     pub id: String,
     pub organization_id: String,
@@ -53,7 +53,7 @@ pub struct OrganizationMemberResponse {
     pub joined_at: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateOrganizationBody {
     pub name: String,
     pub description: Option<String>,
@@ -63,7 +63,7 @@ pub struct CreateOrganizationBody {
     pub max_members: Option<i32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateOrganizationBody {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -74,7 +74,7 @@ pub struct UpdateOrganizationBody {
     pub settings: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct OrganizationQuery {
     pub user_id: Option<String>,
     pub include_personal: Option<bool>,
@@ -82,18 +82,18 @@ pub struct OrganizationQuery {
     pub offset: Option<i64>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct AddMemberBody {
     pub user_id: String,
     pub role: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateMemberBody {
     pub role: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
     pub code: String,
     pub message: String,
@@ -109,6 +109,19 @@ pub struct ErrorResponse {
 ///
 /// Uses the authenticated user's ID by default. Supports `user_id`, `include_personal`,
 /// `limit`, and `offset` query parameters.
+#[utoipa::path(
+    get,
+    path = "/organizations",
+    params(
+        OrganizationQuery,
+    ),
+    responses(
+        (status = 200, description = "List organizations", body = Vec<OrganizationResponse>),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "organizations",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_organizations(
     Extension(auth): Extension<AuthContext>,
     Query(query): Query<OrganizationQuery>,
@@ -147,6 +160,19 @@ pub async fn list_organizations(
 /// Get a single organization by ID.
 ///
 /// `GET /api/v1/organizations/{id}`
+#[utoipa::path(
+    get,
+    path = "/organizations/{id}",
+    params(
+        ("id" = String, Path, description = "Organization ID"),
+    ),
+    responses(
+        (status = 200, description = "Organization details", body = OrganizationResponse),
+        (status = 404, description = "Organization not found"),
+    ),
+    tag = "organizations",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_organization(
     Path(id): Path<String>,
     State(state): State<OrganizationState>,
@@ -166,6 +192,18 @@ pub async fn get_organization(
 /// `POST /api/v1/organizations`
 ///
 /// The authenticated user becomes the organization owner.
+#[utoipa::path(
+    post,
+    path = "/organizations",
+    request_body(content = CreateOrganizationBody, description = "Organization creation request"),
+    responses(
+        (status = 200, description = "Organization created", body = OrganizationResponse),
+        (status = 400, description = "Bad request"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "organizations",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_organization(
     Extension(auth): Extension<AuthContext>,
     State(state): State<OrganizationState>,
@@ -208,6 +246,20 @@ pub async fn create_organization(
 /// `PUT /api/v1/organizations/{id}`
 ///
 /// Accepts partial updates for name, description, icon, logo, default role, max members, and settings.
+#[utoipa::path(
+    put,
+    path = "/organizations/{id}",
+    params(
+        ("id" = String, Path, description = "Organization ID"),
+    ),
+    request_body(content = UpdateOrganizationBody, description = "Organization update request"),
+    responses(
+        (status = 200, description = "Organization updated", body = OrganizationResponse),
+        (status = 404, description = "Organization not found"),
+    ),
+    tag = "organizations",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_organization(
     Path(id): Path<String>,
     State(state): State<OrganizationState>,
@@ -240,6 +292,20 @@ pub async fn update_organization(
 /// `DELETE /api/v1/organizations/{id}`
 ///
 /// Cannot delete the personal organization.
+#[utoipa::path(
+    delete,
+    path = "/organizations/{id}",
+    params(
+        ("id" = String, Path, description = "Organization ID"),
+    ),
+    responses(
+        (status = 204, description = "Organization deleted"),
+        (status = 400, description = "Cannot delete personal org"),
+        (status = 404, description = "Organization not found"),
+    ),
+    tag = "organizations",
+    security(("bearer_auth" = [])),
+)]
 pub async fn delete_organization(
     Path(id): Path<String>,
     State(state): State<OrganizationState>,
@@ -265,6 +331,19 @@ pub async fn delete_organization(
 /// List members of an organization.
 ///
 /// `GET /api/v1/organizations/{org_id}/members`
+#[utoipa::path(
+    get,
+    path = "/organizations/{org_id}/members",
+    params(
+        ("org_id" = String, Path, description = "Organization ID"),
+    ),
+    responses(
+        (status = 200, description = "Organization members", body = Vec<OrganizationMemberResponse>),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "organizations",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_members(
     Path(org_id): Path<String>,
     Query(query): Query<OrganizationQuery>,
@@ -287,6 +366,21 @@ pub async fn list_members(
 /// Add a member to an organization.
 ///
 /// `POST /api/v1/organizations/{org_id}/members`
+#[utoipa::path(
+    post,
+    path = "/organizations/{org_id}/members",
+    params(
+        ("org_id" = String, Path, description = "Organization ID"),
+    ),
+    request_body(content = AddMemberBody, description = "Add member request"),
+    responses(
+        (status = 200, description = "Member added", body = OrganizationMemberResponse),
+        (status = 400, description = "Already a member"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "organizations",
+    security(("bearer_auth" = [])),
+)]
 pub async fn add_member(
     Path(org_id): Path<String>,
     State(state): State<OrganizationState>,
@@ -323,6 +417,21 @@ pub async fn add_member(
 /// Update a member's role in an organization.
 ///
 /// `PUT /api/v1/organizations/{org_id}/members/{user_id}`
+#[utoipa::path(
+    put,
+    path = "/organizations/{org_id}/members/{user_id}",
+    params(
+        ("org_id" = String, Path, description = "Organization ID"),
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    request_body(content = UpdateMemberBody, description = "Update member role"),
+    responses(
+        (status = 200, description = "Member role updated", body = OrganizationMemberResponse),
+        (status = 404, description = "Member not found"),
+    ),
+    tag = "organizations",
+    security(("bearer_auth" = [])),
+)]
 pub async fn update_member(
     Path((org_id, user_id)): Path<(String, String)>,
     State(state): State<OrganizationState>,
@@ -349,6 +458,20 @@ pub async fn update_member(
 /// Remove a member from an organization.
 ///
 /// `DELETE /api/v1/organizations/{org_id}/members/{user_id}`
+#[utoipa::path(
+    delete,
+    path = "/organizations/{org_id}/members/{user_id}",
+    params(
+        ("org_id" = String, Path, description = "Organization ID"),
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 204, description = "Member removed"),
+        (status = 404, description = "Member not found"),
+    ),
+    tag = "organizations",
+    security(("bearer_auth" = [])),
+)]
 pub async fn remove_member(
     Path((org_id, user_id)): Path<(String, String)>,
     State(state): State<OrganizationState>,

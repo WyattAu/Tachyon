@@ -70,7 +70,7 @@ impl BillingState {
 // ============================================================================
 
 /// Subscription plan
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Plan {
     Free,
@@ -136,7 +136,7 @@ impl Plan {
 }
 
 /// Usage metrics for the billing period
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UsageMetrics {
     pub organization_id: String,
     pub period_start: DateTime<Utc>,
@@ -152,19 +152,19 @@ pub struct UsageMetrics {
 // Request/Response types
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateSubscriptionRequest {
     pub organization_id: String,
     pub plan: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SubscriptionResponse {
     pub subscription: tachyon_database::Subscription,
     pub plan_details: PlanDetails,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct PlanDetails {
     pub name: String,
     pub price_monthly_cents: u64,
@@ -173,12 +173,12 @@ pub struct PlanDetails {
     pub features: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct PlansResponse {
     pub plans: Vec<PlanInfo>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct PlanInfo {
     pub name: String,
     pub price_monthly_cents: u64,
@@ -187,69 +187,69 @@ pub struct PlanInfo {
     pub features: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct InvoicesResponse {
     pub invoices: Vec<tachyon_database::Invoice>,
     pub total: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct UsageResponse {
     pub usage: UsageMetrics,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct BillingErrorResponse {
     pub code: String,
     pub message: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateMandateRequest {
     pub organization_id: String,
     pub return_url: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct MandateResponse {
     pub mandate_id: String,
     pub authorization_url: Option<String>,
     pub status: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct MandateStatusResponse {
     pub mandate_id: String,
     pub status: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreatePaymentRequest {
     pub mandate_id: String,
     pub organization_id: String,
     pub amount_cents: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct PaymentResponse {
     pub payment_id: String,
     pub status: String,
     pub amount: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct PaymentStatusResponse {
     pub payment_id: String,
     pub status: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct ChangePlanRequest {
     pub organization_id: String,
     pub new_plan: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ChangePlanResponse {
     pub subscription_id: String,
     pub old_plan: String,
@@ -260,7 +260,7 @@ pub struct ChangePlanResponse {
     pub next_billing_date: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct WebhookPayload {
     #[serde(rename = "type")]
     pub event_type: String,
@@ -452,6 +452,14 @@ fn calculate_proration(
 // ============================================================================
 
 /// GET /api/v1/billing/plans — List available plans
+#[utoipa::path(
+    get,
+    path = "/billing/plans",
+    responses(
+        (status = 200, description = "Available plans", body = PlansResponse),
+    ),
+    tag = "billing",
+)]
 pub async fn list_plans() -> Json<PlansResponse> {
     let plans = vec![
         PlanInfo {
@@ -499,6 +507,17 @@ pub async fn list_plans() -> Json<PlansResponse> {
 }
 
 /// POST /api/v1/billing/subscriptions — Create a subscription
+#[utoipa::path(
+    post,
+    path = "/billing/subscriptions",
+    request_body(content = CreateSubscriptionRequest, description = "Subscription creation request"),
+    responses(
+        (status = 200, description = "Subscription created", body = SubscriptionResponse),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "billing",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_subscription(
     State(state): State<BillingState>,
     Json(req): Json<CreateSubscriptionRequest>,
@@ -540,6 +559,19 @@ pub async fn create_subscription(
 }
 
 /// GET /api/v1/billing/subscriptions/{org_id} — Get subscription
+#[utoipa::path(
+    get,
+    path = "/billing/subscriptions/{org_id}",
+    params(
+        ("org_id" = String, Path, description = "Organization ID"),
+    ),
+    responses(
+        (status = 200, description = "Subscription details", body = SubscriptionResponse),
+        (status = 404, description = "No subscription found"),
+    ),
+    tag = "billing",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_subscription(
     State(state): State<BillingState>,
     axum::extract::Path(org_id): axum::extract::Path<String>,
@@ -580,6 +612,18 @@ pub async fn get_subscription(
 }
 
 /// GET /api/v1/billing/invoices/{org_id} — List invoices
+#[utoipa::path(
+    get,
+    path = "/billing/invoices/{org_id}",
+    params(
+        ("org_id" = String, Path, description = "Organization ID"),
+    ),
+    responses(
+        (status = 200, description = "Invoice list", body = InvoicesResponse),
+    ),
+    tag = "billing",
+    security(("bearer_auth" = [])),
+)]
 pub async fn list_invoices(
     State(state): State<BillingState>,
     axum::extract::Path(org_id): axum::extract::Path<String>,
@@ -591,6 +635,18 @@ pub async fn list_invoices(
 }
 
 /// GET /api/v1/billing/usage/{org_id} — Get usage metrics (real implementation)
+#[utoipa::path(
+    get,
+    path = "/billing/usage/{org_id}",
+    params(
+        ("org_id" = String, Path, description = "Organization ID"),
+    ),
+    responses(
+        (status = 200, description = "Usage metrics", body = UsageResponse),
+    ),
+    tag = "billing",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_usage(
     State(state): State<BillingState>,
     axum::extract::Path(org_id): axum::extract::Path<String>,
@@ -662,6 +718,19 @@ pub async fn get_usage(
 }
 
 /// POST /api/v1/billing/subscription/change-plan — Upgrade/downgrade plan
+#[utoipa::path(
+    post,
+    path = "/billing/subscription/change-plan",
+    request_body(content = ChangePlanRequest, description = "Plan change request"),
+    responses(
+        (status = 200, description = "Plan change result", body = ChangePlanResponse),
+        (status = 400, description = "Invalid plan"),
+        (status = 404, description = "No subscription found"),
+        (status = 403, description = "Enterprise change requires admin"),
+    ),
+    tag = "billing",
+    security(("bearer_auth" = [])),
+)]
 pub async fn change_plan(
     State(state): State<BillingState>,
     Json(req): Json<ChangePlanRequest>,
@@ -820,6 +889,19 @@ pub async fn change_plan(
 }
 
 /// POST /api/v1/billing/subscriptions/{org_id}/cancel — Cancel subscription
+#[utoipa::path(
+    post,
+    path = "/billing/subscriptions/{org_id}/cancel",
+    params(
+        ("org_id" = String, Path, description = "Organization ID"),
+    ),
+    responses(
+        (status = 200, description = "Subscription cancelled", body = serde_json::Value),
+        (status = 404, description = "No subscription found"),
+    ),
+    tag = "billing",
+    security(("bearer_auth" = [])),
+)]
 pub async fn cancel_subscription(
     State(state): State<BillingState>,
     axum::extract::Path(org_id): axum::extract::Path<String>,
@@ -878,6 +960,17 @@ pub async fn cancel_subscription(
 // ============================================================================
 
 /// POST /api/v1/billing/mandates — Create a payment mandate
+#[utoipa::path(
+    post,
+    path = "/billing/mandates",
+    request_body(content = CreateMandateRequest, description = "Mandate creation request"),
+    responses(
+        (status = 200, description = "Mandate created", body = MandateResponse),
+        (status = 503, description = "Payments not enabled"),
+    ),
+    tag = "billing",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_mandate(
     State(state): State<BillingState>,
     Json(req): Json<CreateMandateRequest>,
@@ -925,6 +1018,19 @@ pub async fn create_mandate(
 }
 
 /// GET /api/v1/billing/mandates/{mandate_id} — Check mandate status
+#[utoipa::path(
+    get,
+    path = "/billing/mandates/{mandate_id}",
+    params(
+        ("mandate_id" = String, Path, description = "Mandate ID"),
+    ),
+    responses(
+        (status = 200, description = "Mandate status", body = MandateStatusResponse),
+        (status = 503, description = "Payments not enabled"),
+    ),
+    tag = "billing",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_mandate_status(
     State(state): State<BillingState>,
     axum::extract::Path(mandate_id): axum::extract::Path<String>,
@@ -951,6 +1057,17 @@ pub async fn get_mandate_status(
 }
 
 /// POST /api/v1/billing/payments — Create a payment
+#[utoipa::path(
+    post,
+    path = "/billing/payments",
+    request_body(content = CreatePaymentRequest, description = "Payment creation request"),
+    responses(
+        (status = 200, description = "Payment created", body = PaymentResponse),
+        (status = 503, description = "Payments not enabled"),
+    ),
+    tag = "billing",
+    security(("bearer_auth" = [])),
+)]
 pub async fn create_payment(
     State(state): State<BillingState>,
     Json(req): Json<CreatePaymentRequest>,
@@ -1006,6 +1123,19 @@ pub async fn create_payment(
 }
 
 /// GET /api/v1/billing/payments/{payment_id} — Check payment status
+#[utoipa::path(
+    get,
+    path = "/billing/payments/{payment_id}",
+    params(
+        ("payment_id" = String, Path, description = "Payment ID"),
+    ),
+    responses(
+        (status = 200, description = "Payment status", body = PaymentStatusResponse),
+        (status = 503, description = "Payments not enabled"),
+    ),
+    tag = "billing",
+    security(("bearer_auth" = [])),
+)]
 pub async fn get_payment_status(
     State(state): State<BillingState>,
     axum::extract::Path(payment_id): axum::extract::Path<String>,
@@ -1032,6 +1162,17 @@ pub async fn get_payment_status(
 }
 
 /// POST /api/v1/billing/webhook — TrueLayer webhook handler
+#[utoipa::path(
+    post,
+    path = "/billing/webhook",
+    request_body(content = WebhookPayload, description = "TrueLayer webhook payload"),
+    responses(
+        (status = 200, description = "Webhook processed", body = serde_json::Value),
+        (status = 400, description = "Invalid payload"),
+        (status = 401, description = "Invalid signature"),
+    ),
+    tag = "billing",
+)]
 pub async fn webhook_handler(
     State(state): State<BillingState>,
     headers: HeaderMap,
