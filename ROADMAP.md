@@ -11,32 +11,38 @@
 | Metric | Value |
 |--------|-------|
 | Workspace crates | 18 |
-| Total tests (passing) | 1,296 (lib + integration + doc) |
+| Total tests (passing) | 1,353 (lib + integration + doc) |
 | Clippy warnings | 0 (with `-D warnings`) |
 | Formatting | Clean (rustfmt) |
 | Dead code | None detected |
 | Production stubs | None in critical paths |
 | Pre-commit hook | Installed (fmt + clippy + tests + secrets + artifacts) |
+| serde deny_unknown_fields | 33 request DTOs covered |
 
 ### Issues Resolved This Session
 
 1. **Stack overflow in utoipa OpenAPI generation** -- `TreeNode` self-referential struct caused infinite recursion in utoipa 5.x schema derivation. Fixed with manual JSON Schema `$ref` pattern and `OnceLock` caching.
 2. **12 documentation factual errors** -- Wrong framework (Yew -> Leptos), wrong env vars, wrong ports, wrong API syntax, nonexistent crate references, inaccurate CRDT attribution, self-contradictory status claims.
 3. **No pre-commit hook** -- Created comprehensive gate enforcing formatting, linting, tests, secret detection, and artifact exclusion.
+4. **XSS in document titles** -- Wired existing `ValidatedDocumentTitle` and `ValidatedTagList` validation into create/update document handlers.
+5. **Version inconsistency** -- Unified to 10.0.0 across all documentation.
+6. **Unsubstantiated compliance claims** -- Replaced with honest self-assessment.
+7. **Duplicate CORS implementation** -- Deduplicated to single canonical `build_cors_layer()`.
+8. **Double markdown parse** -- Eliminated in renderer by consolidating code block counting into single pass.
+9. **Request DTO safety** -- Added `#[serde(deny_unknown_fields)]` to 33 request types.
+10. **Integration tests expanded** -- +22 new tests for billing, plugin, and SSG endpoints.
+11. **Property-based tests** -- +8 proptest covering document state machine, CRDT convergence, search roundtrip.
+12. **Benchmark suite verified** -- All 9 Criterion benchmark files contain real benchmarks.
 
 ### Remaining Known Issues
 
 | Issue | Severity | Location |
 |-------|----------|----------|
-| Version inconsistency across docs (1.1.0 / 4.1.0 / 5.0.0 / 10.0.0) | Medium | VERSION.md, CHANGELOG.md |
-| Unsubstantiated 100% compliance claims (9 standards) | Medium | VERSION.md:360-370 |
-| XSS warnings (markdown content sanitization incomplete) | Medium | VERSION.md:419-423 |
-| CORS not configured for production origins | Low | VERSION.md:422 |
-| No rate limiting middleware | Low | VERSION.md:423 |
-| Tauri NVIDIA+WebKitGTK EGL display issue | Low | VERSION.md:487 |
-| Hardcoded developer paths in VERSION.md | Low | VERSION.md:132-133 |
-| Demo credentials in VERSION.md | Low | VERSION.md:148-149 |
-| Test count in root docs outdated (276 vs actual 1,296) | Low | README.md, VERSION.md |
+| Tauri NVIDIA+WebKitGTK EGL display issue | Low | Desktop app on NVIDIA Linux |
+| Root CHANGELOG.md severely outdated (v1.1.0) | Low | Root CHANGELOG.md |
+| Per-user rate limiting not wired (user_id always None) | Low | rate_limit.rs:376 |
+| Coverage tooling not installed (tarpaulin/llvm-cov) | Low | CI/CD |
+| No formal Lean4/Coq proofs for algorithms | Low | Specs |
 
 ---
 
