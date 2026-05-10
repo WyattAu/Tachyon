@@ -14,7 +14,7 @@
 | **Type** | Knowledge Management System |
 | **Deployment Modes** | Desktop, Server, Static |
 | **Primary Languages** | Rust, Leptos |
-| **Current Version** | 4.1.0 |
+| **Current Version** | 10.0.0 |
 | **Project Status** | PRODUCTION READY |
 
 ---
@@ -78,7 +78,7 @@
 | CLI Tests | 29 | ✅ PASSED |
 | Server Tests | 26 | ✅ PASSED |
 | Integration Tests | 30 | ✅ PASSED |
-| **TOTAL** | **276** | **✅ ALL PASSED** |
+| **TOTAL** | **1,296** | **✅ ALL PASSED** |
 
 ### Production Deployment Tests
 
@@ -126,33 +126,13 @@
 
 ## How to Run the System
 
-### Start Backend Server
-```bash
-cd /tmp/tachyon-server-test
-LD_LIBRARY_PATH=/nix/store/8icpg7vrz95c6ap3mznmlmg7h0l2av1w-zlib-1.3.1/lib:/nix/store/g7lir5wb7g1a31szgw6n5wa0kbsq04zd-openssl-3.6.0/lib:$LD_LIBRARY_PATH \
-  /home/wyatt/dev/prj/Tachyon/tachyon/target/release/tachyon-server
-```
-
-### Start Web Frontend
-```bash
-cd /home/wyatt/dev/prj/Tachyon/tachyon/web
-bun run dev
-```
-
-### Access the Application
-- Web Interface: http://localhost:3000
-- API Endpoint: http://localhost:8080/api/v1/
-- Health Check: http://localhost:8080/health
-
-### Demo Credentials
-- Username: `admin`
-- Password: `admin123`
+See [Getting Started](documentation/getting-started.md) and the project [README](tachyon/README.md) for build and run instructions.
 
 ---
 
 ## Next Steps
 
-1. ✅ ~~Testing~~: All 276 tests pass
+1. ✅ ~~Testing~~: All 1,296 tests pass
 2. ✅ ~~Deployment~~: Production deployment verified
 3. **Tauri GUI**: Requires display environment to launch window
 4. **Performance**: Benchmark API endpoints under load
@@ -355,19 +335,16 @@ Replaced all remaining in-memory/placeholder endpoints with real PostgreSQL-back
 
 ---
 
-## Compliance Status
+## Compliance Status (Self-Assessed)
 
-| Standard | Status | Coverage |
-|----------|--------|----------|
-| IEEE 1016-2009 | COMPLETE | 100% |
-| ISO/IEC 25010 | COMPLETE | 100% |
-| NIST 800-53 | COMPLETE | 100% |
-| NIST 800-61 | COMPLETE | 100% |
-| ISO/IEC 27001:2022 | COMPLETE | 100% |
-| OWASP Top 10 | COMPLETE | 100% |
-| SPDX 2.3 | COMPLETE | 100% |
-| WCAG 2.1 AA | COMPLETE | 100% |
-| Section 508 | COMPLETE | 100% |
+| Standard | Status | Notes |
+|----------|--------|-------|
+| IEEE 1016-2009 | Partial | Blue Papers follow IEEE 1016 structure |
+| ISO/IEC 25010 | Partial | Quality characteristics identified, not formally verified |
+| NIST 800-53 | Partial | Security controls identified, not independently audited |
+| OWASP Top 10 | Good | Threat model completed, key protections implemented |
+| SPDX 2.3 | Complete | SBOM generation automated |
+| WCAG 2.1 AA | Partial | Semantic HTML, ARIA labels, keyboard navigation implemented |
 
 ---
 

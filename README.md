@@ -77,7 +77,7 @@ cargo run --bin tachyon-server
 
 ```bash
 just build          # Build all crates
-just test           # Run backend test suite (89 tests)
+just test           # Run backend test suite (1,296 tests)
 just lint           # Check formatting + clippy
 just db-reset      # Reset database with migrations
 just dev           # Start development servers

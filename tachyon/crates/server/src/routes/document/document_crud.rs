@@ -1,3 +1,4 @@
+use crate::validation::{ValidatedDocumentTitle, ValidatedTagList};
 use axum::{
     extract::{Extension, Path, Query, State},
     http::StatusCode,
@@ -65,27 +66,31 @@ pub async fn create_document(
 ) -> Result<Json<DocumentResponse>, (StatusCode, Json<ErrorResponse>)> {
     info!("Creating new document: {}", req.title);
 
-    if req.title.is_empty() {
-        return Err((
+    let validated_title = ValidatedDocumentTitle::new(&req.title).map_err(|e| {
+        (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
                 code: "VALIDATION_ERROR".to_string(),
-                message: "Title cannot be empty".to_string(),
+                message: format!("Invalid title: {}", e),
                 details: None,
             }),
-        ));
-    }
+        )
+    })?;
 
-    if req.title.len() > 200 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: "Title must be 200 characters or less".to_string(),
-                details: None,
-            }),
-        ));
-    }
+    let validated_tags = if !req.tags.is_empty() {
+        Some(ValidatedTagList::new(&req.tags).map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    code: "VALIDATION_ERROR".to_string(),
+                    message: format!("Invalid tags: {}", e),
+                    details: None,
+                }),
+            )
+        })?)
+    } else {
+        None
+    };
 
     let author_id: tachyon_core::id::UserId = auth
         .and_then(|Extension(ctx)| tachyon_core::id::UserId::parse_str(&ctx.user_id).ok())
@@ -93,7 +98,12 @@ pub async fn create_document(
 
     let doc_id = tachyon_core::generate_document_id();
     let content = DocumentContent::markdown(req.content.clone());
-    let mut doc = Document::new(doc_id, req.title.clone(), author_id, content);
+    let mut doc = Document::new(
+        doc_id,
+        validated_title.as_str().to_string(),
+        author_id,
+        content,
+    );
 
     if let Some(ref vis) = req.visibility {
         let visibility = match vis.to_lowercase().as_str() {
@@ -104,8 +114,8 @@ pub async fn create_document(
         doc.visibility = visibility;
     }
 
-    for tag in &req.tags {
-        if let Err(e) = doc.metadata.add_tag(tag.clone()) {
+    for tag in validated_tags.iter().flat_map(|vt| vt.iter()) {
+        if let Err(e) = doc.metadata.add_tag(tag.as_str().to_string()) {
             warn!("Failed to add tag: {}", e);
         }
     }
@@ -390,7 +400,17 @@ pub async fn update_document(
     })?;
 
     if let Some(title) = req.title {
-        metadata.title = title;
+        let validated_title = ValidatedDocumentTitle::new(&title).map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    code: "VALIDATION_ERROR".to_string(),
+                    message: format!("Invalid title: {}", e),
+                    details: None,
+                }),
+            )
+        })?;
+        metadata.title = validated_title.as_str().to_string();
     }
     if let Some(content) = req.content {
         if let Some(ref current_content) = metadata.content {
@@ -432,7 +452,18 @@ pub async fn update_document(
         metadata.status = status;
     }
     if let Some(tags) = req.tags {
-        metadata.tags = serde_json::to_string(&tags).unwrap_or_else(|_| "[]".to_string());
+        let validated_tags = ValidatedTagList::new(&tags).map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    code: "VALIDATION_ERROR".to_string(),
+                    message: format!("Invalid tags: {}", e),
+                    details: None,
+                }),
+            )
+        })?;
+        metadata.tags = serde_json::to_string(&validated_tags.as_strings())
+            .unwrap_or_else(|_| "[]".to_string());
     }
     metadata.updated_at = chrono::Utc::now();
 

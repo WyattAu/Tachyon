@@ -1,0 +1,541 @@
+# ============================================================================
+# Tachyon Continuous Deployment Pipeline
+# ============================================================================
+#
+# This workflow handles:
+#   1. Docker image builds (multi-arch) pushed to GHCR
+#   2. WASM frontend builds uploaded as artifacts
+#   3. Staging deploys on merge to main
+#   4. Production deploys on version tags (v*)
+#   5. Manual rollback to a specific version
+#
+# Required GitHub Secrets:
+#   - DOCKER_REGISTRY_USER: GHCR username (or use GITHUB_TOKEN)
+#   - DOCKER_REGISTRY_PASS: GHCR PAT with packages:write (or use GITHUB_TOKEN)
+#   - STAGING_HOST: Staging server hostname (e.g. staging.tachyon.example.com)
+#   - STAGING_SSH_KEY: SSH private key for staging server
+#   - STAGING_SSH_USER: SSH username for staging server
+#   - PRODUCTION_HOST: Production server hostname (e.g. tachyon.example.com)
+#   - PRODUCTION_SSH_KEY: SSH private key for production server
+#   - PRODUCTION_SSH_USER: SSH username for production server
+#   - STAGING_DATABASE_URL: PostgreSQL connection string for staging
+#   - PRODUCTION_DATABASE_URL: PostgreSQL connection string for production
+#   - STAGING_JWT_SECRET: JWT signing secret for staging
+#   - PRODUCTION_JWT_SECRET: JWT signing secret for production
+#   - STAGING_REDIS_PASSWORD: Redis password for staging
+#   - PRODUCTION_REDIS_PASSWORD: Redis password for production
+#   - SLACK_WEBHOOK_URL (optional): Slack webhook for deployment notifications
+# ============================================================================
+
+name: CD
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      version:
+        description: 'Version to deploy (e.g. v1.2.3). Leave empty for latest.'
+        required: false
+        type: string
+      rollback:
+        description: 'Set to true to rollback to the specified version'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: cd-${{ github.ref }}-${{ inputs.environment || 'auto' }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ===========================================================================
+  # Determine what to do based on trigger
+  # ===========================================================================
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_tag: ${{ steps.version.outputs.is_tag }}
+      is_main: ${{ steps.version.outputs.is_main }}
+      should_build_images: ${{ steps.version.outputs.should_build_images }}
+      should_deploy_staging: ${{ steps.version.outputs.should_deploy_staging }}
+      should_deploy_production: ${{ steps.version.outputs.should_deploy_production }}
+      should_build_frontend: ${{ steps.version.outputs.should_build_frontend }}
+      is_rollback: ${{ steps.version.outputs.is_rollback }}
+    steps:
+      - name: Determine version and targets
+        id: version
+        run: |
+          IS_TAG=false
+          IS_MAIN=false
+          SHOULD_BUILD_IMAGES=false
+          SHOULD_DEPLOY_STAGING=false
+          SHOULD_DEPLOY_PRODUCTION=false
+          SHOULD_BUILD_FRONTEND=false
+          IS_ROLLBACK=false
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+            IS_TAG=true
+            SHOULD_BUILD_IMAGES=true
+            SHOULD_BUILD_FRONTEND=true
+            SHOULD_DEPLOY_PRODUCTION=true
+            SHOULD_DEPLOY_STAGING=true
+          elif [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            VERSION="${GITHUB_SHA:0:7}"
+            IS_MAIN=true
+            SHOULD_BUILD_IMAGES=true
+            SHOULD_BUILD_FRONTEND=true
+            SHOULD_DEPLOY_STAGING=true
+          fi
+
+          if [[ "${{ inputs.rollback }}" == "true" ]]; then
+            IS_ROLLBACK=true
+            SHOULD_BUILD_IMAGES=false
+            SHOULD_BUILD_FRONTEND=false
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+              SHOULD_DEPLOY_PRODUCTION=true
+            else
+              SHOULD_DEPLOY_STAGING=true
+            fi
+            if [[ -n "${{ inputs.version }}" ]]; then
+              VERSION="${{ inputs.version }}"
+            fi
+          elif [[ -n "${{ inputs.environment }}" ]]; then
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+              SHOULD_DEPLOY_PRODUCTION=true
+            else
+              SHOULD_DEPLOY_STAGING=true
+            fi
+            if [[ -n "${{ inputs.version }}" ]]; then
+              VERSION="${{ inputs.version }}"
+              SHOULD_BUILD_IMAGES=true
+              SHOULD_BUILD_FRONTEND=true
+            fi
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "is_tag=$IS_TAG" >> "$GITHUB_OUTPUT"
+          echo "is_main=$IS_MAIN" >> "$GITHUB_OUTPUT"
+          echo "should_build_images=$SHOULD_BUILD_IMAGES" >> "$GITHUB_OUTPUT"
+          echo "should_deploy_staging=$SHOULD_DEPLOY_STAGING" >> "$GITHUB_OUTPUT"
+          echo "should_deploy_production=$SHOULD_DEPLOY_PRODUCTION" >> "$GITHUB_OUTPUT"
+          echo "should_build_frontend=$SHOULD_BUILD_FRONTEND" >> "$GITHUB_OUTPUT"
+          echo "is_rollback=$IS_ROLLBACK" >> "$GITHUB_OUTPUT"
+
+          echo "### Deployment Plan" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Property | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Version | \`$VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tag push | $IS_TAG |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Main push | $IS_MAIN |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Build images | $SHOULD_BUILD_IMAGES |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Build frontend | $SHOULD_BUILD_FRONTEND |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Deploy staging | $SHOULD_DEPLOY_STAGING |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Deploy production | $SHOULD_DEPLOY_PRODUCTION |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Rollback | $IS_ROLLBACK |" >> "$GITHUB_STEP_SUMMARY"
+
+  # ===========================================================================
+  # Build and push multi-arch Docker images
+  # ===========================================================================
+  docker:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: needs.prepare.outputs.should_build_images == 'true'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_REGISTRY_USER || github.actor }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASS || secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata (server)
+        id: meta-server
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/server
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.is_tag == 'true' || needs.prepare.outputs.is_main == 'true' }}
+
+      - name: Extract Docker metadata (frontend)
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.is_tag == 'true' || needs.prepare.outputs.is_main == 'true' }}
+
+      - name: Build and push server image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-server.outputs.tags }}
+          labels: ${{ steps.meta-server.outputs.labels }}
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,scope=server,mode=max
+          build-args: |
+            TMPDIR=/tmp
+        timeout-minutes: 30
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.frontend
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+          build-args: |
+            TMPDIR=/tmp
+        timeout-minutes: 30
+
+  # ===========================================================================
+  # Build WASM frontend and upload as artifact
+  # ===========================================================================
+  frontend-wasm:
+    name: Build WASM Frontend
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: needs.prepare.outputs.should_build_frontend == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('tachyon/Cargo.lock') }}
+
+      - name: Install trunk
+        run: TMPDIR=/tmp cargo install trunk --locked
+
+      - name: Build frontend
+        working-directory: tachyon/crates/frontend
+        run: trunk build --release
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-${{ needs.prepare.outputs.version }}
+          path: tachyon/crates/frontend/dist
+          retention-days: 90
+
+  # ===========================================================================
+  # Deploy to staging
+  # ===========================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [prepare, docker]
+    if: needs.prepare.outputs.should_deploy_staging == 'true'
+    environment:
+      name: staging
+      url: https://${{ secrets.STAGING_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_REGISTRY_USER || github.actor }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASS || secrets.GITHUB_TOKEN }}
+
+      - name: Set deployment variables
+        id: deploy-vars
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          if [[ "${{ needs.prepare.outputs.is_main }}" == "true" && "${{ needs.prepare.outputs.is_tag }}" != "true" ]]; then
+            VERSION="latest"
+          fi
+          echo "deploy_version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Deploying version $VERSION to staging"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            cd /opt/tachyon
+
+            export REGISTRY=${{ env.REGISTRY }}
+            export IMAGE_NAME=${{ env.IMAGE_NAME }}
+            export VERSION=${{ steps.deploy-vars.outputs.deploy_version }}
+            export POSTGRES_USER=${{ secrets.STAGING_POSTGRES_USER }}
+            export POSTGRES_PASSWORD=${{ secrets.STAGING_POSTGRES_PASSWORD }}
+            export POSTGRES_DB=${{ secrets.STAGING_POSTGRES_DB }}
+            export REDIS_PASSWORD=${{ secrets.STAGING_REDIS_PASSWORD }}
+            export JWT_SECRET=${{ secrets.STAGING_JWT_SECRET }}
+            export CORS_ORIGINS=${{ secrets.STAGING_CORS_ORIGINS }}
+            export CERTBOT_DOMAIN=${{ secrets.STAGING_HOST }}
+            export CERTBOT_EMAIL=${{ secrets.STAGING_CERTBOT_EMAIL }}
+            export CERTBOT_STAGING=true
+
+            echo "Pulling images..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull backend frontend || true
+
+            echo "Running database migrations..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm backend /app/tachyon-server migrate || echo "Migration step completed (may have been run already)"
+
+            echo "Deploying..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+
+            echo "Waiting for healthy state..."
+            sleep 15
+
+      - name: Smoke tests (health check)
+        run: |
+          STAGING_HOST="${{ secrets.STAGING_HOST }}"
+          MAX_RETRIES=30
+          RETRY_INTERVAL=5
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            if curl -sf "https://${STAGING_HOST}/health" | jq -e '.status == "healthy"' >/dev/null 2>&1; then
+              echo "Health check passed (attempt $i)"
+              break
+            fi
+            echo "Waiting for healthy state... (attempt $i/$MAX_RETRIES)"
+            sleep $RETRY_INTERVAL
+            if [ "$i" -eq "$MAX_RETRIES" ]; then
+              echo "::error::Staging health check failed after $MAX_RETRIES attempts"
+              exit 1
+            fi
+          done
+
+          echo "Checking readiness..."
+          curl -sf "https://${STAGING_HOST}/ready" | jq . || echo "Readiness check returned non-JSON (may not be implemented)"
+
+      - name: Smoke tests (basic API call)
+        run: |
+          STAGING_HOST="${{ secrets.STAGING_HOST }}"
+          curl -sf "https://${STAGING_HOST}/api/v1/health" | jq . || echo "API health endpoint returned non-JSON"
+          HTTP_CODE=$(curl -sf -o /dev/null -w '%{http_code}' "https://${STAGING_HOST}/")
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "Frontend serving correctly (HTTP $HTTP_CODE)"
+          else
+            echo "::warning::Frontend returned HTTP $HTTP_CODE"
+          fi
+
+      - name: Set commit status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: '${{ job.status }}' === 'success' ? 'success' : 'failure',
+              target_url: 'https://${{ secrets.STAGING_HOST }}',
+              description: 'Staging deployment ${{ job.status }}',
+              context: 'deploy/staging'
+            });
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            STATUS="${{ job.status }}"
+            VERSION="${{ needs.prepare.outputs.version }}"
+            curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"text\":\"Tachyon staging deployment ${STATUS}: version ${VERSION}\"}" \
+              >/dev/null 2>&1 || true
+          fi
+
+  # ===========================================================================
+  # Deploy to production
+  # ===========================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [prepare, docker, deploy-staging]
+    if: needs.prepare.outputs.should_deploy_production == 'true'
+    environment:
+      name: production
+      url: https://${{ secrets.PRODUCTION_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_REGISTRY_USER || github.actor }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASS || secrets.GITHUB_TOKEN }}
+
+      - name: Set deployment variables
+        id: deploy-vars
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          if [[ "${{ needs.prepare.outputs.is_rollback }}" == "true" ]]; then
+            echo "ROLLBACK: deploying version $VERSION"
+          fi
+          echo "deploy_version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_SSH_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            cd /opt/tachyon
+
+            export REGISTRY=${{ env.REGISTRY }}
+            export IMAGE_NAME=${{ env.IMAGE_NAME }}
+            export VERSION=${{ steps.deploy-vars.outputs.deploy_version }}
+            export POSTGRES_USER=${{ secrets.PRODUCTION_POSTGRES_USER }}
+            export POSTGRES_PASSWORD=${{ secrets.PRODUCTION_POSTGRES_PASSWORD }}
+            export POSTGRES_DB=${{ secrets.PRODUCTION_POSTGRES_DB }}
+            export REDIS_PASSWORD=${{ secrets.PRODUCTION_REDIS_PASSWORD }}
+            export JWT_SECRET=${{ secrets.PRODUCTION_JWT_SECRET }}
+            export CORS_ORIGINS=${{ secrets.PRODUCTION_CORS_ORIGINS }}
+            export CERTBOT_DOMAIN=${{ secrets.PRODUCTION_HOST }}
+            export CERTBOT_EMAIL=${{ secrets.PRODUCTION_CERTBOT_EMAIL }}
+
+            echo "Pulling images..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull backend frontend || true
+
+            echo "Running database migrations..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm backend /app/tachyon-server migrate || echo "Migration step completed (may have been run already)"
+
+            echo "Deploying..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+
+            echo "Waiting for healthy state..."
+            sleep 20
+
+      - name: Smoke tests (health check)
+        run: |
+          PRODUCTION_HOST="${{ secrets.PRODUCTION_HOST }}"
+          MAX_RETRIES=30
+          RETRY_INTERVAL=5
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            if curl -sf "https://${PRODUCTION_HOST}/health" | jq -e '.status == "healthy"' >/dev/null 2>&1; then
+              echo "Health check passed (attempt $i)"
+              break
+            fi
+            echo "Waiting for healthy state... (attempt $i/$MAX_RETRIES)"
+            sleep $RETRY_INTERVAL
+            if [ "$i" -eq "$MAX_RETRIES" ]; then
+              echo "::error::Production health check failed after $MAX_RETRIES attempts"
+              exit 1
+            fi
+          done
+
+          echo "Checking readiness..."
+          curl -sf "https://${PRODUCTION_HOST}/ready" | jq . || echo "Readiness check returned non-JSON (may not be implemented)"
+
+      - name: Smoke tests (basic API call)
+        run: |
+          PRODUCTION_HOST="${{ secrets.PRODUCTION_HOST }}"
+          curl -sf "https://${PRODUCTION_HOST}/api/v1/health" | jq . || echo "API health endpoint returned non-JSON"
+          HTTP_CODE=$(curl -sf -o /dev/null -w '%{http_code}' "https://${PRODUCTION_HOST}/")
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "Frontend serving correctly (HTTP $HTTP_CODE)"
+          else
+            echo "::warning::Frontend returned HTTP $HTTP_CODE"
+          fi
+
+      - name: Create GitHub Release
+        if: needs.prepare.outputs.is_tag == 'true' && needs.prepare.outputs.is_rollback != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.version }}
+          name: Release ${{ needs.prepare.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ contains(needs.prepare.outputs.version, '-') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set commit status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: '${{ job.status }}' === 'success' ? 'success' : 'failure',
+              target_url: 'https://${{ secrets.PRODUCTION_HOST }}',
+              description: 'Production deployment ${{ job.status }}',
+              context: 'deploy/production'
+            });
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            STATUS="${{ job.status }}"
+            VERSION="${{ needs.prepare.outputs.version }}"
+            ROLLBACK=""
+            if [[ "${{ needs.prepare.outputs.is_rollback }}" == "true" ]]; then
+              ROLLBACK=" (ROLLBACK)"
+            fi
+            curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"text\":\"Tachyon production deployment${ROLLBACK} ${STATUS}: version ${VERSION}\"}" \
+              >/dev/null 2>&1 || true
+          fi

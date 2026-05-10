@@ -574,12 +574,9 @@ pub fn add_security_headers_with_config(
         );
     }
 
-    if config.x_xss_protection {
-        headers.insert(
-            "X-XSS-Protection",
-            HeaderValue::from_static("1; mode=block"),
-        );
-    }
+    // X-XSS-Protection is intentionally omitted.
+    // The header is deprecated in modern browsers and can introduce
+    // security issues. Content-Security-Policy provides equivalent protection.
 
     headers.insert(
         header::REFERRER_POLICY,
