@@ -14,8 +14,8 @@ tags: [config, reference]
 | `DATABASE_URL` | — | PostgreSQL connection string (required) |
 | `JWT_SECRET` | — | Secret key for JWT signing (required) |
 | `RUST_LOG` | `info` | Log level filter |
-| `SERVER_HOST` | `0.0.0.0` | Server bind address |
-| `SERVER_PORT` | `8080` | Server bind port |
+| `TACHYON_HOST` | `0.0.0.0` | Server bind address |
+| `TACHYON_PORT` | `8080` | Server bind port |
 | `CORS_ORIGINS` | `*` | Allowed CORS origins |
 | `UPLOAD_DIR` | `./uploads` | File upload directory |
 | `MAX_UPLOAD_SIZE` | `50MB` | Maximum file upload size |

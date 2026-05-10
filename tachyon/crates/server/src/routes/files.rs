@@ -80,10 +80,15 @@ struct TreeQuery {
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct TreeResponse {
     path: String,
+    #[schema(value_type = Vec<Object>)]
     tree: Vec<TreeNode>,
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
+/// Tree node for directory listing. Not registered with utoipa ToSchema
+/// because self-referential types require utoipa's `#[schema(recursive)]`
+/// which is incompatible with the derive macro in utoipa 5.x.
+/// Instead, the OpenAPI schema is defined manually in api_docs.rs.
+#[derive(Debug, Serialize)]
 pub struct TreeNode {
     name: String,
     path: String,

@@ -1,7 +1,7 @@
 # Tachyon
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)
+[![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
 [![Axum](https://img.shields.io/badge/axum-0.8-blue.svg)
 [![Leptos](https://img.shields.io/badge/leptos-0.8-purple.svg)
 
@@ -101,7 +101,7 @@ just dev           # Start development servers
 | POST | `/api/v1/auth/guest` | Guest login |
 | GET | `/api/v1/users` | List users |
 | GET | `/api/v1/teams` | List teams |
-| POST | `/api/v1/roles` | List roles |
+| POST | `/api/v1/roles` | Create role |
 | GET | `/health` | Health check |
 | GET | `/robots.txt` | SEO robots.txt |
 | GET | `/sitemap.xml` | Dynamic sitemap |

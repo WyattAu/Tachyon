@@ -95,7 +95,7 @@ See `.env.example` for a production template.
 | `tachyon-renderer` | Markdown rendering with extensions and TOC |
 | `tachyon-search` | Full-text search indexing and querying with Tantivy |
 | `tachyon-rbac` | Role-based access control engine |
-| `tachyon-frontend` | WASM-based web frontend (Yew + Trunk) |
+| `tachyon-frontend` | WASM-based web frontend (Leptos 0.8 + Trunk) |
 | `tachyon-desktop` | Native desktop client (Tauri) |
 | `tachyon-cli` | Command-line interface |
 | `tachyon-testing` | Shared test utilities, fuzzing harnesses, and benchmarks |

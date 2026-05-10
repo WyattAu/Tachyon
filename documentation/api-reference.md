@@ -59,13 +59,13 @@ Content-Type: application/json
 
 ### Get Document
 ```
-GET /api/v1/documents/:id
+GET /api/v1/documents/{id}
 Authorization: Bearer <token>
 ```
 
 ### Update Document
 ```
-PUT /api/v1/documents/:id
+PUT /api/v1/documents/{id}
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -78,7 +78,7 @@ Content-Type: application/json
 
 ### Delete Document
 ```
-DELETE /api/v1/documents/:id
+DELETE /api/v1/documents/{id}
 Authorization: Bearer <token>
 ```
 

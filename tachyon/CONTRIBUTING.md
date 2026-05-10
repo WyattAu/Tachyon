@@ -123,7 +123,7 @@ cargo run -p tachyon-server -- migrate
 
 ```bash
 cargo build --workspace
-cargo run -p tachyon-server          # Backend on http://127.0.0.1:3000
+cargo run -p tachyon-server          # Backend on http://127.0.0.1:8080
 cd crates/frontend && trunk serve   # Frontend dev server
 ```
 

@@ -1,8 +1,17 @@
 // OpenAPI Documentation Module
 // Provides OpenAPI specification generation and Swagger UI
 
+use std::sync::OnceLock;
+use utoipa::openapi::OpenApi as OpenApiSpec;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+
+/// Compute the OpenAPI spec once and cache it. The utoipa derive macro
+/// expands to deeply nested types; `OnceLock` avoids recomputation.
+fn openapi_spec() -> &'static OpenApiSpec {
+    static SPEC: OnceLock<OpenApiSpec> = OnceLock::new();
+    SPEC.get_or_init(ApiDoc::openapi)
+}
 
 // Import all route types for documentation
 
@@ -343,7 +352,6 @@ use utoipa_swagger_ui::SwaggerUi;
         crate::routes::files::SearchResponse,
         crate::routes::files::SearchResultEntry,
         crate::routes::files::TreeResponse,
-        crate::routes::files::TreeNode,
         crate::routes::files::StatsResponse,
         crate::routes::files::LargestFileEntry,
         crate::routes::files::RecentResponse,
@@ -385,13 +393,33 @@ impl utoipa::Modify for SecurityAddon {
                     ),
                 ),
             );
+            // Manual schema for TreeNode (self-referential, cannot use derive ToSchema)
+            // Defined as raw JSON Schema inserted into the components map
+            let tree_node_json: serde_json::Value = serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "path": { "type": "string" },
+                    "is_dir": { "type": "boolean" },
+                    "children": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/TreeNode" }
+                    }
+                }
+            });
+            let tree_node_schema: utoipa::openapi::schema::Schema =
+                serde_json::from_value(tree_node_json).expect("TreeNode schema must be valid");
+            components.schemas.insert(
+                "TreeNode".into(),
+                utoipa::openapi::RefOr::T(tree_node_schema),
+            );
         }
     }
 }
 
 /// Create Swagger UI instance for merging into router
 pub fn create_swagger_ui() -> SwaggerUi {
-    SwaggerUi::new("/api/docs").url("/api/docs/openapi.json", ApiDoc::openapi())
+    SwaggerUi::new("/api/docs").url("/api/docs/openapi.json", openapi_spec().clone())
 }
 
 #[cfg(test)]
@@ -400,7 +428,7 @@ mod tests {
 
     #[test]
     fn test_openapi_spec_generation() {
-        let spec = ApiDoc::openapi();
+        let spec = openapi_spec();
         let json = spec.to_pretty_json().expect("Failed to generate JSON");
         assert!(json.contains("Tachyon API"));
         assert!(json.contains("documents"));
@@ -410,7 +438,7 @@ mod tests {
 
     #[test]
     fn test_openapi_spec_has_security_schemes() {
-        let spec = ApiDoc::openapi();
+        let spec = openapi_spec();
         let json = spec.to_pretty_json().expect("Failed to generate JSON");
         assert!(json.contains("bearer_auth"));
         assert!(json.contains("api_key"));
@@ -418,7 +446,7 @@ mod tests {
 
     #[test]
     fn test_openapi_spec_has_all_tags() {
-        let spec = ApiDoc::openapi();
+        let spec = openapi_spec();
         let json = spec.to_pretty_json().expect("Failed to generate JSON");
         assert!(json.contains("documents"));
         assert!(json.contains("users"));

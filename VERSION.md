@@ -483,8 +483,7 @@ Replaced all remaining in-memory/placeholder endpoints with real PostgreSQL-back
 | Concurrent Load | ✅ PASS | 20/20 requests successful |
 
 ### Known Limitations
-1. **Document Persistence**: API creates documents in memory but doesn't persist to database (repository layer implementation needed)
-2. **Tauri Desktop**: NVIDIA+WebKitGTK EGL display initialization issue (environment-specific)
+1. **Tauri Desktop**: NVIDIA+WebKitGTK EGL display initialization issue (environment-specific)
 
 ### Access URLs
 - Frontend: http://localhost:3000

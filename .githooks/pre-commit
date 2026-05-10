@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#
+# Tachyon pre-commit hook
+# Ensures code quality gates pass before any commit is created.
+#
+# Install: cp .githooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# Or: git config core.hooksPath .githooks
+#
+
+set -euo pipefail
+
+# Resolve repository root (where .git is)
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+WORKSPACE_DIR="${REPO_ROOT}/tachyon"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
+error() { echo -e "${RED}[FAIL]${NC} $*"; }
+
+PASS=true
+
+# Skip checks if no Rust files were modified
+RUST_CHANGED="$(git diff --cached --name-only --diff-filter=ACM | grep -cE '\.rs$|Cargo\.toml|Cargo\.lock' || true)"
+if [ "$RUST_CHANGED" -eq 0 ]; then
+    info "No Rust files changed. Skipping cargo checks."
+    exit 0
+fi
+
+# ---- 1. Rust formatting ----
+info "Checking Rust formatting (cargo fmt)..."
+if ! cargo fmt --all --manifest-path "${WORKSPACE_DIR}/Cargo.toml" -- --check 2>&1; then
+    error "Rust formatting issues found. Run: cargo fmt --all --manifest-path tachyon/Cargo.toml"
+    PASS=false
+fi
+
+# ---- 2. Clippy lint ----
+info "Running Clippy (cargo clippy -D warnings)..."
+if ! cargo clippy --workspace --exclude tachyon-testing --exclude tachyon-frontend --manifest-path "${WORKSPACE_DIR}/Cargo.toml" -- -D warnings 2>&1; then
+    error "Clippy warnings found. Fix them before committing."
+    PASS=false
+fi
+
+# ---- 3. Workspace tests ----
+info "Running workspace tests (cargo test --workspace)..."
+if ! cargo test --workspace --exclude tachyon-testing --exclude tachyon-frontend --manifest-path "${WORKSPACE_DIR}/Cargo.toml" 2>&1; then
+    error "Tests failed. Fix them before committing."
+    PASS=false
+fi
+
+# ---- 4. Check for secrets ----
+info "Checking for potential secrets..."
+if git diff --cached --name-only --diff-filter=ACM | xargs grep -lE '(PASSWORD|SECRET|API_KEY|TOKEN|PRIVATE_KEY).*=.*["\x27][^"\x27]{8,}' 2>/dev/null; then
+    warn "Potential secrets detected in staged files. Verify these are intentional."
+fi
+
+# ---- 5. Check for debug artifacts ----
+info "Checking for debug artifacts..."
+if git diff --cached --name-only | grep -qE '(target/|\.swp$|\.swo$|~$|\.pyc$|__pycache__)'; then
+    error "Debug/build artifacts detected in staged files. Remove them before committing."
+    PASS=false
+fi
+
+# ---- Result ----
+if [ "$PASS" = true ]; then
+    info "All pre-commit checks passed."
+    exit 0
+else
+    error "Pre-commit checks failed. Fix the issues above and try again."
+    exit 1
+fi

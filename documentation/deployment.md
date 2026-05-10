@@ -24,10 +24,9 @@ docker run -d \
 ### Docker Compose
 
 ```yaml
-version: '3.8'
 services:
   db:
-    image: postgres:15
+    image: postgres:16
     environment:
       POSTGRES_DB: tachyon
       POSTGRES_USER: tachyon

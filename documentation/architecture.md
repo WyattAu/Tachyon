@@ -50,7 +50,7 @@ tachyon-server
 ├── tachyon-search → tantivy
 ├── tachyon-ssg → tachyon-renderer
 ├── tachyon-rbac (role-based access control)
-└── tachyon-auth → jsonwebtoken
+└── tachyon-core → jsonwebtoken (auth)
 
 tachyon-frontend (WASM)
 ├── leptos 0.8 + leptos_router
@@ -71,7 +71,7 @@ Tachyon uses Leptos in CSR mode because:
 
 ### Why Yrs (Yjs Rust Port)?
 
-- Battle-tested CRDT implementation (used by Notion, Figma)
+- Battle-tested CRDT implementation (used by JupyterLab, Hex, collaborative editors)
 - Rust-native (no WASM bridge needed)
 - Character-level conflict resolution
 - Efficient binary encoding for network sync
