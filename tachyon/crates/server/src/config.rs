@@ -827,6 +827,7 @@ impl ServerConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_server_config_default() {
@@ -890,12 +891,14 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_static_dir_default() {
         std::env::remove_var("TACHYON_STATIC_DIR");
         assert_eq!(static_dir(), "dist");
     }
 
     #[test]
+    #[serial]
     fn test_static_dir_from_env() {
         std::env::set_var("TACHYON_STATIC_DIR", "/var/www/html");
         assert_eq!(static_dir(), "/var/www/html");

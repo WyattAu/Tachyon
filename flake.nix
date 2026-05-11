@@ -85,6 +85,7 @@
         rustDevTools = with pkgs; [
           cargo-audit
           cargo-outdated
+          cargo-tarpaulin
           cargo-watch
           trunk
           wasm-bindgen-cli

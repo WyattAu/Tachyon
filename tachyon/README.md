@@ -100,6 +100,26 @@ See `.env.example` for a production template.
 | `tachyon-cli` | Command-line interface |
 | `tachyon-testing` | Shared test utilities, fuzzing harnesses, and benchmarks |
 
+## Known Issues
+
+### Tauri Desktop: NVIDIA + WebKitGTK EGL Display
+
+On Linux systems with NVIDIA GPUs and WebKitGTK, the Tauri desktop app may fail to initialize the display surface with an EGL error:
+
+```
+EGL display initialization failed: could not create EGL display
+```
+
+**Workaround:** Set the following environment variable before launching:
+
+```bash
+export WEBKIT_DISABLE_COMPOSITING_MODE=1
+```
+
+This forces WebKitGTK to use software rendering. Performance will be reduced but the application will render correctly.
+
+**Affected configurations:** NVIDIA proprietary drivers with WebKitGTK >= 2.40 on X11. Wayland is not affected.
+
 ## Formal Verification
 
 The `specs/` directory contains formal specifications:

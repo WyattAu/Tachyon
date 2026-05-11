@@ -373,7 +373,10 @@ pub async fn rate_limit_middleware(
     let path = request.uri().path();
     let headers = request.headers();
 
-    let user_id = None;
+    let user_id = request
+        .extensions()
+        .get::<crate::middleware::auth::AuthContext>()
+        .map(|ctx| ctx.user_id.as_str());
 
     let limit = state.get_limit_for_path(path);
     let key = RateLimitKey::from_request(headers, request.uri(), user_id);
