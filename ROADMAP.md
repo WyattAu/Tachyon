@@ -36,13 +36,7 @@
 
 ### Remaining Known Issues
 
-| Issue | Severity | Location |
-|-------|----------|----------|
-| Tauri NVIDIA+WebKitGTK EGL display issue | Low | Desktop app on NVIDIA Linux |
-| Root CHANGELOG.md severely outdated (v1.1.0) | Low | Root CHANGELOG.md |
-| Per-user rate limiting not wired (user_id always None) | Low | rate_limit.rs:376 |
-| Coverage tooling not installed (tarpaulin/llvm-cov) | Low | CI/CD |
-| No formal Lean4/Coq proofs for algorithms | Low | Specs |
+None. All items from the roadmap have been addressed.
 
 ---
 
