@@ -1,259 +1,488 @@
 # Tachyon Roadmap
 
-**Date:** 2026-05-10
-**Status:** Post-audit, production-viable
-**Version:** 10.0.0 (per tachyon/CHANGELOG.md)
+**Version:** 10.1.0 | **Last Updated:** 2026-05-11 | **Codebase:** 278 Rust files, ~92K lines, 16 crates
 
 ---
 
 ## Current State Summary
 
-| Metric | Value |
-|--------|-------|
-| Workspace crates | 18 |
-| Total tests (passing) | 1,353 (lib + integration + doc) |
-| Clippy warnings | 0 (with `-D warnings`) |
-| Formatting | Clean (rustfmt) |
-| Dead code | None detected |
-| Production stubs | None in critical paths |
-| Pre-commit hook | Installed (fmt + clippy + tests + secrets + artifacts) |
-| serde deny_unknown_fields | 33 request DTOs covered |
-
-### Issues Resolved This Session
-
-1. **Stack overflow in utoipa OpenAPI generation** -- `TreeNode` self-referential struct caused infinite recursion in utoipa 5.x schema derivation. Fixed with manual JSON Schema `$ref` pattern and `OnceLock` caching.
-2. **12 documentation factual errors** -- Wrong framework (Yew -> Leptos), wrong env vars, wrong ports, wrong API syntax, nonexistent crate references, inaccurate CRDT attribution, self-contradictory status claims.
-3. **No pre-commit hook** -- Created comprehensive gate enforcing formatting, linting, tests, secret detection, and artifact exclusion.
-4. **XSS in document titles** -- Wired existing `ValidatedDocumentTitle` and `ValidatedTagList` validation into create/update document handlers.
-5. **Version inconsistency** -- Unified to 10.0.0 across all documentation.
-6. **Unsubstantiated compliance claims** -- Replaced with honest self-assessment.
-7. **Duplicate CORS implementation** -- Deduplicated to single canonical `build_cors_layer()`.
-8. **Double markdown parse** -- Eliminated in renderer by consolidating code block counting into single pass.
-9. **Request DTO safety** -- Added `#[serde(deny_unknown_fields)]` to 33 request types.
-10. **Integration tests expanded** -- +22 new tests for billing, plugin, and SSG endpoints.
-11. **Property-based tests** -- +8 proptest covering document state machine, CRDT convergence, search roundtrip.
-12. **Benchmark suite verified** -- All 9 Criterion benchmark files contain real benchmarks.
-
-### Remaining Known Issues
-
-None. All items from the roadmap have been addressed.
+| Dimension | Status |
+|-----------|--------|
+| Build | Passes (0 errors, 0 warnings) |
+| Tests | 1,353 tests across 37 binaries, 0 failures |
+| Formatting | `cargo fmt --check` clean |
+| Linting | `cargo clippy -D warnings` clean |
+| Documentation | `cargo doc --no-deps` clean (0 warnings) |
+| Pre-commit hook | Configured at `.githooks/`, 7 checks |
+| CI | GitHub Actions: build, test, lint, integration, security, fuzz |
+| Deployment | Docker multi-stage, docker-compose dev/prod, Nix flake |
 
 ---
 
-## Phase 1: Hardening (0-2 weeks)
+## Phase 1: Hardening (v10.2.0) -- 2 weeks
 
-### 1.1 Security Remediation
+### 1.1 Wire Email Delivery [High]
 
-- [ ] Implement HTML sanitization in markdown renderer (ammonia is already a dep, verify coverage)
-- [ ] Sanitize document titles on output
-- [ ] Configure CORS with specific allowed origins (env-based)
-- [ ] Add rate limiting middleware (token bucket per IP, configurable limits)
-- [ ] Add request body size limits validation with proper error responses
-- [ ] Remove demo credentials from documentation, reference `.env.example`
+`EmailService::send()` (`crates/server/src/email.rs:43`) is a no-op that logs and returns `Ok(())`. Password reset tokens, email verification links, and notification emails are silently dropped.
 
-### 1.2 Version Unification
+**Scope:**
+- Integrate `lettre` crate for SMTP (supports SES, Resend, SendGrid, self-hosted)
+- Add `SMTP_URL`, `SMTP_FROM`, `SMTP_USERNAME`, `SMTP_PASSWORD` config fields
+- Implement async send with connection pooling via `lettre::AsyncSmtpTransport`
+- Add retry with exponential backoff (3 attempts, 1s/5s/15s)
+- Template rendering via `minijinja` (the dependency is already commented out in `Cargo.toml`)
+- Unit tests: send success, send failure, timeout, invalid recipient
+- Integration test: end-to-end password reset flow with real SMTP (mock via `wiremock`)
 
-- [ ] Designate `tachyon/CHANGELOG.md` as single authoritative version source
-- [ ] Update root `VERSION.md` to reference inner version, not maintain separate tracking
-- [ ] Remove or archive root `CHANGELOG.md` (severely outdated at v1.1.0)
-- [ ] Add version to `Cargo.toml` workspace package and automate CHANGELOG updates
+**Files:** `crates/server/src/email.rs`, `crates/server/src/config.rs`, `crates/server/src/routes/password_reset.rs`
 
-### 1.3 Compliance Claims Substantiation
+### 1.2 Remove `#[allow(dead_code)]` Annotations [Medium]
 
-- [ ] Remove or downgrade "100% compliance" claims for standards without evidence
-- [ ] Add self-assessment methodology and evidence links where claims are retained
-- [ ] Generate compliance evidence artifacts for `.specs/09_compliance/evidence/`
+100+ `#[allow(dead_code)]` annotations exist across the codebase, primarily in:
+- `crates/frontend/src/api/` (billing, documents, teams, spaces, files, auth, search)
+- `crates/server/src/websocket/`
+- `crates/search/src/api.rs`
+- `crates/desktop/src-tauri/src/commands.rs`
 
-### 1.4 Documentation Cleanup
+**Scope:**
+- Audit each annotation: wire into real code paths, or remove dead code
+- Enable `#![deny(dead_code)]` on non-test crates incrementally
+- Target: reduce from 100+ to under 20
 
-- [ ] Remove hardcoded developer paths from VERSION.md
-- [ ] Update test counts across all docs to match actual `cargo test` output
-- [ ] Trim VERSION.md to under 100 lines (move benchmarks/security/CI to dedicated files)
-- [ ] Verify all code examples in documentation compile and run
+**Effort:** 3-5 days. Batch by crate.
 
----
+### 1.3 Database Connection Pool Tuning [Medium]
 
-## Phase 2: Testing & Coverage (2-4 weeks)
+`DatabasePool` uses sqlx defaults. No explicit `max_connections`, `min_connections`, `acquire_timeout`, or `idle_timeout`.
 
-### 2.1 Coverage Thresholds
+**Scope:**
+- Add `DB_MAX_CONNECTIONS` (default: 10), `DB_MIN_CONNECTIONS` (default: 2)
+- Add `DB_ACQUIRE_TIMEOUT_MS` (default: 5000), `DB_IDLE_TIMEOUT_SECS` (default: 600)
+- Expose in `ServerConfig` with sensible defaults
+- Document sizing formula: `max_connections = (core_count * 2) + effective_spindle_count`
 
-- [ ] Set up `cargo-tarpaulin` or `cargo-llvm-cov` in CI
-- [ ] Establish baseline coverage per crate
-- [ ] Target: >80% branch coverage overall, >95% on critical paths
-- [ ] Add coverage gate to pre-commit hook (warning only, not blocking)
+**Files:** `crates/database/src/schema.rs`, `crates/server/src/config.rs`
 
-### 2.2 Integration Test Expansion
+### 1.4 Test Cleanup Completeness [Low]
 
-- [ ] The 212 integration tests in `tachyon/crates/server/tests/` require PostgreSQL. Verify CI Docker service is configured correctly.
-- [ ] Add integration tests for billing endpoints (currently untested in integration suite)
-- [ ] Add integration tests for OAuth2 flows
-- [ ] Add integration tests for plugin runtime WASM invocation
-- [ ] Add integration tests for SSG build + download
+`TestApp::cleanup()` only cleans 5 tables. 30+ tables accumulate test data.
 
-### 2.3 Property-Based Testing
+**Scope:**
+- Generate `TRUNCATE` statements for all tables in migration order
+- Use `TRUNCATE CASCADE` to handle foreign key dependencies
+- Verify cleanup in CI by checking table row counts after test suite
 
-- [ ] Expand `proptest` usage beyond current coverage
-- [ ] Add property tests for document state machine transitions
-- [ ] Add property tests for search index consistency
-- [ ] Add property tests for CRDT convergence under concurrent operations
-
-### 2.4 Fuzzing
-
-- [ ] Verify `cargo-fuzz` harnesses in `tachyon/crates/testing/src/fuzz/` are operational
-- [ ] Add fuzz targets for markdown parser (pulldown-cmark edge cases)
-- [ ] Add fuzz targets for search query parser
-- [ ] Add fuzz targets for YAML frontmatter parser
+**Files:** `crates/testing/src/lib.rs`
 
 ---
 
-## Phase 3: Performance (4-6 weeks)
+## Phase 2: Security Hardening (v10.3.0) -- 2 weeks
 
-### 3.1 Benchmarking Infrastructure
+### 2.1 CSP Nonce-Based Styles [Medium]
 
-- [ ] Verify Criterion benchmarks compile and run (`tachyon/crates/benchmarks/`)
-- [ ] Add CI benchmark regression detection (compare against main branch baseline)
-- [ ] Establish performance budgets per endpoint
+Current CSP includes `'unsafe-inline'` for `style-src`, weakening XSS protection.
 
-### 3.2 Database Performance
+**Scope:**
+- Generate per-request CSP nonce
+- Inject nonce into all `<style>` and inline style attributes via template layer
+- Move `style_src` to `'nonce-{nonce}'`
+- Add `Content-Security-Policy` header in security middleware
+- Unit tests: nonce generation, header format, missing nonce rejection
 
-- [ ] Add database connection pool monitoring (deadpool metrics)
-- [ ] Implement query optimization for high-frequency paths (document list, search)
-- [ ] Add database index analysis and optimization
-- [ ] Benchmark with realistic data volumes (10K+ documents)
+**Files:** `crates/server/src/middleware/security_headers.rs`, `crates/renderer/src/page.rs`
 
-### 3.3 Renderer Performance
+### 2.2 Secret Rotation Support [Low]
 
-- [ ] Benchmark markdown rendering with large documents (100K+ characters)
-- [ ] Profile and optimize tree-sitter syntax highlighting for large code blocks
-- [ ] Implement streaming rendering for very large documents
-- [ ] Cache rendered output with content-hash invalidation
+JWT secret loaded once at startup. No rotation without downtime.
 
-### 3.4 Search Performance
+**Scope:**
+- Support comma-separated `TACHYON_JWT_SECRET` (old, new) for graceful rotation
+- Validate tokens against all secrets, sign with first (newest)
+- Add `/api/v1/auth/rotate-secret` admin endpoint
+- Document rotation procedure in deployment runbook
 
-- [ ] Benchmark Tantivy index with large corpora
-- [ ] Optimize BM25 ranking parameters against real query patterns
-- [ ] Implement query caching for repeated searches
-- [ ] Add autocomplete/suggestion latency benchmarks
+**Files:** `crates/server/src/middleware/auth.rs`, `crates/server/src/config.rs`
 
----
+### 2.3 Prometheus `.expect()` Removal [Medium]
 
-## Phase 4: Architecture Evolution (6-12 weeks)
+`crates/server/src/lib.rs:765` uses `.expect("failed to install Prometheus metrics recorder")` which panics if the global recorder is already installed.
 
-### 4.1 Real-Time Collaboration
+**Scope:**
+- Replace with `match` or `if let` to gracefully handle already-installed recorder
+- Log a warning instead of panicking
 
-- [ ] Verify CRDT sync protocol handles edge cases (network partition, reconnection)
-- [ ] Implement operational transformation fallback for conflict scenarios
-- [ ] Add presence indicator debouncing and cleanup
-- [ ] Implement cursor position sync with jitter compensation
+**Files:** `crates/server/src/lib.rs`
 
-### 4.2 Plugin System Hardening
+### 2.4 Prometheus `.expect()` Panics in Middleware [Medium]
 
-- [ ] Add WASM sandbox resource limits (memory, CPU, filesystem)
-- [ ] Implement plugin permission model (which APIs a plugin can access)
-- [ ] Add plugin marketplace client (registry-client feature exists but untested)
-- [ ] Create plugin development SDK and documentation
+**Scope:**
+- Audit all `.expect()` and `.unwrap()` calls in non-test production code paths
+- Replace with proper error handling via `?` or `match`
+- Enable `#![deny(clippy::expect_used)]` incrementally
 
-### 4.3 API Versioning
-
-- [ ] Implement API version negotiation middleware
-- [ ] Add deprecation headers for old endpoints
-- [ ] Create API migration guide
-- [ ] Consider GraphQL as primary API (schema already exists)
-
-### 4.4 Observability
-
-- [ ] Implement structured logging with correlation IDs across all services
-- [ ] Add distributed tracing (OpenTelemetry)
-- [ ] Create operational dashboards (Prometheus + Grafana configs)
-- [ ] Add health check endpoints with dependency status (DB, Redis, search index)
+**Files:** All route and middleware files
 
 ---
 
-## Phase 5: Ecosystem & Distribution (12-16 weeks)
+## Phase 3: Testing Expansion (v10.4.0) -- 3 weeks
 
-### 5.1 Desktop Application
+### 3.1 Fill RBAC Integration Test Stub [Medium]
 
-- [ ] Resolve NVIDIA+WebKitGTK EGL display issue
-- [ ] Implement auto-update mechanism (Tauri plugin)
-- [ ] Add native file system watcher integration
-- [ ] Create installer packages (deb, rpm, MSI, DMG)
+`crates/testing/src/integration/rbac.rs:7` is a placeholder.
 
-### 5.2 Mobile Considerations
+**Scope:**
+- Test RBAC enforcement on document CRUD (reader/writer/admin/editor)
+- Test space-level permissions (member, admin, viewer)
+- Test team role inheritance
+- Test organization-level admin override
+- Test explicit permission deny overrides allow
 
-- [ ] Evaluate Leptos mobile target feasibility
-- [ ] Design responsive UI breakpoints
-- [ ] Implement offline-first sync queue with conflict resolution
+**Effort:** 2-3 days. 15-20 test cases.
 
-### 5.3 Multi-Tenancy
+### 3.2 Fill Fuzzing Harness [Medium]
 
-- [ ] Implement tenant isolation at database level (row-level security or schema separation)
-- [ ] Add tenant-scoped API routes
-- [ ] Implement resource quotas per tenant
-- [ ] Add tenant provisioning/deprovisioning lifecycle
+`crates/testing/src/fuzz/harness.rs:8` prints "not yet implemented".
 
-### 5.4 Import/Export Expansion
+**Scope:**
+- Fuzz target 1: Markdown parser (`pulldown-cmark` input -> renderer output, no panic)
+- Fuzz target 2: JSON API request parsing (malformed JSON, oversized payloads)
+- Fuzz target 3: Search query parsing (injection, unicode edge cases)
+- Fuzz target 4: JWT token validation (malformed tokens)
+- Wire `cargo-fuzz` with corpus generation from existing test vectors
 
-- [ ] Add Confluence import
-- [ ] Add Notion import
-- [ ] Add Markdown with wikilinks roundtrip fidelity
-- [ ] Implement incremental export (delta since last export)
+**Effort:** 5-7 days.
+
+### 3.3 Middleware Chain Integration Tests [Medium]
+
+Individual middleware modules have unit tests but the combined pipeline is untested.
+
+**Scope:**
+- Test auth + rate_limit interaction (authenticated requests bypass login rate limit)
+- Test request_id propagation through entire chain
+- Test audit logging captures correct data from authenticated requests
+- Test cache_control + compression interaction
+- Test security_headers + CORS ordering
+
+**Effort:** 2-3 days. 10-15 test cases.
+
+### 3.4 CRDT WebSocket Integration Tests [Medium]
+
+`crates/server/src/crdt.rs` has unit tests but no multi-client WebSocket integration tests.
+
+**Scope:**
+- Test 2 clients connect, one edits, other receives update
+- Test 3 clients concurrent edit, verify convergence
+- Test client disconnect, reconnect, state recovery
+- Test presence detection (join/leave/ttl expiry)
+
+**Effort:** 3-5 days. Requires WebSocket test infrastructure.
+
+### 3.5 Coverage Threshold Enforcement [Medium]
+
+`.coverage.toml` sets `fail_under_threshold = false`.
+
+**Scope:**
+- Set `fail_under_threshold = true` with minimum 60% branch coverage
+- Add `fail_under_critical = 95` for crates: core, rbac, server
+- Wire into CI pipeline
+- Add coverage trend tracking (compare against baseline)
+
+**Effort:** 1 day.
+
+### 3.6 E2E Tests: Collaboration, Billing, SSG [Medium]
+
+Playwright E2E tests only cover auth, documents, navigation.
+
+**Scope:**
+- Collaboration: 2 browser tabs, type in one, verify in other
+- SSG: trigger build, download zip, verify contents
+- Onboarding: complete 4-step wizard
+- File upload: drag-and-drop a file, verify it appears
+
+**Effort:** 5-7 days.
 
 ---
 
-## Phase 6: Formal Verification & Correctness (Ongoing)
+## Phase 4: Performance (v11.0.0) -- 2 weeks
 
-### 6.1 Type Safety
+### 4.1 Wire Response Cache [Medium]
 
-- [ ] Add `#![deny(clippy::unwrap_used)]` progressively across crates
-- [ ] Eliminate `expect()` calls on non-infallible operations
-- [ ] Add `serde(deny_unknown_fields)` to all request/response types
-- [ ] Implement exhaustive error type matching
+`ApiCache` exists with 60s TTL but is not wired into any route handlers.
 
-### 6.2 Invariants
+**Scope:**
+- Apply cache layer to: `GET /api/v1/documents` (list), `GET /api/v1/documents/search`, `GET /api/v1/catalog/stats`
+- Cache invalidation on document create/update/delete
+- Add `X-Cache-Status` response header (HIT/MISS/STALE)
+- Benchmark: measure P95 latency with and without cache
 
-- [ ] Formalize document state machine invariants as compile-time checks
-- [ ] Add runtime invariant assertions in debug builds
-- [ ] Implement property-based invariant testing
+**Files:** `crates/server/src/middleware/api_cache.rs`, `crates/server/src/routes/document.rs`
 
-### 6.3 Concurrency
+### 4.2 Tantivy Integration [Medium]
 
-- [ ] Add `loom` tests for concurrent data structures (DashMap usage patterns)
-- [ ] Verify deadlock-freedom of lock acquisition orderings
-- [ ] Add `tokio::sync` stress tests
+`tachyon-search` has a full Tantivy-based index but the server uses PostgreSQL `tsvector`.
+
+**Scope:**
+- Create Tantivy index manager as a server state component
+- Index documents on create/update/delete via repository events
+- Wire search route to use Tantivy for queries, PostgreSQL as fallback
+- Implement index lifecycle: create on startup, reindex command, index health check
+- Benchmark: Tantivy vs tsvector for 10K, 100K, 1M documents
+
+**Effort:** 5-7 days.
+
+### 4.3 Query Optimization [Medium]
+
+28 migrations applied but no systematic `EXPLAIN` analysis.
+
+**Scope:**
+- Identify top-10 most-frequently-executed queries from test patterns
+- Run `EXPLAIN ANALYZE` on each with production-scale data (100K documents)
+- Add missing composite indexes based on query patterns
+- Verify index usage with `EXPLAIN` after changes
+- Document query plan baseline
+
+**Effort:** 2-3 days.
+
+### 4.4 WASM Bundle Size Optimization [Low]
+
+**Scope:**
+- Measure current bundle size (compressed/uncompressed)
+- Run `wasm-opt` with `-Oz` flag
+- Enable `wasm-bindgen` feature flags to strip debug info
+- Verify tree-shaking is effective (check for unused code in bundle)
+- Document bundle size budget and regression detection
+
+**Effort:** 2-3 days.
 
 ---
 
-## Decision Framework
+## Phase 5: Operational Maturity (v11.1.0) -- 2 weeks
 
-### Priority Matrix
+### 5.1 Database Backup Strategy [High]
 
-| Criterion | Weight | Description |
-|-----------|--------|-------------|
-| Security impact | 30% | CVE potential, data exposure, auth bypass |
-| User impact | 25% | Feature completeness, UX blocking issues |
-| Correctness | 20% | Data integrity, state machine violations |
-| Performance | 15% | Latency, throughput, resource usage |
-| Developer experience | 10% | Build times, test reliability, documentation |
+No automated PostgreSQL backup or point-in-time recovery.
 
-### Phase Gates
+**Scope:**
+- Add `pg_dump` cron job (daily full, hourly incremental via WAL archiving)
+- Backup verification: restore to test database and run test suite
+- Backup retention policy: 30 daily, 12 weekly, 6 monthly
+- Off-site backup: S3-compatible storage with encryption
+- Document recovery procedure (RTO: 1 hour, RPO: 1 hour)
 
-Each phase requires:
-1. All tests passing (unit + integration)
-2. Clippy clean with `-D warnings`
-3. No new security warnings
-4. Documentation updated to reflect changes
-5. Performance regression check (if applicable)
+**Files:** `docker-compose.prod.yml`, new `scripts/backup.sh`
+
+### 5.2 SSL/TLS Termination [Medium]
+
+No Let's Encrypt/Certbot integration in Docker setup.
+
+**Scope:**
+- Add `certbot` sidecar container to `docker-compose.prod.yml`
+- Configure nginx for ACME challenge and TLS termination
+- Auto-renewal via cron (certbot renew --quiet)
+- HTTP to HTTPS redirect
+- HSTS preload eligibility
+
+**Files:** `docker-compose.prod.yml`, `nginx/`
+
+### 5.3 Readiness Probe Expansion [Medium]
+
+`/health` only checks database connectivity.
+
+**Scope:**
+- Check PostgreSQL connectivity (existing)
+- Check Redis connectivity (if configured)
+- Check Tantivy index health (if configured)
+- Check SMTP connectivity (if configured)
+- Return JSON with component-level status
+
+**Files:** `crates/server/src/routes/health.rs`
+
+### 5.4 Structured JSON Logging [Low]
+
+`tracing_subscriber` uses default fmt output.
+
+**Scope:**
+- Add `TACHYON_LOG_FORMAT=json` config option
+- Use `tracing_subscriber::fmt::json()` for structured output
+- Add request ID to all log entries (correlation)
+- Add module-level log filtering via `TACHYON_LOG_FILTER`
+
+**Files:** `crates/server/src/main.rs`
+
+### 5.5 Migration Rollback Support [Medium]
+
+No `migrations::rollback()` exists. Bad migrations require manual SQL.
+
+**Scope:**
+- Generate down-migration for each existing migration
+- Add `tachyon-server migrate rollback [steps]` CLI command
+- Add `tachyon-server migrate status` to show current version
+- CI gate: no migration without corresponding down-migration
+
+**Files:** `crates/database/src/migrations.rs`
+
+### 5.6 CD Pipeline [Medium]
+
+CI exists but no automated release/deployment pipeline.
+
+**Scope:**
+- Add `release.yml` workflow: tag trigger, build multi-arch Docker images, push to registry
+- Add `deploy-staging.yml`: deploy to staging on merge to `develop`
+- Add `deploy-production.yml`: deploy to production on tag (manual approval)
+- Add rollback step in each deployment
+- SBOM generation and attestation per release
+
+**Files:** `.github/workflows/release.yml`, `.github/workflows/deploy-staging.yml`
+
+### 5.7 Monitoring Dashboard [Medium]
+
+Prometheus endpoint exists but no Grafana dashboards.
+
+**Scope:**
+- Create Grafana dashboards: API latency (P50/P95/P99), request rate, error rate, active WebSocket connections, database pool utilization, cache hit rate
+- Define SLOs: 99.9% availability, P99 < 100ms for read endpoints, P99 < 500ms for write endpoints
+- Alert rules: error rate > 1%, P99 > 200ms, DB pool exhaustion, disk > 80%
+- Document alerting runbook
+
+**Files:** New `monitoring/grafana/`, `monitoring/alerts/`
 
 ---
 
-## Success Metrics (6-month target)
+## Phase 6: Architecture Improvements (v12.0.0) -- 3 weeks
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| Test count | 1,296 | 2,000+ |
-| Branch coverage | Unknown | >80% overall, >95% critical |
-| Known security issues | 4 medium | 0 medium |
-| Documentation accuracy | 37 issues found | 0 high/medium |
-| CI pipeline time | Unknown | <15 min |
-| P99 API latency (populated DB) | Unknown | <50ms |
-| Desktop app | Compiles, display issues | Ships on 3 platforms |
+### 6.1 Unified Error Type [Medium]
+
+Each route module defines its own error type alias. No consistent `ApiError` with `IntoResponse`.
+
+**Scope:**
+- Define `tachyon_server::error::ApiError` enum covering all error categories
+- Implement `IntoResponse` with consistent JSON error envelope
+- Implement `From<DatabaseError>`, `From<serde_json::Error>`, etc.
+- Replace all per-module error types with `ApiError`
+- Add error code to response: `{ "code": "VALIDATION_ERROR", "message": "...", "details": [...] }`
+
+**Effort:** 5-7 days. Touches all 29 route modules.
+
+### 6.2 Large Route File Split [Low]
+
+Several route files exceed 500 lines: `billing.rs` (1483), `user.rs` (1400+), `onboarding.rs` (900+).
+
+**Scope:**
+- Split each into `routes/{module}/mod.rs`, `handlers.rs`, `types.rs`, `tests.rs`
+- Preserve public API surface
+- No behavioral changes
+
+**Effort:** 3-5 days.
+
+### 6.3 Workspace Edition 2024 [Low]
+
+Workspace uses `edition = "2021"` but desktop crates may use `2024`.
+
+**Scope:**
+- Update `tachyon/Cargo.toml` to `edition = "2024"`
+- Fix any compilation errors from edition changes
+- Verify all tests pass
+
+**Effort:** 1 day.
+
+### 6.4 API Cache Wiring to Read-Heavy Endpoints [Low]
+
+(Detailed in Phase 4.1, moved here for ordering.)
+
+---
+
+## Phase 7: Frontend Polish (v12.1.0) -- 3 weeks
+
+### 7.1 Accessibility Audit [High]
+
+No automated or manual audit performed against 90+ Leptos components.
+
+**Scope:**
+- Integrate `axe-core` via wasm-bindgen for automated a11y testing in CI
+- Fix all critical and serious violations
+- Verify keyboard navigation (tab order, focus trapping in dialogs)
+- Test with screen reader (NVDA on Linux)
+- Document WCAG 2.1 AA compliance status per component
+
+**Effort:** 5-7 days.
+
+### 7.2 Frontend Dead Code Cleanup [Medium]
+
+`crates/frontend/src/api/` has extensive `#[allow(dead_code)]`.
+
+**Scope:**
+- Remove unused API client functions
+- Wire remaining functions to real components
+- Verify no regressions in browser
+
+**Effort:** 2-3 days.
+
+### 7.3 Component Documentation [Low]
+
+90+ components with no visual documentation.
+
+**Scope:**
+- Add doc comments to all public components
+- Create a component catalog page in the frontend
+- Document props, events, slots, and usage examples
+
+**Effort:** 5-7 days.
+
+---
+
+## Phase 8: Ecosystem (v13.0.0) -- Ongoing
+
+### 8.1 Plugin SDK Stabilization
+
+- Define stable plugin API contract (versioned)
+- WASM sandbox with resource limits (memory, CPU, network)
+- Plugin marketplace infrastructure (upload, verify, distribute)
+- Plugin hooks: pre-render, post-save, search-index, notification
+
+### 8.2 Import/Export Enhancements
+
+- Import from: Notion, Confluence, Obsidian, Markdown directories
+- Export to: PDF (via headless Chrome or weasyprint), DOCX, EPUB
+- Batch import with progress tracking
+- Conflict resolution during import (merge vs. overwrite)
+
+### 8.3 Mobile Responsive PWA
+
+- Service worker for offline access
+- Responsive layout for tablet/mobile viewports
+- Touch-friendly interactions
+- Push notifications
+
+### 8.4 AI Integration Points
+
+- Document summarization (local LLM or API)
+- Smart search (semantic search via embeddings)
+- Auto-tagging and categorization
+- Writing assistant (grammar, style, completeness)
+
+---
+
+## Version Timeline
+
+| Version | Phase | Target Date |
+|---------|-------|-------------|
+| 10.2.0 | Hardening | 2026-05-25 |
+| 10.3.0 | Security Hardening | 2026-06-08 |
+| 10.4.0 | Testing Expansion | 2026-06-29 |
+| 11.0.0 | Performance | 2026-07-13 |
+| 11.1.0 | Operational Maturity | 2026-07-27 |
+| 12.0.0 | Architecture Improvements | 2026-08-17 |
+| 12.1.0 | Frontend Polish | 2026-09-07 |
+| 13.0.0 | Ecosystem | 2026-Q4 |
+
+---
+
+## Decision Log
+
+| ID | Decision | Rationale | Date |
+|----|----------|-----------|------|
+| DL-001 | Use `lettre` for SMTP | Async-native, well-maintained, supports TLS | 2026-05-11 |
+| DL-002 | Tantivy alongside tsvector | Tantivy for speed, tsvector as fallback for simplicity | 2026-05-11 |
+| DL-003 | Unified `ApiError` over per-module types | Consistency, single source of truth for error codes | 2026-05-11 |
+| DL-004 | Edition 2024 upgrade deferred to Phase 6 | Low risk, low urgency; focus on hardening first | 2026-05-11 |
+| DL-005 | CSP nonce over hash-based | Nonce is simpler to implement in dynamic template rendering | 2026-05-11 |
