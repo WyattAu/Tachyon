@@ -200,7 +200,7 @@ pub struct SecurityConfig {
     pub permissions_policy: bool,
     /// Enable Cross-Origin-Embedder-Policy header
     pub coep_enabled: bool,
-    /// Allowed frame ancestors for CSP (e.g., "'none'", "'self'", "https://example.com")
+    /// Allowed frame ancestors for CSP (e.g., "'none'", "'self'", `<https://example.com>`)
     #[serde(default = "default_frame_ancestors")]
     pub frame_ancestors: String,
     /// Trusted origins for CORS (in addition to configured origins)
@@ -233,7 +233,7 @@ pub struct SiteConfig {
     pub title: String,
     /// Site description for meta tags
     pub description: String,
-    /// Canonical base URL (e.g., "https://tachyon.dev")
+    /// Canonical base URL (e.g., `<https://tachyon.dev>`)
     pub base_url: String,
     /// Theme color for mobile browsers
     pub theme_color: String,

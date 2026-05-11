@@ -21,7 +21,7 @@ pub struct SiteConfig {
     pub title: String,
     /// Site description (used in meta tags, OG, RSS)
     pub description: String,
-    /// Base URL for canonical links and sitemap (e.g., "https://docs.example.com")
+    /// Base URL for canonical links and sitemap (e.g., `<https://docs.example.com>`)
     pub base_url: String,
     /// Optional site logo URL (used in header)
     pub logo_url: Option<String>,

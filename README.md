@@ -2,8 +2,8 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
-[![Axum](https://img.shields.io/badge/axum-0.8-blue.svg)
-[![Leptos](https://img.shields.io/badge/leptos-0.8-purple.svg)
+[![Axum](https://img.shields.io/badge/axum-0.8-blue.svg)](https://github.com/tokio-rs/axum)
+[![Leptos](https://img.shields.io/badge/leptos-0.8-purple.svg)](https://github.com/leptos-rs/leptos)
 
 A deterministic, high-performance knowledge management system built with Rust.
 

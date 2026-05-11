@@ -19,7 +19,7 @@ pub struct SavedSearch {
     pub name: String,
     /// The raw search query text.
     pub query: String,
-    /// JSON-encoded [`SearchFilters`], if any.
+    /// JSON-encoded [`super::search::SearchFilters`], if any.
     pub filters: Option<String>,
     /// Row-creation timestamp.
     pub created_at: DateTime<Utc>,
@@ -28,7 +28,7 @@ pub struct SavedSearch {
 }
 
 impl SavedSearch {
-    /// Deserialize the `filters` JSON column into [`SearchFilters`].
+    /// Deserialize the `filters` JSON column into [`super::search::SearchFilters`].
     pub fn parse_filters(&self) -> DatabaseResult<Option<super::search::SearchFilters>> {
         match &self.filters {
             Some(f) => {
@@ -40,7 +40,7 @@ impl SavedSearch {
         }
     }
 
-    /// Serialize [`SearchFilters`] to a JSON string for storage.
+    /// Serialize [`super::search::SearchFilters`] to a JSON string for storage.
     pub fn serialize_filters(
         filters: &Option<super::search::SearchFilters>,
     ) -> DatabaseResult<Option<String>> {

@@ -53,13 +53,23 @@ if ! cargo test --workspace --exclude tachyon-testing --exclude tachyon-frontend
     PASS=false
 fi
 
-# ---- 4. Check for secrets ----
+# ---- 5. Rustdoc (no broken links or bare URLs) ----
+info "Checking rustdoc warnings (cargo doc)..."
+if ! cargo doc --workspace --exclude tachyon-testing --exclude tachyon-frontend --manifest-path "${WORKSPACE_DIR}/Cargo.toml" --no-deps 2>&1 | grep -qE "^(warning|error)"; then
+    info "  Rustdoc clean."
+else
+    error "Rustdoc warnings/errors found. Fix doc comments before committing."
+    cargo doc --workspace --exclude tachyon-testing --exclude tachyon-frontend --manifest-path "${WORKSPACE_DIR}/Cargo.toml" --no-deps 2>&1 | grep -E "^(warning|error)" || true
+    PASS=false
+fi
+
+# ---- 6. Check for secrets ----
 info "Checking for potential secrets..."
 if git diff --cached --name-only --diff-filter=ACM | xargs grep -lE '(PASSWORD|SECRET|API_KEY|TOKEN|PRIVATE_KEY).*=.*["\x27][^"\x27]{8,}' 2>/dev/null; then
     warn "Potential secrets detected in staged files. Verify these are intentional."
 fi
 
-# ---- 5. Check for debug artifacts ----
+# ---- 7. Check for debug artifacts ----
 info "Checking for debug artifacts..."
 if git diff --cached --name-only | grep -qE '(target/|\.swp$|\.swo$|~$|\.pyc$|__pycache__)'; then
     error "Debug/build artifacts detected in staged files. Remove them before committing."

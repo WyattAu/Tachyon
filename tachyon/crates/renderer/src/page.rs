@@ -14,7 +14,7 @@ pub struct SiteConfig {
     pub site_title: String,
     /// Site description
     pub site_description: String,
-    /// Base URL for canonical URLs and OG tags (e.g., "https://tachyon.dev")
+    /// Base URL for canonical URLs and OG tags (e.g., `<https://tachyon.dev>`)
     pub base_url: String,
     /// Theme color for mobile browsers
     pub theme_color: String,

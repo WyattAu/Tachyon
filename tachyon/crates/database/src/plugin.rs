@@ -62,7 +62,7 @@ pub struct Plugin {
 }
 
 impl Plugin {
-    /// Parse extension_points JSON string into Vec<String>
+    /// Parse extension_points JSON string into `Vec<String>`
     pub fn parse_extension_points(&self) -> DatabaseResult<Vec<String>> {
         serde_json::from_str(&self.extension_points).map_err(|e| {
             DatabaseError::SerializationError(format!("Failed to parse extension_points: {}", e))
