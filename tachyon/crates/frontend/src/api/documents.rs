@@ -75,7 +75,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn create_version(
         &self,
         document_id: &str,
@@ -165,7 +164,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn diff_versions(
         &self,
         document_id: &str,

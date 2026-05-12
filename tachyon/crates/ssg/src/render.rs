@@ -9,26 +9,17 @@ pub(crate) struct PageContext<'a> {
     pub(crate) page_url: &'a str,
     pub(crate) root_prefix: &'a str,
     pub(crate) author: Option<&'a str>,
-    // TODO(phase-2): wire or remove — template variable for page creation date
-    #[allow(dead_code)]
-    pub(crate) created_at: &'a str,
     pub(crate) updated_at: &'a str,
     pub(crate) tags: &'a [String],
-    pub(crate) nav_items: &'a [NavItem],
     pub(crate) current_slug: Option<&'a str>,
     pub(crate) language: &'a str,
-    // TODO(phase-2): wire or remove — template variable for language switcher
-    #[allow(dead_code)]
     pub(crate) language_switcher: &'a str,
 }
 
 pub(crate) struct IndexContext<'a> {
     pub(crate) site: &'a SiteConfig,
-    pub(crate) nav_items: &'a [NavItem],
     pub(crate) documents: &'a [DocCard],
     pub(crate) language: &'a str,
-    // TODO(phase-2): wire or remove — template variable for language switcher
-    #[allow(dead_code)]
     pub(crate) language_switcher: &'a str,
 }
 
@@ -37,16 +28,7 @@ pub(crate) struct CategoryContext<'a> {
     pub(crate) category_name: &'a str,
     pub(crate) documents: &'a [DocCard],
     pub(crate) language: &'a str,
-    // TODO(phase-2): wire or remove — template variable for language switcher
-    #[allow(dead_code)]
     pub(crate) language_switcher: &'a str,
-}
-
-// TODO(phase-2): wire or remove — navigation link rendering
-#[allow(dead_code)]
-pub(crate) struct NavItem {
-    pub(crate) title: String,
-    pub(crate) href: String,
 }
 
 pub(crate) struct DocCard {
@@ -55,29 +37,18 @@ pub(crate) struct DocCard {
     pub(crate) description: String,
     pub(crate) tags: Vec<String>,
     pub(crate) updated_at: String,
-    // TODO(phase-2): wire or remove — author display on document cards
-    #[allow(dead_code)]
-    pub(crate) author: Option<String>,
 }
 
 impl crate::build::SiteGenerator {
     pub(crate) fn render_document_page(
         &self,
         doc: &SsgDocument,
-        all_docs: &[&SsgDocument],
+        _all_docs: &[&SsgDocument],
         lang: &str,
         lang_prefix: Option<&str>,
         all_languages: &[String],
     ) -> SsgResult<String> {
         let body_html = render_markdown(&doc.content);
-
-        let nav_items = all_docs
-            .iter()
-            .map(|d| NavItem {
-                title: d.title.clone(),
-                href: format!("{}.html", d.slug),
-            })
-            .collect::<Vec<_>>();
 
         let description = doc
             .description
@@ -113,10 +84,8 @@ impl crate::build::SiteGenerator {
             page_url: &page_url,
             root_prefix: &root_prefix,
             author: doc.author.as_deref(),
-            created_at: &doc.created_at.to_rfc3339(),
             updated_at: &doc.updated_at.to_rfc3339(),
             tags: &doc.tags,
-            nav_items: &nav_items,
             current_slug: Some(&doc.slug),
             language: lang,
             language_switcher: &language_switcher,
@@ -132,14 +101,6 @@ impl crate::build::SiteGenerator {
         lang_prefix: Option<&str>,
         all_languages: &[String],
     ) -> SsgResult<String> {
-        let nav_items = docs
-            .iter()
-            .map(|d| NavItem {
-                title: d.title.clone(),
-                href: format!("{}.html", d.slug),
-            })
-            .collect::<Vec<_>>();
-
         let doc_cards: Vec<DocCard> = docs
             .iter()
             .map(|d| {
@@ -153,7 +114,6 @@ impl crate::build::SiteGenerator {
                         .unwrap_or_else(|| truncate_text(&body, 200)),
                     tags: d.tags.clone(),
                     updated_at: d.updated_at.to_rfc3339(),
-                    author: d.author.clone(),
                 }
             })
             .collect();
@@ -162,7 +122,6 @@ impl crate::build::SiteGenerator {
 
         let ctx = IndexContext {
             site: &self.config,
-            nav_items: &nav_items,
             documents: &doc_cards,
             language: lang,
             language_switcher: &language_switcher,
@@ -192,7 +151,6 @@ impl crate::build::SiteGenerator {
                         .unwrap_or_else(|| truncate_text(&body, 200)),
                     tags: d.tags.clone(),
                     updated_at: d.updated_at.to_rfc3339(),
-                    author: d.author.clone(),
                 }
             })
             .collect();

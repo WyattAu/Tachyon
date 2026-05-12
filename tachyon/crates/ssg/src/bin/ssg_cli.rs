@@ -148,30 +148,6 @@ fn parse_yaml_array(s: &str) -> Vec<String> {
         .collect()
 }
 
-/// Convert a string to a URL-safe slug.
-///
-/// Reserved for future use: slug generation in the SSG pipeline.
-#[allow(dead_code)]
-fn slugify(s: &str) -> String {
-    s.to_lowercase()
-        .chars()
-        .map(|c| {
-            if c.is_alphanumeric() || c == '-' || c == '_' {
-                c
-            } else if c.is_whitespace() {
-                '-'
-            } else {
-                '\0'
-            }
-        })
-        .filter(|c| *c != '\0')
-        .collect::<String>()
-        .split('-')
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join("-")
-}
-
 /// Derive title from first H1 heading in markdown content.
 fn title_from_content(content: &str, filename: &str) -> String {
     for line in content.lines() {

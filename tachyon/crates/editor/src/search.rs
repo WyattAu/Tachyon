@@ -74,7 +74,7 @@ impl Search {
     /// Search within a single line.
     ///
     /// Reserved for future use: per-line incremental search.
-    #[allow(dead_code)]
+    #[allow(dead_code)] // used by future search UI integration
     pub fn find_in_line(&self, query: &str, line: &str, line_num: usize) -> Vec<SearchResult> {
         let re = match self.build_regex(query) {
             Some(r) => r,
@@ -173,7 +173,7 @@ impl Search {
     /// Count total matches for a query in the buffer.
     ///
     /// Reserved for future use: match count display in search UI.
-    #[allow(dead_code)]
+    #[allow(dead_code)] // used by future search UI integration
     pub fn count_matches(&self, query: &str, buffer: &TextBuffer) -> usize {
         self.find(query, buffer).len()
     }

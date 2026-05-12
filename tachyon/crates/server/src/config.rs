@@ -55,12 +55,32 @@ pub struct ServerConfig {
     /// From address for outgoing emails (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub smtp_from: Option<String>,
+    /// SMTP username for authentication
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smtp_username: Option<String>,
+    /// SMTP password for authentication
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smtp_password: Option<String>,
+    /// SMTP port override
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smtp_port: Option<u16>,
+    /// Whether to use TLS for SMTP connections
+    #[serde(default = "default_true")]
+    pub smtp_tls: bool,
     /// HTTP API URL for email delivery fallback (e.g., Mailgun/SendGrid)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email_http_api_url: Option<String>,
     /// API key for HTTP email delivery
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email_http_api_key: Option<String>,
+    /// Database connection pool maximum connections
+    pub db_max_connections: u32,
+    /// Database connection pool minimum connections
+    pub db_min_connections: u32,
+    /// Database connection acquire timeout in milliseconds
+    pub db_acquire_timeout_ms: u64,
+    /// Database connection idle timeout in seconds
+    pub db_idle_timeout_secs: u64,
 }
 
 /// JWT configuration for token-based authentication
@@ -331,8 +351,16 @@ impl Default for ServerConfig {
             truelayer: TrueLayerConfig::default(),
             smtp_url: None,
             smtp_from: None,
+            smtp_username: None,
+            smtp_password: None,
+            smtp_port: None,
+            smtp_tls: true,
             email_http_api_url: None,
             email_http_api_key: None,
+            db_max_connections: 10,
+            db_min_connections: 2,
+            db_acquire_timeout_ms: 5000,
+            db_idle_timeout_secs: 600,
         }
     }
 }
@@ -602,6 +630,17 @@ impl ServerConfig {
             );
         }
 
+        if self.db_max_connections < self.db_min_connections {
+            errors.push(
+                "Database max_connections must be greater than or equal to min_connections"
+                    .to_string(),
+            );
+        }
+
+        if self.db_acquire_timeout_ms == 0 {
+            errors.push("Database acquire timeout must be greater than 0".to_string());
+        }
+
         if self.cors.enabled {
             for origin in &self.cors.allowed_origins {
                 if origin != "*"
@@ -785,6 +824,20 @@ impl ServerConfig {
         if let Ok(val) = std::env::var("TACHYON_SMTP_FROM") {
             config.smtp_from = Some(val);
         }
+        if let Ok(val) = std::env::var("TACHYON_SMTP_USERNAME") {
+            config.smtp_username = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMTP_PASSWORD") {
+            config.smtp_password = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMTP_PORT") {
+            if let Ok(p) = val.parse::<u16>() {
+                config.smtp_port = Some(p);
+            }
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMTP_TLS") {
+            config.smtp_tls = val != "0" && val != "false";
+        }
         if let Ok(val) = std::env::var("TACHYON_EMAIL_HTTP_API_URL") {
             config.email_http_api_url = Some(val);
         }
@@ -818,6 +871,28 @@ impl ServerConfig {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
+        }
+
+        // Database pool configuration
+        if let Ok(val) = std::env::var("TACHYON_DB_MAX_CONNECTIONS") {
+            if let Ok(v) = val.parse::<u32>() {
+                config.db_max_connections = v;
+            }
+        }
+        if let Ok(val) = std::env::var("TACHYON_DB_MIN_CONNECTIONS") {
+            if let Ok(v) = val.parse::<u32>() {
+                config.db_min_connections = v;
+            }
+        }
+        if let Ok(val) = std::env::var("TACHYON_DB_ACQUIRE_TIMEOUT_MS") {
+            if let Ok(v) = val.parse::<u64>() {
+                config.db_acquire_timeout_ms = v;
+            }
+        }
+        if let Ok(val) = std::env::var("TACHYON_DB_IDLE_TIMEOUT_SECS") {
+            if let Ok(v) = val.parse::<u64>() {
+                config.db_idle_timeout_secs = v;
+            }
         }
 
         config
@@ -903,5 +978,26 @@ mod tests {
         std::env::set_var("TACHYON_STATIC_DIR", "/var/www/html");
         assert_eq!(static_dir(), "/var/www/html");
         std::env::remove_var("TACHYON_STATIC_DIR");
+    }
+
+    #[test]
+    fn test_db_pool_config_defaults() {
+        let config = ServerConfig::default();
+        assert_eq!(config.db_max_connections, 10);
+        assert_eq!(config.db_min_connections, 2);
+        assert_eq!(config.db_acquire_timeout_ms, 5000);
+        assert_eq!(config.db_idle_timeout_secs, 600);
+    }
+
+    #[test]
+    #[serial]
+    fn test_db_pool_config_from_env() {
+        std::env::set_var("TACHYON_DB_MAX_CONNECTIONS", "20");
+        std::env::set_var("TACHYON_DB_MIN_CONNECTIONS", "5");
+        let config = ServerConfig::from_env();
+        assert_eq!(config.db_max_connections, 20);
+        assert_eq!(config.db_min_connections, 5);
+        std::env::remove_var("TACHYON_DB_MAX_CONNECTIONS");
+        std::env::remove_var("TACHYON_DB_MIN_CONNECTIONS");
     }
 }

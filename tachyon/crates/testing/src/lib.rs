@@ -67,16 +67,53 @@ impl TestApp {
 
     pub async fn cleanup(&self) {
         if let Some(pool) = &self.pool {
-            let queries = vec![
-                "DELETE FROM documents WHERE title LIKE 'TEST_%'",
-                "DELETE FROM projects WHERE name LIKE 'TEST_%'",
-                "DELETE FROM sessions WHERE id LIKE 'TEST_%'",
-                "DELETE FROM teams WHERE name LIKE 'TEST_%'",
-                "DELETE FROM templates WHERE name LIKE 'TEST_%'",
-            ];
-            for query in queries {
-                let _ = pool.execute(query).await;
-            }
+            let _ = pool
+                .execute(
+                    "TRUNCATE \
+                    review_comments, \
+                    document_reviews, \
+                    document_comments, \
+                    document_presence, \
+                    knowledge_graph_edges, \
+                    knowledge_graph_nodes, \
+                    document_versions, \
+                    attachments, \
+                    saved_searches, \
+                    components, \
+                    project_members, \
+                    user_roles, \
+                    team_members, \
+                    space_members, \
+                    organization_members, \
+                    refresh_tokens, \
+                    sessions, \
+                    api_keys, \
+                    connected_accounts, \
+                    user_preferences, \
+                    password_reset_tokens, \
+                    email_verification_tokens, \
+                    notifications, \
+                    activity_events, \
+                    webhooks, \
+                    plugins, \
+                    templates, \
+                    documents, \
+                    repositories, \
+                    projects, \
+                    teams, \
+                    spaces, \
+                    organizations, \
+                    subscriptions, \
+                    invoices, \
+                    notification_preferences, \
+                    payments, \
+                    audit_log, \
+                    search_index, \
+                    roles, \
+                    users \
+                    CASCADE",
+                )
+                .await;
         }
     }
 }
@@ -152,15 +189,53 @@ pub mod db_helpers {
     }
 
     pub async fn cleanup_test_data(pool: &DatabasePool) {
-        let queries = vec![
-            "DELETE FROM documents WHERE title LIKE 'TEST_%'",
-            "DELETE FROM projects WHERE name LIKE 'TEST_%'",
-            "DELETE FROM sessions WHERE id LIKE 'TEST_%'",
-            "DELETE FROM teams WHERE name LIKE 'TEST_%'",
-        ];
-        for query in queries {
-            let _ = pool.execute(query).await;
-        }
+        let _ = pool
+            .execute(
+                "TRUNCATE \
+                review_comments, \
+                document_reviews, \
+                document_comments, \
+                document_presence, \
+                knowledge_graph_edges, \
+                knowledge_graph_nodes, \
+                document_versions, \
+                attachments, \
+                saved_searches, \
+                components, \
+                project_members, \
+                user_roles, \
+                team_members, \
+                space_members, \
+                organization_members, \
+                refresh_tokens, \
+                sessions, \
+                api_keys, \
+                connected_accounts, \
+                user_preferences, \
+                password_reset_tokens, \
+                email_verification_tokens, \
+                notifications, \
+                activity_events, \
+                webhooks, \
+                plugins, \
+                templates, \
+                documents, \
+                repositories, \
+                projects, \
+                teams, \
+                spaces, \
+                organizations, \
+                subscriptions, \
+                invoices, \
+                notification_preferences, \
+                payments, \
+                audit_log, \
+                search_index, \
+                roles, \
+                users \
+                CASCADE",
+            )
+            .await;
     }
 
     pub async fn teardown(pool: &DatabasePool) {

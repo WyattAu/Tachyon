@@ -39,7 +39,7 @@ impl std::error::Error for WebSocketUpgradeError {}
 
 #[derive(Debug, Clone)]
 struct ConnectedClient {
-    #[allow(dead_code)]
+    #[allow(dead_code)] // redundant with HashMap key; kept for serialization
     client_id: String,
     user_id: Option<String>,
     user_name: Option<String>,

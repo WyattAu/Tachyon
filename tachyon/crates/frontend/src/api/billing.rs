@@ -51,7 +51,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn create_mandate(
         &self,
         org_id: &str,
@@ -62,7 +61,6 @@ impl ApiClient {
         self.post(&url, &body).await
     }
 
-    #[allow(dead_code)]
     pub async fn get_mandate_status(
         &self,
         mandate_id: &str,
@@ -71,7 +69,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn get_payment_status(
         &self,
         payment_id: &str,

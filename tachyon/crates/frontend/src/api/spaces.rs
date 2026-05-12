@@ -16,7 +16,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn list_root_spaces(
         &self,
         owner_id: &str,
@@ -25,7 +24,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn list_child_spaces(
         &self,
         parent_id: &str,
@@ -39,13 +37,11 @@ impl ApiClient {
     }
 
     /// Fetch a single space by its ID.
-    #[allow(dead_code)]
     pub async fn get_space(&self, space_id: &str) -> Result<crate::types::Space, ApiError> {
         let url = format!("{}/spaces/{}", self.base_url, space_id);
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn get_default_space(&self, owner_id: &str) -> Result<crate::types::Space, ApiError> {
         let url = format!("{}/spaces/default?owner_id={}", self.base_url, owner_id);
         self.get(&url).await
@@ -111,7 +107,6 @@ impl ApiClient {
         self.delete(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn move_document_to_space(
         &self,
         document_id: &str,

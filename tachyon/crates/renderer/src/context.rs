@@ -87,11 +87,6 @@ impl RenderContext {
         }
     }
 
-    /// Convert to JSON Value
-    #[allow(dead_code)]
-    pub(crate) fn to_json(&self) -> Value {
-        serde_json::to_value(self).unwrap_or(Value::Null)
-    }
     /// Convert to JSON Value for template engine use
     pub fn to_json_value(&self) -> Value {
         serde_json::to_value(self).unwrap_or(Value::Null)
@@ -118,7 +113,7 @@ mod tests {
     #[test]
     fn test_render_context_to_json() {
         let ctx = RenderContext::new("Test".to_string(), "<p>Content</p>".to_string());
-        let json = ctx.to_json();
+        let json = ctx.to_json_value();
         assert!(json.is_object());
     }
 }

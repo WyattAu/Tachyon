@@ -59,7 +59,6 @@ impl Default for ApiClient {
 /// Reserved for future use: direct client instantiation (currently uses `default()`).
 impl ApiClient {
     /// Create a new API client pointing at the given base URL.
-    #[allow(dead_code)]
     pub fn new(base_url: &str) -> Self {
         Self {
             base_url: base_url.to_string(),
@@ -310,7 +309,6 @@ pub enum ApiError {
 /// API result type.
 ///
 /// Reserved for future use: unified error handling across API calls.
-#[allow(dead_code)]
 pub type ApiResult<T> = Result<T, ApiError>;
 
 #[cfg(test)]

@@ -18,7 +18,6 @@ impl ApiClient {
         Ok(response.data.unwrap_or_default())
     }
 
-    #[allow(dead_code)]
     pub async fn get_project(&self, id: &str) -> Result<Project, ApiError> {
         let url = format!("{}/projects/{}", self.base_url, id);
         let response: ApiResponse<Project> = self.get(&url).await?;
@@ -27,7 +26,6 @@ impl ApiClient {
             .ok_or(ApiError::NotFound(format!("Project {}", id)))
     }
 
-    #[allow(dead_code)]
     pub async fn get_project_by_slug(&self, slug: &str) -> Result<Project, ApiError> {
         let url = format!("{}/projects/slug/{}", self.base_url, slug);
         let response: ApiResponse<Project> = self.get(&url).await?;
@@ -36,7 +34,6 @@ impl ApiClient {
             .ok_or(ApiError::NotFound(format!("Project with slug {}", slug)))
     }
 
-    #[allow(dead_code)]
     pub async fn create_project(
         &self,
         request: &CreateProjectRequest,
@@ -48,7 +45,6 @@ impl ApiClient {
             .ok_or(ApiError::Api("Failed to create project".into()))
     }
 
-    #[allow(dead_code)]
     pub async fn update_project(&self, id: &str, project: &Project) -> Result<Project, ApiError> {
         let url = format!("{}/projects/{}", self.base_url, id);
         let response: ApiResponse<Project> = self.put(&url, project).await?;
@@ -57,13 +53,11 @@ impl ApiClient {
             .ok_or(ApiError::Api("Failed to update project".into()))
     }
 
-    #[allow(dead_code)]
     pub async fn delete_project(&self, id: &str) -> Result<(), ApiError> {
         let url = format!("{}/projects/{}", self.base_url, id);
         self.delete(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn list_project_components(
         &self,
         project_id: &str,
@@ -73,7 +67,6 @@ impl ApiClient {
         Ok(response.data.unwrap_or_default())
     }
 
-    #[allow(dead_code)]
     pub async fn list_project_members(
         &self,
         project_id: &str,

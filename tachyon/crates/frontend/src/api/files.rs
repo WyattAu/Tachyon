@@ -5,7 +5,6 @@ use super::*;
 /// Reserved for future use: file upload and management.
 impl ApiClient {
     /// Upload a file using multipart form data.
-    #[allow(dead_code)]
     pub async fn upload_file(&self, file: &web_sys::File) -> Result<UploadResponse, ApiError> {
         use gloo_net::http::Request;
 

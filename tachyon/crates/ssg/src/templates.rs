@@ -9,7 +9,7 @@
 //! - Accessible (semantic HTML, ARIA labels)
 
 use crate::manifest::{ColorTheme, SiteConfig};
-use crate::render::{CategoryContext, DocCard, IndexContext, NavItem, PageContext};
+use crate::render::{CategoryContext, DocCard, IndexContext, PageContext};
 
 /// Generate CSS custom properties from a ColorTheme.
 ///
@@ -49,7 +49,6 @@ fn color_theme_css(theme: Option<&ColorTheme>) -> String {
 pub fn render_doc_page(ctx: &PageContext) -> String {
     let nav_html = render_nav(
         ctx.site,
-        ctx.nav_items,
         ctx.current_slug,
         ctx.language,
         ctx.language_switcher,
@@ -200,13 +199,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
 
 /// Render the site index page.
 pub fn render_index_page(ctx: &IndexContext) -> String {
-    let nav_html = render_nav(
-        ctx.site,
-        ctx.nav_items,
-        None,
-        ctx.language,
-        ctx.language_switcher,
-    );
+    let nav_html = render_nav(ctx.site, None, ctx.language, ctx.language_switcher);
     let cards_html: String = ctx
         .documents
         .iter()
@@ -354,7 +347,6 @@ pub fn render_category_page(ctx: &CategoryContext) -> String {
 /// Render the navigation bar.
 fn render_nav(
     site: &SiteConfig,
-    _items: &[NavItem],
     _current: Option<&str>,
     _lang: &str,
     language_switcher: &str,

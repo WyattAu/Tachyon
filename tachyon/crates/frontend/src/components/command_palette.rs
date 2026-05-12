@@ -5,8 +5,6 @@ use wasm_bindgen::JsCast;
 
 #[derive(Debug, Clone)]
 pub struct CommandItem {
-    /// Reserved for future use: unique item identifier for keyboard navigation.
-    #[allow(dead_code)]
     pub id: String,
     pub label: String,
     pub category: String,

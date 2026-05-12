@@ -27,13 +27,11 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn get_graph_node(&self, node_id: &str) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/nodes/{}", self.base_url, node_id);
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn create_graph_node(
         &self,
         data: &serde_json::Value,
@@ -47,7 +45,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn create_graph_edge(
         &self,
         data: &serde_json::Value,
@@ -56,7 +53,6 @@ impl ApiClient {
         self.post(&url, data).await
     }
 
-    #[allow(dead_code)]
     pub async fn query_graph(
         &self,
         data: &serde_json::Value,
@@ -70,13 +66,11 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn get_graph_at_time(&self, at: &str) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/graph/at?at={}", self.base_url, at);
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn get_graph_diff(
         &self,
         from: &str,

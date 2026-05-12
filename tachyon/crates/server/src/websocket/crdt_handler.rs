@@ -24,7 +24,6 @@ use axum::{
     },
     response::Response,
 };
-use chrono::Utc;
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -40,42 +39,13 @@ use tachyon_core::types::crdt::{CollaborationInfo, CrdtDocumentState, SelectionR
 
 /// A connected client in a relay room.
 #[derive(Debug)]
-#[allow(dead_code)]
 struct ConnectedClient {
+    #[allow(dead_code)] // redundant with HashMap key
     client_id: String,
     room: String,
+    #[allow(dead_code)] // kept for future use (e.g., targeted sends)
     send: tokio::sync::mpsc::UnboundedSender<Message>,
     last_seen: std::time::Instant,
-}
-
-/// Per-client metadata tracked by the connection manager.
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub(crate) struct ClientMetadata {
-    user_id: Option<String>,
-    display_name: Option<String>,
-    connected_at: chrono::DateTime<chrono::Utc>,
-}
-
-/// Event logged per-room for lifecycle tracking.
-#[derive(Debug, Clone)]
-#[allow(dead_code, clippy::enum_variant_names)]
-pub(crate) enum RoomEvent {
-    ClientJoined {
-        room: String,
-        client_id: String,
-        timestamp: chrono::DateTime<chrono::Utc>,
-    },
-    ClientLeft {
-        room: String,
-        client_id: String,
-        timestamp: chrono::DateTime<chrono::Utc>,
-    },
-    ClientMetadataUpdated {
-        room: String,
-        client_id: String,
-        timestamp: chrono::DateTime<chrono::Utc>,
-    },
 }
 
 /// Broadcast event for the relay.
@@ -92,19 +62,19 @@ enum RelayEvent {
         room: String,
         sender: String,
         data: Vec<u8>,
-        #[allow(dead_code)]
+        #[allow(dead_code)] // kept for future cursor broadcast
         selection: SelectionRange,
     },
     /// A client joined a room.
     Joined {
         room: String,
-        #[allow(dead_code)]
+        #[allow(dead_code)] // stored for future presence tracking
         client_id: String,
     },
     /// A client left a room.
     Left {
         room: String,
-        #[allow(dead_code)]
+        #[allow(dead_code)] // stored for future presence tracking
         client_id: String,
     },
 }
@@ -124,8 +94,6 @@ pub struct CrdtConnectionManager {
     broadcast_tx: broadcast::Sender<RelayEvent>,
     /// Server-side Yrs document manager for applying and storing CRDT state.
     crdt_manager: Arc<CrdtDocumentManager>,
-    client_metadata: Arc<RwLock<HashMap<String, ClientMetadata>>>,
-    room_events: Arc<RwLock<HashMap<String, Vec<RoomEvent>>>>,
 }
 
 impl CrdtConnectionManager {
@@ -137,8 +105,6 @@ impl CrdtConnectionManager {
             documents: Arc::new(RwLock::new(HashMap::new())),
             broadcast_tx,
             crdt_manager: Arc::new(CrdtDocumentManager::new()),
-            client_metadata: Arc::new(RwLock::new(HashMap::new())),
-            room_events: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -244,63 +210,7 @@ impl CrdtConnectionManager {
                 }
             }
             info!(client_id = %client_id, room = %room, "Cleaned up stale CRDT client");
-            self.client_metadata.write().await.remove(client_id);
         }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) async fn send_to_client(&self, client_id: &str, message: Message) -> bool {
-        let clients = self.clients.read().await;
-        clients
-            .get(client_id)
-            .is_some_and(|client| client.send.send(message).is_ok())
-    }
-
-    #[allow(dead_code)]
-    pub(crate) async fn update_client_metadata(
-        &self,
-        client_id: &str,
-        user_id: Option<String>,
-        display_name: Option<String>,
-    ) {
-        let mut metadata = self.client_metadata.write().await;
-        if let Some(existing) = metadata.get_mut(client_id) {
-            if let Some(uid) = user_id {
-                existing.user_id = Some(uid);
-            }
-            if let Some(name) = display_name {
-                existing.display_name = Some(name);
-            }
-        }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) async fn get_client_metadata(&self, client_id: &str) -> Option<ClientMetadata> {
-        self.client_metadata.read().await.get(client_id).cloned()
-    }
-
-    async fn record_room_event(&self, event: RoomEvent) {
-        let room = match &event {
-            RoomEvent::ClientJoined { room, .. }
-            | RoomEvent::ClientLeft { room, .. }
-            | RoomEvent::ClientMetadataUpdated { room, .. } => room.clone(),
-        };
-        self.room_events
-            .write()
-            .await
-            .entry(room)
-            .or_default()
-            .push(event);
-    }
-
-    #[allow(dead_code)]
-    pub(crate) async fn get_room_events(&self, room: &str) -> Vec<RoomEvent> {
-        self.room_events
-            .read()
-            .await
-            .get(room)
-            .cloned()
-            .unwrap_or_default()
     }
 }
 
@@ -353,21 +263,6 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
             .insert(client_id.clone(), client);
     }
     manager.join_room(&client_id, &room).await;
-    manager.client_metadata.write().await.insert(
-        client_id.clone(),
-        ClientMetadata {
-            user_id: None,
-            display_name: None,
-            connected_at: Utc::now(),
-        },
-    );
-    manager
-        .record_room_event(RoomEvent::ClientJoined {
-            room: room.clone(),
-            client_id: client_id.clone(),
-            timestamp: Utc::now(),
-        })
-        .await;
     let _ = manager.broadcast_tx.send(RelayEvent::Joined {
         room: room.clone(),
         client_id: client_id.clone(),
@@ -586,14 +481,6 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // Clean up: remove client and notify.
     if let Some(removed_room) = manager.leave_room(&client_id).await {
         info!(client_id = %client_id, room = %removed_room, "CRDT client disconnected");
-        manager
-            .record_room_event(RoomEvent::ClientLeft {
-                room: removed_room.clone(),
-                client_id: client_id.clone(),
-                timestamp: Utc::now(),
-            })
-            .await;
-        manager.client_metadata.write().await.remove(&client_id);
         let _ = manager.broadcast_tx.send(RelayEvent::Left {
             room: removed_room,
             client_id: client_id.clone(),

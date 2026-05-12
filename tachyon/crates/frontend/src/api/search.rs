@@ -137,13 +137,11 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn get_saved_search(&self, id: &str) -> Result<SavedSearch, ApiError> {
         let url = format!("{}/search/saved/{}", self.base_url, id);
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn update_saved_search(
         &self,
         id: &str,
@@ -153,7 +151,6 @@ impl ApiClient {
         self.put(&url, request).await
     }
 
-    #[allow(dead_code)]
     pub async fn delete_saved_search(&self, id: &str) -> Result<(), ApiError> {
         let url = format!("{}/search/saved/{}", self.base_url, id);
         self.delete(&url).await

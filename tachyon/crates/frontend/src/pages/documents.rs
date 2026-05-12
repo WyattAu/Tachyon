@@ -1224,18 +1224,6 @@ struct DocumentEditParams {
     id: String,
 }
 
-/// Activity feed entry deserialized from the API.
-///
-/// Reserved for future use: document activity timeline.
-#[derive(serde::Deserialize)]
-#[allow(dead_code)]
-struct ActivityData {
-    activity_type: String,
-    user_id: String,
-    user_name: String,
-    description: String,
-}
-
 #[component]
 fn BacklinksPanel(document_id: String) -> impl IntoView {
     let api_client = ApiClient::default();

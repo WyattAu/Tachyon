@@ -124,8 +124,6 @@ struct SimNode {
 struct SimEdge {
     source: usize,
     target: usize,
-    /// Reserved for future use: weighted edge layout.
-    #[allow(dead_code)]
     weight: f64,
 }
 

@@ -28,8 +28,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    /// Invite a user to a team by email with the specified role.
-    #[allow(dead_code)]
     pub async fn invite_team_member(
         &self,
         team_id: &str,
@@ -42,13 +40,11 @@ impl ApiClient {
     }
 
     /// Remove a member from a team.
-    #[allow(dead_code)]
     pub async fn remove_team_member(&self, team_id: &str, user_id: &str) -> Result<(), ApiError> {
         let url = format!("{}/teams/{}/members/{}", self.base_url, team_id, user_id);
         self.delete(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn update_team(
         &self,
         team_id: &str,
@@ -58,7 +54,6 @@ impl ApiClient {
         self.put(&url, request).await
     }
 
-    #[allow(dead_code)]
     pub async fn delete_team(&self, team_id: &str) -> Result<(), ApiError> {
         let url = format!("{}/teams/{}", self.base_url, team_id);
         self.delete(&url).await

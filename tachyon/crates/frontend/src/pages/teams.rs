@@ -14,30 +14,22 @@ pub struct Team {
     pub name: String,
     pub slug: String,
     pub description: Option<String>,
-    #[allow(dead_code)]
     pub owner_id: String,
-    #[allow(dead_code)]
     pub avatar_url: Option<String>,
-    #[allow(dead_code)]
     pub created_at: String,
-    #[allow(dead_code)]
     pub updated_at: String,
     pub member_count: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct TeamMember {
-    #[allow(dead_code)]
     pub id: i64,
-    #[allow(dead_code)]
     pub team_id: String,
     pub user_id: String,
-    #[allow(dead_code)]
     pub role_id: i64,
     pub role_name: String,
     /// Deserialized from API response; not yet rendered in the UI.
     pub joined_at: String,
-    #[allow(dead_code)]
     pub invited_by: Option<String>,
 }
 

@@ -82,8 +82,7 @@ pub fn provide_auth_context() {
 
 /// Clear authentication state and redirect to login.
 ///
-/// Reserved for future use: explicit logout flow.
-#[allow(dead_code)]
+// TODO: wire into page
 pub fn logout() {
     if let Some(window) = web_sys::window() {
         if let Ok(Some(storage)) = window.local_storage() {

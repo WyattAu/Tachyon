@@ -777,25 +777,42 @@ async fn metrics_handler(State(state): State<HealthState>) -> axum::Json<serde_j
 /// metrics::histogram!("request_duration_seconds").record(duration.as_secs_f64());
 /// ```
 async fn prometheus_metrics_handler() -> String {
-    // Use the singleton installed by install_metrics() — calling
-    // install_recorder() here would panic on the 2nd request.
-    install_metrics().render()
+    match install_metrics() {
+        Some(handle) => handle.render(),
+        None => {
+            tracing::warn!("Prometheus metrics handle unavailable, returning empty response");
+            String::new()
+        }
+    }
 }
 
 /// Install the Prometheus metrics exporter.
 ///
 /// Call this once at server startup. It installs a global metrics recorder
 /// that can be queried via the `/metrics/prometheus` endpoint.
-pub fn install_metrics() -> &'static metrics_exporter_prometheus::PrometheusHandle {
-    // Use a lazy static to ensure we only install once
+///
+/// Returns `None` if a global metrics recorder was already installed by
+/// another component.
+pub fn install_metrics() -> Option<&'static metrics_exporter_prometheus::PrometheusHandle> {
     use std::sync::OnceLock;
     static HANDLE: OnceLock<metrics_exporter_prometheus::PrometheusHandle> = OnceLock::new();
 
-    HANDLE.get_or_init(|| {
-        let handle = metrics_exporter_prometheus::PrometheusBuilder::new()
-            .install_recorder()
-            .expect("failed to install Prometheus metrics recorder");
-        tracing::info!("Prometheus metrics exporter installed");
-        handle
-    })
+    if HANDLE.get().is_some() {
+        return HANDLE.get();
+    }
+
+    match metrics_exporter_prometheus::PrometheusBuilder::new().install_recorder() {
+        Ok(handle) => {
+            tracing::info!("Prometheus metrics exporter installed");
+            Some(HANDLE.get_or_init(|| handle))
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "Failed to install Prometheus metrics recorder (global recorder already installed?). \
+                 Metrics endpoint will return empty results."
+            );
+            None
+        }
+    }
 }

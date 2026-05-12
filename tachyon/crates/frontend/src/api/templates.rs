@@ -15,7 +15,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn get_template(&self, template_id: &str) -> Result<DocumentTemplate, ApiError> {
         let url = format!("{}/templates/{}", self.base_url, template_id);
         self.get(&url).await

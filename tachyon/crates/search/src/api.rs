@@ -55,16 +55,12 @@ pub(crate) struct SearchParams {
     pub page_size: usize,
     /// Sort order
     #[serde(default)]
-    #[allow(dead_code)]
     pub sort: Option<String>,
     /// Tags filter
-    #[allow(dead_code)]
     pub tags: Option<String>,
     /// Repository ID filter
-    #[allow(dead_code)]
     pub repository_id: Option<String>,
     /// Author ID filter
-    #[allow(dead_code)]
     pub author_id: Option<String>,
 }
 
@@ -133,7 +129,7 @@ pub(crate) struct WebSocketSearchRequest {
     /// Query string
     pub query: String,
     /// Session ID
-    #[allow(dead_code)]
+    #[allow(dead_code)] // reserved for future use
     pub session_id: Option<String>,
     /// Request ID
     pub request_id: Option<String>,
@@ -387,7 +383,6 @@ impl SearchApiState {
 /// # Errors
 /// Returns error if authorization check fails
 #[cfg(feature = "staging")]
-#[allow(dead_code)]
 fn check_search_permission(
     enforcer: &Arc<Enforcer>,
     resource: Resource,
@@ -430,7 +425,7 @@ fn check_search_permission(
 ///
 /// # Errors
 /// Returns error if authorization check fails
-#[allow(dead_code)]
+#[allow(dead_code)] // reserved for future async RBAC integration
 pub(crate) async fn check_search_permission_async(
     enforcer: &mut Enforcer,
     resource: &Resource,

@@ -67,6 +67,9 @@ base32 = "0.5"
 # HTTP Client (for webhook delivery)
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 
+# Email delivery
+lettre = { version = "0.11", features = ["tokio1-rustls-tls", "smtp-transport", "builder", "pool"], default-features = false }
+
 # URL encoding (for OAuth2)
 urlencoding = "2"
 

@@ -13,10 +13,7 @@ pub struct Role {
     pub description: Option<String>,
     pub permissions: Vec<String>,
     pub is_system: bool,
-    /// Deserialized from API response; not yet rendered in the UI.
-    #[allow(dead_code)]
     pub created_at: String,
-    #[allow(dead_code)]
     pub updated_at: String,
 }
 
@@ -30,8 +27,8 @@ pub struct CreateRoleRequest {
 /// Update role request payload.
 ///
 /// Reserved for future use: role editing API.
+// TODO: wire into page
 #[derive(Debug, Clone, serde::Serialize)]
-#[allow(dead_code)]
 pub struct UpdateRoleRequest {
     pub name: Option<String>,
     pub description: Option<String>,

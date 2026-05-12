@@ -12,7 +12,6 @@ impl ApiClient {
         self.get(&url).await
     }
 
-    #[allow(dead_code)]
     pub async fn get_plugin(&self, plugin_id: &str) -> Result<Plugin, ApiError> {
         let url = format!("{}/plugins/{}", self.base_url, plugin_id);
         self.get(&url).await
