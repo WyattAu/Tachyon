@@ -51,6 +51,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 base64 = "0.22"
+getrandom = "0.3"
 rand = { workspace = true }
 
 # Validation & Security

@@ -311,17 +311,22 @@ pub async fn request_email_verification(
     headers: HeaderMap,
     Json(body): Json<EmailVerifyRequest>,
 ) -> Result<Json<MessageResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let jwt_secret = match std::env::var("TACHYON_JWT_SECRET") {
-        Ok(s) => s,
-        Err(_) => {
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "CONFIG_ERROR".to_string(),
-                    message: "JWT secret not configured".to_string(),
-                }),
-            ));
-        }
+    let jwt_secrets = if let Ok(secrets_csv) = std::env::var("TACHYON_JWT_SECRETS") {
+        secrets_csv
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+    } else if let Ok(secret) = std::env::var("TACHYON_JWT_SECRET") {
+        vec![secret]
+    } else {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                code: "CONFIG_ERROR".to_string(),
+                message: "JWT secret not configured".to_string(),
+            }),
+        ));
     };
 
     let auth_header = headers
@@ -349,20 +354,28 @@ pub async fn request_email_verification(
 
     let token_str = &auth_header[7..];
     let validation = Validation::default();
-    decode::<Claims>(
-        token_str,
-        &DecodingKey::from_secret(jwt_secret.as_bytes()),
-        &validation,
-    )
-    .map_err(|_| {
-        (
+
+    let mut decoded = None;
+    for secret in &jwt_secrets {
+        if let Ok(data) = decode::<Claims>(
+            token_str,
+            &DecodingKey::from_secret(secret.as_bytes()),
+            &validation,
+        ) {
+            decoded = Some(data);
+            break;
+        }
+    }
+
+    if decoded.is_none() {
+        return Err((
             StatusCode::UNAUTHORIZED,
             Json(ErrorResponse {
                 code: "UNAUTHORIZED".to_string(),
                 message: "Invalid or expired token".to_string(),
             }),
-        )
-    })?;
+        ));
+    }
 
     let reset_repo = tachyon_database::PasswordResetRepository::new(state.pool.clone());
     let user_repo = tachyon_database::UserRepository::new(state.pool.clone());

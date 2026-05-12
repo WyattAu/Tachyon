@@ -149,7 +149,7 @@ impl AuthState {
         encode(
             &Header::default(),
             &claims,
-            &EncodingKey::from_secret(self.config.jwt.secret.as_ref()),
+            &EncodingKey::from_secret(self.config.jwt.signing_secret().as_bytes()),
         )
         .map_err(|e| AuthError::InternalError(format!("JWT encoding error: {}", e)))
     }
@@ -163,18 +163,28 @@ impl AuthState {
         validation.set_issuer(&[issuer]);
         validation.set_audience(&[audience]);
 
-        let token_data = decode::<Claims>(
+        for secret in &self.config.jwt.secrets {
+            match decode::<Claims>(
+                token,
+                &DecodingKey::from_secret(secret.as_bytes()),
+                &validation,
+            ) {
+                Ok(token_data) => return Ok(token_data.claims),
+                Err(_) => continue,
+            }
+        }
+
+        decode::<Claims>(
             token,
-            &DecodingKey::from_secret(self.config.jwt.secret.as_ref()),
+            &DecodingKey::from_secret(self.config.jwt.signing_secret().as_bytes()),
             &validation,
         )
         .map_err(|e| match e.kind() {
             jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthError::TokenExpired,
             jsonwebtoken::errors::ErrorKind::InvalidSignature => AuthError::InvalidSignature,
             _ => AuthError::InvalidTokenFormat,
-        })?;
-
-        Ok(token_data.claims)
+        })
+        .map(|td| td.claims)
     }
 
     pub async fn validate_api_key(&self, api_key: &str) -> Result<(String, UserRole), AuthError> {
@@ -553,5 +563,70 @@ mod tests {
             "Missing authorization header"
         );
         assert_eq!(AuthError::TokenExpired.to_string(), "Token expired");
+    }
+
+    #[test]
+    fn test_jwt_validation_with_rotated_secret() {
+        let issuer = "tachyon-test";
+        let audience = "tachyon-test";
+        let old_secret = "old-rotated-secret-that-is-at-least-32";
+        let new_secret = "current-secret-that-is-at-least-32-bytes-long";
+
+        let claims = make_test_claims("user123", "admin");
+
+        let token = encode_test_token(&claims, old_secret);
+
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.set_issuer(&[issuer]);
+        validation.set_audience(&[audience]);
+
+        let secrets: Vec<&str> = vec![new_secret, old_secret];
+
+        let mut result = None;
+        for secret in &secrets {
+            if let Ok(data) = decode::<Claims>(
+                &token,
+                &DecodingKey::from_secret(secret.as_ref()),
+                &validation,
+            ) {
+                result = Some(data.claims);
+                break;
+            }
+        }
+
+        assert!(
+            result.is_some(),
+            "Token signed with old secret should validate with rotated secrets"
+        );
+        let decoded = result.unwrap();
+        assert_eq!(decoded.sub, "user123");
+        assert_eq!(decoded.role, "admin");
+    }
+
+    #[test]
+    fn test_jwt_signed_with_new_secret_fails_with_old_only() {
+        let issuer = "tachyon-test";
+        let audience = "tachyon-test";
+        let old_secret = "old-rotated-secret-that-is-at-least-32";
+        let new_secret = "current-secret-that-is-at-least-32-bytes-long";
+
+        let claims = make_test_claims("user456", "writer");
+
+        let token = encode_test_token(&claims, new_secret);
+
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.set_issuer(&[issuer]);
+        validation.set_audience(&[audience]);
+
+        let result = decode::<Claims>(
+            &token,
+            &DecodingKey::from_secret(old_secret.as_ref()),
+            &validation,
+        );
+
+        assert!(
+            result.is_err(),
+            "Token signed with new secret should fail with old secret only"
+        );
     }
 }

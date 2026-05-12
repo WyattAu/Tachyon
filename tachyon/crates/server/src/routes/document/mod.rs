@@ -23,6 +23,7 @@ pub struct DocumentState {
     pub guest_config: GuestConfig,
     pub index_manager: Option<Arc<Mutex<IndexManager>>>,
     pub http_client: reqwest::Client,
+    pub api_cache: crate::middleware::api_cache::ApiCache,
 }
 
 impl DocumentState {
@@ -34,6 +35,9 @@ impl DocumentState {
             guest_config: GuestConfig::default(),
             index_manager: None,
             http_client,
+            api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(
+                60,
+            )),
         }
     }
 
@@ -49,6 +53,9 @@ impl DocumentState {
             guest_config,
             index_manager: None,
             http_client,
+            api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(
+                60,
+            )),
         }
     }
 
@@ -97,7 +104,7 @@ pub struct DocumentQuery {
     pub author_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct DocumentResponse {
     pub id: String,
     pub title: String,
@@ -160,7 +167,7 @@ impl From<Document> for DocumentResponse {
     }
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct DocumentSearchResponse {
     pub results: Vec<DocumentResponse>,
     pub total: usize,

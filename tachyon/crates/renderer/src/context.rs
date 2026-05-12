@@ -19,6 +19,8 @@ pub struct RenderContext {
     pub metadata: Option<RenderMetadata>,
     /// Navigation
     pub navigation: Option<NavigationInfo>,
+    /// CSP nonce for inline script/style elements (set by server middleware)
+    pub csp_nonce: Option<String>,
 }
 
 /// Author information.
@@ -84,6 +86,7 @@ impl RenderContext {
             author: None,
             metadata: None,
             navigation: None,
+            csp_nonce: None,
         }
     }
 

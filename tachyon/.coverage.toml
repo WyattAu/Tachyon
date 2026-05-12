@@ -42,10 +42,17 @@ show_line_numbers = true
 # Group by module
 group_by_module = true
 
+# Critical crates with higher thresholds
+[critical_crates]
+tachyon_core = 0.70
+tachyon_rbac = 0.65
+tachyon_server = 0.60
+tachyon_database = 0.65
+
 # CI configuration
 [ci]
 # Fail build if coverage below threshold
-fail_under_threshold = false
+fail_under_threshold = true
 
 # Post coverage comment on PR
 post_pr_comment = true

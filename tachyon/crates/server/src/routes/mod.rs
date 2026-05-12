@@ -84,7 +84,7 @@ pub async fn create_router() -> Router {
     );
     let user_state = UserState::with_guest_config(
         pool.clone(),
-        "test_secret_key".to_string(),
+        vec!["test_secret_key_that_is_at_least_32_ch".to_string()],
         3600,
         "tachyon".to_string(),
         "tachyon".to_string(),

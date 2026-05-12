@@ -281,7 +281,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         DocumentState::with_guest_config(pool.clone(), config.guest.clone(), http_client.clone());
     let user_state = UserState::with_guest_config(
         pool.clone(),
-        config.jwt.secret.clone(),
+        config.jwt.secrets.clone(),
         config.jwt.expiration_secs,
         config.jwt.issuer.clone(),
         config.jwt.audience.clone(),
@@ -497,7 +497,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     // OAuth2 router (only enabled when providers are configured)
     let oauth2_state = OAuth2State {
-        jwt_secret: config.jwt.secret.clone(),
+        jwt_secrets: config.jwt.secrets.clone(),
         jwt_expiration_secs: config.jwt.expiration_secs,
         jwt_issuer: config.jwt.issuer.clone(),
         jwt_audience: config.jwt.audience.clone(),
@@ -643,6 +643,10 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
                     add_security_headers_from_config(response, &security_config)
                 }),
         );
+
+    router = router.layer(axum::middleware::from_fn(
+        crate::middleware::security_headers::csp_nonce_middleware,
+    ));
 
     router = router.merge(swagger_ui);
 

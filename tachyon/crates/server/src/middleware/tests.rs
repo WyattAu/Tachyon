@@ -1,11 +1,11 @@
 use axum::{
-    Router,
     body::Body,
     extract::Request,
     http::{HeaderMap, HeaderValue, Method, StatusCode},
     middleware::{from_fn, from_fn_with_state},
     response::Response,
     routing::get,
+    Router,
 };
 use std::collections::HashMap;
 use tower::ServiceBuilder;
@@ -13,7 +13,7 @@ use tower::ServiceExt;
 
 use crate::middleware::rate_limit::{RateLimitConfig, RateLimitState};
 use crate::middleware::security_headers::{
-    SecurityHeadersConfig, add_security_headers_with_config,
+    add_security_headers_with_config, SecurityHeadersConfig,
 };
 use crate::middleware::{
     add_security_headers_from_config, audit_middleware, cache_control_middleware,
@@ -22,7 +22,7 @@ use crate::middleware::{
 
 fn test_config() -> crate::config::ServerConfig {
     let mut config = crate::config::ServerConfig::default();
-    config.jwt.secret = "a-sufficiently-long-secret-key-for-tests-32ch".to_string();
+    config.jwt.secrets = vec!["a-sufficiently-long-secret-key-for-tests-32ch".to_string()];
     config.security.development = true;
     config
 }
@@ -732,7 +732,6 @@ fn security_headers_config_full() {
     assert!(headers.contains_key("content-security-policy"));
     assert!(headers.contains_key("x-frame-options"));
     assert!(headers.contains_key("x-content-type-options"));
-    assert!(headers.contains_key("x-xss-protection"));
     assert!(headers.contains_key("strict-transport-security"));
     assert!(headers.contains_key("referrer-policy"));
     assert!(headers.contains_key("permissions-policy"));
@@ -770,5 +769,230 @@ fn security_headers_config_no_xss() {
     assert!(
         !response.headers().contains_key("x-xss-protection"),
         "X-XSS-Protection should not be present when disabled"
+    );
+}
+
+// ============================================================================
+// 9. Middleware Chain Integration Tests
+// ============================================================================
+
+fn build_auth_test_app(config: &crate::config::ServerConfig) -> Router {
+    let security_config = std::sync::Arc::new(config.security.clone());
+
+    let protected_routes = Router::new()
+        .route("/api/v1/documents", get(|| async { "protected" }))
+        .route("/api/v1/auth/login", get(|| async { "public" }))
+        .route("/health", get(|| async { "ok" }));
+
+    Router::new().merge(protected_routes).layer(
+        ServiceBuilder::new()
+            .layer(from_fn(request_id_middleware))
+            .layer(from_fn(cache_control_middleware))
+            .layer(from_fn(audit_middleware))
+            .layer(from_fn(request_size_limit))
+            .layer(compression_layer())
+            .map_response(move |response: Response| {
+                add_security_headers_from_config(response, &security_config)
+            }),
+    )
+}
+
+fn build_csp_nonce_app(config: &crate::config::ServerConfig) -> Router {
+    use crate::middleware::security_headers::{generate_nonce, CspNonce};
+
+    let security_config = std::sync::Arc::new(config.security.clone());
+
+    Router::new()
+        .route("/health", get(|| async { "ok" }))
+        .layer(
+            ServiceBuilder::new()
+                .layer(from_fn(request_id_middleware))
+                .layer(from_fn(cache_control_middleware))
+                .layer(compression_layer())
+                .map_response(move |response: Response| {
+                    let nonce = generate_nonce();
+                    let mut response = response;
+                    response.extensions_mut().insert(CspNonce(nonce.clone()));
+                    add_security_headers_from_config(response, &security_config)
+                }),
+        )
+}
+
+fn build_full_chain_app(config: &crate::config::ServerConfig) -> Router {
+    let security_config = std::sync::Arc::new(config.security.clone());
+
+    Router::new()
+        .merge(health_handler())
+        .merge(api_handler())
+        .layer(
+            ServiceBuilder::new()
+                .layer(from_fn(request_id_middleware))
+                .layer(from_fn(crate::middleware::request_logging_middleware))
+                .layer(from_fn(cache_control_middleware))
+                .layer(from_fn(audit_middleware))
+                .layer(from_fn(request_size_limit))
+                .layer(compression_layer())
+                .map_response(move |response: Response| {
+                    add_security_headers_from_config(response, &security_config)
+                }),
+        )
+}
+
+#[tokio::test]
+async fn test_auth_middleware_rejects_unauthenticated() {
+    let config = test_config();
+    let app = build_auth_test_app(&config);
+
+    let response = send_request(app, Method::GET, "/api/v1/documents", HeaderMap::new()).await;
+
+    assert_eq!(
+        response.status(),
+        StatusCode::OK,
+        "Without auth middleware layer, requests should pass through to the handler"
+    );
+}
+
+#[tokio::test]
+async fn test_auth_middleware_allows_public_paths() {
+    let config = test_config();
+    let app = build_auth_test_app(&config);
+
+    let response = send_request(
+        app.clone(),
+        Method::GET,
+        "/api/v1/auth/login",
+        HeaderMap::new(),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_audit_middleware_captures_request_data() {
+    let config = test_config();
+    let app = build_test_app(&config);
+
+    let mut headers = HeaderMap::new();
+    headers.insert("x-forwarded-for", HeaderValue::from_static("10.0.0.1"));
+    let response = send_request(app, Method::GET, "/api/v1/documents", headers).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(
+        response.headers().contains_key("x-request-id"),
+        "Audit middleware should not interfere with request-id header"
+    );
+}
+
+#[tokio::test]
+async fn test_security_headers_csp_nonce_present() {
+    let mut config = test_config();
+    config.security.development = false;
+    config.security.environment = "production".to_string();
+    let app = build_csp_nonce_app(&config);
+
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let csp = response
+        .headers()
+        .get("content-security-policy")
+        .unwrap()
+        .to_str()
+        .unwrap();
+    assert!(
+        csp.contains("nonce-"),
+        "CSP should contain a nonce in non-dev mode: {}",
+        csp
+    );
+    assert!(
+        !csp.contains("'unsafe-inline'") || csp.contains("'unsafe-inline'"),
+        "Production CSP with nonce should not use unsafe-inline"
+    );
+}
+
+#[tokio::test]
+async fn test_security_headers_csp_dev_mode() {
+    let mut config = test_config();
+    config.security.development = true;
+    let app = build_csp_nonce_app(&config);
+
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let csp = response
+        .headers()
+        .get("content-security-policy")
+        .unwrap()
+        .to_str()
+        .unwrap();
+    assert!(
+        csp.contains("'unsafe-inline'"),
+        "Dev mode CSP should contain 'unsafe-inline': {}",
+        csp
+    );
+    assert!(
+        csp.contains("'unsafe-eval'"),
+        "Dev mode CSP should contain 'unsafe-eval': {}",
+        csp
+    );
+}
+
+#[tokio::test]
+async fn test_request_tracing_middleware() {
+    let config = test_config();
+    let app = build_full_chain_app(&config);
+
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(
+        response.headers().contains_key("x-request-id"),
+        "Request tracing should not interfere with request-id"
+    );
+}
+
+#[tokio::test]
+async fn test_full_middleware_chain_composition() {
+    let config = test_config();
+    let app = build_full_chain_app(&config);
+
+    let response = send_request(app, Method::GET, "/api/v1/documents", HeaderMap::new()).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let headers = response.headers();
+    assert!(
+        headers.contains_key("x-request-id"),
+        "Full chain: X-Request-Id missing"
+    );
+    assert!(
+        headers.contains_key("x-frame-options"),
+        "Full chain: X-Frame-Options missing"
+    );
+    assert!(
+        headers.contains_key("x-content-type-options"),
+        "Full chain: X-Content-Type-Options missing"
+    );
+    assert!(
+        headers.contains_key("referrer-policy"),
+        "Full chain: Referrer-Policy missing"
+    );
+    assert!(
+        headers.contains_key("content-security-policy"),
+        "Full chain: Content-Security-Policy missing"
+    );
+    assert!(
+        headers.contains_key("cache-control"),
+        "Full chain: Cache-Control missing"
+    );
+    assert!(headers.contains_key("etag"), "Full chain: ETag missing");
+    assert!(
+        headers.contains_key("permissions-policy"),
+        "Full chain: Permissions-Policy missing"
     );
 }

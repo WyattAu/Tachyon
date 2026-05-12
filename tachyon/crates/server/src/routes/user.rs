@@ -64,8 +64,8 @@ struct Claims {
 pub struct UserState {
     /// Database pool
     pub pool: DatabasePool,
-    /// JWT secret for token signing
-    pub jwt_secret: String,
+    /// JWT secrets for token signing and validation (enables rotation)
+    pub jwt_secrets: Vec<String>,
     /// Token expiration in seconds
     pub token_expiration_secs: u64,
     /// JWT issuer
@@ -82,7 +82,7 @@ impl UserState {
     /// Create a new user state with full JWT config and guest config.
     pub fn with_guest_config(
         pool: DatabasePool,
-        jwt_secret: String,
+        jwt_secrets: Vec<String>,
         token_expiration_secs: u64,
         jwt_issuer: String,
         jwt_audience: String,
@@ -90,7 +90,7 @@ impl UserState {
     ) -> Self {
         Self {
             pool,
-            jwt_secret,
+            jwt_secrets,
             token_expiration_secs,
             jwt_issuer,
             jwt_audience,
@@ -132,10 +132,12 @@ impl UserState {
             team_id: None,
         };
 
+        let signing_secret = self.jwt_secrets.first().map(|s| s.as_str()).unwrap_or("");
+
         encode(
             &Header::default(),
             &claims,
-            &EncodingKey::from_secret(self.jwt_secret.as_ref()),
+            &EncodingKey::from_secret(signing_secret.as_ref()),
         )
         .map_err(|e| format!("JWT encoding error: {}", e))
     }
@@ -146,9 +148,25 @@ impl UserState {
         validation.set_issuer(&[&self.jwt_issuer]);
         validation.set_audience(&[&self.jwt_audience]);
 
+        for secret in &self.jwt_secrets {
+            if let Ok(data) = decode::<Claims>(
+                token,
+                &DecodingKey::from_secret(secret.as_bytes()),
+                &validation,
+            ) {
+                return Ok(data.claims);
+            }
+        }
+
         decode::<Claims>(
             token,
-            &DecodingKey::from_secret(self.jwt_secret.as_ref()),
+            &DecodingKey::from_secret(
+                self.jwt_secrets
+                    .first()
+                    .map(|s| s.as_str())
+                    .unwrap_or("")
+                    .as_ref(),
+            ),
             &validation,
         )
         .map(|data| data.claims)

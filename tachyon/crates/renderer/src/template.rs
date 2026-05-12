@@ -35,8 +35,8 @@ pub(crate) const DEFAULT_BASE_TEMPLATE: &str = r#"<!DOCTYPE html>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
+    <script src="https://cdn.tailwindcss.com"{{ csp_nonce_attr }}></script>
+    <script{{ csp_nonce_attr }}>
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -49,7 +49,7 @@ pub(crate) const DEFAULT_BASE_TEMPLATE: &str = r#"<!DOCTYPE html>
             },
         }
     </script>
-    <style type="text/tailwindcss">
+    <style type="text/tailwindcss"{{ csp_nonce_attr }}>
         @layer base {
             html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
             body { @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100; }
@@ -90,7 +90,7 @@ pub(crate) const DEFAULT_BASE_TEMPLATE: &str = r#"<!DOCTYPE html>
             Powered by <a href="/" class="hover:text-blue-600">{{ site_title }}</a>
         </div>
     </footer>
-    <script>
+    <script{{ csp_nonce_attr }}>
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             document.documentElement.classList.add('dark');
         }
@@ -367,6 +367,7 @@ mod tests {
             "breadcrumb_json_ld".to_string(),
             r#"{"@type": "BreadcrumbList"}"#.to_string(),
         );
+        ctx.set("csp_nonce_attr".to_string(), String::new());
 
         let result = engine.render("document.html", &ctx).unwrap();
         assert!(result.contains("<!DOCTYPE html>"));

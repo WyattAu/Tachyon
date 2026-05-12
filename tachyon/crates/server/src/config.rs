@@ -86,14 +86,22 @@ pub struct ServerConfig {
 /// JWT configuration for token-based authentication
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JwtConfig {
-    /// JWT secret key for signing tokens
-    pub secret: String,
+    /// JWT signing secrets. The first entry is used for signing new tokens;
+    /// all entries are tried when validating existing tokens (enables rotation).
+    pub secrets: Vec<String>,
     /// Token expiration time in seconds
     pub expiration_secs: u64,
     /// Issuer for JWT claims
     pub issuer: String,
     /// Audience for JWT claims
     pub audience: String,
+}
+
+impl JwtConfig {
+    /// The active signing key (always the first secret).
+    pub fn signing_secret(&self) -> &str {
+        self.secrets.first().map(|s| s.as_str()).unwrap_or("")
+    }
 }
 
 /// API key configuration for service account authentication
@@ -368,7 +376,7 @@ impl Default for ServerConfig {
 impl Default for JwtConfig {
     fn default() -> Self {
         Self {
-            secret: "change-this-secret-key-in-production".to_string(),
+            secrets: vec!["change-this-secret-key-in-production".to_string()],
             expiration_secs: 24 * 60 * 60, // 24 hours
             issuer: "tachyon-server".to_string(),
             audience: "tachyon-client".to_string(),
@@ -608,12 +616,29 @@ impl ServerConfig {
             }
         }
 
-        if self.jwt.secret.len() < 32 {
-            errors.push("JWT secret must be at least 32 characters".to_string());
-        } else if self.jwt.secret.len() < 64 {
-            warnings.push(
-                "JWT secret is less than 64 characters; consider using a longer secret for better security".to_string(),
-            );
+        if self.jwt.secrets.is_empty() {
+            errors.push("At least one JWT secret must be configured".to_string());
+        }
+
+        for (i, secret) in self.jwt.secrets.iter().enumerate() {
+            if secret.len() < 32 {
+                errors.push(format!(
+                    "JWT secret #{} must be at least 32 characters",
+                    i + 1
+                ));
+            } else if secret.len() < 64 {
+                warnings.push(format!(
+                    "JWT secret #{} is less than 64 characters; consider using a longer secret for better security",
+                    i + 1
+                ));
+            }
+
+            if secret == "change-this-secret-key-in-production" {
+                errors.push(format!(
+                    "JWT secret #{} must be changed from default value. Set TACHYON_JWT_SECRETS or TACHYON_JWT_SECRET environment variable.",
+                    i + 1
+                ));
+            }
         }
 
         if self.jwt.expiration_secs == 0 {
@@ -622,12 +647,6 @@ impl ServerConfig {
 
         if self.cache_size_mb == 0 {
             errors.push("Cache size must be greater than 0".to_string());
-        }
-
-        if self.jwt.secret == "change-this-secret-key-in-production" {
-            errors.push(
-                "JWT secret must be changed from default value. Set TACHYON_JWT_SECRET environment variable.".to_string(),
-            );
         }
 
         if self.db_max_connections < self.db_min_connections {
@@ -727,9 +746,22 @@ impl ServerConfig {
             config.tls_key_path = Some(key_path);
         }
 
-        if let Ok(jwt_secret) = std::env::var("TACHYON_JWT_SECRET") {
-            config.jwt.secret = jwt_secret;
+        let jwt_secrets = if let Ok(secrets_csv) = std::env::var("TACHYON_JWT_SECRETS") {
+            secrets_csv
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+        } else if let Ok(secret) = std::env::var("TACHYON_JWT_SECRET") {
+            vec![secret]
+        } else {
+            vec!["change-this-secret-key-in-production".to_string()]
+        };
+        if jwt_secrets.is_empty() {
+            config.jwt.secrets = jwt_secrets;
+            return config;
         }
+        config.jwt.secrets = jwt_secrets;
 
         if let Ok(jwt_expiration) = std::env::var("TACHYON_JWT_EXPIRATION") {
             if let Ok(exp) = jwt_expiration.parse::<u64>() {
@@ -925,14 +957,14 @@ mod tests {
     #[test]
     fn test_config_validation_valid() {
         let mut config = ServerConfig::default();
-        config.jwt.secret = "a-properly-long-secret-key-for-testing".to_string();
+        config.jwt.secrets = vec!["a-properly-long-secret-key-for-testing".to_string()];
         assert!(config.validate().is_ok());
     }
 
     #[test]
     fn test_config_validation_invalid_host() {
         let mut config = ServerConfig::default();
-        config.jwt.secret = "a-properly-long-secret-key-for-testing".to_string();
+        config.jwt.secrets = vec!["a-properly-long-secret-key-for-testing".to_string()];
         config.host = String::new();
         assert!(config.validate().is_err());
     }

@@ -8,6 +8,30 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NONCE_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+#[must_use]
+pub fn generate_nonce() -> String {
+    let mut bytes = [0u8; 16];
+    getrandom::fill(&mut bytes).expect("CSPRNG failure");
+    let counter = NONCE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let counter_bytes = counter.to_le_bytes();
+    bytes[12..].copy_from_slice(&counter_bytes[4..]);
+    use base64::Engine;
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
+}
+
+#[derive(Debug, Clone)]
+pub struct CspNonce(pub String);
+
+impl std::ops::Deref for CspNonce {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[cfg(feature = "staging")]
 use std::sync::Arc;
@@ -172,6 +196,34 @@ impl ContentSecurityPolicy {
             form_action: vec!["'self'".to_string()],
             upgrade_insecure_requests: false,
             block_all_mixed_content: false,
+        }
+    }
+
+    pub fn with_nonce(nonce: &str) -> Self {
+        Self {
+            default_src: vec!["'self'".to_string()],
+            script_src: vec![
+                "'self'".to_string(),
+                "'wasm-unsafe-eval'".to_string(),
+                format!("'nonce-{}'", nonce),
+                "https://cdn.tailwindcss.com".to_string(),
+            ],
+            style_src: vec!["'self'".to_string(), format!("'nonce-{}'", nonce)],
+            img_src: vec![
+                "'self'".to_string(),
+                "data:".to_string(),
+                "https:".to_string(),
+            ],
+            font_src: vec!["'self'".to_string()],
+            connect_src: vec!["'self'".to_string(), "wss:".to_string()],
+            media_src: vec!["'self'".to_string()],
+            object_src: vec!["'none'".to_string()],
+            frame_src: vec!["'self'".to_string()],
+            frame_ancestors: vec!["'none'".to_string()],
+            base_uri: vec!["'self'".to_string()],
+            form_action: vec!["'self'".to_string()],
+            upgrade_insecure_requests: true,
+            block_all_mixed_content: true,
         }
     }
 }
@@ -451,6 +503,15 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
     add_security_headers(response)
 }
 
+pub async fn csp_nonce_middleware(request: Request, next: Next) -> Response {
+    let nonce = generate_nonce();
+    let mut request = request;
+    request.extensions_mut().insert(CspNonce(nonce.clone()));
+    let mut response = next.run(request).await;
+    response.extensions_mut().insert(CspNonce(nonce));
+    response
+}
+
 pub fn add_security_headers(response: Response) -> Response {
     add_security_headers_with_config_opts(response, &Default::default())
 }
@@ -466,16 +527,20 @@ fn add_security_headers_with_config_opts(
     mut response: Response,
     config: &ServerSecurityConfig,
 ) -> Response {
-    let headers = response.headers_mut();
     let is_dev = config.is_development();
+    let nonce = response.extensions().get::<CspNonce>().map(|n| n.0.clone());
+    let headers = response.headers_mut();
 
     if config.csp_enabled {
-        let mut csp = if is_dev {
+        let csp = if is_dev {
             ContentSecurityPolicy::development()
+        } else if let Some(ref n) = nonce {
+            ContentSecurityPolicy::with_nonce(n)
         } else {
             ContentSecurityPolicy::default()
         };
 
+        let mut csp = csp;
         if !config.frame_ancestors.is_empty() {
             csp.frame_ancestors = vec![config.frame_ancestors.clone()];
         }
@@ -660,5 +725,37 @@ mod tests {
             ReferrerPolicy::StrictOriginWhenCrossOrigin.to_header_value(),
             "strict-origin-when-cross-origin"
         );
+    }
+
+    #[test]
+    fn test_nonce_generation_uniqueness() {
+        let nonces: std::collections::HashSet<String> =
+            (0..1000).map(|_| generate_nonce()).collect();
+        assert_eq!(nonces.len(), 1000);
+    }
+
+    #[test]
+    fn test_nonce_length() {
+        let nonce = generate_nonce();
+        assert_eq!(nonce.len(), 22);
+    }
+
+    #[test]
+    fn test_csp_with_nonce() {
+        let nonce = generate_nonce();
+        let csp = ContentSecurityPolicy::with_nonce(&nonce);
+        let header = csp.to_header_value();
+
+        assert!(header.contains(&format!("'nonce-{}'", nonce)));
+        assert!(!header.contains("'unsafe-inline'"));
+        assert!(header.contains("script-src"));
+        assert!(header.contains("style-src"));
+    }
+
+    #[test]
+    fn test_csp_nonce_struct_deref() {
+        let nonce = CspNonce("abc123".to_string());
+        assert_eq!(&*nonce, "abc123");
+        assert_eq!(nonce.0, "abc123");
     }
 }

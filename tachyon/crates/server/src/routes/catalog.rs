@@ -20,12 +20,16 @@ use tracing::{debug, info, instrument};
 #[derive(Clone)]
 pub struct CatalogState {
     repo: Arc<CatalogRepository>,
+    api_cache: crate::middleware::api_cache::ApiCache,
 }
 
 impl CatalogState {
     pub fn new(pool: tachyon_database::DatabasePool) -> Self {
         Self {
             repo: Arc::new(CatalogRepository::new(pool)),
+            api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(
+                60,
+            )),
         }
     }
 
@@ -630,17 +634,47 @@ pub async fn remove_project_member(
     security(("bearer_auth" = [])),
 )]
 #[instrument(skip(state))]
-pub async fn get_catalog_stats(State(state): State<CatalogState>) -> impl IntoResponse {
+pub async fn get_catalog_stats(State(state): State<CatalogState>) -> axum::response::Response {
+    use axum::http::{header, HeaderValue};
+    use axum::response::{IntoResponse, Response};
+
     debug!("Getting catalog statistics");
 
+    let key = crate::middleware::api_cache::cache_key("GET", "/api/v1/catalog/stats", None);
+
+    if let Some(hit) = state.api_cache.get_response(&key).await {
+        let mut response = Response::new(axum::body::Body::from(hit.data));
+        response.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/json"),
+        );
+        response
+            .headers_mut()
+            .insert("X-Cache-Status", HeaderValue::from_static("HIT"));
+        return response;
+    }
+
     match state.repo().get_stats().await {
-        Ok(stats) => (StatusCode::OK, Json(ApiResponse::success(stats))),
+        Ok(stats) => {
+            if let Ok(bytes) = serde_json::to_vec(&ApiResponse::success(&stats)) {
+                state
+                    .api_cache
+                    .set_response(&key, bytes, "application/json", None)
+                    .await;
+            }
+            let mut response = (StatusCode::OK, Json(ApiResponse::success(stats))).into_response();
+            response
+                .headers_mut()
+                .insert("X-Cache-Status", HeaderValue::from_static("MISS"));
+            response
+        }
         Err(e) => {
             debug!("Failed to get stats: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiResponse::<CatalogStats>::error(e.to_string())),
             )
+                .into_response()
         }
     }
 }

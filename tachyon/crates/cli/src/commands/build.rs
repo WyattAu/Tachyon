@@ -514,6 +514,7 @@ fn render_document(
             read_time: None,
         }),
         navigation: None,
+        csp_nonce: None,
     };
 
     if let Some(engine) = template_engine {

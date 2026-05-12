@@ -266,6 +266,8 @@ pub async fn create_document(
 
     info!("Document created successfully: {}", response.id);
 
+    state.api_cache.invalidate_documents().await;
+
     {
         let pool = state.pool.clone();
         let client = state.http_client.clone();
@@ -573,6 +575,8 @@ pub async fn update_document(
 
     info!("Document updated successfully: {}", document_id);
 
+    state.api_cache.invalidate_documents().await;
+
     {
         let pool = state.pool.clone();
         let client = state.http_client.clone();
@@ -627,6 +631,7 @@ pub async fn delete_document(
     match state.repository.delete(&doc_id).await {
         Ok(()) => {
             state.delete_from_tantivy(&document_id).await;
+            state.api_cache.invalidate_documents().await;
             info!("Document deleted: {}", document_id);
 
             {
@@ -689,6 +694,39 @@ pub async fn list_documents(
         query.page, query.page_size
     );
 
+    let mut query_parts = Vec::new();
+    if let Some(ref s) = query.search {
+        query_parts.push(format!("search={}", urlencoding::encode(s)));
+    }
+    if let Some(ref a) = query.author_id {
+        query_parts.push(format!("author_id={}", urlencoding::encode(a)));
+    }
+    if let Some(ref p) = query.project_id {
+        query_parts.push(format!("project_id={}", urlencoding::encode(p)));
+    }
+    if let Some(page) = query.page {
+        query_parts.push(format!("page={}", page));
+    }
+    if let Some(page_size) = query.page_size {
+        query_parts.push(format!("page_size={}", page_size));
+    }
+    let query_string = query_parts.join("&");
+    let key = crate::middleware::api_cache::cache_key(
+        "GET",
+        "/api/v1/documents",
+        if query_string.is_empty() {
+            None
+        } else {
+            Some(&query_string)
+        },
+    );
+
+    if let Some(hit) = state.api_cache.get_response(&key).await {
+        if let Ok(parsed) = serde_json::from_slice::<DocumentSearchResponse>(&hit.data) {
+            return Ok(Json(parsed));
+        }
+    }
+
     let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(20).min(100);
     let offset = (page - 1) * page_size;
@@ -740,12 +778,21 @@ pub async fn list_documents(
 
             let total = results.len();
 
-            Ok(Json(DocumentSearchResponse {
+            let response = DocumentSearchResponse {
                 results,
                 total,
                 page,
                 page_size,
-            }))
+            };
+
+            if let Ok(bytes) = serde_json::to_vec(&response) {
+                state
+                    .api_cache
+                    .set_response(&key, bytes, "application/json", None)
+                    .await;
+            }
+
+            Ok(Json(response))
         }
         Err(e) => {
             warn!("Failed to list documents: {}", e);

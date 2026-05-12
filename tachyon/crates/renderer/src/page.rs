@@ -58,6 +58,11 @@ pub fn render_full_page(ctx: &RenderContext, site: &SiteConfig) -> String {
         slugify(&ctx.title)
     );
     let og_image = site.og_image.as_deref().unwrap_or("").to_string();
+    let nonce_attr = ctx
+        .csp_nonce
+        .as_deref()
+        .map(|n| format!(" nonce=\"{}\"", n))
+        .unwrap_or_default();
 
     // Build breadcrumbs JSON-LD
     let breadcrumbs_json = ctx
@@ -135,8 +140,8 @@ pub fn render_full_page(ctx: &RenderContext, site: &SiteConfig) -> String {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"><\/script>
-    <script>
+    <script src="https://cdn.tailwindcss.com"{nonce_attr}><\/script>
+    <script{nonce_attr}>
         tailwind.config = {{
             darkMode: 'class',
             theme: {{
@@ -149,7 +154,7 @@ pub fn render_full_page(ctx: &RenderContext, site: &SiteConfig) -> String {
             }},
         }}
     <\/script>
-    <style type="text/tailwindcss">
+    <style type="text/tailwindcss"{nonce_attr}>
         @layer base {{
             html {{ -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }}
             body {{ @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100; }}
@@ -212,7 +217,7 @@ pub fn render_full_page(ctx: &RenderContext, site: &SiteConfig) -> String {
             Powered by <a href="/" class="hover:text-blue-600">{site_title}</a>
         </div>
     </footer>
-    <script>
+    <script{nonce_attr}>
         // Apply dark mode from system preference
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {{
             document.documentElement.classList.add('dark');
@@ -253,6 +258,7 @@ pub fn render_full_page(ctx: &RenderContext, site: &SiteConfig) -> String {
             )
         },
         content = ctx.content.clone(),
+        nonce_attr = nonce_attr,
     )
 }
 
@@ -385,6 +391,12 @@ pub fn render_full_page_with_template(
     template_ctx.set("content".to_string(), ctx.content.clone());
     template_ctx.set("article_json_ld".to_string(), article_json_ld);
     template_ctx.set("breadcrumb_json_ld".to_string(), breadcrumb_json_ld);
+    let csp_nonce_attr = ctx
+        .csp_nonce
+        .as_deref()
+        .map(|n| format!(" nonce=\"{}\"", n))
+        .unwrap_or_default();
+    template_ctx.set("csp_nonce_attr".to_string(), csp_nonce_attr);
 
     engine.render(template_name, &template_ctx)
 }

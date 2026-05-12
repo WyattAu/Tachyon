@@ -48,7 +48,7 @@ pub(crate) struct CsrfStateEntry {
 /// Shared state for OAuth2 routes.
 #[derive(Clone)]
 pub struct OAuth2State {
-    pub jwt_secret: String,
+    pub jwt_secrets: Vec<String>,
     pub jwt_expiration_secs: u64,
     pub jwt_issuer: String,
     pub jwt_audience: String,
@@ -642,7 +642,8 @@ async fn issue_token_for_oauth_user(state: &OAuth2State, user: OAuthUserInfo) ->
     }
 
     // Generate JWT token
-    let key = jsonwebtoken::EncodingKey::from_secret(state.jwt_secret.as_bytes());
+    let signing_secret = state.jwt_secrets.first().map(|s| s.as_str()).unwrap_or("");
+    let key = jsonwebtoken::EncodingKey::from_secret(signing_secret.as_bytes());
     let now = chrono::Utc::now().timestamp();
     let claims = OAuthClaims {
         sub: oauth_id.clone(),

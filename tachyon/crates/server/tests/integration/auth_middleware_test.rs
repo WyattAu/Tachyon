@@ -18,7 +18,7 @@ const TEST_JWT_AUDIENCE: &str = "tachyon-test";
 
 fn test_config() -> ServerConfig {
     let mut config = ServerConfig::default();
-    config.jwt.secret = TEST_JWT_SECRET.to_string();
+    config.jwt.secrets = vec![TEST_JWT_SECRET.to_string()];
     config.jwt.issuer = TEST_JWT_ISSUER.to_string();
     config.jwt.audience = TEST_JWT_AUDIENCE.to_string();
     config.jwt.expiration_secs = 3600;

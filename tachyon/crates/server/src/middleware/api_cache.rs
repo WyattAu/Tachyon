@@ -134,6 +134,43 @@ impl ApiCache {
     }
 }
 
+pub fn cache_key(method: &str, path: &str, query: Option<&str>) -> String {
+    match query {
+        Some(q) if !q.is_empty() => format!("{}:{}?{}", method, path, q),
+        _ => format!("{}:{}", method, path),
+    }
+}
+
+pub struct CacheHit {
+    pub data: Vec<u8>,
+    pub content_type: String,
+}
+
+impl ApiCache {
+    pub async fn get_response(&self, key: &str) -> Option<CacheHit> {
+        let (data, content_type) = self.get(key).await?;
+        Some(CacheHit { data, content_type })
+    }
+
+    pub async fn set_response(
+        &self,
+        key: &str,
+        data: Vec<u8>,
+        content_type: &str,
+        ttl: Option<Duration>,
+    ) {
+        self.set(key, data, content_type.to_string(), ttl).await;
+    }
+
+    pub async fn invalidate_documents(&self) {
+        self.invalidate_prefix("GET:/api/v1/documents").await;
+    }
+
+    pub async fn invalidate_catalog(&self) {
+        self.invalidate_prefix("GET:/api/v1/catalog").await;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -218,5 +255,125 @@ mod tests {
         cache.cleanup().await;
         assert!(cache.get("expired").await.is_none());
         assert!(cache.get("valid").await.is_some());
+    }
+
+    #[test]
+    fn test_cache_key_with_query() {
+        assert_eq!(
+            cache_key("GET", "/api/v1/documents", Some("page=1&limit=10")),
+            "GET:/api/v1/documents?page=1&limit=10"
+        );
+    }
+
+    #[test]
+    fn test_cache_key_without_query() {
+        assert_eq!(
+            cache_key("GET", "/api/v1/documents", None),
+            "GET:/api/v1/documents"
+        );
+    }
+
+    #[test]
+    fn test_cache_key_empty_query() {
+        assert_eq!(
+            cache_key("GET", "/api/v1/documents", Some("")),
+            "GET:/api/v1/documents"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_response_cache_hit() {
+        let cache = ApiCache::new(Duration::from_secs(60));
+        cache
+            .set(
+                "test:key",
+                b"hello".to_vec(),
+                "text/plain".to_string(),
+                None,
+            )
+            .await;
+
+        let hit = cache.get_response("test:key").await.unwrap();
+        assert_eq!(hit.data, b"hello");
+        assert_eq!(hit.content_type, "text/plain");
+    }
+
+    #[tokio::test]
+    async fn test_get_response_cache_miss() {
+        let cache = ApiCache::new(Duration::from_secs(60));
+        assert!(cache.get_response("nonexistent").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_set_response() {
+        let cache = ApiCache::new(Duration::from_secs(60));
+        cache
+            .set_response("test:set", b"world".to_vec(), "application/json", None)
+            .await;
+
+        let hit = cache.get_response("test:set").await.unwrap();
+        assert_eq!(hit.data, b"world");
+        assert_eq!(hit.content_type, "application/json");
+    }
+
+    #[tokio::test]
+    async fn test_invalidate_documents() {
+        let cache = ApiCache::new(Duration::from_secs(60));
+        cache
+            .set(
+                "GET:/api/v1/documents",
+                b"[]".to_vec(),
+                "application/json".to_string(),
+                None,
+            )
+            .await;
+        cache
+            .set(
+                "GET:/api/v1/documents?page=2",
+                b"[]".to_vec(),
+                "application/json".to_string(),
+                None,
+            )
+            .await;
+        cache
+            .set(
+                "GET:/api/v1/users",
+                b"[]".to_vec(),
+                "application/json".to_string(),
+                None,
+            )
+            .await;
+
+        cache.invalidate_documents().await;
+
+        assert!(cache.get("GET:/api/v1/documents").await.is_none());
+        assert!(cache.get("GET:/api/v1/documents?page=2").await.is_none());
+        assert!(cache.get("GET:/api/v1/users").await.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_invalidate_catalog() {
+        let cache = ApiCache::new(Duration::from_secs(60));
+        cache
+            .set(
+                "GET:/api/v1/catalog/stats",
+                b"{}".to_vec(),
+                "application/json".to_string(),
+                None,
+            )
+            .await;
+        cache
+            .set(
+                "GET:/api/v1/documents",
+                b"[]".to_vec(),
+                "application/json".to_string(),
+                None,
+            )
+            .await;
+
+        cache.invalidate_catalog().await;
+
+        assert!(cache.get("GET:/api/v1/catalog/stats").await.is_none());
+        assert!(cache.get("GET:/api/v1/documents").await.is_some());
     }
 }

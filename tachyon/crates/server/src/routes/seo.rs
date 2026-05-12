@@ -4,6 +4,7 @@ use axum::{
     extract::{Path, State},
     http::{header, StatusCode},
     response::{Html, IntoResponse},
+    Extension,
 };
 use tachyon_core::DocumentId;
 use tachyon_database::{DatabasePool, DocumentRepository};
@@ -131,6 +132,7 @@ pub async fn sitemap_xml(State(state): State<SeoState>) -> impl IntoResponse {
 pub async fn serve_document_page(
     Path(document_id): Path<String>,
     State(state): State<SeoState>,
+    Extension(nonce): Extension<crate::middleware::security_headers::CspNonce>,
 ) -> impl IntoResponse {
     let repository = DocumentRepository::new(state.pool.clone());
 
@@ -183,6 +185,7 @@ pub async fn serve_document_page(
 
     // Build RenderContext
     let mut ctx = RenderContext::new(metadata.title.clone(), html);
+    ctx.csp_nonce = Some(nonce.0.clone());
     ctx.author = Some(AuthorInfo {
         name: metadata.author_id.clone(),
         email: None,

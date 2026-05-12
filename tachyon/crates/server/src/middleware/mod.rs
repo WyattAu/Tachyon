@@ -11,6 +11,9 @@ pub mod request_limit;
 pub mod request_tracing;
 pub mod security_headers;
 
+#[cfg(test)]
+mod tests;
+
 pub use api_cache::*;
 pub use audit::*;
 pub use auth::*;
