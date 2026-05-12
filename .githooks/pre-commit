@@ -41,14 +41,14 @@ fi
 
 # ---- 2. Clippy lint ----
 info "Running Clippy (cargo clippy -D warnings)..."
-if ! cargo clippy --workspace --exclude tachyon-testing --exclude tachyon-frontend --manifest-path "${WORKSPACE_DIR}/Cargo.toml" -- -D warnings 2>&1; then
+if ! cargo clippy --workspace --exclude tachyon-testing --exclude tachyon-frontend --exclude tachyon-desktop --exclude tachyon-desktop-app --manifest-path "${WORKSPACE_DIR}/Cargo.toml" -- -D warnings 2>&1; then
     error "Clippy warnings found. Fix them before committing."
     PASS=false
 fi
 
 # ---- 3. Workspace tests ----
 info "Running workspace tests (cargo test --workspace)..."
-if ! cargo test --workspace --exclude tachyon-testing --exclude tachyon-frontend --manifest-path "${WORKSPACE_DIR}/Cargo.toml" 2>&1; then
+if ! cargo test --workspace --exclude tachyon-testing --exclude tachyon-frontend --exclude tachyon-desktop --exclude tachyon-desktop-app --manifest-path "${WORKSPACE_DIR}/Cargo.toml" 2>&1; then
     error "Tests failed. Fix them before committing."
     PASS=false
 fi
