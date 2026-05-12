@@ -2,7 +2,7 @@
 //!
 //! Benchmarks database error handling and type operations.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 fn bench_database_types(c: &mut Criterion) {
     c.bench_function("database_error_not_found", |b| {

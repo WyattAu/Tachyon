@@ -1,8 +1,8 @@
 use chrono::{Duration, Utc};
 use serde_json::json;
 use tachyon_database::{
-    init_with_migrations, CatalogRepository, CreateTemplateRequest, DatabasePool, DocumentMetadata,
-    DocumentRepository, Project, SessionRecord, Team,
+    CatalogRepository, CreateTemplateRequest, DatabasePool, DocumentMetadata, DocumentRepository,
+    Project, SessionRecord, Team, init_with_migrations,
 };
 
 pub struct TestDatabase {

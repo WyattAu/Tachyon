@@ -1,6 +1,6 @@
 use crate::types::*;
 use crate::websocket::WebSocketClient;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::sync::{Arc, Mutex};
 
 pub mod activity;

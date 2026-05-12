@@ -11,8 +11,8 @@ use tachyon_core::{
     types::user::{User, UserAction, UserRole, UserType},
 };
 use tachyon_rbac::{
-    types::{Action, AuthContext, Effect, Resource, Subject},
     Permission, Policy, PolicyRule, PolicyType,
+    types::{Action, AuthContext, Effect, Resource, Subject},
 };
 use tachyon_search::SearchDocument;
 

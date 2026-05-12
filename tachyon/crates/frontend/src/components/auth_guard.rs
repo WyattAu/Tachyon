@@ -1,17 +1,13 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::*;
 
 fn get_stored_token() -> Option<String> {
     let window = web_sys::window()?;
     let storage = window.local_storage().ok()??;
     let token = storage.get_item("tachyon_token").ok()??;
-    if token.is_empty() {
-        None
-    } else {
-        Some(token)
-    }
+    if token.is_empty() { None } else { Some(token) }
 }
 
 #[component]

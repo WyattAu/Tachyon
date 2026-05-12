@@ -2,7 +2,7 @@
 //!
 //! Benchmarks search error handling and type operations.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use tachyon_core::{DocumentId, RepositoryId};
 
 fn bench_id_operations(c: &mut Criterion) {

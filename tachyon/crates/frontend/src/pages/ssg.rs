@@ -127,9 +127,13 @@ pub fn SsgPage() -> impl IntoView {
     };
     let btn_class = move || {
         format!(
-        "px-6 py-3 text-white rounded-lg font-medium transition-colors flex items-center gap-2 {}",
-        if building.get() { "bg-blue-400 cursor-not-allowed" } else { "bg-blue-600 hover:bg-blue-700" }
-    )
+            "px-6 py-3 text-white rounded-lg font-medium transition-colors flex items-center gap-2 {}",
+            if building.get() {
+                "bg-blue-400 cursor-not-allowed"
+            } else {
+                "bg-blue-600 hover:bg-blue-700"
+            }
+        )
     };
 
     view! {

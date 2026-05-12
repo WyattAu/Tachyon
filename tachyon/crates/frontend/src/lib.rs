@@ -11,11 +11,11 @@ mod types;
 pub mod websocket;
 
 use crate::api::ApiClient;
-use components::{provide_auth_context, AppErrorBoundary, AppShell, AuthGuard, ThemeInitializer};
+use components::{AppErrorBoundary, AppShell, AuthGuard, ThemeInitializer, provide_auth_context};
 use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
-use storage::{sync::SyncEngine, BrowserStore};
+use storage::{BrowserStore, sync::SyncEngine};
 
 // Mount the Leptos app to the browser DOM.
 // wasm-bindgen calls this automatically when the WASM module loads.

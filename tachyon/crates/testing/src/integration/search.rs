@@ -7,8 +7,8 @@
 use tachyon_core::{generate_document_id, generate_user_id};
 #[allow(unused_imports)]
 use tachyon_search::{
-    types::BooleanOperator, types::QueryType, FieldDefinition, FieldType, IndexConfig,
-    SearchDocument, SearchRequest, SearchResponse, SortOrder,
+    FieldDefinition, FieldType, IndexConfig, SearchDocument, SearchRequest, SearchResponse,
+    SortOrder, types::BooleanOperator, types::QueryType,
 };
 
 #[test]

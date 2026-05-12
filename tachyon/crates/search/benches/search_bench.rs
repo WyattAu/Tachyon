@@ -1,5 +1,5 @@
 use chrono::Utc;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use std::collections::BTreeMap;
 use tachyon_core::id::{DocumentId, UserId};
 use tachyon_search::types::SearchDocument;
@@ -12,14 +12,13 @@ fn generate_search_doc(i: usize) -> SearchDocument {
             "This is the content of benchmark document {}. It contains some searchable text about topic {} \
              with keywords like performance, testing, benchmark, and evaluation. \
              The quick brown fox jumps over the lazy dog in paragraph {}.",
-            i, i % 10, i
+            i,
+            i % 10,
+            i
         ),
         author_id: UserId::new(),
         repository_id: None,
-        tags: vec![
-            "benchmark".to_string(),
-            format!("topic-{}", i % 10),
-        ],
+        tags: vec!["benchmark".to_string(), format!("topic-{}", i % 10)],
         created_at: Utc::now(),
         updated_at: Utc::now(),
         custom_fields: BTreeMap::new(),

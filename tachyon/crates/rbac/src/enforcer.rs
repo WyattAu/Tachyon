@@ -1,6 +1,9 @@
 // Enforcer Module
 // Centralized enforcer for authorization decisions with caching and audit logging
 
+use crate::SessionId;
+#[cfg(test)]
+use crate::UserId;
 use crate::cache::AuthorizationCache;
 use crate::error::RbacResult;
 use crate::permission::PermissionChecker;
@@ -9,9 +12,6 @@ use crate::session::SessionManager;
 use crate::types::{AccessDecision, AccessRequest, Effect, Resource, Subject};
 #[cfg(test)]
 use crate::types::{Action, AuthContext};
-use crate::SessionId;
-#[cfg(test)]
-use crate::UserId;
 use chrono::{DateTime, Utc};
 use std::collections::BTreeMap;
 use tracing::{debug, error, info, instrument, warn};

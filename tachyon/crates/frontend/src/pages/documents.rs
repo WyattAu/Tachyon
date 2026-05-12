@@ -9,14 +9,14 @@ use crate::components::{
 };
 use crate::storage::sync::SyncEngine;
 use crate::storage::{
-    stored_to_document, BrowserStore, LocalDocument, StoredDocument, SyncState, SyncStatus,
+    BrowserStore, LocalDocument, StoredDocument, SyncState, SyncStatus, stored_to_document,
 };
 use crate::types::{BacklinksResponse, Document, DocumentListResponse, DocumentTemplate};
 use leptos::prelude::*;
 use leptos_router::hooks::{use_navigate, use_params};
 use leptos_router::params::Params;
-use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::closure::Closure;
 use wasm_bindgen_futures::spawn_local;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

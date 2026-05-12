@@ -2,7 +2,7 @@
 //!
 //! Benchmarks repository ID and user ID generation.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use tachyon_core::{RepositoryId, UserId};
 
 fn bench_id_generation(c: &mut Criterion) {

@@ -7,10 +7,10 @@
 use tachyon_core::{generate_session_id, generate_user_id};
 #[allow(unused_imports)]
 use tachyon_rbac::{
-    role::Role,
-    types::{Action, AuthContext, Effect, Resource, Subject},
     Enforcer, Permission, PermissionChecker, Policy, PolicyEngine, PolicyRule, PolicyType,
     RbacResult,
+    role::Role,
+    types::{Action, AuthContext, Effect, Resource, Subject},
 };
 
 #[test]

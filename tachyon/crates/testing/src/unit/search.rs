@@ -6,9 +6,9 @@
 use tachyon_core::{generate_document_id, generate_user_id};
 #[allow(unused_imports)]
 use tachyon_search::{
-    types::{BooleanOperator, QueryType, Suggestion, SuggestionCategory},
     BatchIndexRequest, FieldDefinition, FieldType, IndexConfig, SearchDocument, SearchRequest,
     SearchResponse, SortOrder,
+    types::{BooleanOperator, QueryType, Suggestion, SuggestionCategory},
 };
 
 #[allow(dead_code)]

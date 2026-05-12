@@ -597,6 +597,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
             pool: pool.clone(),
             start_time,
             redis_enabled: config.rate_limit.enabled && config.rate_limit.redis_url.is_some(),
+            redis_url: config.rate_limit.redis_url.clone(),
+            smtp_configured: config.smtp_url.is_some(),
         });
 
     let metrics_router = Router::new()
@@ -752,6 +754,8 @@ pub(crate) struct HealthState {
     pub(crate) pool: tachyon_database::DatabasePool,
     pub(crate) start_time: std::time::Instant,
     pub(crate) redis_enabled: bool,
+    pub(crate) redis_url: Option<String>,
+    pub(crate) smtp_configured: bool,
 }
 
 async fn metrics_handler(State(state): State<HealthState>) -> axum::Json<serde_json::Value> {

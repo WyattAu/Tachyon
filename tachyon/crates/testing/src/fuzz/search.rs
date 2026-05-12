@@ -7,11 +7,11 @@
 use tachyon_core::{generate_document_id, generate_user_id};
 #[allow(unused_imports)]
 use tachyon_search::{
+    SearchDocument, SearchRequest,
     types::{
         FieldDefinition, FieldType, QueryType, RangeValue, SortOrder, Suggestion,
         SuggestionCategory,
     },
-    SearchDocument, SearchRequest,
 };
 
 #[test]

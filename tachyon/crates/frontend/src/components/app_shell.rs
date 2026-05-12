@@ -2,7 +2,7 @@
 
 use crate::api::ApiClient;
 use crate::components::{
-    should_show_onboarding, ClientSearch, CommandPalette, OnboardingWizard, ThemeToggle,
+    ClientSearch, CommandPalette, OnboardingWizard, ThemeToggle, should_show_onboarding,
 };
 use crate::types::Notification;
 use leptos::prelude::*;

@@ -158,67 +158,25 @@ No Let's Encrypt/Certbot integration in Docker setup.
 
 **Files:** `docker-compose.prod.yml`, `nginx/`
 
-### 5.3 Readiness Probe Expansion [Medium]
+### 5.3 Readiness Probe Expansion [Medium] -- COMPLETE (v10.1.0)
 
-`/health` only checks database connectivity.
+`/health` returns component-level JSON with database, Redis (TCP connectivity), Tantivy (index open), and SMTP (DNS/TCP) checks. `/ready` returns HTTP 200/503 for Kubernetes readiness probes.
 
-**Scope:**
-- Check PostgreSQL connectivity (existing)
-- Check Redis connectivity (if configured)
-- Check Tantivy index health (if configured)
-- Check SMTP connectivity (if configured)
-- Return JSON with component-level status
+### 5.4 Structured JSON Logging [Low] -- COMPLETE (v10.0.0)
 
-**Files:** `crates/server/src/routes/health.rs`
+`tracing-subscriber` configured with `json` feature. `TACHYON_LOG_FORMAT=json` env var switches to structured output.
 
-### 5.4 Structured JSON Logging [Low]
+### 5.5 Migration Rollback Support [Medium] -- COMPLETE (v10.0.0)
 
-`tracing_subscriber` uses default fmt output.
+`database/src/rollback.rs` (1,008 lines): `rollback_last_migration`, `rollback_to_version`, `dry_run_rollback`, `migration_status`. CLI exposes via `tachyon db rollback` command with `--steps` and `--dry-run` flags.
 
-**Scope:**
-- Add `TACHYON_LOG_FORMAT=json` config option
-- Use `tracing_subscriber::fmt::json()` for structured output
-- Add request ID to all log entries (correlation)
-- Add module-level log filtering via `TACHYON_LOG_FILTER`
+### 5.6 CD Pipeline [Medium] -- COMPLETE (v10.1.0)
 
-**Files:** `crates/server/src/main.rs`
+`.github/workflows/release.yml`: tag-triggered multi-arch Docker build, SBOM generation, publish to ghcr.io, GitHub Release with changelog. `.github/workflows/deploy-staging.yml`: develop-branch deploy with health-check and auto-rollback.
 
-### 5.5 Migration Rollback Support [Medium]
+### 5.7 Monitoring Dashboard [Medium] -- COMPLETE (v10.1.0)
 
-No `migrations::rollback()` exists. Bad migrations require manual SQL.
-
-**Scope:**
-- Generate down-migration for each existing migration
-- Add `tachyon-server migrate rollback [steps]` CLI command
-- Add `tachyon-server migrate status` to show current version
-- CI gate: no migration without corresponding down-migration
-
-**Files:** `crates/database/src/migrations.rs`
-
-### 5.6 CD Pipeline [Medium]
-
-CI exists but no automated release/deployment pipeline.
-
-**Scope:**
-- Add `release.yml` workflow: tag trigger, build multi-arch Docker images, push to registry
-- Add `deploy-staging.yml`: deploy to staging on merge to `develop`
-- Add `deploy-production.yml`: deploy to production on tag (manual approval)
-- Add rollback step in each deployment
-- SBOM generation and attestation per release
-
-**Files:** `.github/workflows/release.yml`, `.github/workflows/deploy-staging.yml`
-
-### 5.7 Monitoring Dashboard [Medium]
-
-Prometheus endpoint exists but no Grafana dashboards.
-
-**Scope:**
-- Create Grafana dashboards: API latency (P50/P95/P99), request rate, error rate, active WebSocket connections, database pool utilization, cache hit rate
-- Define SLOs: 99.9% availability, P99 < 100ms for read endpoints, P99 < 500ms for write endpoints
-- Alert rules: error rate > 1%, P99 > 200ms, DB pool exhaustion, disk > 80%
-- Document alerting runbook
-
-**Files:** New `monitoring/grafana/`, `monitoring/alerts/`
+Grafana dashboard `api-overview.json` with 8 panels (request rate, error rate, P50/P95/P99 latency, WS connections, DB pool, cache hit rate, status codes, top endpoints). Prometheus alert rules for error rate, latency, pool exhaustion, disk, WS drops, cache hits, instance down.
 
 ---
 

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::markdown::{
-    extract_headings as md_extract_headings, render_markdown_to_html, MarkdownHeading,
+    MarkdownHeading, extract_headings as md_extract_headings, render_markdown_to_html,
 };
 use leptos::prelude::*;
 

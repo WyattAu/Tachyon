@@ -100,7 +100,7 @@ macro_rules! assert_in_range {
 #[macro_export]
 macro_rules! assert_timeout {
     ($future:expr, $duration:expr) => {{
-        use tokio::time::{error::Elapsed, timeout, Duration};
+        use tokio::time::{Duration, error::Elapsed, timeout};
         match timeout($duration, $future).await {
             Ok(result) => result,
             Err(Elapsed { .. }) => panic!("Operation timed out after {:?}", $duration),

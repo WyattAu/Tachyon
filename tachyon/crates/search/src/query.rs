@@ -1,15 +1,15 @@
 // Query Processing Module
 // Query parsing and execution for search operations
 
+use crate::IndexManager;
 use crate::error::{SearchError, SearchResult};
 use crate::types::{SearchRequest, Suggestion, SuggestionCategory};
-use crate::IndexManager;
 use std::sync::Arc;
 use tantivy::{
+    DocAddress, Searcher, TantivyDocument,
     collector::TopDocs,
     query::{Query, QueryParser},
     schema::*,
-    DocAddress, Searcher, TantivyDocument,
 };
 
 /// Query engine for parsing and executing search queries

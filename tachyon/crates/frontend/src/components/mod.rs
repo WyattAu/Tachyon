@@ -42,7 +42,7 @@ pub mod wikilink_autocomplete;
 
 pub use activity_feed::{Activity, ActivityFeed};
 pub use app_shell::AppShell;
-pub use auth_guard::{provide_auth_context, AuthGuard};
+pub use auth_guard::{AuthGuard, provide_auth_context};
 pub use breadcrumbs::{BreadcrumbItem, Breadcrumbs};
 pub use client_search::ClientSearch;
 pub use command_palette::CommandPalette;
@@ -66,7 +66,7 @@ pub use markdown_preview::MarkdownPreview;
 #[allow(unused_imports)]
 pub use mobile_nav::MobileNav;
 pub use native_editor::NativeEditor;
-pub use onboarding::{should_show_onboarding, OnboardingWizard};
+pub use onboarding::{OnboardingWizard, should_show_onboarding};
 #[allow(unused_imports)]
 pub use presence_indicators::{
     PresenceIndicators as CollabPresenceIndicators, PresenceUser as CollabPresenceUser,
@@ -76,7 +76,7 @@ pub use table_of_contents::TableOfContents;
 pub use template_selector::TemplateSelector;
 #[allow(unused_imports)]
 pub use theme_toggle::{
-    get_current_theme, get_current_theme_label, Theme, ThemeInitializer, ThemeToggle,
+    Theme, ThemeInitializer, ThemeToggle, get_current_theme, get_current_theme_label,
 };
 #[allow(unused_imports)]
 pub use upload_progress::{UploadItem, UploadProgress, UploadStatus};

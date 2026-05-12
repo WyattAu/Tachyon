@@ -659,13 +659,15 @@ mod tests {
     #[test]
     fn test_compute_diff_replaced_line() {
         let diff = compute_diff("old", "new");
-        assert!(diff
-            .old_lines
-            .iter()
-            .any(|l| l.line_type == DiffLineType::Removed));
-        assert!(diff
-            .new_lines
-            .iter()
-            .any(|l| l.line_type == DiffLineType::Added));
+        assert!(
+            diff.old_lines
+                .iter()
+                .any(|l| l.line_type == DiffLineType::Removed)
+        );
+        assert!(
+            diff.new_lines
+                .iter()
+                .any(|l| l.line_type == DiffLineType::Added)
+        );
     }
 }

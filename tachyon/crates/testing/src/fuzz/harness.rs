@@ -36,7 +36,7 @@ mod targets {
     /// tokens without panicking or hanging.
     #[cfg(fuzzing)]
     pub fn fuzz_jwt_validate(data: &[u8]) {
-        use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
+        use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
         if let Ok(token_str) = std::str::from_utf8(data) {
             let validation = Validation::default();
             // Use a fixed key; we are testing parser resilience, not

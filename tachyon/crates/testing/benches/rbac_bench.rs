@@ -2,11 +2,11 @@
 //!
 //! Benchmarks permission checking, enforcer operations, and authorization operations.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use tachyon_core::types::user::UserRole;
 use tachyon_core::{SessionId, UserId};
 use tachyon_rbac::types::{AccessRequest, Action, AuthContext, Effect};
-use tachyon_rbac::{resource, subject, Enforcer, Permission, PermissionChecker};
+use tachyon_rbac::{Enforcer, Permission, PermissionChecker, resource, subject};
 
 fn bench_permission_operations(c: &mut Criterion) {
     c.bench_function("permission_creation", |b| {

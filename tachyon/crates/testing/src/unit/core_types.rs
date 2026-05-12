@@ -4,8 +4,8 @@
 
 #[allow(unused_imports)]
 use tachyon_core::{
-    generate_document_id, generate_edge_id, generate_node_id, generate_repository_id,
-    generate_session_id, generate_tag_id, generate_user_id, Id, IdParseError,
+    Id, IdParseError, generate_document_id, generate_edge_id, generate_node_id,
+    generate_repository_id, generate_session_id, generate_tag_id, generate_user_id,
 };
 
 #[test]

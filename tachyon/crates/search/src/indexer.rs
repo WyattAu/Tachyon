@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tantivy::{schema::*, Index, IndexReader, IndexWriter, ReloadPolicy, TantivyDocument};
+use tantivy::{Index, IndexReader, IndexWriter, ReloadPolicy, TantivyDocument, schema::*};
 
 /// Index manager for Tantivy-based document indexing
 ///

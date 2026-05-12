@@ -1,0 +1,92 @@
+groups:
+  - name: tachyon
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          rate(http_requests_total{status=~"5.."}[1m]) / rate(http_requests_total[1m]) * 100 > 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: >
+            The error rate is {{ $value | humanize }}% (threshold: 1%).
+            This has been ongoing for more than 5 minutes.
+            Instance: {{ $labels.instance }}, Job: {{ $labels.job }}.
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[1m])) * 1000 > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High P99 latency detected"
+          description: >
+            The P99 latency is {{ $value | humanize }}ms (threshold: 200ms).
+            This has been ongoing for more than 5 minutes.
+            Instance: {{ $labels.instance }}, Job: {{ $labels.job }}.
+
+      - alert: DatabasePoolExhaustion
+        expr: |
+          db_pool_connections_active / db_pool_connections_max * 100 > 80
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection pool near exhaustion"
+          description: >
+            Database pool utilization is {{ $value | humanize }}% (threshold: 80%).
+            This has been ongoing for more than 5 minutes.
+            Active connections: {{ $labels.db_pool_connections_active }},
+            Max connections: {{ $labels.db_pool_connections_max }}.
+
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{fstype!=""} / node_filesystem_size_bytes{fstype!=""}) * 100 < 20
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space is running low"
+          description: >
+            Available disk space is {{ $value | humanize }}% (threshold: 20%).
+            Mount point: {{ $labels.mountpoint }}.
+            Instance: {{ $labels.instance }}.
+
+      - alert: WebSocketConnectionDrop
+        expr: |
+          (websocket_connections_active - websocket_connections_active offset 5m) / websocket_connections_active offset 5m * 100 < -50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Significant WebSocket connection drop"
+          description: >
+            WebSocket active connections dropped by more than 50% over the last 5 minutes.
+            Current connections: {{ $value }}.
+            Instance: {{ $labels.instance }}.
+
+      - alert: CacheHitRateLow
+        expr: |
+          rate(cache_hits_total[1m]) / rate(cache_requests_total[1m]) * 100 < 50
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Cache hit rate is low"
+          description: >
+            Cache hit rate is {{ $value | humanize }}% (threshold: 50%).
+            This has been ongoing for more than 10 minutes.
+            Instance: {{ $labels.instance }}.
+
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ $labels.instance }} is down"
+          description: >
+            Instance {{ $labels.instance }} (job: {{ $labels.job }}) has been
+            unreachable for more than 1 minute.
