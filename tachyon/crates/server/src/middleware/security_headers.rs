@@ -96,7 +96,6 @@ impl Default for ContentSecurityPolicy {
             script_src: vec!["'self'".to_string(), "'wasm-unsafe-eval'".to_string()],
             style_src: vec![
                 "'self'".to_string(),
-                "'unsafe-inline'".to_string(),
                 "https://cdn.tailwindcss.com".to_string(),
             ],
             img_src: vec![

@@ -635,6 +635,9 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
                 .layer(axum::middleware::from_fn(audit_middleware))
                 .layer(axum::middleware::from_fn(request_id_middleware))
                 .layer(axum::middleware::from_fn(cache_control_middleware))
+                .layer(axum::middleware::from_fn(
+                    crate::middleware::security_headers::csp_nonce_middleware,
+                ))
                 .layer(CompressionLayer::new())
                 .layer(axum::middleware::from_fn(request_size_limit))
                 .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
@@ -643,10 +646,6 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
                     add_security_headers_from_config(response, &security_config)
                 }),
         );
-
-    router = router.layer(axum::middleware::from_fn(
-        crate::middleware::security_headers::csp_nonce_middleware,
-    ));
 
     router = router.merge(swagger_ui);
 
