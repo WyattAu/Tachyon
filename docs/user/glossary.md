@@ -4,8 +4,6 @@
 **Date:** February 2026
 **Status:** Proposed
 **Classification:** User Documentation
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-REQ-SYS-V1.0](../../.specs/04_future_state/reqs/system_overview.md), [TACHYON-ADR-INDEX-V1.0](../../.specs/02_adrs/000-index.md)
-
 ---
 
 ## TABLE OF CONTENTS
@@ -126,25 +124,21 @@ To navigate this glossary effectively:
 A software architecture pattern that organizes system components into three distinct layers: presentation layer (desktop/web UI), application layer (server logic), and data layer (storage). In Tachyon, this architecture enables separation of concerns and supports both local-first desktop usage and centralized server deployment.
 
 **Related Terms:** Desktop Component, Server Component, Web Frontend Component
-**Reference:** [ADR-001](../../.specs/02_adrs/001_rust_as_primary_language.md)
 
 **Local-First Design**
 An architectural approach that prioritizes local data storage and processing, ensuring full functionality without network connectivity. Tachyon's desktop mode operates locally-first, synchronizing with remote repositories when connectivity is available.
 
 **Related Terms:** Desktop Mode, Offline Operation, Git Integration
-**Reference:** [REQ-SYS-091](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Hybrid Operation**
 A deployment model that supports both local-first desktop usage and centralized server deployment from a single codebase. Tachyon's hybrid architecture enables seamless transition between individual use and team collaboration without requiring separate implementations.
 
 **Related Terms:** Desktop Mode, Server Mode, Three-Tier Architecture
-**Reference:** [REQ-SYS-003](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Component Architecture**
 The structural organization of Tachyon system into distinct, cohesive components with well-defined interfaces and responsibilities. Components include Desktop Application (Tauri-based), Server Application (Axum-based), Web Frontend (Leptos-based), and Core Engine (JIT rendering).
 
 **Related Terms:** Desktop Component, Server Component, Web Frontend Component, Core Engine
-**Reference:** [TSK-002](../../.specs/tasks.md)
 
 ### 3.2. Core Components
 
@@ -152,25 +146,21 @@ The structural organization of Tachyon system into distinct, cohesive components
 The central component responsible for Just-In-Time rendering, caching, and content processing. The Core Engine provides a well-defined API consumed by desktop, server, and web components, implementing the rendering pipeline that processes Markdown content into HTML within 15 milliseconds.
 
 **Related Terms:** JIT Rendering, Cache Management, Rendering Pipeline
-**Reference:** [REQ-SYS-031](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Desktop Component**
 The Tauri-based desktop application providing native OS integration and WebView rendering. The Desktop Component spawns a local Axum server on a randomized loopback port, provides native OS dialogs for file operations, and supports full offline operation.
 
 **Related Terms:** Tauri, WebView, IPC Communication
-**Reference:** [ADR-002](../../.specs/02_adrs/002_tauri_for_desktop_application.md)
 
 **Server Component**
 The Axum-based HTTP/2 server handling network requests, authentication, and real-time collaboration. The Server Component binds to 0.0.0.0 in server mode, enforces authentication and RBAC, and supports WebSocket connections for real-time updates.
 
 **Related Terms:** Axum, HTTP/2, WebSocket, RBAC
-**Reference:** [ADR-003](../../.specs/02_adrs/003_axum_for_http2_server.md)
 
 **Web Frontend Component**
 The Leptos-based reactive UI providing client-side state management and browser compatibility. The Web Frontend Component communicates with the Server Component via HTTP/2 and WebSocket, providing responsive interface adaptation for desktop, tablet, and mobile screen sizes.
 
 **Related Terms:** Leptos, Reactive UI, WebSocket
-**Reference:** [ADR-004](../../.specs/02_adrs/004_leptos_for_web_frontend.md)
 
 ### 3.3. Data Architecture
 
@@ -178,19 +168,16 @@ The Leptos-based reactive UI providing client-side state management and browser 
 A content storage strategy that leverages Git repositories for version control, history tracking, and collaborative workflows. Tachyon integrates directly with Git repositories using the git2-rs library, supporting HTTPS, SSH, and local protocols.
 
 **Related Terms:** Git Integration, Version Control, Repository Cloning
-**Reference:** [REQ-SYS-006](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Storage Abstraction Layer**
 A unified interface providing consistent access to file system and Git repository operations. The Storage Abstraction Layer enables the Core Engine to operate on both local file systems and Git repositories without requiring different code paths.
 
 **Related Terms:** Core Engine, File System Monitoring, Git Integration
-**Reference:** [REQ-SYS-087](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Cache Management**
 The system responsible for managing rendered HTML cache with LRU eviction policies and automatic invalidation. Cache Management ensures sub-15ms rendering latency by serving cached content when available and invalidating cache entries within 100 milliseconds of file modification.
 
 **Related Terms:** LRU Cache, Cache Invalidation, JIT Rendering
-**Reference:** [REQ-SYS-033](../../.specs/04_future_state/reqs/system_overview.md)
 
 ### 3.4. Communication Architecture
 
@@ -198,19 +185,16 @@ The system responsible for managing rendered HTML cache with LRU eviction polici
 Inter-Process Communication between the Tauri desktop application and the Core Engine. IPC Communication uses Tauri's command and event system, with capability-based access control enforcing the principle of least privilege for all operations.
 
 **Related Terms:** Tauri, Capability-Based Access Control, Desktop Component
-**Reference:** [ADR-009](../../.specs/02_adrs/009_ipc_communication_architecture.md)
 
 **Event Bus**
 An asynchronous messaging system for inter-component communication and notification. The Event Bus enables decoupled communication between components, supporting real-time updates and collaborative editing scenarios.
 
 **Related Terms:** WebSocket, Real-Time Collaboration, Async/Await
-**Reference:** [REQ-SYS-090](../../.specs/04_future_state/reqs/system_overview.md)
 
 **WebSocket Interface**
 A bidirectional communication protocol providing real-time updates and collaborative editing capabilities. The WebSocket Interface authenticates all connections, validates messages against schemas, and implements rate limiting to prevent abuse.
 
 **Related Terms:** Real-Time Collaboration, Message Validation, Rate Limiting
-**Reference:** [REQ-SYS-083](../../.specs/04_future_state/reqs/system_overview.md)
 
 ---
 
@@ -222,19 +206,16 @@ A bidirectional communication protocol providing real-time updates and collabora
 A systems programming language providing memory safety, concurrency safety, and zero-cost abstractions through ownership system and borrow checker. Rust Edition 2024 is selected as primary language for Tachyon toolchain, enabling Ahead-of-Time compilation to native machine code and first-class WebAssembly support.
 
 **Related Terms:** Cargo, Tokio, Ownership System, Borrow Checker
-**Reference:** [ADR-001](../../.specs/02_adrs/001_rust_as_primary_language.md)
 
 **TypeScript**
 A statically typed superset of JavaScript that compiles to plain JavaScript, providing compile-time type checking and enhanced tooling support. TypeScript is used for Tachyon's web frontend, enabling type-safe development while maintaining browser compatibility.
 
 **Related Terms:** JavaScript, Leptos, Web Frontend Component
-**Reference:** [ADR-004](../../.specs/02_adrs/004_leptos_for_web_frontend.md)
 
 **JavaScript**
 A dynamically typed, interpreted programming language primarily used for web development. JavaScript is used alongside TypeScript in Tachyon's web frontend, with TypeScript providing type safety while compiling to JavaScript for browser execution.
 
 **Related Terms:** TypeScript, Bun Runtime, Web Frontend Component
-**Reference:** [ADR-005](../../.specs/02_adrs/005_bun_for_javascript_runtime.md)
 
 ### 4.2. Frameworks and Libraries
 
@@ -242,25 +223,21 @@ A dynamically typed, interpreted programming language primarily used for web dev
 A framework for building cross-platform desktop applications using web technologies as frontend and Rust as backend. Tauri provides native OS integration, WebView rendering, and capability-based access control, enabling Tachyon's desktop component to run on Windows, macOS, and Linux.
 
 **Related Terms:** Desktop Component, WebView, Capability-Based Access Control
-**Reference:** [ADR-002](../../.specs/02_adrs/002_tauri_for_desktop_application.md)
 
 **Axum**
 A web framework for Rust providing ergonomic, modular, and type-safe HTTP/2 server implementation. Axum is used for Tachyon's server component, supporting async handlers, middleware, and WebSocket connections with minimal overhead.
 
 **Related Terms:** Server Component, HTTP/2, WebSocket, Tokio
-**Reference:** [ADR-003](../../.specs/02_adrs/003_axum_for_http2_server.md)
 
 **Leptos**
 A reactive frontend framework for Rust that compiles to WebAssembly, providing fine-grained reactivity and server-side rendering capabilities. Leptos is used for Tachyon's web frontend, enabling reactive UI with near-native performance in browsers.
 
 **Related Terms:** Web Frontend Component, WebAssembly, Reactive UI
-**Reference:** [ADR-004](../../.specs/02_adrs/004_leptos_for_web_frontend.md)
 
 **Tokio**
 An asynchronous runtime for Rust providing event-driven, non-blocking I/O with multi-threaded work-stealing scheduler. Tokio is used throughout Tachyon codebase for async operations, enabling efficient handling of concurrent requests and file system operations.
 
 **Related Terms:** Async/Await, Async Runtime, Server Component
-**Reference:** [ADR-007](../../.specs/02_adrs/007_tokio_for_async_runtime.md)
 
 ### 4.3. Build Systems
 
@@ -268,25 +245,21 @@ An asynchronous runtime for Rust providing event-driven, non-blocking I/O with m
 Rust's integrated package manager, build tool, and test runner. Cargo manages dependencies through Cargo.toml and Cargo.lock files, provides reproducible builds with pinned dependency versions, and supports workspace configuration for multi-crate projects.
 
 **Related Terms:** Cargo.toml, Cargo.lock, Workspace Structure, Reproducible Builds
-**Reference:** [ADR-008](../../.specs/02_adrs/008_workspace_structure_for_rust_crates.md)
 
 **Cargo.toml**
 The manifest file defining Rust package metadata, dependencies, and build configuration. Cargo.toml specifies package information, dependency versions, feature flags, and build settings for Tachyon's Rust crates.
 
 **Related Terms:** Cargo, Cargo.lock, Dependency Management
-**Reference:** [ADR-008](../../.specs/02_adrs/008_workspace_structure_for_rust_crates.md)
 
 **Cargo.lock**
 A lock file recording exact versions of all dependencies used in Rust project. Cargo.lock ensures reproducible builds by pinning dependency versions, preventing dependency confusion and enabling supply chain security through dependency verification.
 
 **Related Terms:** Cargo, Cargo.toml, Reproducible Builds, Supply Chain Security
-**Reference:** [ADR-006](../../.specs/02_adrs/006_nix_flakes_for_build_system.md)
 
 **Nix Flakes**
 A reproducible build system for Nix package manager, providing declarative project configuration and hermetic build environments. Nix Flakes are used for Tachyon's build system, enabling reproducible builds and supply chain security through hermetic build environments.
 
 **Related Terms:** Reproducible Builds, Supply Chain Security, Build Isolation
-**Reference:** [ADR-006](../../.specs/02_adrs/006_nix_flakes_for_build_system.md)
 
 ### 4.4. Development Concepts
 
@@ -294,37 +267,31 @@ A reproducible build system for Nix package manager, providing declarative proje
 Rust's memory management model ensuring memory safety through compile-time tracking of value ownership. The ownership system enforces that each value has a single owner, preventing data races and memory corruption without requiring garbage collection.
 
 **Related Terms:** Borrow Checker, Memory Safety, Rust
-**Reference:** [ADR-001](../../.specs/02_adrs/001_rust_as_primary_language.md)
 
 **Borrow Checker**
 Rust compiler component enforcing borrowing rules to prevent data races and memory corruption. The borrow checker ensures that references respect borrowing rules (multiple immutable references OR one mutable reference) and remain valid for their declared lifetimes.
 
 **Related Terms:** Ownership System, Lifetimes, Memory Safety, Rust
-**Reference:** [ADR-001](../../.specs/02_adrs/001_rust_as_primary_language.md)
 
 **Lifetimes**
 Rust's compile-time mechanism for tracking how long references remain valid. Lifetime annotations ensure that references do not outlive the data they reference, preventing use-after-free and dangling pointer errors at compile time.
 
 **Related Terms:** Borrow Checker, Ownership System, Memory Safety, Rust
-**Reference:** [ADR-001](../../.specs/02_adrs/001_rust_as_primary_language.md)
 
 **Async/Await**
 A programming pattern for writing asynchronous code using async functions and await expressions. Async/Await in Rust uses the Future trait and Tokio runtime, enabling non-blocking I/O operations for efficient handling of concurrent requests.
 
 **Related Terms:** Tokio, Async Runtime, Future Trait, Non-Blocking I/O
-**Reference:** [ADR-007](../../.specs/02_adrs/007_tokio_for_async_runtime.md)
 
 **Future Trait**
 Rust's trait representing asynchronous operations that may complete in the future. The Future trait is used throughout Tachyon codebase for async operations, enabling composition of asynchronous tasks with async/await syntax.
 
 **Related Terms:** Async/Await, Tokio, Async Runtime
-**Reference:** [ADR-007](../../.specs/02_adrs/007_tokio_for_async_runtime.md)
 
 **Zero-Cost Abstractions**
 A design principle where high-level programming constructs compile to efficient machine code comparable to hand-optimized code. Rust's zero-cost abstractions enable high-level programming with iterators, pattern matching, and closures without performance overhead.
 
 **Related Terms:** Rust, Performance, Ahead-of-Time Compilation
-**Reference:** [ADR-001](../../.specs/02_adrs/001_rust_as_primary_language.md)
 
 ---
 
@@ -336,25 +303,21 @@ A design principle where high-level programming constructs compile to efficient 
 A security strategy implementing multiple layers of security controls, ensuring that if one layer fails, other layers provide protection. Tachyon's defense-in-depth architecture includes memory safety, capability-based access control, input validation, encryption, audit logging, and supply chain security.
 
 **Related Terms:** Memory Safety, Capability-Based Access Control, Input Validation, Encryption, Audit Logging, Supply Chain Security
-**Reference:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)
 
 **Zero Trust**
 A security model that assumes no implicit trust within security boundaries, requiring verification for all requests regardless of source. Tachyon implements zero trust principles by validating all external inputs and communications, with no trust assumptions based on network location or previous authentication.
 
 **Related Terms:** Input Validation, Authentication, Authorization
-**Reference:** [REQ-SEC-005](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Principle of Least Privilege**
 A security principle requiring that users and processes be granted only the minimum access necessary to perform their functions. Tachyon enforces principle of least privilege through capability-based access control and role-based access control.
 
 **Related Terms:** Capability-Based Access Control, RBAC, Tauri Capabilities
-**Reference:** [REQ-SEC-002](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Fail-Safe Defaults**
 A security practice using secure configurations by default, requiring explicit opt-out for less secure options. Tachyon uses fail-safe defaults for all security configurations, ensuring that misconfiguration does not compromise security.
 
 **Related Terms:** Secure by Design, Fail-Safe Error Handling
-**Reference:** [REQ-SEC-003](../../.specs/04_future_state/reqs/security_requirements.md)
 
 ### 5.2. Authentication and Authorization
 
@@ -362,31 +325,26 @@ A security practice using secure configurations by default, requiring explicit o
 An authentication method requiring users to provide multiple independent credentials to verify identity. Tachyon supports MFA for all user accounts in server mode, requiring at least two of: something you know (password), something you have (token), or something you are (biometric).
 
 **Related Terms:** Authentication, Session Management
-**Reference:** [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Role-Based Access Control (RBAC)**
 An authorization model restricting system access based on roles assigned to users within an organization. Tachyon implements RBAC for all resources, with roles including Admin, User, Viewer, Editor, and Auditor, each with predefined permissions.
 
 **Related Terms:** Authorization, Permission, Role
-**Reference:** [REQ-SEC-021](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Attribute-Based Access Control (ABAC)**
 An authorization model granting access based on attributes of user, resource, and environment. Tachyon supports ABAC for fine-grained permissions, enabling access control based on user attributes, resource attributes, and environmental conditions.
 
 **Related Terms:** Authorization, RBAC, Permission
-**Reference:** [REQ-SEC-022](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **JWT (JSON Web Token)**
 A compact, URL-safe means of representing claims to be transferred between two parties. Tachyon uses JWT tokens for authentication, with RS256 or ES256 signing algorithms, configurable expiration times, and single-use refresh tokens.
 
 **Related Terms:** Authentication, Session Token, Token Validation
-**Reference:** [DES-SEC-002](../../.specs/04_future_state/design/security_design.md)
 
 **Session Management**
 The process of creating, maintaining, and terminating user sessions for authentication and authorization. Tachyon implements configurable session timeout with automatic invalidation, session refresh with token rotation, concurrent session limits, and session revocation for security incidents.
 
 **Related Terms:** Authentication, JWT, Session Token
-**Reference:** [REQ-SEC-016](../../.specs/04_future_state/reqs/security_requirements.md)
 
 ### 5.3. Capability-Based Access Control
 
@@ -394,13 +352,11 @@ The process of creating, maintaining, and terminating user sessions for authenti
 An access control model where permissions are granted based on capabilities rather than user identity. Tauri's capability system provides fine-grained access control for system resources in Tachyon's desktop component, implementing principle of least privilege.
 
 **Related Terms:** Tauri, Principle of Least Privilege, IPC Security
-**Reference:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)
 
 **Tauri Capabilities**
 Granular permissions controlling access to system resources in Tauri desktop applications. Tachyon uses Tauri capabilities for file system access (fs:read, fs:write), window management (window:allow-create), shell commands (shell:allow-execute), native dialogs (dialog:allow-open), HTTP requests (http:allow-request), and notifications (notification:allow-send).
 
 **Related Terms:** Capability-Based Access Control, Tauri, IPC Security
-**Reference:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)
 
 ### 5.4. Encryption and Data Protection
 
@@ -408,25 +364,21 @@ Granular permissions controlling access to system resources in Tauri desktop app
 The latest version of TLS protocol providing secure communication over computer networks. Tachyon enforces TLS 1.3 for all network communications, with certificate validation, HSTS headers, approved cipher suites, and Perfect Forward Secrecy.
 
 **Related Terms:** Encryption in Transit, Certificate Validation, HSTS Headers
-**Reference:** [REQ-SEC-031](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **AES-256 Encryption**
 A symmetric encryption algorithm using 256-bit keys, approved for protecting sensitive information. Tachyon encrypts sensitive data at rest using AES-256 encryption, including database files, configuration values, and backup files.
 
 **Related Terms:** Encryption at Rest, Key Management
-**Reference:** [REQ-SEC-026](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Perfect Forward Secrecy**
 A property of cryptographic protocols ensuring that compromise of long-term keys does not compromise past session keys. Tachyon's TLS 1.3 implementation supports Perfect Forward Secrecy, protecting past communications against future decryption attacks.
 
 **Related Terms:** TLS 1.3, Encryption in Transit
-**Reference:** [REQ-SEC-035](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **HSTS (HTTP Strict Transport Security)**
 A web security policy mechanism that helps protect websites against protocol downgrade attacks and cookie hijacking. Tachyon sends Strict-Transport-Security headers to enforce HTTPS connections, preventing protocol downgrade attacks.
 
 **Related Terms:** TLS 1.3, Security Headers
-**Reference:** [REQ-SEC-033](../../.specs/04_future_state/reqs/security_requirements.md)
 
 ### 5.5. Input Validation and Sanitization
 
@@ -434,25 +386,21 @@ A web security policy mechanism that helps protect websites against protocol dow
 The process of ensuring that user-supplied data conforms to expected format, type, length, and range before processing. Tachyon performs comprehensive input validation across all interfaces, including HTTP/2 server, IPC commands, file operations, and WebSocket messages.
 
 **Related Terms:** Schema Validation, Type Validation, Length Validation, Format Validation
-**Reference:** [REQ-SEC-041](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Output Encoding**
 The process of encoding data for safe rendering in output contexts, preventing injection attacks. Tachyon encodes all user-generated content for safe HTML rendering, URL encoding, JSON encoding, HTML attribute encoding, and JavaScript encoding.
 
 **Related Terms:** XSS Prevention, Content Security Policy
-**Reference:** [REQ-SEC-051](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **XSS (Cross-Site Scripting) Prevention**
 Security measures preventing attackers from injecting malicious scripts into web pages viewed by other users. Tachyon sanitizes all user-generated content to prevent XSS attacks and implements Content Security Policy (CSP) headers.
 
 **Related Terms:** Input Sanitization, Output Encoding, Content Security Policy
-**Reference:** [REQ-SEC-046](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Content Security Policy (CSP)**
 An added layer of security that helps to detect and mitigate certain types of attacks, including Cross-Site Scripting (XSS) and data injection attacks. Tachyon implements CSP headers to prevent XSS attacks by restricting sources of scripts, styles, and other resources.
 
 **Related Terms:** XSS Prevention, Security Headers, Output Encoding
-**Reference:** [REQ-SEC-050](../../.specs/04_future_state/reqs/security_requirements.md)
 
 ### 5.6. Audit Logging and Monitoring
 
@@ -460,25 +408,21 @@ An added layer of security that helps to detect and mitigate certain types of at
 The practice of recording security-relevant events with full context for accountability and forensic analysis. Tachyon logs all security-relevant events including authentication events, authorization decisions, data access events, configuration changes, and security events.
 
 **Related Terms:** Immutable Logs, Log Tamper Protection, Log Retention
-**Reference:** [REQ-SEC-056](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Immutable Logs**
 Audit logs that cannot be modified or deleted after creation, ensuring integrity of security records. Tachyon uses write-once, read-many storage for audit logs and cryptographically signs logs to prevent tampering.
 
 **Related Terms:** Audit Logging, Log Tamper Protection
-**Reference:** [REQ-SEC-057](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Log Tamper Protection**
 Mechanisms ensuring that audit logs cannot be modified or deleted without detection. Tachyon cryptographically signs audit logs to prevent tampering and restricts audit log access to authorized personnel with access logging.
 
 **Related Terms:** Immutable Logs, Audit Logging, Cryptographic Signatures
-**Reference:** [REQ-SEC-058](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Anomaly Detection**
 The process of identifying unusual patterns that may indicate security incidents. Tachyon implements anomaly detection for security monitoring, identifying unusual patterns in authentication attempts, data access, and system events.
 
 **Related Terms:** Real-Time Monitoring, Security Events
-**Reference:** [REQ-SEC-067](../../.specs/04_future_state/reqs/security_requirements.md)
 
 ---
 
@@ -490,49 +434,41 @@ The process of identifying unusual patterns that may indicate security incidents
 The structural organization of Tachyon deployment across different environments and infrastructure. Deployment architecture includes deployment environments (Development, Staging, Production), infrastructure requirements, containerization strategy, orchestration strategy, deployment pipelines, scaling strategies, high availability, disaster recovery, monitoring, and configuration management.
 
 **Related Terms:** Deployment Environments, Containerization, Orchestration, Scaling Strategies
-**Reference:** [TSK-004](../../.specs/tasks.md)
 
 **Deployment Environments**
 Distinct environments for different stages of software development lifecycle. Tachyon uses three deployment environments: Development for active development, Staging for pre-production testing, and Production for live user-facing deployments.
 
 **Related Terms:** Deployment Architecture, CI/CD Integration, Release Acceptance Criteria
-**Reference:** [TSK-004](../../.specs/tasks.md)
 
 **Containerization**
 The practice of encapsulating an application and its dependencies into a container image for consistent deployment across different environments. Tachyon supports containerization strategy using Docker for consistent deployment and isolation.
 
 **Related Terms:** Docker, Orchestration, Deployment Architecture
-**Reference:** [ADR-007](../../.specs/02_adrs/007_nix_flakes_for_build_system.md)
 
 **Orchestration**
 The automated arrangement, coordination, and management of computer systems, middleware, and services. Tachyon supports orchestration strategy using Kubernetes for managing containerized deployments across multiple instances.
 
 **Related Terms:** Containerization, Kubernetes, Horizontal Scaling
-**Reference:** [ADR-008](../../.specs/02_adrs/008_workspace_structure_for_rust_crates.md)
 
 **Horizontal Scaling**
 A method of adding more machines or instances to a distributed software system to handle increased load. Tachyon supports horizontal scaling in server mode through stateless design and load balancing.
 
 **Related Terms:** Vertical Scaling, Scalability Requirements, Stateless Design
-**Reference:** [REQ-SYS-063](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Vertical Scaling**
 A method of adding more power to an existing machine or instance to handle increased load. Tachyon supports vertical scaling for improved performance on single instances.
 
 **Related Terms:** Horizontal Scaling, Scalability Requirements
-**Reference:** [REQ-SYS-063](../../.specs/04_future_state/reqs/system_overview.md)
 
 **High Availability**
 A characteristic of a system that aims to ensure an agreed level of operational performance, usually uptime, for a higher than normal period. Tachyon maintains 99.9% uptime in server mode, excluding scheduled maintenance windows, through redundancy and failover mechanisms.
 
 **Related Terms:** Disaster Recovery, Scalability Requirements, Uptime Target
-**Reference:** [REQ-SYS-056](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Disaster Recovery**
 Policies, tools, and procedures to enable the recovery or continuation of vital technology infrastructure and systems following a natural or human-induced disaster. Tachyon implements disaster recovery through backup procedures, failover mechanisms, and recovery testing.
 
 **Related Terms:** High Availability, Backup Encryption, Data Integrity
-**Reference:** [REQ-SYS-060](../../.specs/04_future_state/reqs/system_overview.md)
 
 ### 6.2. Monitoring and Observability
 
@@ -540,31 +476,26 @@ Policies, tools, and procedures to enable the recovery or continuation of vital 
 The process of collecting, analyzing, and using information to track the performance and health of IT systems. Tachyon provides real-time monitoring of security metrics, performance metrics, and system health metrics.
 
 **Related Terms:** Observability, Metrics Export, Real-Time Monitoring
-**Reference:** [REQ-SEC-066](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Observability**
 The ability to measure a system's current state based on the data it generates, such as logs, metrics, and traces. Tachyon implements observability through structured logging, metrics collection, and distributed tracing.
 
 **Related Terms:** Monitoring, Audit Logging, Metrics Export
-**Reference:** [REQ-SEC-066](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Metrics Export**
 The process of making system metrics available for external analysis tools and dashboards. Tachyon supports exporting security metrics for external analysis tools, enabling integration with monitoring and alerting systems.
 
 **Related Terms:** Monitoring, Observability, Real-Time Monitoring
-**Reference:** [REQ-SEC-070](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Structured Logging**
 The practice of generating logs in a structured format such as JSON, enabling machine parsing and analysis. Tachyon uses structured logging with tracing for security events, providing consistent format for log analysis and alerting.
 
 **Related Terms:** Audit Logging, Tracing, Log Tamper Protection
-**Reference:** [REQ-SEC-056](../../.specs/04_future_state/reqs/security_requirements.md)
 
 **Tracing**
 The process of tracking requests as they propagate through a distributed system, enabling performance analysis and debugging. Tachyon implements distributed tracing for request tracking across components, enabling performance analysis and debugging.
 
 **Related Terms:** Structured Logging, Observability, Performance Testing
-**Reference:** [TST-V1.0](../../.specs/04_future_state/test_plan.md)
 
 ### 6.3. CI/CD and Build
 
@@ -572,19 +503,16 @@ The process of tracking requests as they propagate through a distributed system,
 The practice of merging all developers' working copies to a shared mainline several times a day and automating the deployment process. Tachyon integrates CI/CD for automated test execution, quality gates, and deployment automation.
 
 **Related Terms:** Automated Test Execution, Quality Gates, Deployment Pipelines
-**Reference:** [TST-V1.0](../../.specs/04_future_state/test_plan.md)
 
 **Quality Gates**
 Automated checks that must pass before code can be merged or deployed. Tachyon implements quality gates requiring all tests to pass, code coverage to meet thresholds, no critical security vulnerabilities, no performance regressions, and all tests to complete within time limits.
 
 **Related Terms:** CI/CD, Code Coverage, Security Testing
-**Reference:** [TST-V1.0](../../.specs/04_future_state/test_plan.md)
 
 **Release Acceptance Criteria**
 The criteria that must be met before a release can be deployed to production. Tachyon's release requirements include all test suites passing, code coverage meeting target thresholds, security scan showing no critical or high-severity vulnerabilities, performance benchmarks meeting SLAs, and documentation being complete and accurate.
 
 **Related Terms:** Quality Gates, Security Testing, Performance Testing
-**Reference:** [TST-V1.0](../../.specs/04_future_state/test_plan.md)
 
 ### 6.4. Configuration Management
 
@@ -592,19 +520,16 @@ The criteria that must be met before a release can be deployed to production. Ta
 The process of managing system configuration across different environments and deployments. Tachyon supports portable configuration that can be moved between installations without modification and environment-specific configuration overrides.
 
 **Related Terms:** Deployment Environments, Portable Configuration, Configuration Encryption
-**Reference:** [REQ-SYS-124](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Portable Configuration**
 Configuration that can be moved between installations without modification. Tachyon supports portable configuration for easy deployment across different environments and installations.
 
 **Related Terms:** Configuration Management, Deployment Environments
-**Reference:** [REQ-SYS-124](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Configuration Encryption**
 The practice of encrypting sensitive configuration values at rest to protect them from unauthorized access. Tachyon encrypts sensitive configuration values at rest using AES-256 encryption.
 
 **Related Terms:** AES-256 Encryption, Encryption at Rest, Key Management
-**Reference:** [REQ-SEC-029](../../.specs/04_future_state/reqs/security_requirements.md)
 
 ---
 
@@ -616,25 +541,21 @@ The practice of encrypting sensitive configuration values at rest to protect the
 An operation mode where Tachyon runs as a native desktop application using the operating system's WebView component. Desktop mode spawns a local Axum server on a randomized loopback port, provides native OS dialogs for file operations, and supports full offline operation.
 
 **Related Terms:** Desktop Component, Local Server Spawn, Offline Operation
-**Reference:** [REQ-SYS-101](../../.specs/04_future_state/reqs/system_overview.md)
 
 **WebView**
 A web browser component embedded in a desktop application for rendering web content. Tauri uses WebView for rendering Tachyon's web frontend within the desktop application, providing native OS integration while using web technologies.
 
 **Related Terms:** Tauri, Desktop Component, Web Frontend Component
-**Reference:** [ADR-002](../../.specs/02_adrs/002_tauri_for_desktop_application.md)
 
 **Native Dialogs**
 Operating system-provided dialog boxes for file operations such as open, save, and browse. Tauri provides native OS dialogs for file operations in Tachyon's desktop component via IPC.
 
 **Related Terms:** Tauri, IPC Communication, Desktop Component
-**Reference:** [REQ-SYS-103](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Local Server Spawn**
 The process of starting a local Axum server on a randomized loopback port when Tachyon is in desktop mode. The local server serves the web frontend to the WebView and handles IPC communication with the desktop application.
 
 **Related Terms:** Desktop Mode, Axum, IPC Communication
-**Reference:** [REQ-SYS-102](../../.specs/04_future_state/reqs/system_overview.md)
 
 ### 7.2. Web Interface
 
@@ -642,25 +563,21 @@ The process of starting a local Axum server on a randomized loopback port when T
 An operation mode where Tachyon runs as a centralized server accepting connections from network clients. Server mode binds to 0.0.0.0, enforces authentication for all requests, enforces RBAC for all content access, and supports real-time collaborative editing.
 
 **Related Terms:** Server Component, Authentication, RBAC, Real-Time Collaboration
-**Reference:** [REQ-SYS-106](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Responsive Design**
 A web design approach that makes web pages render well on a variety of devices and window or screen sizes. Tachyon provides a responsive interface that adapts to desktop, tablet, and mobile screen sizes.
 
 **Related Terms:** Web Frontend Component, Leptos, Accessibility
-**Reference:** [REQ-SYS-068](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Sidebar Navigation**
 A user interface element providing a collapsible navigation tree reflecting the repository structure. Tachyon provides a sidebar navigation tree for hierarchical content organization and navigation.
 
 **Related Terms:** Hierarchical Structure, Table of Contents, Breadcrumb Navigation
-**Reference:** [REQ-SYS-020](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Breadcrumb Navigation**
 A navigation aid showing the hierarchical path from root to current document. Tachyon provides breadcrumb navigation for hierarchical content organization and navigation context.
 
 **Related Terms:** Hierarchical Structure, Table of Contents, Sidebar Navigation
-**Reference:** [REQ-SYS-019](../../.specs/04_future_state/reqs/system_overview.md)
 
 ### 7.3. Content Editing
 
@@ -668,25 +585,21 @@ A navigation aid showing the hierarchical path from root to current document. Ta
 A rich text editor supporting CommonMark-compliant Markdown with live preview and syntax highlighting. Tachyon provides a Markdown editor for content creation and editing with live preview.
 
 **Related Terms:** CommonMark, Live Preview, Syntax Highlighting
-**Reference:** [REQ-SYS-010](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Live Preview**
 A real-time preview of Markdown content as it is being edited. Tachyon provides live preview for Markdown editing, showing rendered output alongside editor.
 
 **Related Terms:** Markdown Editor, JIT Rendering, Real-Time Updates
-**Reference:** [REQ-SYS-010](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Syntax Highlighting**
 The practice of displaying text in different colors and fonts according to the category of terms. Tachyon provides syntax highlighting for code blocks with language-specific highlighting for 50+ programming languages.
 
 **Related Terms:** Code Block Support, Tree-Sitter, Code Highlighting
-**Reference:** [REQ-SYS-011](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Code Block Support**
 The ability to render code blocks with language-specific syntax highlighting. Tachyon renders code blocks with syntax highlighting for 50+ programming languages using tree-sitter.
 
 **Related Terms:** Syntax Highlighting, Tree-Sitter, Code Highlighting
-**Reference:** [REQ-SYS-011](../../.specs/04_future_state/reqs/system_overview.md)
 
 ### 7.4. Search and Discovery
 
@@ -694,25 +607,21 @@ The ability to render code blocks with language-specific syntax highlighting. Ta
 A search technique that examines all of the words in every stored document as it tries to match search criteria. Tachyon provides full-text search across all document content with sub-100ms query response times.
 
 **Related Terms:** Search Indexing, Tantivy, Fuzzy Search
-**Reference:** [REQ-SYS-021](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Search Autocomplete**
 A feature that provides search suggestions and autocomplete as the user types, with results updating in real-time. Tachyon provides search autocomplete for improved search experience.
 
 **Related Terms:** Full-Text Search, Search Indexing, Real-Time Updates
-**Reference:** [REQ-SYS-022](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Faceted Search**
 A search technique that supports filtering search results by multiple categories or facets. Tachyon supports faceted search filtering by content type, tags, date ranges, and author.
 
 **Related Terms:** Full-Text Search, Search Indexing, Tagging System
-**Reference:** [REQ-SYS-023](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Search Highlighting**
 The practice of highlighting search terms in context within search results and document views. Tachyon provides search highlighting for improved search result visibility.
 
 **Related Terms:** Full-Text Search, Search Results, Document View
-**Reference:** [REQ-SYS-024](../../.specs/04_future_state/reqs/system_overview.md)
 
 ### 7.5. Collaboration Features
 
@@ -720,25 +629,21 @@ The practice of highlighting search terms in context within search results and d
 The ability for multiple users to edit the same document simultaneously with real-time updates. Tachyon supports real-time collaborative editing in server mode with conflict resolution and user presence indicators.
 
 **Related Terms:** WebSocket, Server Mode, Conflict Resolution
-**Reference:** [REQ-SYS-027](../../.specs/04_future_state/reqs/system_overview.md)
 
 **User Presence Indicators**
 Visual indicators showing which users are currently viewing or editing a document. Tachyon provides user presence indicators for real-time collaboration awareness.
 
 **Related Terms:** Real-Time Collaboration, WebSocket, Server Mode
-**Reference:** [REQ-SYS-027](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Conflict Resolution**
 The process of resolving conflicting edits when multiple users edit the same document simultaneously. Tachyon provides Last-Write-Wins conflict resolution for real-time collaborative editing.
 
 **Related Terms:** Real-Time Collaboration, Server Mode, WebSocket
-**Reference:** [REQ-SYS-109](../../.specs/04_future_state/reqs/system_overview.md)
 
 **Comment System**
 A feature supporting inline and document-level comments for review and feedback. Tachyon provides comment system for collaborative review and feedback.
 
 **Related Terms:** Real-Time Collaboration, Review Process, Feedback
-**Reference:** [REQ-SYS-029](../../.specs/04_future_state/reqs/system_overview.md)
 
 ---
 

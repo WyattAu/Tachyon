@@ -90,7 +90,7 @@ The Tachyon IPC API framework is built upon Tauri's IPC mechanisms, providing a 
 │                        Tauri Desktop Application                 │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐         ┌─────────────┐         ┌─────────────┐ │
-│  │  WebView    │────────▶│  IPC Bridge │────────▶│  Rust       │ │
+│  │  WebView    │────────-│  IPC Bridge │────────-│  Rust       │ │
 │  │  Frontend   │  Commands│  Layer      │  Events  │  Backend    │ │
 │  │  (Leptos)   │◀────────│             │◀────────│  Services   │ │
 │  └─────────────┘  Events  └─────────────┘  Commands└─────────────┘ │
@@ -574,12 +574,12 @@ The Tachyon IPC API implements the following JSON-RPC 2.0 features:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Request-Response | ✅ Implemented | Full support with correlation |
-| Notifications | ✅ Implemented | Fire-and-forget operations |
-| Batch Requests | ✅ Implemented | Atomic batch execution |
-| Named Parameters | ✅ Implemented | Object-based parameter passing |
-| Positional Parameters | ⚠️ Deprecated | Use named parameters instead |
-| Error Codes | ✅ Implemented | Custom Tachyon error codes (see Section 11) |
+| Request-Response | [PASS] Implemented | Full support with correlation |
+| Notifications | [PASS] Implemented | Fire-and-forget operations |
+| Batch Requests | [PASS] Implemented | Atomic batch execution |
+| Named Parameters | [PASS] Implemented | Object-based parameter passing |
+| Positional Parameters | [WARN] Deprecated | Use named parameters instead |
+| Error Codes | [PASS] Implemented | Custom Tachyon error codes (see Section 11) |
 
 **Deviations from JSON-RPC 2.0:**
 

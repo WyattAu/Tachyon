@@ -1954,7 +1954,7 @@ pub fn EditorComponent() -> impl IntoView {
                 on:click=insert_link>
                 <button class="toolbar-button" title="Bold">B</button>
                 <button class="toolbar-button" title="Italic">I</button>
-                <button class="toolbar-button" title="Insert Link">🔗</button>
+                <button class="toolbar-button" title="Insert Link">[link]</button>
             </div>
             <div
                 class="editor-content"

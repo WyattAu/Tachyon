@@ -926,9 +926,9 @@ The editor provides a rich editing experience for Markdown documents:
 | **Heading 2** | H2 | Set heading level 2 |
 | **Heading 3** | H3 | Set heading level 3 |
 | **Code** | `</>` | Insert code block |
-| **Link** | 🔗 | Insert link |
-| **Image** | 🖼️ | Insert image |
-| **Table** | 📊 | Insert table |
+| **Link** | [link] | Insert link |
+| **Image** | [image][U+FE0F] | Insert image |
+| **Table** | data | Insert table |
 | **Quote** | > | Insert blockquote |
 | **List** | • | Insert bullet list |
 | **Numbered List** | 1. | Insert numbered list |
@@ -1412,9 +1412,9 @@ The web editor provides a rich editing experience similar to the desktop applica
 | **Heading 2** | H2 | Set heading level 2 |
 | **Heading 3** | H3 | Set heading level 3 |
 | **Code** | `</>` | Insert code block |
-| **Link** | 🔗 | Insert link |
-| **Image** | 🖼️ | Insert image |
-| **Table** | 📊 | Insert table |
+| **Link** | [link] | Insert link |
+| **Image** | [image][U+FE0F] | Insert image |
+| **Table** | data | Insert table |
 | **Quote** | > | Insert blockquote |
 | **List** | • | Insert bullet list |
 | **Numbered List** | 1. | Insert numbered list |
@@ -2908,26 +2908,26 @@ The web interface is fully responsive and optimized for mobile devices:
 
 **Design Documentation:**
 
-- [`.specs/04_future_state/design/desktop_design.md`](.specs/04_future_state/design/desktop_design.md) - Desktop design
-- [`.specs/04_future_state/design/web_design.md`](.specs/04_future_state/design/web_design.md) - Web design
-- [`.specs/04_future_state/design/server_design.md`](.specs/04_future_state/design/server_design.md) - Server design
+- Desktop design
+- Web design
+- Server design
 
 **Security Documentation:**
 
-- [`.specs/02_adrs/010_security_architecture.md`](.specs/02_adrs/010_security_architecture.md) - Security architecture
-- [`.docs/security/security_architecture.md`](docs/security/security_architecture.md) - Security architecture
+- Security architecture
+- Security architecture (see docs/security/)
 
 **Requirements Documentation:**
 
-- [`.specs/04_future_state/reqs/system_overview.md`](.specs/04_future_state/reqs/system_overview.md) - System overview requirements
-- [`.specs/04_future_state/reqs/desktop_requirements.md`](.specs/04_future_state/reqs/desktop_requirements.md) - Desktop requirements
-- [`.specs/04_future_state/reqs/server_requirements.md`](.specs/04_future_state/reqs/server_requirements.md) - Server requirements
-- [`.specs/04_future_state/reqs/web_requirements.md`](.specs/04_future_state/reqs/web_requirements.md) - Web requirements
+- System overview requirements
+- Desktop requirements
+- Server requirements
+- Web requirements
 
 **Standards:**
 
-- [`.specs/01_standards/coding_standards.md`](.specs/01_standards/coding_standards.md) - Coding standards
-- [`.specs/04_future_state/reqs/documentation_requirements.md`](.specs/04_future_state/reqs/documentation_requirements.md) - Documentation requirements
+- Coding standards
+- Documentation requirements
 
 ### 9.2. External Resources
 

@@ -671,11 +671,11 @@ Integration testing validates the interaction between multiple components, ensur
 
 | Component Pair | Test Focus | Test Count |
 |---------------|-------------|-------------|
-| **Desktop ↔ Server** | IPC communication, HTTP/2 API | 15 |
-| **Web ↔ Server** | HTTP/2 API, WebSocket | 15 |
-| **Server ↔ Database** | SQLite operations, transactions | 10 |
-| **Server ↔ Git** | Repository operations, commits | 10 |
-| **Desktop ↔ File System** | File watching, operations | 10 |
+| **Desktop <-> Server** | IPC communication, HTTP/2 API | 15 |
+| **Web <-> Server** | HTTP/2 API, WebSocket | 15 |
+| **Server <-> Database** | SQLite operations, transactions | 10 |
+| **Server <-> Git** | Repository operations, commits | 10 |
+| **Desktop <-> File System** | File watching, operations | 10 |
 | **All Components** | End-to-end workflows | 20 |
 
 ### 4.3. Rust Integration Testing
@@ -2345,9 +2345,9 @@ jobs:
 ## Coverage Report
 | Module | Coverage | Target | Status |
 |--------|----------|--------|--------|
-| document_manager | 85% | 90% | ⚠️ |
-| auth_service | 92% | 90% | ✅ |
-| search_engine | 78% | 85% | ⚠️ |
+| document_manager | 85% | 90% | [WARN] |
+| auth_service | 92% | 90% | [PASS] |
+| search_engine | 78% | 85% | [WARN] |
 ```
 
 ### 8.6. Quality Gates

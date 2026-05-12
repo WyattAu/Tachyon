@@ -69,10 +69,10 @@ This document adheres to the following conventions:
 
 For additional information, refer to the following documents:
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) - Test Plan
+- TACHYON-STD-V1.0 - Coding and Documentation Standards
+- TACHYON-ADR-001-V1.0 - Rust as Primary Language
+- TACHYON-ADR-010-V1.0 - Security Architecture
+- TACHYON-TST-V1.0 - Test Plan
 
 ---
 
@@ -182,7 +182,7 @@ Clients must specify the API version in the `API-Version` header. The current ve
 
 ### 2.7. Security Considerations
 
-The Tachyon API implements multiple security layers as defined in [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md):
+The Tachyon API implements multiple security layers as defined in ADR-010: Security Architecture:
 
 - **Transport Layer Security:** TLS 1.3 with 256-bit encryption
 - **Authentication:** JWT-based authentication with bcrypt password hashing
@@ -278,7 +278,7 @@ Webhooks are configured through the user settings API and deliver POST requests 
 
 ### 3.1. Overview
 
-The Authentication APIs provide user authentication, session management, and authorization functionality. These APIs implement JWT-based authentication with bcrypt password hashing as specified in [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md).
+The Authentication APIs provide user authentication, session management, and authorization functionality. These APIs implement JWT-based authentication with bcrypt password hashing as specified in ADR-010: Security Architecture.
 
 **Security Considerations:**
 
@@ -1128,7 +1128,7 @@ API-Version: 1.0
 
 ### 4.1. Overview
 
-The Document APIs provide CRUD operations for managing documents stored in the Tachyon system. These APIs support Markdown content with JIT rendering, version control, and metadata management as specified in [ADR-005: Git-based Storage Decision](../../.specs/02_adrs/005_git_based_storage.md).
+The Document APIs provide CRUD operations for managing documents stored in the Tachyon system. These APIs support Markdown content with JIT rendering, version control, and metadata management as specified in ADR-005: Git-based Storage Decision.
 
 **Document Model:**
 
@@ -1760,7 +1760,7 @@ API-Version: 1.0
 
 ### 5.1. Overview
 
-The Repository APIs provide Git-based repository operations including branching, merging, and history management. These APIs implement the Git-based storage strategy as specified in [ADR-005: Git-based Storage Decision](../../.specs/02_adrs/005_git_based_storage.md).
+The Repository APIs provide Git-based repository operations including branching, merging, and history management. These APIs implement the Git-based storage strategy as specified in ADR-005: Git-based Storage Decision.
 
 **Repository Model:**
 
@@ -2334,7 +2334,7 @@ API-Version: 1.0
 
 ### 6.1. Overview
 
-The Search APIs provide full-text search functionality with advanced filtering and ranking. These APIs implement the Tantivy search engine as specified in [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md), enabling fast and accurate search across all documents.
+The Search APIs provide full-text search functionality with advanced filtering and ranking. These APIs implement the Tantivy search engine as specified in ADR-001: Rust as Primary Language, enabling fast and accurate search across all documents.
 
 **Search Capabilities:**
 
@@ -2795,7 +2795,7 @@ API-Version: 1.0
 
 ### 7.1. Overview
 
-The WebSocket APIs provide real-time bidirectional communication between clients and the Tachyon server. These APIs enable live updates for document changes, repository operations, and collaborative editing as specified in [ADR-014: WebSocket Protocol Selection](../../.specs/02_adrs/014_websocket_protocol_selection.md).
+The WebSocket APIs provide real-time bidirectional communication between clients and the Tachyon server. These APIs enable live updates for document changes, repository operations, and collaborative editing as specified in ADR-014: WebSocket Protocol Selection.
 
 **WebSocket Connection URL:**
 
@@ -3917,11 +3917,11 @@ This API Reference document depends on and references the following internal doc
 
 | Document ID | Title | Purpose |
 |-------------|-------|---------|
-| [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards |
-| [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language |
-| [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) | Security Architecture |
-| [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) | Test Plan |
-| [TACHYON-REQ-DOC-V1.0](../../.specs/04_future_state/reqs/documentation_requirements.md) | Documentation Requirements |
+| TACHYON-STD-V1.0 | Coding and Documentation Standards |
+| TACHYON-ADR-001-V1.0 | Rust as Primary Language |
+| TACHYON-ADR-010-V1.0 | Security Architecture |
+| TACHYON-TST-V1.0 | Test Plan |
+| TACHYON-REQ-DOC-V1.0 | Documentation Requirements |
 
 ### 9.2. External Standards
 
@@ -4025,7 +4025,7 @@ This API Reference document fulfills the following requirements:
 
 ### 9.6. Glossary
 
-For terminology used in this document, refer to the project glossary at [`.specs/08_glossary/terminology.md`](../../.specs/08_glossary/terminology.md).
+For terminology used in this document, refer to the project glossary at `Tachyon glossary`.
 
 **Key Terms:**
 
@@ -4048,7 +4048,7 @@ For terminology used in this document, refer to the project glossary at [`.specs
 
 **END OF DOCUMENT**
 
-This document is part of the Tachyon documentation suite and is maintained under version control. For questions or contributions, please refer to the [Contribution Guidelines](../../.specs/04_future_state/reqs/documentation_requirements.md).
+This document is part of the Tachyon documentation suite and is maintained under version control. For questions or contributions, please refer to the Contribution Guidelines.
 
 **Document Status:** Proposed
 

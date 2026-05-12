@@ -1336,11 +1336,11 @@ The Import/Export API provides data portability functionality, enabling users to
 
 | Format | Import | Export | Description |
 |--------|---------|---------|-------------|
-| JSON | ✅ | ✅ | Structured data format with full metadata |
-| Markdown | ✅ | ✅ | Plain text with frontmatter metadata |
-| HTML | ❌ | ✅ | Rendered HTML for web publishing |
-| PDF | ❌ | ✅ | PDF documents for printing/archival |
-| ZIP | ✅ | ✅ | Archive containing multiple documents |
+| JSON | [PASS] | [PASS] | Structured data format with full metadata |
+| Markdown | [PASS] | [PASS] | Plain text with frontmatter metadata |
+| HTML | [FAIL] | [PASS] | Rendered HTML for web publishing |
+| PDF | [FAIL] | [PASS] | PDF documents for printing/archival |
+| ZIP | [PASS] | [PASS] | Archive containing multiple documents |
 
 ### 4.2. Import API
 

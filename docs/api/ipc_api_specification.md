@@ -42,8 +42,8 @@ The specification defines:
 ### 1.2. Applicability
 
 This specification applies to:
-1. Desktop application IPC communication (Tauri frontend ↔ Rust backend)
-2. Web application IPC communication (Leptos frontend ↔ HTTP/2 server)
+1. Desktop application IPC communication (Tauri frontend <-> Rust backend)
+2. Web application IPC communication (Leptos frontend <-> HTTP/2 server)
 3. All IPC command handlers and event emitters
 4. IPC client libraries and integration points
 5. Testing and validation of IPC communication

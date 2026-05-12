@@ -70,13 +70,13 @@ Understanding the Tachyon system architecture is essential for effective perform
 │                    (Tauri + WebView)                      │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌──────────────┐  IPC  ┌──────────────────────────┐   │
-│  │   WebView    │◄──────►│  Local Server (Axum)    │   │
+│  │   WebView    │◄──────-│  Local Server (Axum)    │   │
 │  │  (Leptos)    │       │  - HTTP/2              │   │
 │  └──────────────┘       │  - WebSocket           │   │
 │                        │  - JIT Rendering        │   │
 │                        └──────────────────────────┘   │
 │                                 │                      │
-│                                 ▼                      │
+│                                 -                      │
 │                        ┌──────────────────────────┐   │
 │                        │  Git Repository        │   │
 │                        │  - Content Storage    │   │

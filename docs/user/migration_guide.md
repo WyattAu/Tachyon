@@ -38,10 +38,10 @@ The Tachyon toolchain encompasses:
 ### 1.2. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-UGD-001-V1.0](getting_started.md) - User Guide Overview and Getting Started
+- TACHYON-STD-V1.0 - Coding and Documentation Standards
+- TACHYON-ADR-001-V1.0 - Rust as Primary Language
+- TACHYON-ADR-010-V1.0 - Security Architecture
+- [TACHYON-UGD-001-V1.0](user_guide.md) - User Guide Overview and Getting Started
 
 ### 1.3. Migration Principles
 
@@ -2718,22 +2718,22 @@ Test reporting documents test results and provides visibility into migration rea
 This document references the following internal project documents:
 
 **Standards and Guidelines:**
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- TACHYON-STD-V1.0 - Coding and Documentation Standards
 
 **Architectural Decision Records:**
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- TACHYON-ADR-001-V1.0 - Rust as Primary Language
+- TACHYON-ADR-010-V1.0 - Security Architecture
 
 **User Documentation:**
-- [TACHYON-UGD-001-V1.0](getting_started.md) - User Guide Overview and Getting Started
+- [TACHYON-UGD-001-V1.0](user_guide.md) - User Guide Overview and Getting Started
 - [TACHYON-UGD-002-V1.0](desktop_user_guide.md) - Desktop Application User Guide
 - [TACHYON-UGD-003-V1.0](web_user_guide.md) - Web Application User Guide
 - [TACHYON-UGD-004-V1.0](content_management_guide.md) - Content Management User Guide
 - [TACHYON-UGD-005-V1.0](troubleshooting_guide.md) - Troubleshooting User Guide
 
 **Developer Documentation:**
-- [TACHYON-DGD-001-V1.0](../.specs/06_design_documents/developer_guide_overview.md) - Developer Guide Overview
-- [TACHYON-DGD-002-V1.0](../.specs/06_design_documents/dev_environment_setup.md) - Development Environment Setup
+- TACHYON-DGD-001-V1.0 - Developer Guide Overview
+- TACHYON-DGD-002-V1.0 - Development Environment Setup
 
 **Quality Documentation:**
 - [TACHYON-QLD-001-V1.0](deployment_guide.md) - Deployment Guide
@@ -2785,7 +2785,7 @@ This document references the following external resources:
 
 For terminology definitions used in this document, refer to the project glossary:
 
-- [TACHYON-GLS-V1.0](../.specs/08_glossary/terminology.md) - Terminology and Definitions
+- TACHYON-GLS-V1.0 - Terminology and Definitions
 
 ### 9.5. Change History
 

@@ -2330,14 +2330,14 @@ Authorization is enforced at multiple levels:
 
 | Operation | Read | Write | Admin | Owner |
 |-----------|-------|-------|-------|-------|
-| List Repositories | ✓ | ✓ | ✓ | ✓ |
-| Get Repository | ✓ | ✓ | ✓ | ✓ |
-| Create Repository | ✗ | ✓ | ✓ | ✓ |
-| Update Repository | ✗ | ✓ | ✓ | ✓ |
-| Delete Repository | ✗ | ✗ | ✓ | ✓ |
-| Sync Repository | ✗ | ✓ | ✓ | ✓ |
-| Get Status | ✓ | ✓ | ✓ | ✓ |
-| List Branches | ✓ | ✓ | ✓ | ✓ |
+| List Repositories | [OK] | [OK] | [OK] | [OK] |
+| Get Repository | [OK] | [OK] | [OK] | [OK] |
+| Create Repository | [NO] | [OK] | [OK] | [OK] |
+| Update Repository | [NO] | [OK] | [OK] | [OK] |
+| Delete Repository | [NO] | [NO] | [OK] | [OK] |
+| Sync Repository | [NO] | [OK] | [OK] | [OK] |
+| Get Status | [OK] | [OK] | [OK] | [OK] |
+| List Branches | [OK] | [OK] | [OK] | [OK] |
 
 **Authorization Middleware:**
 

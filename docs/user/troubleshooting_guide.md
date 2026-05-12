@@ -2226,13 +2226,13 @@ This troubleshooting guide references the following internal project documents:
 
 | Document ID | Title | Location |
 |-------------|-------|----------|
-| **TACHYON-STD-V1.0** | Coding and Documentation Standards | [`.specs/01_standards/coding_standards.md`](.specs/01_standards/coding_standards.md) |
-| **TACHYON-ADR-001-V1.0** | Rust as Primary Language | [`.specs/02_adrs/001_rust_as_primary_language.md`](.specs/02_adrs/001_rust_as_primary_language.md) |
-| **TACHYON-ADR-002-V1.0** | Tauri for Desktop Application | [`.specs/02_adrs/002_tauri_for_desktop_application.md`](.specs/02_adrs/002_tauri_for_desktop_application.md) |
-| **TACHYON-ADR-003-V1.0** | Axum for HTTP/2 Server | [`.specs/02_adrs/003_axum_for_http2_server.md`](.specs/02_adrs/003_axum_for_http2_server.md) |
-| **TACHYON-ADR-010-V1.0** | Security Architecture | [`.specs/02_adrs/010_security_architecture.md`](.specs/02_adrs/010_security_architecture.md) |
-| **TACHYON-REQ-SYS-V1.0** | System Overview Requirements | [`.specs/04_future_state/reqs/system_overview.md`](.specs/04_future_state/reqs/system_overview.md) |
-| **TACHYON-TST-V1.0** | Test Plan | [`.specs/04_future_state/test_plan.md`](.specs/04_future_state/test_plan.md) |
+| **TACHYON-STD-V1.0** | Coding and Documentation Standards | `Tachyon standards` |
+| **TACHYON-ADR-001-V1.0** | Rust as Primary Language | `Tachyon ADRs` |
+| **TACHYON-ADR-002-V1.0** | Tauri for Desktop Application | `Tachyon ADRs` |
+| **TACHYON-ADR-003-V1.0** | Axum for HTTP/2 Server | `Tachyon ADRs` |
+| **TACHYON-ADR-010-V1.0** | Security Architecture | `Tachyon ADRs` |
+| **TACHYON-REQ-SYS-V1.0** | System Overview Requirements | `Tachyon requirements` |
+| **TACHYON-TST-V1.0** | Test Plan | `Tachyon test plan` |
 
 ### 9.2. External Standards
 
@@ -2299,7 +2299,7 @@ The following terms are used throughout this document:
 
 **Change Control:**
 
-This document is maintained under version control. All changes must follow the established change management process defined in [`.specs/01_standards/coding_standards.md`](.specs/01_standards/coding_standards.md).
+This document is maintained under version control. All changes must follow the established change management process defined in `Tachyon standards`.
 
 **Document Status:**
 

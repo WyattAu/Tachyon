@@ -1623,7 +1623,7 @@ This technical content requires internal:read permission.
 |----------------|-------------|
 | **Redact** | Replace block content with `[REDACTED CONTENT - INTERNAL]` placeholder |
 | **Hide** | Remove block entirely from rendered output |
-| **Show** | Render block with warning banner: `[⚠ INTERNAL CONTENT - AUTHORIZATION REQUIRED]` |
+| **Show** | Render block with warning banner: `[[WARN] INTERNAL CONTENT - AUTHORIZATION REQUIRED]` |
 
 ### 5.5. Frontmatter Authorization Flow
 

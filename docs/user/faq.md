@@ -34,11 +34,11 @@ The Tachyon toolchain is designed as a hybrid system supporting both local-first
 
 This document depends on the following documents:
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-USER-001-V1.0](user_manual.md) - User Manual
+- TACHYON-STD-V1.0 - Coding and Documentation Standards
+- [TACHYON-USER-001-V1.0](user_guide.md) - User Manual
 - [TACHYON-USER-006-V1.0](troubleshooting_guide.md) - Troubleshooting Guide
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- TACHYON-ADR-001-V1.0 - Rust as Primary Language
+- TACHYON-ADR-010-V1.0 - Security Architecture
 
 ### 1.3. Intended Audience
 
@@ -136,8 +136,8 @@ Tachyon operates as a hybrid system supporting both local-first desktop usage an
 - Cross-platform support (Windows, macOS, Linux)
 - WebAssembly-powered browser interface
 
-**Related Documents:** [User Manual](user_manual.md), [System Architecture Overview](../architecture/system_architecture_overview.md)
-**Related ADRs:** [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md), [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md)
+**Related Documents:** [User Manual](user_guide.md), [System Architecture Overview](../architecture/system_architecture_overview.md)
+**Related ADRs:** ADR-001: Rust as Primary Language, ADR-010: Security Architecture
 **Related Requirements:** REQ-001: System Architecture Requirements, REQ-002: Component Integration Requirements
 
 ---
@@ -169,8 +169,8 @@ Tachyon operates as a hybrid system supporting both local-first desktop usage an
 
 All components share a common Rust-based core engine that implements core functionality including Markdown parsing, search indexing, and content management.
 
-**Related Documents:** [Component Architecture Documentation](../architecture/component_architecture.md), [Deployment Architecture Documentation](../architecture/deployment_architecture.md)
-**Related ADRs:** [ADR-002: Tauri for Desktop Application](../../.specs/02_adrs/002_tauri_for_desktop_application.md), [ADR-003: Axum for HTTP/2 Server](../../.specs/02_adrs/003_axum_for_http2_server.md), [ADR-004: Leptos for Web Frontend](../../.specs/02_adrs/004_leptos_for_web_frontend.md)
+**Related Documents:** Component Architecture Documentation, [Deployment Architecture Documentation](../architecture/deployment_architecture.md)
+**Related ADRs:** ADR-002: Tauri for Desktop Application, ADR-003: Axum for HTTP/2 Server, ADR-004: Leptos for Web Frontend
 **Related Requirements:** REQ-004: Component Design Requirements, REQ-005: Interface Requirements
 
 ---
@@ -187,7 +187,7 @@ The open source nature of Tachyon provides several benefits:
 - **Security:** Public code enables security audits and vulnerability identification
 - **No Vendor Lock-in:** Users maintain control over their data and infrastructure
 
-**Related Documents:** [Contributing Guide](../developer/contributing_guide.md)
+**Related Documents:** Contributing Guide
 **Related Requirements:** REQ-015: Open Source Requirements
 
 ---
@@ -217,10 +217,10 @@ The open source nature of Tachyon provides several benefits:
 - **Nix Flakes:** Reproducible build system
 - **Bun:** JavaScript runtime and package manager for web components
 
-The technology selection prioritizes memory safety, performance, and security, as documented in [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md).
+The technology selection prioritizes memory safety, performance, and security, as documented in ADR-001: Rust as Primary Language.
 
-**Related Documents:** [Technology Stack Documentation](../architecture/technology_stack.md)
-**Related ADRs:** [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md), [ADR-006: Nix Flakes for Build System](../../.specs/02_adrs/006_nix_flakes_for_build_system.md)
+**Related Documents:** Technology Stack Documentation
+**Related ADRs:** ADR-001: Rust as Primary Language, ADR-006: Nix Flakes for Build System
 **Related Requirements:** REQ-006: Communication Requirements, REQ-007: Data Flow Requirements
 
 ---
@@ -251,7 +251,7 @@ Production deployment is recommended on Linux for optimal performance and compat
   - Opera 76+
 
 **Related Documents:** [Deployment Architecture Documentation](../architecture/deployment_architecture.md)
-**Related ADRs:** [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md)
+**Related ADRs:** ADR-001: Rust as Primary Language
 **Related Requirements:** REQ-010: Deployment Requirements, REQ-011: Scalability Requirements
 
 ---
@@ -285,8 +285,8 @@ Production deployment is recommended on Linux for optimal performance and compat
 - Selective sync to control which documents are synchronized
 - Bandwidth-efficient delta transfers
 
-**Related Documents:** [Data Architecture Documentation](../architecture/data_architecture.md), [Data Flow Architecture Documentation](../architecture/data_flow_architecture.md)
-**Related ADRs:** [ADR-005: Git-based Storage Decision](../../.specs/02_adrs/005_git_based_storage_decision.md)
+**Related Documents:** [Data Architecture Documentation](../architecture/data_architecture.md), Data Flow Architecture Documentation
+**Related ADRs:** ADR-005: Git-based Storage Decision
 **Related Requirements:** REQ-007: Data Flow Requirements, REQ-008: Data Integrity Requirements
 
 ---
@@ -330,7 +330,7 @@ flatpak install flathub com.tachyon.Tachyon
 - **macOS:** macOS 11 (Big Sur) or later, 4GB RAM minimum
 - **Linux:** Any modern distribution, 4GB RAM minimum
 
-**Related Documents:** [Installation Guide](getting_started.md#installation)
+**Related Documents:** [Installation Guide](user_guide.md)
 **Related Requirements:** REQ-010: Deployment Requirements
 
 ---
@@ -370,7 +370,7 @@ sudo cp target/release/tachyon-server /usr/local/bin/
 - **Storage:** 10GB minimum for data storage
 - **OS:** Linux (production), macOS/Windows (development)
 
-**Related Documents:** [Server Deployment Guide](../quality/deployment_guide.md)
+**Related Documents:** Server Deployment Guide
 **Related Requirements:** REQ-010: Deployment Requirements, REQ-011: Scalability Requirements
 
 ---
@@ -470,7 +470,7 @@ Tachyon automatically handles data migration between versions. However, it is re
 2. Review the release notes for breaking changes
 3. Test the update in a staging environment first
 
-**Related Documents:** [Release Notes](release_notes.md), [Migration Guide](../developer/migration_guide.md)
+**Related Documents:** [Release Notes](release_notes_template.md), Migration Guide
 **Related Requirements:** REQ-012: High Availability Requirements
 
 ---
@@ -520,7 +520,7 @@ sudo systemctl daemon-reload
 
 **Important:** Uninstalling Tachyon does not automatically delete your documents. You must manually delete your document directories if you wish to remove all data.
 
-**Related Documents:** [Installation Guide](getting_started.md#installation)
+**Related Documents:** [Installation Guide](user_guide.md)
 **Related Requirements:** REQ-010: Deployment Requirements
 
 ---
@@ -663,7 +663,7 @@ The server validates configuration on startup and reports errors. Use the `--val
 tachyon-server --config /etc/tachyon/config.toml --validate
 ```
 
-**Related Documents:** [Server Configuration Guide](../developer/server_configuration.md)
+**Related Documents:** Server Configuration Guide
 **Related Requirements:** REQ-014: Configuration Guide, REQ-016: Security Configuration
 
 ---
@@ -736,8 +736,8 @@ pre_push_hook = "/path/to/pre-push.sh"
 - Commit history and diff viewing
 - Rollback to previous versions
 
-**Related Documents:** [Git Integration Guide](user_manual.md#git-integration)
-**Related ADRs:** [ADR-005: Git-based Storage Decision](../../.specs/02_adrs/005_git_based_storage_decision.md)
+**Related Documents:** [Git Integration Guide](user_guide.md)
+**Related ADRs:** ADR-005: Git-based Storage Decision
 **Related Requirements:** REQ-007: Data Flow Requirements, REQ-008: Data Integrity Requirements
 
 ---
@@ -884,7 +884,7 @@ Tachyon provides several document templates to get started quickly:
 - Git commit is created automatically (if configured)
 - Document is indexed for search (if indexing is enabled)
 
-**Related Documents:** [User Manual](user_manual.md#creating-documents)
+**Related Documents:** [User Manual](user_guide.md)
 **Related Requirements:** REQ-001: System Architecture Requirements
 
 ---
@@ -944,7 +944,7 @@ Tachyon provides a split-view editor with live preview:
 - Real-time rendering updates
 - Responsive preview for different screen sizes
 
-**Related Documents:** [User Manual](user_manual.md#editing-documents)
+**Related Documents:** [User Manual](user_guide.md)
 **Related Requirements:** REQ-001: System Architecture Requirements
 
 ---
@@ -1000,7 +1000,7 @@ Results are ranked by relevance using:
 - Cached results for common queries
 - Background indexing for optimal performance
 
-**Related Documents:** [User Manual](user_manual.md#searching)
+**Related Documents:** [User Manual](user_guide.md)
 **Related Requirements:** REQ-007: Data Flow Requirements
 
 ---
@@ -1071,7 +1071,7 @@ tachyon-cli publish --document "My Document" --format html --output ./output/
 | **Mermaid** | Render diagrams | Disabled |
 | **Image Optimization** | Optimize images | Enabled |
 
-**Related Documents:** [Publishing Guide](user_manual.md#publishing)
+**Related Documents:** [Publishing Guide](user_guide.md)
 **Related Requirements:** REQ-001: System Architecture Requirements
 
 ---
@@ -1143,8 +1143,8 @@ tachyon-cli publish --document "My Document" --format html --output ./output/
 - Use Git for version control
 - Document approval workflows
 
-**Related Documents:** [Collaboration Guide](user_manual.md#collaboration)
-**Related ADRs:** [ADR-009: IPC Communication Architecture](../../.specs/02_adrs/009_ipc_communication_architecture.md)
+**Related Documents:** [Collaboration Guide](user_guide.md)
+**Related ADRs:** ADR-009: IPC Communication Architecture
 **Related Requirements:** REQ-009: Real-time Synchronization Requirements
 
 ---
@@ -1188,8 +1188,8 @@ The JIT rendering engine is implemented in Rust using:
 - **Caching:** LRU cache for rendered content
 - **Tokio:** Async runtime for concurrent rendering
 
-**Related Documents:** [System Architecture Overview](../architecture/system_architecture_overview.md), [API Documentation](../developer/api_reference.md)
-**Related ADRs:** [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md)
+**Related Documents:** [System Architecture Overview](../architecture/system_architecture_overview.md), API Documentation
+**Related ADRs:** ADR-001: Rust as Primary Language
 **Related Requirements:** REQ-001: System Architecture Requirements, REQ-003: Scalability Requirements
 
 ---
@@ -1246,8 +1246,8 @@ The JIT rendering engine is implemented in Rust using:
 - **Memory Scaling:** Constant memory usage per connection
 - **Network Scaling:** Efficient HTTP/2 multiplexing
 
-**Related Documents:** [System Architecture Overview](../architecture/system_architecture_overview.md), [Performance Guide](../developer/performance_guide.md)
-**Related ADRs:** [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md), [ADR-007: Tokio for Async Runtime](../../.specs/02_adrs/007_tokio_for_async_runtime.md)
+**Related Documents:** [System Architecture Overview](../architecture/system_architecture_overview.md), Performance Guide
+**Related ADRs:** ADR-001: Rust as Primary Language, ADR-007: Tokio for Async Runtime
 **Related Requirements:** REQ-003: Scalability Requirements
 
 ---
@@ -1306,8 +1306,8 @@ The JIT rendering engine is implemented in Rust using:
 | **Connection Overhead** | < 1 KB/s | Per connection |
 | **Conflict Rate** | < 1% | Percentage of syncs with conflicts |
 
-**Related Documents:** [Data Flow Architecture Documentation](../architecture/data_flow_architecture.md), [IPC Protocol Specification](../developer/ipc_protocol.md)
-**Related ADRs:** [ADR-009: IPC Communication Architecture](../../.specs/02_adrs/009_ipc_communication_architecture.md)
+**Related Documents:** Data Flow Architecture Documentation, IPC Protocol Specification
+**Related ADRs:** ADR-009: IPC Communication Architecture
 **Related Requirements:** REQ-009: Real-time Synchronization Requirements
 
 ---
@@ -1368,7 +1368,7 @@ The JIT rendering engine is implemented in Rust using:
 | **Index Size** | 10-20% of text | Disk space per document |
 | **Memory Usage** | 100-500 MB | RAM for index cache |
 
-**Related Documents:** [Search Architecture Documentation](../architecture/search_architecture.md), [Search API Reference](../developer/search_api.md)
+**Related Documents:** Search Architecture Documentation, Search API Reference
 **Related Requirements:** REQ-007: Data Flow Requirements
 
 ---
@@ -1434,8 +1434,8 @@ Tachyon's security architecture aligns with:
 - **CWE/SANS Top 25:** Software weaknesses
 - **GDPR:** Data protection and privacy
 
-**Related Documents:** [Security Architecture Documentation](../architecture/security_architecture.md), [Security Guide](../developer/security_guide.md)
-**Related ADRs:** [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md)
+**Related Documents:** Security Architecture Documentation, Security Guide
+**Related ADRs:** ADR-010: Security Architecture
 **Related Requirements:** REQ-016: Security Configuration, REQ-017: Audit Logging
 
 ---
@@ -1449,32 +1449,32 @@ Tachyon's security architecture aligns with:
 **Documentation Categories:**
 
 **User Documentation:**
-- **[User Manual](user_manual.md):** Comprehensive guide for end users
-- **[Getting Started Guide](getting_started.md):** Quick start for new users
+- **[User Manual](user_guide.md):** Comprehensive guide for end users
+- **[Getting Started Guide](user_guide.md):** Quick start for new users
 - **[FAQ](faq.md):** Frequently asked questions (this document)
 - **[Troubleshooting Guide](troubleshooting_guide.md):** Common issues and solutions
-- **[Keyboard Shortcuts](keyboard_shortcuts.md):** Productivity shortcuts
-- **[Release Notes](release_notes.md):** Version history and changes
+- **Keyboard Shortcuts:** Listed in this document
+- **[Release Notes](release_notes_template.md):** Version history and changes
 
 **Developer Documentation:**
-- **[API Reference](../developer/api_reference.md):** Complete API documentation
-- **[Developer Guide](../developer/developer_guide.md):** Development setup and workflows
-- **[Contributing Guide](../developer/contributing_guide.md):** Contribution guidelines
+- **API Reference:** Complete API documentation
+- **Developer Guide:** Development setup and workflows
+- **Contributing Guide:** Contribution guidelines
 - **[Architecture Documentation](../architecture/):** System and component architecture
-- **[Security Guide](../developer/security_guide.md):** Security best practices
-- **[Performance Guide](../developer/performance_guide.md):** Performance optimization
+- **Security Guide:** Security best practices
+- **Performance Guide:** Performance optimization
 
 **Architecture Documentation:**
 - **[System Architecture Overview](../architecture/system_architecture_overview.md):** High-level architecture
-- **[Component Architecture](../architecture/component_architecture.md):** Component details
+- **Component Architecture:** Component details
 - **[Data Architecture](../architecture/data_architecture.md):** Data models and flows
 - **[Deployment Architecture](../architecture/deployment_architecture.md):** Deployment strategies
 
 **Specification Documentation:**
-- **[Requirements](../../.specs/04_future_state/reqs/):** System requirements
-- **[Design Documents](../../.specs/04_future_state/design/):** Detailed designs
-- **[Architectural Decision Records](../../.specs/02_adrs/):** Design decisions
-- **[Test Plan](../../.specs/04_future_state/test_plan.md):** Testing strategy
+- **Requirements:** System requirements
+- **Design Documents:** Detailed designs
+- **Architectural Decision Records:** Design decisions
+- **Test Plan:** Testing strategy
 
 **Documentation Access:**
 
@@ -1485,7 +1485,7 @@ Tachyon's security architecture aligns with:
 | **Source** | https://github.com/tachyon/tachyon | Documentation source repository |
 | **PDF** | Downloadable from website | Printable PDF versions |
 
-**Related Documents:** [User Manual](user_manual.md), [Developer Guide](../developer/developer_guide.md)
+**Related Documents:** [User Manual](user_guide.md), Developer Guide
 **Related Requirements:** REQ-013: Documentation Requirements
 
 ---
@@ -1588,7 +1588,7 @@ When reporting issues, include:
 **Getting Started:**
 
 **1. Read the Contributing Guide:**
-- [Contributing Guide](../developer/contributing_guide.md)
+- Contributing Guide
 - Code of conduct
 - Contribution guidelines
 - Review process
@@ -1641,13 +1641,13 @@ git push origin feature/my-feature
 
 **Contribution Guidelines:**
 
-- Follow the [coding standards](../../.specs/01_standards/coding_standards.md)
+- Follow the coding standards
 - Write tests for new functionality
 - Update documentation for user-facing changes
 - Keep pull requests focused and atomic
 - Respond to review feedback promptly
 
-**Related Documents:** [Contributing Guide](../developer/contributing_guide.md)
+**Related Documents:** Contributing Guide
 **Related Requirements:** REQ-015: Open Source Requirements
 
 ---
@@ -1726,47 +1726,47 @@ git push origin feature/my-feature
 This document references the following internal project documents:
 
 **Standards and Guidelines:**
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TSK-V1.0](../../.specs/tasks.md) - Execution Tasks and Work Breakdown Structure
+- TACHYON-STD-V1.0 - Coding and Documentation Standards
+- TACHYON-TSK-V1.0 - Execution Tasks and Work Breakdown Structure
 
 **Architecture Documentation:**
 - [TACHYON-ARC-001-V1.0](../architecture/system_architecture_overview.md) - System Architecture Overview
-- [TACHYON-ARC-002-V1.0](../architecture/component_architecture.md) - Component Architecture Documentation
-- [TACHYON-ARC-003-V1.0](../architecture/data_flow_architecture.md) - Data Flow Architecture Documentation
+- TACHYON-ARC-002-V1.0 - Component Architecture Documentation
+- TACHYON-ARC-003-V1.0 - Data Flow Architecture Documentation
 - [TACHYON-ARC-004-V1.0](../architecture/deployment_architecture.md) - Deployment Architecture Documentation
 - [TACHYON-ARC-005-V1.0](../architecture/data_architecture.md) - Data Architecture Documentation
 
 **User Documentation:**
-- [TACHYON-USER-001-V1.0](user_manual.md) - User Manual
-- [TACHYON-USER-002-V1.0](getting_started.md) - Getting Started Guide
+- [TACHYON-USER-001-V1.0](user_guide.md) - User Manual
+- [TACHYON-USER-002-V1.0](user_guide.md) - Getting Started Guide
 - [TACHYON-USER-003-V1.0](configuration_guide.md) - Configuration Guide
 - [TACHYON-USER-006-V1.0](troubleshooting_guide.md) - Troubleshooting Guide
-- [TACHYON-USER-009-V1.0](keyboard_shortcuts.md) - Keyboard Shortcuts
-- [TACHYON-USER-013-V1.0](release_notes.md) - Release Notes
+- TACHYON-USER-009-V1.0 - Keyboard Shortcuts
+- [TACHYON-USER-013-V1.0](release_notes_template.md) - Release Notes
 
 **Developer Documentation:**
-- [TACHYON-DEV-001-V1.0](../developer/developer_guide.md) - Developer Guide
-- [TACHYON-DEV-002-V1.0](../developer/contributing_guide.md) - Contributing Guide
-- [TACHYON-DEV-003-V1.0](../developer/api_reference.md) - API Reference
-- [TACHYON-DEV-004-V1.0](../developer/security_guide.md) - Security Guide
-- [TACHYON-DEV-005-V1.0](../developer/performance_guide.md) - Performance Guide
-- [TACHYON-DEV-006-V1.0](../developer/ipc_protocol.md) - IPC Protocol Specification
+- TACHYON-DEV-001-V1.0 - Developer Guide
+- TACHYON-DEV-002-V1.0 - Contributing Guide
+- TACHYON-DEV-003-V1.0 - API Reference
+- TACHYON-DEV-004-V1.0 - Security Guide
+- TACHYON-DEV-005-V1.0 - Performance Guide
+- TACHYON-DEV-006-V1.0 - IPC Protocol Specification
 
 **Architectural Decision Records:**
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-002-V1.0](../../.specs/02_adrs/002_tauri_for_desktop_application.md) - Tauri for Desktop Application
-- [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [TACHYON-ADR-004-V1.0](../../.specs/02_adrs/004_leptos_for_web_frontend.md) - Leptos for Web Frontend
-- [TACHYON-ADR-005-V1.0](../../.specs/02_adrs/005_git_based_storage_decision.md) - Git-based Storage Decision
-- [TACHYON-ADR-007-V1.0](../../.specs/02_adrs/007_tokio_for_async_runtime.md) - Tokio for Async Runtime
-- [TACHYON-ADR-008-V1.0](../../.specs/02_adrs/008_workspace_structure_for_rust_crates.md) - Workspace Structure for Rust Crates
-- [TACHYON-ADR-009-V1.0](../../.specs/02_adrs/009_ipc_communication_architecture.md) - IPC Communication Architecture
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- TACHYON-ADR-001-V1.0 - Rust as Primary Language
+- TACHYON-ADR-002-V1.0 - Tauri for Desktop Application
+- TACHYON-ADR-003-V1.0 - Axum for HTTP/2 Server
+- TACHYON-ADR-004-V1.0 - Leptos for Web Frontend
+- TACHYON-ADR-005-V1.0 - Git-based Storage Decision
+- TACHYON-ADR-007-V1.0 - Tokio for Async Runtime
+- TACHYON-ADR-008-V1.0 - Workspace Structure for Rust Crates
+- TACHYON-ADR-009-V1.0 - IPC Communication Architecture
+- TACHYON-ADR-010-V1.0 - Security Architecture
 
 **Requirements and Design:**
-- [TACHYON-REQ-V1.0](../../.specs/04_future_state/reqs/) - Requirements Specification
-- [TACHYON-DSN-V1.0](../../.specs/04_future_state/design/) - Design Documents
-- [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) - Test Plan
+- TACHYON-REQ-V1.0 - Requirements Specification
+- TACHYON-DSN-V1.0 - Design Documents
+- TACHYON-TST-V1.0 - Test Plan
 
 ### 9.2. External References
 

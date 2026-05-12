@@ -58,13 +58,13 @@ Understanding the Tachyon system architecture is essential for effective debuggi
 │                    (Tauri + WebView)                      │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌──────────────┐  IPC  ┌──────────────────────────┐   │
-│  │   WebView    │◄──────►│  Local Server (Axum)    │   │
+│  │   WebView    │◄──────-│  Local Server (Axum)    │   │
 │  │  (Leptos)    │       │  - HTTP/2              │   │
 │  └──────────────┘       │  - WebSocket           │   │
 │                        │  - JIT Rendering        │   │
 │                        └──────────────────────────┘   │
 │                                 │                      │
-│                                 ▼                      │
+│                                 -                      │
 │                        ┌──────────────────────────┐   │
 │                        │  Git Repository        │   │
 │                        │  - Content Storage    │   │
@@ -3981,11 +3981,11 @@ cargo bench -- --save-baseline baseline
 
 | Component | Target | Current | Target | Status |
 |-----------|--------|---------|--------|
-| **JIT Rendering** | <15ms | <10ms | ✅ Met |
-| **Search Indexing** | <100ms | <50ms | ⚠ Needs optimization |
-| **Database Query** | <50ms | <30ms | ⚠ Needs optimization |
-| **WebSocket** | <50ms | <30ms | ✅ Met |
-| **Cache Hit Rate** | >80% | >90% | ⚠ Needs optimization |
+| **JIT Rendering** | <15ms | <10ms | [PASS] Met |
+| **Search Indexing** | <100ms | <50ms | [WARN] Needs optimization |
+| **Database Query** | <50ms | <30ms | [WARN] Needs optimization |
+| **WebSocket** | <50ms | <30ms | [PASS] Met |
+| **Cache Hit Rate** | >80% | >90% | [WARN] Needs optimization |
 
 **Optimization Recommendations:**
 

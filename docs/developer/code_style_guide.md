@@ -68,10 +68,10 @@ The Tachyon code style framework is founded upon the following principles:
 **Rationale:** Clear code is easier to understand, maintain, and debug. Clever code that sacrifices clarity increases cognitive load and introduces maintenance risks.
 
 **Examples:**
-- ✅ Use descriptive variable names that explain their purpose
-- ✅ Write straightforward logic that can be understood at a glance
-- ❌ Avoid obscure language features that require deep knowledge
-- ❌ Avoid code golf or excessive one-liners
+- [PASS] Use descriptive variable names that explain their purpose
+- [PASS] Write straightforward logic that can be understood at a glance
+- [FAIL] Avoid obscure language features that require deep knowledge
+- [FAIL] Avoid code golf or excessive one-liners
 
 #### 2.1.2. Consistency Over Convention
 
@@ -80,10 +80,10 @@ The Tachyon code style framework is founded upon the following principles:
 **Rationale:** Consistent code reduces cognitive load when navigating the codebase. Readers should not encounter different styles for similar constructs.
 
 **Examples:**
-- ✅ Follow existing patterns in the codebase
-- ✅ Use the same naming conventions across modules
-- ❌ Avoid introducing new conventions without consensus
-- ❌ Avoid mixing different styles for similar constructs
+- [PASS] Follow existing patterns in the codebase
+- [PASS] Use the same naming conventions across modules
+- [FAIL] Avoid introducing new conventions without consensus
+- [FAIL] Avoid mixing different styles for similar constructs
 
 #### 2.1.3. Explicit Over Implicit
 
@@ -92,10 +92,10 @@ The Tachyon code style framework is founded upon the following principles:
 **Rationale:** Explicit code is self-documenting and reduces the cognitive load required to understand behavior. Implicit behavior often requires knowledge of language-specific rules.
 
 **Examples:**
-- ✅ Use explicit type annotations for public interfaces
-- ✅ Use explicit error handling with clear error messages
-- ❌ Avoid relying on implicit type conversions
-- ❌ Avoid relying on implicit default values
+- [PASS] Use explicit type annotations for public interfaces
+- [PASS] Use explicit error handling with clear error messages
+- [FAIL] Avoid relying on implicit type conversions
+- [FAIL] Avoid relying on implicit default values
 
 #### 2.1.4. Safety Over Performance
 
@@ -104,10 +104,10 @@ The Tachyon code style framework is founded upon the following principles:
 **Rationale:** Safety and correctness are fundamental requirements. Performance optimizations should only be applied when necessary and after profiling.
 
 **Examples:**
-- ✅ Use safe Rust code unless unsafe is absolutely necessary
-- ✅ Use validated input handling
-- ❌ Avoid premature optimization
-- ❌ Avoid unsafe code without rigorous justification
+- [PASS] Use safe Rust code unless unsafe is absolutely necessary
+- [PASS] Use validated input handling
+- [FAIL] Avoid premature optimization
+- [FAIL] Avoid unsafe code without rigorous justification
 
 #### 2.1.5. Documentation Over Assumption
 
@@ -116,11 +116,11 @@ The Tachyon code style framework is founded upon the following principles:
 **Rationale:** Documentation captures knowledge that cannot be expressed in code alone. It explains why code exists, not just what it does.
 
 **Examples:**
-- ✅ Document public APIs with clear descriptions
-- ✅ Explain non-obvious algorithms or design decisions
-- ✅ Document invariants and preconditions
-- ❌ Avoid assuming code is self-explanatory
-- ❌ Avoid omitting documentation for complex logic
+- [PASS] Document public APIs with clear descriptions
+- [PASS] Explain non-obvious algorithms or design decisions
+- [PASS] Document invariants and preconditions
+- [FAIL] Avoid assuming code is self-explanatory
+- [FAIL] Avoid omitting documentation for complex logic
 
 ### 2.2. Tooling Integration
 
@@ -229,23 +229,23 @@ Code reviews verify adherence to code style guidelines.
 
 **Examples:**
 ```rust
-// ✅ Correct: Explicit type annotation for public function
+// [PASS] Correct: Explicit type annotation for public function
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
 }
 
-// ❌ Incorrect: Missing type annotation for public function
+// [FAIL] Incorrect: Missing type annotation for public function
 pub fn calculate_area(width, height) {
     width * height
 }
 
-// ✅ Correct: Explicit type annotation for public struct field
+// [PASS] Correct: Explicit type annotation for public struct field
 pub struct Rectangle {
     pub width: f64,
     pub height: f64,
 }
 
-// ❌ Incorrect: Missing type annotation for public struct field
+// [FAIL] Incorrect: Missing type annotation for public struct field
 pub struct Rectangle {
     pub width,
     pub height,
@@ -260,16 +260,16 @@ pub struct Rectangle {
 
 **Examples:**
 ```rust
-// ✅ Correct: Type inferred from literal
+// [PASS] Correct: Type inferred from literal
 let count = 42;
 
-// ❌ Incorrect: Redundant type annotation
+// [FAIL] Incorrect: Redundant type annotation
 let count: i32 = 42;
 
-// ✅ Correct: Type inferred from function return
+// [PASS] Correct: Type inferred from function return
 let result = calculate_area(10.0, 20.0);
 
-// ❌ Incorrect: Redundant type annotation
+// [FAIL] Incorrect: Redundant type annotation
 let result: f64 = calculate_area(10.0, 20.0);
 ```
 
@@ -281,13 +281,13 @@ let result: f64 = calculate_area(10.0, 20.0);
 
 **Examples:**
 ```rust
-// ✅ Correct: Explicit type for complex closure
+// [PASS] Correct: Explicit type for complex closure
 let filter_fn: Box<dyn Fn(&i32) -> bool> = Box::new(|x| x > 0);
 
-// ✅ Correct: Explicit type for complex iterator
+// [PASS] Correct: Explicit type for complex iterator
 let numbers: Vec<i32> = (0..100).filter(|x| x % 2 == 0).collect();
 
-// ✅ Correct: Explicit type for trait object
+// [PASS] Correct: Explicit type for trait object
 let writer: Box<dyn std::io::Write> = Box::new(std::io::stdout());
 ```
 
@@ -301,19 +301,19 @@ let writer: Box<dyn std::io::Write> = Box::new(std::io::stdout());
 
 **Examples:**
 ```rust
-// ✅ Correct: Multiple immutable references
+// [PASS] Correct: Multiple immutable references
 fn process_values(values: &[i32]) {
     let first = &values[0];
     let second = &values[1];
     // Both references are valid here
 }
 
-// ✅ Correct: Single mutable reference
+// [PASS] Correct: Single mutable reference
 fn modify_values(values: &mut [i32]) {
     values[0] = 42;
 }
 
-// ❌ Incorrect: Multiple mutable references
+// [FAIL] Incorrect: Multiple mutable references
 fn invalid_borrow(values: &mut [i32]) {
     let first = &mut values[0];
     let second = &mut values[1];  // Compile-time error
@@ -328,7 +328,7 @@ fn invalid_borrow(values: &mut [i32]) {
 
 **Examples:**
 ```rust
-// ✅ Correct: Explicit lifetime annotation
+// [PASS] Correct: Explicit lifetime annotation
 fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
     if x.len() > y.len() {
         x
@@ -337,7 +337,7 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
     }
 }
 
-// ❌ Incorrect: Missing lifetime annotation
+// [FAIL] Incorrect: Missing lifetime annotation
 fn longest(x: &str, y: &str) -> &str {
     if x.len() > y.len() {
         x
@@ -355,12 +355,12 @@ fn longest(x: &str, y: &str) -> &str {
 
 **Examples:**
 ```rust
-// ✅ Correct: Lifetime elision applies (single input, output is reference)
+// [PASS] Correct: Lifetime elision applies (single input, output is reference)
 fn first_word(s: &str) -> &str {
     s.split_whitespace().next().unwrap_or("")
 }
 
-// ✅ Correct: Lifetime elision applies (method with self)
+// [PASS] Correct: Lifetime elision applies (method with self)
 impl String {
     fn as_bytes(&self) -> &[u8] {
         self.as_bytes()
@@ -378,12 +378,12 @@ impl String {
 
 **Examples:**
 ```rust
-// ✅ Correct: Return Result for fallible operation
+// [PASS] Correct: Return Result for fallible operation
 pub fn parse_number(s: &str) -> Result<i32, ParseIntError> {
     s.parse::<i32>()
 }
 
-// ❌ Incorrect: Panic on error
+// [FAIL] Incorrect: Panic on error
 pub fn parse_number(s: &str) -> i32 {
     s.parse::<i32>().unwrap()
 }
@@ -397,12 +397,12 @@ pub fn parse_number(s: &str) -> i32 {
 
 **Examples:**
 ```rust
-// ✅ Correct: Return Option for optional value
+// [PASS] Correct: Return Option for optional value
 pub fn find_first(items: &[i32], target: i32) -> Option<usize> {
     items.iter().position(|&x| x == target)
 }
 
-// ❌ Incorrect: Panic on absence
+// [FAIL] Incorrect: Panic on absence
 pub fn find_first(items: &[i32], target: i32) -> usize {
     items.iter().position(|&x| x == target).unwrap()
 }
@@ -416,14 +416,14 @@ pub fn find_first(items: &[i32], target: i32) -> usize {
 
 **Examples:**
 ```rust
-// ✅ Correct: Use ? operator for error propagation
+// [PASS] Correct: Use ? operator for error propagation
 pub fn read_config(path: &str) -> Result<Config, IoError> {
     let content = fs::read_to_string(path)?;
     let config: Config = serde_json::from_str(&content)?;
     Ok(config)
 }
 
-// ❌ Incorrect: Manual error propagation
+// [FAIL] Incorrect: Manual error propagation
 pub fn read_config(path: &str) -> Result<Config, IoError> {
     let content = fs::read_to_string(path).map_err(|e| IoError::Read(e))?;
     let config: Config = serde_json::from_str(&content).map_err(|e| IoError::Parse(e))?;
@@ -441,7 +441,7 @@ pub fn read_config(path: &str) -> Result<Config, IoError> {
 
 **Examples:**
 ```rust
-// ✅ Correct: Exhaustive match on enum
+// [PASS] Correct: Exhaustive match on enum
 enum Color {
     Red,
     Green,
@@ -456,7 +456,7 @@ fn color_name(color: Color) -> &'static str {
     }
 }
 
-// ❌ Incorrect: Non-exhaustive match
+// [FAIL] Incorrect: Non-exhaustive match
 fn color_name(color: Color) -> &'static str {
     match color {
         Color::Red => "red",
@@ -474,7 +474,7 @@ fn color_name(color: Color) -> &'static str {
 
 **Examples:**
 ```rust
-// ✅ Correct: Documented wildcard pattern
+// [PASS] Correct: Documented wildcard pattern
 fn process_result(result: Result<i32, Error>) {
     match result {
         Ok(value) => println!("Success: {}", value),
@@ -482,7 +482,7 @@ fn process_result(result: Result<i32, Error>) {
     }
 }
 
-// ✅ Correct: Wildcard with binding for logging
+// [PASS] Correct: Wildcard with binding for logging
 fn process_result(result: Result<i32, Error>) {
     match result {
         Ok(value) => println!("Success: {}", value),
@@ -499,7 +499,7 @@ fn process_result(result: Result<i32, Error>) {
 
 **Examples:**
 ```rust
-// ✅ Correct: Match guard for complex condition
+// [PASS] Correct: Match guard for complex condition
 fn classify_number(n: i32) -> &'static str {
     match n {
         x if x < 0 => "negative",
@@ -509,7 +509,7 @@ fn classify_number(n: i32) -> &'static str {
     }
 }
 
-// ❌ Incorrect: Additional enum variant for condition
+// [FAIL] Incorrect: Additional enum variant for condition
 enum Number {
     Negative,
     Zero,
@@ -537,13 +537,13 @@ fn classify_number(n: i32) -> Number {
 
 **Examples:**
 ```rust
-// ✅ Correct: Async function with inferred return type
+// [PASS] Correct: Async function with inferred return type
 pub async fn fetch_document(id: &str) -> Result<Document, Error> {
     let response = http_client.get(format!("/documents/{}", id)).send().await?;
     Ok(response.json().await?)
 }
 
-// ❌ Incorrect: Explicit Future return type
+// [FAIL] Incorrect: Explicit Future return type
 pub async fn fetch_document(id: &str) -> Pin<Box<dyn Future<Output = Result<Document, Error>> + Send>> {
     // Unnecessary complexity
 }
@@ -557,7 +557,7 @@ pub async fn fetch_document(id: &str) -> Pin<Box<dyn Future<Output = Result<Docu
 
 **Examples:**
 ```rust
-// ✅ Correct: Explicit await for async operations
+// [PASS] Correct: Explicit await for async operations
 pub async fn process_documents() -> Result<(), Error> {
     let docs = fetch_all_documents().await?;
     for doc in docs {
@@ -566,7 +566,7 @@ pub async fn process_documents() -> Result<(), Error> {
     Ok(())
 }
 
-// ❌ Incorrect: Blocking on async operation
+// [FAIL] Incorrect: Blocking on async operation
 pub fn process_documents() -> Result<(), Error> {
     let docs = tokio::runtime::Runtime::new().unwrap().block_on(fetch_all_documents())?;
     for doc in docs {
@@ -586,14 +586,14 @@ pub fn process_documents() -> Result<(), Error> {
 
 **Examples:**
 ```rust
-// ✅ Correct: Tokio multi-threaded runtime
+// [PASS] Correct: Tokio multi-threaded runtime
 #[tokio::main(flavor = "multi_threaded", worker_threads = 4)]
 async fn main() -> Result<(), Error> {
     // Application code
     Ok(())
 }
 
-// ❌ Incorrect: Single-threaded runtime
+// [FAIL] Incorrect: Single-threaded runtime
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Error> {
     // Application code
@@ -638,17 +638,17 @@ async fn main() -> Result<(), Error> {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Explicit type annotation for parameter
+// [PASS] Correct: Explicit type annotation for parameter
 function calculateArea(width: number, height: number): number {
   return width * height;
 }
 
-// ❌ Incorrect: Missing type annotation
+// [FAIL] Incorrect: Missing type annotation
 function calculateArea(width, height) {
   return width * height;
 }
 
-// ✅ Correct: Arrow function with explicit types
+// [PASS] Correct: Arrow function with explicit types
 const calculateArea = (width: number, height: number): number => {
   return width * height;
 };
@@ -662,17 +662,17 @@ const calculateArea = (width: number, height: number): number => {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Explicit return type annotation
+// [PASS] Correct: Explicit return type annotation
 function calculateArea(width: number, height: number): number {
   return width * height;
 }
 
-// ❌ Incorrect: Missing return type annotation
+// [FAIL] Incorrect: Missing return type annotation
 function calculateArea(width: number, height: number) {
   return width * height;
 }
 
-// ✅ Correct: Arrow function with explicit return type
+// [PASS] Correct: Arrow function with explicit return type
 const calculateArea = (width: number, height: number): number => {
   return width * height;
 };
@@ -686,7 +686,7 @@ const calculateArea = (width: number, height: number): number => {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Explicit type for complex object
+// [PASS] Correct: Explicit type for complex object
 const config: {
   apiUrl: string;
   timeout: number;
@@ -697,10 +697,10 @@ const config: {
   retries: 3
 };
 
-// ✅ Correct: Type inferred from literal
+// [PASS] Correct: Type inferred from literal
 const count = 42;
 
-// ✅ Correct: Explicit type for readability
+// [PASS] Correct: Explicit type for readability
 const userId: string = getUserSession().userId;
 ```
 
@@ -714,7 +714,7 @@ const userId: string = getUserSession().userId;
 
 **Examples:**
 ```typescript
-// ✅ Correct: Interface for extensible object shape
+// [PASS] Correct: Interface for extensible object shape
 interface User {
   id: string;
   name: string;
@@ -726,7 +726,7 @@ interface User {
   createdAt: Date;
 }
 
-// ✅ Correct: Interface for class implementation
+// [PASS] Correct: Interface for class implementation
 interface Serializable {
   serialize(): string;
 }
@@ -746,16 +746,16 @@ class Document implements Serializable {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Type alias for union type
+// [PASS] Correct: Type alias for union type
 type Status = 'pending' | 'active' | 'completed' | 'failed';
 
-// ✅ Correct: Type alias for intersection type
+// [PASS] Correct: Type alias for intersection type
 type Timestamped<T> = T & {
   createdAt: Date;
   updatedAt: Date;
 };
 
-// ✅ Correct: Type alias for complex type expression
+// [PASS] Correct: Type alias for complex type expression
 type ApiResponse<T> = {
   data: T;
   status: number;
@@ -771,12 +771,12 @@ type ApiResponse<T> = {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Single-letter generic parameter
+// [PASS] Correct: Single-letter generic parameter
 function identity<T>(value: T): T {
   return value;
 }
 
-// ✅ Correct: Descriptive multi-letter generic parameter
+// [PASS] Correct: Descriptive multi-letter generic parameter
 function map<TInput, TOutput>(
   items: TInput[],
   mapper: (item: TInput) => TOutput
@@ -784,7 +784,7 @@ function map<TInput, TOutput>(
   return items.map(mapper);
 }
 
-// ✅ Correct: Constrained generic parameter
+// [PASS] Correct: Constrained generic parameter
 function length<T extends { length: number }>(value: T): number {
   return value.length;
 }
@@ -800,7 +800,7 @@ function length<T extends { length: number }>(value: T): number {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Explicit null check
+// [PASS] Correct: Explicit null check
 function getUserName(user: User | null): string {
   if (user === null) {
     return 'Anonymous';
@@ -808,12 +808,12 @@ function getUserName(user: User | null): string {
   return user.name;
 }
 
-// ✅ Correct: Optional chaining with nullish coalescing
+// [PASS] Correct: Optional chaining with nullish coalescing
 function getUserName(user: User | null): string {
   return user?.name ?? 'Anonymous';
 }
 
-// ❌ Incorrect: Implicit null check
+// [FAIL] Incorrect: Implicit null check
 function getUserName(user: User | null): string {
   return user.name;  // Runtime error if user is null
 }
@@ -827,10 +827,10 @@ function getUserName(user: User | null): string {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Optional chaining
+// [PASS] Correct: Optional chaining
 const city = user?.address?.city;
 
-// ❌ Incorrect: Nested property access without null check
+// [FAIL] Incorrect: Nested property access without null check
 const city = user.address.city;  // Runtime error if user or address is null
 ```
 
@@ -842,10 +842,10 @@ const city = user.address.city;  // Runtime error if user or address is null
 
 **Examples:**
 ```typescript
-// ✅ Correct: Nullish coalescing
+// [PASS] Correct: Nullish coalescing
 const timeout = config?.timeout ?? 5000;
 
-// ❌ Incorrect: Logical OR operator
+// [FAIL] Incorrect: Logical OR operator
 const timeout = config?.timeout || 5000;  // Uses default if timeout is 0
 ```
 
@@ -859,13 +859,13 @@ const timeout = config?.timeout || 5000;  // Uses default if timeout is 0
 
 **Examples:**
 ```typescript
-// ✅ Correct: Async function with Promise return type
+// [PASS] Correct: Async function with Promise return type
 async function fetchDocument(id: string): Promise<Document> {
   const response = await fetch(`/api/documents/${id}`);
   return response.json();
 }
 
-// ❌ Incorrect: Explicit Promise return type without async
+// [FAIL] Incorrect: Explicit Promise return type without async
 function fetchDocument(id: string): Promise<Document> {
   return fetch(`/api/documents/${id}`).then(response => response.json());
 }
@@ -879,7 +879,7 @@ function fetchDocument(id: string): Promise<Document> {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Explicit await for async operations
+// [PASS] Correct: Explicit await for async operations
 async function processDocuments(): Promise<void> {
   const docs = await fetchAllDocuments();
   for (const doc of docs) {
@@ -887,7 +887,7 @@ async function processDocuments(): Promise<void> {
   }
 }
 
-// ❌ Incorrect: Promise chaining
+// [FAIL] Incorrect: Promise chaining
 function processDocuments(): Promise<void> {
   return fetchAllDocuments().then(docs => {
     return Promise.all(docs.map(doc => processDocument(doc)));
@@ -903,7 +903,7 @@ function processDocuments(): Promise<void> {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Try/catch for error handling
+// [PASS] Correct: Try/catch for error handling
 async function fetchDocument(id: string): Promise<Document | null> {
   try {
     const response = await fetch(`/api/documents/${id}`);
@@ -914,7 +914,7 @@ async function fetchDocument(id: string): Promise<Document | null> {
   }
 }
 
-// ❌ Incorrect: No error handling
+// [FAIL] Incorrect: No error handling
 async function fetchDocument(id: string): Promise<Document> {
   const response = await fetch(`/api/documents/${id}`);
   return response.json();  // Unhandled rejection if fetch fails
@@ -933,7 +933,7 @@ async function fetchDocument(id: string): Promise<Document> {
 
 **Examples:**
 ```rust
-// ✅ Correct: Leptos component structure
+// [PASS] Correct: Leptos component structure
 #[component]
 pub fn DocumentViewer(
     document_id: String,
@@ -972,7 +972,7 @@ pub fn DocumentViewer(
 
 **Examples:**
 ```rust
-// ✅ Correct: Signal for reactive state
+// [PASS] Correct: Signal for reactive state
 #[component]
 pub fn Counter() -> impl IntoView {
     let (count, set_count) = create_signal(0);
@@ -995,7 +995,7 @@ pub fn Counter() -> impl IntoView {
 
 **Examples:**
 ```rust
-// ✅ Correct: Resource for async data fetching
+// [PASS] Correct: Resource for async data fetching
 #[component]
 pub fn UserProfile(user_id: String) -> impl IntoView {
     let user = use_resource(move || async move {
@@ -1032,8 +1032,8 @@ pub fn UserProfile(user_id: String) -> impl IntoView {
 **Rationale:** Descriptive names improve code readability and reduce cognitive load. Pronounceable names improve communication. Searchable names enable efficient code navigation.
 
 **Examples:**
-- ✅ `calculate_area`, `user_id`, `document_title`
-- ❌ `calc`, `uid`, `dt`
+- [PASS] `calculate_area`, `user_id`, `document_title`
+- [FAIL] `calc`, `uid`, `dt`
 
 ### 5.2. Rust Naming Conventions
 
@@ -1045,26 +1045,26 @@ pub fn UserProfile(user_id: String) -> impl IntoView {
 
 **Examples:**
 ```rust
-// ✅ Correct: PascalCase for struct
+// [PASS] Correct: PascalCase for struct
 pub struct Document {
     pub id: String,
     pub title: String,
     pub content: String,
 }
 
-// ✅ Correct: PascalCase for enum
+// [PASS] Correct: PascalCase for enum
 pub enum DocumentStatus {
     Draft,
     Published,
     Archived,
 }
 
-// ❌ Incorrect: snake_case for struct
+// [FAIL] Incorrect: snake_case for struct
 pub struct document {
     pub id: String,
 }
 
-// ❌ Incorrect: SCREAMING_SNAKE_CASE for enum
+// [FAIL] Incorrect: SCREAMING_SNAKE_CASE for enum
 pub enum DOCUMENT_STATUS {
     DRAFT,
     PUBLISHED,
@@ -1079,24 +1079,24 @@ pub enum DOCUMENT_STATUS {
 
 **Examples:**
 ```rust
-// ✅ Correct: snake_case for function
+// [PASS] Correct: snake_case for function
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
 }
 
-// ✅ Correct: snake_case for method
+// [PASS] Correct: snake_case for method
 impl Document {
     pub fn get_title(&self) -> &str {
         &self.title
     }
 }
 
-// ❌ Incorrect: camelCase for function
+// [FAIL] Incorrect: camelCase for function
 pub fn calculateArea(width: f64, height: f64) -> f64 {
     width * height
 }
 
-// ❌ Incorrect: PascalCase for method
+// [FAIL] Incorrect: PascalCase for method
 impl Document {
     pub fn GetTitle(&self) -> &str {
         &self.title
@@ -1112,19 +1112,19 @@ impl Document {
 
 **Examples:**
 ```rust
-// ✅ Correct: snake_case for variable
+// [PASS] Correct: snake_case for variable
 let user_id = get_user_id();
 
-// ✅ Correct: snake_case for struct field
+// [PASS] Correct: snake_case for struct field
 pub struct User {
     pub user_id: String,
     pub user_name: String,
 }
 
-// ❌ Incorrect: camelCase for variable
+// [FAIL] Incorrect: camelCase for variable
 let userId = get_user_id();
 
-// ❌ Incorrect: SCREAMING_SNAKE_CASE for field
+// [FAIL] Incorrect: SCREAMING_SNAKE_CASE for field
 pub struct User {
     pub USER_ID: String,
 }
@@ -1138,14 +1138,14 @@ pub struct User {
 
 **Examples:**
 ```rust
-// ✅ Correct: SCREAMING_SNAKE_CASE for constant
+// [PASS] Correct: SCREAMING_SNAKE_CASE for constant
 pub const MAX_DOCUMENT_SIZE: usize = 10_000_000;
 pub const DEFAULT_TIMEOUT_MS: u64 = 5000;
 
-// ❌ Incorrect: snake_case for constant
+// [FAIL] Incorrect: snake_case for constant
 pub const max_document_size: usize = 10_000_000;
 
-// ❌ Incorrect: PascalCase for constant
+// [FAIL] Incorrect: PascalCase for constant
 pub const MaxDocumentSize: usize = 10_000_000;
 ```
 
@@ -1157,12 +1157,12 @@ pub const MaxDocumentSize: usize = 10_000_000;
 
 **Examples:**
 ```rust
-// ✅ Correct: Single uppercase letter for type parameter
+// [PASS] Correct: Single uppercase letter for type parameter
 pub fn identity<T>(value: T) -> T {
     value
 }
 
-// ✅ Correct: Descriptive type parameter when clarity is needed
+// [PASS] Correct: Descriptive type parameter when clarity is needed
 pub fn map<TInput, TOutput>(
     items: Vec<TInput>,
     mapper: fn(TInput) -> TOutput,
@@ -1170,7 +1170,7 @@ pub fn map<TInput, TOutput>(
     items.into_iter().map(mapper).collect()
 }
 
-// ❌ Incorrect: lowercase for type parameter
+// [FAIL] Incorrect: lowercase for type parameter
 pub fn identity<t>(value: t) -> t {
     value
 }
@@ -1184,14 +1184,14 @@ pub fn identity<t>(value: t) -> t {
 
 **Examples:**
 ```rust
-// ✅ Correct: snake_case for module
+// [PASS] Correct: snake_case for module
 mod document_manager {
     pub fn create_document() -> Document {
         // Implementation
     }
 }
 
-// ❌ Incorrect: PascalCase for module
+// [FAIL] Incorrect: PascalCase for module
 mod DocumentManager {
     pub fn CreateDocument() -> Document {
         // Implementation
@@ -1209,22 +1209,22 @@ mod DocumentManager {
 
 **Examples:**
 ```typescript
-// ✅ Correct: PascalCase for interface
+// [PASS] Correct: PascalCase for interface
 interface User {
   id: string;
   name: string;
   email: string;
 }
 
-// ✅ Correct: PascalCase for type alias
+// [PASS] Correct: PascalCase for type alias
 type DocumentStatus = 'draft' | 'published' | 'archived';
 
-// ❌ Incorrect: camelCase for interface
+// [FAIL] Incorrect: camelCase for interface
 interface user {
   id: string;
 }
 
-// ❌ Incorrect: snake_case for type alias
+// [FAIL] Incorrect: snake_case for type alias
 type document_status = 'draft' | 'published' | 'archived';
 ```
 
@@ -1236,24 +1236,24 @@ type document_status = 'draft' | 'published' | 'archived';
 
 **Examples:**
 ```typescript
-// ✅ Correct: camelCase for function
+// [PASS] Correct: camelCase for function
 function calculateArea(width: number, height: number): number {
   return width * height;
 }
 
-// ✅ Correct: camelCase for method
+// [PASS] Correct: camelCase for method
 class Document {
   getTitle(): string {
     return this.title;
   }
 }
 
-// ❌ Incorrect: snake_case for function
+// [FAIL] Incorrect: snake_case for function
 function calculate_area(width: number, height: number): number {
   return width * height;
 }
 
-// ❌ Incorrect: PascalCase for method
+// [FAIL] Incorrect: PascalCase for method
 class Document {
   GetTitle(): string {
     return this.title;
@@ -1269,19 +1269,19 @@ class Document {
 
 **Examples:**
 ```typescript
-// ✅ Correct: camelCase for variable
+// [PASS] Correct: camelCase for variable
 const userId = getUserId();
 
-// ✅ Correct: camelCase for property
+// [PASS] Correct: camelCase for property
 interface User {
   userId: string;
   userName: string;
 }
 
-// ❌ Incorrect: snake_case for variable
+// [FAIL] Incorrect: snake_case for variable
 const user_id = getUserId();
 
-// ❌ Incorrect: SCREAMING_SNAKE_CASE for property
+// [FAIL] Incorrect: SCREAMING_SNAKE_CASE for property
 interface User {
   USER_ID: string;
 }
@@ -1295,14 +1295,14 @@ interface User {
 
 **Examples:**
 ```typescript
-// ✅ Correct: SCREAMING_SNAKE_CASE for constant
+// [PASS] Correct: SCREAMING_SNAKE_CASE for constant
 const MAX_DOCUMENT_SIZE = 10_000_000;
 const DEFAULT_TIMEOUT_MS = 5000;
 
-// ❌ Incorrect: camelCase for constant
+// [FAIL] Incorrect: camelCase for constant
 const maxDocumentSize = 10_000_000;
 
-// ❌ Incorrect: PascalCase for constant
+// [FAIL] Incorrect: PascalCase for constant
 const MaxDocumentSize = 10_000_000;
 ```
 
@@ -1314,14 +1314,14 @@ const MaxDocumentSize = 10_000_000;
 
 **Examples:**
 ```typescript
-// ✅ Correct: PascalCase for class
+// [PASS] Correct: PascalCase for class
 class DocumentManager {
   createDocument(): Document {
     // Implementation
   }
 }
 
-// ❌ Incorrect: camelCase for class
+// [FAIL] Incorrect: camelCase for class
 class documentManager {
   createDocument(): Document {
     // Implementation
@@ -1337,12 +1337,12 @@ class documentManager {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Single uppercase letter for type parameter
+// [PASS] Correct: Single uppercase letter for type parameter
 function identity<T>(value: T): T {
   return value;
 }
 
-// ✅ Correct: Descriptive type parameter when clarity is needed
+// [PASS] Correct: Descriptive type parameter when clarity is needed
 function map<TInput, TOutput>(
   items: TInput[],
   mapper: (item: TInput) => TOutput,
@@ -1350,7 +1350,7 @@ function map<TInput, TOutput>(
   return items.map(mapper);
 }
 
-// ❌ Incorrect: lowercase for type parameter
+// [FAIL] Incorrect: lowercase for type parameter
 function identity<t>(value: t): t {
   return value;
 }
@@ -1365,8 +1365,8 @@ function identity<t>(value: t): t {
 **Rationale:** SnakeCase matches Rust's module naming convention and is case-insensitive on some file systems.
 
 **Examples:**
-- ✅ `document_manager.rs`, `user_service.rs`, `api_handler.rs`
-- ❌ `DocumentManager.rs`, `UserService.rs`, `api-handler.rs`
+- [PASS] `document_manager.rs`, `user_service.rs`, `api_handler.rs`
+- [FAIL] `DocumentManager.rs`, `UserService.rs`, `api-handler.rs`
 
 #### 5.4.2. TypeScript File Names
 
@@ -1375,8 +1375,8 @@ function identity<t>(value: t): t {
 **Rationale:** camelCase matches component naming conventions. kebab-case is readable for utility files.
 
 **Examples:**
-- ✅ `DocumentViewer.tsx`, `UserProfile.tsx`, `api-client.ts`
-- ❌ `document-viewer.tsx`, `user_profile.tsx`, `ApiClient.ts`
+- [PASS] `DocumentViewer.tsx`, `UserProfile.tsx`, `api-client.ts`
+- [FAIL] `document-viewer.tsx`, `user_profile.tsx`, `ApiClient.ts`
 
 #### 5.4.3. Directory Names
 
@@ -1385,8 +1385,8 @@ function identity<t>(value: t): t {
 **Rationale:** kebab-case is readable and avoids case-sensitivity issues across different file systems.
 
 **Examples:**
-- ✅ `document-manager/`, `user-service/`, `api-handler/`
-- ❌ `document_manager/`, `UserService/`, `apiHandler/`
+- [PASS] `document-manager/`, `user-service/`, `api-handler/`
+- [FAIL] `document_manager/`, `UserService/`, `apiHandler/`
 ```
 
 ---
@@ -1403,7 +1403,7 @@ function identity<t>(value: t): t {
 
 **Examples:**
 ```rust
-// ✅ Correct: 4 spaces for indentation
+// [PASS] Correct: 4 spaces for indentation
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     if width > 0 && height > 0 {
         let area = width * height;
@@ -1413,7 +1413,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
     }
 }
 
-// ❌ Incorrect: Tabs for indentation
+// [FAIL] Incorrect: Tabs for indentation
 pub fn calculate_area(width: f64, height: f64) -> f64 {
 	if width > 0 && height > 0 {
 		let area = width * height;
@@ -1432,7 +1432,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
 
 **Examples:**
 ```typescript
-// ✅ Correct: 2 spaces for indentation
+// [PASS] Correct: 2 spaces for indentation
 function calculateArea(width: number, height: number): number {
   if (width > 0 && height > 0) {
     const area = width * height;
@@ -1442,7 +1442,7 @@ function calculateArea(width: number, height: number): number {
   }
 }
 
-// ❌ Incorrect: Tabs for indentation
+// [FAIL] Incorrect: Tabs for indentation
 function calculateArea(width: number, height: number): number {
 	if (width > 0 && height > 0) {
 		const area = width * height;
@@ -1463,12 +1463,12 @@ function calculateArea(width: number, height: number): number {
 
 **Examples:**
 ```rust
-// ✅ Correct: Line under 100 characters
+// [PASS] Correct: Line under 100 characters
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
 }
 
-// ✅ Correct: Long line split across multiple lines
+// [PASS] Correct: Long line split across multiple lines
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     let area = width * height;
     if area > 0.0 {
@@ -1478,7 +1478,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
     }
 }
 
-// ❌ Incorrect: Line exceeds 100 characters
+// [FAIL] Incorrect: Line exceeds 100 characters
 pub fn calculate_area_of_rectangle_given_width_and_height(width: f64, height: f64) -> f64 {
     width * height
 }
@@ -1492,14 +1492,14 @@ pub fn calculate_area_of_rectangle_given_width_and_height(width: f64, height: f6
 
 **Examples:**
 ```rust
-// ✅ Correct: Break at logical boundary
+// [PASS] Correct: Break at logical boundary
 let result = function_name(
     long_parameter_name_1,
     long_parameter_name_2,
     long_parameter_name_3,
 );
 
-// ❌ Incorrect: Arbitrary line break
+// [FAIL] Incorrect: Arbitrary line break
 let result =
     function_name(long_parameter_name_1, long_parameter_name_2, long_parameter_name_3);
 ```
@@ -1514,7 +1514,7 @@ let result =
 
 **Examples:**
 ```rust
-// ✅ Correct: One blank line between functions
+// [PASS] Correct: One blank line between functions
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
 }
@@ -1523,7 +1523,7 @@ pub fn calculate_perimeter(width: f64, height: f64) -> f64 {
     2.0 * (width + height)
 }
 
-// ❌ Incorrect: No blank line between functions
+// [FAIL] Incorrect: No blank line between functions
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
 }
@@ -1540,7 +1540,7 @@ pub fn calculate_perimeter(width: f64, height: f64) -> f64 {
 
 **Examples:**
 ```rust
-// ✅ Correct: Blank lines for logical grouping
+// [PASS] Correct: Blank lines for logical grouping
 pub fn process_document(document: &Document) -> Result<ProcessedDocument, Error> {
     // Validate document
     if document.content.is_empty() {
@@ -1557,7 +1557,7 @@ pub fn process_document(document: &Document) -> Result<ProcessedDocument, Error>
     })
 }
 
-// ❌ Incorrect: No logical grouping
+// [FAIL] Incorrect: No logical grouping
 pub fn process_document(document: &Document) -> Result<ProcessedDocument, Error> {
     if document.content.is_empty() {
         return Err(Error::EmptyContent);
@@ -1580,7 +1580,7 @@ pub fn process_document(document: &Document) -> Result<ProcessedDocument, Error>
 
 **Examples:**
 ```rust
-// ✅ Correct: K&R bracing style
+// [PASS] Correct: K&R bracing style
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     if width > 0 && height > 0 {
         let area = width * height;
@@ -1590,7 +1590,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
     }
 }
 
-// ❌ Incorrect: Allman bracing style
+// [FAIL] Incorrect: Allman bracing style
 pub fn calculate_area(width: f64, height: f64) -> f64
 {
     if width > 0 && height > 0
@@ -1613,7 +1613,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64
 
 **Examples:**
 ```typescript
-// ✅ Correct: K&R bracing style
+// [PASS] Correct: K&R bracing style
 function calculateArea(width: number, height: number): number {
   if (width > 0 && height > 0) {
     const area = width * height;
@@ -1623,7 +1623,7 @@ function calculateArea(width: number, height: number): number {
   }
 }
 
-// ❌ Incorrect: Allman bracing style
+// [FAIL] Incorrect: Allman bracing style
 function calculateArea(width: number, height: number): number
 {
   if (width > 0 && height > 0)
@@ -1648,18 +1648,18 @@ function calculateArea(width: number, height: number): number
 
 **Examples:**
 ```rust
-// ✅ Correct: Spaces around binary operators
+// [PASS] Correct: Spaces around binary operators
 let result = a + b * c;
 let is_valid = x > 0 && x < 100;
 
-// ✅ Correct: No spaces around unary operators
+// [PASS] Correct: No spaces around unary operators
 let negated = -value;
 let incremented = value++;
 
-// ❌ Incorrect: No spaces around binary operators
+// [FAIL] Incorrect: No spaces around binary operators
 let result = a+b*c;
 
-// ❌ Incorrect: Spaces around unary operators
+// [FAIL] Incorrect: Spaces around unary operators
 let negated = - value;
 ```
 
@@ -1671,10 +1671,10 @@ let negated = - value;
 
 **Examples:**
 ```rust
-// ✅ Correct: Space after comma
+// [PASS] Correct: Space after comma
 let result = function_name(arg1, arg2, arg3);
 
-// ❌ Incorrect: No space after comma
+// [FAIL] Incorrect: No space after comma
 let result = function_name(arg1,arg2,arg3);
 ```
 
@@ -1686,10 +1686,10 @@ let result = function_name(arg1,arg2,arg3);
 
 **Examples:**
 ```rust
-// ✅ Correct: No spaces inside parentheses
+// [PASS] Correct: No spaces inside parentheses
 let result = function_name(arg1, arg2);
 
-// ❌ Incorrect: Spaces inside parentheses
+// [FAIL] Incorrect: Spaces inside parentheses
 let result = function_name( arg1, arg2 );
 ```
 
@@ -1701,12 +1701,12 @@ let result = function_name( arg1, arg2 );
 
 **Examples:**
 ```rust
-// ✅ Correct: No trailing whitespace
+// [PASS] Correct: No trailing whitespace
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
 }
 
-// ❌ Incorrect: Trailing whitespace (shown as ·)
+// [FAIL] Incorrect: Trailing whitespace (shown as ·)
 pub fn calculate_area(width: f64, height: f64) -> f64 {··
     width * height··
 }
@@ -1726,7 +1726,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {··
 
 **Examples:**
 ```rust
-// ✅ Correct: Documentation comment for function
+// [PASS] Correct: Documentation comment for function
 /// Calculates the area of a rectangle.
 ///
 /// # Arguments
@@ -1748,7 +1748,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
 }
 
-// ❌ Incorrect: Regular comment instead of documentation comment
+// [FAIL] Incorrect: Regular comment instead of documentation comment
 // Calculates the area of a rectangle
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
@@ -1763,7 +1763,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
 
 **Examples:**
 ```rust
-// ✅ Correct: Module-level documentation
+// [PASS] Correct: Module-level documentation
 //! Document management module.
 //!
 //! This module provides functionality for creating, reading, updating,
@@ -1773,7 +1773,7 @@ pub mod document_manager {
     // Module implementation
 }
 
-// ❌ Incorrect: No module documentation
+// [FAIL] Incorrect: No module documentation
 pub mod document_manager {
     // Module implementation
 }
@@ -1787,7 +1787,7 @@ pub mod document_manager {
 
 **Examples:**
 ```rust
-// ✅ Correct: Complete documentation with sections
+// [PASS] Correct: Complete documentation with sections
 /// Fetches a document from the database.
 ///
 /// # Arguments
@@ -1815,7 +1815,7 @@ pub async fn fetch_document(id: &str) -> Result<Document, DatabaseError> {
     // Implementation
 }
 
-// ❌ Incorrect: Incomplete documentation
+// [FAIL] Incorrect: Incomplete documentation
 /// Fetches a document from the database.
 pub async fn fetch_document(id: &str) -> Result<Document, DatabaseError> {
     // Implementation
@@ -1832,7 +1832,7 @@ pub async fn fetch_document(id: &str) -> Result<Document, DatabaseError> {
 
 **Examples:**
 ```typescript
-// ✅ Correct: JSDoc comment for function
+// [PASS] Correct: JSDoc comment for function
 /**
  * Calculates the area of a rectangle.
  *
@@ -1850,7 +1850,7 @@ function calculateArea(width: number, height: number): number {
   return width * height;
 }
 
-// ❌ Incorrect: Regular comment instead of JSDoc comment
+// [FAIL] Incorrect: Regular comment instead of JSDoc comment
 // Calculates the area of a rectangle
 function calculateArea(width: number, height: number): number {
   return width * height;
@@ -1865,7 +1865,7 @@ function calculateArea(width: number, height: number): number {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Complete interface documentation
+// [PASS] Correct: Complete interface documentation
 /**
  * Represents a user in the Tachyon system.
  *
@@ -1885,7 +1885,7 @@ interface User {
   email: string;
 }
 
-// ❌ Incorrect: Incomplete interface documentation
+// [FAIL] Incorrect: Incomplete interface documentation
 interface User {
   id: string;
   name: string;
@@ -1901,7 +1901,7 @@ interface User {
 
 **Examples:**
 ```typescript
-// ✅ Correct: Complete class documentation
+// [PASS] Correct: Complete class documentation
 /**
  * Manages documents in the Tachyon system.
  *
@@ -1918,7 +1918,7 @@ class DocumentManager {
   // Class implementation
 }
 
-// ❌ Incorrect: No class documentation
+// [FAIL] Incorrect: No class documentation
 class DocumentManager {
   // Class implementation
 }
@@ -1934,11 +1934,11 @@ class DocumentManager {
 
 **Examples:**
 ```rust
-// ✅ Correct: Comment explains "why"
+// [PASS] Correct: Comment explains "why"
 // Use exponential backoff to avoid overwhelming the server during retries
 let retry_delay = calculate_backoff(attempt);
 
-// ❌ Incorrect: Comment explains "what" (redundant)
+// [FAIL] Incorrect: Comment explains "what" (redundant)
 // Calculate the retry delay
 let retry_delay = calculate_backoff(attempt);
 ```
@@ -1951,13 +1951,13 @@ let retry_delay = calculate_backoff(attempt);
 
 **Examples:**
 ```rust
-// ✅ Correct: Comment above code
+// [PASS] Correct: Comment above code
 // Validate input before processing
 if input.is_empty() {
     return Err(Error::InvalidInput);
 }
 
-// ❌ Incorrect: Comment after code
+// [FAIL] Incorrect: Comment after code
 if input.is_empty() {
     return Err(Error::InvalidInput);
 } // Validate input before processing
@@ -1971,11 +1971,11 @@ if input.is_empty() {
 
 **Examples:**
 ```rust
-// ✅ Correct: TODO with issue reference
+// [PASS] Correct: TODO with issue reference
 // TODO: Implement caching for frequently accessed documents
 // Reference: https://github.com/tachyon/tachyon/issues/123
 
-// ❌ Incorrect: TODO without reference
+// [FAIL] Incorrect: TODO without reference
 // TODO: Implement caching
 ```
 
@@ -1989,7 +1989,7 @@ if input.is_empty() {
 
 **Examples:**
 ```rust
-// ✅ Correct: All public functions documented
+// [PASS] Correct: All public functions documented
 /// Calculates the area of a rectangle.
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
@@ -2000,7 +2000,7 @@ pub fn calculate_perimeter(width: f64, height: f64) -> f64 {
     2.0 * (width + height)
 }
 
-// ❌ Incorrect: Incomplete documentation
+// [FAIL] Incorrect: Incomplete documentation
 /// Calculates the area of a rectangle.
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
@@ -2019,7 +2019,7 @@ pub fn calculate_perimeter(width: f64, height: f64) -> f64 {
 
 **Examples:**
 ```rust
-// ✅ Correct: Documentation matches implementation
+// [PASS] Correct: Documentation matches implementation
 /// Calculates the area of a rectangle.
 ///
 /// # Arguments
@@ -2030,7 +2030,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
 }
 
-// ❌ Incorrect: Documentation does not match implementation
+// [FAIL] Incorrect: Documentation does not match implementation
 /// Calculates the perimeter of a rectangle.
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
@@ -2045,7 +2045,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
 
 **Examples:**
 ```rust
-// ✅ Correct: Documentation includes example
+// [PASS] Correct: Documentation includes example
 /// Calculates the area of a rectangle.
 ///
 /// # Examples
@@ -2058,7 +2058,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
 }
 
-// ❌ Incorrect: No example in documentation
+// [FAIL] Incorrect: No example in documentation
 /// Calculates the area of a rectangle.
 pub fn calculate_area(width: f64, height: f64) -> f64 {
     width * height
@@ -2081,12 +2081,12 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
 
 **Examples:**
 \`\`\`rust
-// ✅ Correct: Return Result for fallible operation
+// [PASS] Correct: Return Result for fallible operation
 pub fn parse_number(s: &str) -> Result<i32, ParseIntError> {
     s.parse::<i32>()
 }
 
-// ❌ Incorrect: Panic on error
+// [FAIL] Incorrect: Panic on error
 pub fn parse_number(s: &str) -> i32 {
     s.parse::<i32>().unwrap()
 }
@@ -2100,7 +2100,7 @@ pub fn parse_number(s: &str) -> i32 {
 
 **Examples:**
 \`\`\`rust
-// ✅ Correct: Custom error type with thiserror
+// [PASS] Correct: Custom error type with thiserror
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -2113,7 +2113,7 @@ pub enum DocumentError {
     PermissionDenied,
 }
 
-// ❌ Incorrect: Using String for errors
+// [FAIL] Incorrect: Using String for errors
 pub fn fetch_document(id: &str) -> Result<Document, String> {
     // Implementation
 }
@@ -2127,14 +2127,14 @@ pub fn fetch_document(id: &str) -> Result<Document, String> {
 
 **Examples:**
 \`\`\`rust
-// ✅ Correct: Use ? operator for error propagation
+// [PASS] Correct: Use ? operator for error propagation
 pub fn read_config(path: &str) -> Result<Config, IoError> {
     let content = fs::read_to_string(path)?;
     let config: Config = serde_json::from_str(&content)?;
     Ok(config)
 }
 
-// ❌ Incorrect: Manual error propagation
+// [FAIL] Incorrect: Manual error propagation
 pub fn read_config(path: &str) -> Result<Config, IoError> {
     let content = fs::read_to_string(path).map_err(|e| IoError::Read(e))?;
     let config: Config = serde_json::from_str(&content).map_err(|e| IoError::Parse(e))?;
@@ -2150,7 +2150,7 @@ pub fn read_config(path: &str) -> Result<Config, IoError> {
 
 **Examples:**
 \`\`\`rust
-// ✅ Correct: Error with context
+// [PASS] Correct: Error with context
 pub fn fetch_document(id: &str) -> Result<Document, DocumentError> {
     let path = format!("/documents/{}.json", id);
     let content = fs::read_to_string(&path)
@@ -2159,7 +2159,7 @@ pub fn fetch_document(id: &str) -> Result<Document, DocumentError> {
         .map_err(|e| DocumentError::InvalidFormat(format!("Failed to parse {}: {}", path, e)))
 }
 
-// ❌ Incorrect: Error without context
+// [FAIL] Incorrect: Error without context
 pub fn fetch_document(id: &str) -> Result<Document, DocumentError> {
     let content = fs::read_to_string(&path)?;
     serde_json::from_str(&content)?
@@ -2174,7 +2174,7 @@ pub fn fetch_document(id: &str) -> Result<Document, DocumentError> {
 
 **Examples:**
 \`\`\`rust
-// ✅ Correct: Panic for unrecoverable error
+// [PASS] Correct: Panic for unrecoverable error
 pub fn get_document(id: &str) -> Document {
     DOCUMENTS.get(id)
         .expect("Document cache not initialized")
@@ -2183,7 +2183,7 @@ pub fn get_document(id: &str) -> Document {
         .clone()
 }
 
-// ❌ Incorrect: Panic for recoverable error
+// [FAIL] Incorrect: Panic for recoverable error
 pub fn fetch_document(id: &str) -> Document {
     let content = fs::read_to_string(&path).expect("Failed to read document");
     serde_json::from_str(&content).expect("Failed to parse document")
@@ -2200,7 +2200,7 @@ pub fn fetch_document(id: &str) -> Document {
 
 **Examples:**
 \`\`\`typescript
-// ✅ Correct: Custom error class
+// [PASS] Correct: Custom error class
 class DocumentError extends Error {
   constructor(
     public readonly code: string,
@@ -2212,7 +2212,7 @@ class DocumentError extends Error {
   }
 }
 
-// ❌ Incorrect: Using string for errors
+// [FAIL] Incorrect: Using string for errors
 function fetchDocument(id: string): Promise<Document> {
   throw new Error('Failed to fetch document');
 }
@@ -2226,7 +2226,7 @@ function fetchDocument(id: string): Promise<Document> {
 
 **Examples:**
 \`\`\`typescript
-// ✅ Correct: Explicit error propagation
+// [PASS] Correct: Explicit error propagation
 async function readConfig(path: string): Promise<Config> {
   try {
     const content = await fs.readFile(path, 'utf-8');
@@ -2236,7 +2236,7 @@ async function readConfig(path: string): Promise<Config> {
   }
 }
 
-// ❌ Incorrect: Silent error handling
+// [FAIL] Incorrect: Silent error handling
 async function readConfig(path: string): Promise<Config> {
   try {
     const content = await fs.readFile(path, 'utf-8');
@@ -2255,7 +2255,7 @@ async function readConfig(path: string): Promise<Config> {
 
 **Examples:**
 \`\`\`typescript
-// ✅ Correct: Error with context
+// [PASS] Correct: Error with context
 async function fetchDocument(id: string): Promise<Document> {
   try {
     const path = \`/documents/\${id}.json\`;
@@ -2270,7 +2270,7 @@ async function fetchDocument(id: string): Promise<Document> {
   }
 }
 
-// ❌ Incorrect: Error without context
+// [FAIL] Incorrect: Error without context
 async function fetchDocument(id: string): Promise<Document> {
   try {
     const content = await fs.readFile(path, 'utf-8');
@@ -2289,13 +2289,13 @@ async function fetchDocument(id: string): Promise<Document> {
 
 **Examples:**
 \`\`\`typescript
-// ✅ Correct: Never type for unreachable code
+// [PASS] Correct: Never type for unreachable code
 function handleError(error: Error): never {
   console.error('Error:', error);
   throw error;
 }
 
-// ❌ Incorrect: No type annotation for unreachable code
+// [FAIL] Incorrect: No type annotation for unreachable code
 function handleError(error: Error): void {
   console.error('Error:', error);
   throw error;
@@ -2312,7 +2312,7 @@ function handleError(error: Error): void {
 
 **Examples:**
 \`\`\`rust
-// ✅ Correct: Early return for error handling
+// [PASS] Correct: Early return for error handling
 pub fn process_document(document: &Document) -> Result<ProcessedDocument, Error> {
     if document.content.is_empty() {
         return Err(Error::EmptyContent);
@@ -2326,7 +2326,7 @@ pub fn process_document(document: &Document) -> Result<ProcessedDocument, Error>
     Ok(ProcessedDocument::new(document.id.clone(), processed))
 }
 
-// ❌ Incorrect: Deep nesting for error handling
+// [FAIL] Incorrect: Deep nesting for error handling
 pub fn process_document(document: &Document) -> Result<ProcessedDocument, Error> {
     if !document.content.is_empty() {
         if document.content.len() <= MAX_SIZE {
@@ -2349,7 +2349,7 @@ pub fn process_document(document: &Document) -> Result<ProcessedDocument, Error>
 
 **Examples:**
 \`\`\`rust
-// ✅ Correct: Error logging before return
+// [PASS] Correct: Error logging before return
 pub fn fetch_document(id: &str) -> Result<Document, DocumentError> {
     let path = format!("/documents/{}.json", id);
     
@@ -2367,7 +2367,7 @@ pub fn fetch_document(id: &str) -> Result<Document, DocumentError> {
     })
 }
 
-// ❌ Incorrect: No error logging
+// [FAIL] Incorrect: No error logging
 pub fn fetch_document(id: &str) -> Result<Document, DocumentError> {
     let content = fs::read_to_string(&path)?;
     serde_json::from_str(&content)?
@@ -2382,7 +2382,7 @@ pub fn fetch_document(id: &str) -> Result<Document, DocumentError> {
 
 **Examples:**
 \`\`\`rust
-// ✅ Correct: User-friendly error message
+// [PASS] Correct: User-friendly error message
 pub fn validate_document_title(title: &str) -> Result<(), ValidationError> {
     if title.is_empty() {
         return Err(ValidationError::new(
@@ -2399,7 +2399,7 @@ pub fn validate_document_title(title: &str) -> Result<(), ValidationError> {
     Ok(())
 }
 
-// ❌ Incorrect: Technical error message
+// [FAIL] Incorrect: Technical error message
 pub fn validate_document_title(title: &str) -> Result<(), ValidationError> {
     if title.is_empty() {
         return Err(ValidationError::new(

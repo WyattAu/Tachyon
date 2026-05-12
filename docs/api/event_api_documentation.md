@@ -65,12 +65,12 @@ The Event API operates within the Tachyon system architecture as follows:
 │         │                 │                 │               │
 │         └─────────────────┼─────────────────┘               │
 │                           │                                 │
-│                  ┌────────▼────────┐                        │
+│                  ┌────────-────────┐                        │
 │                  │   Event API     │                        │
 │                  │  (This Doc)     │                        │
 │                  └────────┬────────┘                        │
 │                           │                                 │
-│                  ┌────────▼────────┐                        │
+│                  ┌────────-────────┐                        │
 │                  │  Event Bus      │                        │
 │                  │  (Tokio)        │                        │
 │                  └─────────────────┘                        │
@@ -169,12 +169,12 @@ pub trait EventSubscriber {
 
 ```
 ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
-│  Publisher  │────────▶│ Event Bus   │────────▶│ Subscriber  │
+│  Publisher  │────────-│ Event Bus   │────────-│ Subscriber  │
 │             │ Publish │             │ Deliver  │             │
 └─────────────┘         └─────────────┘         └─────────────┘
                                │
                                │ Persist
-                               ▼
+                               -
                         ┌─────────────┐
                         │  Storage    │
                         │  (SQLite)   │
@@ -943,26 +943,26 @@ impl EventPublisher for EventPublisherImpl {
 └──────┬──────┘
        │
        │ 1. Create Event
-       ▼
+       -
 ┌─────────────┐
 │   Event     │
 │  Structure  │
 └──────┬──────┘
        │
        │ 2. Validate
-       ▼
+       -
 ┌─────────────┐
 │  Validator  │
 └──────┬──────┘
        │
        │ 3. Publish
-       ▼
+       -
 ┌─────────────┐
 │ Event Bus   │
 └──────┬──────┘
        │
        │ 4. Route
-       ▼
+       -
 ┌─────────────┐
 │ Subscribers │
 └─────────────┘
@@ -1224,25 +1224,25 @@ Subscribers poll for events at their own pace.
 └──────┬──────┘
        │
        │ 1. Subscribe
-       ▼
+       -
 ┌─────────────┐
 │ Event Bus   │
 └──────┬──────┘
        │
        │ 2. Create Subscription
-       ▼
+       -
 ┌─────────────┐
 │ Subscription │
 └──────┬──────┘
        │
        │ 3. Route Events
-       ▼
+       -
 ┌─────────────┐
 │  Filter     │
 └──────┬──────┘
        │
        │ 4. Deliver
-       ▼
+       -
 ┌─────────────┐
 │  Subscriber  │
 └─────────────┘
@@ -2704,20 +2704,20 @@ pub struct AuthToken {
 └──────┬──────┘
        │
        │ 1. Request with Token
-       ▼
+       -
 ┌─────────────┐
 │  API Gateway │
 └──────┬──────┘
        │
        │ 2. Validate Token
-       ▼
+       -
 ┌─────────────┐
 │   Auth      │
 │   Service   │
 └──────┬──────┘
        │
        │ 3. Check Capabilities
-       ▼
+       -
 ┌─────────────┐
 │  Event API  │
 └─────────────┘

@@ -252,11 +252,11 @@ Content-Type: application/json
 
 | Action | Owner | Admin | Editor | Viewer |
 |--------|-------|-------|--------|--------|
-| Delete team | ✓ | ✗ | ✗ | ✗ |
-| Manage members | ✓ | ✓ | ✗ | ✗ |
-| Create projects | ✓ | ✓ | ✗ | ✗ |
-| Edit documents | ✓ | ✓ | ✓ | ✗ |
-| View documents | ✓ | ✓ | ✓ | ✓ |
+| Delete team | [OK] | [NO] | [NO] | [NO] |
+| Manage members | [OK] | [OK] | [NO] | [NO] |
+| Create projects | [OK] | [OK] | [NO] | [NO] |
+| Edit documents | [OK] | [OK] | [OK] | [NO] |
+| View documents | [OK] | [OK] | [OK] | [OK] |
 
 ### Checking Permissions
 

@@ -1910,14 +1910,14 @@ flowchart TD
 
 | Step | Description | Status |
 |------|-------------|--------|
-| **1. Pre-Migration Checks** | Verify system readiness | ☐ |
-| **2. Backup Creation** | Create full system backup | ☐ |
-| **3. Backup Validation** | Verify backup integrity | ☐ |
-| **4. Migration Execution** | Execute migration scripts | ☐ |
-| **5. Post-Migration Verification** | Verify data integrity | ☐ |
-| **6. Performance Validation** | Verify system performance | ☐ |
-| **7. Cleanup** | Remove temporary data | ☐ |
-| **8. Documentation** | Update documentation | ☐ |
+| **1. Pre-Migration Checks** | Verify system readiness | [ ] |
+| **2. Backup Creation** | Create full system backup | [ ] |
+| **3. Backup Validation** | Verify backup integrity | [ ] |
+| **4. Migration Execution** | Execute migration scripts | [ ] |
+| **5. Post-Migration Verification** | Verify data integrity | [ ] |
+| **6. Performance Validation** | Verify system performance | [ ] |
+| **7. Cleanup** | Remove temporary data | [ ] |
+| **8. Documentation** | Update documentation | [ ] |
 
 ---
 

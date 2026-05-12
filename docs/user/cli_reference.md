@@ -34,9 +34,9 @@ The CLI reference is designed for:
 ### 1.2. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001](../../.specs/02_adrs/ADR-001-rust_language_selection.md) - Rust Language Selection
-- [TACHYON-REQ-V1.0](../../.specs/06_requirements/requirements.md) - Requirements Specification
+- TACHYON-STD-V1.0 - Coding and Documentation Standards
+- TACHYON-ADR-001 - Rust Language Selection
+- TACHYON-REQ-V1.0 - Requirements Specification
 - [Configuration Guide](configuration_guide.md) - Configuration reference
 
 ### 1.3. Conventions Used in This Document

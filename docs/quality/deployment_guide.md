@@ -388,13 +388,13 @@ Tachyon supports cross-platform deployment with consistent behavior across Windo
 
 | Feature | Windows | macOS | Linux | Notes |
 |---------|---------|-------|-------|-------|
-| **Desktop App** | ✅ Native | ✅ Native | ✅ Native | All platforms supported |
-| **Server Service** | ✅ Supported | ✅ Supported | ✅ Primary | Linux primary, others supported |
-| **Web Frontend** | ✅ Browser | ✅ Browser | ✅ Browser | All browsers supported |
-| **Code Signing** | ✅ Authenticode | ✅ Apple | ✅ GPG | Platform-specific signing |
-| **Auto-Update** | ✅ Supported | ✅ Supported | ✅ Supported | All platforms supported |
-| **System Tray** | ✅ Supported | ✅ Supported | ✅ Supported | All platforms supported |
-| **File Associations** | ✅ Supported | ✅ Supported | ✅ Supported | All platforms supported |
+| **Desktop App** | [PASS] Native | [PASS] Native | [PASS] Native | All platforms supported |
+| **Server Service** | [PASS] Supported | [PASS] Supported | [PASS] Primary | Linux primary, others supported |
+| **Web Frontend** | [PASS] Browser | [PASS] Browser | [PASS] Browser | All browsers supported |
+| **Code Signing** | [PASS] Authenticode | [PASS] Apple | [PASS] GPG | Platform-specific signing |
+| **Auto-Update** | [PASS] Supported | [PASS] Supported | [PASS] Supported | All platforms supported |
+| **System Tray** | [PASS] Supported | [PASS] Supported | [PASS] Supported | All platforms supported |
+| **File Associations** | [PASS] Supported | [PASS] Supported | [PASS] Supported | All platforms supported |
 
 ---
 
@@ -408,27 +408,27 @@ All deployments shall complete the following pre-deployment checklist to ensure 
 
 | Item | Description | Responsibility | Status |
 |-------|-------------|---------------|
-| **Environment Preparation** | Verify target environment meets requirements | DevOps Engineer | ☐ |
-| **Configuration Validation** | Validate all configuration files | DevOps Engineer | ☐ |
-| **Dependency Verification** | Verify all dependencies are available | DevOps Engineer | ☐ |
-| **Backup Creation** | Create backup of current deployment | DevOps Engineer | ☐ |
-| **Rollback Plan** | Verify rollback plan is documented | DevOps Engineer | ☐ |
-| **Security Scan** | Run vulnerability scanner on artifacts | Security Engineer | ☐ |
-| **Performance Baseline** | Capture baseline performance metrics | DevOps Engineer | ☐ |
-| **Approval Obtained** | Obtain deployment approval | Engineering Lead | ☐ |
+| **Environment Preparation** | Verify target environment meets requirements | DevOps Engineer | [ ] |
+| **Configuration Validation** | Validate all configuration files | DevOps Engineer | [ ] |
+| **Dependency Verification** | Verify all dependencies are available | DevOps Engineer | [ ] |
+| **Backup Creation** | Create backup of current deployment | DevOps Engineer | [ ] |
+| **Rollback Plan** | Verify rollback plan is documented | DevOps Engineer | [ ] |
+| **Security Scan** | Run vulnerability scanner on artifacts | Security Engineer | [ ] |
+| **Performance Baseline** | Capture baseline performance metrics | DevOps Engineer | [ ] |
+| **Approval Obtained** | Obtain deployment approval | Engineering Lead | [ ] |
 
 **Component-Specific Pre-Deployment Checklist:**
 
 | Component | Item | Description | Status |
 |-----------|------|-------------|--------|
-| **Desktop** | Installer tested on all platforms | ☐ |
-| **Desktop** | Code signing certificates valid | ☐ |
-| **Desktop** | Version metadata embedded | ☐ |
-| **Server** | Binary tested on target platform | ☐ |
-| **Server** | Systemd service file validated | ☐ |
-| **Server** | Database migration scripts prepared | ☐ |
-| **Web** | Asset bundle optimized and minified | ☐ |
-| **Web** | SRI hashes calculated | ☐ |
+| **Desktop** | Installer tested on all platforms | [ ] |
+| **Desktop** | Code signing certificates valid | [ ] |
+| **Desktop** | Version metadata embedded | [ ] |
+| **Server** | Binary tested on target platform | [ ] |
+| **Server** | Systemd service file validated | [ ] |
+| **Server** | Database migration scripts prepared | [ ] |
+| **Web** | Asset bundle optimized and minified | [ ] |
+| **Web** | SRI hashes calculated | [ ] |
 
 ### 4.2. Build Process
 

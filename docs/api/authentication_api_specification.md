@@ -50,13 +50,13 @@ The Authentication API operates within the Tachyon three-tier architecture:
 
 ```
 ┌─────────────┐     HTTP/2      ┌─────────────┐
-│   Desktop   │ ◄──────────────► │   Server    │
+│   Desktop   │ ◄──────────────- │   Server    │
 │  (Tauri)    │                  │   (Axum)    │
 └─────────────┘                  └─────────────┘
                                           │
-                                          ▼
+                                          -
 ┌─────────────┐     HTTP/2      ┌─────────────┐
-│     Web     │ ◄──────────────► │   Server    │
+│     Web     │ ◄──────────────- │   Server    │
 │  (Leptos)   │                  │   (Axum)    │
 └─────────────┘                  └─────────────┘
 ```
@@ -293,24 +293,24 @@ Session management follows the principles specified in [REQ-SEC-016](../../.spec
 │   Login     │
 └──────┬──────┘
        │
-       ▼
+       -
 ┌─────────────┐
 │  Create     │
 │  Session    │
 └──────┬──────┘
        │
-       ▼
+       -
 ┌─────────────┐     ┌─────────────┐
-│   Active    │────►│   Refresh   │
+│   Active    │────-│   Refresh   │
 │   Session   │     │   Tokens    │
 └──────┬──────┘     └─────────────┘
        │
-       ▼
+       -
 ┌─────────────┐
 │   Timeout   │
 └──────┬──────┘
        │
-       ▼
+       -
 ┌─────────────┐
 │   Expired   │
 │   Session   │

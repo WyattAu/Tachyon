@@ -602,11 +602,11 @@ All metrics follow the Prometheus naming conventions:
 
 **Examples:**
 ```
-✅ tachyon_http_requests_total
-✅ tachyon_http_request_duration_seconds
-✅ tachyon_active_connections
-❌ tachyonHTTPRequestCount
-❌ tachyon_user_requests_total
+[PASS] tachyon_http_requests_total
+[PASS] tachyon_http_request_duration_seconds
+[PASS] tachyon_active_connections
+[FAIL] tachyonHTTPRequestCount
+[FAIL] tachyon_user_requests_total
 ```
 
 ### 4.5. Metrics Collection Procedures

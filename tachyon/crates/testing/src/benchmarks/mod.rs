@@ -1,8 +1,9 @@
-//! Performance benchmark modules
-//!
-//! This module contains performance benchmarks for critical operations using criterion.
+// Performance benchmark modules
+//
+// Each benchmark is a standalone criterion binary defined in Cargo.toml
+// under [[bench]]. They are not library modules.
+//
+// Run: cargo bench --bench <name>
 
-pub mod database_bench;
-pub mod rbac_bench;
-pub mod repository_bench;
-pub mod search_bench;
+// This file exists to satisfy Rust's module system for the benchmarks/ directory.
+// No public re-exports are needed since each benchmark is its own binary target.

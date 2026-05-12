@@ -429,7 +429,7 @@ Transitions between security zones require specific security controls based on t
 | **Untrusted → DMZ** | None → Low | DDoS protection, WAF, TLS |
 | **DMZ → Application** | Low → Medium | Authentication, TLS validation |
 | **Application → Data** | Medium → High | Authorization, access controls |
-| **Desktop ↔ Server** | Medium ↔ Medium | mTLS, IPC security |
+| **Desktop <-> Server** | Medium <-> Medium | mTLS, IPC security |
 | **Web → Server** | Low → Medium | WebSocket auth, CORS |
 | **Build → Production** | High → High | Code signing, verification |
 
@@ -907,10 +907,10 @@ Encryption in transit protects data transmitted over networks from eavesdropping
 
 | Communication | mTLS Required | Rationale |
 |--------------|----------------|-----------|
-| **Desktop ↔ Server** | Yes | Authenticates both endpoints |
-| **Server ↔ Server** | Yes | Prevents unauthorized server instances |
-| **Web ↔ Server** | No (client auth via JWT) | Browser-based authentication |
-| **Server ↔ Database** | No (local connection) | Local communication protected by network segmentation |
+| **Desktop <-> Server** | Yes | Authenticates both endpoints |
+| **Server <-> Server** | Yes | Prevents unauthorized server instances |
+| **Web <-> Server** | No (client auth via JWT) | Browser-based authentication |
+| **Server <-> Database** | No (local connection) | Local communication protected by network segmentation |
 
 **Implementation:**
 - Each component has unique X.509 certificate

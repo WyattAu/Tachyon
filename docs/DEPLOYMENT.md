@@ -213,7 +213,7 @@ cp your-key.pem ssl/key.pem
 
 ### RBAC Security Considerations
 
-⚠️ **Important**: The RBAC module has 11 failing tests related to business logic. Review these before using in production:
+[WARN] **Important**: The RBAC module has 11 failing tests related to business logic. Review these before using in production:
 
 - Policy precedence rules
 - Permission matching logic

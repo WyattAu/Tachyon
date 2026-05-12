@@ -109,22 +109,22 @@ All components in the Tachyon system follow a standardized lifecycle model:
 │  Creation   │
 └──────┬──────┘
        │
-       ▼
+       -
 ┌─────────────┐
 │ Initialization│
 └──────┬──────┘
        │
-       ▼
+       -
 ┌─────────────┐
 │  Active     │◄─────────────┐
 └──────┬──────┘              │
        │                     │
-       ▼                     │
+       -                     │
 ┌─────────────┐              │
 │  Shutdown   │              │
 └──────┬──────┘              │
        │                     │
-       ▼                     │
+       -                     │
 ┌─────────────┐              │
 │ Destruction │              │
 └─────────────┘              │
@@ -236,7 +236,7 @@ The Desktop Component is a Tauri-based native application wrapper that provides 
 │  │  (Leptos)   │◄─┤  Commands   │◄─┤   Engine    │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘        │
 │         │                │                │                    │
-│         │                │                ▼                    │
+│         │                │                -                    │
 │         │                │         ┌─────────────┐            │
 │         │                │         │   Local     │            │
 │         │                │         │   Git Repo  │            │
@@ -244,7 +244,7 @@ The Desktop Component is a Tauri-based native application wrapper that provides 
 │         │                │                                     │
 │         │                └────────────────┬───────────────────┤
 │         │                                 │                   │
-│         ▼                                 ▼                   │
+│         -                                 -                   │
 │  ┌─────────────┐                 ┌─────────────┐             │
 │  │   Renderer   │                 │  HTTP/2     │             │
 │  │   Engine     │                 │  Client      │             │
@@ -459,13 +459,13 @@ The Server Component is an Axum-based HTTP/2 server that provides centralized se
 │  │   Handler    │  │   Manager    │  │   Bus       │        │
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
 │         │                │                │                    │
-│         │                │                ▼                    │
+│         │                │                -                    │
 │         │                │         ┌─────────────┐            │
 │         │                │         │  Core       │            │
 │         │                │         │  Engine     │            │
 │         │                │         └──────┬──────┘            │
 │         │                │                │                    │
-│         ▼                ▼                ▼                    │
+│         -                -                -                    │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
 │  │  REST API   │  │  Real-time   │  │  Database   │             │
 │  │  Endpoints  │  │  Sync        │  │  Layer      │             │
@@ -802,13 +802,13 @@ The Web Component is a Leptos-based frontend application that provides a respons
 │  │   Layer     │  │  Layer      │  │  Management │        │
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
 │         │                │                │                    │
-│         │                │                ▼                    │
+│         │                │                -                    │
 │         │                │         ┌─────────────┐            │
 │         │                │         │   Store     │            │
 │         │                │         │  (Signals)  │            │
 │         │                │         └──────┬──────┘            │
 │         │                │                │                    │
-│         ▼                ▼                ▼                    │
+│         -                -                -                    │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
 │  │   Router    │  │   API       │  │   Utils     │             │
 │  │   Handler   │  │   Client    │  │   & Hooks   │             │
@@ -1426,13 +1426,13 @@ The Core Engine is the shared Rust/Tokio backend logic that powers both Desktop 
 │  │   Engine    │  │   Engine    │  │   Layer     │        │
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
 │         │                │                │                    │
-│         │                │                ▼                    │
+│         │                │                -                    │
 │         │                │         ┌─────────────┐            │
 │         │                │         │  Data       │            │
 │         │                │         │  Models     │            │
 │         │                │         └──────┬──────┘            │
 │         │                │                │                    │
-│         ▼                ▼                ▼                    │
+│         -                -                -                    │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
 │  │   Utils     │  │   Error     │  │   Traits    │             │
 │  │   & Helpers │  │   Handling  │  │   & Types   │             │
@@ -1816,7 +1816,7 @@ The Tachyon system integrates four primary components (Desktop, Server, Web, Cor
 │         │                        │                        │
 │         │ IPC                    │ WebSocket              │
 │         │                        │                        │
-│         ▼                        ▼                        │
+│         -                        -                        │
 │  ┌─────────────┐         ┌─────────────┐              │
 │  │    Web      │◄────────┤   Core      │              │
 │  │  Component  │  Shared  │   Engine    │              │

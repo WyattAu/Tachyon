@@ -73,7 +73,7 @@ Installation of Tachyon components requires attention to security considerations
 - **Capability-Based Access:** Desktop application uses Tauri's capability system for resource access
 - **Audit Logging:** Installation and runtime events are logged for security monitoring
 
-Refer to [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md) for comprehensive security architecture details.
+Refer to ADR-010: Security Architecture for comprehensive security architecture details.
 
 ---
 
@@ -631,7 +631,7 @@ Tauri's capability system controls access to system resources. Capabilities are 
 }
 ```
 
-Refer to [ADR-002: Tauri for Desktop Application](../../.specs/02_adrs/002_tauri_for_desktop_application.md) for detailed capability configuration.
+Refer to ADR-002: Tauri for Desktop Application for detailed capability configuration.
 
 ### 3.6. Installation Verification
 

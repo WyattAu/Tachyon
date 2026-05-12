@@ -799,11 +799,11 @@ Integration testing validates security controls at component boundaries and inte
 
 | Component Pair | Test Focus | Test Count | Coverage Target |
 |---------------|-------------|-------------|-----------------|
-| **Desktop ↔ Server** | IPC communication, HTTP/2 API security | 15 | 95% |
-| **Web ↔ Server** | HTTP/2 API, WebSocket security | 15 | 95% |
-| **Server ↔ Database** | SQLite security, transaction security | 10 | 95% |
-| **Server ↔ Git** | Repository security, commit security | 10 | 95% |
-| **Desktop ↔ File System** | File watching, operation security | 10 | 95% |
+| **Desktop <-> Server** | IPC communication, HTTP/2 API security | 15 | 95% |
+| **Web <-> Server** | HTTP/2 API, WebSocket security | 15 | 95% |
+| **Server <-> Database** | SQLite security, transaction security | 10 | 95% |
+| **Server <-> Git** | Repository security, commit security | 10 | 95% |
+| **Desktop <-> File System** | File watching, operation security | 10 | 95% |
 | **All Components** | End-to-end security workflows | 20 | 90% |
 
 **Rationale:** Integration testing validates security controls at component boundaries.

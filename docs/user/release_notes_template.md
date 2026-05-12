@@ -759,20 +759,20 @@ tachyon migrate --version X.Y.Z
 
 **Developer Documentation:**
 
-- [Developer Guide Overview](../developer/developer_guide_overview.md) - Developer documentation
+- Developer Guide Overview - Developer documentation
 - [API Documentation](../api/) - API reference documentation
 
 **Operations Documentation:**
 
-- [Deployment Guide](../operations/deployment_guide.md) - Deployment procedures
+- Deployment Guide - Deployment procedures
 - [Maintenance Guide](../operations/maintenance_guide.md) - Maintenance procedures
 
 ### 8.2. Architectural Decision Records
 
 **[CONDITIONAL]** Relevant ADRs for this release:
 
-- [ADR-XXX: Title](../../.specs/02_adrs/adr_xxx_title.md) - [Description]
-- [ADR-XXX: Title](../../.specs/02_adrs/adr_xxx_title.md) - [Description]
+- ADR-XXX: Title - [Description]
+- ADR-XXX: Title - [Description]
 
 ### 8.3. Issue Tracker
 

@@ -26,7 +26,7 @@ A deterministic, high-performance knowledge management system built with Rust.
 │         Leptos 0.8 + Tailwind           │
 └──────────────────┬──────────────────────┘
                    │ HTTP / WebSocket
-┌──────────────────▼──────────────────────┐
+┌──────────────────-──────────────────────┐
 │           Axum 0.8 Server              │
 │  ┌──────────┐ ┌────────┐ ┌──────────┐   │
 │  │  API v1   │ │  SEO  │ │   WS     │   │
@@ -36,7 +36,7 @@ A deterministic, high-performance knowledge management system built with Rust.
 │  └──────────┘ └─────────────────────┘   │
 └──────────────────┬──────────────────────┘
                    │ sqlx
-┌──────────────────▼──────────────────────┐
+┌──────────────────-──────────────────────┐
 │          PostgreSQL 16+                │
 │    documents, users, teams, roles,       │
 │    search_index, audit_log             │

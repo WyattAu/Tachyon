@@ -218,14 +218,14 @@ All code changes undergo formal code review process to ensure quality, security,
 
 | Category | Item | Status |
 |----------|------|--------|
-| **Functionality** | Code implements intended functionality | ☐ |
-| **Testing** | Tests are comprehensive and pass | ☐ |
-| **Documentation** | Code is properly documented | ☐ |
-| **Style** | Code follows project style guidelines | ☐ |
-| **Security** | No security vulnerabilities | ☐ |
-| **Performance** | Performance is acceptable | ☐ |
-| **Error Handling** | Errors are handled properly | ☐ |
-| **Edge Cases** | Edge cases are handled | ☐ |
+| **Functionality** | Code implements intended functionality | [ ] |
+| **Testing** | Tests are comprehensive and pass | [ ] |
+| **Documentation** | Code is properly documented | [ ] |
+| **Style** | Code follows project style guidelines | [ ] |
+| **Security** | No security vulnerabilities | [ ] |
+| **Performance** | Performance is acceptable | [ ] |
+| **Error Handling** | Errors are handled properly | [ ] |
+| **Edge Cases** | Edge cases are handled | [ ] |
 
 #### 3.3.2. Static Analysis
 
@@ -270,14 +270,14 @@ All tests undergo formal review process to ensure test quality, coverage, and ef
 
 | Category | Item | Status |
 |----------|------|--------|
-| **Clarity** | Test intent is immediately understandable | ☐ |
-| **Independence** | Tests do not depend on each other | ☐ |
-| **Isolation** | Tests do not share state | ☐ |
-| **Determinism** | Tests produce consistent results | ☐ |
-| **Speed** | Tests complete within time limits | ☐ |
-| **Maintainability** | Tests are easy to update | ☐ |
-| **Coverage** | Coverage meets thresholds | ☐ |
-| **Effectiveness** | Tests verify requirements | ☐ |
+| **Clarity** | Test intent is immediately understandable | [ ] |
+| **Independence** | Tests do not depend on each other | [ ] |
+| **Isolation** | Tests do not share state | [ ] |
+| **Determinism** | Tests produce consistent results | [ ] |
+| **Speed** | Tests complete within time limits | [ ] |
+| **Maintainability** | Tests are easy to update | [ ] |
+| **Coverage** | Coverage meets thresholds | [ ] |
+| **Effectiveness** | Tests verify requirements | [ ] |
 
 #### 3.4.2. Test Coverage Requirements
 
@@ -1086,16 +1086,16 @@ Documentation follows defined lifecycle from creation to publication.
 
 | Category | Item | Status |
 |----------|------|--------|
-| **Structure** | Document follows standard structure | ☐ |
-| **Content** | Content is accurate and complete | ☐ |
-| **Clarity** | Content is clear and understandable | ☐ |
-| **Consistency** | Terminology and style are consistent | ☐ |
-| **Accuracy** | Technical content is accurate | ☐ |
-| **Completeness** | All relevant topics are covered | ☐ |
-| **Cross-References** | Cross-references are valid | ☐ |
-| **Diagrams** | Diagrams are clear and accurate | ☐ |
-| **Examples** | Examples are correct and executable | ☐ |
-| **Accessibility** | Document meets accessibility standards | ☐ |
+| **Structure** | Document follows standard structure | [ ] |
+| **Content** | Content is accurate and complete | [ ] |
+| **Clarity** | Content is clear and understandable | [ ] |
+| **Consistency** | Terminology and style are consistent | [ ] |
+| **Accuracy** | Technical content is accurate | [ ] |
+| **Completeness** | All relevant topics are covered | [ ] |
+| **Cross-References** | Cross-references are valid | [ ] |
+| **Diagrams** | Diagrams are clear and accurate | [ ] |
+| **Examples** | Examples are correct and executable | [ ] |
+| **Accessibility** | Document meets accessibility standards | [ ] |
 
 ### 6.4. Documentation Maintenance
 

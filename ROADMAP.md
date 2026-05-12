@@ -21,75 +21,31 @@
 
 ## Phase 1: Hardening (v10.2.0) -- 2 weeks
 
-### 1.1 Wire Email Delivery [High]
+### 1.1 Wire Email Delivery [High] -- COMPLETE (v10.0.0)
 
-`EmailService::send()` (`crates/server/src/email.rs:43`) is a no-op that logs and returns `Ok(())`. Password reset tokens, email verification links, and notification emails are silently dropped.
-
-**Scope:**
-- Integrate `lettre` crate for SMTP (supports SES, Resend, SendGrid, self-hosted)
-- Add `SMTP_URL`, `SMTP_FROM`, `SMTP_USERNAME`, `SMTP_PASSWORD` config fields
-- Implement async send with connection pooling via `lettre::AsyncSmtpTransport`
-- Add retry with exponential backoff (3 attempts, 1s/5s/15s)
-- Template rendering via `minijinja` (the dependency is already commented out in `Cargo.toml`)
-- Unit tests: send success, send failure, timeout, invalid recipient
-- Integration test: end-to-end password reset flow with real SMTP (mock via `wiremock`)
-
-**Files:** `crates/server/src/email.rs`, `crates/server/src/config.rs`, `crates/server/src/routes/password_reset.rs`
+`EmailService::send()` is fully implemented with `lettre` 0.11 (async SMTP, multipart, 3-attempt retry at 1s/5s/15s). Requires `SMTP_URL` config. Falls back to log-and-skip when unconfigured.
 
 ### 1.2 Remove `#[allow(dead_code)]` Annotations [Medium]
 
-100+ `#[allow(dead_code)]` annotations exist across the codebase, primarily in:
-- `crates/frontend/src/api/` (billing, documents, teams, spaces, files, auth, search)
-- `crates/server/src/websocket/`
-- `crates/search/src/api.rs`
-- `crates/desktop/src-tauri/src/commands.rs`
-
-**Scope:**
-- Audit each annotation: wire into real code paths, or remove dead code
-- Enable `#![deny(dead_code)]` on non-test crates incrementally
-- Target: reduce from 100+ to under 20
+82 `#[allow(dead_code)]` annotations cleaned in v5.0.0 refactor. Remaining annotations (~20) are in frontend API client modules and desktop commands awaiting UI integration.
 
 **Effort:** 3-5 days. Batch by crate.
 
-### 1.3 Database Connection Pool Tuning [Medium]
+### 1.3 Database Connection Pool Tuning [Medium] -- COMPLETE (v10.0.0)
 
-`DatabasePool` uses sqlx defaults. No explicit `max_connections`, `min_connections`, `acquire_timeout`, or `idle_timeout`.
+`DbPoolConfig` in `config.rs` includes `db_max_connections` (default 10), `db_min_connections` (default 2), `db_acquire_timeout_ms` (default 5000), `db_idle_timeout_secs` (default 600). All configurable via env vars with validation.
 
-**Scope:**
-- Add `DB_MAX_CONNECTIONS` (default: 10), `DB_MIN_CONNECTIONS` (default: 2)
-- Add `DB_ACQUIRE_TIMEOUT_MS` (default: 5000), `DB_IDLE_TIMEOUT_SECS` (default: 600)
-- Expose in `ServerConfig` with sensible defaults
-- Document sizing formula: `max_connections = (core_count * 2) + effective_spindle_count`
+### 1.4 Test Cleanup Completeness [Low] -- COMPLETE (v10.0.0)
 
-**Files:** `crates/database/src/schema.rs`, `crates/server/src/config.rs`
-
-### 1.4 Test Cleanup Completeness [Low]
-
-`TestApp::cleanup()` only cleans 5 tables. 30+ tables accumulate test data.
-
-**Scope:**
-- Generate `TRUNCATE` statements for all tables in migration order
-- Use `TRUNCATE CASCADE` to handle foreign key dependencies
-- Verify cleanup in CI by checking table row counts after test suite
-
-**Files:** `crates/testing/src/lib.rs`
+`TestApp::cleanup()` TRUNCATE CASCADE's 41 tables. `cleanup_test_data()` provides standalone cleanup for integration tests.
 
 ---
 
 ## Phase 2: Security Hardening (v10.3.0) -- 2 weeks
 
-### 2.1 CSP Nonce-Based Styles [Medium]
+### 2.1 CSP Nonce-Based Styles [Medium] -- PARTIAL (v10.1.0)
 
-Current CSP includes `'unsafe-inline'` for `style-src`, weakening XSS protection.
-
-**Scope:**
-- Generate per-request CSP nonce
-- Inject nonce into all `<style>` and inline style attributes via template layer
-- Move `style_src` to `'nonce-{nonce}'`
-- Add `Content-Security-Policy` header in security middleware
-- Unit tests: nonce generation, header format, missing nonce rejection
-
-**Files:** `crates/server/src/middleware/security_headers.rs`, `crates/renderer/src/page.rs`
+CSP nonce generation and header injection exist in `security_headers.rs`. `GenerateNonce` type, `CspNonce` extension, and per-request nonce generation are implemented. Remaining: inject nonce into inline `<style>` elements via template layer, remove `'unsafe-inline'` from `style-src`.
 
 ### 2.2 Secret Rotation Support [Low]
 
@@ -126,31 +82,13 @@ JWT secret loaded once at startup. No rotation without downtime.
 
 ## Phase 3: Testing Expansion (v10.4.0) -- 3 weeks
 
-### 3.1 Fill RBAC Integration Test Stub [Medium]
+### 3.1 Fill RBAC Integration Test Stub [Medium] -- COMPLETE (v10.0.0)
 
-`crates/testing/src/integration/rbac.rs:7` is a placeholder.
+`crates/testing/src/integration/rbac.rs` contains 697 lines of comprehensive RBAC integration tests covering: admin role broad permissions, reader role limited permissions, explicit permission deny/grant, inactive user restrictions, role permission levels, team role inheritance, and organization-level admin override. 15 separate test functions.
 
-**Scope:**
-- Test RBAC enforcement on document CRUD (reader/writer/admin/editor)
-- Test space-level permissions (member, admin, viewer)
-- Test team role inheritance
-- Test organization-level admin override
-- Test explicit permission deny overrides allow
+### 3.2 Fill Fuzzing Harness [Medium] -- COMPLETE (v10.1.0)
 
-**Effort:** 2-3 days. 15-20 test cases.
-
-### 3.2 Fill Fuzzing Harness [Medium]
-
-`crates/testing/src/fuzz/harness.rs:8` prints "not yet implemented".
-
-**Scope:**
-- Fuzz target 1: Markdown parser (`pulldown-cmark` input -> renderer output, no panic)
-- Fuzz target 2: JSON API request parsing (malformed JSON, oversized payloads)
-- Fuzz target 3: Search query parsing (injection, unicode edge cases)
-- Fuzz target 4: JWT token validation (malformed tokens)
-- Wire `cargo-fuzz` with corpus generation from existing test vectors
-
-**Effort:** 5-7 days.
+Fuzz harness now contains 4 cargo-fuzz compatible targets: `fuzz_markdown_parse`, `fuzz_jwt_validate`, `fuzz_search_query`, `fuzz_json_request`. Each target has a deterministic test-mode corpus for CI. Individual fuzzing modules in `search.rs`, `rbac.rs`, `repository.rs`, `utilities.rs` provide 40+ property-based edge-case tests.
 
 ### 3.3 Middleware Chain Integration Tests [Medium]
 

@@ -171,11 +171,11 @@ API URIs follow these design principles:
 5. **Trailing Slash Omitted:** URIs do not include trailing slashes
 
 **Examples:**
-- ✅ `/api/v1/documents`
-- ✅ `/api/v1/documents/:id/versions`
-- ❌ `/api/v1/getDocuments`
-- ❌ `/api/v1/document/`
-- ❌ `/API/v1/Documents`
+- [PASS] `/api/v1/documents`
+- [PASS] `/api/v1/documents/:id/versions`
+- [FAIL] `/api/v1/getDocuments`
+- [FAIL] `/api/v1/document/`
+- [FAIL] `/API/v1/Documents`
 
 ### 2.4. Status Code Usage
 

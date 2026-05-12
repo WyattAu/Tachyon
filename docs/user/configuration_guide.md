@@ -31,10 +31,10 @@ This document provides a comprehensive configuration reference for all user-acce
 ### 1.2. Scope
 
 This document covers configuration for:
-- Desktop application settings ([`desktop_design.md`](../../.specs/04_future_state/design/desktop_design.md))
-- Server component settings ([`server_design.md`](../../.specs/04_future_state/design/server_design.md))
-- Web interface settings ([`web_design.md`](../../.specs/04_future_state/design/web_design.md))
-- Security configuration parameters ([`security_architecture.md`](../../.specs/02_adrs/010_security_architecture.md))
+- Desktop application settings (`desktop_design.md`)
+- Server component settings (`server_design.md`)
+- Web interface settings (`web_design.md`)
+- Security configuration parameters (`security_architecture.md`)
 - Performance tuning options
 - Advanced customization settings
 
@@ -765,7 +765,7 @@ The web interface configuration controls the Leptos/Bun-based frontend, includin
 
 ### 6.1. Security Configuration Overview
 
-The security configuration implements the defense-in-depth architecture defined in [`ADR-010: Security Architecture`](../../.specs/02_adrs/010_security_architecture.md). Security settings control authentication, authorization, encryption, input validation, and audit logging across all components.
+The security configuration implements the defense-in-depth architecture defined in `ADR-010: Security Architecture`. Security settings control authentication, authorization, encryption, input validation, and audit logging across all components.
 
 ### 6.2. Security Configuration Schema
 
@@ -1361,17 +1361,17 @@ This document references the following Tachyon project documents:
 
 | Document ID | Title | Path |
 |-------------|-------|------|
-| TACHYON-STD-V1.0 | Coding and Documentation Standards | [`.specs/01_standards/coding_standards.md`](../../.specs/01_standards/coding_standards.md) |
-| TACHYON-REQ-DOC-V1.0 | Documentation Requirements | [`.specs/04_future_state/reqs/documentation_requirements.md`](../../.specs/04_future_state/reqs/documentation_requirements.md) |
-| TACHYON-DES-DESK-V1.0 | Desktop Application Design | [`.specs/04_future_state/design/desktop_design.md`](../../.specs/04_future_state/design/desktop_design.md) |
-| TACHYON-DES-SRV-V1.0 | Server Component Design | [`.specs/04_future_state/design/server_design.md`](../../.specs/04_future_state/design/server_design.md) |
-| TACHYON-DES-WEB-V1.0 | Web Interface Design | [`.specs/04_future_state/design/web_design.md`](../../.specs/04_future_state/design/web_design.md) |
-| TACHYON-ADR-001-V1.0 | Rust as Primary Language | [`.specs/02_adrs/001_rust_as_primary_language.md`](../../.specs/02_adrs/001_rust_as_primary_language.md) |
-| TACHYON-ADR-010-V1.0 | Security Architecture | [`.specs/02_adrs/010_security_architecture.md`](../../.specs/02_adrs/010_security_architecture.md) |
+| TACHYON-STD-V1.0 | Coding and Documentation Standards | `Tachyon standards` |
+| TACHYON-REQ-DOC-V1.0 | Documentation Requirements | `Tachyon requirements` |
+| TACHYON-DES-DESK-V1.0 | Desktop Application Design | `Tachyon design documents` |
+| TACHYON-DES-SRV-V1.0 | Server Component Design | `Tachyon design documents` |
+| TACHYON-DES-WEB-V1.0 | Web Interface Design | `Tachyon design documents` |
+| TACHYON-ADR-001-V1.0 | Rust as Primary Language | `Tachyon ADRs` |
+| TACHYON-ADR-010-V1.0 | Security Architecture | `Tachyon ADRs` |
 
 ### 9.2. Related Requirements
 
-This configuration guide satisfies the following requirements from [`REQ-DOC-014`](../../.specs/04_future_state/reqs/documentation_requirements.md):
+This configuration guide satisfies the following requirements from `REQ-DOC-014`:
 
 | Requirement ID | Title | Status |
 |---------------|-------|--------|

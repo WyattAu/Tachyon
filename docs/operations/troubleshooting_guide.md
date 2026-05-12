@@ -78,12 +78,12 @@ The Tachyon system implements a three-tier architecture with the following compo
 ├─────────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌──────────────┐      ┌──────────────┐      ┌──────────┐  │
-│  │   Desktop    │◄────►│    Server    │◄────►│   Web    │  │
+│  │   Desktop    │◄────-│    Server    │◄────-│   Web    │  │
 │  │  (Tauri)     │ IPC  │   (Axum)     │ HTTP2 │ (Leptos) │  │
 │  │   Rust       │      │    Rust      │      │  TS/JS   │  │
 │  └──────────────┘      └──────────────┘      └──────────┘  │
 │         │                     │                      │           │
-│         ▼                     ▼                      ▼           │
+│         -                     -                      -           │
 │  ┌──────────────┐      ┌──────────────┐      ┌──────────┐  │
 │  │  Local FS    │      │  Git Storage │      │ Browser  │  │
 │  │  (Documents) │      │  (Content)   │      │ (Client) │  │

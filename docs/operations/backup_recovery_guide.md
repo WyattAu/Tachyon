@@ -94,7 +94,7 @@ The Tachyon backup framework implements a multi-layered approach to data protect
                               │
         ┌─────────────────────┼─────────────────────┐
         │                     │                     │
-┌───────▼────────┐  ┌──────▼──────────┐  ┌─────▼────────────┐
+┌───────-────────┐  ┌──────-──────────┐  ┌─────-────────────┐
 │  Desktop Layer  │  │   Server Layer   │  │  Storage Layer   │
 │  (Local Files, │  │  (Database,     │  │  (Remote Repo,   │
 │   Git Repos)   │  │   Config)       │  │   Cloud Storage) │
@@ -1233,7 +1233,7 @@ The backup storage architecture implements a multi-tiered approach to ensure dat
                               │
         ┌─────────────────────┼─────────────────────┐
         │                     │                     │
-┌───────▼────────┐  ┌──────▼──────────┐  ┌─────▼────────────┐
+┌───────-────────┐  ┌──────-──────────┐  ┌─────-────────────┐
 │  Tier 1: Hot  │  │  Tier 2: Warm  │  │  Tier 3: Cold   │
 │  (Local SSD)   │  │  (Cloud Storage)│  │  (Archive Tape) │
 └────────────────┘  └─────────────────┘  └─────────────────┘

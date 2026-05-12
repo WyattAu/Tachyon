@@ -116,9 +116,9 @@ async fn method_name(param1: Type1, param2: Type2) -> Result<ReturnType, ErrorTy
 
 Security considerations are marked with the following indicators:
 
-- ⚠️ **Security Warning:** Indicates a potential security risk that requires attention
-- 🔒 **Security Requirement:** Indicates a mandatory security control
-- ✅ **Security Best Practice:** Indicates a recommended security practice
+- [WARN] **Security Warning:** Indicates a potential security risk that requires attention
+- security **Security Requirement:** Indicates a mandatory security control
+- [PASS] **Security Best Practice:** Indicates a recommended security practice
 
 ---
 
@@ -141,19 +141,19 @@ The Plugin API Framework provides the foundational infrastructure for plugin dev
 │         │                  │                  │          │
 │         └──────────────────┼──────────────────┘          │
 │                            │                             │
-│                    ┌───────▼────────┐                   │
+│                    ┌───────-────────┐                   │
 │                    │ Plugin Host    │                   │
 │                    │  (Rust Core)  │                   │
 │                    └───────┬────────┘                   │
 │                            │                             │
 │         ┌────────────────────┼────────────────────┐       │
 │         │                    │                    │       │
-│  ┌──────▼──────┐  ┌──────▼──────┐  ┌──────▼──────┐│
+│  ┌──────-──────┐  ┌──────-──────┐  ┌──────-──────┐│
 │  │  Capability  │  │  WASM        │  │  Inter-Plugin││
 │  │  System     │  │  Runtime     │  │  Comm       ││
 │  └─────────────┘  └──────┬──────┘  └─────────────┘│
 │                           │                             │
-│                    ┌──────▼────────┐                   │
+│                    ┌──────-────────┐                   │
 │                    │  Plugin       │                   │
 │                    │  Sandboxes    │                   │
 │                    └───────────────┘                   │
@@ -1716,13 +1716,13 @@ Plugin lifecycle hooks define the sequence of events that occur during plugin li
 └──────────┘    └──────────┘    └──────────┘    └──────────┘
      │                │                │                │
      │                │                │                │
-     │                ▼                ▼                │
+     │                -                -                │
      │           ┌──────────┐    ┌──────────┐          │
      │           │  Error   │───>│  Error   │───────────┘
      │           └──────────┘    └──────────┘
      │                │                │
      └────────────────┴────────────────┘
-                      ▼
+                      -
                ┌──────────┐
                │Unloaded  │
                └──────────┘

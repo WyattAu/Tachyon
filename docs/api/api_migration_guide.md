@@ -144,7 +144,7 @@ API versions are denoted using semantic versioning: `MAJOR.MINOR.PATCH`. For exa
 
 **1.7.3. Change Indicators**
 
-Breaking changes are indicated with the `⚠️` symbol. Non-breaking changes are indicated with the `✓` symbol. Deprecation warnings are indicated with the `⚠️ DEPRECATED` label.
+Breaking changes are indicated with the `[WARN]` symbol. Non-breaking changes are indicated with the `[OK]` symbol. Deprecation warnings are indicated with the `[WARN] DEPRECATED` label.
 
 **1.7.4. Cross-References**
 
@@ -503,7 +503,7 @@ A change `C` is considered breaking if and only if:
 
 **3.1.1. Breaking Change Indicators**
 
-Breaking changes are indicated with the `⚠️` symbol throughout this document and in release notes.
+Breaking changes are indicated with the `[WARN]` symbol throughout this document and in release notes.
 
 ### 3.2. Categories of Breaking Changes
 
@@ -522,7 +522,7 @@ pub async fn get_document_by_slug(
     // Implementation
 }
 
-// v2.0.0 - Endpoint removed (⚠️ BREAKING CHANGE)
+// v2.0.0 - Endpoint removed ([WARN] BREAKING CHANGE)
 // Clients must use get_document_by_id instead
 ```
 
@@ -543,7 +543,7 @@ pub struct ListDocumentsQuery {
     pub limit: Option<usize>,  // Optional integer
 }
 
-// v2.0.0 (⚠️ BREAKING CHANGE)
+// v2.0.0 ([WARN] BREAKING CHANGE)
 #[derive(Deserialize)]
 pub struct ListDocumentsQuery {
     pub limit: usize,  // Required integer
@@ -569,7 +569,7 @@ pub struct DocumentResponse {
     pub content: String,
 }
 
-// v2.0.0 (⚠️ BREAKING CHANGE)
+// v2.0.0 ([WARN] BREAKING CHANGE)
 #[derive(Serialize)]
 pub struct DocumentResponse {
     pub id: String,
@@ -594,7 +594,7 @@ const headers = {
   'Authorization': `Bearer ${apiKey}`
 };
 
-// v2.0.0 (⚠️ BREAKING CHANGE) - OAuth 2.0 required
+// v2.0.0 ([WARN] BREAKING CHANGE) - OAuth 2.0 required
 const headers = {
   'Authorization': `Bearer ${oauthToken}`,
   'X-Client-ID': clientId
@@ -618,7 +618,7 @@ pub struct ErrorResponse {
     pub error: String,
 }
 
-// v2.0.0 (⚠️ BREAKING CHANGE)
+// v2.0.0 ([WARN] BREAKING CHANGE)
 #[derive(Serialize)]
 pub struct ErrorResponse {
     pub error_code: String,
@@ -645,7 +645,7 @@ interface WebSocketMessage {
   content: string;
 }
 
-// v2.0.0 (⚠️ BREAKING CHANGE)
+// v2.0.0 ([WARN] BREAKING CHANGE)
 interface WebSocketMessage {
   type: 'document.update';
   version: '2.0.0';
@@ -672,7 +672,7 @@ interface CreateDocumentCommand {
   content: string;
 }
 
-// v2.0.0 (⚠️ BREAKING CHANGE)
+// v2.0.0 ([WARN] BREAKING CHANGE)
 interface CreateDocumentCommand {
   command: 'document.create';
   version: '2.0.0';
@@ -744,7 +744,7 @@ All breaking changes must include:
 const response = await fetch('/api/v1/documents/by-slug/my-document');
 ```
 
-**v2.0.0 (⚠️ BREAKING CHANGE):**
+**v2.0.0 ([WARN] BREAKING CHANGE):**
 ```typescript
 // Updated client code
 const response = await fetch('/api/v1/documents?slug=my-document');
@@ -769,7 +769,7 @@ interface DocumentListResponse {
 }
 ```
 
-**v2.0.0 (⚠️ BREAKING CHANGE):**
+**v2.0.0 ([WARN] BREAKING CHANGE):**
 ```typescript
 // Updated client code
 interface DocumentListResponse {
@@ -800,7 +800,7 @@ const headers = {
 };
 ```
 
-**v2.0.0 (⚠️ BREAKING CHANGE):**
+**v2.0.0 ([WARN] BREAKING CHANGE):**
 ```typescript
 // Updated client code
 const headers = {
@@ -833,7 +833,7 @@ A change `C` is considered non-breaking if and only if:
 
 **4.1.1. Non-Breaking Change Indicators**
 
-Non-breaking changes are indicated with the `✓` symbol throughout this document and in release notes.
+Non-breaking changes are indicated with the `[OK]` symbol throughout this document and in release notes.
 
 ### 4.2. Categories of Non-Breaking Changes
 
@@ -852,7 +852,7 @@ pub async fn list_documents(
     // Implementation
 }
 
-// v1.1.0 (✓ NON-BREAKING) - New endpoint added
+// v1.1.0 ([OK] NON-BREAKING) - New endpoint added
 pub async fn search_documents(
     Query(params): Query<SearchQuery>,
 ) -> Result<Json<DocumentListResponse>, ApiError> {
@@ -878,7 +878,7 @@ pub struct ListDocumentsQuery {
     pub limit: Option<usize>,
 }
 
-// v1.1.0 (✓ NON-BREAKING) - New optional parameter
+// v1.1.0 ([OK] NON-BREAKING) - New optional parameter
 #[derive(Deserialize)]
 pub struct ListDocumentsQuery {
     pub offset: Option<usize>,
@@ -907,7 +907,7 @@ pub struct DocumentResponse {
     pub content: String,
 }
 
-// v1.1.0 (✓ NON-BREAKING) - New response fields
+// v1.1.0 ([OK] NON-BREAKING) - New response fields
 #[derive(Serialize)]
 pub struct DocumentResponse {
     pub id: String,
@@ -935,7 +935,7 @@ type WebSocketMessage =
   | { type: 'document.update'; document_id: string; content: string }
   | { type: 'document.delete'; document_id: string };
 
-// v1.1.0 (✓ NON-BREAKING) - New message type
+// v1.1.0 ([OK] NON-BREAKING) - New message type
 type WebSocketMessage =
   | { type: 'document.update'; document_id: string; content: string }
   | { type: 'document.delete'; document_id: string }
@@ -959,7 +959,7 @@ interface IPCCommand {
   payload: unknown;
 }
 
-// v1.1.0 (✓ NON-BREAKING) - New command
+// v1.1.0 ([OK] NON-BREAKING) - New command
 interface IPCCommand {
   command: 'document.create' | 'document.update' | 'document.delete' | 'document.export';  // New command
   payload: unknown;
@@ -1052,7 +1052,7 @@ All non-breaking changes must include:
 const documents = await client.listDocuments({ limit: 20 });
 ```
 
-**v1.1.0 (✓ NON-BREAKING):**
+**v1.1.0 ([OK] NON-BREAKING):**
 ```typescript
 // Client code can use new search endpoint
 const results = await client.searchDocuments({ query: 'important', limit: 20 });
@@ -1096,7 +1096,7 @@ console.log(doc.title);  // Works
 console.log(doc.created_at);  // Error: Property does not exist
 ```
 
-**v1.1.0 (✓ NON-BREAKING):**
+**v1.1.0 ([OK] NON-BREAKING):**
 ```typescript
 // Updated client code can use new fields
 interface Document {
@@ -1138,7 +1138,7 @@ const documents = await client.listDocuments({
 });
 ```
 
-**v1.1.0 (✓ NON-BREAKING):**
+**v1.1.0 ([OK] NON-BREAKING):**
 ```typescript
 // Client code can use new optional parameters
 const documents = await client.listDocuments({
@@ -1201,7 +1201,7 @@ Deprecation is the formal process of marking an API version, endpoint, parameter
 
 **5.1.1. Deprecation Indicators**
 
-Deprecation is indicated with the `⚠️ DEPRECATED` label throughout API documentation and responses.
+Deprecation is indicated with the `[WARN] DEPRECATED` label throughout API documentation and responses.
 
 **5.1.2. Deprecation Requirements**
 
@@ -1242,7 +1242,7 @@ Deprecation must be announced through multiple channels:
 ```markdown
 ## v2.0.0 - 2026-03-01
 
-### ⚠️ DEPRECATED
+### [WARN] DEPRECATED
 
 #### API v1 Endpoints
 
@@ -1260,7 +1260,7 @@ The following API v1 endpoints are deprecated and will be removed on 2026-09-01:
 ```markdown
 ### GET /api/v1/documents/by-slug/:slug
 
-⚠️ **DEPRECATED** - This endpoint is deprecated and will be removed on 2026-09-01.
+[WARN] **DEPRECATED** - This endpoint is deprecated and will be removed on 2026-09-01.
 
 Use `GET /api/v1/documents?slug=:slug` instead.
 
@@ -1468,7 +1468,7 @@ Announce the sunset of deprecated APIs:
 ```markdown
 ## v2.1.0 - 2026-08-01
 
-### ⚠️ SUNSET NOTICE
+### [WARN] SUNSET NOTICE
 
 The following deprecated endpoints will be removed on 2026-09-01:
 

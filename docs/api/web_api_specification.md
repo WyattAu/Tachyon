@@ -4062,12 +4062,12 @@ try {
 Always leverage TypeScript's type system to catch errors at compile time rather than runtime.
 
 ```typescript
-// ❌ Bad: Using any type
+// [FAIL] Bad: Using any type
 function processData(data: any): void {
   console.log(data.title); // No type safety
 }
 
-// ✅ Good: Using generic type
+// [PASS] Good: Using generic type
 function processData<T extends { title: string }>(data: T): void {
   console.log(data.title); // Compile-time type checking
 }
@@ -4078,10 +4078,10 @@ function processData<T extends { title: string }>(data: T): void {
 Use Leptos signals for reactive state management instead of manual DOM manipulation.
 
 ```typescript
-// ❌ Bad: Manual DOM updates
+// [FAIL] Bad: Manual DOM updates
 document.getElementById('title').textContent = newTitle;
 
-// ✅ Good: Reactive updates
+// [PASS] Good: Reactive updates
 const [title, setTitle] = createSignal('Untitled');
 setTitle(newTitle);
 ```
@@ -4109,10 +4109,10 @@ async function loadDocument(id: string): Promise<void> {
 Use Leptos's fine-grained reactivity to minimize unnecessary re-renders.
 
 ```typescript
-// ❌ Bad: Re-render entire list
+// [FAIL] Bad: Re-render entire list
 documents.map(doc => <DocumentCard document={doc} />);
 
-// ✅ Good: Only render changed items
+// [PASS] Good: Only render changed items
 <For each (doc, index) in documents>
   <DocumentCard key={doc.id} document={doc} />
 ```
@@ -4122,10 +4122,10 @@ documents.map(doc => <DocumentCard document={doc} />);
 Never store authentication tokens in localStorage or cookies for sensitive applications.
 
 ```typescript
-// ❌ Bad: localStorage
+// [FAIL] Bad: localStorage
 localStorage.setItem('auth_token', token);
 
-// ✅ Good: Memory-only storage
+// [PASS] Good: Memory-only storage
 const [authToken, setAuthToken] = createSignal<string | null>(null);
 // Token automatically included in Authorization header
 ```

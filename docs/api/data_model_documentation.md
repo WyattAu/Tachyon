@@ -2938,14 +2938,14 @@ The Tachyon data model defines explicit relationships between entities through f
 
 | Relationship Type | Description | Example |
 |-----------------|-------------|---------|
-| **One-to-One** | Single entity relates to single entity | User ↔ Session |
+| **One-to-One** | Single entity relates to single entity | User <-> Session |
 | **One-to-Many** | Single entity relates to multiple entities | Repository → Commits |
-| **Many-to-Many** | Multiple entities relate to multiple entities | Users ↔ Documents |
+| **Many-to-Many** | Multiple entities relate to multiple entities | Users <-> Documents |
 | **Self-Referencing** | Entity relates to itself | Commit → Parent Commits |
 
 ### 9.2. User Relationships
 
-#### User ↔ Session (One-to-Many)
+#### User <-> Session (One-to-Many)
 
 ```rust
 // User has many sessions
@@ -2970,7 +2970,7 @@ impl Session {
 
 **Foreign Key:** `Session.user_id: UserId`
 
-#### User ↔ Documents (Many-to-Many)
+#### User <-> Documents (Many-to-Many)
 
 ```rust
 // User has many documents (access control)
@@ -2995,7 +2995,7 @@ impl Document {
 
 **Foreign Key:** `DocumentMetadata.access.users: Vec<String>`
 
-#### User ↔ Repositories (Many-to-Many)
+#### User <-> Repositories (Many-to-Many)
 
 ```rust
 // User has many repositories
@@ -3022,7 +3022,7 @@ impl Repository {
 
 ### 9.3. Document Relationships
 
-#### Document ↔ Repository (Many-to-One)
+#### Document <-> Repository (Many-to-One)
 
 ```rust
 // Document belongs to one repository
@@ -3047,7 +3047,7 @@ impl Repository {
 
 **Foreign Key:** `DocumentMetadata.path: String` (repository-relative)
 
-#### Document ↔ Commits (Many-to-Many)
+#### Document <-> Commits (Many-to-Many)
 
 ```rust
 // Document has many commits
@@ -3074,7 +3074,7 @@ impl Commit {
 
 ### 9.4. Repository Relationships
 
-#### Repository ↔ Commits (One-to-Many)
+#### Repository <-> Commits (One-to-Many)
 
 ```rust
 // Repository has many commits
@@ -3099,7 +3099,7 @@ impl Commit {
 
 **Foreign Key:** `Commit.repository_id: RepositoryId`
 
-#### Repository ↔ Branches (One-to-Many)
+#### Repository <-> Branches (One-to-Many)
 
 ```rust
 // Repository has many branches
@@ -3124,7 +3124,7 @@ impl Branch {
 
 **Foreign Key:** `Branch.repository_id: RepositoryId`
 
-#### Repository ↔ Tags (One-to-Many)
+#### Repository <-> Tags (One-to-Many)
 
 ```rust
 // Repository has many tags
@@ -3151,7 +3151,7 @@ impl Tag {
 
 ### 9.5. Plugin Relationships
 
-#### Plugin ↔ Capabilities (One-to-Many)
+#### Plugin <-> Capabilities (One-to-Many)
 
 ```rust
 // Plugin has many capabilities
@@ -3176,7 +3176,7 @@ impl Capability {
 
 **Foreign Key:** Implicit through plugin definition
 
-#### Plugin ↔ Configuration (One-to-One)
+#### Plugin <-> Configuration (One-to-One)
 
 ```rust
 // Plugin has one configuration
@@ -3203,7 +3203,7 @@ impl PluginConfig {
 
 ### 9.6. Event Relationships
 
-#### Event ↔ User (Many-to-One)
+#### Event <-> User (Many-to-One)
 
 ```rust
 // Event may be associated with one user
@@ -3228,7 +3228,7 @@ impl User {
 
 **Foreign Key:** `Event.user_id: Option<UserId>`
 
-#### Event ↔ Subscription (Many-to-Many)
+#### Event <-> Subscription (Many-to-Many)
 
 ```rust
 // Event may be delivered to many subscriptions

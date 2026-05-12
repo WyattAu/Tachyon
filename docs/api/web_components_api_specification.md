@@ -117,8 +117,8 @@ The Tachyon web components adhere to the following fundamental design principles
 Each component shall have a single, well-defined responsibility. Components should not combine unrelated functionality.
 
 **Example:**
-- ✅ **Valid:** `DocumentEditor` handles document editing operations
-- ❌ **Invalid:** `DocumentEditor` also handles user authentication
+- [PASS] **Valid:** `DocumentEditor` handles document editing operations
+- [FAIL] **Invalid:** `DocumentEditor` also handles user authentication
 
 #### 2.1.2. High Cohesion, Low Coupling
 
@@ -400,7 +400,7 @@ Components must be designed for optimal performance:
 Leverage Leptos's fine-grained reactivity to minimize DOM updates:
 
 ```rust
-// ✅ Good: Fine-grained reactivity
+// [PASS] Good: Fine-grained reactivity
 #[component]
 fn DocumentStats(document: ReadSignal<Document>) -> impl IntoView {
     let word_count = create_memo(move |_| {
@@ -412,7 +412,7 @@ fn DocumentStats(document: ReadSignal<Document>) -> impl IntoView {
     }
 }
 
-// ❌ Bad: Coarse-grained reactivity
+// [FAIL] Bad: Coarse-grained reactivity
 #[component]
 fn DocumentStats(document: ReadSignal<Document>) -> impl IntoView {
     view! {
@@ -469,7 +469,7 @@ All components must adhere to WCAG 2.1 AA accessibility standards:
 Use semantic HTML elements for proper screen reader interpretation:
 
 ```rust
-// ✅ Good: Semantic HTML
+// [PASS] Good: Semantic HTML
 view! {
     <article class="document">
         <header>
@@ -484,7 +484,7 @@ view! {
     </article>
 }
 
-// ❌ Bad: Non-semantic HTML
+// [FAIL] Bad: Non-semantic HTML
 view! {
     <div class="document">
         <div class="title">{document.title}</div>
@@ -2344,7 +2344,7 @@ pub fn SearchInterface(props: SearchInterfaceProps) -> impl IntoView {
                         <Show
                             when=is_searching
                             fallback=|| view! {
-                                <span class="search-icon">"🔍"</span>
+                                <span class="search-icon">"[search]"</span>
                             }
                         >
                             <span class="search-spinner">"⟳"</span>
@@ -3150,7 +3150,7 @@ pub fn UserMenu(props: UserMenuProps) -> impl IntoView {
                     alt=format!("Avatar for {}", user.get().username)
                 />
                 <span class="user-menu-username">{move || user.get().username.clone()}</span>
-                <span class="user-menu-arrow">"▼"</span>
+                <span class="user-menu-arrow">"-"</span>
             </button>
             <Show
                 when=menu_visible
@@ -4790,7 +4790,7 @@ Leverage Leptos's fine-grained reactivity to minimize DOM updates.
 pub fn Counter() -> impl IntoView {
     let (count, set_count) = create_signal(0);
     
-    // ✅ Good: Fine-grained reactivity
+    // [PASS] Good: Fine-grained reactivity
     let double_count = create_memo(move |_| count.get() * 2);
     
     view! {

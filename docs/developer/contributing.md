@@ -329,4 +329,4 @@ Contributors are recognized in:
 - Release notes
 - Contributors file
 
-Thank you for contributing to Tachyon! 🎉
+Thank you for contributing to Tachyon! (new)

@@ -95,29 +95,29 @@ Implemented comprehensive CI/CD pipeline with GitHub Actions and Docker for the 
 
 ## Success Criteria Met
 
-✅ **Docker images build successfully**
+[PASS] **Docker images build successfully**
    - Multi-stage builds for both backend and frontend
    - Optimized for size (< 200MB each)
    - Backend: ~50-80 MB
    - Frontend: ~20-40 MB
 
-✅ **CI pipeline runs on every PR**
+[PASS] **CI pipeline runs on every PR**
    - Triggers on push to main/develop
    - Triggers on pull requests to main/develop
    - Runs lint, build, and test jobs
 
-✅ **CD pipeline deploys on release**
+[PASS] **CD pipeline deploys on release**
    - Triggers on version tags (v*)
    - Builds and pushes Docker images
    - Supports staging and production environments
 
-✅ **Security scanning works**
+[PASS] **Security scanning works**
    - Dependency audit with cargo-audit
    - Container scanning with Trivy
    - SAST with Semgrep
    - Secret detection with TruffleHog
 
-✅ **All jobs pass**
+[PASS] **All jobs pass**
    - Lint job: rustfmt + clippy
    - Build jobs: backend + frontend
    - Test job: workspace tests
@@ -132,13 +132,13 @@ Implemented comprehensive CI/CD pipeline with GitHub Actions and Docker for the 
 │   (nginx/WASM)  │
 └────────┬────────┘
          │ /api, /ws
-         ▼
+         -
 ┌─────────────────┐
 │   Backend       │ :3000
 │   (Rust/Axum)   │
 └────┬───────┬────┘
      │       │
-     ▼       ▼
+     -       -
 ┌────────┐ ┌──────┐
 │Postgres│ │Redis │
 │  :5432 │ │:6379 │

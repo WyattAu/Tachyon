@@ -370,32 +370,32 @@ URIs must follow these structural rules:
 
 **Rule 1: Use Nouns, Not Verbs**
 ```
-✓ /api/v1/documents
-✗ /api/v1/getDocuments
+[OK] /api/v1/documents
+[NO] /api/v1/getDocuments
 ```
 
 **Rule 2: Use Plural Nouns for Collections**
 ```
-✓ /api/v1/documents
-✗ /api/v1/document
+[OK] /api/v1/documents
+[NO] /api/v1/document
 ```
 
 **Rule 3: Use Hierarchical Structure for Relationships**
 ```
-✓ /api/v1/users/{user_id}/documents
-✗ /api/v1/documents?user_id={user_id}
+[OK] /api/v1/users/{user_id}/documents
+[NO] /api/v1/documents?user_id={user_id}
 ```
 
 **Rule 4: Use Query Parameters for Filtering, Sorting, and Pagination**
 ```
-✓ /api/v1/documents?status=published&sort=-created_at&page=2&limit=50
-✗ /api/v1/documents/published/sort/created_at/desc/page/2/limit/50
+[OK] /api/v1/documents?status=published&sort=-created_at&page=2&limit=50
+[NO] /api/v1/documents/published/sort/created_at/desc/page/2/limit/50
 ```
 
 **Rule 5: Use kebab-case for Path Segments**
 ```
-✓ /api/v1/workspaces/{workspace_id}
-✗ /api/v1/workSpaces/{workspace_id}
+[OK] /api/v1/workspaces/{workspace_id}
+[NO] /api/v1/workSpaces/{workspace_id}
 ```
 
 #### 3.2.2. URI Versioning
