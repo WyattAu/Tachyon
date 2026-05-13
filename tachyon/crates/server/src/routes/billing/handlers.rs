@@ -1,42 +1,25 @@
-//! Billing API routes
-//! TrueLayer open banking payment integration (NOT Stripe)
-
 use axum::{
     extract::State,
     http::{HeaderMap, StatusCode},
     response::Json,
 };
 use chrono::{DateTime, Utc};
-use hmac::{Hmac, Mac};
-use serde::{Deserialize, Serialize};
-use sha2::Sha256;
+use hmac::Mac;
 use subtle::ConstantTimeEq;
 use tachyon_database::error::DatabaseError;
 use tracing::{info, warn};
 
-use crate::truelayer::{TrueLayerClient, TrueLayerError};
+use crate::truelayer::TrueLayerError;
 
-type HmacSha256 = Hmac<Sha256>;
+use super::types::{
+    BillingErrorResponse, BillingState, ChangePlanRequest, ChangePlanResponse,
+    CreateMandateRequest, CreatePaymentRequest, CreateSubscriptionRequest, HmacSha256,
+    InvoicesResponse, MandateResponse, MandateStatusResponse, PaymentResponse,
+    PaymentStatusResponse, Plan, PlanDetails, PlanInfo, PlansResponse, ProrationResult,
+    SubscriptionResponse, TransitionType, UsageMetrics, UsageResponse, WebhookPayload,
+};
 
-#[derive(Debug, Clone, PartialEq)]
-enum TransitionType {
-    Upgrade,
-    Downgrade,
-}
-
-/// Proration calculation result.
-///
-/// Reserved for future use: subscription plan transition billing.
-#[derive(Debug, Clone)]
-#[allow(dead_code)] // reserved for future billing calculation endpoints
-struct ProrationResult {
-    prorated_amount: f64,
-    credit: f64,
-    charge: f64,
-    days_remaining: u32,
-}
-
-fn verify_webhook_signature(payload: &[u8], signature_header: &str, secret: &str) -> bool {
+pub fn verify_webhook_signature(payload: &[u8], signature_header: &str, secret: &str) -> bool {
     let sig_part = signature_header
         .strip_prefix("v1=")
         .unwrap_or(signature_header);
@@ -50,231 +33,11 @@ fn verify_webhook_signature(payload: &[u8], signature_header: &str, secret: &str
     expected.as_bytes().ct_eq(sig_part.as_bytes()).into()
 }
 
-/// Billing state
-#[derive(Clone)]
-pub struct BillingState {
-    pub pool: tachyon_database::DatabasePool,
-    pub truelayer: Option<TrueLayerClient>,
-}
-
-impl BillingState {
-    pub fn new(pool: tachyon_database::DatabasePool, truelayer: Option<TrueLayerClient>) -> Self {
-        Self { pool, truelayer }
-    }
-}
-
-// ============================================================================
-// Types
-// ============================================================================
-
-/// Subscription plan
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
-#[serde(rename_all = "lowercase")]
-pub enum Plan {
-    Free,
-    Pro,
-    Team,
-    Enterprise,
-}
-
-impl Plan {
-    pub fn price_monthly(&self) -> u64 {
-        match self {
-            Plan::Free => 0,
-            Plan::Pro => 12_00,
-            Plan::Team => 29_00,
-            Plan::Enterprise => 0,
-        }
-    }
-
-    pub fn max_documents(&self) -> usize {
-        match self {
-            Plan::Free => 100,
-            Plan::Pro => 10_000,
-            Plan::Team => 100_000,
-            Plan::Enterprise => usize::MAX,
-        }
-    }
-
-    pub fn max_members(&self) -> usize {
-        match self {
-            Plan::Free => 1,
-            Plan::Pro => 5,
-            Plan::Team => 50,
-            Plan::Enterprise => usize::MAX,
-        }
-    }
-
-    pub fn features(&self) -> Vec<&'static str> {
-        match self {
-            Plan::Free => vec!["Basic editor", "5GB storage", "Community support"],
-            Plan::Pro => vec![
-                "Advanced editor",
-                "50GB storage",
-                "SSG export",
-                "Plugin system",
-                "Email support",
-            ],
-            Plan::Team => vec![
-                "Everything in Pro",
-                "Collaboration",
-                "Admin panel",
-                "Audit logs",
-                "Priority support",
-            ],
-            Plan::Enterprise => vec![
-                "Everything in Team",
-                "SSO/SAML",
-                "Custom integrations",
-                "SLA",
-                "Dedicated support",
-            ],
-        }
-    }
-}
-
-/// Usage metrics for the billing period
-#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
-pub struct UsageMetrics {
-    pub organization_id: String,
-    pub period_start: DateTime<Utc>,
-    pub period_end: DateTime<Utc>,
-    pub documents_created: usize,
-    pub documents_total: usize,
-    pub members_total: usize,
-    pub storage_bytes: u64,
-    pub plan: Plan,
-}
-
-// ============================================================================
-// Request/Response types
-// ============================================================================
-
-#[derive(Debug, Deserialize, utoipa::ToSchema)]
-#[serde(deny_unknown_fields)]
-pub struct CreateSubscriptionRequest {
-    pub organization_id: String,
-    pub plan: String,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct SubscriptionResponse {
-    pub subscription: tachyon_database::Subscription,
-    pub plan_details: PlanDetails,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct PlanDetails {
-    pub name: String,
-    pub price_monthly_cents: u64,
-    pub max_documents: usize,
-    pub max_members: usize,
-    pub features: Vec<String>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct PlansResponse {
-    pub plans: Vec<PlanInfo>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct PlanInfo {
-    pub name: String,
-    pub price_monthly_cents: u64,
-    pub max_documents: usize,
-    pub max_members: usize,
-    pub features: Vec<String>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct InvoicesResponse {
-    pub invoices: Vec<tachyon_database::Invoice>,
-    pub total: usize,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct UsageResponse {
-    pub usage: UsageMetrics,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct BillingErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
-#[derive(Debug, Deserialize, utoipa::ToSchema)]
-#[serde(deny_unknown_fields)]
-pub struct CreateMandateRequest {
-    pub organization_id: String,
-    pub return_url: String,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct MandateResponse {
-    pub mandate_id: String,
-    pub authorization_url: Option<String>,
-    pub status: String,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct MandateStatusResponse {
-    pub mandate_id: String,
-    pub status: String,
-}
-
-#[derive(Debug, Deserialize, utoipa::ToSchema)]
-#[serde(deny_unknown_fields)]
-pub struct CreatePaymentRequest {
-    pub mandate_id: String,
-    pub organization_id: String,
-    pub amount_cents: u64,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct PaymentResponse {
-    pub payment_id: String,
-    pub status: String,
-    pub amount: u64,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct PaymentStatusResponse {
-    pub payment_id: String,
-    pub status: String,
-}
-
-#[derive(Debug, Deserialize, utoipa::ToSchema)]
-#[serde(deny_unknown_fields)]
-pub struct ChangePlanRequest {
-    pub organization_id: String,
-    pub new_plan: String,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ChangePlanResponse {
-    pub subscription_id: String,
-    pub old_plan: String,
-    pub new_plan: String,
-    pub status: String,
-    pub effective_at: String,
-    pub prorated_amount: Option<f64>,
-    pub next_billing_date: Option<String>,
-}
-
-#[derive(Debug, Deserialize, utoipa::ToSchema)]
-pub struct WebhookPayload {
-    #[serde(rename = "type")]
-    pub event_type: String,
-    pub event_id: String,
-    pub body: serde_json::Value,
-}
-
 // ============================================================================
 // Helper functions
 // ============================================================================
 
-fn plan_price(plan: &str) -> u64 {
+pub fn plan_price(plan: &str) -> u64 {
     match plan {
         "free" => 0,
         "pro" => 12_00,
@@ -283,7 +46,7 @@ fn plan_price(plan: &str) -> u64 {
     }
 }
 
-fn plan_max_docs(plan: &str) -> usize {
+pub fn plan_max_docs(plan: &str) -> usize {
     match plan {
         "free" => 100,
         "pro" => 10_000,
@@ -292,7 +55,7 @@ fn plan_max_docs(plan: &str) -> usize {
     }
 }
 
-fn plan_max_members(plan: &str) -> usize {
+pub fn plan_max_members(plan: &str) -> usize {
     match plan {
         "free" => 1,
         "pro" => 5,
@@ -301,7 +64,7 @@ fn plan_max_members(plan: &str) -> usize {
     }
 }
 
-fn plan_features(plan: &str) -> Vec<String> {
+pub fn plan_features(plan: &str) -> Vec<String> {
     match plan {
         "free" => vec![
             "Basic editor".into(),
@@ -326,7 +89,7 @@ fn plan_features(plan: &str) -> Vec<String> {
     }
 }
 
-fn truelayer_error_response(e: TrueLayerError) -> (StatusCode, Json<BillingErrorResponse>) {
+pub fn truelayer_error_response(e: TrueLayerError) -> (StatusCode, Json<BillingErrorResponse>) {
     match e {
         TrueLayerError::Disabled => (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -366,7 +129,7 @@ fn truelayer_error_response(e: TrueLayerError) -> (StatusCode, Json<BillingError
     }
 }
 
-fn validate_plan_name(plan: &str) -> Result<(), (StatusCode, Json<BillingErrorResponse>)> {
+pub fn validate_plan_name(plan: &str) -> Result<(), (StatusCode, Json<BillingErrorResponse>)> {
     const VALID_PLANS: &[&str] = &["free", "pro", "team", "enterprise"];
     if !VALID_PLANS.contains(&plan) {
         return Err((
@@ -383,7 +146,7 @@ fn validate_plan_name(plan: &str) -> Result<(), (StatusCode, Json<BillingErrorRe
     Ok(())
 }
 
-fn validate_plan_transition(
+pub fn validate_plan_transition(
     current: &str,
     new: &str,
 ) -> Result<TransitionType, (StatusCode, Json<BillingErrorResponse>)> {
@@ -414,11 +177,11 @@ fn validate_plan_transition(
     }
 }
 
-fn plan_price_f64(plan: &str) -> f64 {
+pub fn plan_price_f64(plan: &str) -> f64 {
     plan_price(plan) as f64 / 100.0
 }
 
-fn calculate_proration(
+pub fn calculate_proration(
     current_plan_price: f64,
     new_plan_price: f64,
     billing_start: DateTime<Utc>,
@@ -1304,339 +1067,4 @@ pub fn create_billing_router() -> axum::Router<BillingState> {
         .route("/billing/payments", post(create_payment))
         .route("/billing/payments/{payment_id}", get(get_payment_status))
         .route("/billing/webhook", post(webhook_handler))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::Duration;
-
-    #[test]
-    fn test_validate_plan_name_valid() {
-        for plan in &["free", "pro", "team", "enterprise"] {
-            assert!(
-                validate_plan_name(plan).is_ok(),
-                "plan '{}' should be valid",
-                plan
-            );
-        }
-    }
-
-    #[test]
-    fn test_validate_plan_name_invalid() {
-        assert!(validate_plan_name("premium").is_err());
-        assert!(validate_plan_name("basic").is_err());
-        assert!(validate_plan_name("").is_err());
-    }
-
-    #[test]
-    fn test_validate_plan_transition_upgrades() {
-        assert_eq!(
-            validate_plan_transition("free", "pro").unwrap(),
-            TransitionType::Upgrade
-        );
-        assert_eq!(
-            validate_plan_transition("free", "team").unwrap(),
-            TransitionType::Upgrade
-        );
-        assert_eq!(
-            validate_plan_transition("free", "enterprise").unwrap(),
-            TransitionType::Upgrade
-        );
-        assert_eq!(
-            validate_plan_transition("pro", "team").unwrap(),
-            TransitionType::Upgrade
-        );
-        assert_eq!(
-            validate_plan_transition("pro", "enterprise").unwrap(),
-            TransitionType::Upgrade
-        );
-        assert_eq!(
-            validate_plan_transition("team", "enterprise").unwrap(),
-            TransitionType::Upgrade
-        );
-    }
-
-    #[test]
-    fn test_validate_plan_transition_downgrades() {
-        assert_eq!(
-            validate_plan_transition("pro", "free").unwrap(),
-            TransitionType::Downgrade
-        );
-        assert_eq!(
-            validate_plan_transition("team", "pro").unwrap(),
-            TransitionType::Downgrade
-        );
-        assert_eq!(
-            validate_plan_transition("team", "free").unwrap(),
-            TransitionType::Downgrade
-        );
-    }
-
-    #[test]
-    fn test_validate_plan_transition_same_plan() {
-        let result = validate_plan_transition("pro", "pro");
-        assert!(result.is_err());
-        let (status, body) = result.unwrap_err();
-        assert_eq!(status, StatusCode::BAD_REQUEST);
-        assert_eq!(body.code, "SAME_PLAN");
-    }
-
-    #[test]
-    fn test_validate_plan_transition_enterprise_blocked() {
-        let result = validate_plan_transition("enterprise", "free");
-        assert!(result.is_err());
-        let (status, body) = result.unwrap_err();
-        assert_eq!(status, StatusCode::FORBIDDEN);
-        assert_eq!(body.code, "ENTERPRISE_CHANGE_REQUIRES_ADMIN");
-    }
-
-    #[test]
-    fn test_validate_plan_transition_enterprise_upgrade_blocked() {
-        let result = validate_plan_transition("enterprise", "team");
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().0, StatusCode::FORBIDDEN);
-    }
-
-    #[test]
-    fn test_calculate_proration_mid_period_upgrade() {
-        let start = Utc::now() - Duration::days(15);
-        let end = Utc::now() + Duration::days(15);
-        let now = Utc::now();
-
-        let result = calculate_proration(12.0, 29.0, start, end, now);
-
-        assert!(result.prorated_amount > 0.0);
-        assert!(result.charge > result.credit);
-        assert_eq!(result.days_remaining, 15);
-    }
-
-    #[test]
-    fn test_calculate_proration_downgrade() {
-        let start = Utc::now() - Duration::days(15);
-        let end = Utc::now() + Duration::days(15);
-        let now = Utc::now();
-
-        let result = calculate_proration(29.0, 12.0, start, end, now);
-
-        assert!(result.prorated_amount < 0.0);
-        assert!(result.charge < result.credit);
-        assert_eq!(result.days_remaining, 15);
-    }
-
-    #[test]
-    fn test_calculate_proration_free_upgrade() {
-        let start = Utc::now() - Duration::days(15);
-        let end = Utc::now() + Duration::days(15);
-        let now = Utc::now();
-
-        let result = calculate_proration(0.0, 12.0, start, end, now);
-
-        assert_eq!(result.credit, 0.0);
-        assert!(result.charge > 0.0);
-        assert!(result.prorated_amount > 0.0);
-    }
-
-    #[test]
-    fn test_calculate_proration_downgrade_to_free() {
-        let start = Utc::now() - Duration::days(15);
-        let end = Utc::now() + Duration::days(15);
-        let now = Utc::now();
-
-        let result = calculate_proration(12.0, 0.0, start, end, now);
-
-        assert_eq!(result.charge, 0.0);
-        assert!(result.credit > 0.0);
-        assert!(result.prorated_amount < 0.0);
-    }
-
-    #[test]
-    fn test_calculate_proration_at_period_end() {
-        let start = Utc::now() - Duration::days(30);
-        let end = Utc::now();
-        let now = Utc::now();
-
-        let result = calculate_proration(12.0, 29.0, start, end, now);
-
-        assert_eq!(result.days_remaining, 0);
-        assert!(result.prorated_amount.abs() < 0.01);
-    }
-
-    #[test]
-    fn test_plan_limits() {
-        assert_eq!(Plan::Free.max_documents(), 100);
-        assert_eq!(Plan::Free.max_members(), 1);
-
-        assert_eq!(Plan::Pro.max_documents(), 10_000);
-        assert_eq!(Plan::Pro.max_members(), 5);
-
-        assert_eq!(Plan::Team.max_documents(), 100_000);
-        assert_eq!(Plan::Team.max_members(), 50);
-
-        assert_eq!(Plan::Enterprise.max_documents(), usize::MAX);
-        assert_eq!(Plan::Enterprise.max_members(), usize::MAX);
-    }
-
-    #[test]
-    fn test_plan_prices() {
-        assert_eq!(Plan::Free.price_monthly(), 0);
-        assert_eq!(Plan::Pro.price_monthly(), 12_00);
-        assert_eq!(Plan::Team.price_monthly(), 29_00);
-        assert_eq!(Plan::Enterprise.price_monthly(), 0);
-    }
-
-    #[test]
-    fn test_plan_price_f64() {
-        assert!((plan_price_f64("free") - 0.0).abs() < 0.001);
-        assert!((plan_price_f64("pro") - 12.0).abs() < 0.001);
-        assert!((plan_price_f64("team") - 29.0).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_change_plan_request_deserialize() {
-        let json = r#"{"organization_id":"org-1","new_plan":"pro"}"#;
-        let req: ChangePlanRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(req.organization_id, "org-1");
-        assert_eq!(req.new_plan, "pro");
-    }
-
-    #[test]
-    fn test_change_plan_response_serialize() {
-        let resp = ChangePlanResponse {
-            subscription_id: "sub-1".to_string(),
-            old_plan: "free".to_string(),
-            new_plan: "pro".to_string(),
-            status: "immediate".to_string(),
-            effective_at: "2025-01-01T00:00:00+00:00".to_string(),
-            prorated_amount: Some(6.50),
-            next_billing_date: Some("2025-02-01T00:00:00+00:00".to_string()),
-        };
-        let json = serde_json::to_string(&resp).unwrap();
-        assert!(json.contains("immediate"));
-        assert!(json.contains("6.5"));
-    }
-
-    fn generate_hmac_sha256(secret: &str, payload: &[u8]) -> String {
-        let mut mac =
-            HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
-        mac.update(payload);
-        hex::encode(mac.finalize().into_bytes())
-    }
-
-    #[test]
-    fn test_verify_valid_signature() {
-        let secret = "test_secret";
-        let payload = r#"{"event": "payment.created"}"#;
-        let signature = generate_hmac_sha256(secret, payload.as_bytes());
-        let header = format!("v1={}", signature);
-        assert!(verify_webhook_signature(
-            payload.as_bytes(),
-            &header,
-            secret
-        ));
-    }
-
-    #[test]
-    fn test_verify_valid_signature_without_prefix() {
-        let secret = "test_secret";
-        let payload = r#"{"event": "payment.created"}"#;
-        let signature = generate_hmac_sha256(secret, payload.as_bytes());
-        assert!(verify_webhook_signature(
-            payload.as_bytes(),
-            &signature,
-            secret
-        ));
-    }
-
-    #[test]
-    fn test_verify_invalid_signature() {
-        let secret = "test_secret";
-        let payload = r#"{"event": "payment.created"}"#;
-        assert!(!verify_webhook_signature(
-            payload.as_bytes(),
-            "v1=completely_wrong_signature",
-            secret
-        ));
-    }
-
-    #[test]
-    fn test_verify_different_secret_fails() {
-        let secret = "correct_secret";
-        let wrong_secret = "wrong_secret";
-        let payload = r#"{"event": "payment.created"}"#;
-        let signature = generate_hmac_sha256(wrong_secret, payload.as_bytes());
-        let header = format!("v1={}", signature);
-        assert!(!verify_webhook_signature(
-            payload.as_bytes(),
-            &header,
-            secret
-        ));
-    }
-
-    #[test]
-    fn test_verify_empty_signature_fails() {
-        let secret = "test_secret";
-        let payload = r#"{"event": "payment.created"}"#;
-        assert!(!verify_webhook_signature(payload.as_bytes(), "", secret));
-    }
-
-    #[test]
-    fn test_verify_empty_payload() {
-        let secret = "test_secret";
-        let payload = b"";
-        let signature = generate_hmac_sha256(secret, payload);
-        let header = format!("v1={}", signature);
-        assert!(verify_webhook_signature(payload, &header, secret));
-    }
-
-    #[test]
-    fn test_verify_empty_payload_wrong_signature() {
-        let secret = "test_secret";
-        let payload = b"";
-        assert!(!verify_webhook_signature(
-            payload,
-            "v1=0000000000000000",
-            secret
-        ));
-    }
-
-    #[test]
-    fn test_verify_different_payload_fails() {
-        let secret = "test_secret";
-        let payload_a = r#"{"event": "payment.created"}"#;
-        let payload_b = r#"{"event": "payment.failed"}"#;
-        let signature = generate_hmac_sha256(secret, payload_a.as_bytes());
-        let header = format!("v1={}", signature);
-        assert!(!verify_webhook_signature(
-            payload_b.as_bytes(),
-            &header,
-            secret
-        ));
-    }
-
-    #[test]
-    fn test_verify_empty_secret() {
-        let secret = "";
-        let payload = r#"{"event": "payment.created"}"#;
-        let signature = generate_hmac_sha256(secret, payload.as_bytes());
-        let header = format!("v1={}", signature);
-        assert!(verify_webhook_signature(
-            payload.as_bytes(),
-            &header,
-            secret
-        ));
-    }
-
-    #[test]
-    fn test_signature_is_constant_time() {
-        let secret = "test_secret";
-        let payload = r#"{"event": "payment.created"}"#;
-        let signature = generate_hmac_sha256(secret, payload.as_bytes());
-        let header = format!("v1={}", signature);
-        assert!(verify_webhook_signature(
-            payload.as_bytes(),
-            &header,
-            secret
-        ));
-    }
 }

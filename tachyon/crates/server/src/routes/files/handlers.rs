@@ -1,144 +1,14 @@
 #![allow(private_interfaces)]
 
+use super::types::*;
 use axum::{
     extract::{Multipart, Query, State},
     http::{header, StatusCode},
     response::{IntoResponse, Json, Response},
 };
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use tokio::fs;
-
-#[derive(Clone)]
-pub struct FilesState {
-    pub root_path: PathBuf,
-    pub uploads_dir: PathBuf,
-}
-
-#[derive(Debug, Deserialize, utoipa::IntoParams)]
-#[serde(rename_all = "snake_case")]
-struct ListQuery {
-    path: Option<String>,
-    all: Option<bool>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ListResponse {
-    path: String,
-    entries: Vec<EntryInfo>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct EntryInfo {
-    name: String,
-    is_dir: bool,
-    size: u64,
-    modified_at: String,
-    extension: Option<String>,
-}
-
-#[derive(Debug, Deserialize, utoipa::IntoParams)]
-struct ReadQuery {
-    path: String,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ReadResponse {
-    path: String,
-    content: String,
-    size: u64,
-    encoding: String,
-    frontmatter: Option<serde_json::Value>,
-}
-
-#[derive(Debug, Deserialize, utoipa::IntoParams)]
-struct SearchQuery {
-    query: String,
-    path: Option<String>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct SearchResponse {
-    files: Vec<SearchResultEntry>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct SearchResultEntry {
-    path: String,
-    name: String,
-    is_dir: bool,
-    modified_at: String,
-}
-
-#[derive(Debug, Deserialize, utoipa::IntoParams)]
-struct TreeQuery {
-    path: Option<String>,
-    depth: Option<usize>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct TreeResponse {
-    path: String,
-    #[schema(value_type = Vec<Object>)]
-    tree: Vec<TreeNode>,
-}
-
-/// Tree node for directory listing. Not registered with utoipa ToSchema
-/// because self-referential types require utoipa's `#[schema(recursive)]`
-/// which is incompatible with the derive macro in utoipa 5.x.
-/// Instead, the OpenAPI schema is defined manually in api_docs.rs.
-#[derive(Debug, Serialize)]
-pub struct TreeNode {
-    name: String,
-    path: String,
-    is_dir: bool,
-    children: Option<Vec<TreeNode>>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct StatsResponse {
-    total_files: usize,
-    total_dirs: usize,
-    total_size_bytes: u64,
-    file_types: std::collections::BTreeMap<String, usize>,
-    largest_files: Vec<LargestFileEntry>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct LargestFileEntry {
-    path: String,
-    name: String,
-    size: u64,
-}
-
-#[derive(Debug, Deserialize, utoipa::IntoParams)]
-struct RecentQuery {
-    limit: Option<usize>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct RecentResponse {
-    files: Vec<RecentFileEntry>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct RecentFileEntry {
-    path: String,
-    name: String,
-    modified_at: String,
-    size: u64,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct UploadResponse {
-    pub id: String,
-    pub filename: String,
-    pub url: String,
-    pub size: u64,
-    pub content_type: String,
-    pub uploaded_at: String,
-}
 
 const ALLOWED_EXTENSIONS: &[&str] = &[".md", ".txt", ".json", ".yaml", ".yml", ".toml"];
 

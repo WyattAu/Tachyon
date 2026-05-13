@@ -13,6 +13,8 @@ pub enum ServerError {
     Search(String),
     NotFound(String),
     Validation(String),
+    Conflict(String),
+    RateLimit(String),
     Internal(String),
 }
 
@@ -25,12 +27,49 @@ impl std::fmt::Display for ServerError {
             Self::Search(e) => write!(f, "Search error: {}", e),
             Self::NotFound(e) => write!(f, "Not found: {}", e),
             Self::Validation(e) => write!(f, "Validation error: {}", e),
+            Self::Conflict(e) => write!(f, "Conflict: {}", e),
+            Self::RateLimit(e) => write!(f, "Rate limited: {}", e),
             Self::Internal(e) => write!(f, "Internal error: {}", e),
         }
     }
 }
 
 impl std::error::Error for ServerError {}
+
+impl ServerError {
+    /// Create a "not found" error for a resource.
+    pub fn not_found(resource: &str, id: &str) -> Self {
+        Self::NotFound(format!("{} '{}' not found", resource, id))
+    }
+
+    /// Create a validation error.
+    pub fn bad_request(message: impl Into<String>) -> Self {
+        Self::Validation(message.into())
+    }
+
+    /// Create a conflict error.
+    pub fn conflict(message: impl Into<String>) -> Self {
+        Self::Conflict(message.into())
+    }
+
+    /// Create a rate limit error.
+    pub fn rate_limited(retry_after: u64) -> Self {
+        Self::RateLimit(format!(
+            "Too many requests. Retry after {} seconds.",
+            retry_after
+        ))
+    }
+
+    /// Create a database error.
+    pub fn database(message: impl Into<String>) -> Self {
+        Self::Database(message.into())
+    }
+
+    /// Create an internal server error.
+    pub fn internal(message: impl Into<String>) -> Self {
+        Self::Internal(message.into())
+    }
+}
 
 impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
@@ -39,6 +78,8 @@ impl IntoResponse for ServerError {
             Self::Validation(msg) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR", msg.as_str()),
             Self::Auth(msg) => (StatusCode::UNAUTHORIZED, "AUTH_ERROR", msg.as_str()),
             Self::Rbac(msg) => (StatusCode::FORBIDDEN, "FORBIDDEN", msg.as_str()),
+            Self::Conflict(msg) => (StatusCode::CONFLICT, "CONFLICT", msg.as_str()),
+            Self::RateLimit(msg) => (StatusCode::TOO_MANY_REQUESTS, "RATE_LIMITED", msg.as_str()),
             Self::Database(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "DATABASE_ERROR",
