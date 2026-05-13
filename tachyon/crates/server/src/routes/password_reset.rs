@@ -1,10 +1,5 @@
-use axum::{
-    extract::State,
-    http::{HeaderMap, StatusCode},
-    response::Json,
-    routing::post,
-    Router,
-};
+use crate::error::ServerError;
+use axum::{extract::State, http::HeaderMap, response::Json, routing::post, Router};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -64,12 +59,6 @@ pub struct EmailVerifyConfirm {
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct MessageResponse {
-    pub message: String,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ErrorResponse {
-    pub code: String,
     pub message: String,
 }
 
@@ -136,7 +125,7 @@ async fn send_email_webhook(client: &reqwest::Client, to: &str, subject: &str, b
 pub async fn request_password_reset(
     State(state): State<PasswordResetState>,
     Json(body): Json<PasswordResetRequest>,
-) -> Result<Json<MessageResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<MessageResponse>, ServerError> {
     let user_repo = tachyon_database::UserRepository::new(state.pool.clone());
     let reset_repo = tachyon_database::PasswordResetRepository::new(state.pool.clone());
 
@@ -157,15 +146,7 @@ pub async fn request_password_reset(
     reset_repo
         .create_reset_token(&user.id.as_str(), &token_hash, 1)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "TOKEN_ERROR".to_string(),
-                    message: format!("Failed to create reset token: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Failed to create reset token: {}", e)))?;
 
     let reset_link = format!(
         "{}/reset-password?token={}",
@@ -209,83 +190,39 @@ pub async fn request_password_reset(
 pub async fn confirm_password_reset(
     State(state): State<PasswordResetState>,
     Json(body): Json<PasswordResetConfirm>,
-) -> Result<Json<MessageResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<MessageResponse>, ServerError> {
     let token_hash = hash_token(&body.token);
 
     let reset_repo = tachyon_database::PasswordResetRepository::new(state.pool.clone());
     let token = reset_repo
         .consume_reset_token(&token_hash)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "TOKEN_ERROR".to_string(),
-                    message: format!("Failed to validate reset token: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Failed to validate reset token: {}", e)))?;
 
-    let token = token.ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "INVALID_TOKEN".to_string(),
-                message: "Token is invalid, expired, or already used.".to_string(),
-            }),
-        )
-    })?;
+    let token = token
+        .ok_or_else(|| ServerError::bad_request("Token is invalid, expired, or already used"))?;
 
     if body.new_password.len() < 8
         || !body.new_password.chars().any(|c| c.is_uppercase())
         || !body.new_password.chars().any(|c| c.is_lowercase())
         || !body.new_password.chars().any(|c| c.is_ascii_digit())
     {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "WEAK_PASSWORD".to_string(),
-                message:
-                    "Password must be at least 8 characters with uppercase, lowercase, and digit"
-                        .to_string(),
-            }),
+        return Err(ServerError::bad_request(
+            "Password must be at least 8 characters with uppercase, lowercase, and digit",
         ));
     }
 
-    let new_hash =
-        tachyon_core::types::user::User::hash_password(&body.new_password).map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "HASH_ERROR".to_string(),
-                    message: format!("Failed to hash password: {}", e),
-                }),
-            )
-        })?;
+    let new_hash = tachyon_core::types::user::User::hash_password(&body.new_password)
+        .map_err(|e| ServerError::internal(format!("Failed to hash password: {}", e)))?;
 
-    let user_id = tachyon_core::id::UserId::parse_str(&token.user_id).map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "INVALID_USER_ID".to_string(),
-                message: format!("Invalid user ID: {}", e),
-            }),
-        )
-    })?;
+    let user_id = tachyon_core::id::UserId::parse_str(&token.user_id)
+        .map_err(|e| ServerError::internal(format!("Invalid user ID: {}", e)))?;
 
     let user_repo = tachyon_database::UserRepository::new(state.pool.clone());
     user_repo
         .update_password(&user_id, &new_hash)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "UPDATE_ERROR".to_string(),
-                    message: format!("Failed to update password: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Failed to update password: {}", e)))?;
 
     info!(user_id = %token.user_id, "Password reset successful");
 
@@ -310,7 +247,7 @@ pub async fn request_email_verification(
     State(state): State<PasswordResetState>,
     headers: HeaderMap,
     Json(body): Json<EmailVerifyRequest>,
-) -> Result<Json<MessageResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<MessageResponse>, ServerError> {
     let jwt_secrets = if let Ok(secrets_csv) = std::env::var("TACHYON_JWT_SECRETS") {
         secrets_csv
             .split(',')
@@ -320,35 +257,17 @@ pub async fn request_email_verification(
     } else if let Ok(secret) = std::env::var("TACHYON_JWT_SECRET") {
         vec![secret]
     } else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "CONFIG_ERROR".to_string(),
-                message: "JWT secret not configured".to_string(),
-            }),
-        ));
+        return Err(ServerError::internal("JWT secret not configured"));
     };
 
     let auth_header = headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| {
-            (
-                StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse {
-                    code: "UNAUTHORIZED".to_string(),
-                    message: "Authentication required".to_string(),
-                }),
-            )
-        })?;
+        .ok_or_else(|| ServerError::unauthorized("Authentication required"))?;
 
     if !auth_header.starts_with("Bearer ") {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse {
-                code: "UNAUTHORIZED".to_string(),
-                message: "Invalid authorization header format".to_string(),
-            }),
+        return Err(ServerError::unauthorized(
+            "Invalid authorization header format",
         ));
     }
 
@@ -368,13 +287,7 @@ pub async fn request_email_verification(
     }
 
     if decoded.is_none() {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse {
-                code: "UNAUTHORIZED".to_string(),
-                message: "Invalid or expired token".to_string(),
-            }),
-        ));
+        return Err(ServerError::unauthorized("Invalid or expired token"));
     }
 
     let reset_repo = tachyon_database::PasswordResetRepository::new(state.pool.clone());
@@ -397,13 +310,7 @@ pub async fn request_email_verification(
         .create_verification_token(&user.id.as_str(), &body.email, &token_hash, 24)
         .await
         .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "TOKEN_ERROR".to_string(),
-                    message: format!("Failed to create verification token: {}", e),
-                }),
-            )
+            ServerError::internal(format!("Failed to create verification token: {}", e))
         })?;
 
     let verify_link = format!(
@@ -446,7 +353,7 @@ pub async fn request_email_verification(
 pub async fn confirm_email_verification(
     State(state): State<PasswordResetState>,
     Json(body): Json<EmailVerifyConfirm>,
-) -> Result<Json<MessageResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<MessageResponse>, ServerError> {
     let token_hash = hash_token(&body.token);
 
     let reset_repo = tachyon_database::PasswordResetRepository::new(state.pool.clone());
@@ -454,48 +361,20 @@ pub async fn confirm_email_verification(
         .consume_verification_token(&token_hash)
         .await
         .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "TOKEN_ERROR".to_string(),
-                    message: format!("Failed to validate verification token: {}", e),
-                }),
-            )
+            ServerError::internal(format!("Failed to validate verification token: {}", e))
         })?;
 
-    let token = token.ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "INVALID_TOKEN".to_string(),
-                message: "Token is invalid, expired, or already used.".to_string(),
-            }),
-        )
-    })?;
+    let token = token
+        .ok_or_else(|| ServerError::bad_request("Token is invalid, expired, or already used"))?;
 
-    let user_id = tachyon_core::id::UserId::parse_str(&token.user_id).map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "INVALID_USER_ID".to_string(),
-                message: format!("Invalid user ID: {}", e),
-            }),
-        )
-    })?;
+    let user_id = tachyon_core::id::UserId::parse_str(&token.user_id)
+        .map_err(|e| ServerError::internal(format!("Invalid user ID: {}", e)))?;
 
     let user_repo = tachyon_database::UserRepository::new(state.pool.clone());
     user_repo
         .update(&user_id, None, Some(&token.email), None, None)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "UPDATE_ERROR".to_string(),
-                    message: format!("Failed to update email: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Failed to update email: {}", e)))?;
 
     info!(user_id = %token.user_id, email = %token.email, "Email verified successfully");
 
@@ -571,17 +450,6 @@ mod tests {
     }
 
     #[test]
-    fn test_error_response_serialization() {
-        let resp = ErrorResponse {
-            code: "INVALID_TOKEN".to_string(),
-            message: "Token is invalid".to_string(),
-        };
-        let json = serde_json::to_string(&resp).unwrap();
-        assert!(json.contains("INVALID_TOKEN"));
-        assert!(json.contains("Token is invalid"));
-    }
-
-    #[test]
     fn test_password_reset_request_deserialization() {
         let json = r#"{"email":"user@example.com"}"#;
         let req: PasswordResetRequest = serde_json::from_str(json).unwrap();
@@ -621,19 +489,7 @@ mod tests {
     }
 
     #[test]
-    fn test_error_response_roundtrip() {
-        let original = ErrorResponse {
-            code: "TOKEN_ERROR".to_string(),
-            message: "Failed to create token".to_string(),
-        };
-        let json = serde_json::to_string(&original).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed["code"], original.code);
-        assert_eq!(parsed["message"], original.message);
-    }
-
-    #[test]
-    fn test_hash_token_long_input() {
+    fn test_hash_token_length() {
         let long_token = "a".repeat(1000);
         let hash = hash_token(&long_token);
         assert_eq!(hash.len(), 64);

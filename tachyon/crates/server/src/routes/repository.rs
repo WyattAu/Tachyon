@@ -14,6 +14,8 @@ use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
+use crate::error::ServerError;
+
 /// Repository data structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepositoryData {
@@ -179,15 +181,6 @@ pub struct RepositoryListResponse {
     pub total: usize,
 }
 
-/// Error response
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct RepositoryErrorResponse {
-    /// Error code
-    pub code: String,
-    /// Error message
-    pub message: String,
-}
-
 /// Initialize a new repository
 #[utoipa::path(
     post,
@@ -202,7 +195,7 @@ pub struct RepositoryErrorResponse {
 pub async fn init_repository(
     State(state): State<RepositoryState>,
     Json(req): Json<InitRepositoryRequest>,
-) -> Result<Json<RepositoryResponse>, (StatusCode, Json<RepositoryErrorResponse>)> {
+) -> Result<Json<RepositoryResponse>, ServerError> {
     info!("Initializing repository: {}", req.name);
 
     let now = Utc::now();
@@ -247,7 +240,7 @@ pub async fn init_repository(
 pub async fn clone_repository(
     State(state): State<RepositoryState>,
     Json(req): Json<CloneRepositoryRequest>,
-) -> Result<Json<RepositoryResponse>, (StatusCode, Json<RepositoryErrorResponse>)> {
+) -> Result<Json<RepositoryResponse>, ServerError> {
     info!("Cloning repository from: {}", req.source);
 
     // Check if source exists
@@ -274,13 +267,7 @@ pub async fn clone_repository(
         }
         None => {
             warn!("Source repository not found: {}", req.source);
-            return Err((
-                StatusCode::NOT_FOUND,
-                Json(RepositoryErrorResponse {
-                    code: "SOURCE_NOT_FOUND".to_string(),
-                    message: format!("Source repository {} not found", req.source),
-                }),
-            ));
+            return Err(ServerError::not_found("repository", &req.source));
         }
     };
 
@@ -314,7 +301,7 @@ pub async fn commit(
     Path(repository_id): Path<String>,
     State(state): State<RepositoryState>,
     Json(req): Json<CommitRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<RepositoryErrorResponse>)> {
+) -> Result<Json<serde_json::Value>, ServerError> {
     info!("Committing to repository: {}", repository_id);
 
     let mut repos = state.repositories.write().await;
@@ -337,13 +324,7 @@ pub async fn commit(
         }
         None => {
             debug!("Repository not found: {}", repository_id);
-            Err((
-                StatusCode::NOT_FOUND,
-                Json(RepositoryErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Repository {} not found", repository_id),
-                }),
-            ))
+            Err(ServerError::not_found("repository", &repository_id))
         }
     }
 }
@@ -368,7 +349,7 @@ pub async fn push(
     Path(repository_id): Path<String>,
     State(state): State<RepositoryState>,
     Json(req): Json<PushRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<RepositoryErrorResponse>)> {
+) -> Result<Json<serde_json::Value>, ServerError> {
     info!("Pushing to repository: {}", repository_id);
 
     let branch = req.branch.unwrap_or_else(|| "main".to_string());
@@ -378,13 +359,7 @@ pub async fn push(
     match repos.get(&repository_id) {
         Some(repo) => {
             if !repo.is_initialized {
-                return Err((
-                    StatusCode::PRECONDITION_FAILED,
-                    Json(RepositoryErrorResponse {
-                        code: "REPO_NOT_INITIALIZED".to_string(),
-                        message: "Repository is not initialized".to_string(),
-                    }),
-                ));
+                return Err(ServerError::bad_request("Repository is not initialized"));
             }
 
             info!(
@@ -402,13 +377,7 @@ pub async fn push(
         }
         None => {
             debug!("Repository not found: {}", repository_id);
-            Err((
-                StatusCode::NOT_FOUND,
-                Json(RepositoryErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Repository {} not found", repository_id),
-                }),
-            ))
+            Err(ServerError::not_found("repository", &repository_id))
         }
     }
 }
@@ -430,7 +399,7 @@ pub async fn push(
 pub async fn status(
     Path(repository_id): Path<String>,
     State(state): State<RepositoryState>,
-) -> Result<Json<RepositoryStatus>, (StatusCode, Json<RepositoryErrorResponse>)> {
+) -> Result<Json<RepositoryStatus>, ServerError> {
     debug!("Getting repository status: {}", repository_id);
 
     let repos = state.repositories.read().await;
@@ -449,16 +418,7 @@ pub async fn status(
             unpushed_commits: 0,
             last_commit: None,
         })),
-        None => {
-            debug!("Repository not found: {}", repository_id);
-            Err((
-                StatusCode::NOT_FOUND,
-                Json(RepositoryErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Repository {} not found", repository_id),
-                }),
-            ))
-        }
+        None => Err(ServerError::not_found("repository", &repository_id)),
     }
 }
 
@@ -474,7 +434,7 @@ pub async fn status(
 )]
 pub async fn list_repositories(
     State(state): State<RepositoryState>,
-) -> Result<Json<RepositoryListResponse>, (StatusCode, Json<RepositoryErrorResponse>)> {
+) -> Result<Json<RepositoryListResponse>, ServerError> {
     debug!("Listing repositories");
 
     let repos = state.repositories.read().await;
@@ -511,23 +471,14 @@ pub async fn list_repositories(
 pub async fn get_repository(
     Path(repository_id): Path<String>,
     State(state): State<RepositoryState>,
-) -> Result<Json<RepositoryResponse>, (StatusCode, Json<RepositoryErrorResponse>)> {
+) -> Result<Json<RepositoryResponse>, ServerError> {
     debug!("Getting repository: {}", repository_id);
 
     let repos = state.repositories.read().await;
 
     match repos.get(&repository_id) {
         Some(repo) => Ok(Json(RepositoryResponse::from(repo.clone()))),
-        None => {
-            debug!("Repository not found: {}", repository_id);
-            Err((
-                StatusCode::NOT_FOUND,
-                Json(RepositoryErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Repository {} not found", repository_id),
-                }),
-            ))
-        }
+        None => Err(ServerError::not_found("repository", &repository_id)),
     }
 }
 
@@ -548,7 +499,7 @@ pub async fn get_repository(
 pub async fn delete_repository(
     Path(repository_id): Path<String>,
     State(state): State<RepositoryState>,
-) -> Result<StatusCode, (StatusCode, Json<RepositoryErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     debug!("Deleting repository: {}", repository_id);
 
     let mut repos = state.repositories.write().await;
@@ -560,13 +511,7 @@ pub async fn delete_repository(
         }
         None => {
             debug!("Repository not found for deletion: {}", repository_id);
-            Err((
-                StatusCode::NOT_FOUND,
-                Json(RepositoryErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Repository {} not found", repository_id),
-                }),
-            ))
+            Err(ServerError::not_found("repository", &repository_id))
         }
     }
 }

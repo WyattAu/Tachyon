@@ -1,15 +1,13 @@
+use crate::error::ServerError;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
     response::Json,
 };
 use serde::{Deserialize, Serialize};
 use tachyon_core::DocumentId;
 use tracing::{debug, warn};
 
-use super::{
-    DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState, ErrorResponse,
-};
+use super::{DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState};
 
 /// Search documents by full-text query.
 ///
@@ -19,20 +17,13 @@ use super::{
 pub async fn search_documents(
     Query(query): Query<DocumentQuery>,
     State(state): State<DocumentState>,
-) -> Result<Json<DocumentSearchResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<DocumentSearchResponse>, ServerError> {
     tracing::info!("Searching documents: {:?}", query.search);
 
     let search_query = match query.search {
         Some(ref q) if !q.is_empty() => q,
         _ => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "MISSING_QUERY".to_string(),
-                    message: "Search query is required".to_string(),
-                    details: None,
-                }),
-            ));
+            return Err(ServerError::bad_request("Search query is required"));
         }
     };
 
@@ -85,14 +76,7 @@ pub async fn search_documents(
         }
         Err(e) => {
             warn!("Search failed: {}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "SEARCH_ERROR".to_string(),
-                    message: format!("Search failed: {}", e),
-                    details: None,
-                }),
-            ))
+            Err(ServerError::Search(format!("Search failed: {}", e)))
         }
     }
 }
@@ -120,42 +104,24 @@ pub struct BacklinkItem {
 pub async fn get_backlinks(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
-) -> Result<Json<BacklinksResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<BacklinksResponse>, ServerError> {
     debug!("Getting backlinks for document: {}", document_id);
 
-    let doc_id = DocumentId::parse_str(&document_id).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "INVALID_ID".to_string(),
-                message: format!("Invalid document ID: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let doc_id = DocumentId::parse_str(&document_id)
+        .map_err(|e| ServerError::bad_request(format!("Invalid document ID: {}", e)))?;
 
-    let metadata = state.repository.get_by_id(&doc_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Document {} not found: {}", document_id, e),
-                details: None,
-            }),
-        )
-    })?;
+    let metadata = state
+        .repository
+        .get_by_id(&doc_id)
+        .await
+        .map_err(|e| ServerError::not_found("Document", &format!("{}: {}", document_id, e)))?;
 
     let search_json = serde_json::json!([metadata.title]);
-    let mut conn = state.pool.acquire().await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "QUERY_ERROR".to_string(),
-                message: format!("Failed to query backlinks: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let mut conn = state
+        .pool
+        .acquire()
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to query backlinks: {}", e)))?;
     let rows: Vec<(String, String, Option<String>, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
         "SELECT id, title, slug, updated_at FROM documents WHERE outgoing_links @> $1::jsonb AND id != $2 ORDER BY updated_at DESC LIMIT 50"
     )
@@ -164,14 +130,7 @@ pub async fn get_backlinks(
     .fetch_all(&mut *conn)
     .await
     .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "QUERY_ERROR".to_string(),
-                message: format!("Failed to query backlinks: {}", e),
-                details: None,
-            }),
-        )
+        ServerError::database(format!("Failed to query backlinks: {}", e))
     })?;
 
     let backlinks: Vec<BacklinkItem> = rows

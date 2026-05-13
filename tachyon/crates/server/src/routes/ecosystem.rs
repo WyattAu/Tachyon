@@ -3,11 +3,12 @@
 
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     response::Json,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+
+use crate::error::ServerError;
 
 /// Ecosystem state
 #[derive(Clone)]
@@ -59,12 +60,6 @@ pub struct UpdateNotificationPrefRequest {
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct NotificationPrefsResponse {
     pub preferences: Vec<tachyon_database::NotificationPreference>,
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct EcosystemErrorResponse {
-    pub code: String,
-    pub message: String,
 }
 
 // ============================================================================
@@ -162,7 +157,7 @@ pub async fn api_info() -> Json<ApiInfo> {
 pub async fn get_notification_preferences(
     State(state): State<EcosystemState>,
     Path(user_id): Path<String>,
-) -> Result<Json<NotificationPrefsResponse>, (StatusCode, Json<EcosystemErrorResponse>)> {
+) -> Result<Json<NotificationPrefsResponse>, ServerError> {
     let repo = tachyon_database::NotificationPreferenceRepository::new(state.pool.clone());
     let prefs = repo.list_by_user(&user_id).await.unwrap_or_default();
     Ok(Json(NotificationPrefsResponse { preferences: prefs }))

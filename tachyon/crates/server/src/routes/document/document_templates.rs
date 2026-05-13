@@ -1,3 +1,4 @@
+use crate::error::ServerError;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -5,7 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{DocumentState, ErrorResponse};
+use super::DocumentState;
 
 #[derive(Debug, Serialize)]
 pub struct TemplateResponse {
@@ -68,21 +69,12 @@ pub struct TemplateQuery {
 pub async fn list_templates(
     Query(query): Query<TemplateQuery>,
     State(state): State<DocumentState>,
-) -> Result<Json<Vec<TemplateResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<TemplateResponse>>, ServerError> {
     let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
     let templates = repo
         .list(query.category.as_deref(), Some(50), None)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "QUERY_ERROR".to_string(),
-                    message: format!("Failed to list templates: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::database(format!("Failed to list templates: {}", e)))?;
 
     Ok(Json(
         templates.into_iter().map(TemplateResponse::from).collect(),
@@ -95,18 +87,12 @@ pub async fn list_templates(
 pub async fn get_template(
     Path(template_id): Path<String>,
     State(state): State<DocumentState>,
-) -> Result<Json<TemplateResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<TemplateResponse>, ServerError> {
     let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
-    let template = repo.get_by_id(&template_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Template not found: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let template = repo
+        .get_by_id(&template_id)
+        .await
+        .map_err(|e| ServerError::not_found("Template", &format!("{}", e)))?;
 
     Ok(Json(TemplateResponse::from(template)))
 }
@@ -117,7 +103,7 @@ pub async fn get_template(
 pub async fn create_template(
     State(state): State<DocumentState>,
     Json(body): Json<CreateTemplateBody>,
-) -> Result<Json<TemplateResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<TemplateResponse>, ServerError> {
     let user_id = tachyon_core::generate_user_id();
     let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
 
@@ -131,16 +117,7 @@ pub async fn create_template(
             created_by: user_id.to_string(),
         })
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "CREATE_ERROR".to_string(),
-                    message: format!("Failed to create template: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::database(format!("Failed to create template: {}", e)))?;
 
     tracing::info!("Created template: {}", template.name);
     Ok(Json(TemplateResponse::from(template)))
@@ -155,7 +132,7 @@ pub async fn update_template(
     Path(template_id): Path<String>,
     State(state): State<DocumentState>,
     Json(body): Json<UpdateTemplateBody>,
-) -> Result<Json<TemplateResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<TemplateResponse>, ServerError> {
     let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
 
     let template = repo
@@ -170,16 +147,7 @@ pub async fn update_template(
             },
         )
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "UPDATE_ERROR".to_string(),
-                    message: format!("Failed to update template: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::database(format!("Failed to update template: {}", e)))?;
 
     Ok(Json(TemplateResponse::from(template)))
 }
@@ -190,18 +158,11 @@ pub async fn update_template(
 pub async fn delete_template(
     Path(template_id): Path<String>,
     State(state): State<DocumentState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
-    repo.delete(&template_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Template not found: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    repo.delete(&template_id)
+        .await
+        .map_err(|e| ServerError::not_found("Template", &format!("{}", e)))?;
 
     Ok(StatusCode::NO_CONTENT)
 }

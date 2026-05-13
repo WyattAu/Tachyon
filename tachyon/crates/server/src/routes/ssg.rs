@@ -1,6 +1,7 @@
 //! SSG (Static Site Generator) API routes
 //! Generate static sites from Tachyon documents.
 
+use crate::error::ServerError;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -89,13 +90,6 @@ impl From<BuildResult> for SsgBuildResultWrapper {
     }
 }
 
-/// Error response
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct SsgErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
 // ============================================================================
 // Route handlers
 // ============================================================================
@@ -137,7 +131,7 @@ pub async fn get_ssg_config() -> Json<SsgConfigResponse> {
 pub async fn build_site(
     State(state): State<SsgState>,
     Json(req): Json<SsgBuildRequest>,
-) -> Result<Json<SsgBuildResponse>, (StatusCode, Json<SsgErrorResponse>)> {
+) -> Result<Json<SsgBuildResponse>, ServerError> {
     info!("SSG build request received");
 
     let documents = fetch_documents_for_ssg(
@@ -146,23 +140,11 @@ pub async fn build_site(
         req.limit.unwrap_or(0),
     )
     .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(SsgErrorResponse {
-                code: "FETCH_ERROR".to_string(),
-                message: format!("Failed to fetch documents: {}", e),
-            }),
-        )
-    })?;
+    .map_err(|e| ServerError::internal(format!("Failed to fetch documents: {}", e)))?;
 
     if documents.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(SsgErrorResponse {
-                code: "NO_DOCUMENTS".to_string(),
-                message: "No documents found to generate site".to_string(),
-            }),
+        return Err(ServerError::bad_request(
+            "No documents found to generate site",
         ));
     }
 
@@ -193,24 +175,8 @@ pub async fn build_site(
 
     let result = tokio::task::spawn_blocking(move || generator.build_to_zip(&documents))
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(SsgErrorResponse {
-                    code: "BUILD_ERROR".to_string(),
-                    message: format!("Task join error: {}", e),
-                }),
-            )
-        })?
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(SsgErrorResponse {
-                    code: "BUILD_ERROR".to_string(),
-                    message: format!("SSG build failed: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Task join error: {}", e)))?
+        .map_err(|e| ServerError::internal(format!("SSG build failed: {}", e)))?;
 
     let (_zip_bytes, build_result) = result;
 

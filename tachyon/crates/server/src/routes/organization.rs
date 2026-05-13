@@ -1,6 +1,7 @@
 // Organization Routes
 // REST API endpoints for organization (multi-tenant) management
 
+use crate::error::ServerError;
 use crate::middleware::AuthContext;
 use axum::{
     extract::{Path, Query, State},
@@ -97,12 +98,6 @@ pub struct UpdateMemberBody {
     pub role: String,
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
 // ============================================================================
 // Handlers
 // ============================================================================
@@ -130,7 +125,7 @@ pub async fn list_organizations(
     Extension(auth): Extension<AuthContext>,
     Query(query): Query<OrganizationQuery>,
     State(state): State<OrganizationState>,
-) -> Result<Json<Vec<OrganizationResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<OrganizationResponse>>, ServerError> {
     let user_id = query.user_id.as_deref().unwrap_or(&auth.user_id);
     let include_personal = query.include_personal.unwrap_or(true);
 
@@ -138,12 +133,7 @@ pub async fn list_organizations(
     let orgs = repo
         .list_for_user(user_id, include_personal, query.limit, query.offset)
         .await
-        .map_err(|e| {
-            server_error(
-                "QUERY_ERROR",
-                &format!("Failed to list organizations: {}", e),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Failed to list organizations: {}", e)))?;
 
     let member_counts = repo
         .count_members_batch(&orgs.iter().map(|o| o.id.clone()).collect::<Vec<_>>())
@@ -180,12 +170,11 @@ pub async fn list_organizations(
 pub async fn get_organization(
     Path(id): Path<String>,
     State(state): State<OrganizationState>,
-) -> Result<Json<OrganizationResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<OrganizationResponse>, ServerError> {
     let repo = OrganizationRepository::new(state.pool.clone());
-    let org = repo
-        .get_by_id(&id)
-        .await
-        .map_err(|e| not_found(&format!("Organization not found: {}", e)))?;
+    let org = repo.get_by_id(&id).await.map_err(|e| {
+        ServerError::not_found("organization", &format!("Organization not found: {}", e))
+    })?;
 
     let member_count = repo.count_members(&org.id).await.unwrap_or(0);
     Ok(Json(OrganizationResponse::from_org(org, member_count)))
@@ -212,7 +201,7 @@ pub async fn create_organization(
     Extension(auth): Extension<AuthContext>,
     State(state): State<OrganizationState>,
     Json(body): Json<CreateOrganizationBody>,
-) -> Result<Json<OrganizationResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<OrganizationResponse>, ServerError> {
     let owner_id = &auth.user_id;
 
     let repo = OrganizationRepository::new(state.pool.clone());
@@ -231,12 +220,9 @@ pub async fn create_organization(
         .await
         .map_err(|e| {
             if e.to_string().contains("duplicate") {
-                bad_request("DUPLICATE", &format!("Organization creation failed: {}", e))
+                ServerError::bad_request(format!("Organization creation failed: {}", e))
             } else {
-                server_error(
-                    "CREATE_ERROR",
-                    &format!("Failed to create organization: {}", e),
-                )
+                ServerError::internal(format!("Failed to create organization: {}", e))
             }
         })?;
 
@@ -268,7 +254,7 @@ pub async fn update_organization(
     Path(id): Path<String>,
     State(state): State<OrganizationState>,
     Json(body): Json<UpdateOrganizationBody>,
-) -> Result<Json<OrganizationResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<OrganizationResponse>, ServerError> {
     let repo = OrganizationRepository::new(state.pool.clone());
     let org = repo
         .update(
@@ -284,7 +270,9 @@ pub async fn update_organization(
             },
         )
         .await
-        .map_err(|e| not_found(&format!("Organization not found: {}", e)))?;
+        .map_err(|e| {
+            ServerError::not_found("organization", &format!("Organization not found: {}", e))
+        })?;
 
     let member_count = repo.count_members(&org.id).await.unwrap_or(0);
     info!("Organization updated: {}", id);
@@ -313,16 +301,13 @@ pub async fn update_organization(
 pub async fn delete_organization(
     Path(id): Path<String>,
     State(state): State<OrganizationState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     let repo = OrganizationRepository::new(state.pool.clone());
     repo.delete(&id).await.map_err(|e| {
         if e.to_string().contains("personal") {
-            bad_request(
-                "CANNOT_DELETE_PERSONAL",
-                "Cannot delete the personal organization",
-            )
+            ServerError::bad_request("Cannot delete the personal organization")
         } else {
-            not_found(&format!("Organization not found: {}", e))
+            ServerError::not_found("organization", &format!("Organization not found: {}", e))
         }
     })?;
 
@@ -352,12 +337,12 @@ pub async fn list_members(
     Path(org_id): Path<String>,
     Query(query): Query<OrganizationQuery>,
     State(state): State<OrganizationState>,
-) -> Result<Json<Vec<OrganizationMemberResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<OrganizationMemberResponse>>, ServerError> {
     let repo = OrganizationRepository::new(state.pool.clone());
     let members = repo
         .list_members(&org_id, query.limit, query.offset)
         .await
-        .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to list members: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to list members: {}", e)))?;
 
     Ok(Json(
         members
@@ -389,7 +374,7 @@ pub async fn add_member(
     Path(org_id): Path<String>,
     State(state): State<OrganizationState>,
     Json(body): Json<AddMemberBody>,
-) -> Result<Json<OrganizationMemberResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<OrganizationMemberResponse>, ServerError> {
     let repo = OrganizationRepository::new(state.pool.clone());
     let member = repo
         .add_member(
@@ -402,12 +387,9 @@ pub async fn add_member(
         .await
         .map_err(|e| {
             if e.to_string().contains("duplicate") {
-                bad_request(
-                    "ALREADY_MEMBER",
-                    "User is already a member of this organization",
-                )
+                ServerError::bad_request("User is already a member of this organization")
             } else {
-                server_error("ADD_MEMBER_ERROR", &format!("Failed to add member: {}", e))
+                ServerError::internal(format!("Failed to add member: {}", e))
             }
         })?;
 
@@ -440,7 +422,7 @@ pub async fn update_member(
     Path((org_id, user_id)): Path<(String, String)>,
     State(state): State<OrganizationState>,
     Json(body): Json<UpdateMemberBody>,
-) -> Result<Json<OrganizationMemberResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<OrganizationMemberResponse>, ServerError> {
     let repo = OrganizationRepository::new(state.pool.clone());
     let role = body.role.clone();
     let member = repo
@@ -450,7 +432,7 @@ pub async fn update_member(
             UpdateOrganizationMemberRequest { role: body.role },
         )
         .await
-        .map_err(|e| not_found(&format!("Member not found: {}", e)))?;
+        .map_err(|e| ServerError::not_found("member", &format!("Member not found: {}", e)))?;
 
     info!(
         "Member {} role updated to {} in org {}",
@@ -479,11 +461,11 @@ pub async fn update_member(
 pub async fn remove_member(
     Path((org_id, user_id)): Path<(String, String)>,
     State(state): State<OrganizationState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     let repo = OrganizationRepository::new(state.pool.clone());
     repo.remove_member(&org_id, &user_id)
         .await
-        .map_err(|e| not_found(&format!("Member not found: {}", e)))?;
+        .map_err(|e| ServerError::not_found("member", &format!("Member not found: {}", e)))?;
 
     info!("Member {} removed from organization {}", user_id, org_id);
     Ok(StatusCode::NO_CONTENT)
@@ -554,40 +536,6 @@ impl From<tachyon_database::OrganizationMember> for OrganizationMemberResponse {
             joined_at: m.joined_at.to_rfc3339(),
         }
     }
-}
-
-// ============================================================================
-// Error helpers
-// ============================================================================
-
-fn server_error(code: &str, message: &str) -> (StatusCode, Json<ErrorResponse>) {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse {
-            code: code.to_string(),
-            message: message.to_string(),
-        }),
-    )
-}
-
-fn not_found(message: &str) -> (StatusCode, Json<ErrorResponse>) {
-    (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse {
-            code: "NOT_FOUND".to_string(),
-            message: message.to_string(),
-        }),
-    )
-}
-
-fn bad_request(code: &str, message: &str) -> (StatusCode, Json<ErrorResponse>) {
-    (
-        StatusCode::BAD_REQUEST,
-        Json(ErrorResponse {
-            code: code.to_string(),
-            message: message.to_string(),
-        }),
-    )
 }
 
 #[cfg(test)]

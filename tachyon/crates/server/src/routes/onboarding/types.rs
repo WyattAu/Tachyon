@@ -43,9 +43,3 @@ pub struct TemplateSuggestion {
     pub name: String,
     pub description: String,
 }
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-}

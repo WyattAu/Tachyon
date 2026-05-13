@@ -2,6 +2,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde_json::json;
+use std::collections::BTreeMap;
 
 /// Unified error type for all server route handlers.
 /// Implements From for sub-crate error types so the ? operator works seamlessly.
@@ -16,6 +17,34 @@ pub enum ServerError {
     Conflict(String),
     RateLimit(String),
     Internal(String),
+}
+
+impl ServerError {
+    /// Attach optional extra details to this error.
+    /// Stored as a map for structured field-level errors.
+    pub fn with_details(self, details: BTreeMap<String, String>) -> ServerErrorWithDetails {
+        ServerErrorWithDetails {
+            inner: self,
+            details: Some(details),
+        }
+    }
+
+    /// Attach an optional string detail (for backward compat with modules that use `details: Option<String>`).
+    pub fn with_detail_string(self, detail: String) -> ServerErrorWithDetails {
+        let mut map = BTreeMap::new();
+        map.insert("detail".to_string(), detail);
+        ServerErrorWithDetails {
+            inner: self,
+            details: Some(map),
+        }
+    }
+}
+
+/// Wrapper that adds optional structured details to a ServerError.
+/// Used by modules that need field-level error information.
+pub struct ServerErrorWithDetails {
+    inner: ServerError,
+    details: Option<BTreeMap<String, String>>,
 }
 
 impl std::fmt::Display for ServerError {
@@ -69,35 +98,62 @@ impl ServerError {
     pub fn internal(message: impl Into<String>) -> Self {
         Self::Internal(message.into())
     }
+
+    /// Create an authentication (401) error.
+    pub fn unauthorized(message: impl Into<String>) -> Self {
+        Self::Auth(message.into())
+    }
+
+    /// Create a forbidden (403) error.
+    pub fn forbidden(message: impl Into<String>) -> Self {
+        Self::Rbac(message.into())
+    }
 }
 
 impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
-        let (status, code, message) = match &self {
-            Self::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg.as_str()),
-            Self::Validation(msg) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR", msg.as_str()),
-            Self::Auth(msg) => (StatusCode::UNAUTHORIZED, "AUTH_ERROR", msg.as_str()),
-            Self::Rbac(msg) => (StatusCode::FORBIDDEN, "FORBIDDEN", msg.as_str()),
-            Self::Conflict(msg) => (StatusCode::CONFLICT, "CONFLICT", msg.as_str()),
-            Self::RateLimit(msg) => (StatusCode::TOO_MANY_REQUESTS, "RATE_LIMITED", msg.as_str()),
+        let (status, code, message) = self.status_code_message();
+        let body = Json(json!({ "code": code, "message": message }));
+        (status, body).into_response()
+    }
+}
+
+impl IntoResponse for ServerErrorWithDetails {
+    fn into_response(self) -> Response {
+        let (status, code, message) = self.inner.status_code_message();
+        let mut body = json!({ "code": code, "message": message });
+        if let Some(details) = self.details {
+            body["details"] = json!(details);
+        }
+        (status, Json(body)).into_response()
+    }
+}
+
+impl ServerError {
+    fn status_code_message(&self) -> (StatusCode, &'static str, String) {
+        match self {
+            Self::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg.clone()),
+            Self::Validation(msg) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR", msg.clone()),
+            Self::Auth(msg) => (StatusCode::UNAUTHORIZED, "AUTH_ERROR", msg.clone()),
+            Self::Rbac(msg) => (StatusCode::FORBIDDEN, "FORBIDDEN", msg.clone()),
+            Self::Conflict(msg) => (StatusCode::CONFLICT, "CONFLICT", msg.clone()),
+            Self::RateLimit(msg) => (StatusCode::TOO_MANY_REQUESTS, "RATE_LIMITED", msg.clone()),
             Self::Database(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "DATABASE_ERROR",
-                msg.as_str(),
+                msg.clone(),
             ),
             Self::Search(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "SEARCH_ERROR",
-                msg.as_str(),
+                msg.clone(),
             ),
             Self::Internal(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "INTERNAL_ERROR",
-                msg.as_str(),
+                msg.clone(),
             ),
-        };
-        let body = Json(json!({ "code": code, "message": message }));
-        (status, body).into_response()
+        }
     }
 }
 

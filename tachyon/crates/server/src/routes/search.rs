@@ -1,6 +1,7 @@
 // Search API Routes
 // Full-text search with faceted filtering and saved searches
 
+use crate::error::ServerError;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -189,12 +190,6 @@ pub struct UpdateSavedSearchBody {
     pub filters: Option<SearchFilters>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
 async fn search_tantivy(
     state: &SearchState,
     query: &str,
@@ -236,7 +231,7 @@ async fn search_tantivy(
 pub async fn search(
     Query(query): Query<SearchQuery>,
     State(state): State<SearchState>,
-) -> Result<Json<SearchResultsResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<SearchResultsResponse>, ServerError> {
     info!(
         "Search request: q='{}', page={}, page_size={}",
         query.q, query.page, query.page_size
@@ -412,13 +407,7 @@ pub async fn search(
         }
         Err(e) => {
             warn!("Search failed: {}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "SEARCH_ERROR".to_string(),
-                    message: format!("Search failed: {}", e),
-                }),
-            ))
+            Err(ServerError::internal(format!("Search failed: {}", e)))
         }
     }
 }
@@ -426,7 +415,7 @@ pub async fn search(
 pub async fn global_search(
     Query(query): Query<SearchQuery>,
     State(state): State<SearchState>,
-) -> Result<Json<GlobalSearchResultsResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<GlobalSearchResultsResponse>, ServerError> {
     info!("Global search request: q='{}'", query.q);
 
     let filters = SearchFilters {
@@ -555,13 +544,10 @@ pub async fn global_search(
         }
         Err(e) => {
             warn!("Global search failed: {}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "SEARCH_ERROR".to_string(),
-                    message: format!("Search failed: {}", e),
-                }),
-            ))
+            Err(ServerError::internal(format!(
+                "Global search failed: {}",
+                e
+            )))
         }
     }
 }
@@ -579,7 +565,7 @@ pub async fn global_search(
 pub async fn create_saved_search(
     State(state): State<SearchState>,
     Json(body): Json<CreateSavedSearchBody>,
-) -> Result<Json<SavedSearchResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<SavedSearchResponse>, ServerError> {
     info!("Creating saved search: {}", body.name);
 
     let user_id = tachyon_core::generate_user_id();
@@ -595,13 +581,10 @@ pub async fn create_saved_search(
         Ok(saved) => Ok(Json(SavedSearchResponse::from(saved))),
         Err(e) => {
             warn!("Failed to create saved search: {}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "CREATE_ERROR".to_string(),
-                    message: format!("Failed to create saved search: {}", e),
-                }),
-            ))
+            Err(ServerError::internal(format!(
+                "Failed to create saved search: {}",
+                e
+            )))
         }
     }
 }
@@ -617,7 +600,7 @@ pub async fn create_saved_search(
 )]
 pub async fn list_saved_searches(
     State(state): State<SearchState>,
-) -> Result<Json<Vec<SavedSearchResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<SavedSearchResponse>>, ServerError> {
     let user_id = tachyon_core::generate_user_id();
 
     match state
@@ -634,13 +617,10 @@ pub async fn list_saved_searches(
         }
         Err(e) => {
             warn!("Failed to list saved searches: {}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "QUERY_ERROR".to_string(),
-                    message: format!("Failed to list saved searches: {}", e),
-                }),
-            ))
+            Err(ServerError::internal(format!(
+                "Failed to list saved searches: {}",
+                e
+            )))
         }
     }
 }
@@ -660,18 +640,12 @@ pub async fn list_saved_searches(
 pub async fn get_saved_search(
     Path(id): Path<String>,
     State(state): State<SearchState>,
-) -> Result<Json<SavedSearchResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<SavedSearchResponse>, ServerError> {
     match state.saved_search_repo.get_by_id(&id).await {
         Ok(saved) => Ok(Json(SavedSearchResponse::from(saved))),
         Err(e) => {
             warn!("Failed to get saved search: {}", e);
-            Err((
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Saved search not found: {}", id),
-                }),
-            ))
+            Err(ServerError::not_found("saved_search", &id))
         }
     }
 }
@@ -693,7 +667,7 @@ pub async fn update_saved_search(
     Path(id): Path<String>,
     State(state): State<SearchState>,
     Json(body): Json<UpdateSavedSearchBody>,
-) -> Result<Json<SavedSearchResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<SavedSearchResponse>, ServerError> {
     info!("Updating saved search: {}", id);
 
     let request = UpdateSavedSearchRequest {
@@ -706,13 +680,10 @@ pub async fn update_saved_search(
         Ok(saved) => Ok(Json(SavedSearchResponse::from(saved))),
         Err(e) => {
             warn!("Failed to update saved search: {}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "UPDATE_ERROR".to_string(),
-                    message: format!("Failed to update saved search: {}", e),
-                }),
-            ))
+            Err(ServerError::internal(format!(
+                "Failed to update saved search: {}",
+                e
+            )))
         }
     }
 }
@@ -732,49 +703,33 @@ pub async fn update_saved_search(
 pub async fn delete_saved_search(
     Path(id): Path<String>,
     State(state): State<SearchState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     info!("Deleting saved search: {}", id);
 
     match state.saved_search_repo.delete(&id).await {
         Ok(()) => Ok(StatusCode::NO_CONTENT),
         Err(e) => {
             warn!("Failed to delete saved search: {}", e);
-            Err((
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Saved search not found: {}", id),
-                }),
-            ))
+            Err(ServerError::not_found("saved_search", &id))
         }
     }
 }
 
 pub async fn reindex_tantivy(
     State(state): State<SearchState>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<serde_json::Value>, ServerError> {
     info!("Starting Tantivy reindex");
 
-    let mgr_arc = state.index_manager.as_ref().ok_or_else(|| {
-        (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(ErrorResponse {
-                code: "NO_INDEX".to_string(),
-                message: "Tantivy search index is not available".to_string(),
-            }),
-        )
-    })?;
+    let mgr_arc = state
+        .index_manager
+        .as_ref()
+        .ok_or_else(|| ServerError::internal("Tantivy search index is not available"))?;
 
     let doc_repo = DocumentRepository::new(state.pool.clone());
-    let documents = doc_repo.list_all(None, None).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DB_ERROR".to_string(),
-                message: format!("Failed to fetch documents: {}", e),
-            }),
-        )
-    })?;
+    let documents = doc_repo
+        .list_all(None, None)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to fetch documents: {}", e)))?;
 
     let search_docs: Vec<SearchDocument> = documents
         .iter()
@@ -805,15 +760,10 @@ pub async fn reindex_tantivy(
         warn!("Failed to clear Tantivy index: {}", e);
     }
 
-    let indexed = guard.batch_index(&search_docs).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "INDEX_ERROR".to_string(),
-                message: format!("Failed to reindex documents: {}", e),
-            }),
-        )
-    })?;
+    let indexed = guard
+        .batch_index(&search_docs)
+        .await
+        .map_err(|e| ServerError::internal(format!("Failed to reindex documents: {}", e)))?;
 
     info!(
         "Tantivy reindex complete: {}/{} documents indexed",
@@ -853,16 +803,11 @@ fn default_suggest_limit() -> usize {
 pub async fn suggest(
     Query(query): Query<SuggestQuery>,
     State(state): State<SearchState>,
-) -> Result<Json<SuggestResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let mgr_arc = state.index_manager.as_ref().ok_or_else(|| {
-        (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(ErrorResponse {
-                code: "NO_INDEX".to_string(),
-                message: "Tantivy search index is not available".to_string(),
-            }),
-        )
-    })?;
+) -> Result<Json<SuggestResponse>, ServerError> {
+    let mgr_arc = state
+        .index_manager
+        .as_ref()
+        .ok_or_else(|| ServerError::internal("Tantivy search index is not available"))?;
 
     let guard = mgr_arc.lock().await;
     let engine = QueryEngine::new(guard.clone());

@@ -1,12 +1,12 @@
+use crate::error::ServerError;
 use crate::middleware::auth::AuthContext;
 use crate::routes::user::{
-    hash_refresh_token, AuthenticateResponse, UserErrorResponse, UserResponse, UserState,
+    hash_refresh_token, AuthenticateResponse, UserResponse, UserState,
     REFRESH_TOKEN_EXPIRATION_SECS,
 };
 use crate::totp::{generate_backup_codes, generate_otpauth_uri, generate_secret, verify_totp};
 use axum::{
     extract::{Extension, State},
-    http::StatusCode,
     response::Json,
 };
 use serde::{Deserialize, Serialize};
@@ -37,41 +37,11 @@ pub struct MfaAuthRequest {
     pub backup_code: Option<String>,
 }
 
-type Error = (StatusCode, Json<UserErrorResponse>);
-
-fn bad_request(code: &str, message: &str) -> Error {
-    (
-        StatusCode::BAD_REQUEST,
-        Json(UserErrorResponse {
-            code: code.into(),
-            message: message.into(),
-        }),
-    )
-}
-
-fn unauthorized(code: &str, message: &str) -> Error {
-    (
-        StatusCode::UNAUTHORIZED,
-        Json(UserErrorResponse {
-            code: code.into(),
-            message: message.into(),
-        }),
-    )
-}
-
-fn internal_error() -> Error {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(UserErrorResponse {
-            code: "INTERNAL_ERROR".into(),
-            message: "Internal server error".into(),
-        }),
-    )
-}
+type Error = ServerError;
 
 fn db_error(e: impl std::fmt::Display) -> Error {
     warn!("Database error: {}", e);
-    internal_error()
+    ServerError::database(e.to_string())
 }
 
 /// Initiate TOTP MFA setup for the authenticated user.
@@ -99,13 +69,13 @@ pub async fn enable_mfa(
     info!("MFA enable request: user {}", auth.user_id);
 
     let user_id = tachyon_core::UserId::parse_str(&auth.user_id)
-        .map_err(|_| bad_request("INVALID_USER", "Invalid user ID"))?;
+        .map_err(|_| ServerError::bad_request("Invalid user ID"))?;
 
     let repo = state.user_repo();
     let user = repo
         .get_by_id(&user_id)
         .await
-        .map_err(|_| bad_request("USER_NOT_FOUND", "User not found"))?;
+        .map_err(|_| ServerError::bad_request("User not found"))?;
 
     let email = user.email.as_deref().unwrap_or(&user.username);
     let secret = generate_secret();
@@ -160,10 +130,10 @@ pub async fn verify_mfa(
     let code: u32 = req
         .code
         .parse()
-        .map_err(|_| bad_request("INVALID_CODE", "Code must be 6 digits"))?;
+        .map_err(|_| ServerError::bad_request("Code must be 6 digits"))?;
 
     let user_id = tachyon_core::UserId::parse_str(&auth.user_id)
-        .map_err(|_| bad_request("INVALID_USER", "Invalid user ID"))?;
+        .map_err(|_| ServerError::bad_request("Invalid user ID"))?;
 
     let mut conn = state.pool.acquire().await.map_err(db_error)?;
     let row = sqlx::query("SELECT totp_secret FROM users WHERE id = $1")
@@ -171,15 +141,15 @@ pub async fn verify_mfa(
         .fetch_optional(&mut *conn)
         .await
         .map_err(db_error)?
-        .ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP secret not found"))?;
+        .ok_or_else(|| ServerError::bad_request("TOTP secret not found"))?;
 
     let secret: Option<String> = row.get("totp_secret");
-    let secret = secret.ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP secret not found"))?;
+    let secret = secret.ok_or_else(|| ServerError::bad_request("TOTP secret not found"))?;
 
     if !verify_totp(&secret, code)
-        .map_err(|_| bad_request("INVALID_CODE", "TOTP verification error"))?
+        .map_err(|_| ServerError::bad_request("TOTP verification error"))?
     {
-        return Err(bad_request("INVALID_CODE", "Invalid TOTP code"));
+        return Err(ServerError::bad_request("Invalid TOTP code"));
     }
 
     sqlx::query("UPDATE users SET totp_enabled = true, totp_verified_at = NOW() WHERE id = $1")
@@ -221,10 +191,10 @@ pub async fn disable_mfa(
     let code: u32 = req
         .code
         .parse()
-        .map_err(|_| bad_request("INVALID_CODE", "Code must be 6 digits"))?;
+        .map_err(|_| ServerError::bad_request("Code must be 6 digits"))?;
 
     let user_id = tachyon_core::UserId::parse_str(&auth.user_id)
-        .map_err(|_| bad_request("INVALID_USER", "Invalid user ID"))?;
+        .map_err(|_| ServerError::bad_request("Invalid user ID"))?;
 
     let mut conn = state.pool.acquire().await.map_err(db_error)?;
     let row = sqlx::query("SELECT totp_secret, totp_enabled FROM users WHERE id = $1")
@@ -232,20 +202,20 @@ pub async fn disable_mfa(
         .fetch_optional(&mut *conn)
         .await
         .map_err(db_error)?
-        .ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP not enabled"))?;
+        .ok_or_else(|| ServerError::bad_request("TOTP not enabled"))?;
 
     let totp_enabled: bool = row.get("totp_enabled");
     if !totp_enabled {
-        return Err(bad_request("MFA_NOT_SETUP", "TOTP not enabled"));
+        return Err(ServerError::bad_request("TOTP not enabled"));
     }
 
     let secret: Option<String> = row.get("totp_secret");
-    let secret = secret.ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP secret not found"))?;
+    let secret = secret.ok_or_else(|| ServerError::bad_request("TOTP secret not found"))?;
 
     if !verify_totp(&secret, code)
-        .map_err(|_| bad_request("INVALID_CODE", "TOTP verification error"))?
+        .map_err(|_| ServerError::bad_request("TOTP verification error"))?
     {
-        return Err(bad_request("INVALID_CODE", "Invalid TOTP code"));
+        return Err(ServerError::bad_request("Invalid TOTP code"));
     }
 
     sqlx::query(
@@ -286,16 +256,16 @@ pub async fn mfa_authenticate(
     info!("MFA authenticate request");
 
     let user_id = tachyon_core::UserId::parse_str(&req.user_id)
-        .map_err(|_| bad_request("INVALID_USER", "Invalid user ID"))?;
+        .map_err(|_| ServerError::bad_request("Invalid user ID"))?;
 
     let repo = state.user_repo();
     let user = repo
         .get_by_id(&user_id)
         .await
-        .map_err(|_| unauthorized("INVALID_USER", "Invalid user ID"))?;
+        .map_err(|_| ServerError::unauthorized("Invalid user ID"))?;
 
     if !user.is_active.unwrap_or(true) {
-        return Err(unauthorized("ACCOUNT_DISABLED", "Account is disabled"));
+        return Err(ServerError::unauthorized("Account is disabled"));
     }
 
     let mut conn = state.pool.acquire().await.map_err(db_error)?;
@@ -305,14 +275,11 @@ pub async fn mfa_authenticate(
             .fetch_optional(&mut *conn)
             .await
             .map_err(db_error)?
-            .ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP not enabled"))?;
+            .ok_or_else(|| ServerError::bad_request("TOTP not enabled"))?;
 
     let totp_enabled: bool = row.get("totp_enabled");
     if !totp_enabled {
-        return Err(bad_request(
-            "MFA_NOT_SETUP",
-            "MFA is not enabled for this user",
-        ));
+        return Err(ServerError::bad_request("MFA is not enabled for this user"));
     }
 
     if let Some(ref backup) = req.backup_code {
@@ -341,15 +308,15 @@ pub async fn mfa_authenticate(
     let code: u32 = req
         .mfa_code
         .parse()
-        .map_err(|_| bad_request("INVALID_CODE", "Code must be 6 digits"))?;
+        .map_err(|_| ServerError::bad_request("Code must be 6 digits"))?;
 
     let secret: Option<String> = row.get("totp_secret");
-    let secret = secret.ok_or_else(|| bad_request("MFA_NOT_SETUP", "TOTP secret not found"))?;
+    let secret = secret.ok_or_else(|| ServerError::bad_request("TOTP secret not found"))?;
 
     if !verify_totp(&secret, code)
-        .map_err(|_| bad_request("INVALID_CODE", "TOTP verification error"))?
+        .map_err(|_| ServerError::bad_request("TOTP verification error"))?
     {
-        return Err(unauthorized("INVALID_MFA_CODE", "Invalid MFA code"));
+        return Err(ServerError::unauthorized("Invalid MFA code"));
     }
 
     info!("MFA authentication successful for user {}", req.user_id);
@@ -364,7 +331,7 @@ async fn issue_tokens(
         .generate_jwt(&user.id.to_string(), user.permissions.role)
         .map_err(|e| {
             warn!("Failed to generate JWT: {}", e);
-            internal_error()
+            ServerError::internal("Internal server error")
         })?;
 
     let refresh_repo = state.refresh_token_repo();

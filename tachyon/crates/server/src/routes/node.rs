@@ -4,16 +4,10 @@ use axum::{
     response::Json,
 };
 use serde::Deserialize;
-use tachyon_database::{DatabaseError, DatabasePool, GraphEdge, GraphNode, GraphRepository};
+use tachyon_database::{DatabasePool, GraphEdge, GraphNode, GraphRepository};
 use tracing::{debug, info};
 
-type ApiError = (StatusCode, Json<ErrorResponse>);
-
-#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-}
+use crate::error::ServerError;
 
 #[derive(Clone)]
 pub struct NodeState {
@@ -27,46 +21,6 @@ impl NodeState {
 
     fn repo(&self) -> GraphRepository {
         GraphRepository::new(self.pool.clone())
-    }
-}
-
-fn db_err(e: &DatabaseError) -> ApiError {
-    match e {
-        DatabaseError::NotFound { .. } => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".into(),
-                message: e.to_string(),
-            }),
-        ),
-        DatabaseError::ValidationError(msg) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".into(),
-                message: msg.clone(),
-            }),
-        ),
-        DatabaseError::Duplicate { .. } => (
-            StatusCode::CONFLICT,
-            Json(ErrorResponse {
-                code: "CONFLICT".into(),
-                message: e.to_string(),
-            }),
-        ),
-        DatabaseError::ConstraintViolation(msg) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "CONSTRAINT_VIOLATION".into(),
-                message: msg.clone(),
-            }),
-        ),
-        _ => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "INTERNAL_ERROR".into(),
-                message: "Internal server error".into(),
-            }),
-        ),
     }
 }
 
@@ -192,17 +146,11 @@ pub struct GraphQueryResponse {
 pub async fn create_node(
     State(state): State<NodeState>,
     Json(req): Json<CreateNodeRequest>,
-) -> Result<Json<GraphNode>, ApiError> {
+) -> Result<Json<GraphNode>, ServerError> {
     info!("Creating new node: {}", req.name);
 
     if req.name.trim().is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".into(),
-                message: "Name cannot be empty".into(),
-            }),
-        ));
+        return Err(ServerError::bad_request("Name cannot be empty"));
     }
 
     let node = GraphNode {
@@ -224,11 +172,7 @@ pub async fn create_node(
         deactivated_at: None,
     };
 
-    let created = state
-        .repo()
-        .create_node(&node)
-        .await
-        .map_err(|e| db_err(&e))?;
+    let created = state.repo().create_node(&node).await?;
 
     info!("Node created: {}", created.id);
     Ok(Json(created))
@@ -255,14 +199,10 @@ pub async fn create_node(
 pub async fn get_node(
     Path(node_id): Path<String>,
     State(state): State<NodeState>,
-) -> Result<Json<GraphNode>, ApiError> {
+) -> Result<Json<GraphNode>, ServerError> {
     debug!("Getting node: {}", node_id);
 
-    let node = state
-        .repo()
-        .get_node_by_id(&node_id)
-        .await
-        .map_err(|e| db_err(&e))?;
+    let node = state.repo().get_node_by_id(&node_id).await?;
 
     Ok(Json(node))
 }
@@ -285,7 +225,7 @@ pub async fn update_node(
     Path(node_id): Path<String>,
     State(state): State<NodeState>,
     Json(req): Json<UpdateNodeRequest>,
-) -> Result<Json<GraphNode>, ApiError> {
+) -> Result<Json<GraphNode>, ServerError> {
     info!("Updating node: {}", node_id);
 
     let updated = state
@@ -300,8 +240,7 @@ pub async fn update_node(
             req.weight,
             req.properties.as_ref(),
         )
-        .await
-        .map_err(|e| db_err(&e))?;
+        .await?;
 
     info!("Node updated: {}", node_id);
     Ok(Json(updated))
@@ -323,14 +262,10 @@ pub async fn update_node(
 pub async fn delete_node(
     Path(node_id): Path<String>,
     State(state): State<NodeState>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, ServerError> {
     info!("Deleting node: {}", node_id);
 
-    state
-        .repo()
-        .deactivate_node(&node_id)
-        .await
-        .map_err(|e| db_err(&e))?;
+    state.repo().deactivate_node(&node_id).await?;
 
     info!("Node deactivated: {}", node_id);
     Ok(StatusCode::NO_CONTENT)
@@ -351,7 +286,7 @@ pub async fn delete_node(
 pub async fn list_nodes(
     Query(query): Query<NodeQuery>,
     State(state): State<NodeState>,
-) -> Result<Json<NodeListResponse>, ApiError> {
+) -> Result<Json<NodeListResponse>, ServerError> {
     debug!("Listing nodes with filters: {:?}", query);
 
     let page = query.page.unwrap_or(1).max(1);
@@ -366,8 +301,7 @@ pub async fn list_nodes(
             page,
             page_size,
         )
-        .await
-        .map_err(|e| db_err(&e))?;
+        .await?;
 
     Ok(Json(NodeListResponse {
         nodes,
@@ -391,30 +325,18 @@ pub async fn list_nodes(
 pub async fn create_edge(
     State(state): State<NodeState>,
     Json(req): Json<CreateEdgeRequest>,
-) -> Result<Json<GraphEdge>, ApiError> {
+) -> Result<Json<GraphEdge>, ServerError> {
     info!("Creating edge from {} to {}", req.source_id, req.target_id);
 
     if req.source_id == req.target_id {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".into(),
-                message: "Source and target cannot be the same".into(),
-            }),
+        return Err(ServerError::bad_request(
+            "Source and target cannot be the same",
         ));
     }
 
-    state
-        .repo()
-        .get_node_by_id(&req.source_id)
-        .await
-        .map_err(|e| db_err(&e))?;
+    state.repo().get_node_by_id(&req.source_id).await?;
 
-    state
-        .repo()
-        .get_node_by_id(&req.target_id)
-        .await
-        .map_err(|e| db_err(&e))?;
+    state.repo().get_node_by_id(&req.target_id).await?;
 
     let edge = GraphEdge {
         id: uuid::Uuid::new_v4().to_string(),
@@ -434,11 +356,7 @@ pub async fn create_edge(
         deactivated_at: None,
     };
 
-    let created = state
-        .repo()
-        .create_edge(&edge)
-        .await
-        .map_err(|e| db_err(&e))?;
+    let created = state.repo().create_edge(&edge).await?;
 
     info!("Edge created: {}", created.id);
     Ok(Json(created))
@@ -460,14 +378,10 @@ pub async fn create_edge(
 pub async fn get_node_edges(
     Path(node_id): Path<String>,
     State(state): State<NodeState>,
-) -> Result<Json<EdgeListResponse>, ApiError> {
+) -> Result<Json<EdgeListResponse>, ServerError> {
     debug!("Getting edges for node: {}", node_id);
 
-    let edges = state
-        .repo()
-        .get_node_edges(&node_id)
-        .await
-        .map_err(|e| db_err(&e))?;
+    let edges = state.repo().get_node_edges(&node_id).await?;
 
     let total = edges.len();
 
@@ -490,14 +404,10 @@ pub async fn get_node_edges(
 pub async fn delete_edge(
     Path(edge_id): Path<String>,
     State(state): State<NodeState>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, ServerError> {
     info!("Deleting edge: {}", edge_id);
 
-    state
-        .repo()
-        .delete_edge(&edge_id)
-        .await
-        .map_err(|e| db_err(&e))?;
+    state.repo().delete_edge(&edge_id).await?;
 
     info!("Edge deleted: {}", edge_id);
     Ok(StatusCode::NO_CONTENT)
@@ -525,7 +435,7 @@ pub async fn delete_edge(
 pub async fn query_graph(
     State(state): State<NodeState>,
     Json(req): Json<GraphQueryRequest>,
-) -> Result<Json<GraphQueryResponse>, ApiError> {
+) -> Result<Json<GraphQueryResponse>, ServerError> {
     info!("Querying graph from source: {}", req.source_id);
 
     let max_depth = req.depth.unwrap_or(3).min(5);
@@ -535,8 +445,7 @@ pub async fn query_graph(
         let path = state
             .repo()
             .get_shortest_path(&req.source_id, target_id, max_depth)
-            .await
-            .map_err(|e| db_err(&e))?;
+            .await?;
 
         let mut nodes = Vec::new();
         if let Ok(fetched) = state.repo().get_nodes_by_ids_batch(&path).await {
@@ -548,8 +457,7 @@ pub async fn query_graph(
             let between = state
                 .repo()
                 .list_edges(Some(&path[i]), Some(&path[i + 1]), None, None)
-                .await
-                .map_err(|e| db_err(&e))?;
+                .await?;
             edges.extend(between);
         }
 
@@ -572,8 +480,7 @@ pub async fn query_graph(
             req.edge_type.as_deref(),
             max_depth,
         )
-        .await
-        .map_err(|e| db_err(&e))?;
+        .await?;
 
     let mut node_ids: Vec<String> = edges
         .iter()
@@ -607,14 +514,10 @@ pub async fn query_graph(
 )]
 pub async fn get_graph_stats(
     State(state): State<NodeState>,
-) -> Result<Json<serde_json::Value>, ApiError> {
+) -> Result<Json<serde_json::Value>, ServerError> {
     debug!("Getting graph stats");
 
-    let stats = state
-        .repo()
-        .get_graph_stats()
-        .await
-        .map_err(|e| db_err(&e))?;
+    let stats = state.repo().get_graph_stats().await?;
 
     Ok(Json(stats))
 }
@@ -638,36 +541,18 @@ pub async fn get_graph_stats(
 pub async fn get_graph_at_time(
     Query(params): Query<std::collections::HashMap<String, String>>,
     State(state): State<NodeState>,
-) -> Result<Json<GraphQueryResponse>, ApiError> {
+) -> Result<Json<GraphQueryResponse>, ServerError> {
     let at_str = params.get("at").ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".into(),
-                message: "Missing required query parameter: at (ISO 8601 timestamp)".into(),
-            }),
-        )
+        ServerError::bad_request("Missing required query parameter: at (ISO 8601 timestamp)")
     })?;
 
     let at: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(at_str)
         .map(|dt| dt.with_timezone(&chrono::Utc))
-        .map_err(|e| {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "VALIDATION_ERROR".into(),
-                    message: format!("Invalid timestamp format: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::bad_request(format!("Invalid timestamp format: {}", e)))?;
 
     info!("Querying graph state at: {}", at);
 
-    let (nodes, edges) = state
-        .repo()
-        .get_graph_at_time(at)
-        .await
-        .map_err(|e| db_err(&e))?;
+    let (nodes, edges) = state.repo().get_graph_at_time(at).await?;
 
     Ok(Json(GraphQueryResponse {
         node_count: nodes.len(),
@@ -697,68 +582,32 @@ pub async fn get_graph_at_time(
 pub async fn get_graph_diff(
     Query(params): Query<std::collections::HashMap<String, String>>,
     State(state): State<NodeState>,
-) -> Result<Json<serde_json::Value>, ApiError> {
+) -> Result<Json<serde_json::Value>, ServerError> {
     let from_str = params.get("from").ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".into(),
-                message: "Missing required query parameter: from (ISO 8601 timestamp)".into(),
-            }),
-        )
+        ServerError::bad_request("Missing required query parameter: from (ISO 8601 timestamp)")
     })?;
 
     let to_str = params.get("to").ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".into(),
-                message: "Missing required query parameter: to (ISO 8601 timestamp)".into(),
-            }),
-        )
+        ServerError::bad_request("Missing required query parameter: to (ISO 8601 timestamp)")
     })?;
 
     let from: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(from_str)
         .map(|dt| dt.with_timezone(&chrono::Utc))
-        .map_err(|e| {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "VALIDATION_ERROR".into(),
-                    message: format!("Invalid 'from' timestamp: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::bad_request(format!("Invalid 'from' timestamp: {}", e)))?;
 
     let to: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(to_str)
         .map(|dt| dt.with_timezone(&chrono::Utc))
-        .map_err(|e| {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "VALIDATION_ERROR".into(),
-                    message: format!("Invalid 'to' timestamp: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::bad_request(format!("Invalid 'to' timestamp: {}", e)))?;
 
     if from >= to {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".into(),
-                message: "'from' timestamp must be before 'to' timestamp".into(),
-            }),
+        return Err(ServerError::bad_request(
+            "'from' timestamp must be before 'to' timestamp",
         ));
     }
 
     info!("Computing graph diff: {} → {}", from, to);
 
-    let diff = state
-        .repo()
-        .get_graph_diff(from, to)
-        .await
-        .map_err(|e| db_err(&e))?;
+    let diff = state.repo().get_graph_diff(from, to).await?;
 
     Ok(Json(
         serde_json::to_value(diff).unwrap_or(serde_json::json!({})),

@@ -6,7 +6,6 @@ pub mod document_versions;
 
 use axum::extract::DefaultBodyLimit;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use tachyon_core::{Document, DocumentContent, DocumentStatus, DocumentVisibility};
 use tachyon_database::DatabasePool;
@@ -85,14 +84,6 @@ impl DocumentState {
             }
         }
     }
-}
-
-#[derive(Debug, Serialize)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub details: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]

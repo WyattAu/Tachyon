@@ -1,3 +1,4 @@
+use crate::error::ServerError;
 use axum::{
     extract::{Multipart, Path, State},
     http::StatusCode,
@@ -5,7 +6,7 @@ use axum::{
 };
 use serde::Serialize;
 
-use super::{DocumentState, ErrorResponse};
+use super::DocumentState;
 
 #[derive(Debug, Serialize)]
 pub struct AttachmentResponse {
@@ -38,18 +39,12 @@ impl From<tachyon_database::Attachment> for AttachmentResponse {
 pub async fn list_attachments(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
-) -> Result<Json<Vec<AttachmentResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<AttachmentResponse>>, ServerError> {
     let repo = tachyon_database::AttachmentRepository::new(state.pool.clone());
-    let attachments = repo.list_by_document(&document_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "QUERY_ERROR".to_string(),
-                message: format!("Failed to list attachments: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let attachments = repo
+        .list_by_document(&document_id)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to list attachments: {}", e)))?;
 
     Ok(Json(
         attachments
@@ -68,7 +63,7 @@ pub async fn upload_attachment(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
     mut multipart: Multipart,
-) -> Result<Json<AttachmentResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<AttachmentResponse>, ServerError> {
     let user_id = tachyon_core::generate_user_id();
     let repo = tachyon_database::AttachmentRepository::new(state.pool.clone());
 
@@ -79,16 +74,10 @@ pub async fn upload_attachment(
             .unwrap_or("application/octet-stream")
             .to_string();
 
-        let content = field.bytes().await.map_err(|e| {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "UPLOAD_ERROR".to_string(),
-                    message: format!("Failed to read file: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        let content = field
+            .bytes()
+            .await
+            .map_err(|e| ServerError::bad_request(format!("Failed to read file: {}", e)))?;
 
         let attachment = repo
             .create(tachyon_database::CreateAttachmentRequest {
@@ -99,28 +88,12 @@ pub async fn upload_attachment(
                 created_by: user_id.to_string(),
             })
             .await
-            .map_err(|e| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse {
-                        code: "CREATE_ERROR".to_string(),
-                        message: format!("Failed to create attachment: {}", e),
-                        details: None,
-                    }),
-                )
-            })?;
+            .map_err(|e| ServerError::database(format!("Failed to create attachment: {}", e)))?;
 
         return Ok(Json(AttachmentResponse::from(attachment)));
     }
 
-    Err((
-        StatusCode::BAD_REQUEST,
-        Json(ErrorResponse {
-            code: "NO_FILE".to_string(),
-            message: "No file provided".to_string(),
-            details: None,
-        }),
-    ))
+    Err(ServerError::bad_request("No file provided"))
 }
 
 /// Download an attachment.
@@ -131,18 +104,12 @@ pub async fn upload_attachment(
 pub async fn download_attachment(
     Path((_document_id, attachment_id)): Path<(String, String)>,
     State(state): State<DocumentState>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<impl IntoResponse, ServerError> {
     let repo = tachyon_database::AttachmentRepository::new(state.pool.clone());
-    let (attachment, content) = repo.get_content(&attachment_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Attachment not found: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let (attachment, content) = repo
+        .get_content(&attachment_id)
+        .await
+        .map_err(|e| ServerError::not_found("Attachment", &format!("{}", e)))?;
 
     let headers = [
         ("Content-Type", attachment.mime_type.clone()),
@@ -161,18 +128,11 @@ pub async fn download_attachment(
 pub async fn delete_attachment(
     Path((_document_id, attachment_id)): Path<(String, String)>,
     State(state): State<DocumentState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     let repo = tachyon_database::AttachmentRepository::new(state.pool.clone());
-    repo.delete(&attachment_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Attachment not found: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    repo.delete(&attachment_id)
+        .await
+        .map_err(|e| ServerError::not_found("Attachment", &format!("{}", e)))?;
 
     Ok(StatusCode::NO_CONTENT)
 }

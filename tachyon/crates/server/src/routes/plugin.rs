@@ -1,6 +1,7 @@
 // Plugin Routes
 // REST API endpoints for plugin management
 
+use crate::error::ServerError;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -103,12 +104,6 @@ pub struct PluginQuery {
     pub offset: Option<i64>,
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
 // ============================================================================
 // Handlers
 // ============================================================================
@@ -134,7 +129,7 @@ pub struct ErrorResponse {
 pub async fn list_plugins(
     Query(query): Query<PluginQuery>,
     State(state): State<PluginState>,
-) -> Result<Json<Vec<PluginResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<PluginResponse>>, ServerError> {
     let repo = PluginRepository::new(state.pool.clone());
     let plugins = repo
         .list(
@@ -144,15 +139,7 @@ pub async fn list_plugins(
             query.offset,
         )
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "QUERY_ERROR".to_string(),
-                    message: format!("Failed to list plugins: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Failed to list plugins: {}", e)))?;
 
     Ok(Json(
         plugins.into_iter().map(PluginResponse::from).collect(),
@@ -178,17 +165,12 @@ pub async fn list_plugins(
 pub async fn get_plugin(
     Path(plugin_id): Path<String>,
     State(state): State<PluginState>,
-) -> Result<Json<PluginResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<PluginResponse>, ServerError> {
     let repo = PluginRepository::new(state.pool.clone());
-    let plugin = repo.get_by_id(&plugin_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Plugin not found: {}", e),
-            }),
-        )
-    })?;
+    let plugin = repo
+        .get_by_id(&plugin_id)
+        .await
+        .map_err(|e| ServerError::not_found("plugin", &e.to_string()))?;
 
     Ok(Json(PluginResponse::from(plugin)))
 }
@@ -213,24 +195,12 @@ pub async fn get_plugin(
 pub async fn create_plugin(
     State(state): State<PluginState>,
     Json(body): Json<CreatePluginBody>,
-) -> Result<Json<PluginResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<PluginResponse>, ServerError> {
     if body.name.trim().is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: "Plugin name is required".to_string(),
-            }),
-        ));
+        return Err(ServerError::bad_request("Plugin name is required"));
     }
     if body.version.trim().is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: "Plugin version is required".to_string(),
-            }),
-        ));
+        return Err(ServerError::bad_request("Plugin version is required"));
     }
 
     let repo = PluginRepository::new(state.pool.clone());
@@ -250,15 +220,7 @@ pub async fn create_plugin(
             installed_by: None,
         })
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "CREATE_ERROR".to_string(),
-                    message: format!("Failed to create plugin: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Failed to create plugin: {}", e)))?;
 
     info!("Installed plugin: {} v{}", plugin.name, plugin.version);
     Ok(Json(PluginResponse::from(plugin)))
@@ -289,7 +251,7 @@ pub async fn update_plugin(
     Path(plugin_id): Path<String>,
     State(state): State<PluginState>,
     Json(body): Json<UpdatePluginBody>,
-) -> Result<Json<PluginResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<PluginResponse>, ServerError> {
     let repo = PluginRepository::new(state.pool.clone());
 
     let plugin = repo
@@ -308,15 +270,7 @@ pub async fn update_plugin(
             },
         )
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "UPDATE_ERROR".to_string(),
-                    message: format!("Failed to update plugin: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Failed to update plugin: {}", e)))?;
 
     info!("Updated plugin: {}", plugin.name);
     Ok(Json(PluginResponse::from(plugin)))
@@ -341,17 +295,11 @@ pub async fn update_plugin(
 pub async fn delete_plugin(
     Path(plugin_id): Path<String>,
     State(state): State<PluginState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     let repo = PluginRepository::new(state.pool.clone());
-    repo.delete(&plugin_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Plugin not found: {}", e),
-            }),
-        )
-    })?;
+    repo.delete(&plugin_id)
+        .await
+        .map_err(|e| ServerError::not_found("plugin", &e.to_string()))?;
 
     info!("Uninstalled plugin: {}", plugin_id);
     Ok(StatusCode::NO_CONTENT)
@@ -395,7 +343,7 @@ pub struct InvokeHookResponse {
 pub async fn invoke_hook(
     State(state): State<PluginState>,
     Json(req): Json<InvokeHookRequest>,
-) -> Result<Json<InvokeHookResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<InvokeHookResponse>, ServerError> {
     let results = state
         .runtime
         .invoke_hook(&req.hook, req.input, req.timeout_ms);

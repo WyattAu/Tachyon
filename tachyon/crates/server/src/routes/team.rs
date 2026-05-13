@@ -1,6 +1,7 @@
 // Team API routes
 // Handles team management operations
 
+use crate::error::ServerError;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -8,7 +9,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tachyon_database::{DatabasePool, RoleRepository, Team, TeamMember, TeamRepository};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 #[derive(Clone)]
 pub struct TeamState {
@@ -116,12 +117,6 @@ impl From<TeamMember> for TeamMemberResponse {
     }
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
 /// Create a new team.
 ///
 /// `POST /api/v1/teams`
@@ -143,26 +138,18 @@ pub struct ErrorResponse {
 pub async fn create_team(
     State(state): State<TeamState>,
     Json(req): Json<CreateTeamRequest>,
-) -> Result<Json<TeamResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<TeamResponse>, ServerError> {
     info!("Creating team: {}", req.name);
 
     if req.name.is_empty() || req.name.len() > 100 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: "Team name must be between 1 and 100 characters".to_string(),
-            }),
+        return Err(ServerError::bad_request(
+            "Team name must be between 1 and 100 characters",
         ));
     }
 
     if req.slug.is_empty() || !req.slug.chars().all(|c| c.is_alphanumeric() || c == '-') {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: "Slug must contain only alphanumeric characters and hyphens".to_string(),
-            }),
+        return Err(ServerError::bad_request(
+            "Slug must contain only alphanumeric characters and hyphens",
         ));
     }
 
@@ -172,16 +159,11 @@ pub async fn create_team(
         team = team.with_description(desc);
     }
 
-    let created = state.team_repo.create(&team).await.map_err(|e| {
-        warn!("Failed to create team: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DATABASE_ERROR".to_string(),
-                message: format!("Failed to create team: {}", e),
-            }),
-        )
-    })?;
+    let created = state
+        .team_repo
+        .create(&team)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to create team: {}", e)))?;
 
     let role = state.role_repo.get_by_name("owner").await.ok();
     if let Some(role) = role {
@@ -216,18 +198,14 @@ pub async fn create_team(
 pub async fn get_team(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
-) -> Result<Json<TeamResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<TeamResponse>, ServerError> {
     debug!("Getting team: {}", team_id);
 
-    let team = state.team_repo.get_by_id(&team_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Team not found: {}", e),
-            }),
-        )
-    })?;
+    let team = state
+        .team_repo
+        .get_by_id(&team_id)
+        .await
+        .map_err(|e| ServerError::not_found(r"Team not found:", &e.to_string()))?;
 
     Ok(Json(TeamResponse::from(team)))
 }
@@ -251,18 +229,14 @@ pub async fn get_team(
 pub async fn get_team_by_slug(
     Path(slug): Path<String>,
     State(state): State<TeamState>,
-) -> Result<Json<TeamResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<TeamResponse>, ServerError> {
     debug!("Getting team by slug: {}", slug);
 
-    let team = state.team_repo.get_by_slug(&slug).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Team not found: {}", e),
-            }),
-        )
-    })?;
+    let team = state
+        .team_repo
+        .get_by_slug(&slug)
+        .await
+        .map_err(|e| ServerError::not_found(r"Team not found:", &e.to_string()))?;
 
     Ok(Json(TeamResponse::from(team)))
 }
@@ -288,7 +262,7 @@ pub async fn get_team_by_slug(
 pub async fn list_teams(
     Query(query): Query<TeamQuery>,
     State(state): State<TeamState>,
-) -> Result<Json<Vec<TeamResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<TeamResponse>>, ServerError> {
     debug!("Listing teams");
 
     let teams = if let Some(owner_id) = query.owner_id {
@@ -299,15 +273,8 @@ pub async fn list_teams(
         state.team_repo.list_by_owner("").await
     };
 
-    let teams = teams.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DATABASE_ERROR".to_string(),
-                message: format!("Failed to list teams: {}", e),
-            }),
-        )
-    })?;
+    let teams =
+        teams.map_err(|e| ServerError::database(format!(r"Failed to list teams: {}", e)))?;
 
     Ok(Json(teams.into_iter().map(TeamResponse::from).collect()))
 }
@@ -336,18 +303,14 @@ pub async fn update_team(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
     Json(req): Json<UpdateTeamRequest>,
-) -> Result<Json<TeamResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<TeamResponse>, ServerError> {
     debug!("Updating team: {}", team_id);
 
-    let mut team = state.team_repo.get_by_id(&team_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Team not found: {}", e),
-            }),
-        )
-    })?;
+    let mut team = state
+        .team_repo
+        .get_by_id(&team_id)
+        .await
+        .map_err(|e| ServerError::not_found(r"Team not found:", &e.to_string()))?;
 
     if let Some(name) = req.name {
         team.name = name;
@@ -360,15 +323,11 @@ pub async fn update_team(
     }
     team.updated_at = chrono::Utc::now();
 
-    let updated = state.team_repo.update(&team).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DATABASE_ERROR".to_string(),
-                message: format!("Failed to update team: {}", e),
-            }),
-        )
-    })?;
+    let updated = state
+        .team_repo
+        .update(&team)
+        .await
+        .map_err(|e| ServerError::database(format!(r"Failed to update team: {}", e)))?;
 
     Ok(Json(TeamResponse::from(updated)))
 }
@@ -392,18 +351,14 @@ pub async fn update_team(
 pub async fn delete_team(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     debug!("Deleting team: {}", team_id);
 
-    state.team_repo.delete(&team_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Team not found: {}", e),
-            }),
-        )
-    })?;
+    state
+        .team_repo
+        .delete(&team_id)
+        .await
+        .map_err(|e| ServerError::not_found(r"Team not found:", &e.to_string()))?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -427,18 +382,14 @@ pub async fn delete_team(
 pub async fn list_team_members(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
-) -> Result<Json<Vec<TeamMemberResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<TeamMemberResponse>>, ServerError> {
     debug!("Listing members for team: {}", team_id);
 
-    let members = state.team_repo.list_members(&team_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DATABASE_ERROR".to_string(),
-                message: format!("Failed to list members: {}", e),
-            }),
-        )
-    })?;
+    let members = state
+        .team_repo
+        .list_members(&team_id)
+        .await
+        .map_err(|e| ServerError::database(format!(r"Failed to list members: {}", e)))?;
 
     Ok(Json(
         members.into_iter().map(TeamMemberResponse::from).collect(),
@@ -469,33 +420,21 @@ pub async fn add_team_member(
     Path(team_id): Path<String>,
     State(state): State<TeamState>,
     Json(req): Json<AddMemberRequest>,
-) -> Result<Json<TeamMemberResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<TeamMemberResponse>, ServerError> {
     info!("Adding member {} to team {}", req.user_id, team_id);
 
     let role = state
         .role_repo
         .get_by_name(&req.role_name)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "ROLE_NOT_FOUND".to_string(),
-                    message: format!("Role not found: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::not_found("role", &e.to_string()))?;
 
     let member = TeamMember::new(team_id.clone(), req.user_id, role.id, role.name);
-    let created = state.team_repo.add_member(&member).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DATABASE_ERROR".to_string(),
-                message: format!("Failed to add member: {}", e),
-            }),
-        )
-    })?;
+    let created = state
+        .team_repo
+        .add_member(&member)
+        .await
+        .map_err(|e| ServerError::database(format!(r"Failed to add member: {}", e)))?;
 
     Ok(Json(TeamMemberResponse::from(created)))
 }
@@ -523,36 +462,20 @@ pub async fn update_team_member(
     Path((team_id, user_id)): Path<(String, String)>,
     State(state): State<TeamState>,
     Json(req): Json<UpdateMemberRequest>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     debug!("Updating member {} in team {}", user_id, team_id);
 
     let role = state
         .role_repo
         .get_by_name(&req.role_name)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "ROLE_NOT_FOUND".to_string(),
-                    message: format!("Role not found: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::not_found("role", &e.to_string()))?;
 
     state
         .team_repo
         .update_member_role(&team_id, &user_id, role.id, &role.name)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "DATABASE_ERROR".to_string(),
-                    message: format!("Failed to update member: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::database(format!(r"Failed to update member: {}", e)))?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -577,22 +500,14 @@ pub async fn update_team_member(
 pub async fn remove_team_member(
     Path((team_id, user_id)): Path<(String, String)>,
     State(state): State<TeamState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     debug!("Removing member {} from team {}", user_id, team_id);
 
     state
         .team_repo
         .remove_member(&team_id, &user_id)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Member not found: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::not_found(r"Member not found:", &e.to_string()))?;
 
     Ok(StatusCode::NO_CONTENT)
 }

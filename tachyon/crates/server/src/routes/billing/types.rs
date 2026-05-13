@@ -176,17 +176,17 @@ pub struct UsageResponse {
     pub usage: UsageMetrics,
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct BillingErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CreateMandateRequest {
     pub organization_id: String,
     pub return_url: String,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct BillingErrorResponse {
+    pub code: String,
+    pub message: String,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]

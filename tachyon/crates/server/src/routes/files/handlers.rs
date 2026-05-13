@@ -1,6 +1,7 @@
 #![allow(private_interfaces)]
 
 use super::types::*;
+use crate::error::ServerError;
 use axum::{
     extract::{Multipart, Query, State},
     http::{header, StatusCode},
@@ -19,44 +20,21 @@ const UPLOAD_ALLOWED_EXTENSIONS: &[&str] = &[
 
 const MAX_UPLOAD_SIZE: usize = 50 * 1024 * 1024;
 
-type ApiError = (StatusCode, Json<serde_json::Value>);
-
-fn error(code: &str, msg: impl Into<String>) -> ApiError {
-    (
-        StatusCode::BAD_REQUEST,
-        Json(serde_json::json!({ "code": code, "message": msg.into() })),
-    )
-}
-
-fn not_found(msg: impl Into<String>) -> ApiError {
-    (
-        StatusCode::NOT_FOUND,
-        Json(serde_json::json!({ "code": "NOT_FOUND", "message": msg.into() })),
-    )
-}
-
-fn internal_error(msg: impl Into<String>) -> ApiError {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(serde_json::json!({ "code": "INTERNAL_ERROR", "message": msg.into() })),
-    )
-}
-
-async fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ApiError> {
+async fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ServerError> {
     if let Err(e) = tachyon_core::validate_path(relative) {
-        return Err(error(
-            "INVALID_PATH",
-            format!("Path validation failed: {}", e),
-        ));
+        return Err(ServerError::bad_request(format!(
+            "Path validation failed: {}",
+            e
+        )));
     }
 
     let joined = root.join(relative.strip_prefix('/').unwrap_or(relative));
 
     let canonical = tokio::fs::canonicalize(&joined).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
-            not_found(format!("Path not found: {}", relative))
+            ServerError::NotFound(format!("Path not found: {}", relative))
         } else {
-            error("PATH_ERROR", format!("Cannot resolve path: {}", e))
+            ServerError::bad_request(format!("Cannot resolve path: {}", e))
         }
     })?;
 
@@ -64,8 +42,7 @@ async fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ApiError> 
         .await
         .unwrap_or_else(|_| root.to_path_buf());
     if !canonical.starts_with(&root_canonical) {
-        return Err(error(
-            "FORBIDDEN",
+        return Err(ServerError::forbidden(
             "Access denied: path is outside root directory",
         ));
     }
@@ -204,39 +181,39 @@ fn should_show(name: &str, is_dir: bool, show_all: bool) -> bool {
 pub async fn list_directory(
     State(state): State<FilesState>,
     Query(params): Query<ListQuery>,
-) -> Result<Json<ListResponse>, ApiError> {
+) -> Result<Json<ListResponse>, ServerError> {
     let relative = params.path.as_deref().unwrap_or("/");
     let show_all = params.all.unwrap_or(false);
     let target = resolve_path(&state.root_path, relative).await?;
 
     let metadata = fs::metadata(&target).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
-            not_found(format!("Directory not found: {}", relative))
+            ServerError::NotFound(format!("Directory not found: {}", relative))
         } else {
-            internal_error(format!("Failed to read directory: {}", e))
+            ServerError::internal(format!("Failed to read directory: {}", e))
         }
     })?;
 
     if !metadata.is_dir() {
-        return Err(error("NOT_DIRECTORY", "Path is not a directory"));
+        return Err(ServerError::bad_request("Path is not a directory"));
     }
 
     let mut entries = fs::read_dir(&target)
         .await
-        .map_err(|e| internal_error(format!("Failed to read directory: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read directory: {}", e)))?;
 
     let mut result = Vec::new();
 
     while let Some(entry) = entries
         .next_entry()
         .await
-        .map_err(|e| internal_error(format!("Failed to read directory entry: {}", e)))?
+        .map_err(|e| ServerError::internal(format!("Failed to read directory entry: {}", e)))?
     {
         let name = entry.file_name().to_string_lossy().to_string();
         let meta = entry
             .metadata()
             .await
-            .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read metadata: {}", e)))?;
         let is_dir = meta.is_dir();
 
         if !should_show(&name, is_dir, show_all) {
@@ -312,25 +289,25 @@ fn parse_frontmatter(content: &str) -> (Option<serde_json::Value>, &str) {
 pub async fn read_file(
     State(state): State<FilesState>,
     Query(params): Query<ReadQuery>,
-) -> Result<Response, ApiError> {
+) -> Result<Response, ServerError> {
     let target = resolve_path(&state.root_path, &params.path).await?;
 
     let metadata = fs::metadata(&target).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
-            not_found(format!("File not found: {}", params.path))
+            ServerError::NotFound(format!("File not found: {}", params.path))
         } else {
-            internal_error(format!("Failed to read file metadata: {}", e))
+            ServerError::internal(format!("Failed to read file metadata: {}", e))
         }
     })?;
 
     if metadata.is_dir() {
-        return Err(error("IS_DIRECTORY", "Path is a directory, not a file"));
+        return Err(ServerError::bad_request("Path is a directory, not a file"));
     }
 
     if is_binary_file(&target) {
         let data = fs::read(&target)
             .await
-            .map_err(|e| internal_error(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
         let content_type = content_type_for_ext(&target);
         let size = data.len();
 
@@ -339,13 +316,13 @@ pub async fn read_file(
             .header(header::CONTENT_TYPE, content_type)
             .header(header::CONTENT_LENGTH, size.to_string())
             .body(axum::body::Body::from(data))
-            .map_err(|e| internal_error(format!("Failed to build response: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to build response: {}", e)))?;
         return Ok(response);
     }
 
     let content = fs::read_to_string(&target)
         .await
-        .map_err(|e| internal_error(format!("Failed to read file: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
     let size = metadata.len();
     let (frontmatter, body) = parse_frontmatter(&content);
@@ -381,12 +358,14 @@ pub async fn read_file(
 pub async fn search_files(
     State(state): State<FilesState>,
     Query(params): Query<SearchQuery>,
-) -> Result<Json<SearchResponse>, ApiError> {
+) -> Result<Json<SearchResponse>, ServerError> {
     let query_lower = params.query.to_lowercase();
     let base = resolve_path(&state.root_path, params.path.as_deref().unwrap_or("/")).await?;
 
     if !base.is_dir() {
-        return Err(error("NOT_DIRECTORY", "Specified path is not a directory"));
+        return Err(ServerError::bad_request(
+            "Specified path is not a directory",
+        ));
     }
 
     let root_canonical = tokio::fs::canonicalize(&state.root_path)
@@ -411,16 +390,16 @@ fn walk_dir_search<'a>(
     root: &'a PathBuf,
     query: &'a str,
     results: &'a mut Vec<SearchResultEntry>,
-) -> Pin<Box<dyn std::future::Future<Output = Result<(), ApiError>> + Send + 'a>> {
+) -> Pin<Box<dyn std::future::Future<Output = Result<(), ServerError>> + Send + 'a>> {
     Box::pin(async move {
         let mut entries = fs::read_dir(dir)
             .await
-            .map_err(|e| internal_error(format!("Failed to read directory: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read directory: {}", e)))?;
 
         while let Some(entry) = entries
             .next_entry()
             .await
-            .map_err(|e| internal_error(format!("Failed to read directory entry: {}", e)))?
+            .map_err(|e| ServerError::internal(format!("Failed to read directory entry: {}", e)))?
         {
             let path = entry.path();
             let name = entry.file_name().to_string_lossy().to_string();
@@ -432,7 +411,7 @@ fn walk_dir_search<'a>(
             let meta = entry
                 .metadata()
                 .await
-                .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to read metadata: {}", e)))?;
 
             let relative = path
                 .strip_prefix(root)
@@ -480,21 +459,21 @@ fn walk_dir_search<'a>(
 pub async fn get_tree(
     State(state): State<FilesState>,
     Query(params): Query<TreeQuery>,
-) -> Result<Json<TreeResponse>, ApiError> {
+) -> Result<Json<TreeResponse>, ServerError> {
     let relative = params.path.as_deref().unwrap_or("/");
     let max_depth = params.depth.unwrap_or(2).min(5);
     let target = resolve_path(&state.root_path, relative).await?;
 
     let metadata = fs::metadata(&target).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
-            not_found(format!("Directory not found: {}", relative))
+            ServerError::NotFound(format!("Directory not found: {}", relative))
         } else {
-            internal_error(format!("Failed to read metadata: {}", e))
+            ServerError::internal(format!("Failed to read metadata: {}", e))
         }
     })?;
 
     if !metadata.is_dir() {
-        return Err(error("NOT_DIRECTORY", "Path is not a directory"));
+        return Err(ServerError::bad_request("Path is not a directory"));
     }
 
     let root_canonical = tokio::fs::canonicalize(&state.root_path)
@@ -513,7 +492,7 @@ fn build_tree<'a>(
     root: &'a PathBuf,
     current_depth: usize,
     max_depth: usize,
-) -> Pin<Box<dyn std::future::Future<Output = Result<Vec<TreeNode>, ApiError>> + Send + 'a>> {
+) -> Pin<Box<dyn std::future::Future<Output = Result<Vec<TreeNode>, ServerError>> + Send + 'a>> {
     Box::pin(async move {
         if current_depth >= max_depth {
             return Ok(Vec::new());
@@ -521,14 +500,14 @@ fn build_tree<'a>(
 
         let mut entries = fs::read_dir(dir)
             .await
-            .map_err(|e| internal_error(format!("Failed to read directory: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read directory: {}", e)))?;
 
         let mut nodes = Vec::new();
 
         while let Some(entry) = entries
             .next_entry()
             .await
-            .map_err(|e| internal_error(format!("Failed to read directory entry: {}", e)))?
+            .map_err(|e| ServerError::internal(format!("Failed to read directory entry: {}", e)))?
         {
             let path = entry.path();
             let name = entry.file_name().to_string_lossy().to_string();
@@ -540,7 +519,7 @@ fn build_tree<'a>(
             let meta = entry
                 .metadata()
                 .await
-                .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to read metadata: {}", e)))?;
 
             let is_dir = meta.is_dir();
             let relative = path
@@ -592,7 +571,9 @@ fn build_tree<'a>(
     tag = "files",
     security(("bearer_auth" = [])),
 )]
-pub async fn get_stats(State(state): State<FilesState>) -> Result<Json<StatsResponse>, ApiError> {
+pub async fn get_stats(
+    State(state): State<FilesState>,
+) -> Result<Json<StatsResponse>, ServerError> {
     let root = tokio::fs::canonicalize(&state.root_path)
         .await
         .unwrap_or_else(|_| state.root_path.clone());
@@ -634,16 +615,16 @@ fn walk_dir_stats<'a>(
     total_size: &'a mut u64,
     file_types: &'a mut std::collections::BTreeMap<String, usize>,
     largest_files: &'a mut Vec<LargestFileEntry>,
-) -> Pin<Box<dyn std::future::Future<Output = Result<(), ApiError>> + Send + 'a>> {
+) -> Pin<Box<dyn std::future::Future<Output = Result<(), ServerError>> + Send + 'a>> {
     Box::pin(async move {
         let mut entries = fs::read_dir(dir)
             .await
-            .map_err(|e| internal_error(format!("Failed to read directory: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read directory: {}", e)))?;
 
         while let Some(entry) = entries
             .next_entry()
             .await
-            .map_err(|e| internal_error(format!("Failed to read directory entry: {}", e)))?
+            .map_err(|e| ServerError::internal(format!("Failed to read directory entry: {}", e)))?
         {
             let name = entry.file_name().to_string_lossy().to_string();
 
@@ -654,7 +635,7 @@ fn walk_dir_stats<'a>(
             let meta = entry
                 .metadata()
                 .await
-                .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to read metadata: {}", e)))?;
 
             if meta.is_dir() {
                 *total_dirs += 1;
@@ -721,7 +702,7 @@ fn walk_dir_stats<'a>(
 pub async fn get_recent_files(
     State(state): State<FilesState>,
     Query(params): Query<RecentQuery>,
-) -> Result<Json<RecentResponse>, ApiError> {
+) -> Result<Json<RecentResponse>, ServerError> {
     let limit = params.limit.unwrap_or(20).min(100);
     let root = tokio::fs::canonicalize(&state.root_path)
         .await
@@ -741,16 +722,16 @@ fn walk_dir_recent<'a>(
     root: &'a PathBuf,
     files: &'a mut Vec<RecentFileEntry>,
     max_files: usize,
-) -> Pin<Box<dyn std::future::Future<Output = Result<(), ApiError>> + Send + 'a>> {
+) -> Pin<Box<dyn std::future::Future<Output = Result<(), ServerError>> + Send + 'a>> {
     Box::pin(async move {
         let mut entries = fs::read_dir(dir)
             .await
-            .map_err(|e| internal_error(format!("Failed to read directory: {}", e)))?;
+            .map_err(|e| ServerError::internal(format!("Failed to read directory: {}", e)))?;
 
         while let Some(entry) = entries
             .next_entry()
             .await
-            .map_err(|e| internal_error(format!("Failed to read directory entry: {}", e)))?
+            .map_err(|e| ServerError::internal(format!("Failed to read directory entry: {}", e)))?
         {
             let name = entry.file_name().to_string_lossy().to_string();
 
@@ -761,7 +742,7 @@ fn walk_dir_recent<'a>(
             let meta = entry
                 .metadata()
                 .await
-                .map_err(|e| internal_error(format!("Failed to read metadata: {}", e)))?;
+                .map_err(|e| ServerError::internal(format!("Failed to read metadata: {}", e)))?;
 
             if meta.is_dir() {
                 Box::pin(walk_dir_recent(&entry.path(), root, files, max_files)).await?;
@@ -817,65 +798,61 @@ fn walk_dir_recent<'a>(
 pub async fn upload_file(
     State(state): State<FilesState>,
     mut multipart: Multipart,
-) -> Result<Json<UploadResponse>, ApiError> {
+) -> Result<Json<UploadResponse>, ServerError> {
     let field = multipart
         .next_field()
         .await
-        .map_err(|e| internal_error(format!("Failed to parse multipart: {}", e)))?
-        .ok_or_else(|| error("NO_FILE", "No file provided in upload"))?;
+        .map_err(|e| ServerError::internal(format!("Failed to parse multipart: {}", e)))?
+        .ok_or_else(|| ServerError::bad_request("No file provided in upload"))?;
 
     let filename = field
         .file_name()
-        .ok_or_else(|| error("MISSING_FILENAME", "File has no filename"))?
+        .ok_or_else(|| ServerError::bad_request("File has no filename"))?
         .to_string();
 
     if filename.is_empty() {
-        return Err(error("MISSING_FILENAME", "Filename is empty"));
+        return Err(ServerError::bad_request("Filename is empty"));
     }
 
     if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
-        return Err(error(
-            "INVALID_FILENAME",
+        return Err(ServerError::bad_request(
             "Filename contains invalid characters",
         ));
     }
 
     let content_type = field
         .content_type()
-        .ok_or_else(|| error("MISSING_CONTENT_TYPE", "File has no content type"))?
+        .ok_or_else(|| ServerError::bad_request("File has no content type"))?
         .to_string();
 
     let ext = Path::new(&filename)
         .extension()
         .and_then(|e| e.to_str())
         .map(|e| e.to_lowercase())
-        .ok_or_else(|| error("INVALID_FILE", "File has no extension"))?;
+        .ok_or_else(|| ServerError::bad_request("File has no extension"))?;
 
     if !is_upload_allowed_ext(&ext) {
-        return Err(error(
-            "INVALID_FILE_TYPE",
-            format!("File type .{} is not allowed", ext),
-        ));
+        return Err(ServerError::bad_request(format!(
+            "File type .{} is not allowed",
+            ext
+        )));
     }
 
     let expected = expected_content_type(&ext);
     if !content_type.contains(expected.split('/').next().unwrap_or("")) {
-        return Err(error(
-            "INVALID_CONTENT_TYPE",
-            format!(
-                "Content-Type {} does not match expected type for .{}",
-                content_type, ext
-            ),
-        ));
+        return Err(ServerError::bad_request(format!(
+            "Content-Type {} does not match expected type for .{}",
+            content_type, ext
+        )));
     }
 
     let data = field
         .bytes()
         .await
-        .map_err(|e| internal_error(format!("Failed to read file data: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to read file data: {}", e)))?;
 
     if data.len() > MAX_UPLOAD_SIZE {
-        return Err(error("FILE_TOO_LARGE", "File size exceeds 50MB limit"));
+        return Err(ServerError::bad_request("File size exceeds 50MB limit"));
     }
 
     let safe_name = format!(
@@ -888,7 +865,7 @@ pub async fn upload_file(
     );
 
     if let Err(e) = fs::create_dir_all(&state.uploads_dir).await {
-        return Err(internal_error(format!(
+        return Err(ServerError::internal(format!(
             "Failed to create uploads directory: {}",
             e
         )));
@@ -896,7 +873,7 @@ pub async fn upload_file(
 
     let upload_path = state.uploads_dir.join(&safe_name);
     if let Err(e) = fs::write(&upload_path, &data).await {
-        return Err(internal_error(format!("Failed to save file: {}", e)));
+        return Err(ServerError::internal(format!("Failed to save file: {}", e)));
     }
 
     Ok(Json(UploadResponse {

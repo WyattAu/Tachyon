@@ -4,17 +4,21 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    response::IntoResponse,
     Json,
 };
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tachyon_database::{
-    CatalogRepository, CatalogStats, Component, CreateComponentRequest, CreateProjectRequest,
-    Project, ProjectMember,
+    CatalogRepository, Component, CreateComponentRequest, CreateProjectRequest, Project,
+    ProjectMember,
 };
 use tracing::{debug, info, instrument};
+
+use crate::error::ServerError;
+
+/// Response wrapper for paginated catalog API responses.
+type CatalogResult<T> = Result<(StatusCode, Json<ApiResponse<T>>), ServerError>;
 
 /// Catalog state for request handling
 #[derive(Clone)]
@@ -120,26 +124,19 @@ pub struct ProjectFilters {
 pub async fn create_project(
     State(state): State<CatalogState>,
     Json(request): Json<CreateProjectRequest>,
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<ApiResponse<Project>>), ServerError> {
     info!("Creating project: {}", request.name);
 
-    // Generate UUID for the project
     let id = uuid::Uuid::new_v4().to_string();
     let project = request.to_project(id);
 
-    match state.repo().create_project(&project).await {
-        Ok(()) => {
-            info!("Project created successfully: {}", project.id);
-            (StatusCode::CREATED, Json(ApiResponse::success(project)))
-        }
-        Err(e) => {
-            debug!("Failed to create project: {}", e);
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ApiResponse::<Project>::error(e.to_string())),
-            )
-        }
-    }
+    state.repo().create_project(&project).await.map_err(|e| {
+        debug!("Failed to create project: {}", e);
+        ServerError::bad_request(e.to_string())
+    })?;
+
+    info!("Project created successfully: {}", project.id);
+    Ok((StatusCode::CREATED, Json(ApiResponse::success(project))))
 }
 
 /// List all projects with optional filters
@@ -160,10 +157,9 @@ pub async fn create_project(
 pub async fn list_projects(
     State(state): State<CatalogState>,
     Query(params): Query<ProjectListParams>,
-) -> impl IntoResponse {
+) -> CatalogResult<Vec<Project>> {
     debug!("Listing projects");
 
-    // Handle search vs filter-based listing
     let projects = if let Some(search) = &params.search {
         state.repo().search_projects(search, params.limit).await
     } else {
@@ -179,16 +175,12 @@ pub async fn list_projects(
             .await
     };
 
-    match projects {
-        Ok(projects) => (StatusCode::OK, Json(ApiResponse::success(projects))),
-        Err(e) => {
-            debug!("Failed to list projects: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::<Vec<Project>>::error(e.to_string())),
-            )
-        }
-    }
+    let projects = projects.map_err(|e| {
+        debug!("Failed to list projects: {}", e);
+        ServerError::internal(e.to_string())
+    })?;
+
+    Ok((StatusCode::OK, Json(ApiResponse::success(projects))))
 }
 
 /// Get a project by ID
@@ -209,19 +201,15 @@ pub async fn list_projects(
 pub async fn get_project(
     State(state): State<CatalogState>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<ApiResponse<Project>>), ServerError> {
     debug!("Getting project: {}", id);
 
-    match state.repo().get_project(&id).await {
-        Ok(project) => (StatusCode::OK, Json(ApiResponse::success(project))),
-        Err(e) => {
-            debug!("Project not found: {}", e);
-            (
-                StatusCode::NOT_FOUND,
-                Json(ApiResponse::<Project>::error(e.to_string())),
-            )
-        }
-    }
+    let project = state.repo().get_project(&id).await.map_err(|e| {
+        debug!("Project not found: {}", e);
+        ServerError::not_found("Project", &id)
+    })?;
+
+    Ok((StatusCode::OK, Json(ApiResponse::success(project))))
 }
 
 /// Get a project by slug
@@ -242,19 +230,15 @@ pub async fn get_project(
 pub async fn get_project_by_slug(
     State(state): State<CatalogState>,
     Path(slug): Path<String>,
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<ApiResponse<Project>>), ServerError> {
     debug!("Getting project by slug: {}", slug);
 
-    match state.repo().get_project_by_slug(&slug).await {
-        Ok(project) => (StatusCode::OK, Json(ApiResponse::success(project))),
-        Err(e) => {
-            debug!("Project not found: {}", e);
-            (
-                StatusCode::NOT_FOUND,
-                Json(ApiResponse::<Project>::error(e.to_string())),
-            )
-        }
-    }
+    let project = state.repo().get_project_by_slug(&slug).await.map_err(|e| {
+        debug!("Project not found: {}", e);
+        ServerError::not_found("Project", &slug)
+    })?;
+
+    Ok((StatusCode::OK, Json(ApiResponse::success(project))))
 }
 
 /// Update a project
@@ -277,26 +261,19 @@ pub async fn update_project(
     State(state): State<CatalogState>,
     Path(id): Path<String>,
     Json(mut request): Json<Project>,
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<ApiResponse<Project>>), ServerError> {
     info!("Updating project: {}", id);
 
-    // Ensure the ID in the path matches the request body
     request.id = id.clone();
     request.updated_at = Utc::now();
 
-    match state.repo().update_project(&request).await {
-        Ok(()) => {
-            info!("Project updated successfully: {}", id);
-            (StatusCode::OK, Json(ApiResponse::success(request)))
-        }
-        Err(e) => {
-            debug!("Failed to update project: {}", e);
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ApiResponse::<Project>::error(e.to_string())),
-            )
-        }
-    }
+    state.repo().update_project(&request).await.map_err(|e| {
+        debug!("Failed to update project: {}", e);
+        ServerError::bad_request(e.to_string())
+    })?;
+
+    info!("Project updated successfully: {}", id);
+    Ok((StatusCode::OK, Json(ApiResponse::success(request))))
 }
 
 /// Delete a project
@@ -317,25 +294,19 @@ pub async fn update_project(
 pub async fn delete_project(
     State(state): State<CatalogState>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<ApiResponse<serde_json::Value>>), ServerError> {
     info!("Deleting project: {}", id);
 
-    match state.repo().delete_project(&id).await {
-        Ok(()) => {
-            info!("Project deleted successfully: {}", id);
-            (
-                StatusCode::OK,
-                Json(ApiResponse::success(serde_json::json!({ "deleted": true }))),
-            )
-        }
-        Err(e) => {
-            debug!("Failed to delete project: {}", e);
-            (
-                StatusCode::NOT_FOUND,
-                Json(ApiResponse::<serde_json::Value>::error(e.to_string())),
-            )
-        }
-    }
+    state.repo().delete_project(&id).await.map_err(|e| {
+        debug!("Failed to delete project: {}", e);
+        ServerError::not_found("Project", &id)
+    })?;
+
+    info!("Project deleted successfully: {}", id);
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse::success(serde_json::json!({ "deleted": true }))),
+    ))
 }
 
 // ============================================================================
@@ -358,7 +329,7 @@ pub async fn delete_project(
 pub async fn create_component(
     State(state): State<CatalogState>,
     Json(request): Json<CreateComponentRequest>,
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<ApiResponse<Component>>), ServerError> {
     info!(
         "Creating component: {} for project: {}",
         request.name, request.project_id
@@ -367,19 +338,17 @@ pub async fn create_component(
     let id = uuid::Uuid::new_v4().to_string();
     let component = request.to_component(id);
 
-    match state.repo().create_component(&component).await {
-        Ok(()) => {
-            info!("Component created successfully: {}", component.id);
-            (StatusCode::CREATED, Json(ApiResponse::success(component)))
-        }
-        Err(e) => {
+    state
+        .repo()
+        .create_component(&component)
+        .await
+        .map_err(|e| {
             debug!("Failed to create component: {}", e);
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ApiResponse::<Component>::error(e.to_string())),
-            )
-        }
-    }
+            ServerError::bad_request(e.to_string())
+        })?;
+
+    info!("Component created successfully: {}", component.id);
+    Ok((StatusCode::CREATED, Json(ApiResponse::success(component))))
 }
 
 /// Get a component by ID
@@ -400,19 +369,15 @@ pub async fn create_component(
 pub async fn get_component(
     State(state): State<CatalogState>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<ApiResponse<Component>>), ServerError> {
     debug!("Getting component: {}", id);
 
-    match state.repo().get_component(&id).await {
-        Ok(component) => (StatusCode::OK, Json(ApiResponse::success(component))),
-        Err(e) => {
-            debug!("Component not found: {}", e);
-            (
-                StatusCode::NOT_FOUND,
-                Json(ApiResponse::<Component>::error(e.to_string())),
-            )
-        }
-    }
+    let component = state.repo().get_component(&id).await.map_err(|e| {
+        debug!("Component not found: {}", e);
+        ServerError::not_found("Component", &id)
+    })?;
+
+    Ok((StatusCode::OK, Json(ApiResponse::success(component))))
 }
 
 /// List components for a project
@@ -433,19 +398,19 @@ pub async fn get_component(
 pub async fn list_project_components(
     State(state): State<CatalogState>,
     Path(project_id): Path<String>,
-) -> impl IntoResponse {
+) -> CatalogResult<Vec<Component>> {
     debug!("Listing components for project: {}", project_id);
 
-    match state.repo().list_components_by_project(&project_id).await {
-        Ok(components) => (StatusCode::OK, Json(ApiResponse::success(components))),
-        Err(e) => {
+    let components = state
+        .repo()
+        .list_components_by_project(&project_id)
+        .await
+        .map_err(|e| {
             debug!("Failed to list components: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::<Vec<Component>>::error(e.to_string())),
-            )
-        }
-    }
+            ServerError::internal(e.to_string())
+        })?;
+
+    Ok((StatusCode::OK, Json(ApiResponse::success(components))))
 }
 
 /// Delete a component
@@ -466,25 +431,19 @@ pub async fn list_project_components(
 pub async fn delete_component(
     State(state): State<CatalogState>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<ApiResponse<serde_json::Value>>), ServerError> {
     info!("Deleting component: {}", id);
 
-    match state.repo().delete_component(&id).await {
-        Ok(()) => {
-            info!("Component deleted successfully: {}", id);
-            (
-                StatusCode::OK,
-                Json(ApiResponse::success(serde_json::json!({ "deleted": true }))),
-            )
-        }
-        Err(e) => {
-            debug!("Failed to delete component: {}", e);
-            (
-                StatusCode::NOT_FOUND,
-                Json(ApiResponse::<serde_json::Value>::error(e.to_string())),
-            )
-        }
-    }
+    state.repo().delete_component(&id).await.map_err(|e| {
+        debug!("Failed to delete component: {}", e);
+        ServerError::not_found("Component", &id)
+    })?;
+
+    info!("Component deleted successfully: {}", id);
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse::success(serde_json::json!({ "deleted": true }))),
+    ))
 }
 
 // ============================================================================
@@ -511,14 +470,14 @@ pub async fn add_project_member(
     State(state): State<CatalogState>,
     Path(project_id): Path<String>,
     Json(request): Json<AddMemberRequest>,
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<ApiResponse<ProjectMember>>), ServerError> {
     info!(
         "Adding member {} to project {}",
         request.user_id, project_id
     );
 
     let member = ProjectMember {
-        id: 0, // Auto-generated
+        id: 0,
         project_id,
         user_id: request.user_id,
         role: request.role,
@@ -526,19 +485,17 @@ pub async fn add_project_member(
         added_at: Utc::now(),
     };
 
-    match state.repo().add_project_member(&member).await {
-        Ok(()) => {
-            info!("Member added successfully");
-            (StatusCode::CREATED, Json(ApiResponse::success(member)))
-        }
-        Err(e) => {
+    state
+        .repo()
+        .add_project_member(&member)
+        .await
+        .map_err(|e| {
             debug!("Failed to add member: {}", e);
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ApiResponse::<ProjectMember>::error(e.to_string())),
-            )
-        }
-    }
+            ServerError::bad_request(e.to_string())
+        })?;
+
+    info!("Member added successfully");
+    Ok((StatusCode::CREATED, Json(ApiResponse::success(member))))
 }
 
 /// List project members
@@ -559,19 +516,19 @@ pub async fn add_project_member(
 pub async fn list_project_members(
     State(state): State<CatalogState>,
     Path(project_id): Path<String>,
-) -> impl IntoResponse {
+) -> CatalogResult<Vec<ProjectMember>> {
     debug!("Listing members for project: {}", project_id);
 
-    match state.repo().list_project_members(&project_id).await {
-        Ok(members) => (StatusCode::OK, Json(ApiResponse::success(members))),
-        Err(e) => {
+    let members = state
+        .repo()
+        .list_project_members(&project_id)
+        .await
+        .map_err(|e| {
             debug!("Failed to list members: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::<Vec<ProjectMember>>::error(e.to_string())),
-            )
-        }
-    }
+            ServerError::internal(e.to_string())
+        })?;
+
+    Ok((StatusCode::OK, Json(ApiResponse::success(members))))
 }
 
 /// Remove a member from a project
@@ -593,29 +550,23 @@ pub async fn list_project_members(
 pub async fn remove_project_member(
     State(state): State<CatalogState>,
     Path((project_id, user_id)): Path<(String, String)>,
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<ApiResponse<serde_json::Value>>), ServerError> {
     info!("Removing member {} from project {}", user_id, project_id);
 
-    match state
+    state
         .repo()
         .remove_project_member(&project_id, &user_id)
         .await
-    {
-        Ok(()) => {
-            info!("Member removed successfully");
-            (
-                StatusCode::OK,
-                Json(ApiResponse::success(serde_json::json!({ "removed": true }))),
-            )
-        }
-        Err(e) => {
+        .map_err(|e| {
             debug!("Failed to remove member: {}", e);
-            (
-                StatusCode::NOT_FOUND,
-                Json(ApiResponse::<serde_json::Value>::error(e.to_string())),
-            )
-        }
-    }
+            ServerError::not_found("Member", &user_id)
+        })?;
+
+    info!("Member removed successfully");
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse::success(serde_json::json!({ "removed": true }))),
+    ))
 }
 
 // ============================================================================
@@ -654,29 +605,25 @@ pub async fn get_catalog_stats(State(state): State<CatalogState>) -> axum::respo
         return response;
     }
 
-    match state.repo().get_stats().await {
-        Ok(stats) => {
-            if let Ok(bytes) = serde_json::to_vec(&ApiResponse::success(&stats)) {
-                state
-                    .api_cache
-                    .set_response(&key, bytes, "application/json", None)
-                    .await;
-            }
-            let mut response = (StatusCode::OK, Json(ApiResponse::success(stats))).into_response();
-            response
-                .headers_mut()
-                .insert("X-Cache-Status", HeaderValue::from_static("MISS"));
-            response
-        }
+    let stats = match state.repo().get_stats().await {
+        Ok(stats) => stats,
         Err(e) => {
             debug!("Failed to get stats: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::<CatalogStats>::error(e.to_string())),
-            )
-                .into_response()
+            return ServerError::internal(e.to_string()).into_response();
         }
+    };
+
+    if let Ok(bytes) = serde_json::to_vec(&ApiResponse::success(&stats)) {
+        state
+            .api_cache
+            .set_response(&key, bytes, "application/json", None)
+            .await;
     }
+    let mut response = (StatusCode::OK, Json(ApiResponse::success(stats))).into_response();
+    response
+        .headers_mut()
+        .insert("X-Cache-Status", HeaderValue::from_static("MISS"));
+    response
 }
 
 /// Request to add a member

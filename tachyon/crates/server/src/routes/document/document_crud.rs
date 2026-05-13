@@ -1,3 +1,4 @@
+use crate::error::ServerError;
 use crate::validation::{ValidatedDocumentTitle, ValidatedTagList};
 use axum::{
     extract::{Extension, Path, Query, State},
@@ -17,9 +18,7 @@ use tachyon_renderer::{MarkdownParser, RenderConfig, Renderer};
 use tachyon_search::SearchDocument;
 use tracing::{debug, info, warn};
 
-use super::{
-    DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState, ErrorResponse,
-};
+use super::{DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState};
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -65,31 +64,17 @@ pub async fn create_document(
     State(state): State<DocumentState>,
     auth: Option<Extension<crate::middleware::AuthContext>>,
     Json(req): Json<CreateDocumentRequest>,
-) -> Result<Json<DocumentResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<DocumentResponse>, ServerError> {
     info!("Creating new document: {}", req.title);
 
-    let validated_title = ValidatedDocumentTitle::new(&req.title).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: format!("Invalid title: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let validated_title = ValidatedDocumentTitle::new(&req.title)
+        .map_err(|e| ServerError::bad_request(format!("Invalid title: {}", e)))?;
 
     let validated_tags = if !req.tags.is_empty() {
-        Some(ValidatedTagList::new(&req.tags).map_err(|e| {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "VALIDATION_ERROR".to_string(),
-                    message: format!("Invalid tags: {}", e),
-                    details: None,
-                }),
-            )
-        })?)
+        Some(
+            ValidatedTagList::new(&req.tags)
+                .map_err(|e| ServerError::bad_request(format!("Invalid tags: {}", e)))?,
+        )
     } else {
         None
     };
@@ -129,14 +114,7 @@ pub async fn create_document(
     }
 
     if let Err(e) = doc.validate() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: e.to_string(),
-                details: None,
-            }),
-        ));
+        return Err(ServerError::bad_request(e.to_string()));
     }
 
     let status_str = match doc.status {
@@ -179,14 +157,10 @@ pub async fn create_document(
 
     if let Err(e) = state.repository.create(metadata).await {
         warn!("Failed to persist document: {}", e);
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DATABASE_ERROR".to_string(),
-                message: format!("Failed to create document: {}", e),
-                details: None,
-            }),
-        ));
+        return Err(ServerError::database(format!(
+            "Failed to create document: {}",
+            e
+        )));
     }
 
     {
@@ -304,19 +278,11 @@ pub async fn create_document(
 pub async fn get_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
-) -> Result<Json<DocumentResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<DocumentResponse>, ServerError> {
     debug!("Getting document: {}", document_id);
 
-    let doc_id = DocumentId::parse_str(&document_id).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "INVALID_ID".to_string(),
-                message: format!("Invalid document ID: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let doc_id = DocumentId::parse_str(&document_id)
+        .map_err(|e| ServerError::bad_request(format!("Invalid document ID: {}", e)))?;
 
     match state.repository.get_by_id(&doc_id).await {
         Ok(metadata) => {
@@ -342,14 +308,7 @@ pub async fn get_document(
         }
         Err(e) => {
             warn!("Failed to get document: {}", e);
-            Err((
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Document {} not found", document_id),
-                    details: None,
-                }),
-            ))
+            Err(ServerError::not_found("Document", &document_id))
         }
     }
 }
@@ -378,42 +337,21 @@ pub async fn update_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
     Json(req): Json<UpdateDocumentRequest>,
-) -> Result<Json<DocumentResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<DocumentResponse>, ServerError> {
     debug!("Updating document: {}", document_id);
 
-    let doc_id = DocumentId::parse_str(&document_id).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "INVALID_ID".to_string(),
-                message: format!("Invalid document ID: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let doc_id = DocumentId::parse_str(&document_id)
+        .map_err(|e| ServerError::bad_request(format!("Invalid document ID: {}", e)))?;
 
-    let mut metadata = state.repository.get_by_id(&doc_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Document {} not found: {}", document_id, e),
-                details: None,
-            }),
-        )
-    })?;
+    let mut metadata = state
+        .repository
+        .get_by_id(&doc_id)
+        .await
+        .map_err(|e| ServerError::not_found("Document", &format!("{}: {}", document_id, e)))?;
 
     if let Some(title) = req.title {
-        let validated_title = ValidatedDocumentTitle::new(&title).map_err(|e| {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "VALIDATION_ERROR".to_string(),
-                    message: format!("Invalid title: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        let validated_title = ValidatedDocumentTitle::new(&title)
+            .map_err(|e| ServerError::bad_request(format!("Invalid title: {}", e)))?;
         metadata.title = validated_title.as_str().to_string();
     }
     if let Some(content) = req.content {
@@ -456,16 +394,8 @@ pub async fn update_document(
         metadata.status = status;
     }
     if let Some(tags) = req.tags {
-        let validated_tags = ValidatedTagList::new(&tags).map_err(|e| {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "VALIDATION_ERROR".to_string(),
-                    message: format!("Invalid tags: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        let validated_tags = ValidatedTagList::new(&tags)
+            .map_err(|e| ServerError::bad_request(format!("Invalid tags: {}", e)))?;
         metadata.tags = serde_json::to_string(&validated_tags.as_strings())
             .unwrap_or_else(|_| "[]".to_string());
     }
@@ -475,16 +405,7 @@ pub async fn update_document(
         .repository
         .update(metadata.clone())
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "UPDATE_ERROR".to_string(),
-                    message: format!("Failed to update document: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::database(format!("Failed to update document: {}", e)))?;
 
     {
         let content = metadata.content.as_deref().unwrap_or("");
@@ -614,19 +535,11 @@ pub async fn update_document(
 pub async fn delete_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     debug!("Deleting document: {}", document_id);
 
-    let doc_id = DocumentId::parse_str(&document_id).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "INVALID_ID".to_string(),
-                message: format!("Invalid document ID: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let doc_id = DocumentId::parse_str(&document_id)
+        .map_err(|e| ServerError::bad_request(format!("Invalid document ID: {}", e)))?;
 
     match state.repository.delete(&doc_id).await {
         Ok(()) => {
@@ -655,14 +568,7 @@ pub async fn delete_document(
         }
         Err(e) => {
             warn!("Failed to delete document: {}", e);
-            Err((
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Document {} not found", document_id),
-                    details: None,
-                }),
-            ))
+            Err(ServerError::not_found("Document", &document_id))
         }
     }
 }
@@ -688,7 +594,7 @@ pub async fn delete_document(
 pub async fn list_documents(
     Query(query): Query<DocumentQuery>,
     State(state): State<DocumentState>,
-) -> Result<Json<DocumentSearchResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<DocumentSearchResponse>, ServerError> {
     debug!(
         "Listing documents (page: {:?}, size: {:?})",
         query.page, query.page_size
@@ -796,14 +702,10 @@ pub async fn list_documents(
         }
         Err(e) => {
             warn!("Failed to list documents: {}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "QUERY_ERROR".to_string(),
-                    message: format!("Failed to list documents: {}", e),
-                    details: None,
-                }),
-            ))
+            Err(ServerError::database(format!(
+                "Failed to list documents: {}",
+                e
+            )))
         }
     }
 }
@@ -816,19 +718,11 @@ pub async fn list_documents(
 pub async fn get_document_metadata(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
-) -> Result<Json<BTreeMap<String, String>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<BTreeMap<String, String>>, ServerError> {
     debug!("Getting document metadata: {}", document_id);
 
-    let doc_id = DocumentId::parse_str(&document_id).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "INVALID_ID".to_string(),
-                message: format!("Invalid document ID: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let doc_id = DocumentId::parse_str(&document_id)
+        .map_err(|e| ServerError::bad_request(format!("Invalid document ID: {}", e)))?;
 
     match state.repository.get_by_id(&doc_id).await {
         Ok(metadata) => {
@@ -853,14 +747,7 @@ pub async fn get_document_metadata(
         }
         Err(e) => {
             warn!("Failed to get document metadata: {}", e);
-            Err((
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Document {} not found", document_id),
-                    details: None,
-                }),
-            ))
+            Err(ServerError::not_found("Document", &document_id))
         }
     }
 }
@@ -871,23 +758,14 @@ pub async fn get_document_metadata(
 ///
 /// Request body: raw markdown string.
 /// Response: 200 with `html`, `word_count`, `character_count`, `heading_count`, `code_block_count`, `render_time_ms`.
-pub async fn render_markdown(
-    body: String,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+pub async fn render_markdown(body: String) -> Result<Json<serde_json::Value>, ServerError> {
     debug!("Rendering markdown ({} bytes)", body.len());
 
     let renderer = Renderer::new(RenderConfig::default());
 
-    let result = renderer.render(&body, None).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "RENDER_ERROR".to_string(),
-                message: format!("Failed to render markdown: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let result = renderer
+        .render(&body, None)
+        .map_err(|e| ServerError::bad_request(format!("Failed to render markdown: {}", e)))?;
 
     Ok(Json(serde_json::json!({
         "html": result.content,

@@ -251,7 +251,7 @@ fn openapi_spec() -> &'static OpenApiSpec {
         crate::routes::session::CreateSessionRequest,
         crate::routes::session::SessionResponse,
         crate::routes::session::SessionListResponse,
-        crate::routes::session::SessionErrorResponse,
+        crate::routes::session::SessionListResponse,
         crate::routes::tags::TagInfo,
         crate::routes::tags::TagsResponse,
         crate::routes::notification::NotificationListResponse,
@@ -365,7 +365,6 @@ fn openapi_spec() -> &'static OpenApiSpec {
         crate::routes::ssg::SsgBuildRequest,
         crate::routes::ssg::SsgBuildResponse,
         crate::routes::ssg::SsgBuildResultWrapper,
-        crate::routes::ssg::SsgErrorResponse,
         crate::routes::ssg::SsgNavLink,
     )),
     modifiers(&SecurityAddon)

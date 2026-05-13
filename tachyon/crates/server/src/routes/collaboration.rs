@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
+use crate::error::ServerError;
 use crate::websocket::ConnectionManager;
 use tachyon_database::error::DatabaseError;
 use tachyon_database::CommentRepository;
@@ -162,12 +163,6 @@ pub struct MentionNotification {
     pub read: bool,
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct CollaborationErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -243,7 +238,7 @@ fn parse_datetime(s: &str) -> DateTime<Utc> {
 pub async fn update_presence(
     State(state): State<CollaborationState>,
     Json(req): Json<UpdatePresenceRequest>,
-) -> Result<Json<PresenceResponse>, (StatusCode, Json<CollaborationErrorResponse>)> {
+) -> Result<Json<PresenceResponse>, ServerError> {
     let db_req = DbUpsertPresenceRequest {
         user_id: req.user_id.clone(),
         user_name: req.user_name.clone(),
@@ -261,7 +256,7 @@ pub async fn update_presence(
     };
 
     let repo = PresenceRepository::new(state.pool.clone());
-    repo.upsert(db_req).await.map_err(|e| db_error(&e))?;
+    repo.upsert(db_req).await?;
 
     // Broadcast presence update to WebSocket clients viewing this document
     let presence_user = crate::websocket::types::PresenceUser {
@@ -287,8 +282,7 @@ pub async fn update_presence(
     // Return all live presence for this document
     let users = repo
         .list_by_document(&req.document_id)
-        .await
-        .map_err(|e| db_error(&e))?
+        .await?
         .into_iter()
         .map(db_presence_to_info)
         .collect();
@@ -316,12 +310,11 @@ pub async fn update_presence(
 pub async fn get_presence(
     State(state): State<CollaborationState>,
     Path(document_id): Path<String>,
-) -> Result<Json<PresenceResponse>, (StatusCode, Json<CollaborationErrorResponse>)> {
+) -> Result<Json<PresenceResponse>, ServerError> {
     let repo = PresenceRepository::new(state.pool.clone());
     let users = repo
         .list_by_document(&document_id)
-        .await
-        .map_err(|e| db_error(&e))?
+        .await?
         .into_iter()
         .map(db_presence_to_info)
         .collect();
@@ -347,11 +340,9 @@ pub async fn get_presence(
 pub async fn remove_presence(
     State(state): State<CollaborationState>,
     Path((document_id, user_id)): Path<(String, String)>,
-) -> Result<StatusCode, (StatusCode, Json<CollaborationErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     let repo = PresenceRepository::new(state.pool.clone());
-    repo.remove(&user_id, &document_id)
-        .await
-        .map_err(|e| db_error(&e))?;
+    repo.remove(&user_id, &document_id).await?;
 
     // Broadcast leave event to WebSocket clients
     let leave_msg = crate::websocket::types::WebSocketMessage::leave(document_id.clone(), user_id);
@@ -363,14 +354,12 @@ pub async fn remove_presence(
     Ok(StatusCode::NO_CONTENT)
 }
 
-fn db_error(e: &DatabaseError) -> (StatusCode, Json<CollaborationErrorResponse>) {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(CollaborationErrorResponse {
-            code: "db_error".to_string(),
-            message: e.to_string(),
-        }),
-    )
+fn db_error(e: DatabaseError) -> ServerError {
+    if matches!(e, DatabaseError::NotFound { .. }) {
+        ServerError::not_found("resource", &e.to_string())
+    } else {
+        ServerError::database(e.to_string())
+    }
 }
 
 // ============================================================================
@@ -434,12 +423,11 @@ fn db_comment_to_comment(db: tachyon_database::comment::Comment) -> Comment {
 pub async fn list_comments(
     State(state): State<CollaborationState>,
     Path(document_id): Path<String>,
-) -> Result<Json<CommentsResponse>, (StatusCode, Json<CollaborationErrorResponse>)> {
+) -> Result<Json<CommentsResponse>, ServerError> {
     let repo = CommentRepository::new(state.pool.clone());
     let comments = repo
         .list_by_document(&document_id, true, None, 100, 0)
-        .await
-        .map_err(|e| db_error(&e))?;
+        .await?;
 
     let total = comments.len();
     let comments: Vec<Comment> = comments.into_iter().map(db_comment_to_comment).collect();
@@ -462,7 +450,7 @@ pub async fn list_comments(
 pub async fn create_comment(
     State(state): State<CollaborationState>,
     Json(req): Json<CreateCommentRequest>,
-) -> Result<Json<Comment>, (StatusCode, Json<CollaborationErrorResponse>)> {
+) -> Result<Json<Comment>, ServerError> {
     let db_req = DbCreateCommentRequest {
         document_id: req.document_id.clone(),
         author_id: "user".to_string(),
@@ -483,7 +471,7 @@ pub async fn create_comment(
     };
 
     let repo = CommentRepository::new(state.pool.clone());
-    let comment = repo.create(db_req).await.map_err(|e| db_error(&e))?;
+    let comment = repo.create(db_req).await?;
 
     info!(
         "Comment created on {} (mentions: {:?})",
@@ -529,7 +517,7 @@ pub async fn update_comment(
     State(state): State<CollaborationState>,
     Path(comment_id): Path<String>,
     Json(req): Json<UpdateCommentRequest>,
-) -> Result<Json<Comment>, (StatusCode, Json<CollaborationErrorResponse>)> {
+) -> Result<Json<Comment>, ServerError> {
     let db_req = DbUpdateCommentRequest {
         content: req.content,
         status: req.status.map(|s| format!("{:?}", s).to_lowercase()),
@@ -537,20 +525,7 @@ pub async fn update_comment(
     };
 
     let repo = CommentRepository::new(state.pool.clone());
-    let comment = repo.update(&comment_id, db_req).await.map_err(|e| {
-        let (status, code) = if matches!(e, DatabaseError::NotFound { .. }) {
-            (StatusCode::NOT_FOUND, "not_found")
-        } else {
-            (StatusCode::INTERNAL_SERVER_ERROR, "db_error")
-        };
-        (
-            status,
-            Json(CollaborationErrorResponse {
-                code: code.to_string(),
-                message: e.to_string(),
-            }),
-        )
-    })?;
+    let comment = repo.update(&comment_id, db_req).await.map_err(db_error)?;
 
     Ok(Json(db_comment_to_comment(comment)))
 }
@@ -573,22 +548,9 @@ pub async fn update_comment(
 pub async fn delete_comment(
     State(state): State<CollaborationState>,
     Path(comment_id): Path<String>,
-) -> Result<StatusCode, (StatusCode, Json<CollaborationErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     let repo = CommentRepository::new(state.pool.clone());
-    repo.delete(&comment_id).await.map_err(|e| {
-        let status = if matches!(e, DatabaseError::NotFound { .. }) {
-            StatusCode::NOT_FOUND
-        } else {
-            StatusCode::INTERNAL_SERVER_ERROR
-        };
-        (
-            status,
-            Json(CollaborationErrorResponse {
-                code: "db_error".to_string(),
-                message: e.to_string(),
-            }),
-        )
-    })?;
+    repo.delete(&comment_id).await.map_err(db_error)?;
 
     Ok(StatusCode::NO_CONTENT)
 }

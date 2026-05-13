@@ -1,4 +1,5 @@
-use axum::{extract::Path, http::StatusCode, response::Json};
+use crate::error::ServerError;
+use axum::{extract::Path, response::Json};
 use serde::{Deserialize, Serialize};
 use tachyon_core::id::DocumentId;
 use tachyon_database::{DatabasePool, DocumentRepository};
@@ -56,18 +57,11 @@ pub struct MergeResultInfo {
 pub async fn get_conflict_info(
     Path(document_id): Path<String>,
     axum::extract::State(state): axum::extract::State<ConflictState>,
-) -> Result<Json<ConflictInfo>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<ConflictInfo>, ServerError> {
     let doc_id = match DocumentId::parse_str(&document_id) {
         Ok(id) => id,
         Err(_) => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "INVALID_ID".to_string(),
-                    message: "Invalid document ID format".to_string(),
-                    details: None,
-                }),
-            ));
+            return Err(ServerError::bad_request("Invalid document ID format"));
         }
     };
 
@@ -75,14 +69,7 @@ pub async fn get_conflict_info(
     let doc = match repo.get_by_id(&doc_id).await {
         Ok(doc) => doc,
         Err(e) => {
-            return Err((
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Document not found: {}", e),
-                    details: None,
-                }),
-            ));
+            return Err(ServerError::not_found("Document", &format!("{}", e)));
         }
     };
 
@@ -146,18 +133,11 @@ pub async fn resolve_conflict(
     Path(document_id): Path<String>,
     axum::extract::State(state): axum::extract::State<ConflictState>,
     Json(body): Json<ResolveConflictRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<serde_json::Value>, ServerError> {
     let doc_id = match DocumentId::parse_str(&document_id) {
         Ok(id) => id,
         Err(_) => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "INVALID_ID".to_string(),
-                    message: "Invalid document ID format".to_string(),
-                    details: None,
-                }),
-            ));
+            return Err(ServerError::bad_request("Invalid document ID format"));
         }
     };
 
@@ -165,14 +145,7 @@ pub async fn resolve_conflict(
     let doc = match repo.get_by_id(&doc_id).await {
         Ok(doc) => doc,
         Err(e) => {
-            return Err((
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Document not found: {}", e),
-                    details: None,
-                }),
-            ));
+            return Err(ServerError::not_found("Document", &format!("{}", e)));
         }
     };
 
@@ -180,26 +153,16 @@ pub async fn resolve_conflict(
         "manual" => match &body.content {
             Some(c) => c.clone(),
             None => {
-                return Err((
-                    StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse {
-                        code: "MISSING_CONTENT".to_string(),
-                        message: "Content is required for manual resolution".to_string(),
-                        details: None,
-                    }),
+                return Err(ServerError::bad_request(
+                    "Content is required for manual resolution",
                 ));
             }
         },
         "ours" => doc.content.clone().unwrap_or_default(),
         "theirs" => doc.content.clone().unwrap_or_default(),
         _ => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "INVALID_RESOLUTION".to_string(),
-                    message: "Resolution must be 'ours', 'theirs', or 'manual'".to_string(),
-                    details: None,
-                }),
+            return Err(ServerError::bad_request(
+                "Resolution must be 'ours', 'theirs', or 'manual'",
             ));
         }
     };
@@ -213,14 +176,10 @@ pub async fn resolve_conflict(
             "Failed to resolve conflict for document {}: {}",
             document_id, e
         );
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "UPDATE_ERROR".to_string(),
-                message: format!("Failed to update document: {}", e),
-                details: None,
-            }),
-        ));
+        return Err(ServerError::database(format!(
+            "Failed to update document: {}",
+            e
+        )));
     }
 
     if let Err(e) = repo.clear_conflict(&doc_id).await {
@@ -240,13 +199,6 @@ pub async fn resolve_conflict(
         "document_id": document_id,
         "resolution": body.resolution,
     })))
-}
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-    pub details: Option<String>,
 }
 
 pub fn create_conflict_router() -> axum::Router<ConflictState> {

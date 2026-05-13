@@ -1,7 +1,6 @@
 use axum::{
     Extension,
     extract::{Multipart, State},
-    http::StatusCode,
     response::Json,
 };
 use serde::Serialize;
@@ -9,35 +8,13 @@ use std::time::Instant;
 use tachyon_core::id::DocumentId;
 use tachyon_database::DocumentRepository;
 
+use crate::error::ServerError;
 use crate::middleware::AuthContext;
 
 #[derive(Clone)]
 pub struct ImportState {
     pub pool: tachyon_database::DatabasePool,
     pub last_import: std::sync::Arc<std::sync::Mutex<std::time::Instant>>,
-}
-
-type ApiError = (StatusCode, Json<serde_json::Value>);
-
-fn error(code: &str, msg: impl Into<String>) -> ApiError {
-    (
-        StatusCode::BAD_REQUEST,
-        Json(serde_json::json!({ "code": code, "message": msg.into() })),
-    )
-}
-
-fn too_early(msg: impl Into<String>) -> ApiError {
-    (
-        StatusCode::TOO_EARLY,
-        Json(serde_json::json!({ "code": "RATE_LIMITED", "message": msg.into() })),
-    )
-}
-
-fn internal_error(msg: impl Into<String>) -> ApiError {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(serde_json::json!({ "code": "INTERNAL_ERROR", "message": msg.into() })),
-    )
 }
 
 #[derive(Debug, Serialize)]
@@ -51,18 +28,15 @@ pub struct ImportResponse {
     pub elapsed_ms: u64,
 }
 
-fn check_rate_limit(state: &ImportState) -> Result<(), ApiError> {
+fn check_rate_limit(state: &ImportState) -> Result<(), ServerError> {
     let mut last = state
         .last_import
         .lock()
-        .map_err(|_| internal_error("Failed to acquire rate limit lock"))?;
+        .map_err(|_| ServerError::internal("Failed to acquire rate limit lock"))?;
     let elapsed = last.elapsed();
     if elapsed < std::time::Duration::from_secs(60) {
         let remaining = 60 - elapsed.as_secs();
-        return Err(too_early(format!(
-            "Import rate limited. Please wait {} seconds.",
-            remaining
-        )));
+        return Err(ServerError::rate_limited(remaining));
     }
     *last = std::time::Instant::now();
     Ok(())
@@ -75,7 +49,7 @@ fn check_rate_limit(state: &ImportState) -> Result<(), ApiError> {
 pub async fn import_markdown_zip(
     State(state): State<ImportState>,
     mut multipart: Multipart,
-) -> Result<Json<ImportResponse>, ApiError> {
+) -> Result<Json<ImportResponse>, ServerError> {
     check_rate_limit(&state)?;
 
     let start = Instant::now();
@@ -84,32 +58,29 @@ pub async fn import_markdown_zip(
         .next_field()
         .await
         .map_err(|e| {
-            error(
-                "MULTIPART_ERROR",
-                format!("Failed to parse multipart: {}", e),
-            )
+            ServerError::bad_request(format!("Failed to parse multipart: {}", e))
         })?
-        .ok_or_else(|| error("NO_FILE", "No file provided"))?;
+        .ok_or_else(|| ServerError::bad_request("No file provided"))?;
 
     let filename = field.file_name().unwrap_or("upload.zip").to_string();
 
     if !filename.ends_with(".zip") {
-        return Err(error("INVALID_FILE", "Only .zip files are accepted"));
+        return Err(ServerError::bad_request("Only .zip files are accepted"));
     }
 
     let bytes = field
         .bytes()
         .await
-        .map_err(|e| error("READ_ERROR", format!("Failed to read file: {}", e)))?;
+        .map_err(|e| ServerError::bad_request(format!("Failed to read file: {}", e)))?;
 
     if bytes.len() > 100 * 1024 * 1024 {
-        return Err(error("FILE_TOO_LARGE", "ZIP file exceeds 100MB limit"));
+        return Err(ServerError::bad_request("ZIP file exceeds 100MB limit"));
     }
 
     let zip_bytes: &[u8] = &bytes;
     let (_documents, summary) =
         tachyon_import_export::MarkdownZipImporter::import_documents_from_bytes(zip_bytes)
-            .map_err(|e| error("IMPORT_ERROR", format!("Failed to import: {}", e)))?;
+            .map_err(|e| ServerError::bad_request(format!("Failed to import: {}", e)))?;
 
     let elapsed_ms = start.elapsed().as_millis() as u64;
 
@@ -132,7 +103,7 @@ pub async fn import_docusaurus_zip(
     State(state): State<ImportState>,
     Extension(auth): Extension<AuthContext>,
     mut multipart: Multipart,
-) -> Result<Json<ImportResponse>, ApiError> {
+) -> Result<Json<ImportResponse>, ServerError> {
     check_rate_limit(&state)?;
 
     let start = Instant::now();
@@ -141,32 +112,29 @@ pub async fn import_docusaurus_zip(
         .next_field()
         .await
         .map_err(|e| {
-            error(
-                "MULTIPART_ERROR",
-                format!("Failed to parse multipart: {}", e),
-            )
+            ServerError::bad_request(format!("Failed to parse multipart: {}", e))
         })?
-        .ok_or_else(|| error("NO_FILE", "No file provided"))?;
+        .ok_or_else(|| ServerError::bad_request("No file provided"))?;
 
     let filename = field.file_name().unwrap_or("upload.zip").to_string();
 
     if !filename.ends_with(".zip") {
-        return Err(error("INVALID_FILE", "Only .zip files are accepted"));
+        return Err(ServerError::bad_request("Only .zip files are accepted"));
     }
 
     let bytes = field
         .bytes()
         .await
-        .map_err(|e| error("READ_ERROR", format!("Failed to read file: {}", e)))?;
+        .map_err(|e| ServerError::bad_request(format!("Failed to read file: {}", e)))?;
 
     if bytes.len() > 100 * 1024 * 1024 {
-        return Err(error("FILE_TOO_LARGE", "ZIP file exceeds 100MB limit"));
+        return Err(ServerError::bad_request("ZIP file exceeds 100MB limit"));
     }
 
     let zip_bytes: &[u8] = &bytes;
     let (documents, summary) =
         tachyon_import_export::DocusaurusImporter::import_from_bytes(zip_bytes)
-            .map_err(|e| error("IMPORT_ERROR", format!("Failed to import: {}", e)))?;
+            .map_err(|e| ServerError::bad_request(format!("Failed to import: {}", e)))?;
 
     let repo = DocumentRepository::new(state.pool.clone());
     let mut actually_imported = 0usize;

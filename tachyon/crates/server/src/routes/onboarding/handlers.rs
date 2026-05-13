@@ -1,5 +1,7 @@
 use super::types::*;
-use axum::{extract::State, http::StatusCode, response::Json};
+use crate::error::ServerError;
+use axum::extract::State;
+use axum::response::Json;
 use tachyon_core::Id;
 use tachyon_database::{DocumentMetadata, DocumentRepository, OnboardingRepository};
 use tracing::info;
@@ -21,17 +23,12 @@ use tracing::info;
 )]
 pub async fn get_onboarding_status(
     State(state): State<OnboardingState>,
-) -> Result<Json<OnboardingStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<OnboardingStatusResponse>, ServerError> {
     let repo = OnboardingRepository::new(state.pool.clone());
     let status = repo
         .get_onboarding_status("current_user")
         .await
-        .map_err(|e| {
-            server_error(
-                "QUERY_ERROR",
-                &format!("Failed to get onboarding status: {}", e),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Failed to get onboarding status: {}", e)))?;
 
     Ok(Json(OnboardingStatusResponse {
         completed: status.completed,
@@ -58,15 +55,15 @@ pub async fn get_onboarding_status(
 pub async fn complete_step(
     State(state): State<OnboardingState>,
     Json(body): Json<CompleteStepRequest>,
-) -> Result<Json<CompleteStepResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<CompleteStepResponse>, ServerError> {
     let repo = OnboardingRepository::new(state.pool.clone());
     repo.complete_step("current_user", &body.step_id)
         .await
         .map_err(|e| {
             if format!("{}", e).contains("Validation") {
-                bad_request("VALIDATION_ERROR", &format!("{}", e))
+                ServerError::bad_request(format!("{}", e))
             } else {
-                server_error("UPDATE_ERROR", &format!("Failed to complete step: {}", e))
+                ServerError::internal(format!("Failed to complete step: {}", e))
             }
         })?;
 
@@ -95,12 +92,12 @@ pub async fn complete_step(
 )]
 pub async fn create_sample_content(
     State(state): State<OnboardingState>,
-) -> Result<Json<SampleContentResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<SampleContentResponse>, ServerError> {
     let repo = OnboardingRepository::new(state.pool.clone());
     let doc_count = repo
         .get_user_document_count("current_user")
         .await
-        .map_err(|e| server_error("QUERY_ERROR", &format!("Failed to count documents: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Failed to count documents: {}", e)))?;
 
     if doc_count >= 3 {
         return Ok(Json(SampleContentResponse {
@@ -119,10 +116,10 @@ pub async fn create_sample_content(
             Ok(()) => created += 1,
             Err(e) if format!("{}", e).contains("duplicate") => {}
             Err(e) => {
-                return Err(server_error(
-                    "CREATE_ERROR",
-                    &format!("Failed to create sample document: {}", e),
-                ))
+                return Err(ServerError::internal(format!(
+                    "Failed to create sample document: {}",
+                    e
+                )))
             }
         }
     }
@@ -150,7 +147,7 @@ pub async fn create_sample_content(
 )]
 pub async fn get_suggestions(
     State(state): State<OnboardingState>,
-) -> Result<Json<SuggestionsResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<SuggestionsResponse>, ServerError> {
     let _ = &state;
 
     Ok(Json(SuggestionsResponse {
@@ -715,26 +712,6 @@ Speed up your workflow with these keyboard shortcuts.
 For more on getting started, see [[Getting Started]].
 "#
     .to_string()
-}
-
-fn server_error(code: &str, message: &str) -> (StatusCode, Json<ErrorResponse>) {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse {
-            code: code.to_string(),
-            message: message.to_string(),
-        }),
-    )
-}
-
-fn bad_request(code: &str, message: &str) -> (StatusCode, Json<ErrorResponse>) {
-    (
-        StatusCode::BAD_REQUEST,
-        Json(ErrorResponse {
-            code: code.to_string(),
-            message: message.to_string(),
-        }),
-    )
 }
 
 #[cfg(test)]

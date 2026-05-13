@@ -286,8 +286,8 @@ pub use space::{
 // Billing exports
 pub use billing::{
     cancel_subscription, create_billing_router, create_subscription, get_subscription, get_usage,
-    list_invoices, list_plans, BillingErrorResponse, BillingState, InvoicesResponse, Plan,
-    PlanDetails, PlanInfo, PlansResponse, SubscriptionResponse, UsageMetrics, UsageResponse,
+    list_invoices, list_plans, BillingState, InvoicesResponse, Plan, PlanDetails, PlanInfo,
+    PlansResponse, SubscriptionResponse, UsageMetrics, UsageResponse,
 };
 
 // Organization exports
@@ -302,8 +302,8 @@ pub use organization::{
 // Password reset exports
 pub use password_reset::{
     create_password_reset_router, EmailVerifyConfirm, EmailVerifyRequest,
-    ErrorResponse as PasswordResetErrorResponse, MessageResponse as PasswordResetMessageResponse,
-    PasswordResetConfirm, PasswordResetRequest, PasswordResetState,
+    MessageResponse as PasswordResetMessageResponse, PasswordResetConfirm, PasswordResetRequest,
+    PasswordResetState,
 };
 
 // Files exports
@@ -312,7 +312,7 @@ pub use files::{create_files_router, FilesState, UploadResponse};
 // SSG exports
 pub use ssg::{
     build_site, create_ssg_router, download_site, SsgBuildRequest, SsgBuildResponse,
-    SsgBuildResultWrapper, SsgErrorResponse, SsgNavLink, SsgState,
+    SsgBuildResultWrapper, SsgNavLink, SsgState,
 };
 
 // Onboarding exports

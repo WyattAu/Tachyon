@@ -1,11 +1,11 @@
+use crate::error::ServerError;
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     response::Json,
 };
 use serde::{Deserialize, Serialize};
 
-use super::{DocumentState, ErrorResponse};
+use super::DocumentState;
 
 #[derive(Debug, Serialize)]
 pub struct VersionResponse {
@@ -46,21 +46,12 @@ pub struct CreateVersionBody {
 pub async fn list_versions(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
-) -> Result<Json<Vec<VersionResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<VersionResponse>>, ServerError> {
     let repo = tachyon_database::DocumentVersionRepository::new(state.pool.clone());
     let versions = repo
         .list_by_document(&document_id, Some(50))
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "QUERY_ERROR".to_string(),
-                    message: format!("Failed to list versions: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::database(format!("Failed to list versions: {}", e)))?;
 
     Ok(Json(
         versions.into_iter().map(VersionResponse::from).collect(),
@@ -73,21 +64,12 @@ pub async fn list_versions(
 pub async fn get_version(
     Path((document_id, version_number)): Path<(String, i32)>,
     State(state): State<DocumentState>,
-) -> Result<Json<VersionResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<VersionResponse>, ServerError> {
     let repo = tachyon_database::DocumentVersionRepository::new(state.pool.clone());
     let version = repo
         .get_by_version_number(&document_id, version_number)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Version {} not found: {}", version_number, e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::not_found("Version", &format!("{}: {}", version_number, e)))?;
 
     Ok(Json(VersionResponse::from(version)))
 }
@@ -101,7 +83,7 @@ pub async fn create_version(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
     Json(body): Json<CreateVersionBody>,
-) -> Result<Json<VersionResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<VersionResponse>, ServerError> {
     let user_id = tachyon_core::generate_user_id();
     let repo = tachyon_database::DocumentVersionRepository::new(state.pool.clone());
 
@@ -113,16 +95,7 @@ pub async fn create_version(
             created_by: user_id.to_string(),
         })
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "CREATE_ERROR".to_string(),
-                    message: format!("Failed to create version: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::database(format!("Failed to create version: {}", e)))?;
 
     tracing::info!(
         "Created version {} for document {}",
@@ -161,36 +134,18 @@ pub struct DiffStats {
 pub async fn diff_versions(
     Path((document_id, v1, v2)): Path<(String, i32, i32)>,
     State(state): State<DocumentState>,
-) -> Result<Json<DocumentDiffResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<DocumentDiffResponse>, ServerError> {
     let repo = tachyon_database::DocumentVersionRepository::new(state.pool.clone());
 
     let ver1 = repo
         .get_by_version_number(&document_id, v1)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Version {} not found: {}", v1, e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::not_found("Version", &format!("{}: {}", v1, e)))?;
 
     let ver2 = repo
         .get_by_version_number(&document_id, v2)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Version {} not found: {}", v2, e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::not_found("Version", &format!("{}: {}", v2, e)))?;
 
     let diff = compute_line_diff(&ver1.content, &ver2.content);
     Ok(Json(diff))

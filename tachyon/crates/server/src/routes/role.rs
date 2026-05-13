@@ -1,6 +1,7 @@
 // Role API routes
 // Handles role management operations (admin only)
 
+use crate::error::ServerError;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -65,12 +66,6 @@ impl From<RoleRecord> for RoleResponse {
     }
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
 /// List all roles.
 ///
 /// `GET /api/v1/roles`
@@ -86,18 +81,14 @@ pub struct ErrorResponse {
 )]
 pub async fn list_roles(
     State(state): State<RoleState>,
-) -> Result<Json<Vec<RoleResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<RoleResponse>>, ServerError> {
     debug!("Listing roles");
 
-    let roles = state.repo.list_all().await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DATABASE_ERROR".to_string(),
-                message: format!("Failed to list roles: {}", e),
-            }),
-        )
-    })?;
+    let roles = state
+        .repo
+        .list_all()
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to list roles: {}", e)))?;
 
     Ok(Json(roles.into_iter().map(RoleResponse::from).collect()))
 }
@@ -121,18 +112,14 @@ pub async fn list_roles(
 pub async fn get_role(
     Path(role_id): Path<i64>,
     State(state): State<RoleState>,
-) -> Result<Json<RoleResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<RoleResponse>, ServerError> {
     debug!("Getting role: {}", role_id);
 
-    let role = state.repo.get_by_id(role_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Role not found: {}", e),
-            }),
-        )
-    })?;
+    let role = state
+        .repo
+        .get_by_id(role_id)
+        .await
+        .map_err(|e| ServerError::not_found("role", &e.to_string()))?;
 
     Ok(Json(RoleResponse::from(role)))
 }
@@ -157,16 +144,12 @@ pub async fn get_role(
 pub async fn create_role(
     State(state): State<RoleState>,
     Json(req): Json<CreateRoleRequest>,
-) -> Result<Json<RoleResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<RoleResponse>, ServerError> {
     info!("Creating role: {}", req.name);
 
     if req.name.is_empty() || req.name.len() > 50 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: "Role name must be between 1 and 50 characters".to_string(),
-            }),
+        return Err(ServerError::bad_request(
+            "Role name must be between 1 and 50 characters",
         ));
     }
 
@@ -178,13 +161,7 @@ pub async fn create_role(
 
     let created = state.repo.create(&role).await.map_err(|e| {
         warn!("Failed to create role: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DATABASE_ERROR".to_string(),
-                message: format!("Failed to create role: {}", e),
-            }),
-        )
+        ServerError::database(format!("Failed to create role: {}", e))
     })?;
 
     Ok(Json(RoleResponse::from(created)))
@@ -215,27 +192,17 @@ pub async fn update_role(
     Path(role_id): Path<i64>,
     State(state): State<RoleState>,
     Json(req): Json<UpdateRoleRequest>,
-) -> Result<Json<RoleResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<RoleResponse>, ServerError> {
     debug!("Updating role: {}", role_id);
 
-    let mut role = state.repo.get_by_id(role_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Role not found: {}", e),
-            }),
-        )
-    })?;
+    let mut role = state
+        .repo
+        .get_by_id(role_id)
+        .await
+        .map_err(|e| ServerError::not_found("role", &e.to_string()))?;
 
     if role.is_system {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse {
-                code: "FORBIDDEN".to_string(),
-                message: "Cannot modify system roles".to_string(),
-            }),
-        ));
+        return Err(ServerError::forbidden("Cannot modify system roles"));
     }
 
     if let Some(name) = req.name {
@@ -249,15 +216,11 @@ pub async fn update_role(
     }
     role.updated_at = chrono::Utc::now();
 
-    let updated = state.repo.update(&role).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DATABASE_ERROR".to_string(),
-                message: format!("Failed to update role: {}", e),
-            }),
-        )
-    })?;
+    let updated = state
+        .repo
+        .update(&role)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to update role: {}", e)))?;
 
     Ok(Json(RoleResponse::from(updated)))
 }
@@ -283,18 +246,14 @@ pub async fn update_role(
 pub async fn delete_role(
     Path(role_id): Path<i64>,
     State(state): State<RoleState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     debug!("Deleting role: {}", role_id);
 
-    state.repo.delete(role_id).await.map_err(|e| {
-        (
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse {
-                code: "FORBIDDEN".to_string(),
-                message: format!("Cannot delete role: {}", e),
-            }),
-        )
-    })?;
+    state
+        .repo
+        .delete(role_id)
+        .await
+        .map_err(|e| ServerError::forbidden(format!("Cannot delete role: {}", e)))?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -316,18 +275,14 @@ pub async fn delete_role(
 )]
 pub async fn seed_default_roles(
     State(state): State<RoleState>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<serde_json::Value>, ServerError> {
     info!("Seeding default roles");
 
-    state.repo.seed_default_roles().await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "DATABASE_ERROR".to_string(),
-                message: format!("Failed to seed roles: {}", e),
-            }),
-        )
-    })?;
+    state
+        .repo
+        .seed_default_roles()
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to seed roles: {}", e)))?;
 
     Ok(Json(serde_json::json!({
         "success": true,

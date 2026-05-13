@@ -1,3 +1,4 @@
+use crate::error::ServerError;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -47,12 +48,6 @@ pub struct SessionListResponse {
     pub total: usize,
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct SessionErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
 /// Create a new session for a user.
 ///
 /// `POST /sessions`
@@ -74,19 +69,12 @@ pub struct SessionErrorResponse {
 pub async fn create_session(
     State(state): State<SessionState>,
     Json(req): Json<CreateSessionRequest>,
-) -> Result<Json<SessionResponse>, (StatusCode, Json<SessionErrorResponse>)> {
+) -> Result<Json<SessionResponse>, ServerError> {
     info!("Creating new session for user: {}", req.user_id);
 
     let session_id = SessionId::new();
-    let user_id = UserId::parse_str(&req.user_id).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(SessionErrorResponse {
-                code: "INVALID_USER_ID".to_string(),
-                message: format!("Invalid user ID: {}", e),
-            }),
-        )
-    })?;
+    let user_id = UserId::parse_str(&req.user_id)
+        .map_err(|e| ServerError::bad_request(format!("Invalid user ID: {}", e)))?;
 
     let token_value = uuid::Uuid::new_v4().to_string();
     let now = Utc::now();
@@ -98,15 +86,7 @@ pub async fn create_session(
         .build();
 
     let repo = SessionRepository::new(state.pool.clone());
-    repo.create(&session).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(SessionErrorResponse {
-                code: "SESSION_CREATE_FAILED".to_string(),
-                message: format!("Failed to create session: {}", e),
-            }),
-        )
-    })?;
+    repo.create(&session).await?;
 
     let response = SessionResponse {
         id: session.id.as_str(),
@@ -142,38 +122,22 @@ pub async fn create_session(
 pub async fn get_session(
     Path(session_id): Path<String>,
     State(state): State<SessionState>,
-) -> Result<Json<SessionResponse>, (StatusCode, Json<SessionErrorResponse>)> {
+) -> Result<Json<SessionResponse>, ServerError> {
     debug!("Getting session: {}", session_id);
 
-    let sid = SessionId::parse_str(&session_id).map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(SessionErrorResponse {
-                code: "INVALID_SESSION_ID".to_string(),
-                message: format!("Invalid session ID: {}", session_id),
-            }),
-        )
-    })?;
+    let sid = SessionId::parse_str(&session_id)
+        .map_err(|_| ServerError::bad_request(format!("Invalid session ID: {}", session_id)))?;
 
     let repo = SessionRepository::new(state.pool.clone());
-    let record = repo.get_by_id(&sid).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(SessionErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Session {} not found: {}", session_id, e),
-            }),
-        )
-    })?;
+    let record = repo
+        .get_by_id(&sid)
+        .await
+        .map_err(|e| ServerError::not_found("session", &format!("{}: {}", session_id, e)))?;
 
     if !record.is_valid() {
         warn!("Session expired or inactive: {}", session_id);
-        return Err((
-            StatusCode::GONE,
-            Json(SessionErrorResponse {
-                code: "SESSION_EXPIRED".to_string(),
-                message: "Session has expired or is inactive".to_string(),
-            }),
+        return Err(ServerError::bad_request(
+            "Session has expired or is inactive",
         ));
     }
 
@@ -206,18 +170,11 @@ pub async fn get_session(
 pub async fn validate_session(
     Path(session_id): Path<String>,
     State(state): State<SessionState>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<SessionErrorResponse>)> {
+) -> Result<Json<serde_json::Value>, ServerError> {
     info!("Validating session: {}", session_id);
 
-    let sid = SessionId::parse_str(&session_id).map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(SessionErrorResponse {
-                code: "INVALID_SESSION_ID".to_string(),
-                message: format!("Invalid session ID: {}", session_id),
-            }),
-        )
-    })?;
+    let sid = SessionId::parse_str(&session_id)
+        .map_err(|_| ServerError::bad_request(format!("Invalid session ID: {}", session_id)))?;
 
     let repo = SessionRepository::new(state.pool.clone());
     match repo.validate_session(&sid).await {
@@ -259,29 +216,16 @@ pub async fn validate_session(
 pub async fn revoke_session(
     Path(session_id): Path<String>,
     State(state): State<SessionState>,
-) -> Result<StatusCode, (StatusCode, Json<SessionErrorResponse>)> {
+) -> Result<StatusCode, ServerError> {
     debug!("Revoking session: {}", session_id);
 
-    let sid = SessionId::parse_str(&session_id).map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(SessionErrorResponse {
-                code: "INVALID_SESSION_ID".to_string(),
-                message: format!("Invalid session ID: {}", session_id),
-            }),
-        )
-    })?;
+    let sid = SessionId::parse_str(&session_id)
+        .map_err(|_| ServerError::bad_request(format!("Invalid session ID: {}", session_id)))?;
 
     let repo = SessionRepository::new(state.pool.clone());
-    repo.revoke(&sid).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(SessionErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Session {} not found: {}", session_id, e),
-            }),
-        )
-    })?;
+    repo.revoke(&sid)
+        .await
+        .map_err(|e| ServerError::not_found("session", &format!("{}: {}", session_id, e)))?;
 
     info!("Session revoked: {}", session_id);
     Ok(StatusCode::NO_CONTENT)
@@ -308,19 +252,14 @@ pub async fn revoke_session(
 pub async fn list_sessions(
     Path(user_id): Path<String>,
     State(state): State<SessionState>,
-) -> Result<Json<SessionListResponse>, (StatusCode, Json<SessionErrorResponse>)> {
+) -> Result<Json<SessionListResponse>, ServerError> {
     debug!("Listing sessions for user: {}", user_id);
 
     let repo = SessionRepository::new(state.pool.clone());
-    let records = repo.get_by_user(&user_id, true).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(SessionErrorResponse {
-                code: "LIST_FAILED".to_string(),
-                message: format!("Failed to list sessions: {}", e),
-            }),
-        )
-    })?;
+    let records = repo
+        .get_by_user(&user_id, true)
+        .await
+        .map_err(|e| ServerError::internal(format!("Failed to list sessions: {}", e)))?;
 
     let sessions: Vec<SessionResponse> = records
         .into_iter()
@@ -358,19 +297,14 @@ pub async fn list_sessions(
 pub async fn revoke_all_sessions(
     Path(user_id): Path<String>,
     State(state): State<SessionState>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<SessionErrorResponse>)> {
+) -> Result<Json<serde_json::Value>, ServerError> {
     debug!("Revoking all sessions for user: {}", user_id);
 
     let repo = SessionRepository::new(state.pool.clone());
-    let revoked_count = repo.revoke_all_for_user(&user_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(SessionErrorResponse {
-                code: "REVOKE_ALL_FAILED".to_string(),
-                message: format!("Failed to revoke sessions: {}", e),
-            }),
-        )
-    })?;
+    let revoked_count = repo
+        .revoke_all_for_user(&user_id)
+        .await
+        .map_err(|e| ServerError::internal(format!("Failed to revoke sessions: {}", e)))?;
 
     info!("Revoked {} sessions for user: {}", revoked_count, user_id);
 
@@ -430,17 +364,5 @@ mod tests {
         assert_eq!(response.id, "sess-123");
         assert_eq!(response.user_id, "user-1");
         assert!(response.metadata.is_some());
-    }
-
-    #[test]
-    fn test_session_error_response_construction() {
-        let err = SessionErrorResponse {
-            code: "NOT_FOUND".to_string(),
-            message: "Session not found".to_string(),
-        };
-
-        assert_eq!(err.code, "NOT_FOUND");
-        let json = serde_json::to_string(&err).unwrap();
-        assert!(json.contains("NOT_FOUND"));
     }
 }

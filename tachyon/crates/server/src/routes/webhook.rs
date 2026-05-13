@@ -1,3 +1,4 @@
+use crate::error::ServerError;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -42,12 +43,6 @@ pub struct CreateWebhookBody {
     pub secret: Option<String>,
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-}
-
 /// Create a new outgoing webhook.
 ///
 /// `POST /api/v1/webhooks`
@@ -68,14 +63,10 @@ pub struct ErrorResponse {
 pub async fn create_webhook(
     State(state): State<WebhookState>,
     Json(body): Json<CreateWebhookBody>,
-) -> Result<Json<WebhookResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<WebhookResponse>, ServerError> {
     if body.events.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "VALIDATION_ERROR".to_string(),
-                message: "At least one event must be specified".to_string(),
-            }),
+        return Err(ServerError::bad_request(
+            "At least one event must be specified",
         ));
     }
 
@@ -88,15 +79,7 @@ pub async fn create_webhook(
         },
     )
     .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "CREATE_ERROR".to_string(),
-                message: format!("Failed to create webhook: {}", e),
-            }),
-        )
-    })?;
+    .map_err(|e| ServerError::internal(format!("Failed to create webhook: {}", e)))?;
 
     info!("Webhook created: {} -> {}", webhook.id, webhook.url);
     Ok(Json(WebhookResponse::from(webhook)))
@@ -117,16 +100,10 @@ pub async fn create_webhook(
 )]
 pub async fn list_webhooks(
     State(state): State<WebhookState>,
-) -> Result<Json<Vec<WebhookResponse>>, (StatusCode, Json<ErrorResponse>)> {
-    let webhooks = WebhookRepository::list(&state.pool).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "QUERY_ERROR".to_string(),
-                message: format!("Failed to list webhooks: {}", e),
-            }),
-        )
-    })?;
+) -> Result<Json<Vec<WebhookResponse>>, ServerError> {
+    let webhooks = WebhookRepository::list(&state.pool)
+        .await
+        .map_err(|e| ServerError::internal(format!("Failed to list webhooks: {}", e)))?;
 
     Ok(Json(
         webhooks.into_iter().map(WebhookResponse::from).collect(),
@@ -154,37 +131,16 @@ pub async fn list_webhooks(
 pub async fn delete_webhook(
     Path(id): Path<String>,
     State(state): State<WebhookState>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    let uuid = uuid::Uuid::parse_str(&id).map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                code: "INVALID_ID".to_string(),
-                message: format!("Invalid webhook ID: {}", id),
-            }),
-        )
-    })?;
+) -> Result<StatusCode, ServerError> {
+    let uuid = uuid::Uuid::parse_str(&id)
+        .map_err(|_| ServerError::bad_request(format!("Invalid webhook ID: {}", id)))?;
 
     let deleted = WebhookRepository::delete(&state.pool, uuid)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "DELETE_ERROR".to_string(),
-                    message: format!("Failed to delete webhook: {}", e),
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::internal(format!("Failed to delete webhook: {}", e)))?;
 
     if !deleted {
-        return Err((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                code: "NOT_FOUND".to_string(),
-                message: format!("Webhook {} not found", id),
-            }),
-        ));
+        return Err(ServerError::not_found("webhook", &id));
     }
 
     info!("Webhook deleted: {}", id);

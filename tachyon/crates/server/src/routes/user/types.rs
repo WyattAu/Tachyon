@@ -348,12 +348,9 @@ pub struct UserQuery {
     pub role: Option<String>,
 }
 
-/// Error response.
 #[derive(Debug, Serialize)]
 pub struct UserErrorResponse {
-    /// Error code
     pub code: String,
-    /// Error message
     pub message: String,
 }
 

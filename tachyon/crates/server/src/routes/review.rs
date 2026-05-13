@@ -1,9 +1,9 @@
 // Document Review API Routes
 // Review workflow endpoints for document approval/rejection
 
+use crate::error::ServerError;
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     response::Json,
 };
 use serde::{Deserialize, Serialize};
@@ -108,17 +108,6 @@ pub struct ReviewStatusResponse {
 }
 
 // ============================================================================
-// Error Response (inline — avoids circular dep with document routes)
-// ============================================================================
-
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct ErrorResponse {
-    pub code: String,
-    pub message: String,
-    pub details: Option<String>,
-}
-
-// ============================================================================
 // Handlers
 // ============================================================================
 
@@ -145,7 +134,7 @@ pub async fn create_review(
     Path(document_id): Path<String>,
     State(state): State<ReviewState>,
     Json(body): Json<CreateReviewBody>,
-) -> Result<Json<ReviewResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<ReviewResponse>, ServerError> {
     let repo = DocumentReviewRepository::new(state.pool.clone());
 
     let review = repo
@@ -156,16 +145,7 @@ pub async fn create_review(
             summary: body.summary,
         })
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "CREATE_ERROR".to_string(),
-                    message: format!("Failed to create review: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::database(format!("Failed to create review: {}", e)))?;
 
     info!("Review created for document {}: {}", document_id, review.id);
 
@@ -227,18 +207,12 @@ pub async fn create_review(
 pub async fn list_reviews(
     Path(document_id): Path<String>,
     State(state): State<ReviewState>,
-) -> Result<Json<Vec<ReviewResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<ReviewResponse>>, ServerError> {
     let repo = DocumentReviewRepository::new(state.pool.clone());
-    let reviews = repo.list_by_document(&document_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "QUERY_ERROR".to_string(),
-                message: format!("Failed to list reviews: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let reviews = repo
+        .list_by_document(&document_id)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to list reviews: {}", e)))?;
 
     Ok(Json(
         reviews.into_iter().map(ReviewResponse::from).collect(),
@@ -271,7 +245,7 @@ pub async fn update_review(
     Path(review_id): Path<String>,
     State(state): State<ReviewState>,
     Json(body): Json<UpdateReviewBody>,
-) -> Result<Json<ReviewResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<ReviewResponse>, ServerError> {
     let repo = DocumentReviewRepository::new(state.pool.clone());
 
     let status = match body.status.as_str() {
@@ -280,14 +254,10 @@ pub async fn update_review(
         "changes_requested" => ReviewStatus::ChangesRequested,
         "cancelled" => ReviewStatus::Cancelled,
         _ => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    code: "INVALID_STATUS".to_string(),
-                    message: format!("Invalid review status: {}", body.status),
-                    details: None,
-                }),
-            ));
+            return Err(ServerError::bad_request(format!(
+                "Invalid review status: {}",
+                body.status
+            )));
         }
     };
 
@@ -302,20 +272,11 @@ pub async fn update_review(
         )
         .await
         .map_err(|e| {
-            let (status_code, code) =
-                if matches!(e, tachyon_database::DatabaseError::ValidationError(_)) {
-                    (StatusCode::CONFLICT, "TRANSITION_ERROR")
-                } else {
-                    (StatusCode::NOT_FOUND, "NOT_FOUND")
-                };
-            (
-                status_code,
-                Json(ErrorResponse {
-                    code: code.to_string(),
-                    message: format!("Failed to update review: {}", e),
-                    details: None,
-                }),
-            )
+            if matches!(e, tachyon_database::DatabaseError::ValidationError(_)) {
+                ServerError::conflict(format!("Failed to update review: {}", e))
+            } else {
+                ServerError::not_found("Review", &review_id)
+            }
         })?;
 
     info!("Review {} updated to {}", review_id, body.status);
@@ -390,7 +351,7 @@ pub async fn create_comment(
     Path(review_id): Path<String>,
     State(state): State<ReviewState>,
     Json(body): Json<CreateCommentBody>,
-) -> Result<Json<CommentResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<CommentResponse>, ServerError> {
     let repo = DocumentReviewRepository::new(state.pool.clone());
 
     let author_id = body.author_id.clone();
@@ -402,16 +363,7 @@ pub async fn create_comment(
             content: body.content,
         })
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    code: "COMMENT_ERROR".to_string(),
-                    message: format!("Failed to create comment: {}", e),
-                    details: None,
-                }),
-            )
-        })?;
+        .map_err(|e| ServerError::database(format!("Failed to create comment: {}", e)))?;
 
     {
         let pool = state.pool.clone();
@@ -458,18 +410,12 @@ pub async fn create_comment(
 pub async fn list_comments(
     Path(review_id): Path<String>,
     State(state): State<ReviewState>,
-) -> Result<Json<Vec<CommentResponse>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<Vec<CommentResponse>>, ServerError> {
     let repo = DocumentReviewRepository::new(state.pool.clone());
-    let comments = repo.list_comments(&review_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "QUERY_ERROR".to_string(),
-                message: format!("Failed to list comments: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let comments = repo
+        .list_comments(&review_id)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to list comments: {}", e)))?;
 
     Ok(Json(
         comments.into_iter().map(CommentResponse::from).collect(),
@@ -497,30 +443,18 @@ pub async fn list_comments(
 pub async fn get_review_status(
     Path(document_id): Path<String>,
     State(state): State<ReviewState>,
-) -> Result<Json<ReviewStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<ReviewStatusResponse>, ServerError> {
     let repo = DocumentReviewRepository::new(state.pool.clone());
 
-    let pending_count = repo.get_pending_count(&document_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "QUERY_ERROR".to_string(),
-                message: format!("Failed to get review status: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let pending_count = repo
+        .get_pending_count(&document_id)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to get review status: {}", e)))?;
 
-    let latest_status = repo.get_latest_status(&document_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                code: "QUERY_ERROR".to_string(),
-                message: format!("Failed to get latest review status: {}", e),
-                details: None,
-            }),
-        )
-    })?;
+    let latest_status = repo
+        .get_latest_status(&document_id)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to get latest review status: {}", e)))?;
 
     Ok(Json(ReviewStatusResponse {
         pending_count,
