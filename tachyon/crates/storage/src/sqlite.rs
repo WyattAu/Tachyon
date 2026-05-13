@@ -536,20 +536,20 @@ impl DocumentStore for SqliteStore {
                 bind_values.push(s.to_string());
             }
 
-            // Tag filter using json_each
+            // Tag filter using LIKE on the JSON-encoded tags column.
+            // Each tag is stored as a JSON array of strings, e.g. ["rust","web"].
+            // We match with LIKE '%"tagname"%' to avoid FTS5 trigger sync issues.
             if !params.tags.is_empty() {
                 let tag_ors: Vec<String> = params
                     .tags
                     .iter()
-                    .map(|_| {
+                    .map(|tag| {
                         let idx = bind_values.len() + 1;
-                        bind_values.push(String::new()); // placeholder
-                        format!("EXISTS (SELECT 1 FROM json_each(documents.tags) WHERE json_each.value = ?{})", idx)
+                        bind_values.push(format!("%\"{}\"%", tag));
+                        format!("tags LIKE ?{}", idx)
                     })
                     .collect();
                 conditions.push(format!("({})", tag_ors.join(" OR ")));
-                // Now fill in actual tag values (we know the indices)
-                // This is a bit tricky with dynamic binding, let's use a simpler approach
             }
 
             // Full-text search using LIKE (simpler than FTS5 trigger sync issues)
@@ -562,24 +562,6 @@ impl DocumentStore for SqliteStore {
                 let pattern = format!("%{}%", query);
                 bind_values.push(pattern.clone());
                 bind_values.push(pattern);
-            }
-
-            // Rebuild with simpler tag approach: use LIKE on tags JSON
-            if !params.tags.is_empty() {
-                // Remove the json_each condition we added and replace with LIKE
-                if conditions.len() > 1 {
-                    // Pop the json_each condition
-                    let last = conditions.pop().unwrap_or_default();
-                    if last.contains("json_each") {
-                        // Replace with simple LIKE for each tag
-                        for tag in &params.tags {
-                            conditions.push(format!("tags LIKE ?{}", bind_values.len() + 1));
-                            bind_values.push(format!("%\"{}\"%", tag));
-                        }
-                    } else {
-                        conditions.push(last);
-                    }
-                }
             }
 
             let where_sql = format!("WHERE {}", conditions.join(" AND "));

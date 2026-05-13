@@ -1,8 +1,8 @@
-//! Plugin Marketplace — discovery, installation, and lifecycle management.
+//! Plugin Marketplace -- discovery, installation, and lifecycle management.
 //!
 //! Provides a local registry for plugin metadata, compatibility checking,
 //! and installation tracking. Remote registry integration (HTTP API client)
-//! is stubbed behind feature gates.
+//! is gated behind the `remote-registry` feature flag.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

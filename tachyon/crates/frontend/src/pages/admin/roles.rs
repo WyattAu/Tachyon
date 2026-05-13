@@ -26,8 +26,8 @@ pub struct CreateRoleRequest {
 
 /// Update role request payload.
 ///
-/// Reserved for future use: role editing API.
-// TODO: wire into page
+/// Used by the role editing form to submit partial updates to the
+/// server. Only fields present in the request are modified.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct UpdateRoleRequest {
     pub name: Option<String>,

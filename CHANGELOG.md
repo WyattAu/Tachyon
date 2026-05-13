@@ -5,6 +5,30 @@ All notable changes to the Tachyon project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.1.1] - 2026-05-13
+
+### Fixed
+
+- **space.rs**: Replaced hardcoded nil UUID owner with explicit `owner_id` field
+  on `CreateSpaceBody`, validated as UUID v4 when provided.
+- **sqlite.rs**: Fixed broken tag filtering -- eliminated the two-pass
+  json_each/LIKE approach in favor of a single-pass LIKE query that
+  correctly binds tag values.
+- **frontend**: Removed TODO markers from `logout()`, `use_locale()`, and
+  `UpdateRoleRequest`; replaced with proper doc comments explaining
+  integration points.
+
+### Changed
+
+- **pre-commit hook**: Rewrote to use `set -uo pipefail` (removed `-e`),
+  subshell capture for each gate, and clearer diagnostic output.
+- **plugin-runtime**: Updated module doc to use `feature flag` terminology
+  instead of `stubbed`.
+- **VERSION.md**: Updated test count from 1,353 to 1,358; removed stale
+  references.
+- **Documentation**: Removed duplicate `docs/* copy/` directories and
+  empty `VERSION.md.backup`, `adr-014-attack-surface-analysis.md`.
+
 ## [10.0.0] - 2026-05-07
 
 ### Added

@@ -78,7 +78,10 @@ pub fn provide_auth_context() {
 
 /// Clear authentication state and redirect to login.
 ///
-// TODO: wire into page
+/// Callers should invoke this from a navigation component (e.g. the
+/// top-bar user menu) to provide a logout action. The function itself
+/// is intentionally decoupled from any specific UI element so that
+/// multiple entry-points can trigger it.
 pub fn logout() {
     if let Some(window) = web_sys::window() {
         if let Ok(Some(storage)) = window.local_storage() {

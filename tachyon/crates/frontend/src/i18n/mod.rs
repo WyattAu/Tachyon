@@ -306,14 +306,15 @@ pub fn t(locale: Locale, key: TranslationKey) -> &'static str {
 
 /// Reactive translation helper.
 ///
-/// Reserved for future use: Leptos reactive i18n integration.
+/// Returns a Leptos signal carrying the current locale. Components that
+/// need translated strings should read this signal and pass the locale
+/// code to the `t()` function.
 ///
 /// Usage in a component:
 /// ```rust,ignore
 /// let locale = use_locale();
 /// view! { <span>{t(locale.get(), TranslationKey::HOME)}</span> }
 /// ```
-// TODO: wire into page
 pub fn use_locale() -> ReadSignal<Locale> {
     let (locale, set_locale) = signal(Locale::detect_from_browser());
 

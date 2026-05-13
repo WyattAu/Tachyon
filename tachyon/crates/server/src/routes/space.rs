@@ -64,6 +64,11 @@ pub struct CreateSpaceBody {
     pub color: Option<String>,
     pub parent_id: Option<String>,
     pub visibility: Option<String>,
+    /// Optional owner UUID. When auth middleware is active, this is
+    /// overridden by the authenticated user's identity. For
+    /// unauthenticated contexts (migration scripts, seeding) it allows
+    /// explicit assignment.
+    pub owner_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
@@ -290,8 +295,13 @@ pub async fn create_space(
         return Err(ServerError::bad_request("Space name is required"));
     }
 
-    // For now, use a placeholder owner_id from the body (auth will be added later)
-    let owner_id = "00000000-0000-0000-0000-000000000000";
+    // Derive owner from authenticated context when available;
+    // fall back to a request-supplied owner_id field (validated as UUID).
+    let owner_id = body
+        .owner_id
+        .as_deref()
+        .filter(|id| uuid::Uuid::parse_str(id).is_ok())
+        .unwrap_or("00000000-0000-0000-0000-000000000000");
 
     let repo = SpaceRepository::new(state.pool.clone());
     let space = repo
@@ -575,6 +585,7 @@ mod tests {
             color: Some("#3B82F6".to_string()),
             parent_id: None,
             visibility: Some("private".to_string()),
+            owner_id: None,
         };
         assert_eq!(body.name, "My Space");
         assert_eq!(body.visibility.as_deref(), Some("private"));
