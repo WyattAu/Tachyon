@@ -805,8 +805,14 @@ impl ServerConfig {
         if let Ok(log_format) = std::env::var("LOG_FORMAT") {
             config.log.format = log_format;
         }
+        if let Ok(log_format) = std::env::var("TACHYON_LOG_FORMAT") {
+            config.log.format = log_format;
+        }
         if let Ok(log_level) = std::env::var("TACHYON_LOG_LEVEL") {
             config.log.level = Some(log_level);
+        }
+        if let Ok(log_filter) = std::env::var("TACHYON_LOG_FILTER") {
+            config.log.level = Some(log_filter);
         }
 
         // OAuth2 configuration

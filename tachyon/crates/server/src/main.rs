@@ -71,9 +71,16 @@ fn setup_panic_handler() {
 /// - "json": Structured JSON for production log aggregation (ELK, Datadog, etc.)
 fn init_tracing(config: &ServerConfig) {
     let env_filter = if let Some(ref level) = config.log.level {
-        // Use the explicit log level from config
         let filter_str = format!("tachyon_server={},tower_http=debug,axum=debug", level);
         EnvFilter::new(filter_str)
+    } else if let Ok(filter) = std::env::var("TACHYON_LOG_FILTER") {
+        match EnvFilter::try_new(&filter) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("Invalid TACHYON_LOG_FILTER '{}': {}", filter, e);
+                EnvFilter::new("tachyon_server=info,tower_http=debug,axum=debug")
+            }
+        }
     } else {
         EnvFilter::try_from_default_env()
             .unwrap_or_else(|_| EnvFilter::new("tachyon_server=info,tower_http=debug,axum=debug"))
@@ -82,7 +89,7 @@ fn init_tracing(config: &ServerConfig) {
     tracing_subscriber::registry()
         .with(env_filter)
         .with(match config.log.format.as_str() {
-            "json" => fmt::layer().json().boxed(),
+            "json" => fmt::layer().json().with_target(false).boxed(),
             _ => fmt::layer().boxed(),
         })
         .init();

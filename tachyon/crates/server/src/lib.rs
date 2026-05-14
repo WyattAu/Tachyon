@@ -131,6 +131,7 @@ pub mod proofs;
 pub mod routes;
 pub mod storage;
 pub mod sync;
+pub mod tantivy_search;
 pub mod totp;
 pub mod truelayer;
 pub mod validation;
