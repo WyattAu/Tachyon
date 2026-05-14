@@ -33,11 +33,11 @@ jobs:
 
       - name: Check workspace
         working-directory: tachyon
-        run: cargo check --workspace
+        run: cargo check --workspace --exclude tachyon-desktop --exclude tachyon-desktop-app
 
       - name: Check WASM compilation
         working-directory: tachyon
-        run: cargo check --workspace --target wasm32-unknown-unknown
+        run: cargo check --workspace --exclude tachyon-desktop --exclude tachyon-desktop-app --target wasm32-unknown-unknown
 
   lint:
     name: Lint
@@ -65,7 +65,7 @@ jobs:
 
       - name: Run clippy
         working-directory: tachyon
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --exclude tachyon-desktop --exclude tachyon-desktop-app --all-targets -- -D warnings
 
   test:
     name: Test

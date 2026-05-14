@@ -83,7 +83,7 @@ jobs:
         run: docker build -f tachyon/Dockerfile -t tachyon/server:scan tachyon
       
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: 'tachyon/server:scan'
           format: 'table'

@@ -30,7 +30,7 @@ jobs:
         working-directory: tachyon
         run: |
           mkdir -p .cyclonedx
-          cargo cyclonedx --output .cyclonedx/tachyon-server.json
+          cargo cyclonedx -o .cyclonedx/tachyon-server.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4

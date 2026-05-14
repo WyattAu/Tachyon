@@ -1,4 +1,4 @@
-FROM rust:1.83-bookworm AS chef
+FROM rust:1.85-bookworm AS chef
 RUN cargo install cargo-chef
 WORKDIR /app
 
@@ -10,7 +10,7 @@ FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
-FROM rust:1.83-bookworm AS frontend
+FROM rust:1.85-bookworm AS frontend
 RUN rustup target add wasm32-unknown-unknown && \
     curl -sL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin
 WORKDIR /app
