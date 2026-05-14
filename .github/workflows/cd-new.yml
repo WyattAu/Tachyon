@@ -55,7 +55,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: tachyon
-          file: tachyon/Dockerfile
+          file: Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/server:latest
@@ -67,7 +67,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: tachyon
-          file: tachyon/Dockerfile.frontend
+          file: Dockerfile.frontend
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:latest

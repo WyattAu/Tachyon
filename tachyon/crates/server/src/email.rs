@@ -164,7 +164,12 @@ impl EmailService {
             }
         }
 
-        unreachable!()
+        // The loop above always returns either Ok(()) on success or
+        // Err(EmailError::SendFailed) on the final retry failure.
+        // This is structurally unreachable but kept as a defensive fallback.
+        Err(EmailError::SendFailed(
+            "Email retry loop exhausted without result".to_string(),
+        ))
     }
 
     pub fn render_template(template: &str, variables: &HashMap<String, String>) -> String {

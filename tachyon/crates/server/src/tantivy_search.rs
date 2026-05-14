@@ -10,14 +10,21 @@ use tracing::info;
 /// Create and initialize a Tantivy search index at the given path.
 ///
 /// Returns an `IndexManager` ready for indexing and querying.
-pub async fn init_search_index(index_path: &Path) -> Result<IndexManager, Box<dyn std::error::Error>> {
+pub async fn init_search_index(
+    index_path: &Path,
+) -> Result<IndexManager, Box<dyn std::error::Error>> {
     let manager = IndexManager::new(index_path.to_path_buf()).await?;
-    info!("Tantivy search index initialized at: {}", index_path.display());
+    info!(
+        "Tantivy search index initialized at: {}",
+        index_path.display()
+    );
     Ok(manager)
 }
 
 /// Open an existing Tantivy search index at the given path.
-pub async fn open_search_index(index_path: &Path) -> Result<IndexManager, Box<dyn std::error::Error>> {
+pub async fn open_search_index(
+    index_path: &Path,
+) -> Result<IndexManager, Box<dyn std::error::Error>> {
     let manager = IndexManager::open(index_path.to_path_buf()).await?;
     info!("Tantivy search index opened at: {}", index_path.display());
     Ok(manager)

@@ -73,13 +73,14 @@ pub async fn rollback(pool: &DatabasePool, steps: usize) -> DatabaseResult<()> {
         descriptions.join(", ")
     );
 
-    let result = sqlx::query(
-        "DELETE FROM _sqlx_migrations WHERE version = ANY($1) AND success = true",
-    )
-    .bind(&versions)
-    .execute(pool.inner())
-    .await
-    .map_err(|e| DatabaseError::query_error(format!("Failed to roll back migrations: {}", e)))?;
+    let result =
+        sqlx::query("DELETE FROM _sqlx_migrations WHERE version = ANY($1) AND success = true")
+            .bind(&versions)
+            .execute(pool.inner())
+            .await
+            .map_err(|e| {
+                DatabaseError::query_error(format!("Failed to roll back migrations: {}", e))
+            })?;
 
     tracing::info!(
         "Rolled back {} migration(s). {} row(s) deleted from _sqlx_migrations.",
@@ -115,10 +116,7 @@ pub async fn list_applied(pool: &DatabasePool) -> DatabaseResult<Vec<(String, St
     .await
     .map_err(|e| DatabaseError::query_error(format!("Failed to list applied migrations: {}", e)))?;
 
-    Ok(rows
-        .into_iter()
-        .map(|(v, d)| (v.to_string(), d))
-        .collect())
+    Ok(rows.into_iter().map(|(v, d)| (v.to_string(), d)).collect())
 }
 
 #[cfg(test)]

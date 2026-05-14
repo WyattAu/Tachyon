@@ -43,7 +43,7 @@ The server starts at `http://localhost:8080`. API docs are available at `/api/do
 
 ### Prerequisites
 
-- **Rust** 1.75+ (edition 2021)
+- **Rust** 1.85+ (edition 2024)
 - **PostgreSQL** 16+ (for database-backed features)
 - **Node.js** 20+ (for frontend builds, if modifying the WASM UI)
 - **Trunk** (install via `cargo install trunk` for frontend dev)
@@ -92,13 +92,19 @@ See `.env.example` for a production template.
 | `tachyon-core` | Core types, domain models, and shared utilities |
 | `tachyon-server` | HTTP/2 server with Axum, middleware, and API routes |
 | `tachyon-database` | PostgreSQL layer with migrations and repositories |
-| `tachyon-renderer` | Markdown rendering with extensions and TOC |
+| `tachyon-renderer` | Markdown rendering with extensions, syntax highlighting, and TOC |
 | `tachyon-search` | Full-text search indexing and querying with Tantivy |
 | `tachyon-rbac` | Role-based access control engine |
 | `tachyon-frontend` | WASM-based web frontend (Leptos 0.8 + Trunk) |
-| `tachyon-desktop` | Native desktop client (Tauri) |
+| `tachyon-desktop` | Native desktop client (Tauri 2) |
 | `tachyon-cli` | Command-line interface |
+| `tachyon-storage` | Pluggable storage backends (SQLite, in-memory) |
+| `tachyon-editor` | Native Rust text editor engine with CRDT support |
+| `tachyon-import-export` | Import/export (Docusaurus, Obsidian, Markdown, JSON, HTML) |
+| `tachyon-ssg` | Static site generator |
+| `tachyon-plugin-runtime` | WASM plugin runtime using Wasmtime |
 | `tachyon-testing` | Shared test utilities, fuzzing harnesses, and benchmarks |
+| `tachyon-benchmarks` | Criterion benchmark suite |
 
 ## Known Issues
 

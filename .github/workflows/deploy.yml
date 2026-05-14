@@ -9,6 +9,9 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     needs: []
     environment: production
     steps:

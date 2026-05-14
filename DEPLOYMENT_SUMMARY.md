@@ -1,5 +1,10 @@
 # Tachyon Production Deployment - Complete Setup
 
+> **WARNING: This document is severely outdated and contains incorrect information.**
+> It references SQLite commands for a system that uses PostgreSQL. Do not follow
+> the database instructions in this file. Refer to `docs/DEPLOYMENT.md` and
+> `tachyon/README.md` for current documentation.
+
 ## Deployment Infrastructure Complete
 
 This document summarizes all the deployment infrastructure, security measures, and operational procedures that have been set up.

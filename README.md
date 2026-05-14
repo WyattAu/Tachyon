@@ -1,7 +1,7 @@
 # Tachyon
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.85+-orange.svg)](https://www.rust-lang.org/)
 [![Axum](https://img.shields.io/badge/axum-0.8-blue.svg)](https://github.com/tokio-rs/axum)
 [![Leptos](https://img.shields.io/badge/leptos-0.8-purple.svg)](https://github.com/leptos-rs/leptos)
 
@@ -77,7 +77,7 @@ cargo run --bin tachyon-server
 
 ```bash
 just build          # Build all crates
-just test           # Run backend test suite (1,296 tests)
+just test           # Run backend test suite (1,395 tests)
 just lint           # Check formatting + clippy
 just db-reset      # Reset database with migrations
 just dev           # Start development servers
@@ -127,18 +127,28 @@ just dev           # Start development servers
 
 | Crate | Description |
 |-------|-------------|
-| `tachyon-core` | ID generation, document types, error types |
-| `tachyon-rbac` | RBAC enforcer, roles, permissions, audit |
-| `tachyon-database` | PostgreSQL repository, migrations, search |
-| `tachyon-renderer` | Markdown rendering, syntax highlighting, KaTeX, ISR |
-| `tachyon-server` | Axum HTTP server, WebSocket, API routes, middleware |
-| `tachyon-frontend` | Leptos WASM frontend, components, routing |
+| `tachyon-core` | Core types, domain models, and shared utilities |
+| `tachyon-server` | HTTP/2 server with Axum, middleware, and API routes |
+| `tachyon-database` | PostgreSQL layer with migrations and repositories |
+| `tachyon-renderer` | Markdown rendering with extensions, syntax highlighting, and TOC |
+| `tachyon-search` | Full-text search indexing and querying with Tantivy |
+| `tachyon-rbac` | Role-based access control engine |
+| `tachyon-frontend` | WASM-based web frontend (Leptos 0.8 + Trunk) |
+| `tachyon-desktop` | Native desktop client (Tauri 2) |
+| `tachyon-cli` | Command-line interface |
+| `tachyon-storage` | Pluggable storage backends (SQLite, in-memory) |
+| `tachyon-editor` | Native Rust text editor engine with CRDT support |
+| `tachyon-import-export` | Import/export (Docusaurus, Obsidian, Markdown, JSON, HTML) |
+| `tachyon-ssg` | Static site generator |
+| `tachyon-plugin-runtime` | WASM plugin runtime using Wasmtime |
+| `tachyon-testing` | Shared test utilities, fuzzing harnesses, and benchmarks |
+| `tachyon-benchmarks` | Criterion benchmark suite |
 
 ## Technology Stack
 
 | Layer | Technology |
 |-------|------------|
-| Language | Rust 2021 Edition |
+| Language | Rust 2024 Edition |
 | Async Runtime | Tokio |
 | HTTP | Axum 0.8 |
 | Frontend | Leptos 0.8 (WASM) |
@@ -146,7 +156,7 @@ just dev           # Start development servers
 | Search | PostgreSQL tsvector + trigram |
 | Markdown | pulldown-cmark (SIMD) |
 | Math | KaTeX |
-| Syntax | tree-sitter (12 languages) |
+| Syntax | syntect (multi-language) |
 | Auth | JWT (jsonwebtoken) |
 | CSS | Tailwind CSS (CDN) |
 | Fonts | Inter, JetBrains Mono |

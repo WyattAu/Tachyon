@@ -18,7 +18,7 @@ Before starting, ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon
 ```
 
@@ -144,7 +144,7 @@ The event crawl bot (`tachyon/web/event-crawler.ts`) is a comprehensive testing 
 7. **Form Events**: Validation, submission
 8. **Scroll Events**: Page scroll, scroll to top
 9. **Modal Events**: Open, close dialogs
-10. **HTMX Events**: Dynamic content loading
+10. **Dynamic Content Events**: Dynamic content loading
 11. **Responsive Events**: Viewport resizing
 12. **Accessibility Events**: Tab navigation, Enter key
 

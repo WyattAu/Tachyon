@@ -48,7 +48,10 @@ fn check_smtp_readiness(smtp_configured: bool) -> String {
     match std::env::var("SMTP_URL") {
         Ok(url) => match url.parse::<url::Url>() {
             Ok(parsed) => {
-                if parsed.scheme() == "smtp" || parsed.scheme() == "smtps" || parsed.scheme() == "starttls" {
+                if parsed.scheme() == "smtp"
+                    || parsed.scheme() == "smtps"
+                    || parsed.scheme() == "starttls"
+                {
                     "ok".to_string()
                 } else {
                     format!("error: invalid SMTP scheme '{}'", parsed.scheme())
@@ -56,12 +59,10 @@ fn check_smtp_readiness(smtp_configured: bool) -> String {
             }
             Err(e) => format!("error: unparseable SMTP URL: {}", e),
         },
-        Err(_) => {
-            match std::env::var("SMTP_HOST") {
-                Ok(_) => "ok".to_string(),
-                Err(_) => "not_configured".to_string(),
-            }
-        }
+        Err(_) => match std::env::var("SMTP_HOST") {
+            Ok(_) => "ok".to_string(),
+            Err(_) => "not_configured".to_string(),
+        },
     }
 }
 
@@ -395,7 +396,10 @@ mod tests {
 
     #[test]
     fn test_redis_readiness_valid_url() {
-        assert_eq!(check_redis_readiness(true, Some("redis://localhost:6379")), "ok");
+        assert_eq!(
+            check_redis_readiness(true, Some("redis://localhost:6379")),
+            "ok"
+        );
     }
 
     #[test]

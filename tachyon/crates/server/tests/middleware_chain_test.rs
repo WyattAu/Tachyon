@@ -103,7 +103,11 @@ async fn test_full_chain_security_headers_on_api_route() {
     let xfo = headers.get("x-frame-options").unwrap().to_str().unwrap();
     assert_eq!(xfo, "DENY");
 
-    let xcto = headers.get("x-content-type-options").unwrap().to_str().unwrap();
+    let xcto = headers
+        .get("x-content-type-options")
+        .unwrap()
+        .to_str()
+        .unwrap();
     assert_eq!(xcto, "nosniff");
 
     let rp = headers.get("referrer-policy").unwrap().to_str().unwrap();
@@ -226,10 +230,7 @@ async fn test_request_size_limit_oversized_rejected() {
         .method(Method::POST)
         .uri("/api/v1/documents")
         .header("host", "localhost")
-        .header(
-            "content-length",
-            oversized.to_string().as_str(),
-        )
+        .header("content-length", oversized.to_string().as_str())
         .body(Body::from(vec![0u8; 1024]))
         .unwrap();
 

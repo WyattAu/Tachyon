@@ -10,7 +10,7 @@ All 16 crates in the Tachyon workspace. Server, renderer, database, RBAC, storag
 
 ### Input Validation
 
-- HTML sanitization: ammonium::clean() applied to all renderer output (sanitize.rs)
+- HTML sanitization: ammonia::clean() applied to all renderer output (sanitize.rs)
 - SQL injection: All queries use parameterized statements via sqlx
 - XSS: Script tags, event handlers, javascript: URIs stripped by ammonia
 - Rate limiting: Per-IP rate limiting with configurable thresholds (rate_limit.rs)

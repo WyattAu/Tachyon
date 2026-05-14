@@ -12,11 +12,11 @@ tags: [config, reference]
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DATABASE_URL` | — | PostgreSQL connection string (required) |
-| `JWT_SECRET` | — | Secret key for JWT signing (required) |
+| `TACHYON_JWT_SECRET` | — | Secret key for JWT signing (required) |
 | `RUST_LOG` | `info` | Log level filter |
 | `TACHYON_HOST` | `0.0.0.0` | Server bind address |
 | `TACHYON_PORT` | `8080` | Server bind port |
-| `CORS_ORIGINS` | `*` | Allowed CORS origins |
+| `TACHYON_CORS_ORIGINS` | `*` | Allowed CORS origins |
 | `UPLOAD_DIR` | `./uploads` | File upload directory |
 | `MAX_UPLOAD_SIZE` | `50MB` | Maximum file upload size |
 

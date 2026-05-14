@@ -6,7 +6,7 @@
 # Gates:
 #   1. cargo fmt --check
 #   2. cargo clippy -D warnings
-#   3. cargo test --workspace (excluding frontend/desktop/testing)
+#   3. cargo test --lib (library unit tests; integration tests run in CI)
 #   4. cargo doc --no-deps (no warnings)
 #   5. Secret detection
 #   6. Debug artifact detection
@@ -55,9 +55,10 @@ if ! cargo clippy \
     PASS=false
 fi
 
-# ---- 3. Tests ----
-info "Running workspace tests..."
+# ---- 3. Tests (library only; integration tests deferred to CI) ----
+info "Running library tests (--lib)..."
 if ! cargo test \
+    --lib \
     --workspace \
     --exclude tachyon-testing \
     --exclude tachyon-frontend \
