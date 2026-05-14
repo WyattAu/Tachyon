@@ -17,6 +17,7 @@ pub mod latex;
 pub mod markdown;
 pub mod page;
 pub mod syntax;
+pub mod sanitize;
 pub mod template;
 pub mod types;
 
@@ -27,6 +28,7 @@ pub use latex::{LatexDocumentRenderer, LatexRenderer};
 pub use markdown::MarkdownParser;
 pub use page::SiteConfig;
 pub use syntax::SyntaxHighlighter;
+pub use sanitize::sanitize_html;
 pub use template::TemplateEngine;
 pub use types::{
     CacheConfig, CacheEntry, CacheKey, CacheStats, Language, MarkdownOptions, OutputFormat,
@@ -81,6 +83,9 @@ impl Renderer {
             .markdown
             .parse(content, self.config.format)
             .map_err(|e| RendererError::markdown_parse(e.to_string()))?;
+
+        let sanitized_content = sanitize_html(&render_result.content);
+        let render_result = render_result.with_content(sanitized_content);
 
         // Update statistics
         let render_time = start_time.elapsed();

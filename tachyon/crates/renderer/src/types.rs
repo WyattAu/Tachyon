@@ -102,6 +102,12 @@ impl RenderResult {
         self
     }
 
+    /// Set content
+    pub fn with_content(mut self, content: String) -> Self {
+        self.content = content;
+        self
+    }
+
     /// Set statistics
     pub fn with_stats(mut self, stats: RenderStats) -> Self {
         self.stats = stats;

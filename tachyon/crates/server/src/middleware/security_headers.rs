@@ -14,12 +14,19 @@ static NONCE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[must_use]
 pub fn generate_nonce() -> String {
+    use base64::Engine;
     let mut bytes = [0u8; 16];
-    getrandom::fill(&mut bytes).expect("CSPRNG failure");
+    if getrandom::fill(&mut bytes).is_err() {
+        tracing::error!("CSPRNG failure: using fallback nonce");
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+        return format!("fallback-{:016x}", ts);
+    }
     let counter = NONCE_COUNTER.fetch_add(1, Ordering::Relaxed);
     let counter_bytes = counter.to_le_bytes();
     bytes[12..].copy_from_slice(&counter_bytes[4..]);
-    use base64::Engine;
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
 }
 

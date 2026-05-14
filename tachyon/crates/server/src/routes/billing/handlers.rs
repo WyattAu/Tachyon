@@ -24,8 +24,10 @@ pub fn verify_webhook_signature(payload: &[u8], signature_header: &str, secret: 
         .strip_prefix("v1=")
         .unwrap_or(signature_header);
 
-    let mut mac =
-        HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
+    let mut mac = match HmacSha256::new_from_slice(secret.as_bytes()) {
+        Ok(m) => m,
+        Err(_) => return false,
+    };
     mac.update(payload);
 
     let expected = hex::encode(mac.finalize().into_bytes());

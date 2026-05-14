@@ -223,7 +223,7 @@ impl RedisStore {
     async fn check_rate_limit(&self, key: &str, limit: RateLimit) -> Result<RateLimitInfo, ()> {
         let window_start = (std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or(std::time::Duration::ZERO)
             .as_secs()
             / limit.window_secs)
             * limit.window_secs;
@@ -245,12 +245,11 @@ impl RedisStore {
         };
 
         if count <= limit.max_requests as i64 {
-            let reset = limit.window_secs
-                - (std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs()
-                    - window_start);
+            let now_secs = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or(std::time::Duration::ZERO)
+                .as_secs();
+            let reset = limit.window_secs - (now_secs - window_start);
             Ok(RateLimitInfo {
                 limit: limit.max_requests,
                 remaining: remaining as u32,
@@ -258,12 +257,11 @@ impl RedisStore {
                 retry_after: None,
             })
         } else {
-            let retry_after = limit.window_secs
-                - (std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs()
-                    - window_start);
+            let now_secs = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or(std::time::Duration::ZERO)
+                .as_secs();
+            let retry_after = limit.window_secs - (now_secs - window_start);
             Ok(RateLimitInfo {
                 limit: limit.max_requests,
                 remaining: 0,
@@ -361,7 +359,7 @@ pub async fn rate_limit_middleware(
     if let RateLimitStore::InMemory(store) = &state.store {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or(Duration::ZERO)
             .as_secs();
         let last = LAST_CLEANUP.load(Ordering::Relaxed);
         if now.saturating_sub(last) > 60 {
