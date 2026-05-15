@@ -266,7 +266,7 @@ jobs:
 
       - name: Build frontend
         working-directory: tachyon/crates/frontend
-        run: trunk build --release
+        run: trunk build --release --no-wasm-opt
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
@@ -285,7 +285,6 @@ jobs:
     if: needs.prepare.outputs.should_deploy_staging == 'true'
     environment:
       name: staging
-      url: https://${{ secrets.STAGING_HOST }}
     permissions:
       contents: read
       statuses: write
@@ -415,7 +414,6 @@ jobs:
     if: needs.prepare.outputs.should_deploy_production == 'true'
     environment:
       name: production
-      url: https://${{ secrets.PRODUCTION_HOST }}
     permissions:
       contents: read
       statuses: write
@@ -514,7 +512,6 @@ jobs:
           name: Release ${{ needs.prepare.outputs.version }}
           generate_release_notes: true
           prerelease: ${{ contains(needs.prepare.outputs.version, '-') }}
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

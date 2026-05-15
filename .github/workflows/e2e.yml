@@ -42,7 +42,7 @@ jobs:
 
       - name: Build WASM frontend
         working-directory: tachyon/crates/frontend
-        run: trunk build --release
+        run: trunk build --release --no-wasm-opt
 
       - name: Build server
         working-directory: tachyon

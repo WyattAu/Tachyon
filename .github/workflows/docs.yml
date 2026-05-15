@@ -37,9 +37,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-        key: ${{ runner.os }}-cargo-docs-${{ hashFiles('tachyon/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-docs-
+          key: ${{ runner.os }}-cargo-docs-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-docs-
 
       - name: Build SSG CLI
         run: cargo build --release -p tachyon-ssg --bin tachyon-ssg-cli --manifest-path tachyon/Cargo.toml

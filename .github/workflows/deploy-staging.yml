@@ -70,7 +70,6 @@ jobs:
       packages: write
     environment:
       name: staging
-      url: https://${{ secrets.STAGING_HOST }}
     steps:
       - uses: actions/checkout@v4
 
