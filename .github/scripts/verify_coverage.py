@@ -7,7 +7,7 @@ Usage: python verify_coverage.py --min-line-coverage 95.0 --min-branch-coverage 
 import argparse
 import json
 import sys
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from pathlib import Path
 
 

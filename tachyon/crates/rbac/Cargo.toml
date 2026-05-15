@@ -17,7 +17,7 @@ tracing = { workspace = true }
 dashmap = { workspace = true }
 
 # RBAC Policy Engine
-casbin = { version = "2.4", default-features = false, features = ["cached", "runtime-async-std", "logging"] }
+casbin = { version = "2.4", default-features = false, features = ["cached", "runtime-tokio", "logging"] }
 
 # Async support
 async-trait = "0.1"

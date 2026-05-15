@@ -22,9 +22,9 @@ NC := \033[0m # No Color
 PROJECT_NAME := tachyon
 NIX := nix develop --command
 CARGO := $(NIX) cargo
-WORKSPACE_FLAGS := --workspace --exclude tachyon-testing
+WORKSPACE_FLAGS := --workspace --exclude tachyon-testing --exclude tachyon-frontend --exclude tachyon-desktop --exclude tachyon-desktop-app
 RELEASE_FLAGS := --release $(WORKSPACE_FLAGS)
-TEST_FLAGS := --workspace --lib --exclude tachyon-testing
+TEST_FLAGS := --workspace --lib --exclude tachyon-testing --exclude tachyon-frontend --exclude tachyon-desktop --exclude tachyon-desktop-app
 
 # ============================================================================
 # Help Target

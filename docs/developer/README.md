@@ -61,7 +61,7 @@ tachyon/
 
 ```bash
 # Clone the repository
-git clone https://github.com/tachyon-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon
 
 # Install Rust

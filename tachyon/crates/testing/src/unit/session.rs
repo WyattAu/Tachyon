@@ -3,8 +3,9 @@
 //! Tests for session creation, expiration, validation, token management,
 //! session builder, and session status transitions.
 
+#[cfg(test)]
 use chrono::Duration;
-#[allow(unused_imports)]
+#[cfg(test)]
 use tachyon_core::{
     generate_session_id, generate_user_id,
     types::session::{
@@ -13,7 +14,7 @@ use tachyon_core::{
     },
 };
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn create_test_session(expires_in: Duration) -> Session {
     Session::new(
         generate_session_id(),

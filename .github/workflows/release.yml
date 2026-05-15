@@ -4,6 +4,10 @@ on:
   push:
     tags: ['v*']
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -129,7 +133,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,scope=${{ matrix.platform }},mode=max
           build-args: |
-            RUSTFLAGS=-C target-cpu=x86-64-v3
+            RUSTFLAGS=${{ matrix.platform == 'linux/amd64' && '-C target-cpu=x86-64-v3' || '' }}
 
   publish:
     name: Publish Images
@@ -171,16 +175,9 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: |
-            type=gha,scope=linux/amd64
-            type=gha,scope=linux/arm64
-          cache-to: type=gha,mode=max
           build-args: |
             RUSTFLAGS=-C target-cpu=x86-64-v3
+          platforms: linux/amd64,linux/arm64
 
   release:
     name: Create GitHub Release

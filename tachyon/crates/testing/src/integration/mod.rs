@@ -1,6 +1,7 @@
 //! Integration test modules for end-to-end workflows
 //!
 //! This module contains integration tests that test multiple components together.
+//! All helpers here are test-only infrastructure.
 
 #![allow(dead_code)]
 

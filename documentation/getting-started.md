@@ -9,7 +9,7 @@ tags: [guide, setup]
 
 ## Prerequisites
 
-- **Rust** 1.75+ (stable toolchain)
+- **Rust** 1.85+ (stable toolchain)
 - **PostgreSQL** 16+
 - **Node.js** 20+ (for Trunk WASM builds)
 

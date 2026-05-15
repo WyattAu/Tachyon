@@ -113,7 +113,7 @@
 //!
 //! # See Also
 //!
-//! - [User Guide](../../docs/user-guide/README.md)
+//! - [User Guide](../../docs/user/README.md)
 //! - [API Documentation](../../docs/api/authentication.md)
 //! - [Architecture](../../docs/developer/architecture.md)
 

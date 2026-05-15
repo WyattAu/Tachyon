@@ -2091,7 +2091,7 @@ Bug reports should be submitted through the following channels:
 - Attach log archives from `--collect-logs` command
 
 **Email Support:**
-- Address: support@tachyon.io
+- Address: https://github.com/WyattAu/Tachyon/discussions
 - Include bug report template in email body
 - Attach diagnostic and log archives
 - Use descriptive subject line: [BUG] Brief Description
@@ -2103,13 +2103,13 @@ The Tachyon community provides additional resources for troubleshooting and supp
 #### 8.3.1. Documentation
 
 **Official Documentation:**
-- User Guide: https://docs.tachyon.io/user/
-- API Reference: https://docs.tachyon.io/api/
-- Developer Guide: https://docs.tachyon.io/developer/
+- User Guide: https://wyattau.github.io/Tachyon/docs/user/
+- API Reference: https://wyattau.github.io/Tachyon/docs/api/
+- Developer Guide: https://wyattau.github.io/Tachyon/docs/developer/
 - Troubleshooting Guide (this document)
 
 **FAQ:**
-- Frequently asked questions: https://docs.tachyon.io/faq/
+- Frequently asked questions: https://wyattau.github.io/Tachyon/docs/user/faq/
 - Common issues and solutions
 - Quick reference for common problems
 
@@ -2183,7 +2183,7 @@ For issues requiring immediate attention or involving production deployments, fo
 
 For critical issues requiring immediate attention:
 
-**Email:** emergency@tachyon.io
+**Email:** https://github.com/WyattAu/Tachyon/security
 **Response Time:** < 2 hours (during business hours)
 
 **Use emergency contacts for:**
@@ -2214,7 +2214,7 @@ Enterprise support includes:
 - On-site training options
 - Service level agreements (SLAs)
 
-**Contact:** enterprise@tachyon.io
+**Contact:** https://github.com/WyattAu/Tachyon/discussions
 
 ---
 

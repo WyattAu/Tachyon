@@ -337,7 +337,7 @@ The plugin manifest follows the following schema:
 
 ```json
 {
-  "$schema": "https://tachyon.io/schemas/plugin-manifest-v1.json",
+  "$schema": "https://example.com/schemas/plugin-manifest-v1.json",
   "name": "plugin-name",
   "version": "1.0.0",
   "description": "Plugin description",
@@ -1560,7 +1560,7 @@ tachyon-plugin publish --version 0.1.0
 
 ```toml
 [package.metadata.tachyon]
-registry = "https://registry.tachyon.io"
+  registry = "https://github.com/WyattAu/Tachyon"
 ```
 
 ### 10.4. Version Management

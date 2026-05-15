@@ -272,7 +272,7 @@ impl Default for Highlighter {
 /// Map a highlight token to a CSS class name.
 ///
 /// Reserved for future use: CSS class generation for syntax highlighting.
-#[allow(dead_code)] // used by future syntax theme generation
+#[cfg(test)]
 pub(crate) fn css_class(token: &HighlightToken) -> &'static str {
     match token {
         HighlightToken::Heading1 => "ed-h1",

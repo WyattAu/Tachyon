@@ -61,7 +61,7 @@ test.describe('Settings', () => {
       });
 
       const themeChanged = toggledTheme !== initialTheme || toggledTheme.length === 0;
-      expect(themeChanged || true).toBeTruthy();
+      expect(themeChanged).toBeTruthy();
     }
   });
 

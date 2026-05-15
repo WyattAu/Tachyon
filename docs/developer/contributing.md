@@ -30,7 +30,7 @@ This project follows the [Rust Code of Conduct](https://www.rust-lang.org/polici
 
 ```bash
 # Clone the repository
-git clone https://github.com/tachyon-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon
 
 # Install Rust
@@ -51,7 +51,7 @@ cargo run --bin tachyon-db-setup
 
 ### Reporting Bugs
 
-1. Check if the bug has already been reported in [Issues](https://github.com/tachyon-org/tachyon/issues)
+1. Check if the bug has already been reported in [Issues](https://github.com/WyattAu/Tachyon/issues)
 2. If not, create a new issue with:
    - Clear title and description
    - Steps to reproduce

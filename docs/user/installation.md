@@ -70,13 +70,13 @@ yay -S tachyon
 ### Docker (Recommended)
 
 ```bash
-docker pull tachyon-org/tachyon-server:latest
+docker pull WyattAu/Tachyon-server:latest
 docker run -d \
   --name tachyon-server \
   -p 8080:8080 \
   -v /path/to/docs:/docs \
   -v /path/to/config:/config \
-  tachyon-org/tachyon-server:latest
+  WyattAu/Tachyon-server:latest
 ```
 
 ### Docker Compose
@@ -85,7 +85,7 @@ docker run -d \
 version: '3.8'
 services:
   tachyon:
-    image: tachyon-org/tachyon-server:latest
+    image: WyattAu/Tachyon-server:latest
     ports:
       - "8080:8080"
     volumes:
@@ -100,7 +100,7 @@ services:
 
 ```bash
 # Download the binary for your platform
-curl -LO https://github.com/tachyon-org/tachyon/releases/latest/download/tachyon-server-linux-x86_64.tar.gz
+curl -LO https://github.com/WyattAu/Tachyon/releases/latest/download/tachyon-server-linux-x86_64.tar.gz
 tar xzf tachyon-server-linux-x86_64.tar.gz
 sudo mv tachyon /usr/local/bin/
 
@@ -122,7 +122,7 @@ tachyon serve --config /etc/tachyon/tachyon.toml
 ### Build from Source
 
 ```bash
-git clone https://github.com/tachyon-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon
 cargo build --release --no-default-features --features "server-mode"
 ```
@@ -181,7 +181,7 @@ Download and install the new version. Settings and recent files are preserved.
 ### Server (Docker)
 
 ```bash
-docker pull tachyon-org/tachyon-server:latest
+docker pull WyattAu/Tachyon-server:latest
 docker-compose up -d
 ```
 

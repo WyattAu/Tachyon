@@ -223,7 +223,7 @@ Contributors can add their name to the changelog:
 - [Troubleshooting Guide](./troubleshooting_guide.md)
 
 **Community:**
-- [GitHub Issues](https://github.com/tachyon-org/tachyon/issues)
+- [GitHub Issues](https://github.com/WyattAu/Tachyon/issues)
 - [Discord Server](https://discord.gg/tachyon)
 - [Matrix Room](https://matrix.to/#/tachyon:matrix.org)
 

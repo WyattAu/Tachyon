@@ -40,11 +40,7 @@ use tachyon_core::types::crdt::{CollaborationInfo, CrdtDocumentState, SelectionR
 /// A connected client in a relay room.
 #[derive(Debug)]
 struct ConnectedClient {
-    #[allow(dead_code)] // redundant with HashMap key
-    client_id: String,
     room: String,
-    #[allow(dead_code)] // kept for future use (e.g., targeted sends)
-    send: tokio::sync::mpsc::UnboundedSender<Message>,
     last_seen: std::time::Instant,
 }
 
@@ -62,21 +58,11 @@ enum RelayEvent {
         room: String,
         sender: String,
         data: Vec<u8>,
-        #[allow(dead_code)] // kept for future cursor broadcast
-        selection: SelectionRange,
     },
     /// A client joined a room.
-    Joined {
-        room: String,
-        #[allow(dead_code)] // stored for future presence tracking
-        client_id: String,
-    },
+    Joined { room: String },
     /// A client left a room.
-    Left {
-        room: String,
-        #[allow(dead_code)] // stored for future presence tracking
-        client_id: String,
-    },
+    Left { room: String },
 }
 
 /// CRDT connection manager — public API compatible with the old handler.
@@ -248,12 +234,9 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // Split the WebSocket into sender and receiver.
     let (mut ws_sender, mut ws_receiver) = socket.split();
 
-    let (client_tx, mut client_rx) = tokio::sync::mpsc::unbounded_channel::<Message>();
     {
         let client = ConnectedClient {
-            client_id: client_id.clone(),
             room: room.clone(),
-            send: client_tx,
             last_seen: std::time::Instant::now(),
         };
         manager
@@ -263,10 +246,9 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
             .insert(client_id.clone(), client);
     }
     manager.join_room(&client_id, &room).await;
-    let _ = manager.broadcast_tx.send(RelayEvent::Joined {
-        room: room.clone(),
-        client_id: client_id.clone(),
-    });
+    let _ = manager
+        .broadcast_tx
+        .send(RelayEvent::Joined { room: room.clone() });
 
     // Subscribe to relay events.
     let mut relay_rx = manager.subscribe();
@@ -307,7 +289,6 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             room: event_room,
                             sender,
                             data,
-                            selection: _,
                         }) => {
                             if event_room == room_for_send && sender != client_id_for_send {
                                 if let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
@@ -341,14 +322,6 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                         }
                         Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                             debug!(client_id = %client_id_for_send, "Broadcast channel closed");
-                            break;
-                        }
-                    }
-                }
-                msg = client_rx.recv() => {
-                    if let Some(msg) = msg {
-                        if let Err(e) = ws_sender.send(msg).await {
-                            warn!(client_id = %client_id_for_send, error = %e, "Failed to send direct message");
                             break;
                         }
                     }
@@ -418,7 +391,6 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                                     room: room_for_recv.clone(),
                                     sender: client_id_for_recv.clone(),
                                     data: data_vec,
-                                    selection,
                                 });
                             } else {
                                 warn!(
@@ -481,10 +453,9 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // Clean up: remove client and notify.
     if let Some(removed_room) = manager.leave_room(&client_id).await {
         info!(client_id = %client_id, room = %removed_room, "CRDT client disconnected");
-        let _ = manager.broadcast_tx.send(RelayEvent::Left {
-            room: removed_room,
-            client_id: client_id.clone(),
-        });
+        let _ = manager
+            .broadcast_tx
+            .send(RelayEvent::Left { room: removed_room });
     }
 }
 
@@ -569,24 +540,17 @@ mod tests {
         assert_eq!(manager.client_count().await, 0);
 
         // Simulate adding clients
-        let (tx1, _) = tokio::sync::mpsc::unbounded_channel();
-        let (tx2, _) = tokio::sync::mpsc::unbounded_channel();
-
         manager.clients.write().await.insert(
             "c1".to_string(),
             ConnectedClient {
-                client_id: "c1".to_string(),
                 room: "room1".to_string(),
-                send: tx1,
                 last_seen: std::time::Instant::now(),
             },
         );
         manager.clients.write().await.insert(
             "c2".to_string(),
             ConnectedClient {
-                client_id: "c2".to_string(),
                 room: "room1".to_string(),
-                send: tx2,
                 last_seen: std::time::Instant::now(),
             },
         );

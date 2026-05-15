@@ -25,7 +25,7 @@ For a deeper dive into the architecture and Leptos patterns, see [docs/DEVELOPER
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| Rust (stable) | 1.75+ | `rustup default stable` |
+| Rust (stable) | 1.85+ | `rustup default stable` |
 | Trunk | latest | `cargo install trunk` (for WASM builds) |
 | PostgreSQL | 16+ | Local or Docker |
 | Node.js | 18+ | Required for Trunk and Playwright |

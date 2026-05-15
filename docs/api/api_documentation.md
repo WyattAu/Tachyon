@@ -795,7 +795,7 @@ Cloud deployment leverages cloud infrastructure for scalability and managed serv
 
 The Tachyon REST API provides a comprehensive HTTP/2 interface for document management, user operations, and system configuration. Built on the Axum web framework with Tokio async runtime, the REST API follows RESTful design principles and supports standard HTTP methods.
 
-**Base URL:** `https://api.tachyon.io/api/v1`
+**Base URL:** `https://api.example.com/api/v1`
 
 **Protocol:** HTTP/2 with TLS 1.3
 
@@ -1452,7 +1452,7 @@ The REST API supports Cross-Origin Resource Sharing (CORS) for web applications:
 
 The Tachyon WebSocket API provides real-time bidirectional communication for collaborative editing, notifications, and live updates. Built on the WebSocket protocol (RFC 6455) with tokio-tungstenite implementation, the WebSocket API enables low-latency event streaming between clients and the server.
 
-**WebSocket URL:** `wss://api.tachyon.io/ws/v1`
+**WebSocket URL:** `wss://api.example.com/ws/v1`
 
 **Protocol:** WebSocket (RFC 6455)
 
@@ -1470,7 +1470,7 @@ WebSocket connections are established via HTTP upgrade request:
 
 ```
 GET /ws/v1 HTTP/1.1
-Host: api.tachyon.io
+Host: api.example.com
 Upgrade: websocket
 Connection: Upgrade
 Sec-WebSocket-Key: dGhlIHNhbXBwIGlubHVkZQ==
@@ -2122,7 +2122,7 @@ Creates a new window.
   "method": "window_create",
   "id": "req-006",
   "params": {
-    "url": "https://tachyon.io/document/123",
+    "url": "https://example.com/document/123",
     "title": "Document Editor",
     "width": 1200,
     "height": 800
@@ -2137,7 +2137,7 @@ Creates a new window.
   "jsonrpc": "2.0",
   "result": {
     "window_id": "window-001",
-    "url": "https://tachyon.io/document/123"
+    "url": "https://example.com/document/123"
   },
   "id": "req-006"
 }
@@ -5686,7 +5686,7 @@ JWT (JSON Web Token) authentication provides stateless authentication.
   "sub": "user-id",
   "iat": 1738924800,
   "exp": 1738932000,
-  "iss": "tachyon.io",
+  "iss": "tachyon-server",
   "aud": "tachyon-api",
   "roles": ["editor"],
   "scope": ["documents:read", "documents:write"]

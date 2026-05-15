@@ -130,7 +130,7 @@ test.describe('Real-time Collaboration', () => {
         );
         const hasPresenceList = await presenceList.first().isVisible({ timeout: 3000 }).catch(() => false);
 
-        expect(pageHasPresence || hasPresenceList || true).toBeTruthy();
+        expect(pageHasPresence || hasPresenceList).toBeTruthy();
       }
     } finally {
       await context1.close();

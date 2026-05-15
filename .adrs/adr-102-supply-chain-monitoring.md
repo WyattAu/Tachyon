@@ -313,7 +313,7 @@ pub async fn generate_sbom(
     let sbom = SBOM {
         id: format!("{}-{}", project_name, Utc::now().timestamp()),
         document_name: project_name.to_string(),
-        document_namespace: format!("https://tachyon.io/sbom/tachyon-{}"),
+        document_namespace: format!("https://example.com/sbom/tachyon-{}"),
         data_license: "CC0-1.0".to_string(),
         spdx_version: "SPDX-2.3".to_string(),
         created_at: Utc::now(),

@@ -114,14 +114,14 @@ Before using Tachyon, ensure you have:
 **Debian/Ubuntu:**
 ```bash
 # Download and install the .deb package
-wget https://releases.tachyon.io/latest/tachyon-latest-amd64.deb
+wget https://github.com/WyattAu/Tachyon/releases/latest/download/tachyon-latest-amd64.deb
 sudo apt install ./tachyon-latest-amd64.deb
 ```
 
 **Fedora/RHEL:**
 ```bash
 # Download and install the .rpm package
-wget https://releases.tachyon.io/latest/tachyon-latest-x86_64.rpm
+wget https://github.com/WyattAu/Tachyon/releases/latest/download/tachyon-latest-x86_64.rpm
 sudo dnf install ./tachyon-latest-x86_64.rpm
 ```
 

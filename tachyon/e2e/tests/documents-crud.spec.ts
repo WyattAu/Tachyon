@@ -60,7 +60,7 @@ test.describe('Document CRUD', () => {
     await page.waitForLoadState('networkidle');
 
     const hasContent = await page.locator('text="Updated content appended"').first().isVisible({ timeout: 5000 }).catch(() => false);
-    expect(hasContent || true).toBeTruthy();
+    expect(hasContent).toBeTruthy();
   });
 
   test('document appears in list', async ({ page }) => {
@@ -171,7 +171,7 @@ test.describe('Document CRUD', () => {
 
       const result = page.locator(`text="Searchable Doc ${uniqueId}"`);
       const hasResult = await result.first().isVisible({ timeout: 5000 }).catch(() => false);
-      expect(hasResult || true).toBeTruthy();
+      expect(hasResult).toBeTruthy();
     }
   });
 
@@ -189,7 +189,7 @@ test.describe('Document CRUD', () => {
       '[data-testid="tag-filter"], [data-testid="filter-tags"], button:has-text("filter-test"), .tag:has-text("filter-test")',
     );
     const hasTagFilter = await tagFilter.first().isVisible({ timeout: 5000 }).catch(() => false);
-    expect(hasTagFilter || true).toBeTruthy();
+    expect(hasTagFilter).toBeTruthy();
   });
 
   test('filter documents by space', async ({ page }) => {
@@ -206,7 +206,7 @@ test.describe('Document CRUD', () => {
       '[data-testid="space-filter"], select[name="space"], [data-testid="filter-space"]',
     );
     const hasSpaceFilter = await spaceFilter.first().isVisible({ timeout: 5000 }).catch(() => false);
-    expect(hasSpaceFilter || true).toBeTruthy();
+    expect(hasSpaceFilter).toBeTruthy();
   });
 
   test('document API create returns correct shape', async ({ request }) => {

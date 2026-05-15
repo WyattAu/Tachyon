@@ -32,15 +32,7 @@ pub struct Editor {
     highlighter: Highlighter,
     search: Search,
     is_dirty: bool,
-    #[allow(dead_code)] // configuration options for future UI settings
-    word_wrap: bool,
     tab_size: usize,
-    #[allow(dead_code)]
-    auto_indent: bool,
-    #[allow(dead_code)]
-    bracket_matching: bool,
-    #[allow(dead_code)]
-    line_numbers: bool,
     current_search_results: Vec<SearchResult>,
     current_search_index: usize,
     in_code_block: bool,
@@ -67,11 +59,7 @@ impl Editor {
             highlighter: Highlighter::new(),
             search: Search::new(),
             is_dirty: false,
-            word_wrap: false,
             tab_size: 2,
-            auto_indent: true,
-            bracket_matching: true,
-            line_numbers: true,
             current_search_results: Vec::new(),
             current_search_index: 0,
             in_code_block: false,

@@ -5,6 +5,10 @@ on:
     branches: [develop]
   workflow_dispatch:
 
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -61,6 +65,9 @@ jobs:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: build-and-push
+    permissions:
+      contents: read
+      packages: write
     environment:
       name: staging
       url: https://${{ secrets.STAGING_HOST }}
@@ -90,7 +97,7 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
+          username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             set -euo pipefail
@@ -134,7 +141,7 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
+          username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             set -euo pipefail

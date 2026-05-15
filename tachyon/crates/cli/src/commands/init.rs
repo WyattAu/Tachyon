@@ -219,25 +219,6 @@ For more information, visit the Tachyon documentation.
         }
     }
 
-    /// Interactive setup wizard.
-    ///
-    /// Reserved for future use: guided project initialization.
-    #[allow(dead_code)]
-    fn interactive_setup(&mut self) -> CliResult<String> {
-        let mut name = self.options.name.clone();
-
-        if name.is_none() {
-            // Prompt for repository name
-            let default_name = "My Knowledge Base";
-            println!("Repository name [{}]: ", default_name);
-            name = Some(default_name.to_string());
-        }
-
-        // For now, return the name
-        // In a full implementation, we would use a proper prompt library like dialoguer
-        Ok(name.unwrap_or_else(|| "My Knowledge Base".to_string()))
-    }
-
     /// Check if path is empty or can be initialized
     fn check_path(&self, path: &Path) -> CliResult<bool> {
         if !path.exists() {

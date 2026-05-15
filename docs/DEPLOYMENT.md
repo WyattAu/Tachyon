@@ -41,7 +41,7 @@ This guide covers deploying Tachyon to production environments with security, mo
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/your-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon
 ```
 
@@ -397,9 +397,9 @@ curl http://localhost/health
 
 ## Support
 
-- **Documentation**: https://docs.tachyon.io
-- **Issues**: https://github.com/your-org/tachyon/issues
-- **Security**: security@tachyon.io
+- **Documentation**: https://wyattau.github.io/Tachyon
+- **Issues**: https://github.com/WyattAu/Tachyon/issues
+- **Security**: https://github.com/WyattAu/Tachyon/security
 
 ## License
 

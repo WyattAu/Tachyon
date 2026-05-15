@@ -3,16 +3,16 @@
 //! Tests for repository creation, status transitions, configuration,
 //! validation, and builder pattern.
 
-#[allow(unused_imports)]
+#[cfg(test)]
 use std::path::PathBuf;
-#[allow(unused_imports)]
+#[cfg(test)]
 use tachyon_core::types::repository::{
     GitOperations, Repository, RepositoryBuilder, RepositoryConfig, RepositoryMetadata,
     RepositoryStatus, RepositoryType, RepositoryVisibility,
 };
 use tachyon_core::{generate_repository_id, generate_user_id};
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn make_repo() -> Repository {
     Repository::new(
         generate_repository_id(),

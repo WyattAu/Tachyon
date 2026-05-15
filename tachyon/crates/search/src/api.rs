@@ -16,7 +16,9 @@ use axum::{
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tachyon_rbac::{Enforcer, Resource};
+use tachyon_rbac::Enforcer;
+#[cfg(feature = "staging")]
+use tachyon_rbac::Resource;
 use tokio::sync::Mutex;
 
 /// Search API state
@@ -410,66 +412,7 @@ fn check_search_permission(
     Ok(())
 }
 
-/// Check search permission with full context (async version).
-///
-/// Reserved for future use: per-request RBAC authorization.
-///
-/// # Arguments
-/// * `enforcer` - RBAC enforcer  
-/// * `resource` - Resource to check permission for
-/// * `user_id` - User ID making the request
-/// * `session_id` - Session ID for the request
-///
-/// # Returns
-/// Result indicating authorization success or error
-///
-/// # Errors
-/// Returns error if authorization check fails
-#[allow(dead_code)] // reserved for future async RBAC integration
-pub(crate) async fn check_search_permission_async(
-    enforcer: &mut Enforcer,
-    resource: &Resource,
-    user_id: &str,
-    session_id: &str,
-) -> Result<(), SearchError> {
-    use tachyon_rbac::types::{AccessRequest, Action};
-    use tachyon_rbac::{AuthContext, SessionId, Subject, UserId};
-
-    // Parse user and session IDs
-    let user = UserId::parse_str(user_id)
-        .map_err(|e| SearchError::api("INVALID_USER_ID", format!("Invalid user ID: {}", e)))?;
-
-    let session = SessionId::parse_str(session_id).map_err(|e| {
-        SearchError::api("INVALID_SESSION_ID", format!("Invalid session ID: {}", e))
-    })?;
-
-    // Create authorization context
-    let context = AuthContext::new(user, session);
-    let subject = Subject::from_user(&user);
-    let action = Action::new("search");
-
-    // Create access request
-    let request = AccessRequest::new(subject, resource.clone(), action, context);
-
-    // Perform authorization check
-    let decision = enforcer.authorize_async(&request).await.map_err(|e| {
-        SearchError::api(
-            "AUTHORIZATION_ERROR",
-            format!("Authorization check failed: {}", e),
-        )
-    })?;
-
-    if !decision.is_allowed() {
-        return Err(SearchError::api(
-            "PERMISSION_DENIED",
-            format!("Access denied: {}", decision.reason),
-        ));
-    }
-
-    Ok(())
-}
-
-/// Create router for search API endpoints
+/// Create router for search API endpoints.
 ///
 /// # Arguments
 /// * `index_manager` - Index manager

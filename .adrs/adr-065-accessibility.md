@@ -412,7 +412,7 @@ The Web Content Accessibility Guidelines (WCAG) defines requirements for designe
 We welcome your feedback on the accessibility of Tachyon. Please let us know if you encounter accessibility barriers:
 
 - Email: accessibility@tachyon.org
-- GitHub: https://github.com/tachyon-org/tachyon/issues
+- GitHub: https://github.com/WyattAu/Tachyon/issues
 
 ### Accessibility Features
 

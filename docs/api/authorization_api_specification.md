@@ -705,7 +705,7 @@ Attributes describing the user requesting access.
 | `user.clearance` | enum | Security clearance level | `public`, `internal`, `confidential`, `secret` |
 | `user.location` | string | User's physical location | `office`, `remote`, `on-premise` |
 | `user.roles` | array | User's assigned roles | `["editor", "viewer"]` |
-| `user.email_domain` | string | User's email domain | `tachyon.io`, `external.com` |
+| `user.email_domain` | string | User's email domain | `example.com`, `external.com` |
 | `user.groups` | array | User's group memberships | `["developers", "admins"]` |
 
 **Resource Attributes**

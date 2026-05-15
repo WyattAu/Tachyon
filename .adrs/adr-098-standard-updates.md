@@ -362,14 +362,14 @@ alerting:
         conditions:
           change_type: ["CriticalUpdate", "Deprecation"]
         channels: ["slack"]
-        recipients: ["#tachyon-standards", "engineering-manager@tachyon.io"]
+        recipients: ["#tachyon-standards", "engineering-manager@example.com"]
 
       - name: "major_update"
         severity: "P2"
         conditions:
           change_type: ["MajorUpdate"]
         channels: ["slack", "email"]
-        recipients: ["#tachyon-standards", "engineering-manager@tachyon.io"]
+        recipients: ["#tachyon-standards", "engineering-manager@example.com"]
 
       - name: "minor_update"
         severity: "P4"
@@ -383,7 +383,7 @@ alerting:
         conditions:
           change_type: ["NewStandard"]
         channels: ["slack", "email"]
-        recipients: ["#tachyon-standards", "engineering-team@tachyon.io"]
+        recipients: ["#tachyon-standards", "engineering-team@example.com"]
 ```
 
 ### Success Metrics

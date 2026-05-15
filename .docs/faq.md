@@ -102,7 +102,7 @@ rustup default stable
 Then clone and build:
 
 ```bash
-git clone https://github.com/tachyon-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon
 cargo build --release --no-default-features --features "server-mode"
 sudo install target/release/tachyon /usr/local/bin/
@@ -356,7 +356,7 @@ Check your auth provider configuration and network connectivity to the authentic
 - [Troubleshooting Guide](./troubleshooting_guide.md)
 
 **Community:**
-- [GitHub Issues](https://github.com/tachyon-org/tachyon/issues)
+- [GitHub Issues](https://github.com/WyattAu/Tachyon/issues)
 - [Discord Server](https://discord.gg/tachyon)
 - [Matrix Room](https://matrix.to/#/tachyon:matrix.org)
 

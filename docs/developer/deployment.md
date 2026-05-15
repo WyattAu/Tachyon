@@ -28,7 +28,7 @@ version: '3.8'
 
 services:
   tachyon:
-    image: tachyon-org/tachyon-server:latest
+    image: WyattAu/Tachyon-server:latest
     ports:
       - "8080:8080"
     environment:
@@ -194,7 +194,7 @@ spec:
     spec:
       containers:
       - name: tachyon
-        image: tachyon-org/tachyon-server:latest
+        image: WyattAu/Tachyon-server:latest
         ports:
         - containerPort: 8080
         env:
@@ -532,7 +532,7 @@ psql $DATABASE_URL -c "SELECT * FROM pg_stat_activity"
 
 ```bash
 # Pull latest image
-docker pull tachyon-org/tachyon-server:latest
+docker pull WyattAu/Tachyon-server:latest
 
 # Restart with new image
 docker-compose up -d
@@ -545,7 +545,7 @@ docker-compose exec tachyon /app/migrate
 
 ```bash
 # Use specific version
-docker pull tachyon-org/tachyon-server:0.2.0
+docker pull WyattAu/Tachyon-server:0.2.0
 docker-compose up -d
 ```
 

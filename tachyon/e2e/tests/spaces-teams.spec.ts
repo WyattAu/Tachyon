@@ -42,7 +42,7 @@ test.describe('Spaces and Teams', () => {
     }
 
     const spaceCreated = await page.locator(`text="Test Space ${uniqueId}"`).first().isVisible({ timeout: 5000 }).catch(() => false);
-    expect(spaceCreated || true).toBeTruthy();
+    expect(spaceCreated).toBeTruthy();
   });
 
   test('add a team member to a space', async ({ page }) => {
@@ -71,7 +71,7 @@ test.describe('Spaces and Teams', () => {
           '[data-testid="member-list"], [data-testid="members"], table:has-text("member"), [class*="member"]',
         );
         const hasMemberList = await memberList.first().isVisible({ timeout: 3000 }).catch(() => false);
-        expect(hasMemberList || true).toBeTruthy();
+        expect(hasMemberList).toBeTruthy();
       }
     }
   });
@@ -95,7 +95,7 @@ test.describe('Spaces and Teams', () => {
         'a:has-text("Space"), [data-testid="space-link"], text="Personal"',
       );
       const hasSpaceLink = await spaceLink.first().isVisible({ timeout: 3000 }).catch(() => false);
-      expect(hasSpaceLink || true).toBeTruthy();
+      expect(hasSpaceLink).toBeTruthy();
     }
   });
 

@@ -21,7 +21,6 @@ pub enum TransitionType {
 ///
 /// Reserved for future use: subscription plan transition billing.
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // reserved for future billing calculation endpoints
 pub struct ProrationResult {
     pub prorated_amount: f64,
     pub credit: f64,

@@ -34,8 +34,8 @@
 | Document Creation | PASS | Creates document with UUID, renders HTML |
 | Markdown Rendering | PASS | GFM features (tables, task lists, code blocks) |
 | Authentication | PASS | Demo login (admin/admin123) works |
-| Web Frontend | PASS | Vite dev server serves HTML correctly |
-| API Proxy | PASS | Vite proxies /api to backend correctly |
+| Web Frontend | PASS | Trunk dev server serves HTML correctly |
+| API Proxy | PASS | Trunk proxies /api to backend correctly |
 
 ### Release Binaries
 | Binary | Size | Status |

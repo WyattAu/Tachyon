@@ -542,6 +542,6 @@ REDIS_PASSWORD=<strong-password>
 JWT_SECRET=<strong-jwt-secret>
 CORS_ORIGINS=https://your-domain.com
 REGISTRY=ghcr.io
-IMAGE_NAME=your-org/tachyon
+IMAGE_NAME=WyattAu/Tachyon
 VERSION=latest
 ```

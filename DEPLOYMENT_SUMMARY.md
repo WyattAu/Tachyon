@@ -329,8 +329,8 @@ export RUST_LOG=debug
 ## Support
 
 - **Issues**: GitHub Issues
-- **Security**: security@tachyon.io
-- **Documentation**: https://docs.tachyon.io
+- **Security**: https://github.com/WyattAu/Tachyon/security
+- **Documentation**: https://wyattau.github.io/Tachyon
 
 ---
 

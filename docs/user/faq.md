@@ -1480,7 +1480,7 @@ Tachyon's security architecture aligns with:
 
 | Method | Location | Description |
 |--------|----------|-------------|
-| **Online** | https://docs.tachyon.io | Official documentation website |
+| **Online** | https://wyattau.github.io/Tachyon | Official documentation website |
 | **Offline** | Included with installation | Local documentation files |
 | **Source** | https://github.com/tachyon/tachyon | Documentation source repository |
 | **PDF** | Downloadable from website | Printable PDF versions |
@@ -1497,7 +1497,7 @@ Tachyon's security architecture aligns with:
 **Support Channels:**
 
 **1. Community Forums (Recommended for General Questions)**
-- **Location:** https://community.tachyon.io
+- **Location:** https://github.com/WyattAu/Tachyon/discussions
 - **Response Time:** 24-48 hours
 - **Best For:** General questions, feature requests, best practices
 - **Requirements:** Free account required
@@ -1515,13 +1515,13 @@ Tachyon's security architecture aligns with:
 - **Requirements:** Discord account required
 
 **4. Email Support (Recommended for Enterprise)**
-- **Location:** support@tachyon.io
+- **Location:** https://github.com/WyattAu/Tachyon/discussions
 - **Response Time:** 24-48 hours (SLA for enterprise)
 - **Best For:** Enterprise support, security issues, billing
 - **Requirements:** Enterprise license or paid support plan
 
 **5. Documentation (Recommended for Self-Service)**
-- **Location:** https://docs.tachyon.io
+- **Location:** https://wyattau.github.io/Tachyon
 - **Response Time:** Immediate
 - **Best For:** Learning, troubleshooting, reference
 - **Requirements:** None
@@ -1659,17 +1659,17 @@ git push origin feature/my-feature
 **Community Resources:**
 
 **1. Official Website:**
-- **URL:** https://tachyon.io
+- **URL:** https://github.com/WyattAu/Tachyon
 - **Content:** Project overview, downloads, news, blog
 - **Best For:** Learning about Tachyon, staying updated
 
 **2. Documentation Site:**
-- **URL:** https://docs.tachyon.io
+- **URL:** https://wyattau.github.io/Tachyon
 - **Content:** Comprehensive documentation, guides, tutorials
 - **Best For:** Learning, troubleshooting, reference
 
 **3. Community Forums:**
-- **URL:** https://community.tachyon.io
+- **URL:** https://github.com/WyattAu/Tachyon/discussions
 - **Content:** Discussions, questions, announcements
 - **Best For:** Community support, knowledge sharing
 
@@ -1684,7 +1684,7 @@ git push origin feature/my-feature
 - **Best For:** Development, bug tracking, contribution
 
 **6. Blog:**
-- **URL:** https://blog.tachyon.io
+- **URL:** https://github.com/WyattAu/Tachyon
 - **Content:** Tutorials, announcements, deep dives
 - **Best For:** Learning new features, best practices
 

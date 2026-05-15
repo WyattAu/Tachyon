@@ -410,7 +410,7 @@ workers = 8  # Increase from CPU cores
 - [Troubleshooting Guide](./troubleshooting_guide.md)
 
 **Community:**
-- [GitHub Issues](https://github.com/tachyon-org/tachyon/issues)
+- [GitHub Issues](https://github.com/WyattAu/Tachyon/issues)
 - [Discord Server](https://discord.gg/tachyon)
 - [Matrix Room](https://matrix.to/#/tachyon:matrix.org)
 

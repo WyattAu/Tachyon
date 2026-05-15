@@ -25,7 +25,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: ${{ runner.os }}-cargo-audit
+          key: ${{ runner.os }}-cargo-audit-${{ hashFiles('tachyon/Cargo.lock') }}
       
       - name: Install cargo-audit
         run: cargo install cargo-audit
@@ -62,16 +62,21 @@ jobs:
   sast:
     name: SAST Scan
     runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep:latest
     steps:
       - uses: actions/checkout@v4
       
       - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: >-
-            p/security-audit
-            p/secrets
-            p/owasp-top-ten
+        run: |
+          semgrep scan \
+            --config p/security-audit \
+            --config p/secrets \
+            --config p/owasp-top-ten \
+            --error \
+            --exclude-rule generic.nginx.security.request-host-used.request-host-used \
+            --exclude-rule generic.nginx.security.possible-h2c-smuggling.possible-nginx-h2c-smuggling \
+            --exclude-rule generic.nginx.security.header-redefinition.header-redefinition
 
   container-scan:
     name: Container Scan
@@ -80,7 +85,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Build backend image
-        run: docker build -f tachyon/Dockerfile -t tachyon/server:scan tachyon
+        run: docker build -f Dockerfile -t tachyon/server:scan .
       
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.24.0

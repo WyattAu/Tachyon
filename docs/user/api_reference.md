@@ -122,8 +122,8 @@ The Tachyon APIs are accessible at the following base URLs:
 | Environment | HTTP/2 Base URL | WebSocket Base URL |
 |-------------|------------------|-------------------|
 | **Development** | `http://localhost:8080/api/v1` | `ws://localhost:8080/ws/v1` |
-| **Staging** | `https://staging.tachyon.io/api/v1` | `wss://staging.tachyon.io/ws/v1` |
-| **Production** | `https://api.tachyon.io/api/v1` | `wss://api.tachyon.io/ws/v1` |
+| **Staging** | `https://staging.example.com/api/v1` | `wss://staging.example.com/ws/v1` |
+| **Production** | `https://api.example.com/api/v1` | `wss://api.example.com/ws/v1` |
 
 ### 2.3. Authentication
 
@@ -2802,8 +2802,8 @@ The WebSocket APIs provide real-time bidirectional communication between clients
 | Environment | WebSocket URL |
 |-------------|----------------|
 | **Development** | `ws://localhost:8080/ws/v1` |
-| **Staging** | `wss://staging.tachyon.io/ws/v1` |
-| **Production** | `wss://api.tachyon.io/ws/v1` |
+| **Staging** | `wss://staging.example.com/ws/v1` |
+| **Production** | `wss://api.example.com/ws/v1` |
 
 **Connection Lifecycle:**
 

@@ -243,7 +243,7 @@ jobs:
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
           TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-         run: cargo tarpaulin --workspace --exclude tachyon-testing --exclude tachyon-frontend --exclude tachyon-desktop --exclude tachyon-desktop-app --out xml --output-dir coverage/
+        run: cargo tarpaulin --workspace --exclude tachyon-testing --exclude tachyon-frontend --exclude tachyon-desktop --exclude tachyon-desktop-app --out xml --output-dir coverage/
 
       - name: Check minimum coverage (60%)
         working-directory: tachyon

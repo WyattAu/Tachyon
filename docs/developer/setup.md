@@ -39,7 +39,7 @@ Guide to setting up your development environment for Tachyon.
 
 ```bash
 # Clone the repository
-git clone https://github.com/tachyon-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon
 
 # Run quickstart script
@@ -118,7 +118,7 @@ brew install openssl
 ### 4. Clone and Build
 
 ```bash
-git clone https://github.com/tachyon-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon/tachyon
 
 # Build all crates

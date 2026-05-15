@@ -4,14 +4,14 @@
 //! search response construction, field definitions, and index configuration.
 
 use tachyon_core::{generate_document_id, generate_user_id};
-#[allow(unused_imports)]
+#[cfg(test)]
 use tachyon_search::{
     BatchIndexRequest, FieldDefinition, FieldType, IndexConfig, SearchDocument, SearchRequest,
     SearchResponse, SortOrder,
     types::{BooleanOperator, QueryType, Suggestion, SuggestionCategory},
 };
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn make_search_doc(title: &str, content: &str) -> SearchDocument {
     SearchDocument::new(
         generate_document_id(),

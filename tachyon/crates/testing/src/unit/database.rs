@@ -3,10 +3,12 @@
 //! Tests for DatabaseConfig, SessionRecord validation, RolePermissionMapping,
 //! DocumentMetadata serialization, and PolicyRecord parsing.
 
+#[cfg(test)]
 use chrono::{Duration, Utc};
+#[cfg(test)]
 use tachyon_database::types::*;
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn make_session_record(status: &str, expires_at: chrono::DateTime<Utc>) -> SessionRecord {
     SessionRecord {
         id: "sess-1".to_string(),

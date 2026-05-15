@@ -786,7 +786,7 @@ tachyon migrate --version X.Y.Z
 
 **Security Advisories:**
 
-- [Security Advisory: Title](https://tachyon.io/security/advisories/xxx)
+- [Security Advisory: Title](https://github.com/WyattAu/Tachyon/security/advisories/xxx)
 
 **Third-Party Updates:**
 

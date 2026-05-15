@@ -83,6 +83,10 @@ jobs:
     steps:
       - name: Determine version and targets
         id: version
+        env:
+          INPUT_ROLLBACK: ${{ inputs.rollback }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           IS_TAG=false
           IS_MAIN=false
@@ -107,26 +111,26 @@ jobs:
             SHOULD_DEPLOY_STAGING=true
           fi
 
-          if [[ "${{ inputs.rollback }}" == "true" ]]; then
+          if [[ "$INPUT_ROLLBACK" == "true" ]]; then
             IS_ROLLBACK=true
             SHOULD_BUILD_IMAGES=false
             SHOULD_BUILD_FRONTEND=false
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
+            if [[ "$INPUT_ENVIRONMENT" == "production" ]]; then
               SHOULD_DEPLOY_PRODUCTION=true
             else
               SHOULD_DEPLOY_STAGING=true
             fi
-            if [[ -n "${{ inputs.version }}" ]]; then
-              VERSION="${{ inputs.version }}"
+            if [[ -n "$INPUT_VERSION" ]]; then
+              VERSION="$INPUT_VERSION"
             fi
-          elif [[ -n "${{ inputs.environment }}" ]]; then
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
+          elif [[ -n "$INPUT_ENVIRONMENT" ]]; then
+            if [[ "$INPUT_ENVIRONMENT" == "production" ]]; then
               SHOULD_DEPLOY_PRODUCTION=true
             else
               SHOULD_DEPLOY_STAGING=true
             fi
-            if [[ -n "${{ inputs.version }}" ]]; then
-              VERSION="${{ inputs.version }}"
+            if [[ -n "$INPUT_VERSION" ]]; then
+              VERSION="$INPUT_VERSION"
               SHOULD_BUILD_IMAGES=true
               SHOULD_BUILD_FRONTEND=true
             fi
@@ -282,6 +286,9 @@ jobs:
     environment:
       name: staging
       url: https://${{ secrets.STAGING_HOST }}
+    permissions:
+      contents: read
+      statuses: write
     steps:
       - uses: actions/checkout@v4
 
@@ -409,6 +416,9 @@ jobs:
     environment:
       name: production
       url: https://${{ secrets.PRODUCTION_HOST }}
+    permissions:
+      contents: read
+      statuses: write
     steps:
       - uses: actions/checkout@v4
 
@@ -502,8 +512,7 @@ jobs:
         with:
           tag_name: ${{ needs.prepare.outputs.version }}
           name: Release ${{ needs.prepare.outputs.version }}
-          body_path: RELEASE_NOTES.md
-          draft: false
+          generate_release_notes: true
           prerelease: ${{ contains(needs.prepare.outputs.version, '-') }}
           generate_release_notes: true
         env:

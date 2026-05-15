@@ -39,8 +39,6 @@ impl std::error::Error for WebSocketUpgradeError {}
 
 #[derive(Debug, Clone)]
 struct ConnectedClient {
-    #[allow(dead_code)] // redundant with HashMap key; kept for serialization
-    client_id: String,
     user_id: Option<String>,
     user_name: Option<String>,
     rooms: Vec<String>,
@@ -91,7 +89,6 @@ impl ConnectionManager {
 
     pub async fn add_client(&self, client_id: String) {
         let client = ConnectedClient {
-            client_id: client_id.clone(),
             user_id: None,
             user_name: None,
             rooms: Vec::new(),

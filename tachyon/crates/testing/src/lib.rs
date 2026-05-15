@@ -10,7 +10,7 @@
 //! - [`fuzz`] - Fuzzing test modules for security and robustness
 //! - [`benchmarks`] - Performance benchmark modules
 
-#![allow(clippy::duplicate_mod)]
+#![allow(clippy::duplicate_mod, unused_imports)]
 
 pub mod benchmarks;
 pub mod common;

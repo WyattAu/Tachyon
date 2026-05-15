@@ -577,8 +577,8 @@ The Tachyon REST API provides a comprehensive HTTP/2-based interface for client-
 #### 4.2.1. Base URL
 
 ```
-Production: https://api.tachyon.io/v1
-Staging: https://api-staging.tachyon.io/v1
+Production: https://api.example.com/v1
+Staging: https://api-staging.example.com/v1
 Development: http://localhost:8080/v1
 ```
 
@@ -1023,7 +1023,7 @@ async fn create_document(
     request: CreateDocumentRequest,
 ) -> Result<Document, Box<dyn std::error::Error>> {
     let response = client
-        .post("https://api.tachyon.io/v1/documents")
+        .post("https://api.example.com/v1/documents")
         .header("Authorization", format!("Bearer {}", token))
         .header("Content-Type", "application/json")
         .json(&request)
@@ -1130,8 +1130,8 @@ The Tachyon WebSocket integration provides real-time bidirectional communication
 #### 5.2.1. Connection URL
 
 ```
-Production: wss://api.tachyon.io/v1/ws
-Staging: wss://api-staging.tachyon.io/v1/ws
+Production: wss://api.example.com/v1/ws
+Staging: wss://api-staging.example.com/v1/ws
 Development: ws://localhost:8080/v1/ws
 ```
 
@@ -1139,7 +1139,7 @@ Development: ws://localhost:8080/v1/ws
 
 ```http
 GET /v1/ws HTTP/1.1
-Host: api.tachyon.io
+Host: api.example.com
 Upgrade: websocket
 Connection: Upgrade
 Sec-WebSocket-Key: dGhlIHNhbXBsZzFubE=
@@ -1498,7 +1498,7 @@ struct AuthSuccess {
 pub async fn connect_websocket(
     token: &str,
 ) -> Result<WebSocketStream<tokio_tungstenite::MaybeTlsStream>, Box<dyn std::error::Error>> {
-    let url = url::Url::parse("wss://api.tachyon.io/v1/ws")?;
+    let url = url::Url::parse("wss://api.example.com/v1/ws")?;
     let request = tungstenite::handshake::client::Request::from_url(url)?;
     
     let (mut ws_stream, _) = tokio_tungstenite::connect_async(request).await?;
@@ -1911,7 +1911,7 @@ Capabilities are defined in the Tauri capabilities file (`src-tauri/capabilities
     {
       "identifier": "http:allow-request",
       "allow": [
-        { "url": "https://api.tachyon.io/**" }
+        { "url": "https://api.example.com/**" }
       ]
     },
     {
@@ -2238,7 +2238,7 @@ Content-Type: application/json
     "secret": "webhook_secret_abc123",
     "active": true,
     "created_at": "2026-02-07T22:45:00Z",
-    "delivery_url": "https://api.tachyon.io/v1/webhooks/whk_xyz789/deliver"
+    "delivery_url": "https://api.example.com/v1/webhooks/whk_xyz789/deliver"
   }
 }
 ```
@@ -3001,7 +3001,7 @@ pub async fn refresh_oauth_token(
     provider: &str,
     refresh_token: &str,
 ) -> Result<OAuthTokens, Box<dyn std::error::Error>> {
-    let refresh_url = format!("https://oauth.tachyon.io/v1/{}/refresh", provider);
+    let refresh_url = format!("https://oauth.example.com/v1/{}/refresh", provider);
     
     let request = RefreshTokenRequest {
         refresh_token: refresh_token.to_string(),
@@ -4102,7 +4102,7 @@ mod rest_tests {
     async fn test_get_document_success() {
         let client = Client::new();
         let response = client
-            .get("https://api.tachyon.io/v1/documents/doc_123")
+            .get("https://api.example.com/v1/documents/doc_123")
             .header("Authorization", "Bearer test_token")
             .send()
             .await;
@@ -4116,7 +4116,7 @@ mod rest_tests {
     async fn test_get_document_not_found() {
         let client = Client::new();
         let response = client
-            .get("https://api.tachyon.io/v1/documents/nonexistent")
+            .get("https://api.example.com/v1/documents/nonexistent")
             .header("Authorization", "Bearer test_token")
             .send()
             .await;
@@ -4134,7 +4134,7 @@ mod rest_tests {
         });
         
         let response = client
-            .post("https://api.tachyon.io/v1/documents")
+            .post("https://api.example.com/v1/documents")
             .header("Authorization", "Bearer test_token")
             .json(&invalid_doc)
             .send()
@@ -4296,7 +4296,7 @@ mod integration_tests {
             "content": "# Test"
         });
         let create_response = client
-            .post("https://api.tachyon.io/v1/documents")
+            .post("https://api.example.com/v1/documents")
             .header("Authorization", "Bearer test_token")
             .json(&create_doc)
             .send()
@@ -4308,7 +4308,7 @@ mod integration_tests {
         
         // Get document
         let get_response = client
-            .get(&format!("https://api.tachyon.io/v1/documents/{}", doc_id))
+            .get(&format!("https://api.example.com/v1/documents/{}", doc_id))
             .header("Authorization", "Bearer test_token")
             .send()
             .await;
@@ -4323,7 +4323,7 @@ mod integration_tests {
             "title": "Updated Integration Test"
         });
         let update_response = client
-            .patch(&format!("https://api.tachyon.io/v1/documents/{}", doc_id))
+            .patch(&format!("https://api.example.com/v1/documents/{}", doc_id))
             .header("Authorization", "Bearer test_token")
             .json(&update_doc)
             .send()
@@ -4335,7 +4335,7 @@ mod integration_tests {
         
         // Delete document
         let delete_response = client
-            .delete(&format!("https://api.tachyon.io/v1/documents/{}", doc_id))
+            .delete(&format!("https://api.example.com/v1/documents/{}", doc_id))
             .header("Authorization", "Bearer test_token")
             .send()
             .await;
@@ -4344,7 +4344,7 @@ mod integration_tests {
         
         // Verify deletion
         let get_after_response = client
-            .get(&format!("https://api.tachyon.io/v1/documents/{}", doc_id))
+            .get(&format!("https://api.example.com/v1/documents/{}", doc_id))
             .header("Authorization", "Bearer test_token")
             .send()
             .await;
@@ -4432,7 +4432,7 @@ async fn test_rest_api_performance() {
         
         for i in 0..iterations {
             let response = client
-                .get("https://api.tachyon.io/v1/documents")
+                .get("https://api.example.com/v1/documents")
                 .header("Authorization", "Bearer test_token")
                 .send()
                 .await;
@@ -4518,7 +4518,7 @@ mod security_tests {
         let client = reqwest::Client::new();
         
         let response = client
-            .get("https://api.tachyon.io/v1/documents/doc_123")
+            .get("https://api.example.com/v1/documents/doc_123")
             .send()
             .await;
         
@@ -4532,7 +4532,7 @@ mod security_tests {
         let client = reqwest::Client::new();
         
         let response = client
-            .get("https://api.tachyon.io/v1/documents/doc_123")
+            .get("https://api.example.com/v1/documents/doc_123")
             .header("Authorization", "Bearer invalid_token")
             .send()
             .await;

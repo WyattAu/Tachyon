@@ -65,6 +65,10 @@ jobs:
             fi
             sleep 1
           done
+          if [ "$i" -eq 60 ]; then
+            echo "::error::Server failed to start within 60 seconds"
+            exit 1
+          fi
 
       - name: Install Playwright
         working-directory: tachyon/e2e

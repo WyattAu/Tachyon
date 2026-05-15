@@ -70,13 +70,13 @@ Download the platform-specific installer:
 
 bash
 # Build from source
-git clone https://github.com/tachyon-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon
 cargo build --release --no-default-features --features "server-mode"
 sudo install target/release/tachyon /usr/local/bin/
 
 # Or use Docker
-docker pull tachyon-org/tachyon-server:latest
+docker pull WyattAu/Tachyon-server:latest
 ### 2.2. First Launch
 
 Upon first launch, Tachyon prompts for:
@@ -654,7 +654,7 @@ Documentation:
 - [Troubleshooting Guide](./troubleshooting_guide.md)
 
 Community:
-- [GitHub Issues](https://github.com/tachyon-org/tachyon/issues)
+- [GitHub Issues](https://github.com/WyattAu/Tachyon/issues)
 - [Discord Server](https://discord.gg/tachyon)
 - [Matrix Room](https://matrix.to/#/tachyon:matrix.org)
 

@@ -1818,7 +1818,7 @@ alerts:
       - slack
       - email
     recipients:
-      - security-team@tachyon.io
+      - security-team@example.com
     template: critical_vulnerability
     
   - type: test_failure
@@ -1826,7 +1826,7 @@ alerts:
     channels:
       - slack
     recipients:
-      - dev-team@tachyon.io
+      - dev-team@example.com
     template: test_failure
 ```
 

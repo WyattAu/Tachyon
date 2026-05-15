@@ -1,0 +1,28 @@
+# Documentation files containing example tokens and configuration snippets
+docs/
+
+# Seed/test data with intentional bcrypt hashes for development
+scripts/seed-data.sql
+
+# Generated frontend WASM output
+tachyon/crates/frontend/dist/
+tachyon/crates/frontend/pkg/
+
+# NPM/node artifacts
+tachyon/e2e/node_modules/
+
+# Load test artifacts
+tachyon/load-tests/reports/
+
+# Dependency vendored source
+.dep_spec/
+
+# Specs and reports (not application code)
+.specs/
+.reports/
+.knowledge_graph/
+.patterns/
+.adrs/
+
+# Generated documentation site
+documentation/

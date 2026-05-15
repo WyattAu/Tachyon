@@ -91,7 +91,7 @@ Tachyon supports three deployment modes:
 Download from the official repository:
 
 ```
-https://github.com/tachyon-org/tachyon/releases/download/v0.2.0/tachyon_setup_x64.exe
+https://github.com/WyattAu/Tachyon/releases/download/v0.2.0/tachyon_setup_x64.exe
 ```
 
 #### Installation
@@ -118,7 +118,7 @@ Expected output: `tachyon 0.2.0-beta`
 Download from the official repository:
 
 ```
-https://github.com/tachyon-org/tachyon/releases/download/v0.2.0/Tachyon.dmg
+https://github.com/WyattAu/Tachyon/releases/download/v0.2.0/Tachyon.dmg
 ```
 
 #### Installation
@@ -152,7 +152,7 @@ On first launch, macOS may prompt for:
 Download from the official repository:
 
 ```
-https://github.com/tachyon-org/tachyon/releases/download/v0.2.0/tachyon_amd64.deb
+https://github.com/WyattAu/Tachyon/releases/download/v0.2.0/tachyon_amd64.deb
 ```
 
 #### Installation
@@ -199,7 +199,7 @@ sudo apt install -y git libssl-dev pkg-config
 Clone and build:
 
 ```bash
-git clone https://github.com/tachyon-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon
 cargo build --release --no-default-features --features "server-mode"
 ```
@@ -215,7 +215,7 @@ sudo install target/release/tachyon /usr/local/bin/
 #### Pull Docker Image
 
 ```bash
-docker pull tachyon-org/tachyon-server:latest
+docker pull WyattAu/Tachyon-server:latest
 ```
 
 #### Run Container
@@ -225,7 +225,7 @@ docker run -d \
   --name tachyon-server \
   -p 8080:8080 \
   -v $(pwd)/docs:/data \
-  tachyon-org/tachyon-server:latest
+  WyattAu/Tachyon-server:latest
 ```
 
 ### 4.3. Docker Compose
@@ -237,7 +237,7 @@ version: '3.8'
 
 services:
   tachyon:
-    image: tachyon-org/tachyon-server:latest
+    image: WyattAu/Tachyon-server:latest
     ports:
       - "8080:8080"
     volumes:
@@ -273,7 +273,7 @@ curl -L https://nixos.org/nix/install | sh -sSf -y | nix
 Clone the repository and enter the development environment:
 
 ```bash
-git clone https://github.com/tachyon-org/tachyon.git
+git clone https://github.com/WyattAu/Tachyon.git
 cd tachyon
 nix develop
 ```

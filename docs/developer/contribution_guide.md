@@ -335,7 +335,7 @@ git clone https://github.com/YOUR_USERNAME/tachyon.git
 cd tachyon
 
 # Add upstream remote
-git remote add upstream https://github.com/tachyon-org/tachyon.git
+git remote add upstream https://github.com/WyattAu/Tachyon.git
 
 # Verify remotes
 git remote -v
@@ -2715,15 +2715,15 @@ The security team will:
 
 **Communication Channels:**
 
-- [GitHub Discussions](https://github.com/tachyon-org/tachyon/discussions) - Community discussions
-- [GitHub Issues](https://github.com/tachyon-org/tachyon/issues) - Bug reports and feature requests
+- [GitHub Discussions](https://github.com/WyattAu/Tachyon/discussions) - Community discussions
+- [GitHub Issues](https://github.com/WyattAu/Tachyon/issues) - Bug reports and feature requests
 - [Discord Server](https://discord.gg/tachyon) - Real-time community chat
 
 **Contributor Resources:**
 
-- [Contributing Guide](https://github.com/tachyon-org/tachyon/blob/main/CONTRIBUTING.md) - GitHub contributing guide
-- [Code of Conduct](https://github.com/tachyon-org/tachyon/blob/main/CODE_OF_CONDUCT.md) - Community guidelines
-- [Security Policy](https://github.com/tachyon-org/tachyon/blob/main/SECURITY.md) - Security reporting
+- [Contributing Guide](https://github.com/WyattAu/Tachyon/blob/main/CONTRIBUTING.md) - GitHub contributing guide
+- [Code of Conduct](https://github.com/WyattAu/Tachyon/blob/main/CODE_OF_CONDUCT.md) - Community guidelines
+- [Security Policy](https://github.com/WyattAu/Tachyon/blob/main/SECURITY.md) - Security reporting
 
 ### 9.4. Standards and Best Practices
 
