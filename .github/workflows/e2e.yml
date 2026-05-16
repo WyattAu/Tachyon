@@ -17,8 +17,10 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - name: Install trunk
-        run: cargo install trunk --version 0.21.14
+      - name: Install trunk and wasm-opt
+        run: |
+          cargo install trunk --version 0.21.14
+          sudo apt-get update && sudo apt-get install -y binaryen
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -42,7 +44,7 @@ jobs:
 
       - name: Build WASM frontend
         working-directory: tachyon/crates/frontend
-        run: TRUNK_TOOLS_WASM_OPT= trunk build --release
+        run: trunk build --release
 
       - name: Build server
         working-directory: tachyon

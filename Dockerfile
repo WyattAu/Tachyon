@@ -12,6 +12,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 FROM rust:1.86-bookworm AS frontend
 RUN rustup target add wasm32-unknown-unknown && \
+    apt-get update && apt-get install -y --no-install-recommends binaryen && \
     curl -sL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin
 WORKDIR /app
 COPY tachyon/Cargo.toml tachyon/Cargo.lock ./
@@ -19,7 +20,7 @@ COPY tachyon/crates ./crates
 COPY --from=builder /app/target /app/target
 COPY --from=builder /usr/local/cargo /usr/local/cargo
 WORKDIR /app/crates/frontend
-RUN TRUNK_TOOLS_WASM_OPT= trunk build --release
+RUN trunk build --release
 
 FROM builder AS app-builder
 COPY tachyon/ .

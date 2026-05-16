@@ -180,12 +180,14 @@ jobs:
             tachyon/target
           key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('tachyon/Cargo.lock') }}
 
-      - name: Install trunk
-        run: cargo install trunk
+      - name: Install trunk and wasm-opt
+        run: |
+          cargo install trunk
+          sudo apt-get update && sudo apt-get install -y binaryen
 
       - name: Build frontend
         working-directory: tachyon/crates/frontend
-        run: TRUNK_TOOLS_WASM_OPT= trunk build --release
+        run: trunk build --release
 
       - uses: actions/upload-artifact@v4
         with:

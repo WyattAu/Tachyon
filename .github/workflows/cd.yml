@@ -261,14 +261,14 @@ jobs:
             tachyon/target
           key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('tachyon/Cargo.lock') }}
 
-      - name: Install trunk
-        run: TMPDIR=/tmp cargo install trunk --version 0.21.14
+      - name: Install trunk and wasm-opt
+        run: |
+          TMPDIR=/tmp cargo install trunk --version 0.21.14
+          sudo apt-get update && sudo apt-get install -y binaryen
 
       - name: Build frontend
         working-directory: tachyon/crates/frontend
-        run: TRUNK_TOOLS_WASM_OPT= trunk build --release
-        env:
-          TRUNK_TOOLS_WASM_OPT: ""
+        run: trunk build --release
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
