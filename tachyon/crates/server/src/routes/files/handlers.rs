@@ -380,7 +380,7 @@ pub async fn search_files(
     ))
     .await?;
 
-    results.sort_by(|a, b| a.path.cmp(&b.path));
+    results.sort_by_key(|a| a.path.clone());
 
     Ok(Json(SearchResponse { files: results }))
 }
@@ -595,7 +595,7 @@ pub async fn get_stats(
     ))
     .await?;
 
-    largest_files.sort_by(|a, b| b.size.cmp(&a.size));
+    largest_files.sort_by_key(|b| std::cmp::Reverse(b.size));
     largest_files.truncate(10);
 
     Ok(Json(StatsResponse {

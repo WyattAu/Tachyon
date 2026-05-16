@@ -63,22 +63,22 @@ fn text_matches(query: &str, doc: &Document) -> bool {
 fn sort_documents(docs: &mut [Document], sort_by: SortField, sort_dir: SortDirection) {
     match (sort_by, sort_dir) {
         (SortField::UpdatedAt, SortDirection::Desc) => {
-            docs.sort_by(|a, b| b.metadata.updated_at.cmp(&a.metadata.updated_at));
+            docs.sort_by_key(|b| std::cmp::Reverse(b.metadata.updated_at));
         }
         (SortField::UpdatedAt, SortDirection::Asc) => {
-            docs.sort_by(|a, b| a.metadata.updated_at.cmp(&b.metadata.updated_at));
+            docs.sort_by_key(|a| a.metadata.updated_at);
         }
         (SortField::CreatedAt, SortDirection::Desc) => {
-            docs.sort_by(|a, b| b.metadata.created_at.cmp(&a.metadata.created_at));
+            docs.sort_by_key(|b| std::cmp::Reverse(b.metadata.created_at));
         }
         (SortField::CreatedAt, SortDirection::Asc) => {
-            docs.sort_by(|a, b| a.metadata.created_at.cmp(&b.metadata.created_at));
+            docs.sort_by_key(|a| a.metadata.created_at);
         }
         (SortField::Title, SortDirection::Asc) => {
-            docs.sort_by(|a, b| a.metadata.title.cmp(&b.metadata.title));
+            docs.sort_by_key(|a| a.metadata.title.clone());
         }
         (SortField::Title, SortDirection::Desc) => {
-            docs.sort_by(|a, b| b.metadata.title.cmp(&a.metadata.title));
+            docs.sort_by_key(|b| std::cmp::Reverse(b.metadata.title.clone()));
         }
     }
 }

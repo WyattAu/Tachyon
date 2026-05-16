@@ -121,19 +121,19 @@ impl BM25Ranker {
                 debug!("Sorted results by score");
             }
             SortOrder::DateDesc => {
-                results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+                results.sort_by_key(|b| std::cmp::Reverse(b.created_at));
                 debug!("Sorted results by date (newest first)");
             }
             SortOrder::DateAsc => {
-                results.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+                results.sort_by_key(|a| a.created_at);
                 debug!("Sorted results by date (oldest first)");
             }
             SortOrder::TitleAsc => {
-                results.sort_by(|a, b| a.title.cmp(&b.title));
+                results.sort_by_key(|a| a.title.clone());
                 debug!("Sorted results by title (A-Z)");
             }
             SortOrder::TitleDesc => {
-                results.sort_by(|a, b| b.title.cmp(&a.title));
+                results.sort_by_key(|b| std::cmp::Reverse(b.title.clone()));
                 debug!("Sorted results by title (Z-A)");
             }
         }

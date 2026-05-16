@@ -77,7 +77,7 @@ pub fn list_backups(dir: &Path) -> CliResult<Vec<BackupInfo>> {
             }
         }
     }
-    backups.sort_by(|a, b| b.filename.cmp(&a.filename));
+    backups.sort_by_key(|b| std::cmp::Reverse(b.filename.clone()));
     Ok(backups)
 }
 
