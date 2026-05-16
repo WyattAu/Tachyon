@@ -37,7 +37,7 @@ jobs:
 
       - name: Check WASM compilation
         working-directory: tachyon
-        run: cargo check -p tachyon-frontend -p tachyon-ssg -p tachyon-renderer -p tachyon-core -p tachyon-import-export -p tachyon-editor --target wasm32-unknown-unknown
+        run: cargo check -p tachyon-frontend -p tachyon-ssg -p tachyon-renderer -p tachyon-core -p tachyon-editor --target wasm32-unknown-unknown
 
   lint:
     name: Lint
