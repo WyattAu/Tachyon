@@ -185,7 +185,7 @@ jobs:
 
       - name: Build frontend
         working-directory: tachyon/crates/frontend
-        run: trunk build --release --no-wasm-opt
+        run: TRUNK_TOOLS_WASM_OPT= trunk build --release
 
       - uses: actions/upload-artifact@v4
         with:

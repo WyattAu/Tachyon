@@ -1,5 +1,5 @@
 FROM rust:1.86-bookworm AS chef
-RUN cargo install cargo-chef --locked
+RUN cargo install cargo-chef
 WORKDIR /app
 
 FROM chef AS planner
@@ -19,7 +19,7 @@ COPY tachyon/crates ./crates
 COPY --from=builder /app/target /app/target
 COPY --from=builder /usr/local/cargo /usr/local/cargo
 WORKDIR /app/crates/frontend
-RUN trunk build --release
+RUN TRUNK_TOOLS_WASM_OPT= trunk build --release
 
 FROM builder AS app-builder
 COPY tachyon/ .
