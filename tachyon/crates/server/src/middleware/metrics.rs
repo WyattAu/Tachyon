@@ -30,11 +30,11 @@ impl RequestMetrics {
             total_requests: total,
             successful_requests: self.successful_requests.load(Ordering::Relaxed),
             failed_requests: self.failed_requests.load(Ordering::Relaxed),
-            avg_duration_ms: if total > 0 {
-                self.total_request_duration_ms.load(Ordering::Relaxed) / total
-            } else {
-                0
-            },
+            avg_duration_ms: self
+                .total_request_duration_ms
+                .load(Ordering::Relaxed)
+                .checked_div(total)
+                .unwrap_or(0),
         }
     }
 }
