@@ -1,4 +1,8 @@
 // Main entry point for the Leptos application
+//
+// Allow dead code: many API client methods are defined here for future UI pages
+// that are not yet implemented. Removing them would lose the API surface design.
+#![allow(dead_code)]
 
 mod api;
 mod components;

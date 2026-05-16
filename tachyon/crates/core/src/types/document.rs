@@ -576,6 +576,7 @@ mod tests {
     use proptest::prelude::*;
 
     #[test]
+    #[allow(clippy::type_complexity)]
     fn test_document_status_transitions() {
         assert!(DocumentStatus::Draft.can_transition_to(DocumentStatus::Published));
         assert!(DocumentStatus::Published.can_transition_to(DocumentStatus::Archived));
@@ -730,6 +731,7 @@ mod tests {
         }
 
         #[test]
+        #[allow(clippy::type_complexity)]
         fn prop_transition_produces_valid_status(start in prop::sample::select(vec![
             DocumentStatus::Draft,
             DocumentStatus::Published,

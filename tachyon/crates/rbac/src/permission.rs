@@ -475,7 +475,7 @@ impl PermissionChecker {
             .collect();
 
         // Sort by priority (higher priority first)
-        matching_permissions.sort_by(|a, b| b.priority.cmp(&a.priority));
+        matching_permissions.sort_by_key(|b| std::cmp::Reverse(b.priority));
 
         if matching_permissions.is_empty() {
             // No permissions configured for this resource/action - allow by default
