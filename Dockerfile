@@ -1,32 +1,33 @@
-FROM rust:1.86-bookworm AS chef
-RUN cargo install cargo-chef
-WORKDIR /app
-
-FROM chef AS planner
-COPY tachyon/ .
-RUN cargo chef prepare --recipe-path recipe.json
-
-FROM chef AS builder
-COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
-
-FROM rust:1.86-bookworm AS frontend
+# Stage 1: Build dependencies (cache layer)
+FROM rust:1.86-bookworm AS builder
 RUN rustup target add wasm32-unknown-unknown && \
     apt-get update && apt-get install -y --no-install-recommends binaryen && \
     curl -sL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin
 WORKDIR /app
+
+# Copy manifests first for dependency caching
 COPY tachyon/Cargo.toml tachyon/Cargo.lock ./
-COPY tachyon/crates ./crates
-COPY --from=builder /app/target /app/target
-COPY --from=builder /usr/local/cargo /usr/local/cargo
+RUN mkdir -p crates && \
+    for crate in core database editor import_export plugin-runtime rbac renderer search server ssg storage cli; do \
+        mkdir -p crates/$crate/src && echo "" > crates/$crate/src/lib.rs; \
+    done && \
+    cargo build --release 2>/dev/null || true && \
+    rm -rf crates
+
+# Stage 2: Build frontend
+FROM builder AS frontend
+COPY tachyon/ .
+RUN mkdir -p crates/frontend/dist
 WORKDIR /app/crates/frontend
 RUN trunk build --release
 
+# Stage 3: Build server
 FROM builder AS app-builder
 COPY tachyon/ .
 COPY --from=frontend /app/crates/frontend/dist ./crates/frontend/dist
 RUN cargo build --release --bin tachyon-server
 
+# Stage 4: Runtime
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y \
     ca-certificates libssl3 \
