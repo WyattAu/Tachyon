@@ -44,6 +44,8 @@ jobs:
 
       - name: Build WASM frontend
         working-directory: tachyon/crates/frontend
+        env:
+          RUSTFLAGS: -C target-feature=+bulk-memory
         run: trunk build --release
 
       - name: Build server

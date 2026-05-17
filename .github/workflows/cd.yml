@@ -268,6 +268,8 @@ jobs:
 
       - name: Build frontend
         working-directory: tachyon/crates/frontend
+        env:
+          RUSTFLAGS: -C target-feature=+bulk-memory
         run: trunk build --release
 
       - name: Upload frontend artifact
