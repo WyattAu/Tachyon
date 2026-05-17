@@ -400,14 +400,14 @@ pub fn extract_headings(markdown: &str) -> Vec<MarkdownHeading> {
             }
             Event::Text(text) =>
             {
-                #[allow(clippy::collapsible_if)]
+                #[allow(clippy::collapsible_match)]
                 if current_heading_level.is_some() {
                     current_text.push_str(text.as_ref());
                 }
             }
             Event::Code(text) =>
             {
-                #[allow(clippy::collapsible_if)]
+                #[allow(clippy::collapsible_match)]
                 if current_heading_level.is_some() {
                     current_text.push_str(text.as_ref());
                 }
