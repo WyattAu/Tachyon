@@ -24,8 +24,8 @@ CREATE INDEX IF NOT EXISTS idx_activity_events_target_type_created
     ON activity_events(target_id, target_type, created_at DESC);
 
 -- Comments by document (document detail page)
-CREATE INDEX IF NOT EXISTS idx_comments_document_created
-    ON comments(document_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_document_comments_document_created
+    ON document_comments(document_id, created_at DESC);
 
 -- Document versions by document (version history)
 CREATE INDEX IF NOT EXISTS idx_document_versions_document_created
