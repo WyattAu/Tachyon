@@ -6,9 +6,9 @@ WORKDIR /app
 RUN rustup target add wasm32-unknown-unknown && \
     curl -sL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin
 
-COPY tachyon/Cargo.toml tachyon/Cargo.lock ./
-RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml
 COPY tachyon/ .
+# Remove desktop/testing/cli/benchmarks from workspace members (require GTK/tauri)
+RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml
 RUN mkdir -p crates/frontend/dist
 WORKDIR /app/crates/frontend
 RUN trunk build --release
