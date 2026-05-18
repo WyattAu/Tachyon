@@ -4,8 +4,10 @@ dist = "dist"
 public_url = "/"
 
 [tools]
-# wasm-opt is auto-detected from PATH by trunk. On CI, binaryen is not
-# installed, so trunk will skip the optimization step automatically.
+# Explicitly set wasm-opt to empty string to disable the optimization step.
+# Trunk auto-downloads binaryen when wasm_opt is not set, but its
+# bundled version may be incompatible with bulk-memory WASM features.
+wasm_opt = ""
 
 [watch]
 watch = ["src/", "public/"]
