@@ -6,8 +6,8 @@ WORKDIR /app
 
 # Copy manifests first for dependency caching
 COPY tachyon/Cargo.toml tachyon/Cargo.lock ./
-# Remove desktop crates from workspace members (they require GTK/tauri)
-RUN sed -i 's/, "crates\/desktop", "crates\/desktop\/src-tauri", "crates\/testing", "crates\/cli", "crates\/benchmarks"//' Cargo.toml
+# Remove desktop/testing/cli/benchmarks from workspace members (require GTK/tauri)
+RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml
 RUN mkdir -p crates && \
     for crate in core database editor import_export plugin-runtime rbac renderer search server ssg storage; do \
         mkdir -p crates/$crate/src && echo "" > crates/$crate/src/lib.rs; \
@@ -19,7 +19,7 @@ RUN mkdir -p crates && \
 FROM builder AS frontend
 COPY tachyon/ .
 # Re-apply workspace member removal (COPY overwrites our modified Cargo.toml)
-RUN sed -i 's/, "crates\/desktop", "crates\/desktop\/src-tauri", "crates\/testing", "crates\/cli", "crates\/benchmarks"//' Cargo.toml
+RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml
 RUN mkdir -p crates/frontend/dist
 WORKDIR /app/crates/frontend
 RUN trunk build --release
@@ -28,7 +28,7 @@ RUN trunk build --release
 FROM builder AS app-builder
 COPY tachyon/ .
 # Re-apply workspace member removal
-RUN sed -i 's/, "crates\/desktop", "crates\/desktop\/src-tauri", "crates\/testing", "crates\/cli", "crates\/benchmarks"//' Cargo.toml
+RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml
 COPY --from=frontend /app/crates/frontend/dist ./crates/frontend/dist
 RUN cargo build --release --bin tachyon-server
 
