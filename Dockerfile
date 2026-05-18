@@ -34,7 +34,8 @@ RUN cargo build --release --bin tachyon-server
 
 # Stage 4: Runtime
 FROM debian:bookworm-slim AS runtime
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && \
+    apt-get install -y --no-install-recommends \
     ca-certificates libssl3 \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app

@@ -108,7 +108,7 @@ jobs:
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
           TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-cli --test integration
+        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-cli --test integration -- --test-threads=1
 
   build:
     name: Build Release
@@ -243,7 +243,7 @@ jobs:
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
           TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-        run: cargo tarpaulin --workspace --exclude tachyon-testing --exclude tachyon-frontend --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-cli --out xml --output-dir coverage/
+        run: cargo tarpaulin --workspace --exclude tachyon-testing --exclude tachyon-frontend --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-cli --out xml --output-dir coverage/ -- --test-threads=1
 
       - name: Check minimum coverage (60%)
         working-directory: tachyon
