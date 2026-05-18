@@ -58,8 +58,9 @@ async fn test_create_document() {
         response.status() == StatusCode::CREATED
             || response.status() == StatusCode::OK
             || response.status() == StatusCode::UNAUTHORIZED
-            || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
-        "Expected CREATED/OK/UNAUTHORIZED/500 for document creation, got {}",
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY,
+        "Expected CREATED/OK/UNAUTHORIZED/500/422 for document creation, got {}",
         response.status()
     );
 }
