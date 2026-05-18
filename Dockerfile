@@ -1,14 +1,15 @@
 # Stage 1: Build dependencies (cache layer)
-FROM rust:1.86-bookworm AS builder
+FROM rust:bookworm AS builder
 RUN rustup target add wasm32-unknown-unknown && \
-    apt-get update && apt-get install -y --no-install-recommends binaryen && \
     curl -sL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin
 WORKDIR /app
 
 # Copy manifests first for dependency caching
 COPY tachyon/Cargo.toml tachyon/Cargo.lock ./
+# Remove desktop crates from workspace members (they require GTK/tauri)
+RUN sed -i 's/, "crates\/desktop", "crates\/desktop\/src-tauri", "crates\/testing", "crates\/cli", "crates\/benchmarks"//' Cargo.toml
 RUN mkdir -p crates && \
-    for crate in core database editor import_export plugin-runtime rbac renderer search server ssg storage cli; do \
+    for crate in core database editor import_export plugin-runtime rbac renderer search server ssg storage; do \
         mkdir -p crates/$crate/src && echo "" > crates/$crate/src/lib.rs; \
     done && \
     cargo build --release 2>/dev/null || true && \
@@ -17,6 +18,8 @@ RUN mkdir -p crates && \
 # Stage 2: Build frontend
 FROM builder AS frontend
 COPY tachyon/ .
+# Re-apply workspace member removal (COPY overwrites our modified Cargo.toml)
+RUN sed -i 's/, "crates\/desktop", "crates\/desktop\/src-tauri", "crates\/testing", "crates\/cli", "crates\/benchmarks"//' Cargo.toml
 RUN mkdir -p crates/frontend/dist
 WORKDIR /app/crates/frontend
 RUN trunk build --release
@@ -24,6 +27,8 @@ RUN trunk build --release
 # Stage 3: Build server
 FROM builder AS app-builder
 COPY tachyon/ .
+# Re-apply workspace member removal
+RUN sed -i 's/, "crates\/desktop", "crates\/desktop\/src-tauri", "crates\/testing", "crates\/cli", "crates\/benchmarks"//' Cargo.toml
 COPY --from=frontend /app/crates/frontend/dist ./crates/frontend/dist
 RUN cargo build --release --bin tachyon-server
 

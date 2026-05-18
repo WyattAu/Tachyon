@@ -42,6 +42,7 @@ impl StorageBackend for LocalStorage {
 
         let mut file = fs::File::create(&path).await?;
         file.write_all(data).await?;
+        file.flush().await?;
 
         Ok(StorageResult {
             url: format!("{}/{}", self.base_url, key),
