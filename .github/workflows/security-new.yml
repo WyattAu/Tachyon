@@ -32,7 +32,10 @@ jobs:
       
       - name: Run audit
         working-directory: tachyon
-        run: cargo audit
+        run: cargo audit --ignore RUSTSEC-2023-0071
+        # RUSTSEC-2023-0071: rsa Marvin Attack (medium severity)
+        # Transitive dep via sqlx-mysql -> rsa. No fixed version available.
+        # We use PostgreSQL, not MySQL; this code path is never exercised.
 
   dependency-review:
     name: Dependency Review
@@ -88,7 +91,7 @@ jobs:
         run: docker build -f Dockerfile -t tachyon/server:scan .
       
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
         with:
           image-ref: 'tachyon/server:scan'
           format: 'table'
