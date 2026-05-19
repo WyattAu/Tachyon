@@ -488,9 +488,7 @@ fn render_breadcrumbs(breadcrumbs: &[(String, String)]) -> String {
         .cloned()
         .collect::<Vec<_>>()
         .join(r#"<span class="text-gray-400 dark:text-gray-600 mx-1">/</span>"#);
-    format!(
-        r#"<nav class="max-w-4xl mx-auto px-4 py-2" aria-label="Breadcrumb">{joined}</nav>"#
-    )
+    format!(r#"<nav class="max-w-4xl mx-auto px-4 py-2" aria-label="Breadcrumb">{joined}</nav>"#)
 }
 
 /// Render a TOC sidebar from extracted heading entries.
@@ -530,17 +528,15 @@ fn render_toc_sidebar(toc: &[TocEntry]) -> String {
 }
 
 /// Render prev/next page navigation links.
-fn render_prev_next(
-    prev: Option<&(String, String)>,
-    next: Option<&(String, String)>,
-) -> String {
+fn render_prev_next(prev: Option<&(String, String)>, next: Option<&(String, String)>) -> String {
     let prev_html = match prev {
         Some((title, href)) => format!(
             r#"<a href="{}" class="flex-1 text-left px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all">
   <span class="text-xs text-gray-500 dark:text-gray-400 block">Previous</span>
   <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{}</span>
 </a>"#,
-            href, escape_html(title)
+            href,
+            escape_html(title)
         ),
         None => String::new(),
     };
@@ -550,16 +546,15 @@ fn render_prev_next(
   <span class="text-xs text-gray-500 dark:text-gray-400 block">Next</span>
   <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{}</span>
 </a>"#,
-            href, escape_html(title)
+            href,
+            escape_html(title)
         ),
         None => String::new(),
     };
     if prev_html.is_empty() && next_html.is_empty() {
         return String::new();
     }
-    format!(
-        r#"<div class="flex gap-4 mt-8 mb-4">{prev_html}{next_html}</div>"#
-    )
+    format!(r#"<div class="flex gap-4 mt-8 mb-4">{prev_html}{next_html}</div>"#)
 }
 
 fn capitalize_first(s: &str) -> String {

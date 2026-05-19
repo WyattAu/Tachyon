@@ -86,8 +86,12 @@ struct Frontmatter {
 
 /// YAML frontmatter parser using serde_yaml.
 fn parse_frontmatter(content: &str) -> Result<(Frontmatter, String), Box<dyn std::error::Error>> {
-    let trimmed = content.trim_start_matches("---\n").trim_start_matches("---\r\n");
-    let end = trimmed.find("---").ok_or("Missing closing --- in frontmatter")?;
+    let trimmed = content
+        .trim_start_matches("---\n")
+        .trim_start_matches("---\r\n");
+    let end = trimmed
+        .find("---")
+        .ok_or("Missing closing --- in frontmatter")?;
     let yaml_block = &trimmed[..end];
     let body = trimmed[end + 3..].trim_start().to_string();
     let frontmatter: Frontmatter = serde_yaml::from_str(yaml_block)?;
@@ -144,8 +148,9 @@ fn collect_documents(input_dir: &Path) -> Result<Vec<SsgDocument>> {
         let content = fs::read_to_string(path)
             .with_context(|| format!("Failed to read: {}", path.display()))?;
 
-        let (fm, body) = parse_frontmatter(&content)
-            .map_err(|e| anyhow::anyhow!("Failed to parse frontmatter: {} — {}", path.display(), e))?;
+        let (fm, body) = parse_frontmatter(&content).map_err(|e| {
+            anyhow::anyhow!("Failed to parse frontmatter: {} — {}", path.display(), e)
+        })?;
 
         // Derive slug from relative path
         let rel = path.strip_prefix(input_dir).unwrap_or(path);

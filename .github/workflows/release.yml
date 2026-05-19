@@ -52,7 +52,7 @@ jobs:
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
           TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing
+        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-benchmarks
 
   security:
     name: Security Audit
@@ -76,7 +76,7 @@ jobs:
 
       - name: Run cargo-audit
         working-directory: tachyon
-        run: cargo audit
+        run: cargo audit --ignore RUSTSEC-2023-0071
 
       - name: Install cargo-deny
         run: cargo install cargo-deny
@@ -175,9 +175,8 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          build-args: |
-            RUSTFLAGS=-C target-cpu=x86-64-v3
           platforms: linux/amd64,linux/arm64
+          push: true
 
   release:
     name: Create GitHub Release

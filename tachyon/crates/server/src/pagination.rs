@@ -35,7 +35,7 @@ impl Cursor {
 }
 
 /// Parameters for cursor-based pagination requests.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct CursorParams {
     /// Cursor from the previous page's `next_cursor`.
     pub after: Option<String>,
@@ -45,23 +45,17 @@ pub struct CursorParams {
     pub limit: Option<usize>,
 }
 
-impl Default for CursorParams {
-    fn default() -> Self {
-        Self {
-            after: None,
-            before: None,
-            limit: None,
-        }
-    }
-}
-
 impl CursorParams {
     pub fn limit(&self) -> usize {
-        self.limit.unwrap_or(20).min(100).max(1)
+        self.limit.unwrap_or(20).clamp(1, 100)
     }
 
     pub fn direction(&self) -> &str {
-        if self.before.is_some() { "desc" } else { "asc" }
+        if self.before.is_some() {
+            "desc"
+        } else {
+            "asc"
+        }
     }
 }
 
@@ -89,7 +83,12 @@ impl<T: Serialize> CursorPage<T> {
     }
 
     /// Set cursors based on first and last item IDs.
-    pub fn with_cursors(mut self, first_id: Option<&str>, last_id: Option<&str>, direction: &str) -> Self {
+    pub fn with_cursors(
+        mut self,
+        first_id: Option<&str>,
+        last_id: Option<&str>,
+        direction: &str,
+    ) -> Self {
         if self.has_next {
             if direction == "asc" {
                 self.next_cursor = last_id.map(|id| Cursor::encode(id, "asc").to_string());
@@ -146,8 +145,8 @@ mod tests {
 
     #[test]
     fn test_cursor_page_with_cursors() {
-        let page = CursorPage::new(vec!["a", "b"], true, true)
-            .with_cursors(Some("a"), Some("b"), "asc");
+        let page =
+            CursorPage::new(vec!["a", "b"], true, true).with_cursors(Some("a"), Some("b"), "asc");
         assert_eq!(page.next_cursor.as_deref(), Some("b:asc"));
         assert_eq!(page.prev_cursor.as_deref(), Some("a:desc"));
     }

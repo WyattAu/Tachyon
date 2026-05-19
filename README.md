@@ -1,22 +1,22 @@
 # Tachyon
 
+[![CI](https://github.com/WyattAu/Tachyon/actions/workflows/ci.yml/badge.svg)](https://github.com/WyattAu/Tachyon/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.85+-orange.svg)](https://www.rust-lang.org/)
-[![Axum](https://img.shields.io/badge/axum-0.8-blue.svg)](https://github.com/tokio-rs/axum)
-[![Leptos](https://img.shields.io/badge/leptos-0.8-purple.svg)](https://github.com/leptos-rs/leptos)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://wyattau.github.io/Tachyon)
 
 A deterministic, high-performance knowledge management system built with Rust.
 
 ## Features
 
-- **Markdown rendering** — CommonMark + GFM, syntax highlighting for 12+ languages, KaTeX math, HTML sanitization
-- **Real-time collaboration** — WebSocket with operational transform, live cursors, presence detection
-- **Full-text search** — PostgreSQL tsvector with trigram fuzzy matching, tag filtering, field-level queries
-- **RBAC** — Role-based access control with fine-grained permissions, audit logging
-- **SEO** — Server-side rendering, JSON-LD, Open Graph, robots.txt, sitemap.xml
-- **Caching** — Path-aware Cache-Control with stale-while-revalidate, ETags
-- **API** — RESTful API with Swagger UI, WebSocket for real-time updates
-- **Auth** — JWT authentication with guest access support
+- **Markdown rendering** -- CommonMark + GFM, syntax highlighting for 12+ languages, KaTeX math, HTML sanitization
+- **Real-time collaboration** -- WebSocket with operational transform, live cursors, presence detection
+- **Full-text search** -- PostgreSQL tsvector with trigram fuzzy matching, tag filtering, field-level queries
+- **RBAC** -- Role-based access control with fine-grained permissions, audit logging
+- **SEO** -- Server-side rendering, JSON-LD, Open Graph, robots.txt, sitemap.xml
+- **Caching** -- Path-aware Cache-Control with stale-while-revalidate, ETags
+- **API** -- RESTful API with Swagger UI, WebSocket for real-time updates
+- **Auth** -- JWT authentication with guest access support
 
 ## Architecture
 
@@ -163,4 +163,10 @@ just dev            # Lint + test + build
 
 ## License
 
-Apache License, Version 2.0 — see [LICENSE](LICENSE) for details.
+Apache License, Version 2.0 -- see [LICENSE](LICENSE) for details.
+
+## Documentation
+
+Full documentation is available at [wyattau.github.io/Tachyon](https://wyattau.github.io/Tachyon).
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.

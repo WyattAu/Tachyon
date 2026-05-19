@@ -108,10 +108,19 @@ impl crate::build::SiteGenerator {
             String::new()
         };
 
-        let breadcrumbs: Vec<(String, String)> = doc.slug.split('/').enumerate().map(|(i, part)| {
-            let href = if i == 0 { format!("{}index.html", root_prefix) } else { format!("{}{}.html", root_prefix, part) };
-            (part.to_string(), href)
-        }).collect();
+        let breadcrumbs: Vec<(String, String)> = doc
+            .slug
+            .split('/')
+            .enumerate()
+            .map(|(i, part)| {
+                let href = if i == 0 {
+                    format!("{}index.html", root_prefix)
+                } else {
+                    format!("{}{}.html", root_prefix, part)
+                };
+                (part.to_string(), href)
+            })
+            .collect();
 
         let current_idx = all_docs.iter().position(|d| d.slug == doc.slug);
         let prev_link = current_idx.and_then(|idx| {
@@ -301,10 +310,7 @@ pub(crate) fn generate_json_ld(
         "author": author.unwrap_or("Unknown"),
         "url": url,
     });
-    format!(
-        r#"<script type="application/ld+json">{}</script>"#,
-        json
-    )
+    format!(r#"<script type="application/ld+json">{}</script>"#, json)
 }
 
 /// Sanitize content for safe embedding in format! output.

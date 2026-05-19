@@ -46,6 +46,7 @@ info "Running clippy (-D warnings)..."
 if ! cargo clippy \
     --workspace \
     --exclude tachyon-testing \
+    --exclude tachyon-benchmarks \
     --exclude tachyon-frontend \
     --exclude tachyon-desktop \
     --exclude tachyon-desktop-app \
@@ -61,6 +62,7 @@ if ! cargo test \
     --lib \
     --workspace \
     --exclude tachyon-testing \
+    --exclude tachyon-benchmarks \
     --exclude tachyon-frontend \
     --exclude tachyon-desktop \
     --exclude tachyon-desktop-app \
@@ -74,6 +76,7 @@ info "Checking rustdoc..."
 DOC_STDERR="$(cargo doc \
     --workspace \
     --exclude tachyon-testing \
+    --exclude tachyon-benchmarks \
     --exclude tachyon-frontend \
     --manifest-path "${WORKSPACE_DIR}/Cargo.toml" \
     --no-deps 2>&1 >/dev/null)" || true

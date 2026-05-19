@@ -1,6 +1,6 @@
 # Tachyon Roadmap
 
-**Version:** 12.1.0 | **Date:** 2026-05-19 | **Status:** CI/CD green, documentation audit complete
+**Version:** 12.0.0 | **Date:** 2026-05-19 | **Status:** CI/CD green, documentation audit complete
 
 ---
 

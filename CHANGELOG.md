@@ -5,6 +5,30 @@ All notable changes to the Tachyon project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [12.0.0] - 2026-05-19
+
+### Changed
+
+- Aligned all CI/CD workflows with consistent workspace exclusions
+  (`tachyon-benchmarks` added to all cargo workspace commands).
+- Fixed `release.yml` test command missing exclusions for
+  `tachyon-desktop`, `tachyon-desktop-app`, `tachyon-cli`,
+  `tachyon-benchmarks` (would fail on ubuntu-latest without GTK).
+- Fixed `release.yml` cargo-audit missing `--ignore RUSTSEC-2023-0071`.
+- Fixed `release.yml` multi-arch publish applying x86-64-specific
+  `RUSTFLAGS` to arm64 builds.
+- Fixed pre-commit hook missing `--exclude tachyon-benchmarks`.
+- Fixed clippy warnings: `CursorParams` derive Default, manual clamp,
+  dead code in `RelayEvent::seq` fields.
+- Applied `cargo fmt` across workspace (pagination, ssg crates).
+
+### Documentation
+
+- Fixed incorrect mathematical formula in user guide
+  (divergent integral corrected to Gaussian integral).
+- Aligned ROADMAP.md version header with VERSION.md (12.0.0).
+- Added v12.0.0 CHANGELOG entry.
+
 ## [11.0.0] - 2026-05-14
 
 ### Security Hardening

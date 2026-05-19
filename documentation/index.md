@@ -1,23 +1,25 @@
 ---
 title: Welcome to Tachyon
-description: A fast, offline-first knowledge management platform built with Rust
+description: A deterministic, high-performance knowledge management system built with Rust
 order: -1
 ---
 
 # Welcome to Tachyon
 
-Tachyon is a high-performance knowledge management platform built entirely in Rust. It features real-time collaboration via CRDTs, a native editor, and offline-first architecture.
+Tachyon is a deterministic, high-performance knowledge management system built entirely in Rust. It features real-time collaboration via CRDTs, a native editor, and offline-first architecture.
 
 ## Features
 
-- **Markdown-first editing** with rich preview
+- **Markdown-first editing** with rich preview and KaTeX math
 - **Real-time collaboration** with CRDT sync (Yrs/lib0)
-- **Offline-first** — works without network, syncs when connected
+- **Offline-first** -- works without network, syncs when connected
 - **Knowledge graph** with bidirectional links
 - **Full-text search** with Tantivy + PostgreSQL
 - **Static site generation** for documentation
-- **Plugin system** for extensibility
-- **Role-based access control** with teams and spaces
+- **Plugin system** (WASM via Wasmtime 44)
+- **Role-based access control** with teams, spaces, and organizations
+- **MFA and OAuth2** authentication
+- **Desktop app** (Tauri 2.x) and CLI
 
 ## Quick Start
 
@@ -31,15 +33,23 @@ The server starts at `http://localhost:8080`.
 
 ## Architecture
 
-Tachyon is built as a Rust workspace with the following crates:
+Tachyon is built as a Rust workspace with 16 crates:
 
 | Crate | Purpose |
 |-------|---------|
-| `tachyon-server` | Axum HTTP server with JWT auth |
+| `tachyon-core` | Shared types, error handling, utilities |
+| `tachyon-server` | Axum HTTP server with JWT auth, WebSocket, GraphQL |
 | `tachyon-frontend` | Leptos 0.8 WASM frontend (CSR) |
 | `tachyon-editor` | Native Rust editor with CRDT support |
-| `tachyon-core` | Shared types and utilities |
-| `tachyon-database` | PostgreSQL via sqlx |
+| `tachyon-database` | PostgreSQL via sqlx with migration support |
 | `tachyon-search` | Tantivy + PostgreSQL hybrid search |
-| `tachyon-ssg` | Static site generator |
-| `tachyon-renderer` | Markdown to HTML renderer |
+| `tachyon-renderer` | Markdown to HTML with syntax highlighting, KaTeX, sanitization |
+| `tachyon-rbac` | Casbin-based role-based access control |
+| `tachyon-storage` | Memory and SQLite storage backends |
+| `tachyon-ssg` | Static site generator with i18n, RSS, sitemap |
+| `tachyon-import-export` | Obsidian, Docusaurus, ZIP, JSON, HTML import/export |
+| `tachyon-plugin-runtime` | WASM sandbox via Wasmtime 44 |
+| `tachyon-cli` | Command-line interface |
+| `tachyon-desktop` | Desktop client library |
+| `tachyon-desktop-app` | Tauri 2.x desktop application |
+| `tachyon-testing` | Shared test utilities, fixtures, fuzzing, benchmarks |

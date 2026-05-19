@@ -46,12 +46,14 @@ struct ConnectedClient {
 
 /// Broadcast event for the relay.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum RelayEvent {
     /// Binary message from a client to relay to others.
     Binary {
         room: String,
         sender: String,
         data: Vec<u8>,
+        #[allow(dead_code)]
         seq: u64,
     },
     /// Selection update from a client to relay to others.
@@ -59,6 +61,7 @@ enum RelayEvent {
         room: String,
         sender: String,
         data: Vec<u8>,
+        #[allow(dead_code)]
         seq: u64,
     },
     /// A client joined a room.
