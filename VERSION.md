@@ -1,7 +1,7 @@
 # Tachyon Project Version Tracking
 
 **Document ID:** TACHYON-VER-V1.7
-**Date:** 2026-05-14
+**Date:** 2026-05-19
 **Status:** PRODUCTION READY - All Roadmap Phases A-F Complete
 
 ---
@@ -14,7 +14,7 @@
 | **Type** | Knowledge Management System |
 | **Deployment Modes** | Desktop, Server, Static |
 | **Primary Languages** | Rust, Leptos |
-| **Current Version** | 11.0.0 |
+| **Current Version** | 12.0.0 |
 | **Project Status** | PRODUCTION READY |
 
 ---

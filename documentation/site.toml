@@ -1,6 +1,57 @@
 title = "Tachyon Documentation"
-description = "A fast, offline-first knowledge management platform built with Rust"
+description = "A deterministic, high-performance knowledge management system built with Rust"
 base_url = "https://wyattau.github.io/Tachyon"
 footer = "Built with Tachyon"
 theme = "auto"
 group_by_tag = true
+
+[menu]
+[[menu.main]]
+name = "Getting Started"
+url = "/getting-started.html"
+weight = 1
+
+[[menu.main]]
+name = "Editor Guide"
+url = "/editor-guide.html"
+weight = 2
+
+[[menu.main]]
+name = "Configuration"
+url = "/configuration.html"
+weight = 3
+
+[[menu.main]]
+name = "Deployment"
+url = "/deployment.html"
+weight = 4
+
+[[menu.main]]
+name = "Architecture"
+url = "/architecture.html"
+weight = 5
+
+[[menu.main]]
+name = "API Reference"
+url = "/api-reference.html"
+weight = 6
+
+[[menu.main]]
+name = "Search"
+url = "/search.html"
+weight = 7
+
+[[menu.main]]
+name = "Authentication"
+url = "/authentication.html"
+weight = 8
+
+[[menu.main]]
+name = "CLI Reference"
+url = "/cli-reference.html"
+weight = 9
+
+[[menu.main]]
+name = "Collaboration"
+url = "/collaboration.html"
+weight = 10

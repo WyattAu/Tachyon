@@ -24,7 +24,7 @@ Tachyon is a high-performance knowledge management platform built entirely in Ru
 ```bash
 git clone https://github.com/WyattAu/Tachyon.git
 cd Tachyon/tachyon
-cargo run --release
+cargo run --release -p tachyon-server
 ```
 
 The server starts at `http://localhost:8080`.

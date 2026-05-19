@@ -68,7 +68,7 @@ Single codebase supports multiple deployment modes:
 │  ┌─────────────────────────────────────────────────────────────────┐│
 │  │  ┌───────────┐ ┌───────────────────────────────────────────┐   ││
 │  │  │  Database │ │            File System                     │   ││
-│  │  │  (SQLite) │ │  ┌────────────────┐  ┌─────────────────┐  │   ││
+│  │  │(PostgreSQL)│ │  ┌────────────────┐  ┌─────────────────┐  │   ││
 │  │  │           │ │  │  Git Repository│  │  Search Index   │  │   ││
 │  │  └───────────┘ │  └────────────────┘  └─────────────────┘  │   ││
 │  │                └───────────────────────────────────────────┘   ││
@@ -170,6 +170,9 @@ Stateless design enables:
 | WebSocket latency | < 10ms |
 | Memory usage | < 100MB base |
 | Startup time | < 2s |
+
+> Targets derived from Criterion benchmarks in tachyon/crates/benchmarks/ and K6 load tests
+> in tachyon/load-tests/. Run `cargo bench -p tachyon-benchmarks` to reproduce locally.
 
 ## Further Reading
 

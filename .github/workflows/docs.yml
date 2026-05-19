@@ -36,7 +36,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
+            tachyon/target
           key: ${{ runner.os }}-cargo-docs-${{ hashFiles('tachyon/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-docs-

@@ -51,8 +51,9 @@ A deterministic, high-performance knowledge management system built with Rust.
 git clone https://github.com/WyattAu/Tachyon.git
 cd Tachyon/tachyon
 nix develop    # or: use flake
-just db-reset  # create database and run migrations
-just dev        # start backend + frontend dev servers
+just build     # build all crates
+just test      # run backend test suite
+just dev       # lint + test + build
 ```
 
 ### With Docker
@@ -77,10 +78,9 @@ cargo run --bin tachyon-server
 
 ```bash
 just build          # Build all crates
-just test           # Run backend test suite (1,395 tests)
+just test           # Run backend test suite
 just lint           # Check formatting + clippy
-just db-reset      # Reset database with migrations
-just dev           # Start development servers
+just dev            # Lint + test + build
 ```
 
 ## API Endpoints
@@ -153,10 +153,10 @@ just dev           # Start development servers
 | HTTP | Axum 0.8 |
 | Frontend | Leptos 0.8 (WASM) |
 | Database | PostgreSQL 16+ via sqlx |
-| Search | PostgreSQL tsvector + trigram |
+| Search | Tantivy (BM25) + PostgreSQL tsvector fallback |
 | Markdown | pulldown-cmark (SIMD) |
 | Math | KaTeX |
-| Syntax | syntect (multi-language) |
+| Syntax | tree-sitter (11 languages) + syntect |
 | Auth | JWT (jsonwebtoken) |
 | CSS | Tailwind CSS (CDN) |
 | Fonts | Inter, JetBrains Mono |
