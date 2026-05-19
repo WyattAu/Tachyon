@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   check:
@@ -161,7 +162,7 @@ jobs:
           key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('tachyon/Cargo.lock') }}
 
       - name: Install trunk
-        run: cargo install trunk
+        run: TMPDIR=/tmp cargo install trunk --version 0.21.14
 
       - name: Build frontend
         working-directory: tachyon/crates/frontend

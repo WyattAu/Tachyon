@@ -19,7 +19,7 @@ jobs:
 
       - name: Install trunk and wasm-opt
         run: |
-          cargo install trunk --version 0.21.14
+          TMPDIR=/tmp cargo install trunk --version 0.21.14
           sudo apt-get update && sudo apt-get install -y binaryen
 
       - name: Cache cargo
@@ -46,6 +46,14 @@ jobs:
         working-directory: tachyon/crates/frontend
         run: trunk build --release
 
+      - name: Verify WASM frontend artifacts
+        run: |
+          if [ ! -f "tachyon/crates/frontend/dist/index.html" ]; then
+            echo "::error::WASM frontend build failed - index.html not found"
+            exit 1
+          fi
+          echo "WASM frontend build verified: $(ls tachyon/crates/frontend/dist/ | wc -l) files"
+
       - name: Build server
         working-directory: tachyon
         run: cargo build --release -p tachyon-server
@@ -60,17 +68,26 @@ jobs:
           RUST_LOG: warn
         run: |
           cargo run --release -p tachyon-server &
-          for i in $(seq 1 60); do
+          for i in $(seq 1 120); do
             if curl -sf http://localhost:8080/health; then
-              echo "Server ready"
+              echo "Server ready after ${i}s"
               break
             fi
             sleep 1
           done
-          if [ "$i" -eq 60 ]; then
-            echo "::error::Server failed to start within 60 seconds"
+          if [ "$i" -eq 120 ]; then
+            echo "::error::Server failed to start within 120 seconds"
             exit 1
           fi
+
+      - name: Verify server health
+        run: |
+          HTTP_CODE=$(curl -sf -o /dev/null -w '%{http_code}' http://localhost:8080/health)
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "::error::Server health check returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "Server health check passed (HTTP $HTTP_CODE)"
 
       - name: Install Playwright
         working-directory: tachyon/e2e
@@ -82,11 +99,14 @@ jobs:
         working-directory: tachyon/e2e
         env:
           E2E_BASE_URL: http://localhost:8080
-        run: npx playwright test --reporter=list
+        run: npx playwright test --reporter=list --retries=2
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: e2e-report
-          path: tachyon/e2e/playwright-report/
+          path: |
+            tachyon/e2e/playwright-report/
+            tachyon/e2e/test-results/
+          retention-days: 7

@@ -33,6 +33,7 @@ COPY --from=frontend /app/crates/frontend/dist ./crates/frontend/dist
 RUN cargo build --release --bin tachyon-server
 
 # Stage 4: Runtime
+# Pin: update digest with `docker pull ubuntu:24.04 && docker inspect --format='{{index .RepoDigests 0}}' ubuntu:24.04`
 FROM ubuntu:24.04 AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates libssl3 \
