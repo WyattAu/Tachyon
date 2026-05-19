@@ -9,7 +9,7 @@
 //! - Accessible (semantic HTML, ARIA labels)
 
 use crate::manifest::{ColorTheme, SiteConfig};
-use crate::render::{CategoryContext, DocCard, IndexContext, PageContext};
+use crate::render::{CategoryContext, DocCard, IndexContext, PageContext, TocEntry};
 
 /// Generate CSS custom properties from a ColorTheme.
 ///
@@ -80,6 +80,10 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
 
     let theme_vars = color_theme_css(ctx.site.color_theme.as_ref());
 
+    let breadcrumbs_html = render_breadcrumbs(ctx.breadcrumbs);
+    let toc_html = render_toc_sidebar(ctx.toc);
+    let prev_next_html = render_prev_next(ctx.prev_link, ctx.next_link);
+
     format!(
         r#"<!DOCTYPE html>
 <html lang="{language}" dir="{dir}" class="{theme_class}">
@@ -97,6 +101,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
   <meta name="twitter:title" content="{title}">
   <meta name="twitter:description" content="{description}">
   {favicon}
+  {json_ld}
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {{
@@ -153,18 +158,25 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
   {nav}
-  <main class="doc-content flex-1">
-    <article>
-      <header class="mb-8">
-        {tags_html}
-        <h1>{title}</h1>
-        <div class="flex items-center gap-3 mt-2">
-          {author_html}
-          {updated_html}
-        </div>
-      </header>
-      {body}
-    </article>
+  <main class="flex-1">
+    {breadcrumbs_html}
+    <div class="flex">
+      <div class="doc-content flex-1">
+        <article>
+          <header class="mb-8">
+            {tags_html}
+            <h1>{title}</h1>
+            <div class="flex items-center gap-3 mt-2">
+              {author_html}
+              {updated_html}
+            </div>
+          </header>
+          {body}
+        </article>
+        {prev_next_html}
+      </div>
+      {toc_html}
+    </div>
   </main>
   <footer class="border-t border-gray-200 dark:border-gray-700 py-6 mt-12">
     <div class="max-w-4xl mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -194,6 +206,10 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         language = ctx.language,
         dir = dir,
         theme_vars = theme_vars,
+        breadcrumbs_html = breadcrumbs_html,
+        toc_html = toc_html,
+        prev_next_html = prev_next_html,
+        json_ld = &ctx.json_ld,
     )
 }
 
@@ -448,6 +464,110 @@ fn render_tags(tags: &[String]) -> String {
         )
     }).collect();
     format!("<div class=\"mb-4\">{}</div>", badges.join(""))
+}
+
+/// Render breadcrumb navigation from slug segments.
+fn render_breadcrumbs(breadcrumbs: &[(String, String)]) -> String {
+    if breadcrumbs.len() <= 1 {
+        return String::new();
+    }
+    let items: Vec<String> = breadcrumbs
+        .iter()
+        .map(|(label, href)| {
+            let display = capitalize_first(label);
+            format!(
+                r#"<a href="{}" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">{}</a>"#,
+                href, display
+            )
+        })
+        .collect();
+    let last = items.len() - 1;
+    let joined = items
+        .iter()
+        .take(last)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(r#"<span class="text-gray-400 dark:text-gray-600 mx-1">/</span>"#);
+    format!(
+        r#"<nav class="max-w-4xl mx-auto px-4 py-2" aria-label="Breadcrumb">{joined}</nav>"#
+    )
+}
+
+/// Render a TOC sidebar from extracted heading entries.
+fn render_toc_sidebar(toc: &[TocEntry]) -> String {
+    if toc.is_empty() {
+        return String::new();
+    }
+    let items: String = toc
+        .iter()
+        .map(|entry| {
+            let indent = match entry.level {
+                1 => "ml-0",
+                2 => "ml-2",
+                3 => "ml-4",
+                4 => "ml-6",
+                _ => "ml-4",
+            };
+            format!(
+                r##"<li class="{indent}"><a href="#{id}" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white block py-0.5">{title}</a></li>"##,
+                indent = indent,
+                id = entry.id,
+                title = escape_html(&entry.title),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n        ");
+    format!(
+        r#"<aside class="toc-sidebar hidden lg:block w-56 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 pl-6 ml-6 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
+  <nav class="toc" aria-label="Table of Contents">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">On this page</h2>
+    <ul class="space-y-1">
+        {items}
+    </ul>
+  </nav>
+</aside>"#
+    )
+}
+
+/// Render prev/next page navigation links.
+fn render_prev_next(
+    prev: Option<&(String, String)>,
+    next: Option<&(String, String)>,
+) -> String {
+    let prev_html = match prev {
+        Some((title, href)) => format!(
+            r#"<a href="{}" class="flex-1 text-left px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all">
+  <span class="text-xs text-gray-500 dark:text-gray-400 block">Previous</span>
+  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{}</span>
+</a>"#,
+            href, escape_html(title)
+        ),
+        None => String::new(),
+    };
+    let next_html = match next {
+        Some((title, href)) => format!(
+            r#"<a href="{}" class="flex-1 text-right px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all">
+  <span class="text-xs text-gray-500 dark:text-gray-400 block">Next</span>
+  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{}</span>
+</a>"#,
+            href, escape_html(title)
+        ),
+        None => String::new(),
+    };
+    if prev_html.is_empty() && next_html.is_empty() {
+        return String::new();
+    }
+    format!(
+        r#"<div class="flex gap-4 mt-8 mb-4">{prev_html}{next_html}</div>"#
+    )
+}
+
+fn capitalize_first(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => first.to_uppercase().chain(chars).collect(),
+    }
 }
 
 /// Escape HTML special characters.

@@ -71,81 +71,27 @@ enum Cli {
 }
 
 /// Parsed frontmatter from a markdown file.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, serde::Deserialize)]
 struct Frontmatter {
     title: Option<String>,
     description: Option<String>,
     author: Option<String>,
+    #[serde(default)]
     tags: Vec<String>,
+    #[serde(default)]
     order: i32,
+    #[serde(default)]
     language: String,
 }
 
-/// Simple YAML frontmatter parser.
-/// Handles basic string values, arrays, and integers.
-fn parse_frontmatter(content: &str) -> (Frontmatter, String) {
-    let mut fm = Frontmatter::default();
-    let body;
-
-    if let Some(stripped) = content.strip_prefix("---\n") {
-        // Find the closing ---
-        if let Some(end) = stripped.find("\n---") {
-            let yaml_block = &stripped[..end];
-            body = stripped[end + 4..].trim_start().to_string();
-
-            for line in yaml_block.lines() {
-                let line = line.trim();
-                if line.is_empty() || line.starts_with('#') {
-                    continue;
-                }
-                if let Some((key, value)) = line.split_once(':') {
-                    let key = key.trim();
-                    let value = value.trim();
-                    match key {
-                        "title" => fm.title = Some(clean_yaml_string(value)),
-                        "description" => fm.description = Some(clean_yaml_string(value)),
-                        "author" => fm.author = Some(clean_yaml_string(value)),
-                        "order" => fm.order = value.parse().unwrap_or(0),
-                        "language" => fm.language = clean_yaml_string(value),
-                        "tags" => fm.tags = parse_yaml_array(value),
-                        _ => {} // ignore unknown keys
-                    }
-                }
-            }
-        } else {
-            body = content.to_string();
-        }
-    } else {
-        body = content.to_string();
-    }
-
-    (fm, body)
-}
-
-fn clean_yaml_string(s: &str) -> String {
-    let s = s.trim();
-    // Remove surrounding quotes
-    if s.len() >= 2 {
-        let bytes = s.as_bytes();
-        if (bytes[0] == b'"' && bytes[s.len() - 1] == b'"')
-            || (bytes[0] == b'\'' && bytes[s.len() - 1] == b'\'')
-        {
-            return s[1..s.len() - 1].to_string();
-        }
-    }
-    s.to_string()
-}
-
-fn parse_yaml_array(s: &str) -> Vec<String> {
-    let s = s.trim();
-    if !s.starts_with('[') || !s.ends_with(']') {
-        return Vec::new();
-    }
-    s[1..s.len() - 1]
-        .split(',')
-        .map(|item| clean_yaml_string(item.trim()))
-        .filter(|s| !s.is_empty())
-        .collect()
+/// YAML frontmatter parser using serde_yaml.
+fn parse_frontmatter(content: &str) -> Result<(Frontmatter, String), Box<dyn std::error::Error>> {
+    let trimmed = content.trim_start_matches("---\n").trim_start_matches("---\r\n");
+    let end = trimmed.find("---").ok_or("Missing closing --- in frontmatter")?;
+    let yaml_block = &trimmed[..end];
+    let body = trimmed[end + 3..].trim_start().to_string();
+    let frontmatter: Frontmatter = serde_yaml::from_str(yaml_block)?;
+    Ok((frontmatter, body))
 }
 
 /// Derive title from first H1 heading in markdown content.
@@ -164,49 +110,13 @@ fn title_from_content(content: &str, filename: &str) -> String {
         .to_string()
 }
 
-/// Read a TOML config file (minimal parser for SiteConfig fields).
+/// Read a TOML config file using serde.
 fn read_config(path: &Path) -> Result<SiteConfig> {
     let content = fs::read_to_string(path)
         .with_context(|| format!("Failed to read config file: {}", path.display()))?;
-
-    let mut config = SiteConfig::default();
-
-    // Minimal TOML parsing — just handle key = "value" strings and arrays
-    for line in content.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') || line.starts_with('[') {
-            continue;
-        }
-        if let Some((key, value)) = line.split_once('=') {
-            let key = key.trim();
-            let value = value.trim();
-            match key {
-                "title" => config.title = clean_toml_string(value),
-                "description" => config.description = clean_toml_string(value),
-                "base_url" => config.base_url = clean_toml_string(value),
-                "footer" => config.footer = clean_toml_string(value),
-                "theme" => config.theme = clean_toml_string(value),
-                "logo_url" => config.logo_url = Some(clean_toml_string(value)),
-                "favicon_url" => config.favicon_url = Some(clean_toml_string(value)),
-                "language" => config.language = clean_toml_string(value),
-                "show_author" => config.show_author = value == "true",
-                "show_updated_at" => config.show_updated_at = value != "false",
-                "group_by_tag" => config.group_by_tag = value == "true",
-                _ => {}
-            }
-        }
-    }
-
+    let config: SiteConfig = toml::from_str(&content)
+        .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
     Ok(config)
-}
-
-fn clean_toml_string(s: &str) -> String {
-    let s = s.trim();
-    if s.len() >= 2 && s.starts_with('"') && s.ends_with('"') {
-        s[1..s.len() - 1].to_string()
-    } else {
-        s.to_string()
-    }
 }
 
 /// Collect and parse all markdown files from the input directory.
@@ -234,7 +144,8 @@ fn collect_documents(input_dir: &Path) -> Result<Vec<SsgDocument>> {
         let content = fs::read_to_string(path)
             .with_context(|| format!("Failed to read: {}", path.display()))?;
 
-        let (fm, body) = parse_frontmatter(&content);
+        let (fm, body) = parse_frontmatter(&content)
+            .map_err(|e| anyhow::anyhow!("Failed to parse frontmatter: {} — {}", path.display(), e))?;
 
         // Derive slug from relative path
         let rel = path.strip_prefix(input_dir).unwrap_or(path);

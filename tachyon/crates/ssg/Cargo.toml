@@ -34,3 +34,10 @@ walkdir = "2"
 
 # ZIP archive support
 zip = "2"
+
+# Parser libraries
+serde_yaml = "0.9"
+toml = "0.8"
+
+# Regex for TOC extraction
+regex = "1"

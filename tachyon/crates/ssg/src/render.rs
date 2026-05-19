@@ -1,6 +1,29 @@
 use crate::error::SsgResult;
 use crate::manifest::{SiteConfig, SsgDocument};
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TocEntry {
+    pub level: u8,
+    pub id: String,
+    pub title: String,
+}
+
+pub fn extract_toc(html: &str) -> Vec<TocEntry> {
+    let re = regex::Regex::new(r#"<h([1-6])[^>]*id="([^"]*)"[^>]*>(.*?)</h[1-6]>"#).unwrap();
+    re.captures_iter(html)
+        .map(|cap| TocEntry {
+            level: cap[1].parse().unwrap_or(2),
+            id: cap[2].to_string(),
+            title: strip_html_tags(&cap[3]),
+        })
+        .collect()
+}
+
+fn strip_html_tags(html: &str) -> String {
+    let re = regex::Regex::new(r"<[^>]+>").unwrap();
+    re.replace_all(html, "").to_string()
+}
+
 pub(crate) struct PageContext<'a> {
     pub(crate) site: &'a SiteConfig,
     pub(crate) title: &'a str,
@@ -14,6 +37,14 @@ pub(crate) struct PageContext<'a> {
     pub(crate) current_slug: Option<&'a str>,
     pub(crate) language: &'a str,
     pub(crate) language_switcher: &'a str,
+    pub(crate) toc: &'a [TocEntry],
+    pub(crate) breadcrumbs: &'a [(String, String)],
+    pub(crate) prev_link: Option<&'a (String, String)>,
+    pub(crate) next_link: Option<&'a (String, String)>,
+    pub(crate) base_url: &'a str,
+    pub(crate) slug: &'a str,
+    pub(crate) date: &'a str,
+    pub(crate) json_ld: String,
 }
 
 pub(crate) struct IndexContext<'a> {
@@ -43,12 +74,13 @@ impl crate::build::SiteGenerator {
     pub(crate) fn render_document_page(
         &self,
         doc: &SsgDocument,
-        _all_docs: &[&SsgDocument],
+        all_docs: &[&SsgDocument],
         lang: &str,
         lang_prefix: Option<&str>,
         all_languages: &[String],
     ) -> SsgResult<String> {
         let body_html = render_markdown(&doc.content);
+        let toc = extract_toc(&body_html);
 
         let description = doc
             .description
@@ -76,6 +108,39 @@ impl crate::build::SiteGenerator {
             String::new()
         };
 
+        let breadcrumbs: Vec<(String, String)> = doc.slug.split('/').enumerate().map(|(i, part)| {
+            let href = if i == 0 { format!("{}index.html", root_prefix) } else { format!("{}{}.html", root_prefix, part) };
+            (part.to_string(), href)
+        }).collect();
+
+        let current_idx = all_docs.iter().position(|d| d.slug == doc.slug);
+        let prev_link = current_idx.and_then(|idx| {
+            if idx > 0 {
+                let prev = all_docs[idx - 1];
+                Some((prev.title.clone(), format!("{}.html", prev.slug)))
+            } else {
+                None
+            }
+        });
+        let next_link = current_idx.and_then(|idx| {
+            if idx + 1 < all_docs.len() {
+                let next = all_docs[idx + 1];
+                Some((next.title.clone(), format!("{}.html", next.slug)))
+            } else {
+                None
+            }
+        });
+
+        let base = self.config.base_url.trim_end_matches('/');
+        let json_ld = generate_json_ld(
+            &doc.title,
+            &description,
+            &doc.created_at.to_rfc3339(),
+            &doc.updated_at.to_rfc3339(),
+            doc.author.as_deref(),
+            &page_url,
+        );
+
         let ctx = PageContext {
             site: &self.config,
             title: &doc.title,
@@ -89,6 +154,14 @@ impl crate::build::SiteGenerator {
             current_slug: Some(&doc.slug),
             language: lang,
             language_switcher: &language_switcher,
+            toc: &toc,
+            breadcrumbs: &breadcrumbs,
+            prev_link: prev_link.as_ref(),
+            next_link: next_link.as_ref(),
+            base_url: base,
+            slug: &doc.slug,
+            date: &doc.created_at.to_rfc3339(),
+            json_ld,
         };
 
         Ok(crate::templates::render_doc_page(&ctx))
@@ -210,15 +283,53 @@ impl crate::build::SiteGenerator {
     }
 }
 
+pub(crate) fn generate_json_ld(
+    title: &str,
+    description: &str,
+    date_published: &str,
+    date_modified: &str,
+    author: Option<&str>,
+    url: &str,
+) -> String {
+    let json = serde_json::json!({
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": title,
+        "description": description,
+        "datePublished": date_published,
+        "dateModified": date_modified,
+        "author": author.unwrap_or("Unknown"),
+        "url": url,
+    });
+    format!(
+        r#"<script type="application/ld+json">{}</script>"#,
+        json
+    )
+}
+
+/// Sanitize content for safe embedding in format! output.
+/// Replaces `{` and `}` to prevent format! macro interpretation.
+fn html_escape_content(s: &str) -> String {
+    s.replace('{', "&#123;").replace('}', "&#125;")
+}
+
 pub(crate) fn render_markdown(content: &str) -> String {
     use tachyon_renderer::{RenderConfig, Renderer};
 
     let config = RenderConfig::default();
-    match Renderer::new(config).render(content, None) {
+    let renderer = Renderer::new(config);
+
+    let result = match renderer.render(content, None) {
         Ok(result) => result.content,
         Err(_) => {
-            format!("<div>{}</div>", content)
+            format!("<div>{}</div>", html_escape_content(content))
         }
+    };
+
+    if let Ok(latex) = renderer.latex().render_from_text(&result) {
+        latex
+    } else {
+        result
     }
 }
 
