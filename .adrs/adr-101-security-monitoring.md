@@ -249,9 +249,9 @@ snyk:
 ## Related Decisions
 
 - [ADR-097](adr-097-monitoring-strategy.md) - Continuous Monitoring Strategy
-- [`.specs/11_continuous_monitoring/security_monitoring.md`](../.specs/11_continuous_monitoring/security_monitoring.md) - Security Monitoring Specification
-- [`.specs/03_security/threat_model.md`](../.specs/03_security/threat_model.md) - Threat Model
-- [`.specs/03_security/security_test_plan.md`](../.specs/03_security/security_test_plan.md) - Security Test Plan
+- [`.adrs/ - Security Monitoring Specification
+- [`.adrs/ - Threat Model
+- [`.adrs/ - Security Test Plan
 
 ## References
 

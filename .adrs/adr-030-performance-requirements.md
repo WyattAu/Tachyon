@@ -293,11 +293,11 @@ TOTAL                 2.11ms  32.1ms    110.5ms   150ms
 
 ## Related Documents
 
-- [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) - Detailed requirements specification
-- [`benchmark_suite.md`](.specs/04_performance/benchmark_suite.md) - Benchmark design
-- [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) - Optimization plan
-- [`blue_paper.md`](.specs/02_architecture/blue_paper.md) - System architecture
-- [`resource_limits.md`](.specs/03_5_resource_management/resource_limits.md) - Resource budgets
+- [`performance_requirements.md`](.adrs/ - Detailed requirements specification
+- [`benchmark_suite.md`](.adrs/ - Benchmark design
+- [`optimization_roadmap.md`](.adrs/ - Optimization plan
+- [`blue_paper.md`](.adrs/ - System architecture
+- [`resource_limits.md`](.adrs/ - Resource budgets
 
 ---
 

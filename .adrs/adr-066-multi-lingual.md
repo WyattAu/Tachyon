@@ -603,7 +603,7 @@ Este comando crea un nuevo documento con el título especificado.
 
 ## References
 
-- [White Paper](../.specs/05_branding/white_paper.md)
+- [White Paper](../.adrs/
 - [ADR-062: Brand Identity](./adr-062-brand-identity.md)
 - [ADR-064: Documentation Strategy](./adr-064-documentation-strategy.md)
 - [ADR-067: Consistency](./adr-067-consistency.md)

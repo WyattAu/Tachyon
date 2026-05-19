@@ -127,41 +127,41 @@
 ### 5.1. Pattern References
 
 All patterns reference their source documents:
-- P-RUST-001: .specs/02_architecture/blue_paper.md:194-196
-- P-RUST-002: .specs/02_architecture/blue_paper.md:135-142
+- P-RUST-001: .adrs/
+- P-RUST-002: .adrs/
 - P-RUST-003: tachyon/Cargo.toml:15
-- P-RUST-004: .specs/02_architecture/blue_paper.md:124-133
-- P-ARCH-001: .specs/02_architecture/blue_paper.md:396-426
-- P-ARCH-002: .specs/02_architecture/blue_paper.md:134-142
-- P-ARCH-003: .specs/02_architecture/blue_paper.md:472-498
-- P-ARCH-004: .specs/04_performance/performance_requirements.md:123-134
-- P-CICD-001: .specs/07_ci_cd/pipeline_config.toml:19-23
-- P-CICD-002: .specs/07_ci_cd/quality_gates.md
-- P-CICD-003: .specs/07_ci_cd/deployment_strategy.md
-- P-CICD-004: .specs/07_ci_cd/deployment_strategy.md
-- P-SEC-001: .specs/08_5_knowledge_base/pattern_library.md
+- P-RUST-004: .adrs/
+- P-ARCH-001: .adrs/
+- P-ARCH-002: .adrs/
+- P-ARCH-003: .adrs/
+- P-ARCH-004: .adrs/
+- P-CICD-001: .adrs/
+- P-CICD-002: .adrs/
+- P-CICD-003: .adrs/
+- P-CICD-004: .adrs/
+- P-SEC-001: .adrs/
 
 ### 5.2. Threat References
 
 All threats reference their source documents:
-- CM-GIT-002: .specs/03_security/threat_model.md:82-95
-- RE-JIT-001: .specs/03_security/threat_model.md:111-124
-- RE-CACHE-001: .specs/03_security/threat_model.md:125-138
-- UI-WEB-001: .specs/03_security/threat_model.md:208-223
-- UI-WEB-003: .specs/03_security/threat_model.md:208-223
-- UI-WEB-006: .specs/03_security/threat_model.md:208-223
-- UI-EDT-001: .specs/03_security/threat_model.md:224-236
-- AC-RBAC-001: .specs/03_security/threat_model.md:237-252
-- AC-AUTH-001: .specs/03_security/threat_model.md:253-266
-- AC-AUTH-004: .specs/03_security/threat_model.md:253-266
-- AC-SESS-001: .specs/03_security/threat_model.md:267-279
-- IF-WS-001: .specs/03_security/threat_model.md:308-322
-- IF-WS-002: .specs/03_security/threat_model.md:308-322
-- IF-WS-003: .specs/03_security/threat_model.md:308-322
-- IF-DB-002: .specs/03_security/threat_model.md:323-337
-- IF-DB-003: .specs/03_security/threat_model.md:323-337
-- SC-XSS-001: .specs/03_security/threat_model.md:366-378
-- SC-SUP-001: .specs/03_security/threat_model.md:340-352
+- CM-GIT-002: .adrs/
+- RE-JIT-001: .adrs/
+- RE-CACHE-001: .adrs/
+- UI-WEB-001: .adrs/
+- UI-WEB-003: .adrs/
+- UI-WEB-006: .adrs/
+- UI-EDT-001: .adrs/
+- AC-RBAC-001: .adrs/
+- AC-AUTH-001: .adrs/
+- AC-AUTH-004: .adrs/
+- AC-SESS-001: .adrs/
+- IF-WS-001: .adrs/
+- IF-WS-002: .adrs/
+- IF-WS-003: .adrs/
+- IF-DB-002: .adrs/
+- IF-DB-003: .adrs/
+- SC-XSS-001: .adrs/
+- SC-SUP-001: .adrs/
 
 ### 5.3. Standard References
 

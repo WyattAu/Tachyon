@@ -42,11 +42,11 @@ The scope of this document encompasses:
 ### 1.2. Document Dependencies
 
 This document depends on the following specifications:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-DES-API-V1.0](../../.specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-REQ-DOC-V1.0](../../.specs/04_future_state/reqs/documentation_requirements.md) - Documentation Requirements
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-DES-API-V1.0](../../.adrs/ - API Interfaces Design
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-REQ-DOC-V1.0](../../.adrs/ - Documentation Requirements
 
 ### 1.3. Target Audience
 
@@ -148,7 +148,7 @@ Breaking changes are indicated with the `[WARN]` symbol. Non-breaking changes ar
 
 **1.7.4. Cross-References**
 
-Cross-references to other documents use the format `[Document ID](path)`. For example, `[TACHYON-DES-API-V1.0](../../.specs/04_future_state/design/api_interfaces.md)`.
+Cross-references to other documents use the format `[Document ID](path)`. For example, `[TACHYON-DES-API-V1.0](../../.adrs/
 
 **1.7.5. Requirement Tracing**
 
@@ -1205,7 +1205,7 @@ Deprecation is indicated with the `[WARN] DEPRECATED` label throughout API docum
 
 **5.1.2. Deprecation Requirements**
 
-Per requirement [REQ-DOC-063](../../.specs/04_future_state/reqs/documentation_requirements.md), the documentation shall clearly identify and document breaking changes. Per requirement [REQ-DOC-064](../../.specs/04_future_state/reqs/documentation_requirements.md), the documentation shall include migration guides for major version changes.
+Per requirement [REQ-DOC-063](../../.adrs/ the documentation shall clearly identify and document breaking changes. Per requirement [REQ-DOC-064](../../.adrs/ the documentation shall include migration guides for major version changes.
 
 ### 5.2. Deprecation Timeline
 
@@ -4398,25 +4398,25 @@ Implement measures to prevent future rollbacks:
 ### 12.1. Internal References
 
 **Standards and Guidelines:**
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-TST-V1.0](../../.adrs/ - Test Plan
 
 **Architecture Decision Records:**
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-002-V1.0](../../.specs/02_adrs/002_tauri_for_desktop_application.md) - Tauri for Desktop Application
-- [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [TACHYON-ADR-009-V1.0](../../.specs/02_adrs/009_ipc_communication_architecture.md) - IPC Communication Architecture
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-002-V1.0](../../.adrs/adr-002-bm25-search-parameters.md) - Tauri for Desktop Application
+- [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md) - Axum for HTTP/2 Server
+- [TACHYON-ADR-009-V1.0](../../.adrs/adr-009-race-condition-mitigation.md) - IPC Communication Architecture
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 **Design Documents:**
-- [TACHYON-DES-API-V1.0](../../.specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
-- [TACHYON-DES-IPC-V1.0](../../.specs/04_future_state/design/ipc_protocol.md) - IPC Protocol Design
-- [TACHYON-DES-SRV-V1.0](../../.specs/04_future_state/design/server_design.md) - Server Design
+- [TACHYON-DES-API-V1.0](../../.adrs/ - API Interfaces Design
+- [TACHYON-DES-IPC-V1.0](../../.adrs/ - IPC Protocol Design
+- [TACHYON-DES-SRV-V1.0](../../.adrs/ - Server Design
 
 **Requirements:**
-- [TACHYON-REQ-DOC-V1.0](../../.specs/04_future_state/reqs/documentation_requirements.md) - Documentation Requirements
-- [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md) - Server Requirements
-- [TACHYON-REQ-IPC-V1.0](../../.specs/04_future_state/reqs/ipc_requirements.md) - IPC Requirements
+- [TACHYON-REQ-DOC-V1.0](../../.adrs/ - Documentation Requirements
+- [TACHYON-REQ-SRV-V1.0](../../.adrs/ - Server Requirements
+- [TACHYON-REQ-IPC-V1.0](../../.adrs/ - IPC Requirements
 
 **API Documentation:**
 - [TACHYON-API-001-V1.0](rest_api_specification.md) - REST API Specification

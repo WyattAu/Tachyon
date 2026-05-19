@@ -52,10 +52,10 @@ The Tachyon testing philosophy follows Test-Driven Development (TDD) principles,
 ### 1.4. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TST-V1.0](../.specs/04_future_state/test_plan.md) - Test Plan
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-TST-V1.0](../.adrs/ - Test Plan
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 ---
 
@@ -2501,11 +2501,11 @@ bun test --watch
 
 This document references the following internal Tachyon project documents:
 
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TST-V1.0](../.specs/04_future_state/test_plan.md) - Test Plan
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TSK-V1.0](../.specs/tasks.md) - Execution Tasks and Work Breakdown Structure
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-TST-V1.0](../.adrs/ - Test Plan
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TSK-V1.0](../.adrs/ - Execution Tasks and Work Breakdown Structure
 
 ### 9.2. External References
 

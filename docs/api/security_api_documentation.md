@@ -97,11 +97,11 @@ The Security API provides the following core functionalities:
 
 This Security API documentation is part of the Tachyon documentation suite and relates to:
 
-- [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-V1.0](.specs/06_requirements/requirements.md) - Requirements Specification
-- [TACHYON-DSN-V1.0](.specs/07_designs/designs.md) - Design Documents
-- [TACHYON-ADR-V1.0](.specs/05_architectural_decisions/) - Architectural Decision Records
-- [TACHYON-TST-V1.0](.specs/08_test_plan/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-V1.0](.adrs/ - Requirements Specification
+- [TACHYON-DSN-V1.0](.adrs/ - Design Documents
+- [TACHYON-ADR-V1.0](.adrs/ - Architectural Decision Records
+- [TACHYON-TST-V1.0](.adrs/ - Test Plan
 
 ### 1.6. Compliance and Standards
 
@@ -3286,17 +3286,17 @@ The Security Events API is configured through the following parameters:
 
 ### 10.3. Related ADRs
 
-- **[`.specs/02_adrs/ADR-001-rust-adoption.md`](.specs/02_adrs/ADR-001-rust-adoption.md)** - Rust Adoption ADR
-- **[`.specs/02_adrs/ADR-010-security-architecture.md`](.specs/02_adrs/ADR-010-security-architecture.md)** - Security Architecture ADR
-- **[`.specs/02_adrs/ADR-018-token-management.md`](.specs/02_adrs/ADR-018-token-management.md)** - Token Management Strategy ADR
-- **[`.specs/02_adrs/ADR-019-session-management.md`](.specs/02_adrs/ADR-019-session-management.md)** - Session Management Design ADR
-- **[`.specs/02_adrs/ADR-045-encryption-strategy.md`](.specs/02_adrs/ADR-045-encryption-strategy.md)** - Encryption Strategy ADR
-- **[`.specs/02_adrs/ADR-046-encryption-algorithm-selection.md`](.specs/02_adrs/ADR-046-encryption-algorithm-selection.md)** - Encryption Algorithm Selection ADR
-- **[`.specs/02_adrs/ADR-047-audit-logging-strategy.md`](.specs/02_adrs/ADR-047-audit-logging-strategy.md)** - Audit Logging Strategy ADR
-- **[`.specs/02_adrs/ADR-048-audit-storage-strategy.md`](.specs/02_adrs/ADR-048-audit-storage-strategy.md)** - Audit Storage Strategy ADR
-- **[`.specs/02_adrs/ADR-049-rate-limiting-strategy.md`](.specs/02_adrs/ADR-049-rate-limiting-strategy.md)** - Rate Limiting Strategy ADR
-- **[`.specs/02_adrs/ADR-050-security-events-strategy.md`](.specs/02_adrs/ADR-050-security-events-strategy.md)** - Security Events Strategy ADR
-- **[`.specs/02_adrs/ADR-051-security-incident-response.md`](.specs/02_adrs/ADR-051-security-incident-response.md)** - Security Incident Response Strategy ADR
+- **[`.adrs/adr-001-three-tier-jit-compilation.md](.adrs/adr-001-three-tier-jit-compilation.md)** - Rust Adoption ADR
+- **[`.adrs/adr-010-synchronization-primitives.md](.adrs/adr-010-synchronization-primitives.md)** - Security Architecture ADR
+- **[`.adrs/adr-018-iso-27001-compliance.md](.adrs/adr-018-iso-27001-compliance.md)** - Token Management Strategy ADR
+- **[`.adrs/adr-019-iec-62443-industrial-security.md](.adrs/adr-019-iec-62443-industrial-security.md)** - Session Management Design ADR
+- **[`.adrs/adr-045-formal-verification.md](.adrs/adr-045-formal-verification.md)** - Encryption Strategy ADR
+- **[`.adrs/adr-046-hardware-testing.md](.adrs/adr-046-hardware-testing.md)** - Encryption Algorithm Selection ADR
+- **[`.adrs/adr-047-baseline-establishment.md](.adrs/adr-047-baseline-establishment.md)** - Audit Logging Strategy ADR
+- **[`.adrs/adr-048-regression-detection.md](.adrs/adr-048-regression-detection.md)** - Audit Storage Strategy ADR
+- **[`.adrs/adr-049-trend-analysis.md](.adrs/adr-049-trend-analysis.md)** - Rate Limiting Strategy ADR
+- **[`.adrs/adr-050-alerting-thresholds.md](.adrs/adr-050-alerting-thresholds.md)** - Security Events Strategy ADR
+- **[`.adrs/adr-051-pipeline-architecture.md](.adrs/adr-051-pipeline-architecture.md)** - Security Incident Response Strategy ADR
 
 ### 10.4. Related Requirements
 
@@ -3329,11 +3329,11 @@ The Security Events API is configured through the following parameters:
 
 ### 10.6. Related Test Plans
 
-- **[`.specs/04_future_state/test_plan.md`](.specs/04_future_state/test_plan.md)** - Test Plan
+- **[`.adrs/ - Test Plan
 
 ### 10.7. Related Coding Standards
 
-- **[`.specs/01_standards/coding_standards.md`](.specs/01_standards/coding_standards.md)** - Coding Standards
+- **[`.adrs/ - Coding Standards
 
 ### 10.8. Document Change History
 

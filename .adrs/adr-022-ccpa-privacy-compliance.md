@@ -200,9 +200,9 @@ CCPA defines rights for California residents regarding their personal informatio
 
 ## 8. References
 
-- Tachyon Requirements: [`.specs/00_requirements/requirements.md`](.specs/00_requirements/requirements.md)
-- Tachyon Architecture: [`.specs/02_architecture/blue_paper.md`](.specs/02_architecture/blue_paper.md)
-- Threat Model: [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md)
+- Tachyon Requirements: [`.adrs/
+- Tachyon Architecture: [`.adrs/
+- Threat Model: [`.adrs/
 - CCPA Text: https://leginfo.legislature.ca.gov/faces/billTextClient.xhtml?bill_id=2019-2020ABCCPA
 - GDPR ADR: [`.adrs/adr-021-gdpr-data-protection.md`](.adrs/adr-021-gdpr-data-protection.md)
 - NIST SP 800-53 ADR: [`.adrs/adr-017-nist-800-53-controls.md`](.adrs/adr-017-nist-800-53-controls.md)

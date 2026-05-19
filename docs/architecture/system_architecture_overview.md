@@ -41,14 +41,14 @@
 
 This document depends on the following documents:
 
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-SYS-V1.0](../.specs/04_future_state/reqs/system_overview.md) - System Overview Requirements
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-002-V1.0](../.specs/02_adrs/002_tauri_for_desktop_application.md) - Tauri for Desktop Application
-- [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [TACHYON-ADR-004-V1.0](../.specs/02_adrs/004_leptos_for_web_frontend.md) - Leptos for Web Frontend
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-SYS-V1.0](../.adrs/ - System Overview Requirements
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-002-V1.0](../.adrs/adr-002-bm25-search-parameters.md) - Tauri for Desktop Application
+- [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md) - Axum for HTTP/2 Server
+- [TACHYON-ADR-004-V1.0](../.adrs/adr-004-debounce-window.md) - Leptos for Web Frontend
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TMA-V1.0](../.adrs/ - Threat Model Analysis
 
 ### Compliance Standards
 
@@ -824,41 +824,41 @@ The Tachyon system provides comprehensive cross-platform support across the foll
 
 | Requirement ID | Title | Document |
 |----------------|--------|----------|
-| **REQ-SYS-001** | Primary Purpose | [TACHYON-REQ-SYS-V1.0](../.specs/04_future_state/reqs/system_overview.md) |
-| **REQ-SYS-002** | Secondary Purpose | [TACHYON-REQ-SYS-V1.0](../.specs/04_future_state/reqs/system_overview.md) |
-| **REQ-SYS-003** | Hybrid Operation | [TACHYON-REQ-SYS-V1.0](../.specs/04_future_state/reqs/system_overview.md) |
-| **REQ-SYS-004** | JIT Rendering | [TACHYON-REQ-SYS-V1.0](../.specs/04_future_state/reqs/system_overview.md) |
-| **REQ-SYS-091** | Local-First Design | [TACHYON-REQ-SYS-V1.0](../.specs/04_future_state/reqs/system_overview.md) |
-| **REQ-SYS-092** | Microsecond Latency | [TACHYON-REQ-SYS-V1.0](../.specs/04_future_state/reqs/system_overview.md) |
-| **REQ-SYS-093** | Type Safety | [TACHYON-REQ-SYS-V1.0](../.specs/04_future_state/reqs/system_overview.md) |
-| **REQ-SYS-094** | Asynchronous Processing | [TACHYON-REQ-SYS-V1.0](../.specs/04_future_state/reqs/system_overview.md) |
-| **REQ-SYS-095** | Modular Design | [TACHYON-REQ-SYS-V1.0](../.specs/04_future_state/reqs/system_overview.md) |
+| **REQ-SYS-001** | Primary Purpose | [TACHYON-REQ-SYS-V1.0](../.adrs/ |
+| **REQ-SYS-002** | Secondary Purpose | [TACHYON-REQ-SYS-V1.0](../.adrs/ |
+| **REQ-SYS-003** | Hybrid Operation | [TACHYON-REQ-SYS-V1.0](../.adrs/ |
+| **REQ-SYS-004** | JIT Rendering | [TACHYON-REQ-SYS-V1.0](../.adrs/ |
+| **REQ-SYS-091** | Local-First Design | [TACHYON-REQ-SYS-V1.0](../.adrs/ |
+| **REQ-SYS-092** | Microsecond Latency | [TACHYON-REQ-SYS-V1.0](../.adrs/ |
+| **REQ-SYS-093** | Type Safety | [TACHYON-REQ-SYS-V1.0](../.adrs/ |
+| **REQ-SYS-094** | Asynchronous Processing | [TACHYON-REQ-SYS-V1.0](../.adrs/ |
+| **REQ-SYS-095** | Modular Design | [TACHYON-REQ-SYS-V1.0](../.adrs/ |
 
 ### Related Design Elements
 
 | Design Element ID | Title | Document |
 |------------------|--------|----------|
-| **DES-DESK-001** | DesktopApplication | [TACHYON-DES-DESK-V1.0](../.specs/04_future_state/design/desktop_design.md) |
-| **DES-SRV-001** | ServerApplication | [TACHYON-DES-SRV-V1.0](../.specs/04_future_state/design/server_design.md) |
-| **DES-WEB-001** | ApplicationState | [TACHYON-DES-WEB-V1.0](../.specs/04_future_state/design/web_design.md) |
-| **DES-IPC-001** | IpcCommandHandlers | [TACHYON-DES-IPC-V1.0](../.specs/04_future_state/design/ipc_protocol.md) |
-| **DES-COR-001** | CoreEngine | [TACHYON-DES-COR-V1.0](../.specs/04_future_state/design/data_models.md) |
-| **DES-SEC-001** | AuthenticationProvider | [TACHYON-DES-SEC-V1.0](../.specs/04_future_state/design/security_design.md) |
+| **DES-DESK-001** | DesktopApplication | [TACHYON-DES-DESK-V1.0](../.adrs/ |
+| **DES-SRV-001** | ServerApplication | [TACHYON-DES-SRV-V1.0](../.adrs/ |
+| **DES-WEB-001** | ApplicationState | [TACHYON-DES-WEB-V1.0](../.adrs/ |
+| **DES-IPC-001** | IpcCommandHandlers | [TACHYON-DES-IPC-V1.0](../.adrs/ |
+| **DES-COR-001** | CoreEngine | [TACHYON-DES-COR-V1.0](../.adrs/ |
+| **DES-SEC-001** | AuthenticationProvider | [TACHYON-DES-SEC-V1.0](../.adrs/ |
 
 ### Related ADRs
 
 | ADR ID | Title | Document |
 |---------|--------|----------|
-| **ADR-001** | Rust as Primary Language | [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) |
-| **ADR-002** | Tauri for Desktop Application | [TACHYON-ADR-002-V1.0](../.specs/02_adrs/002_tauri_for_desktop_application.md) |
-| **ADR-003** | Axum for HTTP/2 Server | [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md) |
-| **ADR-004** | Leptos for Web Frontend | [TACHYON-ADR-004-V1.0](../.specs/02_adrs/004_leptos_for_web_frontend.md) |
-| **ADR-005** | Bun for JavaScript Runtime | [TACHYON-ADR-005-V1.0](../.specs/02_adrs/005_bun_for_javascript_runtime.md) |
-| **ADR-006** | Nix Flakes for Build System | [TACHYON-ADR-006-V1.0](../.specs/02_adrs/006_nix_flakes_for_build_system.md) |
-| **ADR-007** | Tokio for Async Runtime | [TACHYON-ADR-007-V1.0](../.specs/02_adrs/007_tokio_for_async_runtime.md) |
-| **ADR-008** | Workspace Structure for Rust Crates | [TACHYON-ADR-008-V1.0](../.specs/02_adrs/008_workspace_structure_for_rust_crates.md) |
-| **ADR-009** | IPC Communication Architecture | [TACHYON-ADR-009-V1.0](../.specs/02_adrs/009_ipc_communication_architecture.md) |
-| **ADR-010** | Security Architecture | [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) |
+| **ADR-001** | Rust as Primary Language | [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) |
+| **ADR-002** | Tauri for Desktop Application | [TACHYON-ADR-002-V1.0](../.adrs/adr-002-bm25-search-parameters.md) |
+| **ADR-003** | Axum for HTTP/2 Server | [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md) |
+| **ADR-004** | Leptos for Web Frontend | [TACHYON-ADR-004-V1.0](../.adrs/adr-004-debounce-window.md) |
+| **ADR-005** | Bun for JavaScript Runtime | [TACHYON-ADR-005-V1.0](../.adrs/adr-005-last-write-wins-conflict-resolution.md) |
+| **ADR-006** | Nix Flakes for Build System | [TACHYON-ADR-006-V1.0](../.adrs/adr-006-direct-libgit2-integration.md) |
+| **ADR-007** | Tokio for Async Runtime | [TACHYON-ADR-007-V1.0](../.adrs/adr-007-thread-safety-strategy.md) |
+| **ADR-008** | Workspace Structure for Rust Crates | [TACHYON-ADR-008-V1.0](../.adrs/adr-008-deadlock-prevention.md) |
+| **ADR-009** | IPC Communication Architecture | [TACHYON-ADR-009-V1.0](../.adrs/adr-009-race-condition-mitigation.md) |
+| **ADR-010** | Security Architecture | [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) |
 
 ### Standards References
 

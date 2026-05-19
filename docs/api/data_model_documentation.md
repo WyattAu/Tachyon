@@ -6,10 +6,10 @@
 **Classification:** API Documentation
 **Compliance Level:** ISO/IEC 26514:2021, IEEE 1058-2009
 **Dependencies:**
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-DES-DM-V1.0](../../.specs/04_future_state/design/data_models.md) - Data Models Design
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-DES-DM-V1.0](../../.adrs/ - Data Models Design
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 ---
 
@@ -52,7 +52,7 @@ This document covers the complete data model taxonomy for the Tachyon system:
 
 ### 1.3. Design Principles
 
-The data models adhere to the following architectural principles derived from [ADR-001](../../.specs/02_adrs/001_rust_as_primary_language.md) and [ADR-010](../../.specs/02_adrs/010_security_architecture.md):
+The data models adhere to the following architectural principles derived from [ADR-001](../../.adrs/adr-001-three-tier-jit-compilation.md) and [ADR-010](../../.adrs/adr-010-synchronization-primitives.md):
 
 #### 1.3.1. Type Safety
 
@@ -4315,26 +4315,26 @@ pub async fn safe_migration(db: &Arc<dyn Database>, migration: Arc<dyn Migration
 ### 13.1. Internal References
 
 **Design Documents:**
-- [TACHYON-DES-DM-V1.0](../../.specs/04_future_state/design/data_models.md) - Data Models Design
-- [TACHYON-DES-API-V1.0](../../.specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
-- [TACHYON-DES-SEC-V1.0](../../.specs/04_future_state/design/security_design.md) - Security Design
+- [TACHYON-DES-DM-V1.0](../../.adrs/ - Data Models Design
+- [TACHYON-DES-API-V1.0](../../.adrs/ - API Interfaces Design
+- [TACHYON-DES-SEC-V1.0](../../.adrs/ - Security Design
 
 **Architecture Decision Records:**
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-002-V1.0](../../.specs/02_adrs/002_tauri_for_desktop_application.md) - Tauri for Desktop Application
-- [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-002-V1.0](../../.adrs/adr-002-bm25-search-parameters.md) - Tauri for Desktop Application
+- [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md) - Axum for HTTP/2 Server
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 **Requirements Documents:**
-- [TACHYON-REQ-SYS-V1.0](../../.specs/04_future_state/reqs/system_overview.md) - System Overview Requirements
-- [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md) - Server Requirements
-- [TACHYON-REQ-DESK-V1.0](../../.specs/04_future_state/reqs/desktop_requirements.md) - Desktop Requirements
+- [TACHYON-REQ-SYS-V1.0](../../.adrs/ - System Overview Requirements
+- [TACHYON-REQ-SRV-V1.0](../../.adrs/ - Server Requirements
+- [TACHYON-REQ-DESK-V1.0](../../.adrs/ - Desktop Requirements
 
 **Standards Documents:**
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
 
 **Test Plan:**
-- [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-TST-V1.0](../../.adrs/ - Test Plan
 
 ### 13.2. External References
 

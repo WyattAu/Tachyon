@@ -104,11 +104,11 @@ The following metrics are tracked and reported:
 
 This report aggregates data from:
 
-- [`.specs/tasks.md`](../.specs/tasks.md) - Task definitions and work breakdown structure
-- [`.specs/04_future_state/reqs/000-index.md`](../.specs/04_future_state/reqs/000-index.md) - Requirements traceability
-- [`.specs/04_future_state/design/000-index.md`](../.specs/04_future_state/design/000-index.md) - Design element status
-- [`.specs/02_adrs/000-index.md`](../.specs/02_adrs/000-index.md) - Architectural decision status
-- [`.specs/04_future_state/test_plan.md`](../.specs/04_future_state/test_plan.md) - Test planning status
+- [`.adrs/ - Task definitions and work breakdown structure
+- [`.adrs/ - Requirements traceability
+- [`.adrs/ - Design element status
+- [`.adrs/](../.adrs/) - Architectural decision status
+- [`.adrs/ - Test planning status
 - Project documentation artifacts in [`docs/`](./) directory
 - Code repository status in [`tachyon/`](../tachyon/) directory
 

@@ -22,7 +22,7 @@ Architecture-specific considerations:
 - **Alignment:** Memory alignment requirements
 - **SIMD capabilities:** Vector instruction sets (AVX2, NEON)
 
-**Traceability:** `.specs/04_5_cross_platform/compiler_compatibility.md`, `.dep_spec/tokio/dep_spec.toml:77`
+**Traceability:** `.adrs/ `.dep_spec/tokio/dep_spec.toml:77`
 
 ---
 
@@ -253,7 +253,7 @@ pub fn read_document_at(base: &[u8], offset: u64, size: usize) -> &[u8] {
 3. **SIMD Testing:** Benchmark architecture-specific optimizations
 4. **Alignment Testing:** Verify packed structures work correctly
 
-**Traceability:** `.specs/04_5_cross_platform/testing_matrix.md`
+**Traceability:** `.adrs/
 
 ---
 
@@ -275,7 +275,7 @@ pub fn read_document_at(base: &[u8], offset: u64, size: usize) -> &[u8] {
 **Approval Date:** 2026-02-11
 
 **Related Documents:**
-- [Compiler Compatibility Analysis](.specs/04_5_cross_platform/compiler_compatibility.md)
-- [Testing Matrix](.specs/04_5_cross_platform/testing_matrix.md)
+- [Compiler Compatibility Analysis](.adrs/
+- [Testing Matrix](.adrs/
 - ADR-035: OS Compatibility Strategy
 - ADR-038: Conditional Compilation Strategy

@@ -21,7 +21,7 @@ We will establish a comprehensive Lessons Learned documentation with the followi
 
 ### Lessons Learned Documentation
 
-**Lessons Learned Documentation** (`.specs/08_5_knowledge_base/lessons_learned.md`)
+**Lessons Learned Documentation** (`.adrs/
 - 67 lessons across 6 categories
 - Each lesson includes: ID, title, category, severity, evidence, impact, recommendation, traceability
 

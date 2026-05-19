@@ -26,10 +26,10 @@ Phase -1 (Context Discovery) has been completed successfully. The Tachyon projec
 
 | Criterion | Status | Evidence |
 |-----------|---------|----------|
-| Domain analysis complete | PASSED | [.specs/00_requirements/domain_analysis.md](../.specs/00_requirements/domain_analysis.md) |
-| Applicable standards mapped | PASSED | [.specs/00_requirements/applicable_standards.md](../.specs/00_requirements/applicable_standards.md) |
+| Domain analysis complete | PASSED | [.adrs/ |
+| Applicable standards mapped | PASSED | [.adrs/ |
 | Multi-lingual requirements determined | PASSED | English required, Chinese planned |
-| Capability requirements defined | PASSED | [.specs/00_requirements/capability_requirements.md](../.specs/00_requirements/capability_requirements.md) |
+| Capability requirements defined | PASSED | [.adrs/ |
 | Domain-specific risks assessed | PASSED | 12 risks with mitigation strategies |
 
 ---
@@ -230,9 +230,9 @@ CM-001 (Markdown Parsing)
 
 | Document | Path | Status |
 |----------|-------|--------|
-| **Domain Analysis** | [.specs/00_requirements/domain_analysis.md](../.specs/00_requirements/domain_analysis.md) | COMPLETE |
-| **Applicable Standards** | [.specs/00_requirements/applicable_standards.md](../.specs/00_requirements/applicable_standards.md) | COMPLETE |
-| **Capability Requirements** | [.specs/00_requirements/capability_requirements.md](../.specs/00_requirements/capability_requirements.md) | COMPLETE |
+| **Domain Analysis** | [.adrs/ | COMPLETE |
+| **Applicable Standards** | [.adrs/ | COMPLETE |
+| **Capability Requirements** | [.adrs/ | COMPLETE |
 
 ### 8.2. Report Documents
 
@@ -376,9 +376,9 @@ Phase -1 (Context Discovery) has been completed successfully. The Tachyon projec
 
 | Document | ID | Location |
 |----------|-----|----------|
-| **Domain Analysis** | TACHYON-DA-V1.0 | [.specs/00_requirements/domain_analysis.md](../.specs/00_requirements/domain_analysis.md) |
-| **Applicable Standards** | TACHYON-AS-V1.0 | [.specs/00_requirements/applicable_standards.md](../.specs/00_requirements/applicable_standards.md) |
-| **Capability Requirements** | TACHYON-CR-V1.0 | [.specs/00_requirements/capability_requirements.md](../.specs/00_requirements/capability_requirements.md) |
+| **Domain Analysis** | TACHYON-DA-V1.0 | [.adrs/ |
+| **Applicable Standards** | TACHYON-AS-V1.0 | [.adrs/ |
+| **Capability Requirements** | TACHYON-CR-V1.0 | [.adrs/ |
 | **Initial Specification** | TACHYON-SPEC-V1.0 | [init_spec.md](../init_spec.md) |
 | **README** | - | [README.md](../README.md) |
 

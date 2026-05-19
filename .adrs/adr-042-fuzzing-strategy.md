@@ -14,7 +14,7 @@ Phase 5 requires injecting **"Fuzzing" data** (NaNs, buffer overflows, edge case
 
 ### 1.1. Threat Analysis
 
-From [`threat_model.md`](../.specs/03_security/threat_model.md), the following fuzzing-relevant threats were identified:
+From [`threat_model.md`](../.adrs/ the following fuzzing-relevant threats were identified:
 
 | Threat ID | Component | Category | Description | Fuzzing Target |
 |-------------|-----------|----------|-------------|------------------|
@@ -40,7 +40,7 @@ Critical dependencies require fuzzing:
 
 ### 1.3. Edge Cases and Boundary Values
 
-From [`test_vectors.toml`](../.specs/01_research/test_vectors.toml) and [`domain_constraints.toml`](../.specs/01_research/domain_constraints.toml):
+From [`test_vectors.toml`](../.adrs/ and [`domain_constraints.toml`](../.adrs/
 
 | Input Type | Edge Cases | Expected Behavior |
 |-------------|-------------|-------------------|
@@ -81,7 +81,7 @@ From [`test_vectors.toml`](../.specs/01_research/test_vectors.toml) and [`domain
 Each module will have dedicated fuzz targets:
 
 ```
-.specs/06_prototypes/prototype/tests/fuzzing/
+.adrs/
 ├── targets/
 │   ├── fuzz_markdown_parser.rs     # CM-001 through CM-012
 │   ├── fuzz_template_render.rs      # RE-JIT-001 through RE-JIT-005
@@ -322,9 +322,9 @@ Coverage reports will be integrated into CI/CD pipeline.
 
 ## 9. References
 
-- [Threat Model: STRIDE Analysis](../.specs/03_security/threat_model.md)
-- [Test Vectors and Ground Truth Data](../.specs/01_research/test_vectors.toml)
-- [Domain Constraints](../.specs/01_research/domain_constraints.toml)
+- [Threat Model: STRIDE Analysis](../.adrs/
+- [Test Vectors and Ground Truth Data](../.adrs/
+- [Domain Constraints](../.adrs/
 - [ADR-040: Prototype Architecture](./adr-040-prototype-architecture.md)
 - [ADR-013: Security Architecture](./adr-013-enforce-access-control-and-classification.md)
-- [Security Test Plan](../.specs/03_security/security_test_plan.md)
+- [Security Test Plan](../.adrs/

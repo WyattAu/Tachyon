@@ -52,14 +52,14 @@ The Tachyon deployment philosophy follows these fundamental principles:
 
 This document depends on the following documents:
 
-- [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-BLD-V1.0](../../specs/04_future_state/reqs/build_requirements.md) - Build and Deployment Requirements
-- [TACHYON-REQ-SRV-V1.0](../../specs/04_future_state/reqs/server_requirements.md) - Server Application Requirements
-- [TACHYON-REQ-SEC-V1.0](../../specs/04_future_state/reqs/security_requirements.md) - Security Requirements
-- [TACHYON-ADR-001-V1.0](../../specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TST-V1.0](../../specs/04_future_state/test_plan.md) - Test Plan
-- [TACHYON-DSN-BLD-V1.0](../../specs/04_future_state/design/build_design.md) - Build System Design
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-BLD-V1.0](../../.adrs/ - Build and Deployment Requirements
+- [TACHYON-REQ-SRV-V1.0](../../.adrs/ - Server Application Requirements
+- [TACHYON-REQ-SEC-V1.0](../../.adrs/ - Security Requirements
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TST-V1.0](../../.adrs/ - Test Plan
+- [TACHYON-DSN-BLD-V1.0](../../.adrs/ - Build System Design
 
 ---
 
@@ -1471,21 +1471,21 @@ Tachyon provides monitoring dashboards for real-time visibility into deployment 
 
 | Document | Path | Version | Date |
 |----------|------|---------|------|
-| **Coding and Documentation Standards** | `.specs/01_standards/coding_standards.md` | V1.0 | February 2026 |
-| **Build and Deployment Requirements** | `.specs/04_future_state/reqs/build_requirements.md` | V1.0 | February 2026 |
-| **Server Application Requirements** | `.specs/04_future_state/reqs/server_requirements.md` | V1.0 | February 2026 |
-| **Security Requirements** | `.specs/04_future_state/reqs/security_requirements.md` | V1.0 | February 2026 |
-| **Test Plan** | `.specs/04_future_state/test_plan.md` | V1.0 | February 2026 |
-| **Build System Design** | `.specs/04_future_state/design/build_design.md` | V1.0 | February 2026 |
+| **Coding and Documentation Standards** | `.adrs/ | V1.0 | February 2026 |
+| **Build and Deployment Requirements** | `.adrs/ | V1.0 | February 2026 |
+| **Server Application Requirements** | `.adrs/ | V1.0 | February 2026 |
+| **Security Requirements** | `.adrs/ | V1.0 | February 2026 |
+| **Test Plan** | `.adrs/ | V1.0 | February 2026 |
+| **Build System Design** | `.adrs/ | V1.0 | February 2026 |
 | **Deployment Architecture** | `docs/architecture/deployment_architecture.md` | V1.0 | February 2026 |
 
 ### 9.3. Architecture Decision Records
 
 | Document | Path | Version | Date |
 |----------|------|---------|------|
-| **ADR-001: Rust as Primary Language** | `.specs/02_adrs/001_rust_as_primary_language.md` | V1.0 | February 2026 |
-| **ADR-006: Nix Flakes for Reproducible Builds** | `.specs/02_adrs/006_nix_flakes_reproducible_builds.md` | V1.0 | February 2026 |
-| **ADR-010: Security Architecture** | `.specs/02_adrs/010_security_architecture.md` | V1.0 | February 2026 |
+| **ADR-001: Rust as Primary Language** | `.adrs/adr-001-three-tier-jit-compilation.md | V1.0 | February 2026 |
+| **ADR-006: Nix Flakes for Reproducible Builds** | `.adrs/adr-006-direct-libgit2-integration.md | V1.0 | February 2026 |
+| **ADR-010: Security Architecture** | `.adrs/adr-010-synchronization-primitives.md | V1.0 | February 2026 |
 
 ### 9.4. External Documentation
 

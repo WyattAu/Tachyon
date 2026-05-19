@@ -10,7 +10,7 @@
 ## Context and Problem Statement
 
 ### Context
-The Tachyon project relies on a complex supply chain with multiple dependencies across Rust (Cargo), Node.js (npm), and container images (Docker). The software supply chain represents a significant attack surface and compliance risk. According to the threat model ([`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md)), supply chain attacks (SC-SUP-001 through SC-SUP-004) are identified as high-severity threats.
+The Tachyon project relies on a complex supply chain with multiple dependencies across Rust (Cargo), Node.js (npm), and container images (Docker). The software supply chain represents a significant attack surface and compliance risk. According to the threat model ([`.adrs/ supply chain attacks (SC-SUP-001 through SC-SUP-004) are identified as high-severity threats.
 
 ### Problem Statement
 We lack a comprehensive, automated supply chain monitoring system that provides:
@@ -21,23 +21,23 @@ We lack a comprehensive, automated supply chain monitoring system that provides:
 5. Traceability from dependency to deployment
 
 Current state:
-- Manual vulnerability scanning is required ([`.specs/01_5_supply_chain/vulnerability_report.md`](.specs/01_5_supply_chain/vulnerability_report.md))
-- License compliance is documented but not automated ([`.specs/01_5_supply_chain/license_compliance.md`](.specs/01_5_supply_chain/license_compliance.md))
-- SBOM generation is defined ([`.specs/07_ci_cd/sbom_automation.md`](.specs/07_ci_cd/sbom_automation.md)) but lacks continuous monitoring
+- Manual vulnerability scanning is required ([`.adrs/
+- License compliance is documented but not automated ([`.adrs/
+- SBOM generation is defined ([`.adrs/ but lacks continuous monitoring
 
 ---
 
 ## Decision Drivers
 
 ### Requirements
-From [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md):
+From [`.adrs/
 - **NIST-SI-07:** Software and Information Integrity
 - **NIST-SA-12:** Supply Chain Protection
 - **NIST-AU-02:** Audit Events
 - **ISO-5.19/5.20/5.21:** Supplier Relationships, Agreements, ICT Supply Chain Security
 
 ### Security Requirements
-From [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md):
+From [`.adrs/
 - **SC-SUP-001:** Malicious dependency injection detection
 - **SC-SUP-002:** Vulnerability disclosure monitoring
 - **SC-SUP-003:** License compliance enforcement
@@ -177,7 +177,7 @@ We will implement a comprehensive, automated supply chain monitoring system usin
 5. Create custom alerting scripts
 
 ### Phase 3: Alert Configuration (Week 3)
-1. Define alert rules ([`.specs/09_5_supply_monitoring/alerting_rules.md`](.specs/09_5_supply_monitoring/alerting_rules.md))
+1. Define alert rules ([`.adrs/
 2. Configure severity-based routing
 3. Set up escalation paths
 4. Test alert delivery to all channels
@@ -243,11 +243,11 @@ We will implement a comprehensive, automated supply chain monitoring system usin
 ## References
 
 **Internal Documents:**
-- [`.specs/09_5_supply_monitoring/monitoring_strategy.md`](.specs/09_5_supply_monitoring/monitoring_strategy.md) - Monitoring Strategy
-- [`.specs/09_5_supply_monitoring/alerting_rules.md`](.specs/09_5_supply_monitoring/alerting_rules.md) - Alerting Rules
-- [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md) - Threat Model
-- [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md) - Compliance Matrix
-- [`.specs/07_ci_cd/pipeline_config.toml`](.specs/07_ci_cd/pipeline_config.toml) - CI/CD Configuration
+- [`.adrs/ - Monitoring Strategy
+- [`.adrs/ - Alerting Rules
+- [`.adrs/ - Threat Model
+- [`.adrs/ - Compliance Matrix
+- [`.adrs/ - CI/CD Configuration
 
 **External Standards:**
 - NIST SP 800-53: Security and Privacy Controls

@@ -24,7 +24,7 @@ We will establish a comprehensive Anti-Pattern Library with the following struct
 
 ### Specification Document
 
-**Anti-Pattern Library Specification** (`.specs/08_5_knowledge_base/anti_patterns.md`)
+**Anti-Pattern Library Specification** (`.adrs/
 - 67 anti-patterns across 7 categories
 - Each anti-pattern includes: ID, name, category, severity, problem, consequences, solution, traceability
 

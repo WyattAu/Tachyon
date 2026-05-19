@@ -49,12 +49,12 @@ Out of scope:
 ### 1.3. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-WEB-V1.0](../../.specs/04_future_state/reqs/web_requirements.md) - Web Frontend Requirements
-- [TACHYON-DES-WD-V1.0](../../.specs/04_future_state/design/web_design.md) - Web Frontend Design
-- [TACHYON-ADR-004-V1.0](../../.specs/02_adrs/004_leptos_for_web_frontend.md) - ADR-004: Leptos for Web Frontend
-- [TACHYON-ADR-005-V1.0](../../.specs/02_adrs/005_bun_for_javascript_runtime.md) - ADR-005: Bun for JavaScript Runtime
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-WEB-V1.0](../../.adrs/ - Web Frontend Requirements
+- [TACHYON-DES-WD-V1.0](../../.adrs/ - Web Frontend Design
+- [TACHYON-ADR-004-V1.0](../../.adrs/adr-004-debounce-window.md) - ADR-004: Leptos for Web Frontend
+- [TACHYON-ADR-005-V1.0](../../.adrs/adr-005-last-write-wins-conflict-resolution.md) - ADR-005: Bun for JavaScript Runtime
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 ### 1.4. Terminology
 
@@ -4210,27 +4210,27 @@ export interface CacheStats {
 
 ### 10.1. Normative References
 
-1. **[TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md)** - Coding and Documentation Standards
+1. **[TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
    - Defines coding standards and documentation requirements for Tachyon project
    - Compliance: ISO/IEC 26514:2021, IEEE 1063-2001
 
-2. **[TACHYON-REQ-WEB-V1.0](../../.specs/04_future_state/reqs/web_requirements.md)** - Web Frontend Requirements
+2. **[TACHYON-REQ-WEB-V1.0](../../.adrs/ - Web Frontend Requirements
    - Defines functional and non-functional requirements for the web frontend
    - Covers: REQ-WEB-001 through REQ-WEB-090
 
-3. **[TACHYON-DES-WD-V1.0](../../.specs/04_future_state/design/web_design.md)** - Web Frontend Design
+3. **[TACHYON-DES-WD-V1.0](../../.adrs/ - Web Frontend Design
    - Defines design elements and component architecture for the web frontend
    - Covers: DES-WD-001 through DES-WD-007
 
-4. **[TACHYON-ADR-004-V1.0](../../.specs/02_adrs/004_leptos_for_web_frontend.md)** - ADR-004: Leptos for Web Frontend
+4. **[TACHYON-ADR-004-V1.0](../../.adrs/adr-004-debounce-window.md)** - ADR-004: Leptos for Web Frontend
    - Architectural Decision Record for selecting Leptos as the web framework
    - Rationale: Fine-grained reactivity, SSR support, Rust ecosystem
 
-5. **[TACHYON-ADR-005-V1.0](../../.specs/02_adrs/005_bun_for_javascript_runtime.md)** - ADR-005: Bun for JavaScript Runtime
+5. **[TACHYON-ADR-005-V1.0](../../.adrs/adr-005-last-write-wins-conflict-resolution.md)** - ADR-005: Bun for JavaScript Runtime
    - Architectural Decision Record for selecting Bun as the JavaScript runtime
    - Rationale: Performance, TypeScript support, bundling capabilities
 
-6. **[TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md)** - Threat Model Analysis
+6. **[TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
    - Defines security threats and mitigation strategies
    - Covers: Client-side security, authentication, authorization
 

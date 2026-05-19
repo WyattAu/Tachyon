@@ -40,12 +40,12 @@ The Tachyon cache system implements a hierarchical multi-level caching architect
 ### 1.2. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-007-V1.0](../.specs/02_adrs/007_tokio_for_async_runtime.md) - Tokio for Async Runtime
-- [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md) - Threat Model Analysis
-- [DES-DM-012](../.specs/04_future_state/design/data_models.md#des-dm-012-cacheentry) - Cache Entry Design
-- [DES-DM-013](../.specs/04_future_state/design/data_models.md#des-dm-013-cachestatistics) - Cache Statistics Design
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-007-V1.0](../.adrs/adr-007-thread-safety-strategy.md) - Tokio for Async Runtime
+- [TACHYON-TMA-V1.0](../.adrs/ - Threat Model Analysis
+- [DES-DM-012](../.adrs/ - Cache Entry Design
+- [DES-DM-013](../.adrs/ - Cache Statistics Design
 
 ### 1.3. Caching Principles
 
@@ -216,7 +216,7 @@ The hierarchical cache architecture is justified by the following considerations
 **Name:** CacheEntry
 **Type:** Generic Struct
 **Language:** Rust
-**Related Design Element:** [DES-DM-012](../.specs/04_future_state/design/data_models.md#des-dm-012-cacheentry)
+**Related Design Element:** [DES-DM-012](../.adrs/
 
 **Description:** The CacheEntry entity represents a single cache entry with metadata supporting LRU eviction, TTL-based expiration, and cache statistics tracking. This is a generic type parameterized by the cached value type $V$.
 
@@ -1541,7 +1541,7 @@ Cache values include version information to support schema evolution and backwar
 **Name:** CacheStatistics
 **Type:** Struct
 **Language:** Rust
-**Related Design Element:** [DES-DM-013](../.specs/04_future_state/design/data_models.md#des-dm-013-cachestatistics)
+**Related Design Element:** [DES-DM-013](../.adrs/
 
 **Description:** The CacheStatistics struct aggregates performance metrics for cache monitoring and tuning.
 
@@ -2659,12 +2659,12 @@ export enum EvictionPolicy {
 
 | Reference ID | Title | Location |
 |--------------|-------|----------|
-| TACHYON-STD-V1.0 | Coding and Documentation Standards | [`.specs/01_standards/coding_standards.md`](../.specs/01_standards/coding_standards.md) |
-| TACHYON-ADR-001-V1.0 | Rust as Primary Language | [`.specs/02_adrs/001_rust_as_primary_language.md`](../.specs/02_adrs/001_rust_as_primary_language.md) |
-| TACHYON-ADR-007-V1.0 | Tokio for Async Runtime | [`.specs/02_adrs/007_tokio_for_async_runtime.md`](../.specs/02_adrs/007_tokio_for_async_runtime.md) |
-| TACHYON-TMA-V1.0 | Threat Model Analysis | [`.specs/03_threat_model/analysis.md`](../.specs/03_threat_model/analysis.md) |
-| DES-DM-012 | Cache Entry Design | [`.specs/04_future_state/design/data_models.md#des-dm-012-cacheentry`](../.specs/04_future_state/design/data_models.md#des-dm-012-cacheentry) |
-| DES-DM-013 | Cache Statistics Design | [`.specs/04_future_state/design/data_models.md#des-dm-013-cachestatistics`](../.specs/04_future_state/design/data_models.md#des-dm-013-cachestatistics) |
+| TACHYON-STD-V1.0 | Coding and Documentation Standards | [`.adrs/ |
+| TACHYON-ADR-001-V1.0 | Rust as Primary Language | [`.adrs/adr-001-three-tier-jit-compilation.md](../.adrs/adr-001-three-tier-jit-compilation.md) |
+| TACHYON-ADR-007-V1.0 | Tokio for Async Runtime | [`.adrs/adr-007-thread-safety-strategy.md](../.adrs/adr-007-thread-safety-strategy.md) |
+| TACHYON-TMA-V1.0 | Threat Model Analysis | [`.adrs/ |
+| DES-DM-012 | Cache Entry Design | [`.adrs/ |
+| DES-DM-013 | Cache Statistics Design | [`.adrs/ |
 
 ### 10.2. Related Requirements
 

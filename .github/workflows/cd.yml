@@ -219,7 +219,7 @@ jobs:
           cache-to: type=gha,scope=server,mode=max
           build-args: |
             TMPDIR=/tmp
-        timeout-minutes: 30
+        timeout-minutes: 60
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
@@ -234,7 +234,7 @@ jobs:
           cache-to: type=gha,scope=frontend,mode=max
           build-args: |
             TMPDIR=/tmp
-        timeout-minutes: 20
+        timeout-minutes: 60
 
   # ===========================================================================
   # Build WASM frontend and upload as artifact

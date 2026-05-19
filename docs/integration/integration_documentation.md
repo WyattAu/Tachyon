@@ -60,12 +60,12 @@ This document covers the following integration categories:
 ### 1.4. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](.specs/02_adrs/001_rust_as_primary_language.md) - Rust Language Selection
-- [TACHYON-ADR-010-V1.0](.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-REQ-INDEX-V1.0](.specs/04_future_state/reqs/000-index.md) - Requirements Index
-- [TACHYON-DSN-INDEX-V1.0](.specs/04_future_state/design/000-index.md) - Design Index
-- [TACHYON-TST-V1.0](.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](.adrs/adr-001-three-tier-jit-compilation.md) - Rust Language Selection
+- [TACHYON-ADR-010-V1.0](.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-REQ-INDEX-V1.0](.adrs/ - Requirements Index
+- [TACHYON-DSN-INDEX-V1.0](.adrs/ - Design Index
+- [TACHYON-TST-V1.0](.adrs/ - Test Plan
 
 ### 1.5. Terminology and Definitions
 
@@ -4075,7 +4075,7 @@ plugin-type = "document-processor"
 
 ### 10.1. Testing Overview
 
-The Tachyon integration testing strategy follows the test plan defined in [`.specs/04_future_state/test_plan.md`](.specs/04_future_state/test_plan.md) with specific focus on integration points. Testing ensures reliability, security, and performance of all integrations.
+The Tachyon integration testing strategy follows the test plan defined in [`.adrs/ with specific focus on integration points. Testing ensures reliability, security, and performance of all integrations.
 
 **Testing Principles:**
 
@@ -5079,7 +5079,7 @@ pub struct OAuthError {
 
 ### 12.1. Security Overview
 
-The Tachyon integration security architecture implements defense-in-depth security controls aligned with [ADR-010: Security Architecture](.specs/02_adrs/010_security_architecture.md). Security is enforced at all integration layers including REST API, WebSocket, IPC, webhooks, OAuth, and plugins.
+The Tachyon integration security architecture implements defense-in-depth security controls aligned with [ADR-010: Security Architecture](.adrs/adr-010-synchronization-primitives.md). Security is enforced at all integration layers including REST API, WebSocket, IPC, webhooks, OAuth, and plugins.
 
 **Security Principles:**
 

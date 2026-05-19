@@ -121,12 +121,12 @@ The Tachyon project adopts a comprehensive compliance finalization framework:
 
 - [ADR-081](.adrs/adr-081-compliance-monitoring.md) - Compliance Monitoring
 - [ADR-080](.adrs/adr-080-security-alerts.md) - Security Alerts
-- [`.specs/10_metrics/compliance.md`](.specs/10_metrics/compliance.md) - Compliance Metrics
-- [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md) - Compliance Matrix
+- [`.adrs/ - Compliance Metrics
+- [`.adrs/ - Compliance Matrix
 
 ## References
 
-- [`.specs/10_metrics/compliance.md`](.specs/10_metrics/compliance.md) - Compliance Metrics
+- [`.adrs/ - Compliance Metrics
 - IEEE 1016-2009 Standard
 - ISO/IEC 25010 Standard
 - NIST 800-53 Standard

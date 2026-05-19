@@ -94,15 +94,15 @@ Deploy new version to all environments simultaneously.
 
 ## Implementation Notes
 
-- Deployment procedures documented in .specs/07_ci_cd/deployment_strategy.md
+- Deployment procedures documented in .adrs/
 - GitHub Actions workflow in .github/workflows/deploy.yml
 - Environment-specific configuration in pipeline config
 
 ## References
 
-- .specs/07_ci_cd/deployment_strategy.md
-- .specs/07_ci_cd/rollback_procedures.md
-- .specs/07_ci_cd/pipeline_config.toml
+- .adrs/
+- .adrs/
+- .adrs/
 
 ---
 

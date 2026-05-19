@@ -229,10 +229,10 @@ Contingency plans define alternative approaches when:
 
 ## References
 
-- Master Plan: `.specs/08_roadmap/master_plan.toml`
-- Blue Paper: `.specs/02_architecture/blue_paper.md`
-- Requirements: `.specs/00_requirements/requirements.md`
-- Traceability Matrix: `.specs/00_requirements/traceability_matrix.md`
+- Master Plan: `.adrs/
+- Blue Paper: `.adrs/
+- Requirements: `.adrs/
+- Traceability Matrix: `.adrs/
 - IEEE 1016-2009: Software Design Descriptions
 - ISO/IEC 25010: Software Quality
 

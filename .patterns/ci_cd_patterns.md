@@ -203,7 +203,7 @@ sbom:
 **Implementation:**
 ```yaml
 performance:
-  baseline_metrics: ".specs/06_5_regression/baseline_metrics.toml"
+  baseline_metrics: ".adrs/
   
   comparison:
     threshold_percent: 5.0
@@ -256,6 +256,6 @@ test:
 
 ## References
 
-- [Pipeline Configuration](.specs/07_ci_cd/pipeline_config.toml)
-- [Quality Gates Definition](.specs/07_ci_cd/quality_gates.md)
-- [Deployment Strategy](.specs/07_ci_cd/deployment_strategy.md)
+- [Pipeline Configuration](.adrs/
+- [Quality Gates Definition](.adrs/
+- [Deployment Strategy](.adrs/

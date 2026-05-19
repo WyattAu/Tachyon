@@ -5,7 +5,7 @@
 **Status:** Proposed
 **Classification:** API Specification
 **Compliance Level:** ISO/IEC 26514:2021, IEEE 1063-2001
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-REQ-DESK-V1.0](../../.specs/04_future_state/reqs/desktop_requirements.md), [TACHYON-DES-DESK-V1.0](../../.specs/04_future_state/design/desktop_design.md), [TACHYON-ADR-002-V1.0](../../.specs/02_adrs/002_tauri_for_desktop_application.md), [TACHYON-ADR-009-V1.0](../../.specs/02_adrs/009_ipc_communication_architecture.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-REQ-DESK-V1.0](../../.adrs/ [TACHYON-DES-DESK-V1.0](../../.adrs/ [TACHYON-ADR-002-V1.0](../../.adrs/adr-002-bm25-search-parameters.md), [TACHYON-ADR-009-V1.0](../../.adrs/adr-009-race-condition-mitigation.md)
 
 ---
 
@@ -50,12 +50,12 @@ Out of scope:
 
 This document depends on the following documents:
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-DESK-V1.0](../../.specs/04_future_state/reqs/desktop_requirements.md) - Desktop Application Requirements
-- [TACHYON-DES-DESK-V1.0](../../.specs/04_future_state/design/desktop_design.md) - Desktop Application Design
-- [TACHYON-ADR-002-V1.0](../../.specs/02_adrs/002_tauri_for_desktop_application.md) - Tauri for Desktop Application
-- [TACHYON-ADR-009-V1.0](../../.specs/02_adrs/009_ipc_communication_architecture.md) - IPC Communication Architecture
-- [TACHYON-TMA-V1.0](../../.specs/04_threat_model/threat_model.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-DESK-V1.0](../../.adrs/ - Desktop Application Requirements
+- [TACHYON-DES-DESK-V1.0](../../.adrs/ - Desktop Application Design
+- [TACHYON-ADR-002-V1.0](../../.adrs/adr-002-bm25-search-parameters.md) - Tauri for Desktop Application
+- [TACHYON-ADR-009-V1.0](../../.adrs/adr-009-race-condition-mitigation.md) - IPC Communication Architecture
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 ### 1.4. Terminology
 
@@ -73,7 +73,7 @@ This document depends on the following documents:
 
 ### 2.1. Architectural Principles
 
-The Desktop Commands API adheres to the following architectural principles derived from [ADR-002](../../.specs/02_adrs/002_tauri_for_desktop_application.md) and [ADR-009](../../.specs/02_adrs/009_ipc_communication_architecture.md):
+The Desktop Commands API adheres to the following architectural principles derived from [ADR-002](../../.adrs/adr-002-bm25-search-parameters.md) and [ADR-009](../../.adrs/adr-009-race-condition-mitigation.md):
 
 #### 2.1.1. Type Safety
 
@@ -4825,17 +4825,17 @@ This section provides references to related documents, standards, and external r
 
 | Document ID | Title | Path | Relevance |
 |-------------|-------|------|-----------|
-| [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards | Defines coding standards and documentation conventions |
-| [TACHYON-REQ-DESK-V1.0](../../.specs/04_future_state/reqs/desktop_requirements.md) | Desktop Application Requirements | Defines functional requirements for desktop application |
-| [TACHYON-DES-DESK-V1.0](../../.specs/04_future_state/design/desktop_design.md) | Desktop Application Design | Defines technical design for desktop application |
-| [TACHYON-ADR-002-V1.0](../../.specs/02_adrs/002_tauri_for_desktop_application.md) | ADR-002: Tauri for Desktop Application | Justifies Tauri framework selection |
-| [TACHYON-ADR-009-V1.0](../../.specs/02_adrs/009_ipc_communication_architecture.md) | ADR-009: IPC Communication Architecture | Justifies IPC architecture decisions |
-| [TACHYON-TMA-V1.0](../../.specs/04_threat_model/threat_model.md) | Threat Model Analysis | Defines security threats and mitigations |
-| [TACHYON-TSK-V1.0](../../.specs/tasks.md) | Execution Tasks and Work Breakdown Structure | Defines task TSK-017 context |
+| [TACHYON-STD-V1.0](../../.adrs/ | Coding and Documentation Standards | Defines coding standards and documentation conventions |
+| [TACHYON-REQ-DESK-V1.0](../../.adrs/ | Desktop Application Requirements | Defines functional requirements for desktop application |
+| [TACHYON-DES-DESK-V1.0](../../.adrs/ | Desktop Application Design | Defines technical design for desktop application |
+| [TACHYON-ADR-002-V1.0](../../.adrs/adr-002-bm25-search-parameters.md) | ADR-002: Tauri for Desktop Application | Justifies Tauri framework selection |
+| [TACHYON-ADR-009-V1.0](../../.adrs/adr-009-race-condition-mitigation.md) | ADR-009: IPC Communication Architecture | Justifies IPC architecture decisions |
+| [TACHYON-TMA-V1.0](../../.adrs/ | Threat Model Analysis | Defines security threats and mitigations |
+| [TACHYON-TSK-V1.0](../../.adrs/ | Execution Tasks and Work Breakdown Structure | Defines task TSK-017 context |
 
 ### 9.2. Requirement Traceability
 
-The following table maps Desktop Commands API elements to related requirements from [TACHYON-REQ-DESK-V1.0](../../.specs/04_future_state/reqs/desktop_requirements.md):
+The following table maps Desktop Commands API elements to related requirements from [TACHYON-REQ-DESK-V1.0](../../.adrs/
 
 | Command ID | Command Name | Related Requirements |
 |------------|-------------|---------------------|
@@ -4862,7 +4862,7 @@ The following table maps Desktop Commands API elements to related requirements f
 
 ### 9.3. Design Element Traceability
 
-The following table maps Desktop Commands API elements to related design elements from [TACHYON-DES-DESK-V1.0](../../.specs/04_future_state/design/desktop_design.md):
+The following table maps Desktop Commands API elements to related design elements from [TACHYON-DES-DESK-V1.0](../../.adrs/
 
 | Command ID | Command Name | Related Design Elements |
 |------------|-------------|------------------------|
@@ -4877,9 +4877,9 @@ The following table maps Desktop Commands API elements to related Architectural 
 
 | Command Category | Related ADRs |
 |----------------|-------------|
-| All Commands | [ADR-002](../../.specs/02_adrs/002_tauri_for_desktop_application.md) (Tauri for Desktop Application) |
-| IPC Communication | [ADR-009](../../.specs/02_adrs/009_ipc_communication_architecture.md) (IPC Communication Architecture) |
-| Security | [ADR-002](../../.specs/02_adrs/002_tauri_for_desktop_application.md) (Capability-Based Security) |
+| All Commands | [ADR-002](../../.adrs/adr-002-bm25-search-parameters.md) (Tauri for Desktop Application) |
+| IPC Communication | [ADR-009](../../.adrs/adr-009-race-condition-mitigation.md) (IPC Communication Architecture) |
+| Security | [ADR-002](../../.adrs/adr-002-bm25-search-parameters.md) (Capability-Based Security) |
 
 ### 9.5. External Standards and References
 
@@ -4907,4 +4907,4 @@ The following table maps Desktop Commands API elements to related Architectural 
 
 **END OF DOCUMENT**
 
-This document concludes the Desktop Commands API specification for the Tachyon Desktop Application. For questions or clarifications regarding this specification, please refer to the project documentation standards in [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) or contact the architecture team.
+This document concludes the Desktop Commands API specification for the Tachyon Desktop Application. For questions or clarifications regarding this specification, please refer to the project documentation standards in [TACHYON-STD-V1.0](../../.adrs/ or contact the architecture team.

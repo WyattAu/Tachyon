@@ -7,7 +7,7 @@
 
 ## 1. Context and Problem Statement
 
-**Context:** With baseline metrics established ([`baseline_metrics.toml`](../.specs/06_5_regression/baseline_metrics.toml)) and regression detection implemented ([`detection_strategy.md`](../.specs/06_5_regression/detection_strategy.md)), we need to define the alerting thresholds that trigger regression alerts.
+**Context:** With baseline metrics established ([`baseline_metrics.toml`](../.adrs/ and regression detection implemented ([`detection_strategy.md`](../.adrs/ we need to define the alerting thresholds that trigger regression alerts.
 
 **Problem:** Without clearly defined alerting thresholds, we cannot:
 - Distinguish between acceptable variance and genuine regressions
@@ -27,7 +27,7 @@
 
 ## 2. Decision
 
-**Decision:** Define comprehensive alerting thresholds for all performance metrics based on baseline values, statistical significance, and user impact considerations as specified in [`alerting_rules.md`](../.specs/06_5_regression/alerting_rules.md).
+**Decision:** Define comprehensive alerting thresholds for all performance metrics based on baseline values, statistical significance, and user impact considerations as specified in [`alerting_rules.md`](../.adrs/
 
 **Rationale:**
 - Quantitative thresholds enable objective regression detection
@@ -722,9 +722,9 @@ On-call  Engineering Manager  Director
 
 | Document | Relationship |
 |-----------|-------------|
-| [`baseline_metrics.toml`](../.specs/06_5_regression/baseline_metrics.toml) | Baseline data source |
-| [`alerting_rules.md`](../.specs/06_5_regression/alerting_rules.md) | Alerting rules |
-| [`detection_strategy.md`](../.specs/06_5_regression/detection_strategy.md) | Statistical methods |
+| [`baseline_metrics.toml`](../.adrs/ | Baseline data source |
+| [`alerting_rules.md`](../.adrs/ | Alerting rules |
+| [`detection_strategy.md`](../.adrs/ | Statistical methods |
 | [`phase_05_5_regression_report.md`](../.reports/phase_05_5_regression_report.md) | Completion status |
 | [`adr-047-baseline-establishment.md`](adr-047-baseline-establishment.md) | Baseline establishment |
 | [`adr-048-regression-detection.md`](adr-048-regression-detection.md) | Regression detection |

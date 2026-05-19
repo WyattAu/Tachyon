@@ -14,7 +14,7 @@ This document contains lessons learned from the Tachyon project. Lessons are org
 
 **Lesson Sources:**
 - Tachyon Project Phase 12 Knowledge Transfer
-- Post-Mortem Analysis (.specs/10_metrics/post_mortem.md)
+- Post-Mortem Analysis (.adrs/
 - Architecture Decision Records (.adrs/)
 
 ---
@@ -36,7 +36,7 @@ This document contains lessons learned from the Tachyon project. Lessons are org
 
 **Related Pattern:** P-ARCH-001 (Three-Tier JIT Compilation)
 
-**Traceability:** .specs/02_architecture/blue_paper.md:396-426, ADR-002
+**Traceability:** .adrs/ ADR-002
 
 **Application Context:** Any system requiring real-time rendering of dynamic content with performance-critical latency requirements.
 
@@ -57,7 +57,7 @@ This document contains lessons learned from the Tachyon project. Lessons are org
 
 **Related Pattern:** P-RUST-002 (DashMap for Concurrent Caching)
 
-**Traceability:** .specs/02_architecture/blue_paper.md:135-142, ADR-013
+**Traceability:** .adrs/ ADR-013
 
 **Application Context:** Any system requiring high-concurrency access to shared data structures, especially read-heavy workloads.
 
@@ -78,7 +78,7 @@ This document contains lessons learned from the Tachyon project. Lessons are org
 
 **Related Pattern:** P-RUST-001 (Tokio Multi-Threaded Scheduler)
 
-**Traceability:** .specs/02_architecture/blue_paper.md:194-196, ADR-001
+**Traceability:** .adrs/ ADR-001
 
 **Application Context:** Any Rust application using tokio for async I/O operations.
 
@@ -101,7 +101,7 @@ This document contains lessons learned from the Tachyon project. Lessons are org
 
 **Related Threat:** AC-RBAC-001, AC-AUTH-001
 
-**Traceability:** .specs/03_security/threat_model.md:237-252, ADR-013
+**Traceability:** .adrs/ ADR-013
 
 **Application Context:** Any multi-user system requiring fine-grained access control and content security.
 
@@ -122,7 +122,7 @@ This document contains lessons learned from the Tachyon project. Lessons are org
 
 **Related Threat:** CM-GIT-002
 
-**Traceability:** .specs/03_security/threat_model.md, ADR-013
+**Traceability:** .adrs/ ADR-013
 
 **Application Context:** Any system handling sensitive data or requiring compliance with security standards.
 
@@ -143,7 +143,7 @@ This document contains lessons learned from the Tachyon project. Lessons are org
 
 **Related Threat:** SC-SUP-001
 
-**Traceability:** .specs/03_security/threat_model.md:340-352, ADR-013
+**Traceability:** .adrs/ ADR-013
 
 **Application Context:** Any project with external dependencies, especially those with security or compliance requirements.
 
@@ -166,7 +166,7 @@ This document contains lessons learned from the Tachyon project. Lessons are org
 
 **Related Standard:** IEEE 1016-2009
 
-**Traceability:** .specs/02_architecture/proof.lean, ADR-013
+**Traceability:** .adrs/ ADR-013
 
 **Application Context:** High-assurance systems requiring mathematical correctness guarantees, such as security-critical or safety-critical applications.
 
@@ -189,7 +189,7 @@ This document contains lessons learned from the Tachyon project. Lessons are org
 
 **Related Pattern:** P-ARCH-003 (BM25 Relevance Scoring)
 
-**Traceability:** .specs/02_architecture/blue_paper.md:472-498
+**Traceability:** .adrs/
 
 **Application Context:** Any full-text search system requiring relevance ranking optimization.
 

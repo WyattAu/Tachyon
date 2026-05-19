@@ -14,7 +14,7 @@ Phase 5 requires testing for **race conditions, deadlocks, and thread safety** o
 
 ### 1.1. Concurrent Components Analysis
 
-From [`thread_safety_analysis.md`](../.specs/02_5_concurrency/thread_safety_analysis.md):
+From [`thread_safety_analysis.md`](../.adrs/
 
 | Component | Shared Resource | Sync Primitive | Access Pattern | Hazard Level |
 |-----------|----------------|---------------|----------------|---------------|
@@ -27,7 +27,7 @@ From [`thread_safety_analysis.md`](../.specs/02_5_concurrency/thread_safety_anal
 
 ### 1.2. Deadlock Scenarios
 
-From [`deadlock_analysis.md`](../.specs/02_5_concurrency/deadlock_analysis.md):
+From [`deadlock_analysis.md`](../.adrs/
 
 | Cycle ID | Components Involved | Severity | Probability | Mitigation |
 |-----------|---------------------|----------|-------------|
@@ -64,7 +64,7 @@ From [`deadlock_analysis.md`](../.specs/02_5_concurrency/deadlock_analysis.md):
 Each module will have dedicated concurrency tests:
 
 ```
-.specs/06_prototypes/prototype/tests/concurrency/
+.adrs/
 ├── cache/
 │   ├── mod.rs
 │   ├── concurrent_get_put.rs    # Concurrent cache access
@@ -414,9 +414,9 @@ pub async fn cache_get(&self, key: &str) -> Option<String> {
 
 ## 9. References
 
-- [Thread Safety Analysis](../.specs/02_5_concurrency/thread_safety_analysis.md)
-- [Deadlock Analysis](../.specs/02_5_concurrency/deadlock_analysis.md)
+- [Thread Safety Analysis](../.adrs/
+- [Deadlock Analysis](../.adrs/
 - [ADR-040: Prototype Architecture](./adr-040-prototype-architecture.md)
 - [ADR-042: Fuzzing Strategy](./adr-042-fuzzing-strategy.md)
-- [Memory Management](../.specs/03_5_resource_management/memory_management.md)
-- [Handle Management](../.specs/03_5_resource_management/handle_management.md)
+- [Memory Management](../.adrs/
+- [Handle Management](../.adrs/

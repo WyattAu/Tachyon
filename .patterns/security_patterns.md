@@ -334,6 +334,6 @@ async fn handle_request(user_role: Role, input: &str) -> Result<String> {
 
 ## References
 
-- [Threat Model: STRIDE Analysis](.specs/03_security/threat_model.md)
-- [Security Test Plan](.specs/03_security/security_test_plan.md)
-- [Compliance Matrix](.specs/03_security/compliance_matrix.md)
+- [Threat Model: STRIDE Analysis](.adrs/
+- [Security Test Plan](.adrs/
+- [Compliance Matrix](.adrs/

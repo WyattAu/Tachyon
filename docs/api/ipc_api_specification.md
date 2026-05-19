@@ -51,11 +51,11 @@ This specification applies to:
 ### 1.3. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-002-V1.0](../.specs/02_adrs/002_tauri_for_desktop_application.md) - Tauri for Desktop Application
-- [TACHYON-ADR-009-V1.0](../.specs/02_adrs/009_ipc_communication_architecture.md) - IPC Communication Architecture
-- [TACHYON-DES-IPC-V1.0](../.specs/04_future_state/design/ipc_protocol.md) - IPC Protocol Design
-- [TACHYON-THR-V1.0](../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-002-V1.0](../.adrs/adr-002-bm25-search-parameters.md) - Tauri for Desktop Application
+- [TACHYON-ADR-009-V1.0](../.adrs/adr-009-race-condition-mitigation.md) - IPC Communication Architecture
+- [TACHYON-DES-IPC-V1.0](../.adrs/ - IPC Protocol Design
+- [TACHYON-THR-V1.0](../.adrs/ - Threat Model Analysis
 
 ### 1.4. Terminology
 
@@ -2194,28 +2194,28 @@ fn is_transient_error(error: &IpcError) -> bool {
 
 This specification is informed by the following Architectural Decision Records:
 
-- [TACHYON-ADR-002-V1.0](../.specs/02_adrs/002_tauri_for_desktop_application.md) - Tauri for Desktop Application
-- [TACHYON-ADR-009-V1.0](../.specs/02_adrs/009_ipc_communication_architecture.md) - IPC Communication Architecture
+- [TACHYON-ADR-002-V1.0](../.adrs/adr-002-bm25-search-parameters.md) - Tauri for Desktop Application
+- [TACHYON-ADR-009-V1.0](../.adrs/adr-009-race-condition-mitigation.md) - IPC Communication Architecture
 
 ### 11.2. Design Documents
 
 This specification is based on the following design documents:
 
-- [TACHYON-DES-IPC-V1.0](../.specs/04_future_state/design/ipc_protocol.md) - IPC Protocol Design
-- [TACHYON-DES-SEC-V1.0](../.specs/04_future_state/design/security_design.md) - Security Design
+- [TACHYON-DES-IPC-V1.0](../.adrs/ - IPC Protocol Design
+- [TACHYON-DES-SEC-V1.0](../.adrs/ - Security Design
 
 ### 11.3. Requirements
 
 This specification implements the following requirements:
 
-- [REQ-IPC-001](../.specs/04_future_state/reqs/ipc_requirements.md) - IPC Communication Requirements
-- [REQ-SEC-001](../.specs/04_future_state/reqs/security_requirements.md) - Security Requirements
+- [REQ-IPC-001](../.adrs/ - IPC Communication Requirements
+- [REQ-SEC-001](../.adrs/ - Security Requirements
 
 ### 11.4. Standards
 
 This specification complies with the following standards:
 
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
 - ISO/IEC 26514:2021 - Systems and Software Engineering
 - IEEE 1063:2001 - Standard for Software User Documentation
 

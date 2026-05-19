@@ -553,7 +553,7 @@ recommendations = "Continue/Monitor/Escalation/Pivot"
 
 ## References
 
-- Master Plan: `.specs/08_roadmap/master_plan.toml`
+- Master Plan: `.adrs/
 - ADR-072: Execution Graph Architecture
 - ADR-073: Task Dependencies Specification
 - ADR-074: Verification Criteria Definition

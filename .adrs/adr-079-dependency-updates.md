@@ -17,7 +17,7 @@ The Tachyon project has dependencies across multiple ecosystems (Rust/Cargo, Nod
 4. Ensure license compliance
 5. Prevent dependency rot
 
-The vulnerability report ([`.specs/01_5_supply_chain/vulnerability_report.md`](.specs/01_5_supply_chain/vulnerability_report.md)) identifies a response SLA of <24 hours for Critical vulnerabilities, requiring automated update mechanisms.
+The vulnerability report ([`.adrs/ identifies a response SLA of <24 hours for Critical vulnerabilities, requiring automated update mechanisms.
 
 ### Problem Statement
 We lack an automated dependency update strategy that provides:
@@ -39,7 +39,7 @@ Current challenges:
 ## Decision Drivers
 
 ### Security Requirements
-From [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md):
+From [`.adrs/
 - **NIST-SI-07:** Software and Information Integrity
 - **OWASP-A06:** Vulnerable and Outdated Components
 
@@ -403,11 +403,11 @@ echo "Rollback complete. Build verified."
 ## References
 
 **Internal Documents:**
-- [`.specs/09_5_supply_monitoring/monitoring_strategy.md`](.specs/09_5_supply_monitoring/monitoring_strategy.md) - Monitoring Strategy
-- [`.specs/09_5_supply_monitoring/alerting_rules.md`](.specs/09_5_supply_monitoring/alerting_rules.md) - Alerting Rules
-- [`.specs/01_5_supply_chain/vulnerability_report.md`](.specs/01_5_supply_chain/vulnerability_report.md) - Vulnerability Report
-- [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md) - Compliance Matrix
-- [`.specs/07_ci_cd/pipeline_config.toml`](.specs/07_ci_cd/pipeline_config.toml) - CI/CD Pipeline
+- [`.adrs/ - Monitoring Strategy
+- [`.adrs/ - Alerting Rules
+- [`.adrs/ - Vulnerability Report
+- [`.adrs/ - Compliance Matrix
+- [`.adrs/ - CI/CD Pipeline
 
 **External Tools:**
 - Dependabot: https://docs.github.com/en/dependabot

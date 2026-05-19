@@ -96,15 +96,15 @@ Using external SBOM generation services.
 
 ## Implementation Notes
 
-- SBOM automation documented in .specs/07_ci_cd/sbom_automation.md
+- SBOM automation documented in .adrs/
 - GitHub Actions workflow in .github/workflows/sbom_generation.yml
 - SBOM tools: cargo-bom, cyclonedx-npm, syft
 
 ## References
 
-- .specs/07_ci_cd/sbom_automation.md
-- .specs/01_5_supply_chain/sbom.spdx
-- .specs/01_5_supply_chain/license_compliance.md
+- .adrs/
+- .adrs/
+- .adrs/
 - NIST SP 800-161: https://nvlpubs.nist.gov/nistpubs/Specialpublications/NIST.SP.800-161/
 - Executive Order 14028: https://www.whitehouse.gov/briefings-and-statements/presidential-actions-on-improving-the-nations-cybersecurity/
 

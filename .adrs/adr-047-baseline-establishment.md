@@ -7,7 +7,7 @@
 
 ## 1. Context and Problem Statement
 
-**Context:** Following the successful completion of Phase 5 (Prototype), performance requirements have been defined in [`performance_requirements.md`](../.specs/04_performance/performance_requirements.md) and benchmark suites in [`benchmark_suite.md`](../.specs/04_performance/benchmark_suite.md). To enable automated regression detection, we must establish a performance baseline from the prototype implementation.
+**Context:** Following the successful completion of Phase 5 (Prototype), performance requirements have been defined in [`performance_requirements.md`](../.adrs/ and benchmark suites in [`benchmark_suite.md`](../.adrs/ To enable automated regression detection, we must establish a performance baseline from the prototype implementation.
 
 **Problem:** Without a documented performance baseline, we cannot:
 - Detect performance regressions in future development
@@ -21,7 +21,7 @@
 
 ## 2. Decision
 
-**Decision:** Establish comprehensive performance baseline metrics from the prototype implementation, stored in [`baseline_metrics.toml`](../.specs/06_5_regression/baseline_metrics.toml), to serve as the reference point for all future regression detection.
+**Decision:** Establish comprehensive performance baseline metrics from the prototype implementation, stored in [`baseline_metrics.toml`](../.adrs/ to serve as the reference point for all future regression detection.
 
 **Rationale:**
 - Baseline provides objective performance targets
@@ -152,7 +152,7 @@ for RUN in {1..3}; do
         -- --measurement-time 5000 \
         -- --sample-size 150 \
         -- --save-baseline target/criterion/run_$RUN \
-        -- --baseline-load .specs/06_5_regression/baseline_metrics.toml
+        -- --baseline-load .adrs/
     
     echo ""
     sleep 5  # Cooldown between runs
@@ -166,7 +166,7 @@ python scripts/aggregate_baseline.py \
           target/criterion/run_2 \
           target/criterion/run_3 \
     --output target/criterion/baseline \
-    --baseline .specs/06_5_regression/baseline_metrics.toml
+    --baseline .adrs/
 
 # Generate summary report
 echo ""
@@ -415,7 +415,7 @@ impl BaselineValidation {
 **Baseline File Versioning:**
 
 ```
-.specs/06_5_regression/
+.adrs/
 ├── baseline_metrics.toml              # Current baseline
 ├── baseline_v1.0.0.toml             # Archived baseline
 ├── baseline_v1.0.1.toml             # Archived baseline
@@ -528,11 +528,11 @@ git tag -a baseline-v1.1.0 -m "Performance baseline v1.1.0 (major update)"
 
 | Document | Relationship |
 |-----------|-------------|
-| [`performance_requirements.md`](../.specs/04_performance/performance_requirements.md) | Source of performance targets |
-| [`benchmark_suite.md`](../.specs/04_performance/benchmark_suite.md) | Benchmark definitions |
-| [`baseline_metrics.toml`](../.specs/06_5_regression/baseline_metrics.toml) | Baseline data |
-| [`detection_strategy.md`](../.specs/06_5_regression/detection_strategy.md) | Statistical methods |
-| [`alerting_rules.md`](../.specs/06_5_regression/alerting_rules.md) | Alerting thresholds |
+| [`performance_requirements.md`](../.adrs/ | Source of performance targets |
+| [`benchmark_suite.md`](../.adrs/ | Benchmark definitions |
+| [`baseline_metrics.toml`](../.adrs/ | Baseline data |
+| [`detection_strategy.md`](../.adrs/ | Statistical methods |
+| [`alerting_rules.md`](../.adrs/ | Alerting thresholds |
 | [`phase_05_5_regression_report.md`](../.reports/phase_05_5_regression_report.md) | Completion status |
 
 ---

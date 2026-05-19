@@ -89,15 +89,15 @@ No automated rollback triggers, manual intervention required for all rollbacks.
 
 ## Implementation Notes
 
-- Rollback procedures documented in .specs/07_ci_cd/rollback_procedures.md
+- Rollback procedures documented in .adrs/
 - Rollback scripts in .github/scripts/
 - Rollback triggers defined in quality gates
 
 ## References
 
-- .specs/07_ci_cd/rollback_procedures.md
-- .specs/07_ci_cd/deployment_strategy.md
-- .specs/07_ci_cd/pipeline_config.toml
+- .adrs/
+- .adrs/
+- .adrs/
 
 ---
 

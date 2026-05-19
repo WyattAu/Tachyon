@@ -128,10 +128,10 @@ We will implement a comprehensive monitoring stack based on the following compon
 7. **Post-Incident**: Learnings applied to prevent recurrence
 
 ## References
-- [Monitoring Strategy](../.specs/09_operations/monitoring_strategy.md)
-- [Alerting Strategy](../.specs/09_operations/alerting_strategy.md)
-- [Monitoring Strategy (Phase 8.5)](../.specs/09_5_supply_monitoring/monitoring_strategy.md)
-- [Alerting Rules (Phase 8.5)](../.specs/09_5_supply_monitoring/alerting_rules.md)
+- [Monitoring Strategy](../.adrs/
+- [Alerting Strategy](../.adrs/
+- [Monitoring Strategy (Phase 8.5)](../.adrs/
+- [Alerting Rules (Phase 8.5)](../.adrs/
 - [ADR-050: Alerting Thresholds](./adr-050-alerting-thresholds.md)
 
 ## Decision Date

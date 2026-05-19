@@ -41,14 +41,14 @@ Phase 11: Continuous Monitoring has been successfully completed. The phase estab
 
 | File | Description | Lines |
 |------|-------------|-------|
-| `.specs/11_continuous_monitoring/monitoring_strategy.md` | Main monitoring strategy specification | ~400 |
-| `.specs/11_continuous_monitoring/alerting_rules.md` | Alerting rules and classification | ~350 |
-| `.specs/11_continuous_monitoring/standard_updates.md` | Standards and regulatory updates monitoring | ~380 |
-| `.specs/11_continuous_monitoring/compliance_monitoring.md` | Continuous compliance verification | ~400 |
-| `.specs/11_continuous_monitoring/performance_monitoring.md` | Performance monitoring and regression detection | ~380 |
-| `.specs/11_continuous_monitoring/security_monitoring.md` | Security monitoring and threat detection | ~380 |
-| `.specs/11_continuous_monitoring/supply_chain_monitoring.md` | Supply chain monitoring | ~380 |
-| `.specs/11_continuous_monitoring/reporting.md` | Reporting strategy and automation | ~400 |
+| `.adrs/ | Main monitoring strategy specification | ~400 |
+| `.adrs/ | Alerting rules and classification | ~350 |
+| `.adrs/ | Standards and regulatory updates monitoring | ~380 |
+| `.adrs/ | Continuous compliance verification | ~400 |
+| `.adrs/ | Performance monitoring and regression detection | ~380 |
+| `.adrs/ | Security monitoring and threat detection | ~380 |
+| `.adrs/ | Supply chain monitoring | ~380 |
+| `.adrs/ | Reporting strategy and automation | ~400 |
 
 ### 2. GitHub Actions Workflow (1 file)
 
@@ -244,13 +244,13 @@ Each report contains:
 
 | Success Criterion | Status | Evidence |
 |-------------------|--------|----------|
-| Standard updates monitored | PASSED | [ADR-098](../.adrs/adr-098-standard-updates.md), [standard_updates.md](../.specs/11_continuous_monitoring/standard_updates.md) |
-| Compliance monitoring active | PASSED | [ADR-099](../.adrs/adr-099-compliance-monitoring.md), [compliance_monitoring.md](../.specs/11_continuous_monitoring/compliance_monitoring.md) |
-| Performance monitoring active | PASSED | [ADR-100](../.adrs/adr-100-performance-monitoring.md), [performance_monitoring.md](../.specs/11_continuous_monitoring/performance_monitoring.md) |
-| Security monitoring active | PASSED | [ADR-101](../.adrs/adr-101-security-monitoring.md), [security_monitoring.md](../.specs/11_continuous_monitoring/security_monitoring.md) |
-| Supply chain monitoring active | PASSED | [ADR-102](../.adrs/adr-102-supply-chain-monitoring.md), [supply_chain_monitoring.md](../.specs/11_continuous_monitoring/supply_chain_monitoring.md) |
-| Alerting configured | PASSED | [ADR-097](../.adrs/adr-097-monitoring-strategy.md), [alerting_rules.md](../.specs/11_continuous_monitoring/alerting_rules.md) |
-| Reporting generated | PASSED | [ADR-103](../.adrs/adr-103-reporting.md), [reporting.md](../.specs/11_continuous_monitoring/reporting.md) |
+| Standard updates monitored | PASSED | [ADR-098](../.adrs/adr-098-standard-updates.md), [standard_updates.md](../.adrs/ |
+| Compliance monitoring active | PASSED | [ADR-099](../.adrs/adr-099-compliance-monitoring.md), [compliance_monitoring.md](../.adrs/ |
+| Performance monitoring active | PASSED | [ADR-100](../.adrs/adr-100-performance-monitoring.md), [performance_monitoring.md](../.adrs/ |
+| Security monitoring active | PASSED | [ADR-101](../.adrs/adr-101-security-monitoring.md), [security_monitoring.md](../.adrs/ |
+| Supply chain monitoring active | PASSED | [ADR-102](../.adrs/adr-102-supply-chain-monitoring.md), [supply_chain_monitoring.md](../.adrs/ |
+| Alerting configured | PASSED | [ADR-097](../.adrs/adr-097-monitoring-strategy.md), [alerting_rules.md](../.adrs/ |
+| Reporting generated | PASSED | [ADR-103](../.adrs/adr-103-reporting.md), [reporting.md](../.adrs/ |
 | Compliance verified (IEEE 1016-2009, ISO/IEC 25010, NIST 800-53) | PASSED | All specifications follow these standards |
 
 **Success Criteria Passed:** 8/8 (100%)

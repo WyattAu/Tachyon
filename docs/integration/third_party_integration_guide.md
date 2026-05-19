@@ -125,11 +125,11 @@ All third-party integrations must adhere to the following architectural principl
 
 This document depends on the following documents:
 
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-REQ-SEC-V1.0](../.specs/04_future_state/reqs/security_requirements.md) - Security Requirements
-- [TACHYON-TST-V1.0](../.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-REQ-SEC-V1.0](../.adrs/ - Security Requirements
+- [TACHYON-TST-V1.0](../.adrs/ - Test Plan
 
 ---
 
@@ -3796,7 +3796,7 @@ pub fn encode_gitlab_text(text: &str) -> String {
 
 ### 9.1. Overview
 
-This section describes the comprehensive testing strategy for all third-party integrations within the Tachyon toolchain. The testing approach follows the test-driven development (TDD) methodology defined in [TACHYON-TST-V1.0](../.specs/04_future_state/test_plan.md).
+This section describes the comprehensive testing strategy for all third-party integrations within the Tachyon toolchain. The testing approach follows the test-driven development (TDD) methodology defined in [TACHYON-TST-V1.0](../.adrs/
 
 ### 9.2. Testing Strategy
 
@@ -4290,11 +4290,11 @@ This section provides comprehensive references to all documents, standards, and 
 
 | Document ID | Title | Description |
 |----------|-------|-------------|-----------|
-| [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards |
-| [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language |
-| [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) | Security Architecture |
-| [TACHYON-TST-V1.0](../.specs/04_future_state/test_plan.md) | Test Plan |
-| [TACHYON-REQ-INDEX-V1.0](../.specs/04_future_state/reqs/000-index.md) | Requirements Index |
+| [TACHYON-STD-V1.0](../.adrs/ | Coding and Documentation Standards |
+| [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language |
+| [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) | Security Architecture |
+| [TACHYON-TST-V1.0](../.adrs/ | Test Plan |
+| [TACHYON-REQ-INDEX-V1.0](../.adrs/ | Requirements Index |
 
 #### 11.3. Third-Party Service Documentation
 
@@ -4339,7 +4339,7 @@ This section provides comprehensive references to all documents, standards, and 
 
 ### 11.7. Glossary
 
-For terminology and definitions, refer to [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md).
+For terminology and definitions, refer to [TACHYON-STD-V1.0](../.adrs/
 
 | Term | Definition |
 |------|----------|-------------|

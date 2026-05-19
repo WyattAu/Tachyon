@@ -60,11 +60,11 @@ The Tachyon security architecture is founded on the following fundamental princi
 ### 1.4. Document Dependencies
 
 This document depends on the following specifications:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) - Security Requirements
-- [TACHYON-DES-SEC-V1.0](../../.specs/04_future_state/design/security_design.md) - Security Design
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture ADR
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-SEC-V1.0](../../.adrs/ - Security Requirements
+- [TACHYON-DES-SEC-V1.0](../../.adrs/ - Security Design
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture ADR
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 ---
 
@@ -1910,12 +1910,12 @@ Internal Tachyon documentation referenced in this security architecture.
 
 | Document ID | Title | Purpose |
 |-------------|-------|---------|
-| [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards | Document standards and conventions |
-| [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) | Security Requirements | Functional security requirements |
-| [TACHYON-DES-SEC-V1.0](../../.specs/04_future_state/design/security_design.md) | Security Design | Security design specifications |
-| [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) | Security Architecture ADR | Security architecture decision |
-| [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) | Threat Model Analysis | Threat analysis and modeling |
-| [TACHYON-TSK-V1.0](../../.specs/tasks.md) | Execution Tasks | Task breakdown structure |
+| [TACHYON-STD-V1.0](../../.adrs/ | Coding and Documentation Standards | Document standards and conventions |
+| [TACHYON-REQ-SEC-V1.0](../../.adrs/ | Security Requirements | Functional security requirements |
+| [TACHYON-DES-SEC-V1.0](../../.adrs/ | Security Design | Security design specifications |
+| [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) | Security Architecture ADR | Security architecture decision |
+| [TACHYON-TMA-V1.0](../../.adrs/ | Threat Model Analysis | Threat analysis and modeling |
+| [TACHYON-TSK-V1.0](../../.adrs/ | Execution Tasks | Task breakdown structure |
 
 ### 12.2. Standards and Regulations
 

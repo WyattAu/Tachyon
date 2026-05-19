@@ -7,7 +7,7 @@
 
 ## 1. Context and Problem Statement
 
-**Context:** With performance baseline established ([`baseline_metrics.toml`](../.specs/06_5_regression/baseline_metrics.toml)) and regression detection implemented ([`detection_strategy.md`](../.specs/06_5_regression/detection_strategy.md)), we need a methodology for analyzing performance trends over time.
+**Context:** With performance baseline established ([`baseline_metrics.toml`](../.adrs/ and regression detection implemented ([`detection_strategy.md`](../.adrs/ we need a methodology for analyzing performance trends over time.
 
 **Problem:** Without trend analysis, we cannot:
 - Identify gradual performance degradations
@@ -28,7 +28,7 @@
 
 ## 2. Decision
 
-**Decision:** Implement a comprehensive trend analysis methodology using exponential moving averages, Mann-Kendall trend tests, and capacity planning models as defined in [`detection_strategy.md`](../.specs/06_5_regression/detection_strategy.md).
+**Decision:** Implement a comprehensive trend analysis methodology using exponential moving averages, Mann-Kendall trend tests, and capacity planning models as defined in [`detection_strategy.md`](../.adrs/
 
 **Rationale:**
 - EMA provides adaptive baseline tracking that responds to gradual changes
@@ -776,9 +776,9 @@ pub struct TrendAlert {
 
 | Document | Relationship |
 |-----------|-------------|
-| [`baseline_metrics.toml`](../.specs/06_5_regression/baseline_metrics.toml) | Baseline data source |
-| [`detection_strategy.md`](../.specs/06_5_regression/detection_strategy.md) | Statistical methods |
-| [`alerting_rules.md`](../.specs/06_5_regression/alerting_rules.md) | Alerting thresholds |
+| [`baseline_metrics.toml`](../.adrs/ | Baseline data source |
+| [`detection_strategy.md`](../.adrs/ | Statistical methods |
+| [`alerting_rules.md`](../.adrs/ | Alerting thresholds |
 | [`phase_05_5_regression_report.md`](../.reports/phase_05_5_regression_report.md) | Completion status |
 | [`adr-047-baseline-establishment.md`](adr-047-baseline-establishment.md) | Baseline establishment |
 | [`adr-048-regression-detection.md`](adr-048-regression-detection.md) | Regression detection |

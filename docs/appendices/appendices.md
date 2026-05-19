@@ -61,12 +61,12 @@ The appendices are organized to serve multiple audiences:
 ### 1.4. Relationship to Other Documents
 
 This document references and is referenced by:
-- [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-V1.0](.specs/04_future_state/reqs/) - Requirements Specification
-- [TACHYON-DSN-V1.0](.specs/04_future_state/design/) - Design Documents
-- [TACHYON-TST-V1.0](.specs/04_future_state/test_plan.md) - Test Plan
-- [ADR-001](.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [ADR-010](.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-V1.0](.adrs/ - Requirements Specification
+- [TACHYON-DSN-V1.0](.adrs/ - Design Documents
+- [TACHYON-TST-V1.0](.adrs/ - Test Plan
+- [ADR-001](.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [ADR-010](.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 ---
 
@@ -807,7 +807,7 @@ Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzPz1M1c0Q=
 **Parameters:**
 - `build.beforeDevCommand`: Command to run before starting development server
 - `build.beforeBuildCommand`: Command to run before building production bundle
-- `tauri.allowlist`: Capability-based access control (see [ADR-010](.specs/02_adrs/010_security_architecture.md))
+- `tauri.allowlist`: Capability-based access control (see [ADR-010](.adrs/adr-010-synchronization-primitives.md))
 - `tauri.security.csp`: Content Security Policy for webview
 - `tauri.updater`: Auto-update configuration
 
@@ -1751,7 +1751,7 @@ echo "New configuration location: $NEW_CONFIG_DIR"
 | **IEEE 1063:2001** | IEEE Standard for Software User Documentation | https://standards.ieee.org/standard/1063-2001.html |
 | **RFC 7540** | The JSON Data Interchange Format | https://datatracker.ietf.org/doc/html/rfc7540 |
 | **RFC 8259** | The WebSocket Protocol | https://datatracker.ietf.org/doc/html/rfc8259 |
-| **HTTP/2** | Hypertext Transfer Protocol Version 2 | https://httpwg.org/specs/rfc7540.html |
+| **HTTP/2** | Hypertext Transfer Protocol Version 2 | https://httpwg.org/.adrs/ |
 
 ### 9.2. Rust Documentation
 

@@ -14,7 +14,7 @@ Phase 5 requires testing for **memory leaks, handle leaks, and resource exhausti
 
 ### 1.1. Resource Types Analysis
 
-From [`memory_management.md`](../.specs/03_5_resource_management/memory_management.md) and [`handle_management.md`](../.specs/03_5_resource_management/handle_management.md):
+From [`memory_management.md`](../.adrs/ and [`handle_management.md`](../.adrs/
 
 | Resource Type | Ownership Model | Leak Risk | Common Failure Modes |
 |--------------|-----------------|------------|---------------------|
@@ -28,7 +28,7 @@ From [`memory_management.md`](../.specs/03_5_resource_management/memory_manageme
 
 ### 1.2. Resource Limits
 
-From [`resource_limits.md`](../.specs/03_5_resource_management/resource_limits.md):
+From [`resource_limits.md`](../.adrs/
 
 | Resource | Limit | Enforcement | Overflow Behavior |
 |-----------|-------|-------------|-------------------|
@@ -138,7 +138,7 @@ From [`resource_limits.md`](../.specs/03_5_resource_management/resource_limits.m
 ### 2.3. Test Structure
 
 ```
-.specs/06_prototypes/prototype/tests/resources/
+.adrs/
 ├── memory/
 │   ├── mod.rs
 │   ├── long_running.rs       # 24-hour memory test
@@ -612,8 +612,8 @@ heaptrack cargo run
 
 ## 10. References
 
-- [Memory Management](../.specs/03_5_resource_management/memory_management.md)
-- [Handle Management](../.specs/03_5_resource_management/handle_management.md)
-- [Resource Limits](../.specs/03_5_resource_management/resource_limits.md)
+- [Memory Management](../.adrs/
+- [Handle Management](../.adrs/
+- [Resource Limits](../.adrs/
 - [ADR-040: Prototype Architecture](./adr-040-prototype-architecture.md)
 - [ADR-043: Concurrency Testing](./adr-043-concurrency-testing.md)

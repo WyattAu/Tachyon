@@ -19,7 +19,7 @@ Tachyon must handle platform-specific behavior across multiple dimensions:
 
 Each combination requires specific optimizations and behaviors.
 
-**Traceability:** `.specs/04_5_cross_platform/os_compatibility.md`, `.specs/04_5_cross_platform/compiler_compatibility.md`
+**Traceability:** `.adrs/ `.adrs/
 
 ---
 
@@ -434,7 +434,7 @@ pub struct FileWatcher {
 3. **Cross-Compilation:** Verify builds for all target platforms
 4. **Feature Flag Testing:** Verify default and feature builds
 
-**Traceability:** `.specs/04_5_cross_platform/testing_matrix.md`
+**Traceability:** `.adrs/
 
 ---
 
@@ -455,8 +455,8 @@ pub struct FileWatcher {
 **Approval Date:** 2026-02-11
 
 **Related Documents:**
-- [OS Compatibility Analysis](.specs/04_5_cross_platform/os_compatibility.md)
-- [Compiler Compatibility Analysis](.specs/04_5_cross_platform/compiler_compatibility.md)
-- [Testing Matrix](.specs/04_5_cross_platform/testing_matrix.md)
+- [OS Compatibility Analysis](.adrs/
+- [Compiler Compatibility Analysis](.adrs/
+- [Testing Matrix](.adrs/
 - ADR-035: OS Compatibility Strategy
 - ADR-037: Architecture Compatibility Strategy

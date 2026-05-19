@@ -15,7 +15,7 @@ This document contains anti-patterns identified in the Tachyon project. Anti-pat
 **Anti-Pattern Sources:**
 - Tachyon Project Phase 12 Knowledge Transfer
 - Architecture Reviews (.adrs/)
-- Post-Mortem Analysis (.specs/10_metrics/post_mortem.md)
+- Post-Mortem Analysis (.adrs/
 
 ---
 

@@ -239,9 +239,9 @@ The supply chain security review from Phase 1.5 identified several areas for imp
 
 ## 9. References
 
-- Tachyon Requirements: [`.specs/00_requirements/requirements.md`](.specs/00_requirements/requirements.md)
-- Tachyon Architecture: [`.specs/02_architecture/blue_paper.md`](.specs/02_architecture/blue_paper.md)
-- Threat Model: [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md)
-- SBOM: [`.specs/01_5_supply_chain/sbom.spdx`](.specs/01_5_supply_chain/sbom.spdx)
-- Vulnerability Report: [`.specs/01_5_supply_chain/vulnerability_report.md`](.specs/01_5_supply_chain/vulnerability_report.md)
-- License Compliance: [`.specs/01_5_supply_chain/license_compliance.md`](.specs/01_5_supply_chain/license_compliance.md)
+- Tachyon Requirements: [`.adrs/
+- Tachyon Architecture: [`.adrs/
+- Threat Model: [`.adrs/
+- SBOM: [`.adrs/
+- Vulnerability Report: [`.adrs/
+- License Compliance: [`.adrs/

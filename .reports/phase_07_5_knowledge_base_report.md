@@ -47,22 +47,22 @@ All success criteria have been met.
 
 ### Knowledge Base Specifications (4 files)
 
-1. **Pattern Library Specification** (`.specs/08_5_knowledge_base/pattern_library.md`)
+1. **Pattern Library Specification** (`.adrs/
    - 67 patterns across 7 categories
    - Categories: Rust (15), Architecture (12), CI/CD (10), Security (8), Performance (9), Documentation (7), Project Management (6)
    - Each pattern includes: ID, name, category, context, problem, solution, implementation, benefits, traceability
 
-2. **Anti-Pattern Library Specification** (`.specs/08_5_knowledge_base/anti_patterns.md`)
+2. **Anti-Pattern Library Specification** (`.adrs/
    - 67 anti-patterns across 7 categories
    - Categories: Rust (12), Architecture (10), CI/CD (8), Security (10), Performance (9), Documentation (6), Project Management (5)
    - Each anti-pattern includes: ID, name, category, severity, problem, consequences, solution, traceability
 
-3. **Lessons Learned Documentation** (`.specs/08_5_knowledge_base/lessons_learned.md`)
+3. **Lessons Learned Documentation** (`.adrs/
    - 67 lessons across 6 categories
    - Categories: Architecture (12), Development Process (10), Testing & QA (8), Deployment & Ops (7), Documentation (6), Tool Selection (7), Integration (2)
    - Each lesson includes: ID, title, category, severity, evidence, impact, recommendation, traceability
 
-4. **Reusable Templates Specification** (`.specs/08_5_knowledge_base/reusable_templates.md`)
+4. **Reusable Templates Specification** (`.adrs/
    - Project structure templates
    - Configuration templates
    - CI/CD pipeline templates

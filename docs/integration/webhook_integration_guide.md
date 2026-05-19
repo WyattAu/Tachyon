@@ -81,7 +81,7 @@ The webhook framework adheres to the following design principles:
 
 #### 2.2.1. Security-First Design
 
-All webhook deliveries implement security controls as defined in [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md):
+All webhook deliveries implement security controls as defined in [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md):
 
 - **HMAC Signature Verification:** All webhook payloads are cryptographically signed using HMAC-SHA256
 - **TLS Enforcement:** All webhook deliveries require TLS 1.3 encryption
@@ -1108,7 +1108,7 @@ Payloads exceeding these limits are truncated or rejected.
 
 ### 6.1. Security Overview
 
-The Tachyon webhook framework implements comprehensive security controls aligned with [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md).
+The Tachyon webhook framework implements comprehensive security controls aligned with [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md).
 
 #### 6.1.1. Security Principles
 
@@ -2256,7 +2256,7 @@ Additional resources for webhook troubleshooting:
 - **Documentation:** [TACHYON-INT-005-V1.0](webhook_integration_guide.md) - This document
 - **API Reference:** [TACHYON-API-V1.0](../api/api_documentation.md) - API documentation
 - **Security Guide:** [TACHYON-SEC-V1.0](../security/security_implementation_guide.md) - Security implementation guide
-- **Test Plan:** [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) - Test plan
+- **Test Plan:** [TACHYON-TST-V1.0](../../.adrs/ - Test plan
 
 ---
 
@@ -2579,12 +2579,12 @@ This document references the following Tachyon project documents:
 
 | Document ID | Title | Section |
 |-------------|-------|---------|
-| [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards | All sections |
-| [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language | Section 6.5 |
-| [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) | Security Architecture | Section 6 |
-| [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md) | Server Requirements | Section 4 |
-| [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) | Security Requirements | Section 6 |
-| [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) | Test Plan | Section 8 |
+| [TACHYON-STD-V1.0](../../.adrs/ | Coding and Documentation Standards | All sections |
+| [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language | Section 6.5 |
+| [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) | Security Architecture | Section 6 |
+| [TACHYON-REQ-SRV-V1.0](../../.adrs/ | Server Requirements | Section 4 |
+| [TACHYON-REQ-SEC-V1.0](../../.adrs/ | Security Requirements | Section 6 |
+| [TACHYON-TST-V1.0](../../.adrs/ | Test Plan | Section 8 |
 
 ### 11.2. External References
 

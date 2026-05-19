@@ -22,7 +22,7 @@ Testing must ensure:
 3. Security vulnerabilities detected and fixed
 4. User workflows validated end-to-end
 
-**Traceability:** `.specs/04_5_cross_platform/testing_matrix.md`
+**Traceability:** `.adrs/
 
 ---
 
@@ -416,7 +416,7 @@ bencher run upload
 4. **Security Scanning:** Automated vulnerability scanning on every PR
 5. **E2E Validation:** Manual E2E testing before major releases
 
-**Traceability:** `.specs/04_5_cross_platform/testing_matrix.md`
+**Traceability:** `.adrs/
 
 ---
 
@@ -437,7 +437,7 @@ bencher run upload
 **Approval Date:** 2026-02-11
 
 **Related Documents:**
-- [Testing Matrix](.specs/04_5_cross_platform/testing_matrix.md)
+- [Testing Matrix](.adrs/
 - ADR-035: OS Compatibility Strategy
 - ADR-036: Compiler Compatibility Strategy
 - ADR-037: Architecture Compatibility Strategy

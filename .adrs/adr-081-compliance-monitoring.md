@@ -10,7 +10,7 @@
 ## Context and Problem Statement
 
 ### Context
-The Tachyon project must comply with multiple security and privacy standards (NIST SP 800-53, ISO/IEC 27001:2022, GDPR, CCPA, OWASP Top 10). The compliance matrix ([`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md)) identifies 173 controls with 0% current implementation rate. The license compliance report ([`.specs/01_5_supply_chain/license_compliance.md`](.specs/01_5_supply_chain/license_compliance.md)) provides baseline license analysis.
+The Tachyon project must comply with multiple security and privacy standards (NIST SP 800-53, ISO/IEC 27001:2022, GDPR, CCPA, OWASP Top 10). The compliance matrix ([`.adrs/ identifies 173 controls with 0% current implementation rate. The license compliance report ([`.adrs/ provides baseline license analysis.
 
 ### Problem Statement
 We lack automated compliance monitoring that provides:
@@ -33,7 +33,7 @@ Current challenges:
 ## Decision Drivers
 
 ### Compliance Requirements
-From [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md):
+From [`.adrs/
 - **NIST-AU-02:** Audit Events
 - **NIST-SI-07:** Software and Information Integrity
 - **NIST-SI-10:** Information Input Validation
@@ -431,11 +431,11 @@ if __name__ == '__main__':
 ## References
 
 **Internal Documents:**
-- [`.specs/09_5_supply_monitoring/monitoring_strategy.md`](.specs/09_5_supply_monitoring/monitoring_strategy.md) - Monitoring Strategy
-- [`.specs/09_5_supply_monitoring/alerting_rules.md`](.specs/09_5_supply_monitoring/alerting_rules.md) - Alerting Rules
-- [`.specs/01_5_supply_chain/license_compliance.md`](.specs/01_5_supply_chain/license_compliance.md) - License Compliance
-- [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md) - Compliance Matrix
-- [`.specs/07_ci_cd/pipeline_config.toml`](.specs/07_ci_cd/pipeline_config.toml) - CI/CD Pipeline
+- [`.adrs/ - Monitoring Strategy
+- [`.adrs/ - Alerting Rules
+- [`.adrs/ - License Compliance
+- [`.adrs/ - Compliance Matrix
+- [`.adrs/ - CI/CD Pipeline
 
 **External Tools:**
 - cargo-deny: https://github.com/EmbarkStudios/cargo-deny

@@ -40,9 +40,9 @@ The scope encompasses:
 ### 1.2. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 - [TACHYON-OPS-001-V1.0](deployment_guide.md) - Deployment Guide
 - [TACHYON-OPS-002-V1.0](monitoring_guide.md) - Monitoring and Observability Guide
 - [TACHYON-OPS-003-V1.0](maintenance_guide.md) - Maintenance Guide
@@ -3247,11 +3247,11 @@ graph LR
 - [TACHYON-OPS-001-V1.0](deployment_guide.md) - Deployment Guide
 - [TACHYON-OPS-002-V1.0](monitoring_guide.md) - Monitoring and Observability Guide
 - [TACHYON-OPS-003-V1.0](maintenance_guide.md) - Maintenance Guide
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
 
 **Architecture Decision Records:**
-- [ADR-001: Rust as Primary Language](../.specs/02_adrs/001_rust_as_primary_language.md)
-- [ADR-010: Security Architecture](../.specs/02_adrs/010_security_architecture.md)
+- [ADR-001: Rust as Primary Language](../.adrs/adr-001-three-tier-jit-compilation.md)
+- [ADR-010: Security Architecture](../.adrs/adr-010-synchronization-primitives.md)
 
 **Tools and Utilities:**
 - Diagnostic tools (see Section 5)

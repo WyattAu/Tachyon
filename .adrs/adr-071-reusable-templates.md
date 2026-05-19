@@ -27,7 +27,7 @@ We will establish a comprehensive Reusable Templates library with the following 
 
 ### Specification Document
 
-**Reusable Templates Specification** (`.specs/08_5_knowledge_base/reusable_templates.md`)
+**Reusable Templates Specification** (`.adrs/
 - Project structure templates
 - Configuration templates
 - CI/CD pipeline templates

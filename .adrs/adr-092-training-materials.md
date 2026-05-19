@@ -200,7 +200,7 @@ The Tachyon project adopts a structured training materials framework:
 
 ## References
 
-- [`.specs/08_5_knowledge_base/`](.specs/08_5_knowledge_base/) - Knowledge Base
+- [`.adrs/ - Knowledge Base
 - Training Material Best Practices
 - Adult Learning Principles
 

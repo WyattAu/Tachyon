@@ -34,10 +34,10 @@ Phase 6.5 focused on designing and implementing an automated documentation verif
 
 | Document | Path | Lines | Status |
 |----------|------|-------|--------|
-| Consistency Checks | `.specs/07_5_doc_verification/consistency_checks.md` | ~500 | ACCEPTED |
-| Drift Detection | `.specs/07_5_doc_verification/drift_detection.md` | ~600 | ACCEPTED |
-| API Documentation Generation | `.specs/07_5_doc_verification/api_documentation_generation.md` | ~650 | ACCEPTED |
-| Example Validation | `.specs/07_5_doc_verification/example_validation.md` | ~400 | ACCEPTED |
+| Consistency Checks | `.adrs/ | ~500 | ACCEPTED |
+| Drift Detection | `.adrs/ | ~600 | ACCEPTED |
+| API Documentation Generation | `.adrs/ | ~650 | ACCEPTED |
+| Example Validation | `.adrs/ | ~400 | ACCEPTED |
 
 ### 2.2 Architecture Decision Records
 

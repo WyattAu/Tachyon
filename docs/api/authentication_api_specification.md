@@ -62,9 +62,9 @@ The Authentication API operates within the Tachyon three-tier architecture:
 ```
 
 The server component implements the Authentication API using:
-- **Runtime:** Tokio asynchronous runtime ([ADR-007](../../.specs/02_adrs/007_tokio_for_async_runtime.md))
-- **Framework:** Axum web framework ([ADR-003](../../.specs/02_adrs/003_axum_for_http2_server.md))
-- **Language:** Rust ([ADR-001](../../.specs/02_adrs/001_rust_as_primary_language.md))
+- **Runtime:** Tokio asynchronous runtime ([ADR-007](../../.adrs/adr-007-thread-safety-strategy.md))
+- **Framework:** Axum web framework ([ADR-003](../../.adrs/adr-003-lru-cache-target.md))
+- **Language:** Rust ([ADR-001](../../.adrs/adr-001-three-tier-jit-compilation.md))
 
 ### 1.4. Protocol Stack
 
@@ -83,11 +83,11 @@ The Authentication API uses the following protocol stack:
 
 This specification references and depends on:
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) - Security Requirements
-- [TACHYON-DES-SEC-V1.0](../../.specs/04_future_state/design/security_design.md) - Security Design
-- [TACHYON-DES-API-V1.0](../../.specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
-- [ADR-010](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-SEC-V1.0](../../.adrs/ - Security Requirements
+- [TACHYON-DES-SEC-V1.0](../../.adrs/ - Security Design
+- [TACHYON-DES-API-V1.0](../../.adrs/ - API Interfaces Design
+- [ADR-010](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 ### 1.6. Conventions
 
@@ -125,7 +125,7 @@ All security-sensitive information is marked with appropriate classifications:
 
 ### 2.1. Core Security Principles
 
-The Authentication API implements the following security principles derived from [REQ-SEC-001](../../.specs/04_future_state/reqs/security_requirements.md) through [REQ-SEC-010](../../.specs/04_future_state/reqs/security_requirements.md):
+The Authentication API implements the following security principles derived from [REQ-SEC-001](../../.adrs/ through [REQ-SEC-010](../../.adrs/
 
 #### 2.1.1. Defense in Depth
 
@@ -167,20 +167,20 @@ All authentication requests are verified regardless of source:
 
 ### 2.2. Authentication Mechanisms
 
-The Authentication API supports multiple authentication methods as specified in [DES-SEC-001](../../.specs/04_future_state/design/security_design.md):
+The Authentication API supports multiple authentication methods as specified in [DES-SEC-001](../../.adrs/
 
 #### 2.2.1. Password-Based Authentication
 
 Traditional username/password authentication with the following characteristics:
 
 - **Password Storage:** Argon2id hashing with memory-hard parameters
-- **Password Requirements:** Minimum 12 characters, complexity enforced per [REQ-SEC-012](../../.specs/04_future_state/reqs/security_requirements.md)
+- **Password Requirements:** Minimum 12 characters, complexity enforced per [REQ-SEC-012](../../.adrs/
 - **Password Verification:** Constant-time comparison to prevent timing attacks
 - **Failed Login Tracking:** Exponential backoff after failed attempts
 
 #### 2.2.2. OAuth 2.0 Authentication
 
-Federated authentication using OAuth 2.0 as specified in [REQ-SEC-013](../../.specs/04_future_state/reqs/security_requirements.md):
+Federated authentication using OAuth 2.0 as specified in [REQ-SEC-013](../../.adrs/
 
 - **Authorization Code Flow:** For web and desktop applications
 - **PKCE (Proof Key for Code Exchange):** Required for public clients
@@ -197,7 +197,7 @@ X.509 certificate authentication for enterprise environments:
 
 ### 2.3. Token Architecture
 
-The Authentication API uses JSON Web Tokens (JWT) as specified in [REQ-SEC-016](../../.specs/04_future_state/reqs/security_requirements.md):
+The Authentication API uses JSON Web Tokens (JWT) as specified in [REQ-SEC-016](../../.adrs/
 
 #### 2.3.1. Access Token
 
@@ -284,7 +284,7 @@ pub struct RefreshTokenClaims {
 
 ### 2.4. Session Management
 
-Session management follows the principles specified in [REQ-SEC-016](../../.specs/04_future_state/reqs/security_requirements.md) through [REQ-SEC-020](../../.specs/04_future_state/reqs/security_requirements.md):
+Session management follows the principles specified in [REQ-SEC-016](../../.adrs/ through [REQ-SEC-020](../../.adrs/
 
 #### 2.4.1. Session Lifecycle
 
@@ -328,7 +328,7 @@ Sessions expire after a period of inactivity:
 
 #### 2.4.3. Concurrent Session Limits
 
-Per [REQ-SEC-019](../../.specs/04_future_state/reqs/security_requirements.md), the system limits concurrent sessions:
+Per [REQ-SEC-019](../../.adrs/ the system limits concurrent sessions:
 
 - **Default Limit:** 3 concurrent sessions per user
 - **Enforcement:** Oldest session invalidated when limit exceeded
@@ -337,7 +337,7 @@ Per [REQ-SEC-019](../../.specs/04_future_state/reqs/security_requirements.md), t
 
 ### 2.5. Multi-Factor Authentication
 
-MFA implementation follows [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md):
+MFA implementation follows [REQ-SEC-011](../../.adrs/
 
 #### 2.5.1. MFA Methods
 
@@ -358,7 +358,7 @@ MFA is required for:
 
 ### 2.6. Error Handling
 
-Authentication errors follow the error handling conventions specified in [TACHYON-DES-API-V1.0](../../.specs/04_future_state/design/api_interfaces.md):
+Authentication errors follow the error handling conventions specified in [TACHYON-DES-API-V1.0](../../.adrs/
 
 #### 2.6.1. Error Response Structure
 
@@ -410,8 +410,8 @@ pub struct AuthErrorResponse {
 **Endpoint:** `POST /api/v1/auth/login`
 
 **Element ID:** API-AUTH-001
-**Related Requirements:** [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md), [REQ-SEC-012](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-011](../../.adrs/ [REQ-SEC-012](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Authenticates a user with username and password credentials, returning JWT access and refresh tokens.
 
@@ -746,10 +746,10 @@ pub enum AccountStatus {
 - Session created and tracked for concurrent session limits
 
 **Dependencies:**
-- [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md): Multi-Factor Authentication
-- [REQ-SEC-012](../../.specs/04_future_state/reqs/security_requirements.md): Password Requirements
-- [REQ-SEC-019](../../.specs/04_future_state/reqs/security_requirements.md): Concurrent Session Limits
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-011](../../.adrs/ Multi-Factor Authentication
+- [REQ-SEC-012](../../.adrs/ Password Requirements
+- [REQ-SEC-019](../../.adrs/ Concurrent Session Limits
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 
 **Rationale:** Traditional username/password authentication provides a familiar authentication method while maintaining security through strong password requirements, rate limiting, and MFA support.
 
@@ -782,8 +782,8 @@ curl -X POST https://api.tachyon.dev/api/v1/auth/login \
 **Endpoint:** `GET /api/v1/auth/session/validate`
 
 **Element ID:** API-AUTH-002
-**Related Requirements:** [REQ-SEC-016](../../.specs/04_future_state/reqs/security_requirements.md), [REQ-SEC-017](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-016](../../.adrs/ [REQ-SEC-017](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Validates the current session and returns session information including remaining time and MFA status.
 
@@ -1058,10 +1058,10 @@ pub struct LocationInfo {
 - Logs session validation events
 
 **Dependencies:**
-- [REQ-SEC-016](../../.specs/04_future_state/reqs/security_requirements.md): Secure Session Tokens
-- [REQ-SEC-017](../../.specs/04_future_state/reqs/security_requirements.md): Session Timeout
-- [REQ-SEC-019](../../.specs/04_future_state/reqs/security_requirements.md): Concurrent Session Limits
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-016](../../.adrs/ Secure Session Tokens
+- [REQ-SEC-017](../../.adrs/ Session Timeout
+- [REQ-SEC-019](../../.adrs/ Concurrent Session Limits
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 
 **Rationale:** Session validation enables clients to check session status and proactively handle expiration, improving user experience and security.
 
@@ -1082,8 +1082,8 @@ curl -X GET https://api.tachyon.dev/api/v1/auth/session/validate \
 **Endpoint:** `GET /api/v1/auth/sessions`
 
 **Element ID:** API-AUTH-003
-**Related Requirements:** [REQ-SEC-019](../../.specs/04_future_state/reqs/security_requirements.md), [REQ-SEC-020](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-019](../../.adrs/ [REQ-SEC-020](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Retrieves all active sessions for the authenticated user.
 
@@ -1236,8 +1236,8 @@ pub struct SessionInfo {
 - MFA status is shown for each session
 
 **Dependencies:**
-- [REQ-SEC-019](../../.specs/04_future_state/reqs/security_requirements.md): Concurrent Session Limits
-- [REQ-SEC-020](../../.specs/04_future_state/reqs/security_requirements.md): Session Revocation
+- [REQ-SEC-019](../../.adrs/ Concurrent Session Limits
+- [REQ-SEC-020](../../.adrs/ Session Revocation
 
 **Rationale:** Session listing enables users to monitor their active sessions and identify suspicious activity.
 
@@ -1264,8 +1264,8 @@ curl -X GET "https://api.tachyon.dev/api/v1/auth/sessions?include_expired=true" 
 **Endpoint:** `POST /api/v1/auth/mfa/setup/initiate`
 
 **Element ID:** API-AUTH-004
-**Related Requirements:** [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-011](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Initiates MFA setup for TOTP (Time-based One-Time Password) authentication. Returns a secret key and QR code for authenticator app registration.
 
@@ -1455,8 +1455,8 @@ pub struct MfaSetupInitiateResponse {
 - All MFA setup events are logged
 
 **Dependencies:**
-- [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md): Multi-Factor Authentication
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-011](../../.adrs/ Multi-Factor Authentication
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 - RFC 6238: TOTP specification
 
 **Rationale:** MFA setup initiation provides the necessary information for users to register their authenticator app while maintaining security through short-lived setup tokens.
@@ -1480,8 +1480,8 @@ curl -X POST https://api.tachyon.dev/api/v1/auth/mfa/setup/initiate \
 **Endpoint:** `POST /api/v1/auth/mfa/setup/complete`
 
 **Element ID:** API-AUTH-005
-**Related Requirements:** [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-011](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Completes MFA setup by verifying the TOTP code from the authenticator app.
 
@@ -1640,8 +1640,8 @@ pub struct MfaSetupCompleteResponse {
 - Backup codes are stored using Argon2id hashing
 
 **Dependencies:**
-- [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md): Multi-Factor Authentication
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-011](../../.adrs/ Multi-Factor Authentication
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 - RFC 6238: TOTP specification
 
 **Rationale:** MFA setup completion verifies that the user has successfully registered their authenticator app before enabling MFA.
@@ -1672,8 +1672,8 @@ curl -X POST https://api.tachyon.dev/api/v1/auth/mfa/setup/complete \
 **Endpoint:** `POST /api/v1/auth/mfa/verify`
 
 **Element ID:** API-AUTH-006
-**Related Requirements:** [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-011](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Verifies MFA code during login or for privileged operations.
 
@@ -1923,8 +1923,8 @@ pub struct MfaVerifyResponse {
 - MFA verification events are logged for audit
 
 **Dependencies:**
-- [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md): Multi-Factor Authentication
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-011](../../.adrs/ Multi-Factor Authentication
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 - RFC 6238: TOTP specification
 
 **Rationale:** MFA verification provides the second factor of authentication, protecting against credential theft and unauthorized access.
@@ -1953,8 +1953,8 @@ curl -X POST https://api.tachyon.dev/api/v1/auth/mfa/verify \
 **Endpoint:** `GET /api/v1/auth/mfa/factors`
 
 **Element ID:** API-AUTH-007
-**Related Requirements:** [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-011](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Retrieves all MFA factors configured for the authenticated user.
 
@@ -2085,7 +2085,7 @@ pub struct MfaFactor {
 - Backup code count is shown for monitoring
 
 **Dependencies:**
-- [REQ-SEC-011](../../.specs/04_future_state/reqs/security_requirements.md): Multi-Factor Authentication
+- [REQ-SEC-011](../../.adrs/ Multi-Factor Authentication
 
 **Rationale:** MFA factor listing enables users to manage their MFA devices and identify any unauthorized factors.
 
@@ -2112,8 +2112,8 @@ curl -X GET https://api.tachyon.dev/api/v1/auth/mfa/factors \
 **Endpoint:** `POST /api/v1/auth/refresh`
 
 **Element ID:** API-AUTH-008
-**Related Requirements:** [REQ-SEC-016](../../.specs/04_future_state/reqs/security_requirements.md), [REQ-SEC-018](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-016](../../.adrs/ [REQ-SEC-018](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Refreshes access token using a valid refresh token. Implements token rotation for enhanced security.
 
@@ -2344,9 +2344,9 @@ pub struct TokenRefreshResponse {
 - Failed refresh attempts are logged
 
 **Dependencies:**
-- [REQ-SEC-016](../../.specs/04_future_state/reqs/security_requirements.md): Secure Session Tokens
-- [REQ-SEC-018](../../.specs/04_future_state/reqs/security_requirements.md): Session Refresh
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-016](../../.adrs/ Secure Session Tokens
+- [REQ-SEC-018](../../.adrs/ Session Refresh
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 - RFC 7519: JWT specification
 
 **Rationale:** Token refresh with rotation provides a balance between security and usability, allowing long-lived sessions while limiting token exposure.
@@ -2371,8 +2371,8 @@ curl -X POST https://api.tachyon.dev/api/v1/auth/refresh \
 **Endpoint:** `POST /api/v1/auth/revoke`
 
 **Element ID:** API-AUTH-009
-**Related Requirements:** [REQ-SEC-020](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-020](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Revokes a refresh token and associated session. Used for explicit logout and security incidents.
 
@@ -2526,8 +2526,8 @@ pub struct TokenRevokeResponse {
 - Security-related revocations trigger alerts
 
 **Dependencies:**
-- [REQ-SEC-020](../../.specs/04_future_state/reqs/security_requirements.md): Session Revocation
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-020](../../.adrs/ Session Revocation
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 
 **Rationale:** Token revocation provides explicit control over session lifecycle, enabling users to log out and administrators to respond to security incidents.
 
@@ -2558,8 +2558,8 @@ curl -X POST https://api.tachyon.dev/api/v1/auth/revoke \
 **Endpoint:** `POST /api/v1/auth/logout`
 
 **Element ID:** API-AUTH-010
-**Related Requirements:** [REQ-SEC-020](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-020](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Logs out the current session, invalidating access and refresh tokens.
 
@@ -2826,8 +2826,8 @@ pub struct LogoutResponse {
 - Logout events are logged for audit
 
 **Dependencies:**
-- [REQ-SEC-020](../../.specs/04_future_state/reqs/security_requirements.md): Session Revocation
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-020](../../.adrs/ Session Revocation
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 
 **Rationale:** Logout provides explicit session termination, enabling users to control their session lifecycle and administrators to respond to security incidents.
 
@@ -2860,8 +2860,8 @@ curl -X POST https://api.tachyon.dev/api/v1/auth/logout \
 **Endpoint:** `GET /oauth2/authorize`
 
 **Element ID:** API-AUTH-011
-**Related Requirements:** [REQ-SEC-013](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-013](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** OAuth 2.0 authorization endpoint for initiating federated authentication flow.
 
@@ -2982,8 +2982,8 @@ Location: https://client.example.com/callback?error=invalid_request&error_descri
 - OAuth 2.0 events are logged for audit
 
 **Dependencies:**
-- [REQ-SEC-013](../../.specs/04_future_state/reqs/security_requirements.md): OAuth 2.0 Support
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-013](../../.adrs/ OAuth 2.0 Support
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 - RFC 6749: OAuth 2.0 Authorization Framework
 - RFC 7636: PKCE for Public Clients
 
@@ -3001,8 +3001,8 @@ curl -L "https://api.tachyon.dev/oauth2/authorize?response_type=code&client_id=a
 **Endpoint:** `POST /oauth2/token`
 
 **Element ID:** API-AUTH-012
-**Related Requirements:** [REQ-SEC-013](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-013](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** OAuth 2.0 token endpoint for exchanging authorization codes for access tokens.
 
@@ -3146,8 +3146,8 @@ pub struct OAuth2TokenResponse {
 - OAuth 2.0 events are logged for audit
 
 **Dependencies:**
-- [REQ-SEC-013](../../.specs/04_future_state/reqs/security_requirements.md): OAuth 2.0 Support
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-013](../../.adrs/ OAuth 2.0 Support
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 - RFC 6749: OAuth 2.0 Authorization Framework
 - RFC 7636: PKCE for Public Clients
 
@@ -3169,8 +3169,8 @@ curl -X POST https://api.tachyon.dev/oauth2/token \
 **Endpoint:** `GET /api/v1/auth/oauth2/providers`
 
 **Element ID:** API-AUTH-013
-**Related Requirements:** [REQ-SEC-013](../../.specs/04_future_state/reqs/security_requirements.md)
-**Related Design Elements:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md)
+**Related Requirements:** [REQ-SEC-013](../../.adrs/
+**Related Design Elements:** [DES-SEC-001](../../.adrs/
 
 **Description:** Retrieves list of configured OAuth 2.0 identity providers.
 
@@ -3293,7 +3293,7 @@ pub struct OAuth2Provider {
 - Sensitive information (client secrets) is not exposed
 
 **Dependencies:**
-- [REQ-SEC-013](../../.specs/04_future_state/reqs/security_requirements.md): OAuth 2.0 Support
+- [REQ-SEC-013](../../.adrs/ OAuth 2.0 Support
 
 **Rationale:** OAuth 2.0 provider listing enables clients to discover available identity providers for federated authentication.
 
@@ -3507,8 +3507,8 @@ pub enum RateLimitAlgorithm {
 - Trusted IPs (e.g., internal services) may have higher limits
 
 **Dependencies:**
-- [REQ-SEC-068](../../.specs/04_future_state/reqs/security_requirements.md): Alerting
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-068](../../.adrs/ Alerting
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 
 **Rationale:** Multi-layered rate limiting protects against brute-force attacks while ensuring legitimate users are not overly constrained.
 
@@ -3706,8 +3706,8 @@ pub struct DdosProtectionConfig {
 - DDoS events trigger security alerts
 
 **Dependencies:**
-- [REQ-SEC-068](../../.specs/04_future_state/reqs/security_requirements.md): Alerting
-- [REQ-SEC-061](../../.specs/04_future_state/reqs/security_requirements.md): Authentication Events Logging
+- [REQ-SEC-068](../../.adrs/ Alerting
+- [REQ-SEC-061](../../.adrs/ Authentication Events Logging
 
 **Rationale:** Comprehensive DDoS protection ensures service availability during attack scenarios while minimizing impact on legitimate users.
 
@@ -3759,9 +3759,9 @@ Cross-Origin-Resource-Policy: same-origin
 - Cross-Origin headers prevent tab-nabbing attacks
 
 **Dependencies:**
-- [REQ-SEC-050](../../.specs/04_future_state/reqs/security_requirements.md): Content Security Policy
-- [REQ-SEC-033](../../.specs/04_future_state/reqs/security_requirements.md): HSTS Headers
-- [REQ-SEC-075](../../.specs/04_future_state/reqs/security_requirements.md): Secure Headers
+- [REQ-SEC-050](../../.adrs/ Content Security Policy
+- [REQ-SEC-033](../../.adrs/ HSTS Headers
+- [REQ-SEC-075](../../.adrs/ Secure Headers
 
 **Rationale:** Security headers provide defense-in-depth by protecting against client-side attacks and enforcing secure browser behavior.
 
@@ -3861,11 +3861,11 @@ pub enum EventSeverity {
 - High-severity events trigger security alerts
 
 **Dependencies:**
-- [REQ-SEC-056](../../.specs/04_future_state/reqs/security_requirements.md): Comprehensive Logging
-- [REQ-SEC-057](../../.specs/04_future_state/reqs/security_requirements.md): Immutable Logs
-- [REQ-SEC-058](../../.specs/04_future_state/reqs/security_requirements.md): Log Tamper Protection
-- [REQ-SEC-059](../../.specs/04_future_state/reqs/security_requirements.md): Log Retention
-- [REQ-SEC-060](../../.specs/04_future_state/reqs/security_requirements.md): Log Access
+- [REQ-SEC-056](../../.adrs/ Comprehensive Logging
+- [REQ-SEC-057](../../.adrs/ Immutable Logs
+- [REQ-SEC-058](../../.adrs/ Log Tamper Protection
+- [REQ-SEC-059](../../.adrs/ Log Retention
+- [REQ-SEC-060](../../.adrs/ Log Access
 
 **Rationale:** Comprehensive audit logging enables incident response, compliance, and security monitoring.
 
@@ -3898,20 +3898,20 @@ pub enum EventSeverity {
 
 | Reference | Title | Version | Date | Path |
 |-----------|-------|--------|------|------|
-| TACHYON-STD-V1.0 | TACHYON: CODING AND DOCUMENTATION STANDARDS | 1.0 | February 2026 | [`.specs/01_standards/coding_standards.md`](../../.specs/01_standards/coding_standards.md) |
-| TACHYON-REQ-SEC-V1.0 | TACHYON: SECURITY REQUIREMENTS | 1.0 | February 2026 | [`.specs/04_future_state/reqs/security_requirements.md`](../../.specs/04_future_state/reqs/security_requirements.md) |
-| TACHYON-DES-SEC-V1.0 | TACHYON: SECURITY DESIGN | 1.0 | February 2026 | [`.specs/04_future_state/design/security_design.md`](../../.specs/04_future_state/design/security_design.md) |
-| TACHYON-DES-API-V1.0 | TACHYON: API INTERFACES DESIGN | 1.0 | February 2026 | [`.specs/04_future_state/design/api_interfaces.md`](../../.specs/04_future_state/design/api_interfaces.md) |
-| TACHYON-TSK-V1.0 | TACHYON: EXECUTION TASKS AND WORK BREAKDOWN STRUCTURE | 1.0 | February 2026 | [`.specs/tasks.md`](../../.specs/tasks.md) |
+| TACHYON-STD-V1.0 | TACHYON: CODING AND DOCUMENTATION STANDARDS | 1.0 | February 2026 | [`.adrs/ |
+| TACHYON-REQ-SEC-V1.0 | TACHYON: SECURITY REQUIREMENTS | 1.0 | February 2026 | [`.adrs/ |
+| TACHYON-DES-SEC-V1.0 | TACHYON: SECURITY DESIGN | 1.0 | February 2026 | [`.adrs/ |
+| TACHYON-DES-API-V1.0 | TACHYON: API INTERFACES DESIGN | 1.0 | February 2026 | [`.adrs/ |
+| TACHYON-TSK-V1.0 | TACHYON: EXECUTION TASKS AND WORK BREAKDOWN STRUCTURE | 1.0 | February 2026 | [`.adrs/ |
 
 ### 10.3. Architectural Decision Records
 
 | Reference | Title | Version | Date | Path |
 |-----------|-------|--------|------|------|
-| ADR-001 | ADR-001: Rust as Primary Language | 1.0 | February 2026 | [`.specs/02_adrs/001_rust_as_primary_language.md`](../../.specs/02_adrs/001_rust_as_primary_language.md) |
-| ADR-003 | ADR-003: Axum for HTTP/2 Server | 1.0 | February 2026 | [`.specs/02_adrs/003_axum_for_http2_server.md`](../../.specs/02_adrs/003_axum_for_http2_server.md) |
-| ADR-007 | ADR-007: Tokio for Async Runtime | 1.0 | February 2026 | [`.specs/02_adrs/007_tokio_for_async_runtime.md`](../../.specs/02_adrs/007_tokio_for_async_runtime.md) |
-| ADR-010 | ADR-010: Security Architecture | 1.0 | February 2026 | [`.specs/02_adrs/010_security_architecture.md`](../../.specs/02_adrs/010_security_architecture.md) |
+| ADR-001 | ADR-001: Rust as Primary Language | 1.0 | February 2026 | [`.adrs/adr-001-three-tier-jit-compilation.md](../../.adrs/adr-001-three-tier-jit-compilation.md) |
+| ADR-003 | ADR-003: Axum for HTTP/2 Server | 1.0 | February 2026 | [`.adrs/adr-003-lru-cache-target.md](../../.adrs/adr-003-lru-cache-target.md) |
+| ADR-007 | ADR-007: Tokio for Async Runtime | 1.0 | February 2026 | [`.adrs/adr-007-thread-safety-strategy.md](../../.adrs/adr-007-thread-safety-strategy.md) |
+| ADR-010 | ADR-010: Security Architecture | 1.0 | February 2026 | [`.adrs/adr-010-synchronization-primitives.md](../../.adrs/adr-010-synchronization-primitives.md) |
 
 ### 10.4. Requirements Traceability
 

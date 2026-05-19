@@ -47,15 +47,15 @@ This implementation guide applies to all security controls implemented within th
 
 This document depends on the following specifications:
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
 - [TACHYON-SEC-001-V1.0](security_requirements.md) - Security Requirements
 - [TACHYON-SEC-001-V1.0](security_architecture.md) - Security Architecture
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture ADR
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture ADR
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 ### 1.4. Implementation Principles
 
-The security implementation guidance provided in this document is founded on the following principles derived from [ADR-010](../../.specs/02_adrs/010_security_architecture.md):
+The security implementation guidance provided in this document is founded on the following principles derived from [ADR-010](../../.adrs/adr-010-synchronization-primitives.md):
 
 | Principle | Description | Implementation Guidance |
 |-----------|-------------|----------------------|
@@ -85,7 +85,7 @@ The implementation guidance addresses threats identified through STRIDE analysis
 
 ### 2.1. Implementation Architecture
 
-The Tachyon security implementation follows a layered architecture derived from [ADR-010](../../.specs/02_adrs/010_security_architecture.md), with security controls implemented at multiple layers to achieve defense-in-depth:
+The Tachyon security implementation follows a layered architecture derived from [ADR-010](../../.adrs/adr-010-synchronization-primitives.md), with security controls implemented at multiple layers to achieve defense-in-depth:
 
 ```mermaid
 graph TB
@@ -5883,12 +5883,12 @@ Implementers of security monitoring controls must adhere to following security b
 
 This document references the following internal Tachyon specifications and design documents:
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
 - [TACHYON-SEC-001-V1.0](security_requirements.md) - Security Requirements
 - [TACHYON-SEC-001-V1.0](security_architecture.md) - Security Architecture
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture ADR
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
-- [TACHYON-TSK-V1.0](../../.specs/tasks.md) - Execution Tasks and Work Breakdown Structure
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture ADR
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
+- [TACHYON-TSK-V1.0](../../.adrs/ - Execution Tasks and Work Breakdown Structure
 
 ### 12.2. External Standards and Frameworks
 

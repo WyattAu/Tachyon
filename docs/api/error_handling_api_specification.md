@@ -40,11 +40,11 @@ The Tachyon toolchain encompasses:
 ### 1.2. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [TACHYON-ADR-007-V1.0](../.specs/02_adrs/007_tokio_for_async_runtime.md) - Tokio for Async Runtime
-- [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md) - Axum for HTTP/2 Server
+- [TACHYON-ADR-007-V1.0](../.adrs/adr-007-thread-safety-strategy.md) - Tokio for Async Runtime
+- [TACHYON-TMA-V1.0](../.adrs/ - Threat Model Analysis
 
 ### 1.3. Error Handling Philosophy
 
@@ -4433,13 +4433,13 @@ The following KPIs should be displayed on the error performance monitoring dashb
 
 | Reference | Title | Version | Location |
 |-----------|-------|---------|----------|
-| TACHYON-STD-V1.0 | Coding and Documentation Standards | 1.0 | [`.specs/01_standards/coding_standards.md`](../.specs/01_standards/coding_standards.md) |
-| TACHYON-ADR-001-V1.0 | Rust as Primary Language | 1.0 | [`.specs/02_adrs/001_rust_as_primary_language.md`](../.specs/02_adrs/001_rust_as_primary_language.md) |
-| TACHYON-ADR-003-V1.0 | Axum for HTTP/2 Server | 1.0 | [`.specs/02_adrs/003_axum_for_http2_server.md`](../.specs/02_adrs/003_axum_for_http2_server.md) |
-| TACHYON-ADR-007-V1.0 | Tokio for Async Runtime | 1.0 | [`.specs/02_adrs/007_tokio_for_async_runtime.md`](../.specs/02_adrs/007_tokio_for_async_runtime.md) |
-| TACHYON-TMA-V1.0 | Threat Model Analysis | 1.0 | [`.specs/03_threat_model/analysis.md`](../.specs/03_threat_model/analysis.md) |
-| TACHYON-REQ-020-V1.0 | Error Handling and Status Codes | 1.0 | [`.specs/04_future_state/reqs/REQ-020_error_handling.md`](../.specs/04_future_state/reqs/REQ-020_error_handling.md) |
-| TACHYON-DES-015-V1.0 | Error Handling Architecture | 1.0 | [`.specs/04_future_state/design/DES-015_error_handling.md`](../.specs/04_future_state/design/DES-015_error_handling.md) |
+| TACHYON-STD-V1.0 | Coding and Documentation Standards | 1.0 | [`.adrs/ |
+| TACHYON-ADR-001-V1.0 | Rust as Primary Language | 1.0 | [`.adrs/adr-001-three-tier-jit-compilation.md](../.adrs/adr-001-three-tier-jit-compilation.md) |
+| TACHYON-ADR-003-V1.0 | Axum for HTTP/2 Server | 1.0 | [`.adrs/adr-003-lru-cache-target.md](../.adrs/adr-003-lru-cache-target.md) |
+| TACHYON-ADR-007-V1.0 | Tokio for Async Runtime | 1.0 | [`.adrs/adr-007-thread-safety-strategy.md](../.adrs/adr-007-thread-safety-strategy.md) |
+| TACHYON-TMA-V1.0 | Threat Model Analysis | 1.0 | [`.adrs/ |
+| TACHYON-REQ-020-V1.0 | Error Handling and Status Codes | 1.0 | [`.adrs/ |
+| TACHYON-DES-015-V1.0 | Error Handling Architecture | 1.0 | [`.adrs/ |
 
 ### 11.3. External Documentation
 

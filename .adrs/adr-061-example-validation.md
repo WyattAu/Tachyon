@@ -75,5 +75,5 @@ Supported metadata for code examples:
 - TypeScript Testing Best Practices
 
 ## References
-- [.specs/07_5_doc_verification/example_validation.md](../.specs/07_5_doc_verification/example_validation.md)
+- [.adrs/
 - [ADR-058: Consistency Checks](./adr-058-consistency-checks.md)

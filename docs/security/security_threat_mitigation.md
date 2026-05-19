@@ -26,7 +26,7 @@
 
 ### 1.1. Document Purpose
 
-This document provides comprehensive threat mitigation strategies for the Tachyon toolchain, addressing identified threats through multiple security frameworks including STRIDE, OWASP Top 10, and MITRE ATT&CK. The document establishes a systematic approach to threat mitigation that aligns with the defense-in-depth security architecture defined in [ADR-010](../../.specs/02_adrs/010_security_architecture.md).
+This document provides comprehensive threat mitigation strategies for the Tachyon toolchain, addressing identified threats through multiple security frameworks including STRIDE, OWASP Top 10, and MITRE ATT&CK. The document establishes a systematic approach to threat mitigation that aligns with the defense-in-depth security architecture defined in [ADR-010](../../.adrs/adr-010-synchronization-primitives.md).
 
 ### 1.2. Scope
 
@@ -40,12 +40,12 @@ This document covers threat mitigation strategies for:
 ### 1.3. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) - Security Requirements
-- [TACHYON-DES-SEC-V1.0](../../.specs/04_future_state/design/security_design.md) - Security Design
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust Language Selection
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-SEC-V1.0](../../.adrs/ - Security Requirements
+- [TACHYON-DES-SEC-V1.0](../../.adrs/ - Security Design
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust Language Selection
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 ### 1.4. Threat Mitigation Principles
 
@@ -1744,13 +1744,13 @@ impl PostIncidentAnalysis {
 
 | Document ID | Title | Location |
 |-------------|-------|----------|
-| TACHYON-STD-V1.0 | Coding and Documentation Standards | [.specs/01_standards/coding_standards.md](../../.specs/01_standards/coding_standards.md) |
-| TACHYON-REQ-SEC-V1.0 | Security Requirements | [.specs/04_future_state/reqs/security_requirements.md](../../.specs/04_future_state/reqs/security_requirements.md) |
-| TACHYON-DES-SEC-V1.0 | Security Design | [.specs/04_future_state/design/security_design.md](../../.specs/04_future_state/design/security_design.md) |
-| TACHYON-ADR-001-V1.0 | Rust as Primary Language | [.specs/02_adrs/001_rust_as_primary_language.md](../../.specs/02_adrs/001_rust_as_primary_language.md) |
-| TACHYON-ADR-010-V1.0 | Security Architecture | [.specs/02_adrs/010_security_architecture.md](../../.specs/02_adrs/010_security_architecture.md) |
-| TACHYON-TMA-V1.0 | Threat Model Analysis | [.specs/03_threat_model/analysis.md](../../.specs/03_threat_model/analysis.md) |
-| TACHYON-TSK-V1.0 | Execution Tasks and WBS | [.specs/tasks.md](../../.specs/tasks.md) |
+| TACHYON-STD-V1.0 | Coding and Documentation Standards | [.adrs/ |
+| TACHYON-REQ-SEC-V1.0 | Security Requirements | [.adrs/ |
+| TACHYON-DES-SEC-V1.0 | Security Design | [.adrs/ |
+| TACHYON-ADR-001-V1.0 | Rust as Primary Language | [.adrs/adr-001-three-tier-jit-compilation.md](../../.adrs/adr-001-three-tier-jit-compilation.md) |
+| TACHYON-ADR-010-V1.0 | Security Architecture | [.adrs/adr-010-synchronization-primitives.md](../../.adrs/adr-010-synchronization-primitives.md) |
+| TACHYON-TMA-V1.0 | Threat Model Analysis | [.adrs/ |
+| TACHYON-TSK-V1.0 | Execution Tasks and WBS | [.adrs/ |
 
 ### 9.2. External Standards and Frameworks
 

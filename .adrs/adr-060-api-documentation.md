@@ -78,5 +78,5 @@ Required annotations for each public API:
 - Rust Documentation Guidelines
 
 ## References
-- [.specs/07_5_doc_verification/api_documentation_generation.md](../.specs/07_5_doc_verification/api_documentation_generation.md)
+- [.adrs/
 - [ADR-051: Pipeline Architecture](./adr-051-pipeline-architecture.md)

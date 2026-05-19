@@ -10,7 +10,7 @@
 ## Context and Problem Statement
 
 ### Context
-The threat model ([`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md)) identifies multiple supply chain attack vectors (SC-SUP-001 through SC-SUP-004). The monitoring strategy ([`.specs/09_5_supply_monitoring/monitoring_strategy.md`](.specs/09_5_supply_monitoring/monitoring_strategy.md)) requires real-time detection of supply chain attacks.
+The threat model ([`.adrs/ identifies multiple supply chain attack vectors (SC-SUP-001 through SC-SUP-004). The monitoring strategy ([`.adrs/ requires real-time detection of supply chain attacks.
 
 ### Problem Statement
 We lack automated supply chain attack detection that provides:
@@ -34,7 +34,7 @@ Current challenges:
 ## Decision Drivers
 
 ### Security Requirements
-From [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md)):
+From [`.adrs/
 - **SC-SUP-001:** Malicious dependency injection
 - **SC-SUP-002:** Vulnerability disclosure
 - **SC-SUP-003:** License non-compliance
@@ -496,10 +496,10 @@ class BehavioralAnalyzer:
 ## References
 
 **Internal Documents:**
-- [`.specs/09_5_supply_monitoring/monitoring_strategy.md`](.specs/09_5_supply_monitoring/monitoring_strategy.md) - Monitoring Strategy
-- [`.specs/09_5_supply_monitoring/alerting_rules.md`](.specs/09_5_supply_monitoring/alerting_rules.md) - Alerting Rules
-- [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md) - Threat Model
-- [`.specs/07_ci_cd/pipeline_config.toml`](.specs/07_ci_cd/pipeline_config.toml) - CI/CD Pipeline
+- [`.adrs/ - Monitoring Strategy
+- [`.adrs/ - Alerting Rules
+- [`.adrs/ - Threat Model
+- [`.adrs/ - CI/CD Pipeline
 
 **External Resources:**
 - CISA SBOM Guidance: https://www.cisa.gov/sbom

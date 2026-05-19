@@ -57,13 +57,13 @@ The Tachyon project welcomes contributions that align with the project's archite
 
 1. **Quality First:** All contributions must meet the project's quality standards, including code quality, test coverage, and documentation requirements.
 
-2. **Security by Design:** All contributions must adhere to the security architecture defined in [ADR-010](../../.specs/02_adrs/010_security_architecture.md), implementing defense-in-depth security controls.
+2. **Security by Design:** All contributions must adhere to the security architecture defined in [ADR-010](../../.adrs/adr-010-synchronization-primitives.md), implementing defense-in-depth security controls.
 
-3. **Architectural Alignment:** Contributions must align with the architectural decisions documented in the [ADR directory](../../.specs/02_adrs/), particularly [ADR-001](../../.specs/02_adrs/001_rust_as_primary_language.md) establishing Rust as the primary language.
+3. **Architectural Alignment:** Contributions must align with the architectural decisions documented in the [ADR directory](../../.adrs/), particularly [ADR-001](../../.adrs/adr-001-three-tier-jit-compilation.md) establishing Rust as the primary language.
 
 4. **Test-Driven Development:** Contributions should follow Test-Driven Development (TDD) principles, with tests written before or concurrently with implementation code.
 
-5. **Documentation Excellence:** All contributions must include comprehensive documentation, following the standards established in [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md).
+5. **Documentation Excellence:** All contributions must include comprehensive documentation, following the standards established in [TACHYON-STD-V1.0](../../.adrs/
 
 6. **Incremental Improvement:** Contributions should be focused, atomic, and incrementally improve the system without introducing unnecessary complexity.
 
@@ -77,9 +77,9 @@ The Tachyon project welcomes contributions that align with the project's archite
 
 Code contributions include modifications to the source codebase across all components. Code contributions must:
 
-- Follow the coding standards defined in [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md)
-- Include comprehensive test coverage as defined in [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md)
-- Adhere to the security architecture defined in [ADR-010](../../.specs/02_adrs/010_security_architecture.md)
+- Follow the coding standards defined in [TACHYON-STD-V1.0](../../.adrs/
+- Include comprehensive test coverage as defined in [TACHYON-TST-V1.0](../../.adrs/
+- Adhere to the security architecture defined in [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)
 - Include inline documentation following language-appropriate documentation comment formats
 - Pass all automated quality gates including linting, formatting, and static analysis
 
@@ -97,7 +97,7 @@ Code contributions include modifications to the source codebase across all compo
 
 Documentation contributions include modifications to the project documentation. Documentation contributions must:
 
-- Follow the documentation structure standards defined in [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md)
+- Follow the documentation structure standards defined in [TACHYON-STD-V1.0](../../.adrs/
 - Maintain PhD thesis level rigor and precision
 - Include proper citations and references
 - Use consistent terminology as defined in the project glossary
@@ -117,7 +117,7 @@ Documentation contributions include modifications to the project documentation. 
 
 Test contributions include additions to the test suite. Test contributions must:
 
-- Follow the testing strategy defined in [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md)
+- Follow the testing strategy defined in [TACHYON-TST-V1.0](../../.adrs/
 - Meet the code coverage requirements for the affected components
 - Include clear test names and descriptions
 - Be maintainable and follow test organization principles
@@ -600,7 +600,7 @@ cargo test --test '*'
 
 ### 4.1. Test-Driven Development (TDD)
 
-The Tachyon project follows Test-Driven Development methodology as specified in [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md). All code contributions must follow the Red-Green-Refactor cycle.
+The Tachyon project follows Test-Driven Development methodology as specified in [TACHYON-TST-V1.0](../../.adrs/ All code contributions must follow the Red-Green-Refactor cycle.
 
 #### 4.1.1. Red-Green-Refactor Cycle
 
@@ -701,7 +701,7 @@ tachyon/web/src/
 
 ### 4.2. Coding Standards Compliance
 
-All code must comply with the standards defined in [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md).
+All code must comply with the standards defined in [TACHYON-STD-V1.0](../../.adrs/
 
 #### 4.2.1. Rust Coding Standards
 
@@ -855,7 +855,7 @@ export function DocumentManager({ capacity, onDocumentChange }: DocumentManagerP
 
 ### 4.3. Security Development Practices
 
-All code must adhere to the security architecture defined in [ADR-010](../../.specs/02_adrs/010_security_architecture.md).
+All code must adhere to the security architecture defined in [ADR-010](../../.adrs/adr-010-synchronization-primitives.md).
 
 #### 4.3.1. Input Validation
 
@@ -1297,7 +1297,7 @@ pub enum DocumentError {
 }
 ```
 
-See [ADR-010](../../.specs/02_adrs/010_security_architecture.md) for
+See [ADR-010](../../.adrs/adr-010-synchronization-primitives.md) for
 error handling guidelines.
 ```
 
@@ -1421,7 +1421,7 @@ The project uses the following merge methods:
 
 ### 6.1. Testing Strategy
 
-The Tachyon project follows the testing strategy defined in [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md), implementing a testing pyramid with 60% unit tests, 30% integration tests, and 10% end-to-end tests.
+The Tachyon project follows the testing strategy defined in [TACHYON-TST-V1.0](../../.adrs/ implementing a testing pyramid with 60% unit tests, 30% integration tests, and 10% end-to-end tests.
 
 #### 6.1.1. Testing Pyramid
 
@@ -1872,7 +1872,7 @@ All tests must meet the following quality criteria:
 
 ### 7.1. Documentation Standards
 
-All documentation must comply with the standards defined in [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), maintaining PhD thesis level rigor and precision.
+All documentation must comply with the standards defined in [TACHYON-STD-V1.0](../../.adrs/ maintaining PhD thesis level rigor and precision.
 
 #### 7.1.1. Code Documentation
 
@@ -2314,7 +2314,7 @@ Before submitting a contribution, ensure all items in the checklist are complete
 #### 8.1.1. Code Contribution Checklist
 
 **Code Quality:**
-- [ ] Code follows [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) standards
+- [ ] Code follows [TACHYON-STD-V1.0](../../.adrs/ standards
 - [ ] Code is formatted (`cargo fmt`, `prettier --write`)
 - [ ] No linting warnings (`cargo clippy`, `eslint`)
 - [ ] All tests pass (`cargo test`, `bun test`)
@@ -2372,7 +2372,7 @@ Before submitting a contribution, ensure all items in the checklist are complete
 - [ ] Spelling and grammar checked
 
 **Standards Compliance:**
-- [ ] Follows [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) standards
+- [ ] Follows [TACHYON-STD-V1.0](../../.adrs/ standards
 - [ ] Uses consistent terminology
 - [ ] Uses proper formatting
 - [ ] Includes proper citations
@@ -2654,27 +2654,27 @@ The security team will:
 
 **Standards and Guidelines:**
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TSK-V1.0](../../.specs/tasks.md) - Execution Tasks and Work Breakdown Structure
-- [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-TSK-V1.0](../../.adrs/ - Execution Tasks and Work Breakdown Structure
+- [TACHYON-TST-V1.0](../../.adrs/ - Test Plan
 
 **Architectural Decisions:**
 
-- [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md)
-- [ADR-002: Tauri for Desktop Application](../../.specs/02_adrs/002_tauri_for_desktop_application.md)
-- [ADR-003: Axum for HTTP/2 Server](../../.specs/02_adrs/003_axum_for_http2_server.md)
-- [ADR-004: Leptos for Web Frontend](../../.specs/02_adrs/004_leptos_for_web_frontend.md)
-- [ADR-005: Bun for JavaScript Runtime](../../.specs/02_adrs/005_bun_for_javascript_runtime.md)
-- [ADR-006: Nix Flakes for Build System](../../.specs/02_adrs/006_nix_flakes_for_build_system.md)
-- [ADR-007: Tokio for Async Runtime](../../.specs/02_adrs/007_tokio_for_async_runtime.md)
-- [ADR-008: Workspace Structure for Rust Crates](../../.specs/02_adrs/008_workspace_structure_for_rust_crates.md)
-- [ADR-009: IPC Communication Architecture](../../.specs/02_adrs/009_ipc_communication_architecture.md)
-- [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md)
+- [ADR-001: Rust as Primary Language](../../.adrs/adr-001-three-tier-jit-compilation.md)
+- [ADR-002: Tauri for Desktop Application](../../.adrs/adr-002-bm25-search-parameters.md)
+- [ADR-003: Axum for HTTP/2 Server](../../.adrs/adr-003-lru-cache-target.md)
+- [ADR-004: Leptos for Web Frontend](../../.adrs/adr-004-debounce-window.md)
+- [ADR-005: Bun for JavaScript Runtime](../../.adrs/adr-005-last-write-wins-conflict-resolution.md)
+- [ADR-006: Nix Flakes for Build System](../../.adrs/adr-006-direct-libgit2-integration.md)
+- [ADR-007: Tokio for Async Runtime](../../.adrs/adr-007-thread-safety-strategy.md)
+- [ADR-008: Workspace Structure for Rust Crates](../../.adrs/adr-008-deadlock-prevention.md)
+- [ADR-009: IPC Communication Architecture](../../.adrs/adr-009-race-condition-mitigation.md)
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md)
 
 **Requirements and Design:**
 
-- [Requirements Index](../../.specs/04_future_state/reqs/000-index.md)
-- [Design Index](../../.specs/04_future_state/design/000-index.md)
+- [Requirements Index](../../.adrs/
+- [Design Index](../../.adrs/
 
 ### 9.2. External Resources
 

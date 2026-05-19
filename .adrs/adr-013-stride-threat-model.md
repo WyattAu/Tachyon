@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-02-11
 **Context:** Security Engineering Phase
-**Related Documents:** [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md), [`.specs/03_security/security_test_plan.md`](.specs/03_security/security_test_plan.md)
+**Related Documents:** [`.adrs/ [`.adrs/
 
 ---
 
@@ -119,12 +119,12 @@ A structured threat modeling approach is required to systematically identify and
 3. Enables systematic threat mitigation and prioritization
 4. Required for compliance with OWASP Top 10, NIST SP 800-53, ISO/IEC 27001
 5. Clear documentation supports security audits and reviews
-6. STRIDE threat model in [`threat_model.md`](.specs/03_security/threat_model.md) maps directly to requirements and test plans
+6. STRIDE threat model in [`threat_model.md`](.adrs/ maps directly to requirements and test plans
 
 **Traceability:**
-- Threat model: [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md)
-- Security requirements: [`.specs/00_requirements/requirements.md`](.specs/00_requirements/requirements.md) (SC-RQ-001 through SC-RQ-008)
-- Security test plan: [`.specs/03_security/security_test_plan.md`](.specs/03_security/security_test_plan.md)
+- Threat model: [`.adrs/
+- Security requirements: [`.adrs/ (SC-RQ-001 through SC-RQ-008)
+- Security test plan: [`.adrs/
 
 ---
 
@@ -181,7 +181,7 @@ A structured threat modeling approach is required to systematically identify and
 
 ### 6.3. Documentation Structure
 
-Each threat in [`threat_model.md`](.specs/03_security/threat_model.md) must include:
+Each threat in [`threat_model.md`](.adrs/ must include:
 - Threat ID (e.g., CM-GIT-002)
 - STRIDE category (S, T, R, I, D, E)
 - Threat description
@@ -215,5 +215,5 @@ Each threat in [`threat_model.md`](.specs/03_security/threat_model.md) must incl
 - OWASP Application Security Verification Standard: https://owasp.org/www-project-application-security-verification-standard/
 - NIST SP 800-53 Revision 5: https://csrc.nist.gov/publications/detail/sp800-53/rev5/
 - ISO/IEC 27001:2022: https://www.iso.org/standard/iso-iec-27001-2012/
-- Tachyon Requirements: [`.specs/00_requirements/requirements.md`](.specs/00_requirements/requirements.md)
-- Tachyon Architecture: [`.specs/02_architecture/blue_paper.md`](.specs/02_architecture/blue_paper.md)
+- Tachyon Requirements: [`.adrs/
+- Tachyon Architecture: [`.adrs/

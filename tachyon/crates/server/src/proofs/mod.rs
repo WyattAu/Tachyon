@@ -5,7 +5,7 @@
 //! They serve as documentation and can be verified independently with:
 //!
 //! ```bash
-//! lean --make .specs/02_architecture/proofs/crdt_convergence.lean
+//! lean --make .adrs/
 //! ```
 //!
 //! VERIFICATION PENDING: Environment missing Lean 4

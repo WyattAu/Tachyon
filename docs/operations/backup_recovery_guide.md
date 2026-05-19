@@ -38,9 +38,9 @@ The Tachyon system encompasses:
 ### 1.2. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 - [TACHYON-ARC-V1.0](../architecture/deployment_architecture.md) - Deployment Architecture Documentation
 
 ### 1.3. Applicability
@@ -205,7 +205,7 @@ The backup framework leverages the following technologies:
 
 ### 2.5. Security Considerations
 
-Backup operations incorporate security controls as defined in [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md):
+Backup operations incorporate security controls as defined in [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md):
 
 **Security Controls:**
 1. **Encryption at Rest:** All backups encrypted using AES-256-GCM
@@ -233,7 +233,7 @@ pub fn encrypt_backup(data: &[u8], key: &Key<Aes256Gcm>) -> Result<Vec<u8>, Encr
 
 ### 3.1. Strategic Principles
 
-The Tachyon backup strategy is founded upon following principles, aligned with [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) security architecture:
+The Tachyon backup strategy is founded upon following principles, aligned with [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) security architecture:
 
 **Principle 1: Defense-in-Depth Protection**
 
@@ -2358,9 +2358,9 @@ impl ReportGenerator {
 This document references the following internal project documents:
 
 **Standards and Policies:**
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 **Architecture Documentation:**
 - [TACHYON-ARC-V1.0](../architecture/deployment_architecture.md) - Deployment Architecture Documentation
@@ -2446,7 +2446,7 @@ This document references the following external standards and publications:
 
 ### 9.4. Related Requirements
 
-This document addresses the following requirements from [TACHYON-REQ-V1.0](../../.specs/04_future_state/reqs/):
+This document addresses the following requirements from [TACHYON-REQ-V1.0](../../.adrs/
 
 - **REQ-183:** Backup Requirements - Requirements for backup operations
 - **REQ-184:** Recovery Requirements - Requirements for recovery operations
@@ -2454,7 +2454,7 @@ This document addresses the following requirements from [TACHYON-REQ-V1.0](../..
 
 ### 9.5. Related Design Elements
 
-This document implements the following design elements from [TACHYON-DSN-V1.0](../../.specs/04_future_state/design/):
+This document implements the following design elements from [TACHYON-DSN-V1.0](../../.adrs/
 
 - **DSN-120:** Backup Design - Design of backup system
 - **DSN-121:** Recovery Design - Design of recovery system

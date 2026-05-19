@@ -5,7 +5,7 @@
 **Status:** Proposed
 **Classification:** API Specification
 **Compliance Level:** ISO/IEC 26514:2021, IEEE 1063-2001
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md), [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md), [TACHYON-ADR-007-V1.0](../../.specs/02_adrs/007_tokio_for_async_runtime.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md), [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md), [TACHYON-ADR-007-V1.0](../../.adrs/adr-007-thread-safety-strategy.md)
 
 ---
 
@@ -49,7 +49,7 @@ This specification is intended for:
 
 ### 1.4. Document Conventions
 
-This document follows conventions established in [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md):
+This document follows conventions established in [TACHYON-STD-V1.0](../../.adrs/
 
 - **Formal Tone:** Third-person perspective, objective language, precise terminology
 - **PhD Thesis Rigor:** All statements are precise, unambiguous, and verifiable
@@ -2375,34 +2375,34 @@ pub async fn require_repository_access(
 
 ### 8.1. Architecture Decision Records
 
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md): Rust as Primary Language
-- [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md): Axum for HTTP/2 Server
-- [TACHYON-ADR-007-V1.0](../../.specs/02_adrs/007_tokio_for_async_runtime.md): Tokio for Async Runtime
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md): Rust as Primary Language
+- [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md): Axum for HTTP/2 Server
+- [TACHYON-ADR-007-V1.0](../../.adrs/adr-007-thread-safety-strategy.md): Tokio for Async Runtime
 
 ### 8.2. Design Documents
 
-- [DES-DM-002](../../.specs/04_future_state/design/data_models.md): RepositoryPath Type
-- [DES-DM-005](../../.specs/04_future_state/design/data_models.md): Repository Type
-- [DES-DM-008](../../.specs/04_future_state/design/data_models.md): GitStatus Type
-- [DES-API-001](../../.specs/04_future_state/design/api_interfaces.md): API Interface Patterns
+- [DES-DM-002](../../.adrs/ RepositoryPath Type
+- [DES-DM-005](../../.adrs/ Repository Type
+- [DES-DM-008](../../.adrs/ GitStatus Type
+- [DES-API-001](../../.adrs/ API Interface Patterns
 
 ### 8.3. Requirements
 
-- [REQ-SRV-025](../../.specs/04_future_state/reqs/server_requirements.md): Repository List
-- [REQ-SRV-026](../../.specs/04_future_state/reqs/server_requirements.md): Repository Retrieval
-- [REQ-SRV-027](../../.specs/04_future_state/reqs/server_requirements.md): Repository Creation
-- [REQ-SRV-028](../../.specs/04_future_state/reqs/server_requirements.md): Repository Update
-- [REQ-SRV-029](../../.specs/04_future_state/reqs/server_requirements.md): Repository Deletion
-- [REQ-SRV-030](../../.specs/04_future_state/reqs/server_requirements.md): Repository Synchronization
-- [REQ-SRV-031](../../.specs/04_future_state/reqs/server_requirements.md): Repository Status
-- [REQ-SRV-032](../../.specs/04_future_state/reqs/server_requirements.md): Branch Management
-- [REQ-SRV-047](../../.specs/04_future_state/reqs/server_requirements.md): Commit Management
-- [REQ-SRV-081](../../.specs/04_future_state/reqs/server_requirements.md): RBAC Enforcement
-- [REQ-DESK-037](../../.specs/04_future_state/reqs/desktop_requirements.md): Repository Cloning
+- [REQ-SRV-025](../../.adrs/ Repository List
+- [REQ-SRV-026](../../.adrs/ Repository Retrieval
+- [REQ-SRV-027](../../.adrs/ Repository Creation
+- [REQ-SRV-028](../../.adrs/ Repository Update
+- [REQ-SRV-029](../../.adrs/ Repository Deletion
+- [REQ-SRV-030](../../.adrs/ Repository Synchronization
+- [REQ-SRV-031](../../.adrs/ Repository Status
+- [REQ-SRV-032](../../.adrs/ Branch Management
+- [REQ-SRV-047](../../.adrs/ Commit Management
+- [REQ-SRV-081](../../.adrs/ RBAC Enforcement
+- [REQ-DESK-037](../../.adrs/ Repository Cloning
 
 ### 8.4. Standards
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md): Coding Standards
+- [TACHYON-STD-V1.0](../../.adrs/ Coding Standards
 - ISO/IEC 26514:2021: Systems and software engineering — Requirements for designers and developers of user documentation
 - IEEE 1063-2001: IEEE Standard for Software User Documentation
 
@@ -2414,7 +2414,7 @@ pub async fn require_repository_access(
 - [git2 Crate](https://github.com/rust-lang/git2-rs): libgit2 bindings for Rust
 - [Serde](https://serde.rs/): Serialization framework for Rust
 - [JSON Web Tokens (JWT)](https://jwt.io/): JWT specification and best practices
-- [HTTP/2 Specification](https://httpwg.org/specs/rfc7540.html): HTTP/2 protocol specification
+- [HTTP/2 Specification](https://httpwg.org/.adrs/ HTTP/2 protocol specification
 
 ---
 

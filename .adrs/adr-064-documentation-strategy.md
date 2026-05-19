@@ -40,7 +40,7 @@ Without a defined documentation strategy, Tachyon faces several risks:
                             │
 ┌─────────────────────────────────────────────────────────┐
 │              Internal Specifications                     │
-│  (.specs/)                                             │
+│  (.adrs/                                             │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
 │  │   Research  │  │ Architecture │  │   Security  │    │
 │  │   Papers    │  │   Blue/Yellow│  │   Threats   │    │
@@ -165,7 +165,7 @@ graph TD
 **Continuous Verification:**
 
 ```yaml
-# CI/CD Integration (from .specs/07_ci_cd/pipeline_config.toml)
+# CI/CD Integration (from .adrs/
 doc_verification:
   consistency_checks:
     - doc-code-match: true
@@ -388,14 +388,14 @@ quality_gates:
 
 ## References
 
-- [White Paper](../.specs/05_branding/white_paper.md)
+- [White Paper](../.adrs/
 - [ADR-062: Brand Identity](./adr-062-brand-identity.md)
 - [ADR-063: UX Philosophy](./adr-063-ux-philosophy.md)
 - [ADR-065: Accessibility](./adr-065-accessibility.md)
 - [ADR-066: Multi-lingual](./adr-066-multi-lingual.md)
 - [ADR-067: Consistency](./adr-067-consistency.md)
-- [CI/CD Pipeline Config](../.specs/07_ci_cd/pipeline_config.toml)
-- [Doc Verification Plan](../.specs/07_5_doc_verification/consistency_checks.md)
+- [CI/CD Pipeline Config](../.adrs/
+- [Doc Verification Plan](../.adrs/
 - [WCAG 2.1 AA Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
 
 ## Implementation

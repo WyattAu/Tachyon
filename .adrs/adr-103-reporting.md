@@ -499,9 +499,9 @@ pub async fn send_email_report(
 ## Related Decisions
 
 - [ADR-097](adr-097-monitoring-strategy.md) - Continuous Monitoring Strategy
-- [`.specs/11_continuous_monitoring/reporting.md`](../.specs/11_continuous_monitoring/reporting.md) - Reporting Specification
-- [`.specs/10_metrics/weekly_report.md`](../.specs/10_metrics/weekly_report.md) - Weekly Report Template
-- [`.specs/10_metrics/monthly_trend.md`](../.specs/10_metrics/monthly_trend.md) - Monthly Trend Template
+- [`.adrs/ - Reporting Specification
+- [`.adrs/ - Weekly Report Template
+- [`.adrs/ - Monthly Trend Template
 
 ## References
 

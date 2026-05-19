@@ -455,7 +455,7 @@ jobs:
 
 ```bash
 # Check for code-doc consistency
-# (from .specs/07_5_doc_verification/consistency_checks.md)
+# (from .adrs/
 tachyon verify-doc-consistency
 ```
 
@@ -570,13 +570,13 @@ When updating documentation:
 
 ## References
 
-- [White Paper](../.specs/05_branding/white_paper.md)
+- [White Paper](../.adrs/
 - [ADR-062: Brand Identity](./adr-062-brand-identity.md)
 - [ADR-063: UX Philosophy](./adr-063-ux-philosophy.md)
 - [ADR-064: Documentation Strategy](./adr-064-documentation-strategy.md)
 - [ADR-066: Multi-lingual](./adr-066-multi-lingual.md)
 - [Glossary](../.docs/glossary.md)
-- [Doc Verification Plan](../.specs/07_5_doc_verification/consistency_checks.md)
+- [Doc Verification Plan](../.adrs/
 - [Google Developer Documentation Style Guide](https://developers.google.com/tech-writing/one-pagers)
 - [Microsoft Style Guide](https://docs.microsoft.com/en-us/style-guide/)
 

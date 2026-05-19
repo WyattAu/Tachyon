@@ -49,8 +49,8 @@ Phase -0.5 successfully materialized the Tachyon development environment with re
 
 | Artifact | Purpose | Status |
 |----------|---------|--------|
-| `.specs/00_requirements/capability_requirements.md` | Capability definitions | Analyzed |
-| `.specs/00_requirements/applicable_standards.md` | Standards compliance | Analyzed |
+| `.adrs/ | Capability definitions | Analyzed |
+| `.adrs/ | Standards compliance | Analyzed |
 | `tachyon/Cargo.toml` | Rust dependencies | Analyzed |
 | `tachyon/crates/desktop/src-tauri/Cargo.toml` | Tauri dependencies | Analyzed |
 | `tachyon/crates/server/Cargo.toml` | Server dependencies | Analyzed |

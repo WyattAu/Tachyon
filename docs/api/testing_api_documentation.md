@@ -42,16 +42,16 @@ This specification covers all Testing API endpoints and interfaces exposed by Ta
 - Code coverage measurement and analysis
 - Test configuration and environment management
 
-The specification does not cover internal test framework implementation details, which are documented separately in [TACHYON-TST-V1.0](../.specs/05_test_specifications/test_plan.md).
+The specification does not cover internal test framework implementation details, which are documented separately in [TACHYON-TST-V1.0](../.adrs/
 
 ### 1.3. Document Dependencies
 
 This document depends on following documents:
 
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_api_design_patterns.md) - API Design Patterns
-- [TACHYON-TST-V1.0](../.specs/05_test_specifications/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - API Design Patterns
+- [TACHYON-TST-V1.0](../.adrs/ - Test Plan
 - [TACHYON-API-004-V1.0](rest_api_specification.md) - REST API Specification
 
 ### 1.4. Target Audience
@@ -3177,10 +3177,10 @@ The Testing API implements rate limiting to prevent abuse:
 
 ### 11.1. Standards Documents
 
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_api_design_patterns.md) - API Design Patterns
-- [TACHYON-TST-V1.0](../.specs/05_test_specifications/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - API Design Patterns
+- [TACHYON-TST-V1.0](../.adrs/ - Test Plan
 - [TACHYON-API-004-V1.0](rest_api_specification.md) - REST API Specification
 
 ### 11.2. Technical References
@@ -3218,7 +3218,7 @@ The Testing API implements rate limiting to prevent abuse:
 
 ### 11.6. Glossary
 
-For terminology and definitions, refer to [TACHYON-GLO-V1.0](../.specs/08_glossary/terminology.md).
+For terminology and definitions, refer to [TACHYON-GLO-V1.0](../.adrs/
 
 | Term | Definition |
 |-----------|-------------|

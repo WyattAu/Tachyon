@@ -5,7 +5,7 @@
 **Status:** Proposed
 **Classification:** Technical Specification
 **Compliance Level:** ISO/IEC 26514:2021, IEEE 830-1998, RFC 7540 (HTTP/2)
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md), [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md), [TACHYON-ADR-007-V1.0](../../.specs/02_adrs/007_tokio_for_async_runtime.md), [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-REQ-SRV-V1.0](../../.adrs/ [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md), [TACHYON-ADR-007-V1.0](../../.adrs/adr-007-thread-safety-strategy.md), [TACHYON-TMA-V1.0](../../.adrs/
 
 ---
 
@@ -4861,9 +4861,9 @@ function handleConflictNotification(message) {
 
 | ADR ID | Title | Reference | Status |
 |---------|------|----------|---------|
-| ADR-001 | Rust as Primary Language | [`.specs/02_adrs/001_rust_as_primary_language.md`](../../.specs/02_adrs/001_rust_as_primary_language.md) | Accepted |
-| ADR-003 | Axum for HTTP/2 Server | [`.specs/02_adrs/003_axum_for_http2_server.md`](../../.specs/02_adrs/003_axum_for_http2_server.md) | Accepted |
-| ADR-007 | Tokio for Async Runtime | [`.specs/02_adrs/007_tokio_for_async_runtime.md`](../../.specs/02_adrs/007_tokio_for_async_runtime.md) | Accepted |
+| ADR-001 | Rust as Primary Language | [`.adrs/adr-001-three-tier-jit-compilation.md](../../.adrs/adr-001-three-tier-jit-compilation.md) | Accepted |
+| ADR-003 | Axum for HTTP/2 Server | [`.adrs/adr-003-lru-cache-target.md](../../.adrs/adr-003-lru-cache-target.md) | Accepted |
+| ADR-007 | Tokio for Async Runtime | [`.adrs/adr-007-thread-safety-strategy.md](../../.adrs/adr-007-thread-safety-strategy.md) | Accepted |
 
 **ADR-001: Rust as Primary Language**
 
@@ -4921,79 +4921,79 @@ function handleConflictNotification(message) {
 
 | Requirement ID | Title | Reference | Status |
 |--------------|------|----------|---------|
-| REQ-SRV-005 | Health Check Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-016 | TLS 1.3 Support | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-017 | Certificate Management | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-018 | HSTS Headers | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-021 | Document List Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-022 | Document Retrieval Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-023 | Document Creation Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-024 | Document Update Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-025 | Document Deletion Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-026 | Full-Text Search Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-027 | Faceted Search Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-028 | Search Autocomplete Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-029 | Search Pagination | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-030 | Search Highlighting | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-031 | Repository Status Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-032 | Commit History Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-033 | Branch List Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-034 | Branch Switch Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-035 | Diff View Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-036 | Login Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-037 | Logout Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-038 | Token Refresh Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-039 | MFA Setup Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-040 | MFA Verification Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-042 | Cache Management | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-044 | Content Sanitization | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-056 | Tantivy Integration | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-057 | Incremental Indexing | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-058 | Index Synchronization | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-076 | Session Management | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-077 | MFA Support | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-081 | RBAC Enforcement | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-082 | Frontmatter Access Control | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-083 | Block Redaction | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-084 | Principle of Least Privilege | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-086 | Session Timeout | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-087 | Session Refresh | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-088 | Concurrent Session Limit | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-089 | Session Invalidation | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-090 | Secure Cookies | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-091 | WebSocket Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-092 | Connection Authentication | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-093 | Connection Limiting | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-094 | Heartbeat Mechanism | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-095 | Graceful Disconnection | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-110 | Cache Hit Rate | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-117 | Request Size Limits | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-118 | Rate Limiting | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-119 | Connection Timeouts | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
-| REQ-SRV-120 | Resource Cleanup | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) | Defined |
+| REQ-SRV-005 | Health Check Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-016 | TLS 1.3 Support | [`.adrs/ | Defined |
+| REQ-SRV-017 | Certificate Management | [`.adrs/ | Defined |
+| REQ-SRV-018 | HSTS Headers | [`.adrs/ | Defined |
+| REQ-SRV-021 | Document List Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-022 | Document Retrieval Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-023 | Document Creation Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-024 | Document Update Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-025 | Document Deletion Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-026 | Full-Text Search Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-027 | Faceted Search Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-028 | Search Autocomplete Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-029 | Search Pagination | [`.adrs/ | Defined |
+| REQ-SRV-030 | Search Highlighting | [`.adrs/ | Defined |
+| REQ-SRV-031 | Repository Status Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-032 | Commit History Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-033 | Branch List Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-034 | Branch Switch Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-035 | Diff View Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-036 | Login Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-037 | Logout Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-038 | Token Refresh Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-039 | MFA Setup Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-040 | MFA Verification Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-042 | Cache Management | [`.adrs/ | Defined |
+| REQ-SRV-044 | Content Sanitization | [`.adrs/ | Defined |
+| REQ-SRV-056 | Tantivy Integration | [`.adrs/ | Defined |
+| REQ-SRV-057 | Incremental Indexing | [`.adrs/ | Defined |
+| REQ-SRV-058 | Index Synchronization | [`.adrs/ | Defined |
+| REQ-SRV-076 | Session Management | [`.adrs/ | Defined |
+| REQ-SRV-077 | MFA Support | [`.adrs/ | Defined |
+| REQ-SRV-081 | RBAC Enforcement | [`.adrs/ | Defined |
+| REQ-SRV-082 | Frontmatter Access Control | [`.adrs/ | Defined |
+| REQ-SRV-083 | Block Redaction | [`.adrs/ | Defined |
+| REQ-SRV-084 | Principle of Least Privilege | [`.adrs/ | Defined |
+| REQ-SRV-086 | Session Timeout | [`.adrs/ | Defined |
+| REQ-SRV-087 | Session Refresh | [`.adrs/ | Defined |
+| REQ-SRV-088 | Concurrent Session Limit | [`.adrs/ | Defined |
+| REQ-SRV-089 | Session Invalidation | [`.adrs/ | Defined |
+| REQ-SRV-090 | Secure Cookies | [`.adrs/ | Defined |
+| REQ-SRV-091 | WebSocket Endpoint | [`.adrs/ | Defined |
+| REQ-SRV-092 | Connection Authentication | [`.adrs/ | Defined |
+| REQ-SRV-093 | Connection Limiting | [`.adrs/ | Defined |
+| REQ-SRV-094 | Heartbeat Mechanism | [`.adrs/ | Defined |
+| REQ-SRV-095 | Graceful Disconnection | [`.adrs/ | Defined |
+| REQ-SRV-110 | Cache Hit Rate | [`.adrs/ | Defined |
+| REQ-SRV-117 | Request Size Limits | [`.adrs/ | Defined |
+| REQ-SRV-118 | Rate Limiting | [`.adrs/ | Defined |
+| REQ-SRV-119 | Connection Timeouts | [`.adrs/ | Defined |
+| REQ-SRV-120 | Resource Cleanup | [`.adrs/ | Defined |
 
 ### 9.3. Design Elements
 
 | Design Element ID | Title | Reference | Status |
 |-----------------|------|----------|---------|
-| SRV-DES-001 | Server Architecture | [`.specs/04_future_state/design/server_design.md`](../../.specs/04_future_state/design/server_design.md) | Defined |
-| SRV-DES-002 | HTTP/2 Server Design | [`.specs/04_future_state/design/server_design.md`](../../.specs/04_future_state/design/server_design.md) | Defined |
-| SRV-DES-003 | WebSocket Design | [`.specs/04_future_state/design/server_design.md`](../../.specs/04_future_state/design/server_design.md) | Defined |
-| SRV-DES-004 | Authentication Design | [`.specs/04_future_state/design/server_design.md`](../../.specs/04_future_state/design/server_design.md) | Defined |
-| SRV-DES-005 | Authorization Design | [`.specs/04_future_state/design/server_design.md`](../../.specs/04_future_state/design/server_design.md) | Defined |
-| SRV-DES-006 | Cache Design | [`.specs/04_future_state/design/server_design.md`](../../.specs/04_future_state/design/server_design.md) | Defined |
-| SRV-DES-007 | Search Design | [`.specs/04_future_state/design/server_design.md`](../../.specs/04_future_state/design/server_design.md) | Defined |
+| SRV-DES-001 | Server Architecture | [`.adrs/ | Defined |
+| SRV-DES-002 | HTTP/2 Server Design | [`.adrs/ | Defined |
+| SRV-DES-003 | WebSocket Design | [`.adrs/ | Defined |
+| SRV-DES-004 | Authentication Design | [`.adrs/ | Defined |
+| SRV-DES-005 | Authorization Design | [`.adrs/ | Defined |
+| SRV-DES-006 | Cache Design | [`.adrs/ | Defined |
+| SRV-DES-007 | Search Design | [`.adrs/ | Defined |
 
 ### 9.4. Threat Model
 
 | Threat ID | Title | Reference | Status |
 |-----------|------|----------|---------|
-| STRIDE 2.1 | Spoofing | [`.specs/03_threat_model/analysis.md`](../../.specs/03_threat_model/analysis.md) | Analyzed |
-| STRIDE 2.2 | Tampering | [`.specs/03_threat_model/analysis.md`](../../.specs/03_threat_model/analysis.md) | Analyzed |
-| STRIDE 2.3 | Repudiation | [`.specs/03_threat_model/analysis.md`](../../.specs/03_threat_model/analysis.md) | Analyzed |
-| STRIDE 2.4 | Information Disclosure | [`.specs/03_threat_model/analysis.md`](../../.specs/03_threat_model/analysis.md) | Analyzed |
-| STRIDE 2.5 | Denial of Service | [`.specs/03_threat_model/analysis.md`](../../.specs/03_threat_model/analysis.md) | Analyzed |
-| STRIDE 2.6 | Elevation of Privilege | [`.specs/03_threat_model/analysis.md`](../../.specs/03_threat_model/analysis.md) | Analyzed |
+| STRIDE 2.1 | Spoofing | [`.adrs/ | Analyzed |
+| STRIDE 2.2 | Tampering | [`.adrs/ | Analyzed |
+| STRIDE 2.3 | Repudiation | [`.adrs/ | Analyzed |
+| STRIDE 2.4 | Information Disclosure | [`.adrs/ | Analyzed |
+| STRIDE 2.5 | Denial of Service | [`.adrs/ | Analyzed |
+| STRIDE 2.6 | Elevation of Privilege | [`.adrs/ | Analyzed |
 
 **Threat Mitigations in API:**
 
@@ -5045,7 +5045,7 @@ function handleConflictNotification(message) {
 **Status:** Proposed
 **Classification:** Technical Specification
 **Compliance Level:** ISO/IEC 26514:2021, IEEE 830-1998, RFC 7540 (HTTP/2)
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md), [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md), [TACHYON-ADR-007-V1.0](../../.specs/02_adrs/007_tokio_for_async_runtime.md), [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-REQ-SRV-V1.0](../../.adrs/ [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md), [TACHYON-ADR-007-V1.0](../../.adrs/adr-007-thread-safety-strategy.md), [TACHYON-TMA-V1.0](../../.adrs/
 
 ---
 

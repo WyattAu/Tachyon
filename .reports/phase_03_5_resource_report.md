@@ -74,9 +74,9 @@ Phase 3.5 Resource Management Analysis has been completed successfully. This pha
 
 | Document | Location | Status |
 |----------|-----------|---------|
-| Memory Management Design | `.specs/03_5_resource_management/memory_management.md` | COMPLETE |
-| Handle Lifecycle Management | `.specs/03_5_resource_management/handle_management.md` | COMPLETE |
-| Resource Limits Definition | `.specs/03_5_resource_management/resource_limits.md` | COMPLETE |
+| Memory Management Design | `.adrs/ | COMPLETE |
+| Handle Lifecycle Management | `.adrs/ | COMPLETE |
+| Resource Limits Definition | `.adrs/ | COMPLETE |
 
 ### Architecture Decision Records (ADRs)
 

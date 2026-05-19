@@ -42,17 +42,17 @@ This specification covers all REST API endpoints exposed by the Tachyon server, 
 - User management (profile, permissions)
 - Authentication and authorization (login, logout, token refresh)
 
-The specification does not cover WebSocket protocols, which are documented separately in [TACHYON-DES-API-V1.0](../.specs/04_future_state/design/api_interfaces.md).
+The specification does not cover WebSocket protocols, which are documented separately in [TACHYON-DES-API-V1.0](../.adrs/
 
 ### 1.3. Document Dependencies
 
 This document depends on the following documents:
 
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-DES-API-V1.0](../.specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
-- [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [TACHYON-ADR-007-V1.0](../.specs/02_adrs/007_tokio_for_async_runtime.md) - Tokio for Async Runtime
-- [TACHYON-THR-V1.0](../.specs/04_threat_model/threat_model.md) - Threat Model
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-DES-API-V1.0](../.adrs/ - API Interfaces Design
+- [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md) - Axum for HTTP/2 Server
+- [TACHYON-ADR-007-V1.0](../.adrs/adr-007-thread-safety-strategy.md) - Tokio for Async Runtime
+- [TACHYON-THR-V1.0](../.adrs/ - Threat Model
 
 ### 1.4. Target Audience
 

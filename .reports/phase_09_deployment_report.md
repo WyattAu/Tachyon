@@ -25,13 +25,13 @@ Phase 9 has been completed successfully. All operational infrastructure, deploym
 
 | Document | Path | Status |
 |-----------|------|--------|
-| Deployment Plan | `.specs/09_operations/deployment_plan.md` | Completed |
-| Monitoring Strategy | `.specs/09_operations/monitoring_strategy.md` | Completed |
-| Alerting Strategy | `.specs/09_operations/alerting_strategy.md` | Completed |
-| Incident Response | `.specs/09_operations/incident_response.md` | Completed |
-| Disaster Recovery | `.specs/09_operations/disaster_recovery.md` | Completed |
-| Runbooks | `.specs/09_operations/runbooks.md` | Completed |
-| Compliance Audit | `.specs/09_operations/compliance_audit.md` | Completed |
+| Deployment Plan | `.adrs/ | Completed |
+| Monitoring Strategy | `.adrs/ | Completed |
+| Alerting Strategy | `.adrs/ | Completed |
+| Incident Response | `.adrs/ | Completed |
+| Disaster Recovery | `.adrs/ | Completed |
+| Runbooks | `.adrs/ | Completed |
+| Compliance Audit | `.adrs/ | Completed |
 
 ### 2. GitHub Workflows (4 files)
 

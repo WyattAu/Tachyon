@@ -620,7 +620,7 @@ sbom:
 
 ## References
 
-- [Requirements Specification](.specs/00_requirements/requirements.md)
-- [Acceptance Criteria](.specs/00_requirements/acceptance_criteria.md)
-- [Traceability Matrix](.specs/00_requirements/traceability_matrix.md)
-- [Quality Gates](.specs/07_ci_cd/quality_gates.md)
+- [Requirements Specification](.adrs/
+- [Acceptance Criteria](.adrs/
+- [Traceability Matrix](.adrs/
+- [Quality Gates](.adrs/

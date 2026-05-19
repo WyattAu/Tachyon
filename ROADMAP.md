@@ -63,7 +63,7 @@ This roadmap covers the path from current state through production deployment an
 
 ### Known Technical Debt
 
-1. **Broken `.specs/` links**: 1,669 links across 73 files reference deleted `.specs/` directories. Needs bulk migration to `.adrs/`.
+1. **Broken `.adrs/ links**: 1,669 links across 73 files reference deleted `.adrs/ directories. Needs bulk migration to `.adrs/`.
 2. **Verbose API docs**: `docs/api/` contains ~60K lines across 15 files, much of it scaffolded. Needs consolidation.
 3. **E2E test flakiness**: Browser timeout in CI environment. Server or WASM may not start within 60s window.
 4. **Node.js 20 deprecation warning**: GitHub Actions running on Node.js 20, deprecated Sept 2026.
@@ -95,7 +95,7 @@ This roadmap covers the path from current state through production deployment an
 
 ### 1.3 Documentation Link Cleanup
 
-- [ ] Script to bulk-migrate 1,669 `.specs/` references to `.adrs/`
+- [ ] Script to bulk-migrate 1,669 `.adrs/ references to `.adrs/`
 - [ ] Verify all internal doc links resolve correctly
 - [ ] Prune or consolidate verbose `docs/api/` files
 

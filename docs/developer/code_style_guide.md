@@ -217,7 +217,7 @@ Code reviews verify adherence to code style guidelines.
 
 **Rationale:** Rust Edition 2024 provides the latest language features and improvements while maintaining compatibility with stable Rust toolchain. The MSRV ensures consistent behavior across development environments.
 
-**Reference:** [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md)
+**Reference:** [ADR-001: Rust as Primary Language](../../.adrs/adr-001-three-tier-jit-compilation.md)
 
 ### 3.2. Type Annotations
 
@@ -582,7 +582,7 @@ pub fn process_documents() -> Result<(), Error> {
 
 **Rationale:** Tokio provides the de facto async runtime for Rust with mature ecosystem support. Multi-threaded scheduler enables efficient parallel processing.
 
-**Reference:** [ADR-007: Tokio for Async Runtime](../../.specs/02_adrs/007_tokio_for_async_runtime.md)
+**Reference:** [ADR-007: Tokio for Async Runtime](../../.adrs/adr-007-thread-safety-strategy.md)
 
 **Examples:**
 ```rust
@@ -610,7 +610,7 @@ async fn main() -> Result<(), Error> {
 
 **Rationale:** Strict mode enables the TypeScript compiler to catch more errors at compile time, improving type safety and reducing runtime errors.
 
-**Reference:** [ADR-004: Leptos for Web Frontend](../../.specs/02_adrs/004_leptos_for_web_frontend.md)
+**Reference:** [ADR-004: Leptos for Web Frontend](../../.adrs/adr-004-debounce-window.md)
 
 **Configuration Example:**
 ```json
@@ -929,7 +929,7 @@ async function fetchDocument(id: string): Promise<Document> {
 
 **Rationale:** The `#[component]` macro provides the standard Leptos component structure.
 
-**Reference:** [ADR-004: Leptos for Web Frontend](../../.specs/02_adrs/004_leptos_for_web_frontend.md)
+**Reference:** [ADR-004: Leptos for Web Frontend](../../.adrs/adr-004-debounce-window.md)
 
 **Examples:**
 ```rust
@@ -2077,7 +2077,7 @@ pub fn calculate_area(width: f64, height: f64) -> f64 {
 
 **Rationale:** The `Result` type makes error handling explicit and forces callers to handle errors.
 
-**Reference:** [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md) - Fail-Safe Error Handling
+**Reference:** [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Fail-Safe Error Handling
 
 **Examples:**
 \`\`\`rust
@@ -2425,24 +2425,24 @@ pub fn validate_document_title(title: &str) -> Result<(), ValidationError> {
 
 #### 9.1.1. Standards Documents
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
 
 #### 9.1.2. Architecture Decision Records
 
-- [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust language selection and rationale
-- [ADR-002: Tauri for Desktop Application](../../.specs/02_adrs/002_tauri_for_desktop_application.md) - Desktop application framework selection
-- [ADR-003: Axum for HTTP/2 Server](../../.specs/02_adrs/003_axum_for_http2_server.md) - HTTP/2 server framework selection
-- [ADR-004: Leptos for Web Frontend](../../.specs/02_adrs/004_leptos_for_web_frontend.md) - Web frontend framework selection
-- [ADR-005: Bun for JavaScript Runtime](../../.specs/02_adrs/005_bun_for_javascript_runtime.md) - JavaScript runtime selection
-- [ADR-006: Nix Flakes for Build System](../../.specs/02_adrs/006_nix_flakes_for_build_system.md) - Build system selection
-- [ADR-007: Tokio for Async Runtime](../../.specs/02_adrs/007_tokio_for_async_runtime.md) - Async runtime selection
-- [ADR-008: Workspace Structure for Rust Crates](../../.specs/02_adrs/008_workspace_structure_for_rust_crates.md) - Rust workspace organization
-- [ADR-009: IPC Communication Architecture](../../.specs/02_adrs/009_ipc_communication_architecture.md) - Inter-process communication design
-- [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md) - Security architecture and controls
+- [ADR-001: Rust as Primary Language](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust language selection and rationale
+- [ADR-002: Tauri for Desktop Application](../../.adrs/adr-002-bm25-search-parameters.md) - Desktop application framework selection
+- [ADR-003: Axum for HTTP/2 Server](../../.adrs/adr-003-lru-cache-target.md) - HTTP/2 server framework selection
+- [ADR-004: Leptos for Web Frontend](../../.adrs/adr-004-debounce-window.md) - Web frontend framework selection
+- [ADR-005: Bun for JavaScript Runtime](../../.adrs/adr-005-last-write-wins-conflict-resolution.md) - JavaScript runtime selection
+- [ADR-006: Nix Flakes for Build System](../../.adrs/adr-006-direct-libgit2-integration.md) - Build system selection
+- [ADR-007: Tokio for Async Runtime](../../.adrs/adr-007-thread-safety-strategy.md) - Async runtime selection
+- [ADR-008: Workspace Structure for Rust Crates](../../.adrs/adr-008-deadlock-prevention.md) - Rust workspace organization
+- [ADR-009: IPC Communication Architecture](../../.adrs/adr-009-race-condition-mitigation.md) - Inter-process communication design
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Security architecture and controls
 
 #### 9.1.3. Requirements Documents
 
-- [REQ-DOC-019: Code Style Guide](../../.specs/04_future_state/reqs/documentation_requirements.md) - Documentation requirements
+- [REQ-DOC-019: Code Style Guide](../../.adrs/ - Documentation requirements
 
 ### 9.2. External References
 

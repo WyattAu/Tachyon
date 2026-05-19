@@ -159,12 +159,12 @@ The Tachyon project adopts a comprehensive metrics analysis framework:
 
 - [ADR-050](.adrs/adr-050-alerting-thresholds.md) - Alerting Thresholds
 - [ADR-049](.adrs/adr-049-trend-analysis.md) - Trend Analysis
-- [`.specs/10_metrics/project_metrics.md`](.specs/10_metrics/project_metrics.md) - Project Metrics
-- [`.specs/10_metrics/monthly_trend.md`](.specs/10_metrics/monthly_trend.md) - Monthly Trend Analysis
+- [`.adrs/ - Project Metrics
+- [`.adrs/ - Monthly Trend Analysis
 
 ## References
 
-- [`.specs/10_metrics/`](.specs/10_metrics/) - Metrics Directory
+- [`.adrs/ - Metrics Directory
 - Statistical Analysis Methods
 - Data Visualization Best Practices
 

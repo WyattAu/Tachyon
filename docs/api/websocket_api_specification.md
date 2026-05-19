@@ -4,7 +4,7 @@
 **Date:** February 2026
 **Status:** Proposed
 **Classification:** Technical Specification
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md), [TACHYON-DES-API-V1.0](../../.specs/04_future_state/design/api_interfaces.md), [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md), [TACHYON-ADR-007-V1.0](../../.specs/02_adrs/007_tokio_for_async_runtime.md), [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-REQ-SRV-V1.0](../../.adrs/ [TACHYON-DES-API-V1.0](../../.adrs/ [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md), [TACHYON-ADR-007-V1.0](../../.adrs/adr-007-thread-safety-strategy.md), [TACHYON-TMA-V1.0](../../.adrs/
 
 ---
 
@@ -123,8 +123,8 @@ The WebSocket API is implemented using the following technologies:
 
 **1.5.3. Implementation References**
 
-- **ADR-003:** [Axum for HTTP/2 Server](../../.specs/02_adrs/003_axum_for_http2_server.md) - Framework selection and WebSocket support
-- **ADR-007:** [Tokio for Async Runtime](../../.specs/02_adrs/007_tokio_for_async_runtime.md) - Async runtime for WebSocket operations
+- **ADR-003:** [Axum for HTTP/2 Server](../../.adrs/adr-003-lru-cache-target.md) - Framework selection and WebSocket support
+- **ADR-007:** [Tokio for Async Runtime](../../.adrs/adr-007-thread-safety-strategy.md) - Async runtime for WebSocket operations
 - **REQ-SRV-091 through REQ-SRV-105:** WebSocket communication requirements from server requirements
 
 ### 1.6. Use Cases

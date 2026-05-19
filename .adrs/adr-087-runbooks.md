@@ -125,9 +125,9 @@ Each runbook will follow a standard structure:
 - **Feedback Collection**: Feedback collected after runbook usage
 
 ## References
-- [Operational Runbooks](../.specs/09_operations/runbooks.md)
-- [Incident Response](../.specs/09_operations/incident_response.md)
-- [Monitoring Strategy](../.specs/09_operations/monitoring_strategy.md)
+- [Operational Runbooks](../.adrs/
+- [Incident Response](../.adrs/
+- [Monitoring Strategy](../.adrs/
 - [Troubleshooting Guide](../docs/operations/troubleshooting_guide.md)
 - [Operations Guide](../docs/operations/operations_guide.md)
 

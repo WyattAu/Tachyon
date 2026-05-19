@@ -30,7 +30,7 @@
 
 This specification defines the comprehensive Web Components API for the Tachyon toolchain web frontend. The specification provides detailed interface definitions, component contracts, and implementation guidelines for all web components built using the Leptos framework with WebAssembly (WASM) compilation.
 
-The Web Components API serves as the foundation for building reactive, type-safe, and performant user interfaces that operate across both browser-based and desktop deployment modes. This specification ensures consistency, maintainability, and adherence to architectural principles established in [ADR-004](../.specs/02_adrs/004_leptos_for_web_frontend.md) and [ADR-005](../.specs/02_adrs/005_bun_for_javascript_runtime.md).
+The Web Components API serves as the foundation for building reactive, type-safe, and performant user interfaces that operate across both browser-based and desktop deployment modes. This specification ensures consistency, maintainability, and adherence to architectural principles established in [ADR-004](../.adrs/adr-004-debounce-window.md) and [ADR-005](../.adrs/adr-005-last-write-wins-conflict-resolution.md).
 
 ### 1.2. Scope
 
@@ -594,7 +594,7 @@ fn DocumentForm(document: Document) -> impl IntoView {
 
 ## 3. DOCUMENT COMPONENTS
 
-Document components provide functionality for viewing, editing, and managing documents within the Tachyon system. These components implement requirements from [REQ-WEB-016 through REQ-WEB-020](../.specs/04_future_state/reqs/web_requirements.md).
+Document components provide functionality for viewing, editing, and managing documents within the Tachyon system. These components implement requirements from [REQ-WEB-016 through REQ-WEB-020](../.adrs/
 
 ### 3.1. DocumentViewer Component
 
@@ -1397,7 +1397,7 @@ pub fn DocumentCard(props: DocumentCardProps) -> impl IntoView {
 
 ## 4. REPOSITORY COMPONENTS
 
-Repository components provide functionality for managing Git repositories, viewing repository structure, and monitoring sync status. These components implement requirements from [REQ-WEB-005 through REQ-WEB-010](../.specs/04_future_state/reqs/web_requirements.md).
+Repository components provide functionality for managing Git repositories, viewing repository structure, and monitoring sync status. These components implement requirements from [REQ-WEB-005 through REQ-WEB-010](../.adrs/
 
 ### 4.1. RepositoryList Component
 
@@ -2135,7 +2135,7 @@ pub fn RepositorySync(props: RepositorySyncProps) -> impl IntoView {
 
 ## 5. SEARCH COMPONENTS
 
-Search components provide functionality for searching documents, repositories, and other content within the Tachyon system. These components implement requirements from [REQ-WEB-021 through REQ-WEB-025](../.specs/04_future_state/reqs/web_requirements.md).
+Search components provide functionality for searching documents, repositories, and other content within the Tachyon system. These components implement requirements from [REQ-WEB-021 through REQ-WEB-025](../.adrs/
 
 ### 5.1. SearchInterface Component
 
@@ -2855,7 +2855,7 @@ pub fn SearchHistory(props: SearchHistoryProps) -> impl IntoView {
 
 ## 6. USER COMPONENTS
 
-User components provide functionality for user profile management, authentication, and user preferences. These components implement requirements from [REQ-WEB-014](../.specs/04_future_state/reqs/web_requirements.md).
+User components provide functionality for user profile management, authentication, and user preferences. These components implement requirements from [REQ-WEB-014](../.adrs/
 
 ### 6.1. UserProfile Component
 
@@ -5171,20 +5171,20 @@ This section provides references to related documents, standards, and external r
 
 | Document ID | Title | Location |
 |-------------|-------|----------|
-| [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) | TACHYON: CODING AND DOCUMENTATION STANDARDS | `.specs/01_standards/coding_standards.md` |
-| [TACHYON-REQ-WEB-V1.0](../.specs/04_future_state/reqs/web_requirements.md) | TACHYON: WEB FRONTEND REQUIREMENTS | `.specs/04_future_state/reqs/web_requirements.md` |
-| [TACHYON-DSN-WEB-V1.0](../.specs/04_future_state/design/web_design.md) | TACHYON: WEB FRONTEND DESIGN | `.specs/04_future_state/design/web_design.md` |
-| [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md) | TACHYON: THREAT MODEL ANALYSIS | `.specs/03_threat_model/analysis.md` |
-| [TACHYON-TSK-V1.0](../.specs/tasks.md) | TACHYON: EXECUTION TASKS AND WORK BREAKDOWN STRUCTURE | `.specs/tasks.md` |
+| [TACHYON-STD-V1.0](../.adrs/ | TACHYON: CODING AND DOCUMENTATION STANDARDS | `.adrs/ |
+| [TACHYON-REQ-WEB-V1.0](../.adrs/ | TACHYON: WEB FRONTEND REQUIREMENTS | `.adrs/ |
+| [TACHYON-DSN-WEB-V1.0](../.adrs/ | TACHYON: WEB FRONTEND DESIGN | `.adrs/ |
+| [TACHYON-TMA-V1.0](../.adrs/ | TACHYON: THREAT MODEL ANALYSIS | `.adrs/ |
+| [TACHYON-TSK-V1.0](../.adrs/ | TACHYON: EXECUTION TASKS AND WORK BREAKDOWN STRUCTURE | `.adrs/ |
 
 ### 11.2. Architectural Decision Records
 
 | ADR ID | Title | Location |
 |---------|-------|----------|
-| [TACHYON-ADR-004-V1.0](../.specs/02_adrs/004_leptos_for_web_frontend.md) | ADR-004: Leptos for Web Frontend | `.specs/02_adrs/004_leptos_for_web_frontend.md` |
-| [TACHYON-ADR-005-V1.0](../.specs/02_adrs/005_bun_for_javascript_runtime.md) | ADR-005: Bun for JavaScript Runtime | `.specs/02_adrs/005_bun_for_javascript_runtime.md` |
-| [TACHYON-ADR-009-V1.0](../.specs/02_adrs/009_ipc_communication_architecture.md) | ADR-009: IPC Communication Architecture | `.specs/02_adrs/009_ipc_communication_architecture.md` |
-| [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) | ADR-010: Security Architecture | `.specs/02_adrs/010_security_architecture.md` |
+| [TACHYON-ADR-004-V1.0](../.adrs/adr-004-debounce-window.md) | ADR-004: Leptos for Web Frontend | `.adrs/adr-004-debounce-window.md |
+| [TACHYON-ADR-005-V1.0](../.adrs/adr-005-last-write-wins-conflict-resolution.md) | ADR-005: Bun for JavaScript Runtime | `.adrs/adr-005-last-write-wins-conflict-resolution.md |
+| [TACHYON-ADR-009-V1.0](../.adrs/adr-009-race-condition-mitigation.md) | ADR-009: IPC Communication Architecture | `.adrs/adr-009-race-condition-mitigation.md |
+| [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) | ADR-010: Security Architecture | `.adrs/adr-010-synchronization-primitives.md |
 
 ### 11.3. Technology References
 

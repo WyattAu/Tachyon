@@ -128,8 +128,8 @@ This DR Plan depends on the following documents:
 - [TACHYON-OPS-005-V1.0](troubleshooting_guide.md) - Troubleshooting Guide
 
 **Architectural Decision Records:**
-- [ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 ---
 
@@ -2381,7 +2381,7 @@ The DR Plan includes procedures for maintaining documentation currency and accur
 The Tachyon DR Plan references the following internal project documents:
 
 **Standards Documents:**
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
 - [TACHYON-OPS-001-V1.0](backup_recovery_guide.md) - Backup and Recovery Guide
 - [TACHYON-OPS-003-V1.0](monitoring_guide.md) - Monitoring Guide
 - [TACHYON-OPS-005-V1.0](troubleshooting_guide.md) - Troubleshooting Guide
@@ -2397,26 +2397,26 @@ The Tachyon DR Plan references the following internal project documents:
 - [TACHYON-SEC-008-V1.0](../security/security_compliance_document.md) - Security Compliance Document
 
 **Architectural Decision Records:**
-- [ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [ADR-002-V1.0](../../.specs/02_adrs/002_tauri_for_desktop_application.md) - Tauri for Desktop Application
-- [ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [ADR-007-V1.0](../../.specs/02_adrs/007_tokio_for_async_runtime.md) - Tokio for Async Runtime
-- [ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [ADR-002-V1.0](../../.adrs/adr-002-bm25-search-parameters.md) - Tauri for Desktop Application
+- [ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md) - Axum for HTTP/2 Server
+- [ADR-007-V1.0](../../.adrs/adr-007-thread-safety-strategy.md) - Tokio for Async Runtime
+- [ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 **Requirements Documents:**
-- [TACHYON-REQ-SYS-V1.0](../../.specs/04_future_state/reqs/system_overview.md) - System Overview Requirements
-- [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) - Security Requirements
-- [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md) - Server Requirements
+- [TACHYON-REQ-SYS-V1.0](../../.adrs/ - System Overview Requirements
+- [TACHYON-REQ-SEC-V1.0](../../.adrs/ - Security Requirements
+- [TACHYON-REQ-SRV-V1.0](../../.adrs/ - Server Requirements
 
 **Design Documents:**
-- [TACHYON-DSN-SEC-V1.0](../../.specs/04_future_state/design/security_design.md) - Security Design
-- [TACHYON-DSN-SRV-V1.0](../../.specs/04_future_state/design/server_design.md) - Server Design
+- [TACHYON-DSN-SEC-V1.0](../../.adrs/ - Security Design
+- [TACHYON-DSN-SRV-V1.0](../../.adrs/ - Server Design
 
 **Test Documents:**
-- [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-TST-V1.0](../../.adrs/ - Test Plan
 
 **Rollback Plan:**
-- [TACHYON-ROL-V1.0](../../.specs/05_migration/rollback_plan.md) - Rollback Plan
+- [TACHYON-ROL-V1.0](../../.adrs/ - Rollback Plan
 
 ### 9.2. External References
 

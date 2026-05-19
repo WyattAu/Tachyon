@@ -147,7 +147,7 @@ From project analysis, post-mortem reviews, and architecture decisions, extract 
 
 ## References
 
-- [Tachyon Project Analysis](.specs/10_metrics/post_mortem.md)
+- [Tachyon Project Analysis](.adrs/
 - [Global Anti-Pattern Library](.patterns/global_anti_pattern_library.md)
 
 ---

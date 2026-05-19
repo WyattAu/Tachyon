@@ -156,9 +156,9 @@ Evidence will be organized by:
 - **Annually**: Full compliance assessment
 
 ## References
-- [Compliance Audit Preparation](../.specs/09_operations/compliance_audit.md)
-- [Compliance Matrix](../.specs/03_security/compliance_matrix.md)
-- [Supply Chain Monitoring](../.specs/09_5_supply_monitoring/monitoring_strategy.md)
+- [Compliance Audit Preparation](../.adrs/
+- [Compliance Matrix](../.adrs/
+- [Supply Chain Monitoring](../.adrs/
 - [Security Audit Guide](../docs/security/security_audit_guide.md)
 - [Compliance Documentation](../docs/security/security_compliance_document.md)
 

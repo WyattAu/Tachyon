@@ -150,7 +150,7 @@ See [`.reports/phase_10_closure_report.md`](.reports/phase_10_closure_report.md)
 - [ADR-090](.adrs/adr-090-lessons-learned.md) - Lessons Learned
 - [ADR-093](.adrs/adr-093-metrics-analysis.md) - Metrics Analysis
 - [ADR-094](.adrs/adr-094-compliance-finalization.md) - Compliance Finalization
-- [`.specs/10_metrics/`](.specs/10_metrics/) - Metrics Directory
+- [`.adrs/ - Metrics Directory
 
 ## References
 

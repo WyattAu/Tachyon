@@ -111,9 +111,9 @@ All documentation artifacts are evaluated against the following criteria:
 - Clear and concise writing
 
 **Standards Compliance:**
-- Adherence to [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md)
+- Adherence to [TACHYON-STD-V1.0](../../.adrs/
 - Compliance with ADR decisions
-- Alignment with test plan [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md)
+- Alignment with test plan [TACHYON-TST-V1.0](../../.adrs/
 - Consistency with threat model analysis
 
 ### 1.6. Review Findings Summary
@@ -669,8 +669,8 @@ The architecture documentation suite demonstrates exceptional quality with an ov
 
 The security documentation suite comprises two comprehensive documents that collectively define the Tachyon system's security posture:
 
-1. **Threat Model Analysis** ([TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md))
-2. **Security Architecture** ([TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md))
+1. **Threat Model Analysis** ([TACHYON-TMA-V1.0](../../.adrs/
+2. **Security Architecture** ([TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md))
 
 These documents provide complete coverage of threat analysis, security controls, and defense-in-depth strategy, establishing a robust security foundation for the system.
 
@@ -1809,7 +1809,7 @@ The API documentation suite encompasses documents describing application program
 | Document Category | Status | Document Reference |
 |-----------------|--------|-------------------|
 | **HTTP/2 API Specifications** | [PASS] Integrated | [TACHYON-ARC-002-V1.0](../architecture/deployment_architecture.md) |
-| **IPC API Specifications** | [PASS] Integrated | [TACHYON-ADR-009-V1.0](../../.specs/02_adrs/009_ipc_communication_architecture.md) |
+| **IPC API Specifications** | [PASS] Integrated | [TACHYON-ADR-009-V1.0](../../.adrs/adr-009-race-condition-mitigation.md) |
 | **WebSocket API Specifications** | [PASS] Integrated | [TACHYON-ARC-002-V1.0](../architecture/system_architecture_overview.md) |
 | **Data Model Specifications** | [PASS] Integrated | [TACHYON-ARC-003-V1.0](../architecture/data_architecture.md) |
 
@@ -2090,14 +2090,14 @@ The standards compliance review evaluates adherence to all established standards
 
 | Standard Category | Status | Document Reference |
 |-----------------|--------|-------------------|
-| **ISO/IEC 26514:2021** | [PASS] Compliant | [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) |
-| **ISO/IEC 12207:2017** | [PASS] Compliant | [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) |
-| **ISO/IEC 25010:2011** | [PASS] Compliant | [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) |
-| **IEEE 829-2008** | [PASS] Compliant | [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) |
+| **ISO/IEC 26514:2021** | [PASS] Compliant | [TACHYON-STD-V1.0](../../.adrs/ |
+| **ISO/IEC 12207:2017** | [PASS] Compliant | [TACHYON-STD-V1.0](../../.adrs/ |
+| **ISO/IEC 25010:2011** | [PASS] Compliant | [TACHYON-STD-V1.0](../../.adrs/ |
+| **IEEE 829-2008** | [PASS] Compliant | [TACHYON-TST-V1.0](../../.adrs/ |
 | **IEEE 1063:2001** | [PASS] Compliant | All documentation |
 | **IEEE 1016:2009** | [PASS] Compliant | Architecture documents |
 | **IEEE 1471-2000** | [PASS] Compliant | Architecture documents |
-| **Internal Standards** | [PASS] Compliant | [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) |
+| **Internal Standards** | [PASS] Compliant | [TACHYON-STD-V1.0](../../.adrs/ |
 
 ### 12.2. ISO/IEC Standards Compliance
 
@@ -2160,7 +2160,7 @@ The standards compliance review evaluates adherence to all established standards
 
 | Requirement | Status | Evidence |
 |-------------|--------|----------|
-| **Test Plan** | [PASS] Compliant | Comprehensive test plan document [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) |
+| **Test Plan** | [PASS] Compliant | Comprehensive test plan document [TACHYON-TST-V1.0](../../.adrs/ |
 | **Test Design Specification** | [PASS] Compliant | Test design documented in test plan |
 | **Test Case Specification** | [PASS] Compliant | Test case formats documented in test plan |
 | **Test Procedure Specification** | [PASS] Compliant | Test procedures documented in test plan |
@@ -2226,7 +2226,7 @@ The standards compliance review evaluates adherence to all established standards
 
 #### 12.4.1. Coding and Documentation Standards Compliance
 
-**Standard:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+**Standard:** [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
 
 **Compliance Verification:**
 
@@ -2449,21 +2449,21 @@ The documentation suite is ready to support Phase 12 verification activities and
 ### 14.1. Internal References
 
 **Standards and Specifications:**
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) - Test Plan
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-TST-V1.0](../../.adrs/ - Test Plan
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 **Architectural Decision Records:**
-- [ADR-001: Rust as Primary Language](../../.specs/02_adrs/001_rust_as_primary_language.md)
-- [ADR-002: Tauri for Desktop Application](../../.specs/02_adrs/002_tauri_for_desktop_application.md)
-- [ADR-003: Axum for HTTP/2 Server](../../.specs/02_adrs/003_axum_for_http2_server.md)
-- [ADR-004: Leptos for Web Frontend](../../.specs/02_adrs/004_leptos_for_web_frontend.md)
-- [ADR-005: Bun for JavaScript Runtime](../../.specs/02_adrs/005_bun_for_javascript_runtime.md)
-- [ADR-006: Nix Flakes for Build System](../../.specs/02_adrs/006_nix_flakes_for_build_system.md)
-- [ADR-007: Tokio for Async Runtime](../../.specs/02_adrs/007_tokio_for_async_runtime.md)
-- [ADR-008: Workspace Structure for Rust Crates](../../.specs/02_adrs/008_workspace_structure_for_rust_crates.md)
-- [ADR-009: IPC Communication Architecture](../../.specs/02_adrs/009_ipc_communication_architecture.md)
-- [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md)
+- [ADR-001: Rust as Primary Language](../../.adrs/adr-001-three-tier-jit-compilation.md)
+- [ADR-002: Tauri for Desktop Application](../../.adrs/adr-002-bm25-search-parameters.md)
+- [ADR-003: Axum for HTTP/2 Server](../../.adrs/adr-003-lru-cache-target.md)
+- [ADR-004: Leptos for Web Frontend](../../.adrs/adr-004-debounce-window.md)
+- [ADR-005: Bun for JavaScript Runtime](../../.adrs/adr-005-last-write-wins-conflict-resolution.md)
+- [ADR-006: Nix Flakes for Build System](../../.adrs/adr-006-direct-libgit2-integration.md)
+- [ADR-007: Tokio for Async Runtime](../../.adrs/adr-007-thread-safety-strategy.md)
+- [ADR-008: Workspace Structure for Rust Crates](../../.adrs/adr-008-deadlock-prevention.md)
+- [ADR-009: IPC Communication Architecture](../../.adrs/adr-009-race-condition-mitigation.md)
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md)
 
 **Architecture Documentation:**
 - [TACHYON-ARC-001-V1.0](../architecture/system_architecture_overview.md) - System Architecture Overview

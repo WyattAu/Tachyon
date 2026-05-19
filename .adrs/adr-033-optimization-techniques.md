@@ -9,7 +9,7 @@
 
 ## Context
 
-The Tachyon system requires specific optimization techniques to meet performance requirements defined in [`performance_requirements.md`](.specs/04_performance/performance_requirements.md).
+The Tachyon system requires specific optimization techniques to meet performance requirements defined in [`performance_requirements.md`](.adrs/
 
 This ADR documents the approved optimization techniques, their implementation strategies, and associated trade-offs.
 
@@ -159,7 +159,7 @@ impl AdaptiveCache {
 - Cache warming adds startup latency
 - Adaptive logic adds complexity
 
-**Traceability:** [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) PR-LAT-001, [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) OPT-REND-001
+**Traceability:** [`performance_requirements.md`](.adrs/ PR-LAT-001, [`optimization_roadmap.md`](.adrs/ OPT-REND-001
 
 ---
 
@@ -214,7 +214,7 @@ unsafe fn fast_compare_avx2(a: &[u8], b: &[u8]) -> bool {
 - Complex fallback code for non-SIMD CPUs
 - Unsafe code blocks
 
-**Traceability:** [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) PR-LAT-002, [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) OPT-REND-002
+**Traceability:** [`performance_requirements.md`](.adrs/ PR-LAT-002, [`optimization_roadmap.md`](.adrs/ OPT-REND-002
 
 ---
 
@@ -262,7 +262,7 @@ impl TemplateCache {
 - Template changes require cache clear
 - Memory leak risk if not properly managed
 
-**Traceability:** [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) PR-LAT-003, [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) OPT-REND-003
+**Traceability:** [`performance_requirements.md`](.adrs/ PR-LAT-003, [`optimization_roadmap.md`](.adrs/ OPT-REND-003
 
 ---
 
@@ -312,7 +312,7 @@ impl BatchIndexer {
 - Increased memory for batch buffer
 - Complex error recovery (partial batch failure)
 
-**Traceability:** [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) PR-LAT-005, PR-THR-003, [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) OPT-SEARCH-001
+**Traceability:** [`performance_requirements.md`](.adrs/ PR-LAT-005, PR-THR-003, [`optimization_roadmap.md`](.adrs/ OPT-SEARCH-001
 
 ---
 
@@ -369,7 +369,7 @@ impl QueryCache {
 - Increased memory for query cache
 - Cache invalidation complexity
 
-**Traceability:** [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) PR-LAT-004, [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) OPT-SEARCH-002
+**Traceability:** [`performance_requirements.md`](.adrs/ PR-LAT-004, [`optimization_roadmap.md`](.adrs/ OPT-SEARCH-002
 
 ---
 
@@ -418,7 +418,7 @@ impl StringInterner {
 - Memory for interning pool
 - Complex cache invalidation
 
-**Traceability:** [`memory_management.md`](.specs/03_5_resource_management/memory_management.md), [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) PR-MEM-001, PR-MEM-004, [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) OPT-MEM-001
+**Traceability:** [`memory_management.md`](.adrs/ [`performance_requirements.md`](.adrs/ PR-MEM-001, PR-MEM-004, [`optimization_roadmap.md`](.adrs/ OPT-MEM-001
 
 ---
 
@@ -475,7 +475,7 @@ impl LockFreeBroadcaster {
 - Memory overhead for atomic operations
 - Potential message duplication
 
-**Traceability:** [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) PR-LAT-009, [`thread_safety_analysis.md`](.specs/02_5_concurrency/thread_safety_analysis.md), [`deadlock_analysis.md`](.specs/02_5_concurrency/deadlock_analysis.md), [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) OPT-WS-001
+**Traceability:** [`performance_requirements.md`](.adrs/ PR-LAT-009, [`thread_safety_analysis.md`](.adrs/ [`deadlock_analysis.md`](.adrs/ [`optimization_roadmap.md`](.adrs/ OPT-WS-001
 
 ---
 
@@ -556,12 +556,12 @@ impl LockFreeBroadcaster {
 
 ## Related Documents
 
-- [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) - Performance targets
-- [`benchmark_suite.md`](.specs/04_performance/benchmark_suite.md) - Benchmark design
-- [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) - Optimization plan
+- [`performance_requirements.md`](.adrs/ - Performance targets
+- [`benchmark_suite.md`](.adrs/ - Benchmark design
+- [`optimization_roadmap.md`](.adrs/ - Optimization plan
 - [`profiling_strategy.md`](.adrs/adr-031-profiling-strategy.md) - Profiling methodology
-- [`memory_management.md`](.specs/03_5_resource_management/memory_management.md) - Memory optimization
-- [`thread_safety_analysis.md`](.specs/02_5_concurrency/thread_safety_analysis.md) - Concurrency analysis
+- [`memory_management.md`](.adrs/ - Memory optimization
+- [`thread_safety_analysis.md`](.adrs/ - Concurrency analysis
 
 ---
 

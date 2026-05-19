@@ -219,9 +219,9 @@ fn calculate_compliance_score(checks: &[ComplianceCheck]) -> f64 {
 ## Related Decisions
 
 - [ADR-097](adr-097-monitoring-strategy.md) - Continuous Monitoring Strategy
-- [`.specs/11_continuous_monitoring/compliance_monitoring.md`](../.specs/11_continuous_monitoring/compliance_monitoring.md) - Compliance Monitoring Specification
-- [`.specs/03_security/compliance_matrix.md`](../.specs/03_security/compliance_matrix.md) - Compliance Matrix
-- [`.specs/03_security/security_test_plan.md`](../.specs/03_security/security_test_plan.md) - Security Test Plan
+- [`.adrs/ - Compliance Monitoring Specification
+- [`.adrs/ - Compliance Matrix
+- [`.adrs/ - Security Test Plan
 
 ## References
 

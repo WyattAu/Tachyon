@@ -6,11 +6,11 @@
 **Classification:** Technical Specification Document
 **Compliance Level:** ISO/IEC 26514:2021, IEEE 1016-2009
 **Dependencies:**
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-DES-DM-V1.0](../../.specs/04_future_state/design/data_models.md) - Data Models Design
-- [TACHYON-REQ-SYS-V1.0](../../.specs/04_future_state/reqs/system_overview.md) - System Overview Requirements
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-008-V1.0](../../.specs/02_adrs/008_workspace_structure_for_rust_crates.md) - Workspace Structure for Rust Crates
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-DES-DM-V1.0](../../.adrs/ - Data Models Design
+- [TACHYON-REQ-SYS-V1.0](../../.adrs/ - System Overview Requirements
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-008-V1.0](../../.adrs/adr-008-deadlock-prevention.md) - Workspace Structure for Rust Crates
 
 ---
 
@@ -4616,12 +4616,12 @@ The data model specification complies with the following standards and regulatio
 
 | Document ID | Title | Location |
 |-------------|-------|----------|
-| **TACHYON-STD-V1.0** | Coding and Documentation Standards | [`.specs/01_standards/coding_standards.md`](../../.specs/01_standards/coding_standards.md) |
-| **TACHYON-DES-DM-V1.0** | Data Models Design | [`.specs/04_future_state/design/data_models.md`](../../.specs/04_future_state/design/data_models.md) |
-| **TACHYON-REQ-SYS-V1.0** | System Overview Requirements | [`.specs/04_future_state/reqs/system_overview.md`](../../.specs/04_future_state/reqs/system_overview.md) |
-| **TACHYON-ADR-001-V1.0** | Rust as Primary Language | [`.specs/02_adrs/001_rust_as_primary_language.md`](../../.specs/02_adrs/001_rust_as_primary_language.md) |
-| **TACHYON-ADR-008-V1.0** | Workspace Structure for Rust Crates | [`.specs/02_adrs/008_workspace_structure_for_rust_crates.md`](../../.specs/02_adrs/008_workspace_structure_for_rust_crates.md) |
-| **TACHYON-TSK-V1.0** | Execution Tasks and Work Breakdown Structure | [`.specs/tasks.md`](../../.specs/tasks.md) |
+| **TACHYON-STD-V1.0** | Coding and Documentation Standards | [`.adrs/ |
+| **TACHYON-DES-DM-V1.0** | Data Models Design | [`.adrs/ |
+| **TACHYON-REQ-SYS-V1.0** | System Overview Requirements | [`.adrs/ |
+| **TACHYON-ADR-001-V1.0** | Rust as Primary Language | [`.adrs/adr-001-three-tier-jit-compilation.md](../../.adrs/adr-001-three-tier-jit-compilation.md) |
+| **TACHYON-ADR-008-V1.0** | Workspace Structure for Rust Crates | [`.adrs/adr-008-deadlock-prevention.md](../../.adrs/adr-008-deadlock-prevention.md) |
+| **TACHYON-TSK-V1.0** | Execution Tasks and Work Breakdown Structure | [`.adrs/ |
 
 ### 10.2. Requirement Traceability
 

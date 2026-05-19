@@ -224,8 +224,8 @@ The Tachyon project implements a comprehensive continuous monitoring framework w
 
 ## References
 
-- [`.specs/11_continuous_monitoring/monitoring_strategy.md`](../.specs/11_continuous_monitoring/monitoring_strategy.md) - Continuous Monitoring Strategy Specification
-- [`.specs/11_continuous_monitoring/alerting_rules.md`](../.specs/11_continuous_monitoring/alerting_rules.md) - Alerting Rules Specification
+- [`.adrs/ - Continuous Monitoring Strategy Specification
+- [`.adrs/ - Alerting Rules Specification
 - [`.github/workflows/continuous_monitoring.yml`](../.github/workflows/continuous_monitoring.yml) - GitHub Actions Workflow
 
 ---

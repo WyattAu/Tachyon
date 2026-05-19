@@ -263,6 +263,21 @@ jobs:
           path: tachyon/coverage/
           retention-days: 14
 
+  link-check:
+    name: Check Documentation Links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for broken .specs/ references
+        run: |
+          COUNT=$(rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ .knowledge_graph/ ROADMAP.md ROADMAP_DETAILED.md --type md --files-with-matches 2>/dev/null | wc -l)
+          if [ "$COUNT" -gt 0 ]; then
+            echo "::error::Found $COUNT files with broken .specs/ references"
+            rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ .knowledge_graph/ ROADMAP.md ROADMAP_DETAILED.md --type md --files-with-matches
+            exit 1
+          fi
+          echo "No broken .specs/ references found"
+
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest

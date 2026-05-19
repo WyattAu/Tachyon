@@ -90,7 +90,7 @@ Zero `todo!()`, `unreachable!()`, `FIXME`, `HACK`, or `XXX` markers found in pro
 
 ### 4.3 Critical: docs/user/ Link Rot
 
-`docs/user/` directory contains 100+ broken internal links referencing `.specs/` subdirectories that do not exist as structured in the Megaprompt specification. The files reference `.specs/01_standards/`, `.specs/02_adrs/`, `.specs/04_future_state/`, `.specs/06_requirements/`, `.specs/06_design_documents/`, `.specs/08_glossary/`, and `.specs/tasks.md` -- none of which are materialized.
+`docs/user/` directory contains 100+ broken internal links referencing `.adrs/ subdirectories that do not exist as structured in the Megaprompt specification. The files reference `.adrs/ `.adrs/`, `.adrs/ `.adrs/ `.adrs/ `.adrs/ and `.adrs/ -- none of which are materialized.
 
 **Recommendation**: Either materialize the referenced specs, or rewrite `docs/user/*.md` to reference existing artifacts only. Priority: high.
 
@@ -175,7 +175,7 @@ Hook was verified during this audit's commit. All 7 checks passed. Test executio
 
 | Priority | Task | Effort |
 |----------|------|--------|
-| P0 | Fix `docs/user/` link rot: materialize missing `.specs/` artifacts or rewrite user-facing docs | 3 days |
+| P0 | Fix `docs/user/` link rot: materialize missing `.adrs/ artifacts or rewrite user-facing docs | 3 days |
 | P1 | Emoji removal pass across all 44 contaminated .md files | 1 day |
 | P1 | Synchronize ROADMAP.md with actual completion status | 0.5 days |
 | P2 | Remove stale `.docs/` directory and consolidate into `docs/` | 0.5 days |

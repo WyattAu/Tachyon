@@ -145,7 +145,7 @@ The Tachyon project is a **pure software project** classified as a Knowledge Man
 
 ```
 Tachyon/
-├── .specs/                    # Comprehensive specification repository
+├── .adrs/                    # Comprehensive specification repository
 │   ├── 00_current_state/     # Current project manifest
 │   ├── 00_requirements/       # 83 formal requirements (EARS format)
 │   ├── 01_5_supply_chain/   # SBOM, vulnerability reports
@@ -226,17 +226,17 @@ Tachyon/
 
 | Document | Location | Content | Format |
 |----------|-----------|----------|--------|
-| **requirements.md** | .specs/00_requirements/ | 83 functional requirements | EARS format |
-| **acceptance_criteria.md** | .specs/00_requirements/ | Acceptance criteria for requirements | Structured checklist |
-| **capability_requirements.md** | .specs/00_requirements/ | System capability specifications | Feature list |
-| **domain_analysis.md** | .specs/00_requirements/ | Domain decomposition and analysis | Domain modeling |
-| **traceability_matrix.md** | .specs/00_requirements/ | Requirements to ADR traceability | Matrix format |
+| **requirements.md** | .adrs/ | 83 functional requirements | EARS format |
+| **acceptance_criteria.md** | .adrs/ | Acceptance criteria for requirements | Structured checklist |
+| **capability_requirements.md** | .adrs/ | System capability specifications | Feature list |
+| **domain_analysis.md** | .adrs/ | Domain decomposition and analysis | Domain modeling |
+| **traceability_matrix.md** | .adrs/ | Requirements to ADR traceability | Matrix format |
 
 ### 4.3. Architecture Decision Records
 
 | Collection | Location | Count | Coverage |
 |------------|-----------|--------|----------|
-| **.specs/02_adrs/** | .specs/02_adrs/ | 17 | Core technology decisions |
+| **.adrs/** | .adrs/ | 17 | Core technology decisions |
 | **.adrs/** | .adrs/ | 110 | Full lifecycle ADRs |
 
 **Key ADR Categories:**
@@ -255,32 +255,32 @@ Tachyon/
 
 | Category | Location | Count | Key Documents |
 |----------|-----------|--------|---------------|
-| **API Design** | .specs/04_future_state/design/ | 8 | api_interfaces.md, ipc_protocol.md |
-| **Component Design** | .specs/04_future_state/design/ | 7 | desktop_design.md, server_design.md, web_design.md |
-| **Data Models** | .specs/04_future_state/design/ | 1 | data_models.md |
-| **Security Design** | .specs/04_future_state/design/ | 1 | security_design.md |
-| **Build Design** | .specs/04_future_state/design/ | 1 | build_design.md |
-| **Schemas** | .specs/04_future_state/design/ | 50+ | Dependency, document, migration, validation schemas |
+| **API Design** | .adrs/ | 8 | api_interfaces.md, ipc_protocol.md |
+| **Component Design** | .adrs/ | 7 | desktop_design.md, server_design.md, web_design.md |
+| **Data Models** | .adrs/ | 1 | data_models.md |
+| **Security Design** | .adrs/ | 1 | security_design.md |
+| **Build Design** | .adrs/ | 1 | build_design.md |
+| **Schemas** | .adrs/ | 50+ | Dependency, document, migration, validation schemas |
 
 ### 4.5. Research and Analysis Documents
 
 | Document | Location | Content |
 |----------|-----------|----------|
-| **yellow_paper.md** | .specs/01_research/ | Technical research foundation |
-| **domain_constraints.toml** | .specs/01_research/ | Domain-specific constraints |
-| **test_vectors.toml** | .specs/01_research/ | Testing requirements |
-| **tqa_reports.md** | .specs/01_research/ | Technical Quality Assurance reports |
-| **bibliography.md** | .specs/01_research/ | Reference bibliography |
-| **blue_paper.md** | .specs/02_architecture/ | Architecture blueprint |
-| **proof.lean** | .specs/02_architecture/ | Formal verification proof (Lean) |
-| **threat_model.md** | .specs/03_security/ | Threat modeling analysis |
-| **compliance_matrix.md** | .specs/03_security/ | Standards compliance mapping |
+| **yellow_paper.md** | .adrs/ | Technical research foundation |
+| **domain_constraints.toml** | .adrs/ | Domain-specific constraints |
+| **test_vectors.toml** | .adrs/ | Testing requirements |
+| **tqa_reports.md** | .adrs/ | Technical Quality Assurance reports |
+| **bibliography.md** | .adrs/ | Reference bibliography |
+| **blue_paper.md** | .adrs/ | Architecture blueprint |
+| **proof.lean** | .adrs/ | Formal verification proof (Lean) |
+| **threat_model.md** | .adrs/ | Threat modeling analysis |
+| **compliance_matrix.md** | .adrs/ | Standards compliance mapping |
 
 ### 4.6. Implementation Artifacts
 
 | Category | Location | Status |
 |----------|-----------|--------|
-| **Prototype Code** | .specs/06_prototypes/prototype/ | Skeleton implementation |
+| **Prototype Code** | .adrs/ | Skeleton implementation |
 | **Modules** | cache/, filewatch/, git/, markdown/, render/, search/ | Module structure defined |
 | **Tests** | tests/common/ | Test framework structure |
 

@@ -50,13 +50,13 @@ Out of scope:
 ### 1.3. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TSK-V1.0](.specs/tasks.md) - Execution Tasks and Work Breakdown Structure
-- [TACHYON-REQ-SYS-V1.0](.specs/04_future_state/reqs/system_overview.md) - System Overview Requirements
-- [TACHYON-ADR-001-V1.0](.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TST-V1.0](.specs/04_future_state/test_plan.md) - Test Plan
-- [TACHYON-DSN-INDEX-V1.0](.specs/04_future_state/design/000-index.md) - Design Documents Index
+- [TACHYON-STD-V1.0](.adrs/ - Coding and Documentation Standards
+- [TACHYON-TSK-V1.0](.adrs/ - Execution Tasks and Work Breakdown Structure
+- [TACHYON-REQ-SYS-V1.0](.adrs/ - System Overview Requirements
+- [TACHYON-ADR-001-V1.0](.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TST-V1.0](.adrs/ - Test Plan
+- [TACHYON-DSN-INDEX-V1.0](.adrs/ - Design Documents Index
 
 ### 1.4. Roadmap Principles
 
@@ -846,7 +846,7 @@ The critical path for the Tachyon project is defined as the sequence of tasks th
    - TSK-068 through TSK-079: Operations and Maintenance Documentation
 
 **Task-Level Dependencies:**
-Specific task dependencies are defined in [`.specs/tasks.md`](.specs/tasks.md). Key dependencies include:
+Specific task dependencies are defined in [`.adrs/ Key dependencies include:
 
 - TSK-002 through TSK-006 depend on TSK-001 completion
 - TSK-007 through TSK-021 depend on Phase 1 completion
@@ -1303,7 +1303,7 @@ The critical path for Tachyon project is defined as the sequence of tasks that d
    - TSK-068 through TSK-079: Operations and Maintenance Documentation
 
 **Task-Level Dependencies:**
-Specific task dependencies are defined in [`.specs/tasks.md`](.specs/tasks.md). Key dependencies include:
+Specific task dependencies are defined in [`.adrs/ Key dependencies include:
 
 - TSK-002 through TSK-006 depend on TSK-001 completion
 - TSK-007 through TSK-021 depend on Phase 1 completion
@@ -1918,19 +1918,19 @@ The Tachyon project is considered complete when:
 
 ### 9.1. Internal References
 
-[1] TACHYON-STD-V1.0, "TACHYON: CODING AND DOCUMENTATION STANDARDS," [`.specs/01_standards/coding_standards.md`](.specs/01_standards/coding_standards.md), February 2026.
+[1] TACHYON-STD-V1.0, "TACHYON: CODING AND DOCUMENTATION STANDARDS," [`.adrs/ February 2026.
 
-[2] TACHYON-TSK-V1.0, "TACHYON: EXECUTION TASKS AND WORK BREAKDOWN STRUCTURE," [`.specs/tasks.md`](.specs/tasks.md), February 2026.
+[2] TACHYON-TSK-V1.0, "TACHYON: EXECUTION TASKS AND WORK BREAKDOWN STRUCTURE," [`.adrs/ February 2026.
 
-[3] TACHYON-REQ-SYS-V1.0, "TACHYON: SYSTEM OVERVIEW REQUIREMENTS," [`.specs/04_future_state/reqs/system_overview.md`](.specs/04_future_state/reqs/system_overview.md), February 2026.
+[3] TACHYON-REQ-SYS-V1.0, "TACHYON: SYSTEM OVERVIEW REQUIREMENTS," [`.adrs/ February 2026.
 
-[4] TACHYON-ADR-001-V1.0, "ADR-001: Rust as Primary Language," [`.specs/02_adrs/001_rust_as_primary_language.md`](.specs/02_adrs/001_rust_as_primary_language.md), February 2026.
+[4] TACHYON-ADR-001-V1.0, "ADR-001: Rust as Primary Language," [`.adrs/adr-001-three-tier-jit-compilation.md](.adrs/adr-001-three-tier-jit-compilation.md), February 2026.
 
-[5] TACHYON-ADR-010-V1.0, "ADR-010: Security Architecture," [`.specs/02_adrs/010_security_architecture.md`](.specs/02_adrs/010_security_architecture.md), February 2026.
+[5] TACHYON-ADR-010-V1.0, "ADR-010: Security Architecture," [`.adrs/adr-010-synchronization-primitives.md](.adrs/adr-010-synchronization-primitives.md), February 2026.
 
-[6] TACHYON-TST-V1.0, "TACHYON: TEST PLAN," [`.specs/04_future_state/test_plan.md`](.specs/04_future_state/test_plan.md), February 2026.
+[6] TACHYON-TST-V1.0, "TACHYON: TEST PLAN," [`.adrs/ February 2026.
 
-[7] TACHYON-DSN-INDEX-V1.0, "DESIGN DOCUMENTS INDEX," [`.specs/04_future_state/design/000-index.md`](.specs/04_future_state/design/000-index.md), February 2026.
+[7] TACHYON-DSN-INDEX-V1.0, "DESIGN DOCUMENTS INDEX," [`.adrs/ February 2026.
 
 ### 9.2. External References
 

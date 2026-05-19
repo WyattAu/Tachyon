@@ -5,7 +5,7 @@
 **Status:** Proposed
 **Classification:** Technical Specification
 **Compliance Level:** ISO/IEC 26514:2021, IEEE 830-1998, RFC 7540 (HTTP/2), RFC 7231 (HTTP/1.1)
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md), [TACHYON-DSN-SRV-V1.0](../../.specs/04_future_state/design/server_design.md), [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md), [TACHYON-ADR-007-V1.0](../../.specs/02_adrs/007_tokio_for_async_runtime.md), [TACHYON-TMA-V1.0](../../.specs/04_threat_model/threat_model.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-REQ-SRV-V1.0](../../.adrs/ [TACHYON-DSN-SRV-V1.0](../../.adrs/ [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md), [TACHYON-ADR-007-V1.0](../../.adrs/adr-007-thread-safety-strategy.md), [TACHYON-TMA-V1.0](../../.adrs/
 
 ---
 
@@ -404,7 +404,7 @@ Accept: application/json
 
 #### 3.1.6. Related Requirements
 
-- [REQ-SRV-021](../../.specs/04_future_state/reqs/server_requirements.md) - Document List Endpoint
+- [REQ-SRV-021](../../.adrs/ - Document List Endpoint
 
 ---
 
@@ -489,8 +489,8 @@ Accept: application/json
 
 #### 3.2.6. Related Requirements
 
-- [REQ-SRV-022](../../.specs/04_future_state/reqs/server_requirements.md) - Document Retrieval Endpoint
-- [REQ-SRV-083](../../.specs/04_future_state/reqs/server_requirements.md) - Block Redaction
+- [REQ-SRV-022](../../.adrs/ - Document Retrieval Endpoint
+- [REQ-SRV-083](../../.adrs/ - Block Redaction
 
 ---
 
@@ -586,8 +586,8 @@ Content-Type: application/json
 
 #### 3.3.6. Related Requirements
 
-- [REQ-SRV-023](../../.specs/04_future_state/reqs/server_requirements.md) - Document Creation Endpoint
-- [REQ-SRV-047](../../.specs/04_future_state/reqs/server_requirements.md) - Commit Management
+- [REQ-SRV-023](../../.adrs/ - Document Creation Endpoint
+- [REQ-SRV-047](../../.adrs/ - Commit Management
 
 ---
 
@@ -705,8 +705,8 @@ If-Match: "33a64df551425fcc55e4d42a148795d9f25f89d4"
 
 #### 3.4.8. Related Requirements
 
-- [REQ-SRV-024](../../.specs/04_future_state/reqs/server_requirements.md) - Document Update Endpoint
-- [REQ-SRV-047](../../.specs/04_future_state/reqs/server_requirements.md) - Commit Management
+- [REQ-SRV-024](../../.adrs/ - Document Update Endpoint
+- [REQ-SRV-047](../../.adrs/ - Commit Management
 
 ---
 
@@ -756,8 +756,8 @@ Empty response body with status code 204.
 
 #### 3.5.6. Related Requirements
 
-- [REQ-SRV-025](../../.specs/04_future_state/reqs/server_requirements.md) - Document Deletion Endpoint
-- [REQ-SRV-047](../../.specs/04_future_state/reqs/server_requirements.md) - Commit Management
+- [REQ-SRV-025](../../.adrs/ - Document Deletion Endpoint
+- [REQ-SRV-047](../../.adrs/ - Commit Management
 
 ---
 
@@ -847,7 +847,7 @@ Accept: application/json
 
 #### 3.6.7. Related Requirements
 
-- [REQ-SRV-032](../../.specs/04_future_state/reqs/server_requirements.md) - Commit History Endpoint
+- [REQ-SRV-032](../../.adrs/ - Commit History Endpoint
 
 ---
 
@@ -934,7 +934,7 @@ Accept: application/json
 
 #### 4.1.6. Related Requirements
 
-- [REQ-SRV-046](../../.specs/04_future_state/reqs/server_requirements.md) - Repository Access
+- [REQ-SRV-046](../../.adrs/ - Repository Access
 
 ---
 
@@ -1013,7 +1013,7 @@ Accept: application/json
 
 #### 4.2.6. Related Requirements
 
-- [REQ-SRV-031](../../.specs/04_future_state/reqs/server_requirements.md) - Repository Status Endpoint
+- [REQ-SRV-031](../../.adrs/ - Repository Status Endpoint
 
 ---
 
@@ -1106,8 +1106,8 @@ Content-Type: application/json
 
 #### 4.3.6. Related Requirements
 
-- [REQ-SRV-046](../../.specs/04_future_state/reqs/server_requirements.md) - Repository Access
-- [REQ-SRV-050](../../.specs/04_future_state/reqs/server_requirements.md) - Repository Sync
+- [REQ-SRV-046](../../.adrs/ - Repository Access
+- [REQ-SRV-050](../../.adrs/ - Repository Sync
 
 ---
 
@@ -1157,7 +1157,7 @@ Empty response body with status code 204.
 
 #### 4.4.6. Related Requirements
 
-- [REQ-SRV-046](../../.specs/04_future_state/reqs/server_requirements.md) - Repository Access
+- [REQ-SRV-046](../../.adrs/ - Repository Access
 
 ---
 
@@ -1247,7 +1247,7 @@ Content-Type: application/json
 
 #### 4.5.7. Related Requirements
 
-- [REQ-SRV-050](../../.specs/04_future_state/reqs/server_requirements.md) - Repository Sync
+- [REQ-SRV-050](../../.adrs/ - Repository Sync
 
 ---
 
@@ -1327,7 +1327,7 @@ Accept: application/json
 
 #### 4.6.6. Related Requirements
 
-- [REQ-SRV-033](../../.specs/04_future_state/reqs/server_requirements.md) - Branch List Endpoint
+- [REQ-SRV-033](../../.adrs/ - Branch List Endpoint
 
 ---
 
@@ -1403,8 +1403,8 @@ Content-Type: application/json
 
 #### 4.7.7. Related Requirements
 
-- [REQ-SRV-034](../../.specs/04_future_state/reqs/server_requirements.md) - Branch Switch Endpoint
-- [REQ-SRV-048](../../.specs/04_future_state/reqs/server_requirements.md) - Branch Operations
+- [REQ-SRV-034](../../.adrs/ - Branch Switch Endpoint
+- [REQ-SRV-048](../../.adrs/ - Branch Operations
 
 ---
 
@@ -1493,7 +1493,7 @@ Accept: application/json
 
 #### 4.8.7. Related Requirements
 
-- [REQ-SRV-032](../../.specs/04_future_state/reqs/server_requirements.md) - Commit History Endpoint
+- [REQ-SRV-032](../../.adrs/ - Commit History Endpoint
 
 ---
 
@@ -1580,7 +1580,7 @@ Accept: application/json
 
 #### 4.9.7. Related Requirements
 
-- [REQ-SRV-035](../../.specs/04_future_state/reqs/server_requirements.md) - Diff View Endpoint
+- [REQ-SRV-035](../../.adrs/ - Diff View Endpoint
 
 ---
 
@@ -1686,8 +1686,8 @@ Accept: application/json
 
 #### 5.1.6. Related Requirements
 
-- [REQ-SRV-026](../../.specs/04_future_state/reqs/server_requirements.md) - Full-Text Search Endpoint
-- [REQ-SRV-056](../../.specs/04_future_state/reqs/server_requirements.md) - Tantivy Integration
+- [REQ-SRV-026](../../.adrs/ - Full-Text Search Endpoint
+- [REQ-SRV-056](../../.adrs/ - Tantivy Integration
 
 ---
 
@@ -1769,7 +1769,7 @@ Accept: application/json
 
 #### 5.2.6. Related Requirements
 
-- [REQ-SRV-028](../../.specs/04_future_state/reqs/server_requirements.md) - Search Autocomplete Endpoint
+- [REQ-SRV-028](../../.adrs/ - Search Autocomplete Endpoint
 
 ---
 
@@ -1894,8 +1894,8 @@ Content-Type: application/json
 
 #### 5.3.6. Related Requirements
 
-- [REQ-SRV-027](../../.specs/04_future_state/reqs/server_requirements.md) - Faceted Search Endpoint
-- [REQ-SRV-029](../../.specs/04_future_state/reqs/server_requirements.md) - Search Pagination
+- [REQ-SRV-027](../../.adrs/ - Faceted Search Endpoint
+- [REQ-SRV-029](../../.adrs/ - Search Pagination
 
 ---
 
@@ -1972,7 +1972,7 @@ Accept: application/json
 
 #### 5.4.5. Related Requirements
 
-- [REQ-SRV-060](../../.specs/04_future_state/reqs/server_requirements.md) - Index Statistics Endpoint
+- [REQ-SRV-060](../../.adrs/ - Index Statistics Endpoint
 
 ---
 
@@ -2058,7 +2058,7 @@ Accept: application/json
 
 #### 6.1.6. Related Requirements
 
-- [REQ-SRV-081](../../.specs/04_future_state/reqs/server_requirements.md) - RBAC Enforcement
+- [REQ-SRV-081](../../.adrs/ - RBAC Enforcement
 
 ---
 
@@ -2135,8 +2135,8 @@ Accept: application/json
 
 #### 6.2.6. Related Requirements
 
-- [REQ-SRV-081](../../.specs/04_future_state/reqs/server_requirements.md) - RBAC Enforcement
-- [REQ-SRV-084](../../.specs/04_future_state/reqs/server_requirements.md) - Principle of Least Privilege
+- [REQ-SRV-081](../../.adrs/ - RBAC Enforcement
+- [REQ-SRV-084](../../.adrs/ - Principle of Least Privilege
 
 ---
 
@@ -2226,7 +2226,7 @@ Content-Type: application/json
 
 #### 6.3.7. Related Requirements
 
-- [REQ-SRV-081](../../.specs/04_future_state/reqs/server_requirements.md) - RBAC Enforcement
+- [REQ-SRV-081](../../.adrs/ - RBAC Enforcement
 
 ---
 
@@ -2278,7 +2278,7 @@ Empty response body with status code 204.
 
 #### 6.4.6. Related Requirements
 
-- [REQ-SRV-081](../../.specs/04_future_state/reqs/server_requirements.md) - RBAC Enforcement
+- [REQ-SRV-081](../../.adrs/ - RBAC Enforcement
 
 ---
 
@@ -2360,7 +2360,7 @@ Accept: application/json
 
 #### 6.5.7. Related Requirements
 
-- [REQ-SRV-085](../../.specs/04_future_state/reqs/server_requirements.md) - Access Logging
+- [REQ-SRV-085](../../.adrs/ - Access Logging
 
 ---
 
@@ -2456,9 +2456,9 @@ Content-Type: application/json
 
 #### 7.1.6. Related Requirements
 
-- [REQ-SRV-036](../../.specs/04_future_state/reqs/server_requirements.md) - Login Endpoint
-- [REQ-SRV-076](../../.specs/04_future_state/reqs/server_requirements.md) - Session Management
-- [REQ-SRV-077](../../.specs/04_future_state/reqs/server_requirements.md) - MFA Support
+- [REQ-SRV-036](../../.adrs/ - Login Endpoint
+- [REQ-SRV-076](../../.adrs/ - Session Management
+- [REQ-SRV-077](../../.adrs/ - MFA Support
 
 ---
 
@@ -2515,8 +2515,8 @@ Empty response body with status code 204.
 
 #### 7.2.6. Related Requirements
 
-- [REQ-SRV-037](../../.specs/04_future_state/reqs/server_requirements.md) - Logout Endpoint
-- [REQ-SRV-089](../../.specs/04_future_state/reqs/server_requirements.md) - Session Revocation
+- [REQ-SRV-037](../../.adrs/ - Logout Endpoint
+- [REQ-SRV-089](../../.adrs/ - Session Revocation
 
 ---
 
@@ -2580,8 +2580,8 @@ Content-Type: application/json
 
 #### 7.3.6. Related Requirements
 
-- [REQ-SRV-038](../../.specs/04_future_state/reqs/server_requirements.md) - Token Refresh Endpoint
-- [REQ-SRV-087](../../.specs/04_future_state/reqs/server_requirements.md) - Session Refresh
+- [REQ-SRV-038](../../.adrs/ - Token Refresh Endpoint
+- [REQ-SRV-087](../../.adrs/ - Session Refresh
 
 ---
 
@@ -2653,7 +2653,7 @@ Content-Type: application/json
 
 #### 7.4.6. Related Requirements
 
-- [REQ-SRV-039](../../.specs/04_future_state/reqs/server_requirements.md) - MFA Setup Endpoint
+- [REQ-SRV-039](../../.adrs/ - MFA Setup Endpoint
 
 ---
 
@@ -2719,7 +2719,7 @@ Content-Type: application/json
 
 #### 7.5.6. Related Requirements
 
-- [REQ-SRV-040](../../.specs/04_future_state/reqs/server_requirements.md) - MFA Verification Endpoint
+- [REQ-SRV-040](../../.adrs/ - MFA Verification Endpoint
 
 ---
 
@@ -2781,7 +2781,7 @@ Content-Type: application/json
 
 #### 7.6.6. Related Requirements
 
-- [REQ-SRV-077](../../.specs/04_future_state/reqs/server_requirements.md) - MFA Support
+- [REQ-SRV-077](../../.adrs/ - MFA Support
 
 ---
 
@@ -2835,9 +2835,9 @@ Redirects to the OAuth provider's authorization endpoint.
 
 #### 7.7.7. Related Requirements
 
-- [REQ-SRV-078](../../.specs/04_future_state/reqs/server_requirements.md) - OAuth 2.0 Integration
-- [REQ-SRV-079](../../.specs/04_future_state/reqs/server_requirements.md) - SAML Integration
-- [REQ-SRV-080](../../.specs/04_future_state/reqs/server_requirements.md) - OpenID Connect
+- [REQ-SRV-078](../../.adrs/ - OAuth 2.0 Integration
+- [REQ-SRV-079](../../.adrs/ - SAML Integration
+- [REQ-SRV-080](../../.adrs/ - OpenID Connect
 
 ---
 
@@ -2891,7 +2891,7 @@ Redirects to the application with access token in URL fragment or query paramete
 
 #### 7.8.7. Related Requirements
 
-- [REQ-SRV-078](../../.specs/04_future_state/reqs/server_requirements.md) - OAuth 2.0 Integration
+- [REQ-SRV-078](../../.adrs/ - OAuth 2.0 Integration
 
 ---
 
@@ -2957,8 +2957,8 @@ Session cookies adhere to the following security requirements:
 
 #### 8.1.5. Related Requirements
 
-- [REQ-SRV-076](../../.specs/04_future_state/reqs/server_requirements.md) - Session Management
-- [REQ-SRV-090](../../.specs/04_future_state/reqs/server_requirements.md) - Secure Cookies
+- [REQ-SRV-076](../../.adrs/ - Session Management
+- [REQ-SRV-090](../../.adrs/ - Secure Cookies
 
 ---
 
@@ -3024,10 +3024,10 @@ Redaction rules:
 
 #### 8.2.5. Related Requirements
 
-- [REQ-SRV-081](../../.specs/04_future_state/reqs/server_requirements.md) - RBAC Enforcement
-- [REQ-SRV-082](../../.specs/04_future_state/reqs/server_requirements.md) - Frontmatter Access Control
-- [REQ-SRV-083](../../.specs/04_future_state/reqs/server_requirements.md) - Block Redaction
-- [REQ-SRV-084](../../.specs/04_future_state/reqs/server_requirements.md) - Principle of Least Privilege
+- [REQ-SRV-081](../../.adrs/ - RBAC Enforcement
+- [REQ-SRV-082](../../.adrs/ - Frontmatter Access Control
+- [REQ-SRV-083](../../.adrs/ - Block Redaction
+- [REQ-SRV-084](../../.adrs/ - Principle of Least Privilege
 
 ---
 
@@ -3186,7 +3186,7 @@ All user-generated content is sanitized:
 
 #### 8.5.5. Related Requirements
 
-- [REQ-SRV-044](../../.specs/04_future_state/reqs/server_requirements.md) - Content Sanitization
+- [REQ-SRV-044](../../.adrs/ - Content Sanitization
 - Threat Model - Input Validation Considerations
 
 ---
@@ -3213,9 +3213,9 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 
 #### 8.6.3. Related Requirements
 
-- [REQ-SRV-016](../../.specs/04_future_state/reqs/server_requirements.md) - TLS 1.3 Support
-- [REQ-SRV-017](../../.specs/04_future_state/reqs/server_requirements.md) - Certificate Management
-- [REQ-SRV-018](../../.specs/04_future_state/reqs/server_requirements.md) - HSTS Headers
+- [REQ-SRV-016](../../.adrs/ - TLS 1.3 Support
+- [REQ-SRV-017](../../.adrs/ - Certificate Management
+- [REQ-SRV-018](../../.adrs/ - HSTS Headers
 
 ---
 
@@ -3250,8 +3250,8 @@ All endpoints include performance metrics in response headers:
 
 #### 9.1.3. Related Requirements
 
-- [REQ-SRV-041](../../.specs/04_future_state/reqs/server_requirements.md) - JIT Rendering
-- [REQ-SRV-042](../../.specs/04_future_state/reqs/server_requirements.md) - Cache Management
+- [REQ-SRV-041](../../.adrs/ - JIT Rendering
+- [REQ-SRV-042](../../.adrs/ - Cache Management
 
 ---
 
@@ -3281,8 +3281,8 @@ Per-request resource limits:
 
 #### 9.2.3. Related Requirements
 
-- [REQ-SRV-011](../../.specs/04_future_state/reqs/server_requirements.md) - HTTP/2 Protocol
-- [REQ-SRV-013](../../.specs/04_future_state/reqs/server_requirements.md) - Multiplexing
+- [REQ-SRV-011](../../.adrs/ - HTTP/2 Protocol
+- [REQ-SRV-013](../../.adrs/ - Multiplexing
 
 ---
 
@@ -3346,9 +3346,9 @@ Cache control headers for client caching:
 
 #### 9.3.5. Related Requirements
 
-- [REQ-SRV-042](../../.specs/04_future_state/reqs/server_requirements.md) - Cache Management
-- [REQ-SRV-066](../../.specs/04_future_state/reqs/server_requirements.md) - Asset Serving
-- [REQ-SRV-067](../../.specs/04_future_state/reqs/server_requirements.md) - Asset Versioning
+- [REQ-SRV-042](../../.adrs/ - Cache Management
+- [REQ-SRV-066](../../.adrs/ - Asset Serving
+- [REQ-SRV-067](../../.adrs/ - Asset Versioning
 
 ---
 
@@ -3383,11 +3383,11 @@ Cache control headers for client caching:
 
 #### 9.4.4. Related Requirements
 
-- [REQ-SRV-041](../../.specs/04_future_state/reqs/server_requirements.md) - JIT Rendering
-- [REQ-SRV-045](../../.specs/04_future_state/reqs/server_requirements.md) - Image Processing
-- [REQ-SRV-057](../../.specs/04_future_state/reqs/server_requirements.md) - Incremental Indexing
-- [REQ-SRV-059](../../.specs/04_future_state/reqs/server_requirements.md) - Index Optimization
-- [REQ-SRV-068](../../.specs/04_future_state/reqs/server_requirements.md) - Asset Compression
+- [REQ-SRV-041](../../.adrs/ - JIT Rendering
+- [REQ-SRV-045](../../.adrs/ - Image Processing
+- [REQ-SRV-057](../../.adrs/ - Incremental Indexing
+- [REQ-SRV-059](../../.adrs/ - Index Optimization
+- [REQ-SRV-068](../../.adrs/ - Asset Compression
 
 ---
 
@@ -3414,122 +3414,122 @@ Cache control headers for client caching:
 
 | ADR | Title | Reference |
 |-----|-------|-----------|
-| **ADR-003** | Axum for HTTP/2 Server | [`.specs/02_adrs/003_axum_for_http2_server.md`](../../.specs/02_adrs/003_axum_for_http2_server.md) |
-| **ADR-007** | Tokio for Async Runtime | [`.specs/02_adrs/007_tokio_for_async_runtime.md`](../../.specs/02_adrs/007_tokio_for_async_runtime.md) |
+| **ADR-003** | Axum for HTTP/2 Server | [`.adrs/adr-003-lru-cache-target.md](../../.adrs/adr-003-lru-cache-target.md) |
+| **ADR-007** | Tokio for Async Runtime | [`.adrs/adr-007-thread-safety-strategy.md](../../.adrs/adr-007-thread-safety-strategy.md) |
 
 ### 10.3. Requirements Specifications
 
 | Requirement ID | Title | Reference |
 |----------------|-------|-----------|
-| **REQ-SRV-001** | Server Startup | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-002** | Graceful Shutdown | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-003** | Configuration Loading | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-005** | Health Check | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-011** | HTTP/2 Protocol | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-016** | TLS 1.3 Support | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-021** | Document List | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-022** | Document Retrieval | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-023** | Document Creation | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-024** | Document Update | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-025** | Document Deletion | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-026** | Full-Text Search | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-027** | Faceted Search | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-028** | Search Autocomplete | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-029** | Search Pagination | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-030** | Search Highlighting | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-031** | Repository Status | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-032** | Commit History | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-033** | Branch List | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-034** | Branch Switch | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-035** | Diff View | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-036** | Login | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-037** | Logout | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-038** | Token Refresh | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-039** | MFA Setup | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-040** | MFA Verification | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-041** | JIT Rendering | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-042** | Cache Management | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-043** | Frontmatter Processing | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-044** | Content Sanitization | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-045** | Image Processing | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-046** | Repository Access | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-047** | Commit Management | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-048** | Branch Operations | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-049** | Merge Operations | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-050** | Repository Sync | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-051** | SQLite Integration | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-052** | Connection Pooling | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-053** | Transaction Management | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-054** | Database Migration | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-055** | Backup Support | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-056** | Tantivy Integration | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-057** | Incremental Indexing | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-058** | Index Synchronization | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-059** | Index Optimization | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-060** | Index Statistics | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-061** | Loopback Binding | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-062** | Random Port Allocation | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-063** | Desktop Authentication | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-064** | Desktop RBAC Bypass | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-065** | Desktop WebSocket | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-066** | Asset Serving | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-067** | Asset Versioning | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-068** | Asset Compression | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-069** | Asset Integrity | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-070** | Asset Optimization | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-071** | Bundle Serving | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-072** | Bundle Caching | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-073** | Bundle Updates | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-074** | Bundle Integrity | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-075** | Bundle Compression | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-076** | Session Management | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-077** | MFA Support | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-078** | OAuth 2.0 Integration | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-079** | SAML Integration | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-080** | OpenID Connect | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-081** | RBAC Enforcement | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-082** | Frontmatter Access Control | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-083** | Block Redaction | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-084** | Principle of Least Privilege | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-085** | Access Logging | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-086** | Session Timeout | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-087** | Session Refresh | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-088** | Concurrent Session Limit | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-089** | Session Revocation | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-090** | Secure Cookies | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-091** | WebSocket Endpoint | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-092** | Connection Authentication | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-093** | Connection Limiting | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-094** | Heartbeat Mechanism | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-095** | Graceful Disconnection | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-096** | Content Updates | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-097** | User Presence | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-098** | Conflict Notifications | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-099** | Typing Indicators | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-100** | Cursor Position | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-101** | Last-Write-Wins | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-102** | Edit Queue | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-103** | Conflict Resolution UI | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-104** | Edit History | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
-| **REQ-SRV-105** | Locking Mechanism | [`.specs/04_future_state/reqs/server_requirements.md`](../../.specs/04_future_state/reqs/server_requirements.md) |
+| **REQ-SRV-001** | Server Startup | [`.adrs/ |
+| **REQ-SRV-002** | Graceful Shutdown | [`.adrs/ |
+| **REQ-SRV-003** | Configuration Loading | [`.adrs/ |
+| **REQ-SRV-005** | Health Check | [`.adrs/ |
+| **REQ-SRV-011** | HTTP/2 Protocol | [`.adrs/ |
+| **REQ-SRV-016** | TLS 1.3 Support | [`.adrs/ |
+| **REQ-SRV-021** | Document List | [`.adrs/ |
+| **REQ-SRV-022** | Document Retrieval | [`.adrs/ |
+| **REQ-SRV-023** | Document Creation | [`.adrs/ |
+| **REQ-SRV-024** | Document Update | [`.adrs/ |
+| **REQ-SRV-025** | Document Deletion | [`.adrs/ |
+| **REQ-SRV-026** | Full-Text Search | [`.adrs/ |
+| **REQ-SRV-027** | Faceted Search | [`.adrs/ |
+| **REQ-SRV-028** | Search Autocomplete | [`.adrs/ |
+| **REQ-SRV-029** | Search Pagination | [`.adrs/ |
+| **REQ-SRV-030** | Search Highlighting | [`.adrs/ |
+| **REQ-SRV-031** | Repository Status | [`.adrs/ |
+| **REQ-SRV-032** | Commit History | [`.adrs/ |
+| **REQ-SRV-033** | Branch List | [`.adrs/ |
+| **REQ-SRV-034** | Branch Switch | [`.adrs/ |
+| **REQ-SRV-035** | Diff View | [`.adrs/ |
+| **REQ-SRV-036** | Login | [`.adrs/ |
+| **REQ-SRV-037** | Logout | [`.adrs/ |
+| **REQ-SRV-038** | Token Refresh | [`.adrs/ |
+| **REQ-SRV-039** | MFA Setup | [`.adrs/ |
+| **REQ-SRV-040** | MFA Verification | [`.adrs/ |
+| **REQ-SRV-041** | JIT Rendering | [`.adrs/ |
+| **REQ-SRV-042** | Cache Management | [`.adrs/ |
+| **REQ-SRV-043** | Frontmatter Processing | [`.adrs/ |
+| **REQ-SRV-044** | Content Sanitization | [`.adrs/ |
+| **REQ-SRV-045** | Image Processing | [`.adrs/ |
+| **REQ-SRV-046** | Repository Access | [`.adrs/ |
+| **REQ-SRV-047** | Commit Management | [`.adrs/ |
+| **REQ-SRV-048** | Branch Operations | [`.adrs/ |
+| **REQ-SRV-049** | Merge Operations | [`.adrs/ |
+| **REQ-SRV-050** | Repository Sync | [`.adrs/ |
+| **REQ-SRV-051** | SQLite Integration | [`.adrs/ |
+| **REQ-SRV-052** | Connection Pooling | [`.adrs/ |
+| **REQ-SRV-053** | Transaction Management | [`.adrs/ |
+| **REQ-SRV-054** | Database Migration | [`.adrs/ |
+| **REQ-SRV-055** | Backup Support | [`.adrs/ |
+| **REQ-SRV-056** | Tantivy Integration | [`.adrs/ |
+| **REQ-SRV-057** | Incremental Indexing | [`.adrs/ |
+| **REQ-SRV-058** | Index Synchronization | [`.adrs/ |
+| **REQ-SRV-059** | Index Optimization | [`.adrs/ |
+| **REQ-SRV-060** | Index Statistics | [`.adrs/ |
+| **REQ-SRV-061** | Loopback Binding | [`.adrs/ |
+| **REQ-SRV-062** | Random Port Allocation | [`.adrs/ |
+| **REQ-SRV-063** | Desktop Authentication | [`.adrs/ |
+| **REQ-SRV-064** | Desktop RBAC Bypass | [`.adrs/ |
+| **REQ-SRV-065** | Desktop WebSocket | [`.adrs/ |
+| **REQ-SRV-066** | Asset Serving | [`.adrs/ |
+| **REQ-SRV-067** | Asset Versioning | [`.adrs/ |
+| **REQ-SRV-068** | Asset Compression | [`.adrs/ |
+| **REQ-SRV-069** | Asset Integrity | [`.adrs/ |
+| **REQ-SRV-070** | Asset Optimization | [`.adrs/ |
+| **REQ-SRV-071** | Bundle Serving | [`.adrs/ |
+| **REQ-SRV-072** | Bundle Caching | [`.adrs/ |
+| **REQ-SRV-073** | Bundle Updates | [`.adrs/ |
+| **REQ-SRV-074** | Bundle Integrity | [`.adrs/ |
+| **REQ-SRV-075** | Bundle Compression | [`.adrs/ |
+| **REQ-SRV-076** | Session Management | [`.adrs/ |
+| **REQ-SRV-077** | MFA Support | [`.adrs/ |
+| **REQ-SRV-078** | OAuth 2.0 Integration | [`.adrs/ |
+| **REQ-SRV-079** | SAML Integration | [`.adrs/ |
+| **REQ-SRV-080** | OpenID Connect | [`.adrs/ |
+| **REQ-SRV-081** | RBAC Enforcement | [`.adrs/ |
+| **REQ-SRV-082** | Frontmatter Access Control | [`.adrs/ |
+| **REQ-SRV-083** | Block Redaction | [`.adrs/ |
+| **REQ-SRV-084** | Principle of Least Privilege | [`.adrs/ |
+| **REQ-SRV-085** | Access Logging | [`.adrs/ |
+| **REQ-SRV-086** | Session Timeout | [`.adrs/ |
+| **REQ-SRV-087** | Session Refresh | [`.adrs/ |
+| **REQ-SRV-088** | Concurrent Session Limit | [`.adrs/ |
+| **REQ-SRV-089** | Session Revocation | [`.adrs/ |
+| **REQ-SRV-090** | Secure Cookies | [`.adrs/ |
+| **REQ-SRV-091** | WebSocket Endpoint | [`.adrs/ |
+| **REQ-SRV-092** | Connection Authentication | [`.adrs/ |
+| **REQ-SRV-093** | Connection Limiting | [`.adrs/ |
+| **REQ-SRV-094** | Heartbeat Mechanism | [`.adrs/ |
+| **REQ-SRV-095** | Graceful Disconnection | [`.adrs/ |
+| **REQ-SRV-096** | Content Updates | [`.adrs/ |
+| **REQ-SRV-097** | User Presence | [`.adrs/ |
+| **REQ-SRV-098** | Conflict Notifications | [`.adrs/ |
+| **REQ-SRV-099** | Typing Indicators | [`.adrs/ |
+| **REQ-SRV-100** | Cursor Position | [`.adrs/ |
+| **REQ-SRV-101** | Last-Write-Wins | [`.adrs/ |
+| **REQ-SRV-102** | Edit Queue | [`.adrs/ |
+| **REQ-SRV-103** | Conflict Resolution UI | [`.adrs/ |
+| **REQ-SRV-104** | Edit History | [`.adrs/ |
+| **REQ-SRV-105** | Locking Mechanism | [`.adrs/ |
 
 ### 10.4. Design Specifications
 
 | Design Element | Title | Reference |
 |---------------|-------|-----------|
-| **DSN-SRV-001** | Server Architecture | [`.specs/04_future_state/design/server_design.md`](../../.specs/04_future_state/design/server_design.md) |
+| **DSN-SRV-001** | Server Architecture | [`.adrs/ |
 
 ### 10.5. Coding Standards
 
 | Standard | Reference | Description |
 |---------|-----------|-------------|
-| **TACHYON-STD-V1.0** | Coding and Documentation Standards | [`.specs/01_standards/coding_standards.md`](../../.specs/01_standards/coding_standards.md) |
+| **TACHYON-STD-V1.0** | Coding and Documentation Standards | [`.adrs/ |
 
 ### 10.6. Threat Model
 
 | Document | Reference | Description |
 |---------|-----------|-------------|
-| **TACHYON-TMA-V1.0** | Threat Model Analysis | [`.specs/04_threat_model/threat_model.md`](../../.specs/04_threat_model/threat_model.md) |
+| **TACHYON-TMA-V1.0** | Threat Model Analysis | [`.adrs/ |
 
 ### 10.7. External References
 
@@ -3539,7 +3539,7 @@ Cache control headers for client caching:
 | **Tokio Documentation** | https://tokio.rs/ | Asynchronous runtime for Rust |
 | **JWT Specification** | https://tools.ietf.org/html/rfc7519 | JSON Web Token specification |
 | **OAuth 2.0 Specification** | https://tools.ietf.org/html/rfc6749 | OAuth 2.0 authorization framework |
-| **HTTP/2 Specification** | https://httpwg.org/specs/rfc7540/ | HTTP/2 protocol specification |
+| **HTTP/2 Specification** | https://httpwg.org/.adrs/ | HTTP/2 protocol specification |
 | **Tantivy Documentation** | https://docs.rs/tantivy/ | Full-text search engine for Rust |
 | **git2-rs Documentation** | https://docs.rs/git2/ | Git bindings for Rust |
 

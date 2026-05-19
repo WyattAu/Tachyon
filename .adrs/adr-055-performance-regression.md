@@ -93,17 +93,17 @@ Random sampling of performance in production.
 
 ## Implementation Notes
 
-- Performance regression detection documented in .specs/07_ci_cd/performance_regression.md
+- Performance regression detection documented in .adrs/
 - GitHub Actions workflow in .github/workflows/performance_regression.yml
 - Benchmarking tools: cargo-criterion
-- Baseline metrics in .specs/06_5_regression/baseline_metrics.toml
+- Baseline metrics in .adrs/
 
 ## References
 
-- .specs/07_ci_cd/performance_regression.md
-- .specs/06_5_regression/baseline_metrics.toml
-- .specs/04_performance/performance_requirements.md
-- .specs/04_performance/benchmark_suite.md
+- .adrs/
+- .adrs/
+- .adrs/
+- .adrs/
 
 ---
 

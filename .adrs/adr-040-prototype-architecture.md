@@ -12,7 +12,7 @@
 
 Phase 5 requires creating minimal, compile-ready artifacts to falsify the Blue Paper design. The prototype must:
 
-1. Import and validate test vectors from [`test_vectors.toml`](../.specs/01_research/test_vectors.toml)
+1. Import and validate test vectors from [`test_vectors.toml`](../.adrs/
 2. Prove implementation matches theoretical values within specified tolerance
 3. Implement concurrency tests for thread safety, deadlocks, and race conditions
 4. Implement fuzzing tests for input validation and edge cases
@@ -35,7 +35,7 @@ Phase 5 requires creating minimal, compile-ready artifacts to falsify the Blue P
 The prototype will be organized as a minimal Rust workspace with the following structure:
 
 ```
-.specs/06_prototypes/
+.adrs/
 ├── prototype/
 │   ├── Cargo.toml                    # Workspace root
 │   ├── src/
@@ -118,7 +118,7 @@ tracing-subscriber = "0.3"
 
 ### 2.3. Test Vector Integration
 
-The prototype will include a test vector loader that reads [`test_vectors.toml`](../.specs/01_research/test_vectors.toml) and validates:
+The prototype will include a test vector loader that reads [`test_vectors.toml`](../.adrs/ and validates:
 
 1. **Markdown Parsing Tests** (CM-001 through FM-002)
    - Parse commonmark syntax
@@ -285,10 +285,10 @@ The prototype will include a test vector loader that reads [`test_vectors.toml`]
 
 ## 7. References
 
-- [Blue Paper: Tachyon System Architecture Specification](../.specs/02_architecture/blue_paper.md)
-- [Test Vectors and Ground Truth Data](../.specs/01_research/test_vectors.toml)
-- [Thread Safety Analysis](../.specs/02_5_concurrency/thread_safety_analysis.md)
-- [Deadlock Analysis](../.specs/02_5_concurrency/deadlock_analysis.md)
-- [Threat Model: STRIDE Analysis](../.specs/03_security/threat_model.md)
-- [Memory Management](../.specs/03_5_resource_management/memory_management.md)
-- [Handle Management](../.specs/03_5_resource_management/handle_management.md)
+- [Blue Paper: Tachyon System Architecture Specification](../.adrs/
+- [Test Vectors and Ground Truth Data](../.adrs/
+- [Thread Safety Analysis](../.adrs/
+- [Deadlock Analysis](../.adrs/
+- [Threat Model: STRIDE Analysis](../.adrs/
+- [Memory Management](../.adrs/
+- [Handle Management](../.adrs/

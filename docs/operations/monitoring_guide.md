@@ -40,11 +40,11 @@ The scope of this document includes:
 ### 1.2. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TSK-004](../.specs/tasks.md) - Deployment Architecture Documentation
-- [TACHYON-TSK-030](../.specs/tasks.md) - Security Architecture Documentation
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TSK-004](../.adrs/ - Deployment Architecture Documentation
+- [TACHYON-TSK-030](../.adrs/ - Security Architecture Documentation
 
 ### 1.3. Target Audience
 
@@ -1791,12 +1791,12 @@ Automated insights provide proactive notifications:
 
 This document references the following internal documents:
 
-- **[TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md)** - Coding and Documentation Standards
-- **[TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md)** - Rust as Primary Language
-- **[TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md)** - Security Architecture
-- **[TACHYON-TSK-004](../.specs/tasks.md)** - Deployment Architecture Documentation
-- **[TACHYON-TSK-030](../.specs/tasks.md)** - Security Architecture Documentation
-- **[TACHYON-TSK-077](../.specs/tasks.md)** - Monitoring and Observability Guide (this document)
+- **[TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- **[TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md)** - Rust as Primary Language
+- **[TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md)** - Security Architecture
+- **[TACHYON-TSK-004](../.adrs/ - Deployment Architecture Documentation
+- **[TACHYON-TSK-030](../.adrs/ - Security Architecture Documentation
+- **[TACHYON-TSK-077](../.adrs/ - Monitoring and Observability Guide (this document)
 
 ### 9.2. External References
 

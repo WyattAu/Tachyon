@@ -140,10 +140,10 @@ We will implement a comprehensive disaster recovery strategy with tiered backup 
 - **Total**: < 4 hours
 
 ## References
-- [Disaster Recovery Procedures](../.specs/09_operations/disaster_recovery.md)
+- [Disaster Recovery Procedures](../.adrs/
 - [Backup Workflow](../.github/workflows/backup.yml)
-- [Monitoring Strategy](../.specs/09_operations/monitoring_strategy.md)
-- [Incident Response](../.specs/09_operations/incident_response.md)
+- [Monitoring Strategy](../.adrs/
+- [Incident Response](../.adrs/
 - [Disaster Recovery Plan](../docs/operations/disaster_recovery_plan.md)
 
 ## Decision Date

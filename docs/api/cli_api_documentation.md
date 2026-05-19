@@ -63,19 +63,19 @@ Destructive operations require explicit confirmation. The CLI provides dry-run m
 ### 1.3. Technology Stack
 
 The Tachyon CLI is implemented using:
-- **Language:** Rust (per [ADR-001](.specs/02_adrs/adr-001_rust_language.md))
+- **Language:** Rust (per [ADR-001](.adrs/adr-001-three-tier-jit-compilation.md))
 - **CLI Framework:** clap (Command Line Argument Parser)
-- **Async Runtime:** Tokio (per [ADR-002](.specs/02_adrs/adr-002_tokio_runtime.md))
+- **Async Runtime:** Tokio (per [ADR-002](.adrs/adr-002-bm25-search-parameters.md))
 - **Configuration:** serde for serialization/deserialization
 - **Output Formatting:** termcolor and table formatting libraries
 
 ### 1.4. Related Documentation
 
 This document references the following specifications:
-- [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-V1.0](.specs/06_requirements/requirements.md) - Requirements Specification
-- [ADR-010](.specs/02_adrs/adr-010_security.md) - Security Architecture
-- [TACHYON-TST-V1.0](.specs/08_test_plan/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-V1.0](.adrs/ - Requirements Specification
+- [ADR-010](.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TST-V1.0](.adrs/ - Test Plan
 
 ---
 
@@ -2397,50 +2397,50 @@ This section provides references to related documentation, specifications, and s
 
 ### 13.1. Documentation Standards
 
-- **[TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- **[TACHYON-STD-V1.0](.adrs/ - Coding and Documentation Standards
   Defines conventions for all Tachyon documentation including formatting, structure, and quality requirements
 
 ### 13.2. Requirements Specification
 
-- **[TACHYON-REQ-V1.0](.specs/06_requirements/requirements.md) - Requirements Specification
+- **[TACHYON-REQ-V1.0](.adrs/ - Requirements Specification
   Contains all functional and non-functional requirements for the Tachyon toolchain
 
 ### 13.3. Architectural Decisions
 
-- **[ADR-001](.specs/02_adrs/adr-001_rust_language.md) - Rust Language Decision
+- **[ADR-001](.adrs/adr-001-three-tier-jit-compilation.md) - Rust Language Decision
   Rationale for selecting Rust as the implementation language for Tachyon CLI
 
-- **[ADR-002](.specs/02_adrs/adr-002_tokio_runtime.md) - Tokio Runtime Decision
+- **[ADR-002](.adrs/adr-002-bm25-search-parameters.md) - Tokio Runtime Decision
   Rationale for using Tokio for asynchronous operations in the CLI
 
-- **[ADR-010](.specs/02_adrs/adr-010_security.md) - Security Architecture
+- **[ADR-010](.adrs/adr-010-synchronization-primitives.md) - Security Architecture
   Defines security considerations for CLI implementation including authentication and authorization
 
 ### 13.4. API Documentation
 
-- **[TACHYON-API-001-V1.0](.specs/03_api_documentation/api_overview.md) - API Overview and Conventions
+- **[TACHYON-API-001-V1.0](.adrs/ - API Overview and Conventions
   Establishes API design principles and conventions used across all Tachyon APIs
 
-- **[TACHYON-API-008-V1.0](.specs/03_api_documentation/desktop_api.md) - Desktop API Specification
+- **[TACHYON-API-008-V1.0](.adrs/ - Desktop API Specification
   Documents the Tauri-based desktop application API that CLI interacts with
 
-- **[TACHYON-API-009-V1.0](.specs/03_api_documentation/server_http_api.md) - Server HTTP API Specification
+- **[TACHYON-API-009-V1.0](.adrs/ - Server HTTP API Specification
   Documents the Axum-based server HTTP API that CLI can interact with
 
-- **[TACHYON-API-010-V1.0](.specs/03_api_documentation/server_websocket_api.md) - Server WebSocket API Specification
+- **[TACHYON-API-010-V1.0](.adrs/ - Server WebSocket API Specification
   Documents the WebSocket API for real-time communication
 
 ### 13.5. Design Documents
 
-- **[DSN-001](.specs/07_designs/designs.md) - System Architecture Design
+- **[DSN-001](.adrs/ - System Architecture Design
   Provides overall system architecture including CLI integration points
 
-- **[DSN-011](.specs/07_designs/api_design.md) - API Design
+- **[DSN-011](.adrs/ - API Design
   Provides detailed API design specifications
 
 ### 13.6. Test Plan
 
-- **[TACHYON-TST-V1.0](.specs/08_test_plan/test_plan.md) - Test Plan
+- **[TACHYON-TST-V1.0](.adrs/ - Test Plan
   Defines testing strategy and acceptance criteria for CLI commands
 
 ### 13.7. Technology Documentation
@@ -2472,7 +2472,7 @@ This section provides references to related documentation, specifications, and s
 
 ### 13.10. Version History
 
-- **TACHYON-CHG-V1.0](.specs/11_change_history/versioning.md) - Change History and Versioning
+- **TACHYON-CHG-V1.0](.adrs/ - Change History and Versioning
   Documents version history and change management procedures for Tachyon
 
 ---

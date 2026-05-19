@@ -76,13 +76,13 @@
 
 ### 1.4 Verify TLA+ Specs Through TLC
 
-**Problem:** Four TLA+ specs exist in `tachyon/specs/tla/` (Diff3Merge.tla, GraphInvariants.tla, OperationalTransform.tla, ReviewStateMachine.tla) but none have been verified through the TLC model checker.
+**Problem:** Four TLA+ specs exist in `tachyon/.adrs/ (Diff3Merge.tla, GraphInvariants.tla, OperationalTransform.tla, ReviewStateMachine.tla) but none have been verified through the TLC model checker.
 
 **Tasks:**
 - Install TLC (Java-based model checker)
 - Write TLC configuration files for each spec: `Diff3Merge.cfg`, `GraphInvariants.cfg`, `OperationalTransform.cfg`, `ReviewStateMachine.cfg`
 - Define model constraints (state space bounds, invariants to check)
-- Run TLC on each spec; document results in `tachyon/specs/tla/README.md`
+- Run TLC on each spec; document results in `tachyon/.adrs/
 - Fix any specification errors discovered during verification
 
 **Effort:** 3-4 days
@@ -283,7 +283,7 @@
 - Populate `STANDARD_CONFLICTS.md` if conflicts exist, or add a note documenting that no conflicts were identified
 - Update `VERSION.md` to reflect v11.0.0 accurately (fix outdated sections)
 - Fix CHANGELOG version ordering (v1.1.0 appearing after v0.2.0 if present)
-- Populate `.specs/` directory with spec files referenced by ADRs
+- Populate `.adrs/ directory with spec files referenced by ADRs
 - Resolve SQLite/PostgreSQL confusion across docs files
 
 **Effort:** 3-4 days
@@ -370,10 +370,10 @@
 ### 6.3 Lean 4 Proof Completion
 
 **Tasks:**
-- Complete partial LCS proof in `tachyon/specs/lean/TachyonProofs/`
+- Complete partial LCS proof in `tachyon/.adrs/
 - Convert GraphInvariants from axioms to proved theorems where feasible
 - Add proofs for OperationalTransform correctness properties
-- Document proof coverage in `tachyon/specs/lean/README.md`
+- Document proof coverage in `tachyon/.adrs/
 
 **Effort:** 5-7 days
 **Dependencies:** Phase 1.4 (TLA+ verification may inform Lean proofs)

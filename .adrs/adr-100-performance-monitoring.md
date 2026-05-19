@@ -312,12 +312,12 @@ fn classify_regression(degradation: f64, threshold: f64) -> RegressionSeverity {
 ## Related Decisions
 
 - [ADR-097](adr-097-monitoring-strategy.md) - Continuous Monitoring Strategy
-- [`.specs/11_continuous_monitoring/performance_monitoring.md`](../.specs/11_continuous_monitoring/performance_monitoring.md) - Performance Monitoring Specification
+- [`.adrs/ - Performance Monitoring Specification
 
 ## References
 
-- [`.specs/04_performance/performance_requirements.md`](../.specs/04_performance/performance_requirements.md) - Performance Requirements
-- [`.specs/04_performance/benchmark_suite.md`](../.specs/04_performance/benchmark_suite.md) - Benchmark Suite
+- [`.adrs/ - Performance Requirements
+- [`.adrs/ - Benchmark Suite
 
 ---
 

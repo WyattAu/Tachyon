@@ -4,7 +4,7 @@
 **Date:** February 2026
 **Status:** Approved for Training
 **Classification:** Security Documentation
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md), [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-TMA-V1.0](../../.adrs/ [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md)
 
 ---
 
@@ -58,11 +58,11 @@ Upon completion of this training program, participants will be able to:
 ### 1.4. Document Dependencies
 
 This training material references and builds upon:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust Language Selection
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) - Security Requirements
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust Language Selection
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-REQ-SEC-V1.0](../../.adrs/ - Security Requirements
 
 ---
 
@@ -2302,24 +2302,24 @@ fn process_user_input(input: &str) -> String {
 ### 9.1. Tachyon Project References
 
 **Standards and Specifications:**
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TSK-V1.0](../../.specs/tasks.md) - Execution Tasks and Work Breakdown Structure
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-TSK-V1.0](../../.adrs/ - Execution Tasks and Work Breakdown Structure
 
 **Architecture Decisions:**
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 **Threat Model:**
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 **Requirements:**
-- [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) - Security Requirements
-- [TACHYON-REQ-SYS-V1.0](../../.specs/04_future_state/reqs/system_overview.md) - System Overview Requirements
+- [TACHYON-REQ-SEC-V1.0](../../.adrs/ - Security Requirements
+- [TACHYON-REQ-SYS-V1.0](../../.adrs/ - System Overview Requirements
 
 **Design Documents:**
-- [TACHYON-DSN-SEC-V1.0](../../.specs/04_future_state/design/security_design.md) - Security Design
-- [TACHYON-DSN-SRV-V1.0](../../.specs/04_future_state/design/server_design.md) - Server Design
-- [TACHYON-DSN-DSK-V1.0](../../.specs/04_future_state/design/desktop_design.md) - Desktop Design
+- [TACHYON-DSN-SEC-V1.0](../../.adrs/ - Security Design
+- [TACHYON-DSN-SRV-V1.0](../../.adrs/ - Server Design
+- [TACHYON-DSN-DSK-V1.0](../../.adrs/ - Desktop Design
 
 ### 9.2. International Standards
 
@@ -2449,7 +2449,7 @@ fn process_user_input(input: &str) -> String {
 
 **Tachyon-Specific Resources:**
 - Tachyon Documentation - [`.docs/`](../)
-- Tach Specifications - [`.specs/`](../../.specs/)
+- Tach Specifications - [`.adrs/
 - Tachyon Source Code - [`tachyon/`](../../tachyon/)
 
 ---

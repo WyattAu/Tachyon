@@ -146,10 +146,10 @@ We will implement a structured incident response process based on industry best 
 - Share learnings with team
 
 ## References
-- [Incident Response Procedures](../.specs/09_operations/incident_response.md)
-- [Monitoring Strategy](../.specs/09_operations/monitoring_strategy.md)
-- [Alerting Strategy](../.specs/09_operations/alerting_strategy.md)
-- [Runbooks](../.specs/09_operations/runbooks.md)
+- [Incident Response Procedures](../.adrs/
+- [Monitoring Strategy](../.adrs/
+- [Alerting Strategy](../.adrs/
+- [Runbooks](../.adrs/
 - [Security Incident Response Plan](../docs/security/security_incident_response_plan.md)
 
 ## Decision Date

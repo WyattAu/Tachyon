@@ -2787,7 +2787,7 @@ impl<T> Cache<T> {
 
 | Document ID | Title | Version | Date |
 |------------|-------|---------|------|
-| [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) | Coding and Documentation Standards | 1.0 | February 2026 |
+| [TACHYON-STD-V1.0](.adrs/ | Coding and Documentation Standards | 1.0 | February 2026 |
 | ISO/IEC 26514:2021 | Systems and Software Engineering — Requirements for Designers and Developers of User Documentation | 2021 | 2021 |
 | IEEE 1063:2001 | IEEE Standard for Software User Documentation | 2001 | 2001 |
 | ISO/IEC 25010:2011 | Systems and Software Quality Requirements and Evaluation (SQuaRE) | 2011 | 2011 |
@@ -2796,12 +2796,12 @@ impl<T> Cache<T> {
 
 | ADR ID | Title | Status |
 |---------|-------|--------|
-| [ADR-001](.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language | Accepted |
-| [ADR-002](.specs/02_adrs/002_tauri_for_desktop_application.md) | Tauri for Desktop Application | Accepted |
-| [ADR-003](.specs/02_adrs/003_axum_for_http2_server.md) | Axum for HTTP/2 Server | Accepted |
-| [ADR-004](.specs/02_adrs/004_leptos_for_web_frontend.md) | Leptos for Web Frontend | Accepted |
-| [ADR-007](.specs/02_adrs/007_tokio_for_async_runtime.md) | Tokio for Async Runtime | Accepted |
-| [ADR-010](.specs/02_adrs/010_security_architecture.md) | Security Architecture | Accepted |
+| [ADR-001](.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language | Accepted |
+| [ADR-002](.adrs/adr-002-bm25-search-parameters.md) | Tauri for Desktop Application | Accepted |
+| [ADR-003](.adrs/adr-003-lru-cache-target.md) | Axum for HTTP/2 Server | Accepted |
+| [ADR-004](.adrs/adr-004-debounce-window.md) | Leptos for Web Frontend | Accepted |
+| [ADR-007](.adrs/adr-007-thread-safety-strategy.md) | Tokio for Async Runtime | Accepted |
+| [ADR-010](.adrs/adr-010-synchronization-primitives.md) | Security Architecture | Accepted |
 
 ### 9.3. Related Requirements
 
@@ -2942,7 +2942,7 @@ impl<T> Cache<T> {
 
 **Change Management:**
 
-All changes to this document must follow the change management process defined in [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md). Changes must be reviewed and approved before publication.
+All changes to this document must follow the change management process defined in [TACHYON-STD-V1.0](.adrs/ Changes must be reviewed and approved before publication.
 
 
 

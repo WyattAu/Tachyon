@@ -384,6 +384,6 @@ theorem cache_lock_free : no_mutex_required ∀ k v, by
 
 ## References
 
-- [Blue Paper: Tachyon System Architecture Specification](.specs/02_architecture/blue_paper.md)
-- [Hardware Abstraction Layer Specification](.specs/02_architecture/hal_spec.md)
-- [Concurrency Analysis](.specs/02_5_concurrency/thread_safety_analysis.md)
+- [Blue Paper: Tachyon System Architecture Specification](.adrs/
+- [Hardware Abstraction Layer Specification](.adrs/
+- [Concurrency Analysis](.adrs/

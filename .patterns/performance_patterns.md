@@ -459,6 +459,6 @@ criterion_main!(benches);
 
 ## References
 
-- [Performance Requirements](.specs/04_performance/performance_requirements.md)
-- [Benchmark Suite](.specs/04_performance/benchmark_suite.md)
-- [Performance Regression Detection](.specs/07_ci_cd/performance_regression.md)
+- [Performance Requirements](.adrs/
+- [Benchmark Suite](.adrs/
+- [Performance Regression Detection](.adrs/

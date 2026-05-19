@@ -96,13 +96,13 @@ The Tachyon project adopts a structured post-mortem framework for Level 4+ error
 
 ### Post-Mortem Report Template
 
-See [`.specs/10_metrics/post_mortem.md`](.specs/10_metrics/post_mortem.md) for detailed post-mortem template and process.
+See [`.adrs/ for detailed post-mortem template and process.
 
 ### Knowledge Base Integration
 
 All Level 4+ error post-mortems are integrated into:
-- [`.specs/08_5_knowledge_base/lessons_learned.md`](.specs/08_5_knowledge_base/lessons_learned.md) - Lessons Learned
-- [`.specs/08_5_knowledge_base/anti_patterns.md`](.specs/08_5_knowledge_base/anti_patterns.md) - Anti-Patterns to avoid
+- [`.adrs/ - Lessons Learned
+- [`.adrs/ - Anti-Patterns to avoid
 - Post-mortem archive for historical reference
 
 ### Post-Mortem Metrics
@@ -118,13 +118,13 @@ All Level 4+ error post-mortems are integrated into:
 ## Related Decisions
 
 - [ADR-090](.adrs/adr-090-lessons-learned.md) - Lessons Learned Documentation
-- [`.specs/10_metrics/post_mortem.md`](.specs/10_metrics/post_mortem.md) - Post-Mortem Specification
-- [`.specs/10_metrics/risk_dashboard.md`](.specs/10_metrics/risk_dashboard.md) - Risk Dashboard
-- [`.specs/10_metrics/recovery_time.md`](.specs/10_metrics/recovery_time.md) - Recovery Time Analysis
+- [`.adrs/ - Post-Mortem Specification
+- [`.adrs/ - Risk Dashboard
+- [`.adrs/ - Recovery Time Analysis
 
 ## References
 
-- [`.specs/10_metrics/post_mortem.md`](.specs/10_metrics/post_mortem.md) - Post-Mortem Specification
+- [`.adrs/ - Post-Mortem Specification
 - Post-Mortem Analysis Best Practices
 - Blameless Post-Mortem Culture
 

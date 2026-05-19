@@ -14,13 +14,13 @@ Phase 6 successfully designed and implemented comprehensive CI/CD infrastructure
 
 | Document | Status | Lines |
 |----------|--------|-------|
-| `.specs/07_ci_cd/pipeline_config.toml` | COMPLETED | 160 |
-| `.specs/07_ci_cd/deployment_strategy.md` | COMPLETED | 310 |
-| `.specs/07_ci_cd/rollback_procedures.md` | COMPLETED | 340 |
-| `.specs/07_ci_cd/sbom_automation.md` | COMPLETED | 280 |
-| `.specs/07_ci_cd/performance_regression.md` | COMPLETED | 320 |
-| `.specs/07_ci_cd/formal_verification.md` | COMPLETED | 280 |
-| `.specs/07_ci_cd/quality_gates.md` | COMPLETED | 290 |
+| `.adrs/ | COMPLETED | 160 |
+| `.adrs/ | COMPLETED | 310 |
+| `.adrs/ | COMPLETED | 340 |
+| `.adrs/ | COMPLETED | 280 |
+| `.adrs/ | COMPLETED | 320 |
+| `.adrs/ | COMPLETED | 280 |
+| `.adrs/ | COMPLETED | 290 |
 
 ### GitHub Actions Workflows (6)
 

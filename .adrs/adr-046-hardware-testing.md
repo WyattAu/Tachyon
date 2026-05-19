@@ -14,7 +14,7 @@ Phase 5 instruction requires defining **Hardware-in-the-Loop (HIL) test procedur
 
 ### 1.1. System Classification
 
-From [`blue_paper.md`](../.specs/02_architecture/blue_paper.md), Tachyon is classified as:
+From [`blue_paper.md`](../.adrs/ Tachyon is classified as:
 
 | Classification | Description | Evidence |
 |--------------|-------------|----------|
@@ -92,7 +92,7 @@ From [`blue_paper.md`](../.specs/02_architecture/blue_paper.md), Tachyon is clas
 **Mock Objects for Tachyon:**
 
 ```
-.specs/06_prototypes/prototype/tests/mocks/
+.adrs/
 ├── git/
 │   ├── mod.rs
 │   ├── mock_repository.rs     # In-memory Git operations
@@ -412,9 +412,9 @@ If Tachyon were to acquire hardware components in the future, the following woul
 
 ## 9. References
 
-- [Blue Paper](../.specs/02_architecture/blue_paper.md)
+- [Blue Paper](../.adrs/
 - [ADR-040: Prototype Architecture](./adr-040-prototype-architecture.md)
 - [ADR-041: HAL Implementation](./adr-041-hal-implementation.md)
-- [Testing Matrix](../.specs/04_5_cross_platform/testing_matrix.md)
+- [Testing Matrix](../.adrs/
 - [ADR-042: Fuzzing Strategy](./adr-042-fuzzing-strategy.md)
 - [ADR-043: Concurrency Testing](./adr-043-concurrency-testing.md)

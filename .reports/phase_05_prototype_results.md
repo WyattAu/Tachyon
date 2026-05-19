@@ -54,7 +54,7 @@
 ### 3.1. Prototype Structure
 
 ```
-.specs/06_prototypes/prototype/
+.adrs/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs
@@ -202,8 +202,8 @@
 
 ## 10. References
 
-- [Blue Paper](../.specs/02_architecture/blue_paper.md)
-- [Test Vectors](../.specs/01_research/test_vectors.toml)
+- [Blue Paper](../.adrs/
+- [Test Vectors](../.adrs/
 - [ADR-040](../.adrs/adr-040-prototype-architecture.md)
 - [ADR-041](../.adrs/adr-041-hal-implementation.md)
 - [ADR-042](../.adrs/adr-042-fuzzing-strategy.md)

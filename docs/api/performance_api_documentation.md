@@ -43,9 +43,9 @@ The Performance API encompasses:
 ### 1.2. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 - [TACHYON-ARC-V1.0](../docs/architecture/system_architecture_overview.md) - System Architecture Overview
 
 ### 1.3. Performance Requirements
@@ -75,7 +75,7 @@ The Performance API is designed with the following principles:
 
 4. **Historical Analysis:** The API supports historical data retention for trend analysis and capacity planning.
 
-5. **Security Considerations:** Performance data is protected according to the security architecture defined in [ADR-010](../.specs/02_adrs/010_security_architecture.md). Access to performance metrics requires appropriate authorization.
+5. **Security Considerations:** Performance data is protected according to the security architecture defined in [ADR-010](../.adrs/adr-010-synchronization-primitives.md). Access to performance metrics requires appropriate authorization.
 
 6. **Extensibility:** The API is designed to be extensible, allowing for the addition of new metrics and tracing spans without breaking existing clients.
 
@@ -113,7 +113,7 @@ The Performance API exposes the following endpoint categories:
 
 ### 2.3. Authentication and Authorization
 
-Performance API endpoints require authentication and authorization according to the security architecture defined in [ADR-010](../.specs/02_adrs/010_security_architecture.md):
+Performance API endpoints require authentication and authorization according to the security architecture defined in [ADR-010](../.adrs/adr-010-synchronization-primitives.md):
 
 1. **Authentication:** All API requests must include a valid JWT bearer token in the `Authorization` header.
 
@@ -4166,9 +4166,9 @@ This document references the following internal Tachyon project documents:
 
 | Document ID | Title | Description |
 |-------------|-------|-------------|
-| [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards |
-| [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language |
-| [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) | Security Architecture |
+| [TACHYON-STD-V1.0](../.adrs/ | Coding and Documentation Standards |
+| [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language |
+| [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) | Security Architecture |
 | [TACHYON-ARC-V1.0](../docs/architecture/system_architecture_overview.md) | System Architecture Overview |
 
 ### 11.2. External Standards and Specifications

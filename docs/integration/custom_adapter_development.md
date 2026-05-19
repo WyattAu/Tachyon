@@ -4,7 +4,7 @@
 **Date:** February 2026
 **Status:** Proposed
 **Classification:** Integration Documentation
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md), [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md), [TACHYON-DES-API-V1.0](../../.specs/04_future_state/design/api_interfaces.md), [TACHYON-DES-DM-V1.0](../../.specs/04_future_state/design/data_models.md), [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md), [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md), [TACHYON-DES-API-V1.0](../../.adrs/ [TACHYON-DES-DM-V1.0](../../.adrs/ [TACHYON-TST-V1.0](../../.adrs/
 
 ---
 

@@ -31,7 +31,7 @@
 
 ### 1.1. Document Purpose
 
-This document presents the formal approval of all documentation artifacts created during Phase 11 of the Tachyon toolchain project. The approval process represents the final stage of the documentation lifecycle, confirming that all documentation meets the rigorous standards established in [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md) and complies with applicable international standards including ISO/IEC 26514:2021, IEEE 1063:2001, and IEEE 1016-2009.
+This document presents the formal approval of all documentation artifacts created during Phase 11 of the Tachyon toolchain project. The approval process represents the final stage of the documentation lifecycle, confirming that all documentation meets the rigorous standards established in [TACHYON-STD-V1.0](../../.adrs/ and complies with applicable international standards including ISO/IEC 26514:2021, IEEE 1063:2001, and IEEE 1016-2009.
 
 The approval process follows the comprehensive review and verification documented in [TACHYON-VER-001-V1.0](documentation_review.md) and [TACHYON-VER-002-V1.0](documentation_verification.md), ensuring that all documentation artifacts have undergone systematic evaluation against defined criteria.
 
@@ -56,7 +56,7 @@ The documentation approval is granted by the Project Management Authority based 
 
 1. **Verification Results:** Comprehensive verification results from [TACHYON-VER-002-V1.0](documentation_verification.md)
 2. **Review Findings:** Detailed review findings from [TACHYON-VER-001-V1.0](documentation_review.md)
-3. **Standards Compliance:** Verification of compliance with [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md)
+3. **Standards Compliance:** Verification of compliance with [TACHYON-STD-V1.0](../../.adrs/
 4. **Quality Assessment:** PhD thesis level rigor assessment across all documentation artifacts
 5. **Stakeholder Review:** Review by technical stakeholders including system architects, security architects, and quality assurance personnel
 
@@ -90,7 +90,7 @@ The approval of Phase 11 documentation represents a significant milestone in the
 The documentation approval process follows a structured, multi-stage approach:
 
 **Stage 1: Documentation Creation**
-- Authors create documentation artifacts according to [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md)
+- Authors create documentation artifacts according to [TACHYON-STD-V1.0](../../.adrs/
 - Documentation undergoes self-review for completeness and accuracy
 - Authors verify compliance with structural and formatting requirements
 
@@ -146,9 +146,9 @@ Documentation artifacts must meet the following criteria to receive approval:
 - Consistent terminology aligned with project glossary
 
 **Standards Compliance:**
-- Adherence to [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md) verified
+- Adherence to [TACHYON-STD-V1.0](../../.adrs/ verified
 - Compliance with ADR decisions confirmed
-- Alignment with test plan [TACHYON-TST-V1.0](../../specs/04_future_state/test_plan.md) validated
+- Alignment with test plan [TACHYON-TST-V1.0](../../.adrs/ validated
 - Consistency with threat model analysis verified
 
 ### 2.3. Approval Decision Matrix
@@ -312,7 +312,7 @@ Documentation artifacts must meet the following quality criteria to receive appr
 Documentation artifacts must meet the following standards compliance criteria to receive approval:
 
 **Internal Standards Compliance:**
-- Adherence to [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md) is verified
+- Adherence to [TACHYON-STD-V1.0](../../.adrs/ is verified
 - File naming conventions follow lowercase_with_underscores format
 - Directory naming conventions follow lowercase_with_underscores format
 - Document ID conventions follow TACHYON-<TYPE>-V<VERSION> format
@@ -326,7 +326,7 @@ Documentation artifacts must meet the following standards compliance criteria to
 - Decision consequences are addressed
 
 **Test Plan Compliance:**
-- Alignment with [TACHYON-TST-V1.0](../../specs/04_future_state/test_plan.md) is verified
+- Alignment with [TACHYON-TST-V1.0](../../.adrs/ is verified
 - Test coverage requirements are addressed
 - Test strategies are consistent with test plan
 - Quality assurance procedures are documented
@@ -666,8 +666,8 @@ The architecture documentation suite is comprehensive, accurate, and fully compl
 The security documentation suite comprises two comprehensive documents that collectively define the Tachyon system's security architecture and threat analysis. All security documentation artifacts have undergone comprehensive review and verification, achieving full compliance with all approval criteria.
 
 **Approved Documents:**
-1. **[TACHYON-DES-SEC-V1.0](../../specs/04_future_state/design/security_design.md)** - Security Design
-2. **[TACHYON-TMA-V1.0](../../specs/03_threat_model/analysis.md)** - Threat Model Analysis
+1. **[TACHYON-DES-SEC-V1.0](../../.adrs/ - Security Design
+2. **[TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 **Overall Approval Status:** APPROVED
 
@@ -676,7 +676,7 @@ The security documentation suite comprises two comprehensive documents that coll
 **Document ID:** TACHYON-DES-SEC-V1.0
 **Approval Status:** APPROVED
 **Approval Date:** February 2026
-**Document Path:** [`.specs/04_future_state/design/security_design.md`](../../specs/04_future_state/design/security_design.md)
+**Document Path:** [`.adrs/
 
 #### 5.2.1. Approval Basis
 
@@ -743,7 +743,7 @@ These decisions provide the foundation for security implementation within the Ta
 **Document ID:** TACHYON-TMA-V1.0
 **Approval Status:** APPROVED
 **Approval Date:** February 2026
-**Document Path:** [`.specs/03_threat_model/analysis.md`](../../specs/03_threat_model/analysis.md)
+**Document Path:** [`.adrs/
 
 #### 5.3.1. Approval Basis
 
@@ -873,7 +873,7 @@ The quality documentation suite comprises two comprehensive documents that colle
 
 **Approved Documents:**
 1. **[TACHYON-QA-001-V1.0](../quality/deployment_guide.md)** - Deployment Guide
-2. **[TACHYON-TST-V1.0](../../specs/04_future_state/test_plan.md)** - Test Plan and Specifications
+2. **[TACHYON-TST-V1.0](../../.adrs/ - Test Plan and Specifications
 
 **Overall Approval Status:** APPROVED
 
@@ -951,7 +951,7 @@ These decisions provide the foundation for deployment and operations of the Tach
 **Document ID:** TACHYON-TST-V1.0
 **Approval Status:** APPROVED
 **Approval Date:** February 2026
-**Document Path:** [`.specs/04_future_state/test_plan.md`](../../specs/04_future_state/test_plan.md)
+**Document Path:** [`.adrs/
 
 #### 6.3.1. Approval Basis
 
@@ -2522,7 +2522,7 @@ The following documentation categories are planned for future phases:
 
 **Final Approval Decision:** APPROVED
 
-The Project Management Authority hereby grants final approval to all Phase 11 documentation artifacts for the Tachyon project. All approved documentation meets the rigorous standards established in [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md) and complies with all applicable international standards including ISO/IEC 26514:2021, IEEE 1063:2001, and IEEE 1016-2009.
+The Project Management Authority hereby grants final approval to all Phase 11 documentation artifacts for the Tachyon project. All approved documentation meets the rigorous standards established in [TACHYON-STD-V1.0](../../.adrs/ and complies with all applicable international standards including ISO/IEC 26514:2021, IEEE 1063:2001, and IEEE 1016-2009.
 
 The documentation suite demonstrates exceptional quality, comprehensive coverage, and PhD thesis level rigor. All documentation artifacts are authorized for use in the Tachyon project and provide a solid foundation for system development, testing, deployment, and maintenance.
 
@@ -2539,13 +2539,13 @@ The documentation suite demonstrates exceptional quality, comprehensive coverage
 
 **Documentation References:**
 
-[1] [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+[1] [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
 
 [2] [TACHYON-VER-001-V1.0](documentation_review.md) - Documentation Review
 
 [3] [TACHYON-VER-002-V1.0](documentation_verification.md) - Documentation Verification Report
 
-[4] [TACHYON-TST-V1.0](../../specs/04_future_state/test_plan.md) - Test Plan and Specifications
+[4] [TACHYON-TST-V1.0](../../.adrs/ - Test Plan and Specifications
 
 **Architecture Documentation References:**
 
@@ -2557,9 +2557,9 @@ The documentation suite demonstrates exceptional quality, comprehensive coverage
 
 **Security Documentation References:**
 
-[8] [TACHYON-DES-SEC-V1.0](../../specs/04_future_state/design/security_design.md) - Security Design
+[8] [TACHYON-DES-SEC-V1.0](../../.adrs/ - Security Design
 
-[9] [TACHYON-TMA-V1.0](../../specs/03_threat_model/analysis.md) - Threat Model Analysis
+[9] [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 **Quality Documentation References:**
 

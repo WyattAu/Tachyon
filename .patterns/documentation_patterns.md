@@ -281,6 +281,6 @@ let html = render_document("README.md", "default").await?;
 
 - [Diataxis Framework](https://diataxis.fr/)
 - [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
-- [API Documentation Generation](.specs/07_5_doc_verification/api_documentation_generation.md)
-- [Consistency Checks](.specs/07_5_doc_verification/consistency_checks.md)
-- [Example Validation](.specs/07_5_doc_verification/example_validation.md)
+- [API Documentation Generation](.adrs/
+- [Consistency Checks](.adrs/
+- [Example Validation](.adrs/

@@ -42,17 +42,17 @@ This document covers the following monitoring APIs:
 - **Trace Collection API:** Distributed tracing and span collection
 - **Incident Management API:** Incident lifecycle management and response
 
-The Monitoring API is implemented in Rust using the Axum framework for HTTP/2 endpoints and Tokio for asynchronous operations, following the architectural decisions established in [ADR-001](../../.specs/02_adrs/001_rust_as_primary_language.md) and [ADR-010](../../.specs/02_adrs/010_security_architecture.md).
+The Monitoring API is implemented in Rust using the Axum framework for HTTP/2 endpoints and Tokio for asynchronous operations, following the architectural decisions established in [ADR-001](../../.adrs/adr-001-three-tier-jit-compilation.md) and [ADR-010](../../.adrs/adr-010-synchronization-primitives.md).
 
 ### 1.3. Document Dependencies
 
 This document depends on the following documents:
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md) - Server Application Requirements
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-SRV-V1.0](../../.adrs/ - Server Application Requirements
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TST-V1.0](../../.adrs/ - Test Plan
 
 ### 1.4. Compliance Statement
 
@@ -90,7 +90,7 @@ The Tachyon Monitoring API framework provides a comprehensive observability solu
 **Architectural Principles:**
 
 1. **Unified API Surface:** All monitoring endpoints follow consistent RESTful conventions
-2. **Secure by Default:** All monitoring endpoints require authentication and authorization per [ADR-010](../../.specs/02_adrs/010_security_architecture.md)
+2. **Secure by Default:** All monitoring endpoints require authentication and authorization per [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)
 3. **High Performance:** Async implementation using Tokio ensures minimal overhead on monitored systems
 4. **Extensible:** Plugin-based architecture allows for custom collectors and exporters
 5. **Observability as Code:** Alert rules and monitoring configurations are versioned in Git
@@ -111,7 +111,7 @@ All monitoring endpoints are prefixed with this base URL. For example:
 
 ### 2.3. Authentication and Authorization
 
-All Monitoring API endpoints require authentication using JWT tokens obtained via the authentication endpoints specified in [REQ-SRV-036](../../.specs/04_future_state/reqs/server_requirements.md) through [REQ-SRV-040](../../.specs/04_future_state/reqs/server_requirements.md).
+All Monitoring API endpoints require authentication using JWT tokens obtained via the authentication endpoints specified in [REQ-SRV-036](../../.adrs/ through [REQ-SRV-040](../../.adrs/
 
 **Authorization Levels:**
 
@@ -243,7 +243,7 @@ Data older than the retention period is automatically purged according to the da
 The Health Check API provides endpoints for monitoring system health, readiness, and liveness across all Tachyon components. These endpoints are designed for integration with load balancers, orchestrators (Kubernetes, Docker Swarm), and monitoring systems.
 
 **Related Requirements:**
-- [REQ-SRV-005](../../.specs/04_future_state/reqs/server_requirements.md): Health Check endpoint requirement
+- [REQ-SRV-005](../../.adrs/ Health Check endpoint requirement
 
 ### 3.2. Endpoints
 
@@ -588,7 +588,7 @@ upstream tachyon_servers {
 The Diagnostics API provides endpoints for system diagnostics, performance profiling, and debugging information. These endpoints enable operators and administrators to investigate system behavior, identify performance bottlenecks, and troubleshoot issues.
 
 **Related Requirements:**
-- [REQ-SRV-106](../../.specs/04_future_state/reqs/server_requirements.md) through [REQ-SRV-120](../../.specs/04_future_state/reqs/server_requirements.md): Performance and resource management requirements
+- [REQ-SRV-106](../../.adrs/ through [REQ-SRV-120](../../.adrs/ Performance and resource management requirements
 
 ### 4.2. Endpoints
 
@@ -939,7 +939,7 @@ detailed_heap_stats = true
 The Log Aggregation API provides endpoints for centralized log collection, querying, and management. This API enables structured logging across all Tachyon components with support for log levels, structured fields, and powerful querying capabilities.
 
 **Related Requirements:**
-- [REQ-SRV-046](../../.specs/04_future_state/reqs/server_requirements.md) through [REQ-SRV-060](../../.specs/04_future_state/reqs/server_requirements.md): Data processing and storage requirements
+- [REQ-SRV-046](../../.adrs/ through [REQ-SRV-060](../../.adrs/ Data processing and storage requirements
 
 ### 5.2. Log Levels
 
@@ -1289,7 +1289,7 @@ full_text_search = true
 The Alerting API provides endpoints for managing alert rules, alert notifications, and alert history. This API enables proactive monitoring through configurable alert conditions that trigger notifications when thresholds are exceeded or anomalies are detected.
 
 **Related Requirements:**
-- [REQ-SRV-046](../../.specs/04_future_state/reqs/server_requirements.md) through [REQ-SRV-060](../../.specs/04_future_state/reqs/server_requirements.md): Data processing and storage requirements
+- [REQ-SRV-046](../../.adrs/ through [REQ-SRV-060](../../.adrs/ Data processing and storage requirements
 
 ### 6.2. Alert Rule Types
 
@@ -1739,7 +1739,7 @@ resolved_event_retention_days = 90
 The Metrics Collection API provides endpoints for submitting application metrics and retrieving aggregated metric data. This API supports Prometheus-compatible metric formats and enables integration with monitoring systems like Grafana, Prometheus, and Datadog.
 
 **Related Requirements:**
-- [REQ-SRV-106](../../.specs/04_future_state/reqs/server_requirements.md) through [REQ-SRV-120](../../.specs/04_future_state/reqs/server_requirements.md): Performance and resource management requirements
+- [REQ-SRV-106](../../.adrs/ through [REQ-SRV-120](../../.adrs/ Performance and resource management requirements
 
 ### 7.2. Metric Types
 
@@ -2112,7 +2112,7 @@ scrape_interval_seconds = 15
 The Trace Collection API provides endpoints for distributed tracing, enabling end-to-end request tracking across the Tachyon system. This API supports OpenTelemetry-compatible trace formats and enables integration with tracing systems like Jaeger, Zipkin, and Grafana Tempo.
 
 **Related Requirements:**
-- [REQ-SRV-106](../../.specs/04_future_state/reqs/server_requirements.md) through [REQ-SRV-120](../../.specs/04_future_state/reqs/server_requirements.md): Performance and resource management requirements
+- [REQ-SRV-106](../../.adrs/ through [REQ-SRV-120](../../.adrs/ Performance and resource management requirements
 
 ### 8.2. Trace Concepts
 
@@ -2480,7 +2480,7 @@ service_specific_rates = { "tachyon-server" = 0.5, "tachyon-web" = 1.0 }
 The Incident Management API provides endpoints for creating, updating, and resolving incidents. This API enables structured incident response workflows, incident tracking, and post-incident analysis.
 
 **Related Requirements:**
-- [REQ-SRV-106](../../.specs/04_future_state/reqs/server_requirements.md) through [REQ-SRV-120](../../.specs/04_future_state/reqs/server_requirements.md): Performance and resource management requirements
+- [REQ-SRV-106](../../.adrs/ through [REQ-SRV-120](../../.adrs/ Performance and resource management requirements
 
 ### 9.2. Incident Lifecycle
 
@@ -2888,7 +2888,7 @@ closed_incident_retention_days = 2555
 
 ### 10.1. Overview
 
-The Monitoring API implements comprehensive error handling following the fail-safe error handling principles established in [ADR-010](../../.specs/02_adrs/010_security_architecture.md). All errors are handled securely without exposing sensitive information or creating security vulnerabilities.
+The Monitoring API implements comprehensive error handling following the fail-safe error handling principles established in [ADR-010](../../.adrs/adr-010-synchronization-primitives.md). All errors are handled securely without exposing sensitive information or creating security vulnerabilities.
 
 ### 10.2. Error Response Format
 
@@ -3097,11 +3097,11 @@ The following internal project documents are referenced throughout this document
 
 | Document ID | Title | Path |
 |-------------|-------|------|
-| [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards |  |
-| [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md) | Server Application Requirements |  |
-| [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language |  |
-| [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) | Security Architecture |  |
-| [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) | Test Plan |  |
+| [TACHYON-STD-V1.0](../../.adrs/ | Coding and Documentation Standards |  |
+| [TACHYON-REQ-SRV-V1.0](../../.adrs/ | Server Application Requirements |  |
+| [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language |  |
+| [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) | Security Architecture |  |
+| [TACHYON-TST-V1.0](../../.adrs/ | Test Plan |  |
 
 ### 11.2. External Standards References
 

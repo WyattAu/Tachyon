@@ -44,12 +44,12 @@ The plan covers both local-first deployment and centralized server deployment mo
 ### 1.3. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-SEC-REQ-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) - Security Requirements
-- [TACHYON-SEC-DES-V1.0](../../.specs/04_future_state/design/security_design.md) - Security Design
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust Language Decision
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-SEC-REQ-V1.0](../../.adrs/ - Security Requirements
+- [TACHYON-SEC-DES-V1.0](../../.adrs/ - Security Design
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust Language Decision
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 ### 1.4. Key Objectives
 
@@ -2163,49 +2163,49 @@ This document references internal Tachyon specifications and documentation that 
 
 **Related Specifications:**
 
-1. [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Tachyon Coding and Documentation Standards
+1. [TACHYON-STD-V1.0](../../.adrs/ - Tachyon Coding and Documentation Standards
    - Defines documentation standards and formatting requirements
    - Provides guidance on structure, style, and presentation
 
-2. [TACHYON-SEC-REQ-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) - Tachyon Security Requirements
+2. [TACHYON-SEC-REQ-V1.0](../../.adrs/ - Tachyon Security Requirements
    - Defines security requirements for Tachyon system
    - Provides context for incident response procedures
    - References REQ-SEC-056 through REQ-SEC-100 (Audit Logging)
    - References REQ-SEC-068 through REQ-SEC-070 (Monitoring and Alerting)
 
-3. [TACHYON-SEC-DES-V1.0](../../.specs/04_future_state/design/security_design.md) - Tachyon Security Design
+3. [TACHYON-SEC-DES-V1.0](../../.adrs/ - Tachyon Security Design
    - Defines security architecture and controls
    - Provides technical context for incident response
    - References authentication, authorization, and encryption mechanisms
 
-4. [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Tachyon Threat Model Analysis
+4. [TACHYON-TMA-V1.0](../../.adrs/ - Tachyon Threat Model Analysis
    - Provides comprehensive threat analysis using STRIDE methodology
    - Defines threat landscape and adversary profiles
    - References incident types SEC-001 through SEC-005
 
 **Related Architecture Decision Records:**
 
-1. [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - ADR-001: Rust as Primary Language
+1. [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - ADR-001: Rust as Primary Language
    - Justifies Rust selection for memory safety and security
    - Provides context for incident response technical procedures
    - References Rust's ownership system and borrow checker
 
-2. [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - ADR-010: Security Architecture
+2. [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - ADR-010: Security Architecture
    - Defines defense-in-depth security architecture
    - Provides security principles and controls
    - References memory safety, capability-based access control, and input validation
 
 **Related Tasks:**
 
-1. [TSK-030](../../.specs/tasks.md) - Security Architecture Documentation
+1. [TSK-030](../../.adrs/ - Security Architecture Documentation
    - Documents security architecture and controls
    - Provides foundation for incident response procedures
 
-2. [TSK-031](../../.specs/tasks.md) - Threat Model Documentation
+2. [TSK-031](../../.adrs/ - Threat Model Documentation
    - Documents threat analysis and adversary profiles
    - Provides context for incident classification and response
 
-3. [TSK-034](../../.specs/tasks.md) - Security Testing and Auditing Documentation
+3. [TSK-034](../../.adrs/ - Security Testing and Auditing Documentation
    - Documents security testing procedures
    - Provides proactive measures to prevent incidents
 

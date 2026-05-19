@@ -36,11 +36,11 @@ Phase 0 (Requirements Engineering) has been completed successfully. The requirem
 
 | Artifact | Path | Status |
 |----------|------|--------|
-| **Requirements Document** | `.specs/00_requirements/requirements.md` | COMPLETE |
-| **Acceptance Criteria Document** | `.specs/00_requirements/acceptance_criteria.md` | COMPLETE |
-| **Traceability Matrix** | `.specs/00_requirements/traceability_matrix.md` | COMPLETE |
-| **Standard Conflicts Document** | `.specs/00_requirements/standard_conflicts.md` | COMPLETE |
-| **Tool Requirements Document** | `.specs/00_requirements/tool_requirements.md` | COMPLETE |
+| **Requirements Document** | `.adrs/ | COMPLETE |
+| **Acceptance Criteria Document** | `.adrs/ | COMPLETE |
+| **Traceability Matrix** | `.adrs/ | COMPLETE |
+| **Standard Conflicts Document** | `.adrs/ | COMPLETE |
+| **Tool Requirements Document** | `.adrs/ | COMPLETE |
 | **Phase Report** | `.reports/phase_00_requirements_report.md` | COMPLETE |
 
 ---
@@ -330,14 +330,14 @@ Phase 0 (Requirements Engineering) has been completed successfully. All success 
 
 | Document | Reference |
 |----------|-----------|
-| Requirements Specification | [`.specs/00_requirements/requirements.md`](../00_requirements/requirements.md) |
-| Acceptance Criteria | [`.specs/00_requirements/acceptance_criteria.md`](../00_requirements/acceptance_criteria.md) |
-| Traceability Matrix | [`.specs/00_requirements/traceability_matrix.md`](../00_requirements/traceability_matrix.md) |
-| Standard Conflicts | [`.specs/00_requirements/standard_conflicts.md`](../00_requirements/standard_conflicts.md) |
-| Tool Requirements | [`.specs/00_requirements/tool_requirements.md`](../00_requirements/tool_requirements.md) |
-| Domain Analysis | [`.specs/00_requirements/domain_analysis.md`](../domain_analysis.md) |
-| Applicable Standards | [`.specs/00_requirements/applicable_standards.md`](../applicable_standards.md) |
-| Capability Requirements | [`.specs/00_requirements/capability_requirements.md`](../capability_requirements.md) |
+| Requirements Specification | [`.adrs/ |
+| Acceptance Criteria | [`.adrs/ |
+| Traceability Matrix | [`.adrs/ |
+| Standard Conflicts | [`.adrs/ |
+| Tool Requirements | [`.adrs/ |
+| Domain Analysis | [`.adrs/ |
+| Applicable Standards | [`.adrs/ |
+| Capability Requirements | [`.adrs/ |
 
 ### 18.2. Input Artifacts
 

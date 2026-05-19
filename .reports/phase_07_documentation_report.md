@@ -62,7 +62,7 @@ All documentation meets WCAG 2.1 AA accessibility standards and reflects the pro
 
 | Deliverable | Status | File Path |
 |-------------|--------|------------|
-| White Paper | Complete | [`.specs/05_branding/white_paper.md`](../.specs/05_branding/white_paper.md) |
+| White Paper | Complete | [`.adrs/ |
 | User Guide | Complete | [`.docs/user_guide.md`](../.docs/user_guide.md) |
 | API Reference | Complete | [`.docs/api_reference.md`](../.docs/api_reference.md) |
 | Installation Guide | Complete | [`.docs/installation_guide.md`](../.docs/installation_guide.md) |
@@ -96,24 +96,24 @@ All documentation meets WCAG 2.1 AA accessibility standards and reflects the pro
 
 | Document | Purpose | Usage |
 |----------|---------|--------|
-| [`.specs/00_requirements/requirements.md`](../.specs/00_requirements/requirements.md) | Requirements definition | Mapped to documentation sections |
-| [`.specs/00_requirements/acceptance_criteria.md`](../.specs/00_requirements/acceptance_criteria.md) | Acceptance criteria | Verified against implementation |
-| [`.specs/00_requirements/traceability_matrix.md`](../.specs/00_requirements/traceability_matrix.md) | Traceability | Ensured doc-feature mapping |
-| [`.specs/01_research/yellow_paper.md`](../.specs/01_research/yellow_paper.md) | Research findings | Used for performance characteristics |
-| [`.specs/01_research/test_vectors.toml`](../.specs/01_research/test_vectors.toml) | Test vectors | Verified examples |
-| [`.specs/01_research/domain_constraints.toml`](../.specs/01_research/domain_constraints.toml) | Domain constraints | Included in configuration guide |
-| [`.specs/01_25_knowledge_integration/integrated_findings.md`](../.specs/01_25_knowledge_integration/integrated_findings.md) | Integrated findings | Synthesized into white paper |
-| [`.specs/02_architecture/blue_paper.md`](../.specs/02_architecture/blue_paper.md) | Architecture specification | Used for architecture docs |
-| [`.specs/02_architecture/proof.lean`](../.specs/02_architecture/proof.lean) | Formal proofs | Referenced in white paper |
-| [`.specs/02_architecture/hal_spec.md`](../.specs/02_architecture/hal_spec.md) | HAL specification | Included in API reference |
+| [`.adrs/ | Requirements definition | Mapped to documentation sections |
+| [`.adrs/ | Acceptance criteria | Verified against implementation |
+| [`.adrs/ | Traceability | Ensured doc-feature mapping |
+| [`.adrs/ | Research findings | Used for performance characteristics |
+| [`.adrs/ | Test vectors | Verified examples |
+| [`.adrs/ | Domain constraints | Included in configuration guide |
+| [`.adrs/ | Integrated findings | Synthesized into white paper |
+| [`.adrs/ | Architecture specification | Used for architecture docs |
+| [`.adrs/ | Formal proofs | Referenced in white paper |
+| [`.adrs/ | HAL specification | Included in API reference |
 
 ### 3.2 Security and Compliance Documents
 
 | Document | Purpose | Usage |
 |----------|---------|--------|
-| [`.specs/03_security/threat_model.md`](../.specs/03_security/threat_model.md) | Threat model | Used for security docs |
-| [`.specs/03_security/security_test_plan.md`](../.specs/03_security/security_test_plan.md) | Security test plan | Referenced in troubleshooting |
-| [`.specs/03_security/compliance_matrix.md`](../.specs/03_security/compliance_matrix.md) | Compliance matrix | Verified compliance |
+| [`.adrs/ | Threat model | Used for security docs |
+| [`.adrs/ | Security test plan | Referenced in troubleshooting |
+| [`.adrs/ | Compliance matrix | Verified compliance |
 
 ### 3.3 Previous Phase Reports
 
@@ -130,7 +130,7 @@ All documentation meets WCAG 2.1 AA accessibility standards and reflects the pro
 
 ### 4.1 White Paper
 
-**File:** [`.specs/05_branding/white_paper.md`](../.specs/05_branding/white_paper.md)
+**File:** [`.adrs/
 
 **Content Summary:**
 - Executive summary

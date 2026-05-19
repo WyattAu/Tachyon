@@ -55,11 +55,11 @@ Out of scope:
 ### 1.4. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md) - Server Application Requirements
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [TACHYON-ADR-007-V1.0](../../.specs/02_adrs/007_tokio_for_async_runtime.md) - Tokio for Async Runtime
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-SRV-V1.0](../../.adrs/ - Server Application Requirements
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md) - Axum for HTTP/2 Server
+- [TACHYON-ADR-007-V1.0](../../.adrs/adr-007-thread-safety-strategy.md) - Tokio for Async Runtime
 
 ---
 
@@ -1747,12 +1747,12 @@ pub struct CacheManager {
 
 | Document ID | Title | Location |
 |-------------|-------|----------|
-| [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards |
-| [TACHYON-REQ-SRV-V1.0](../../.specs/04_future_state/reqs/server_requirements.md) | Server Application Requirements |
-| [TACHYON-REQ-DOC-V1.0](../../.specs/04_future_state/reqs/documentation_requirements.md) | Documentation Requirements |
-| [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language |
-| [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md) | Axum for HTTP/2 Server |
-| [TACHYON-ADR-007-V1.0](../../.specs/02_adrs/007_tokio_for_async_runtime.md) | Tokio for Async Runtime |
+| [TACHYON-STD-V1.0](../../.adrs/ | Coding and Documentation Standards |
+| [TACHYON-REQ-SRV-V1.0](../../.adrs/ | Server Application Requirements |
+| [TACHYON-REQ-DOC-V1.0](../../.adrs/ | Documentation Requirements |
+| [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language |
+| [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md) | Axum for HTTP/2 Server |
+| [TACHYON-ADR-007-V1.0](../../.adrs/adr-007-thread-safety-strategy.md) | Tokio for Async Runtime |
 
 ### 8.2. External Standards
 
@@ -1760,8 +1760,8 @@ pub struct CacheManager {
 |----------|-------|------|-----------|
 | ISO/IEC 26514:2021 | https://iso.org/standard/26514 | Documentation lifecycle |
 | IEEE 1063:2001 | https://standards.ieee.org/findstds/1063.html | Software user documentation |
-| RFC 7540 | https://httpwg.org/specs/rfc7540 | HTTP/2 protocol |
-| RFC 8446 | https://httpwg.org/specs/rfc8446 | TLS 1.3 protocol |
+| RFC 7540 | https://httpwg.org/.adrs/ | HTTP/2 protocol |
+| RFC 8446 | https://httpwg.org/.adrs/ | TLS 1.3 protocol |
 | OAuth 2.0 | https://oauth.net/2/ | Authorization framework |
 | OpenAPI 3.0 | https://swagger.io/specification | API specification |
 
@@ -1772,7 +1772,7 @@ pub struct CacheManager {
 | [TACHYON-ARC-V1.0](../../docs/architecture/system_architecture_overview.md) | System Architecture Overview |
 | [TACHYON-ARC-V1.0](../../docs/architecture/data_architecture.md) | Data Architecture |
 | [TACHYON-ARC-V1.0](../../docs/architecture/deployment_architecture.md) | Deployment Architecture |
-| [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) | Security Architecture |
+| [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) | Security Architecture |
 
 ### 8.4. Technology Documentation
 
@@ -1808,9 +1808,9 @@ pub struct CacheManager {
 
 [3] Axum Contributors, "Axum: Ergonomic and modular web framework built with Tokio," Online. Available: https://docs.rs/axum/. [Accessed: 01-Feb-2026].
 
-[4] RFC 7540, "Hypertext Transfer Protocol Version 2 (HTTP/2)," IETF, 2015. Available: https://httpwg.org/specs/rfc7540. [Accessed: 01-Feb-2026].
+[4] RFC 7540, "Hypertext Transfer Protocol Version 2 (HTTP/2)," IETF, 2015. Available: https://httpwg.org/.adrs/ [Accessed: 01-Feb-2026].
 
-[5] RFC 8446, "The Transport Layer Security (TLS) Protocol Version 1.3," IETF, 2018. Available: https://httpwg.org/specs/rfc8446. [Accessed: 01-Feb-2026].
+[5] RFC 8446, "The Transport Layer Security (TLS) Protocol Version 1.3," IETF, 2018. Available: https://httpwg.org/.adrs/ [Accessed: 01-Feb-2026].
 
 [6] OAuth 2.0 Framework, "The OAuth 2.0 Authorization Framework," IETF, 2012. Available: https://oauth.net/2/. [Accessed: 01-Feb-2026].
 

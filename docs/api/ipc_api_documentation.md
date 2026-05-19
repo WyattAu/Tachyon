@@ -45,11 +45,11 @@ The Tachyon IPC API is designed to meet the following objectives:
 
 This document depends on the following specifications and architectural decisions:
 
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-009-V1.0](../.specs/02_adrs/009_ipc_communication_architecture.md) - IPC Communication Architecture
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-REQ-IPC-V1.0](../.specs/04_future_state/reqs/ipc_requirements.md) - IPC Communication Requirements
-- [TACHYON-DES-IPC-V1.0](../.specs/04_future_state/design/ipc_protocol.md) - IPC Protocol Design
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-009-V1.0](../.adrs/adr-009-race-condition-mitigation.md) - IPC Communication Architecture
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-REQ-IPC-V1.0](../.adrs/ - IPC Communication Requirements
+- [TACHYON-DES-IPC-V1.0](../.adrs/ - IPC Protocol Design
 
 ### 1.3. Target Audience
 
@@ -597,14 +597,14 @@ The Tachyon IPC API implements the following JSON-RPC 2.0 features:
 Document commands provide comprehensive CRUD (Create, Read, Update, Delete) operations for managing documents within the Tachyon system. These commands enable the frontend to interact with the document storage and retrieval subsystems.
 
 **Related Requirements:**
-- [REQ-IPC-016](../.specs/04_future_state/reqs/ipc_requirements.md) - Document Commands
-- [REQ-FR-003](../.specs/04_future_state/reqs/system_overview.md) - Document Management
+- [REQ-IPC-016](../.adrs/ - Document Commands
+- [REQ-FR-003](../.adrs/ - Document Management
 
 **Related Design Elements:**
-- [DES-IPC-001](../.specs/04_future_state/design/ipc_protocol.md) - DocumentCommand
-- [DES-DM-001](../.specs/04_future_state/design/data_models.md) - DocumentId
-- [DES-DM-003](../.specs/04_future_state/design/data_models.md) - DocumentMetadata
-- [DES-DM-004](../.specs/04_future_state/design/data_models.md) - DocumentContent
+- [DES-IPC-001](../.adrs/ - DocumentCommand
+- [DES-DM-001](../.adrs/ - DocumentId
+- [DES-DM-003](../.adrs/ - DocumentMetadata
+- [DES-DM-004](../.adrs/ - DocumentContent
 
 ### 4.2. get_document
 
@@ -1187,14 +1187,14 @@ pub async fn search_documents(
 Git commands provide comprehensive Git repository management operations for version control integration. These commands enable the frontend to interact with Git repositories, including status queries, commits, branch management, and remote operations.
 
 **Related Requirements:**
-- [REQ-IPC-017](../.specs/04_future_state/reqs/ipc_requirements.md) - Git Commands
-- [REQ-FR-005](../.specs/04_future_state/reqs/system_overview.md) - Repository Management
+- [REQ-IPC-017](../.adrs/ - Git Commands
+- [REQ-FR-005](../.adrs/ - Repository Management
 
 **Related Design Elements:**
-- [DES-IPC-002](../.specs/04_future_state/design/ipc_protocol.md) - RepositoryCommand
-- [DES-DM-002](../.specs/04_future_state/design/data_models.md) - RepositoryPath
-- [DES-DM-005](../.specs/04_future_state/design/data_models.md) - Repository
-- [DES-DM-008](../.specs/04_future_state/design/data_models.md) - GitStatus
+- [DES-IPC-002](../.adrs/ - RepositoryCommand
+- [DES-DM-002](../.adrs/ - RepositoryPath
+- [DES-DM-005](../.adrs/ - Repository
+- [DES-DM-008](../.adrs/ - GitStatus
 
 ### 5.2. git_status
 
@@ -1806,12 +1806,12 @@ pub async fn git_pull(
 Window commands provide comprehensive window management operations for the Tauri desktop application. These commands enable the frontend to control window behavior, including creation, positioning, sizing, and state management.
 
 **Related Requirements:**
-- [REQ-IPC-019](../.specs/04_future_state/reqs/ipc_requirements.md) - File Dialog Commands
-- [REQ-DESK-066](../.specs/04_future_state/reqs/desktop_requirements.md) - Window Management
+- [REQ-IPC-019](../.adrs/ - File Dialog Commands
+- [REQ-DESK-066](../.adrs/ - Window Management
 
 **Related Design Elements:**
-- [DES-IPC-004](../.specs/04_future_state/design/ipc_protocol.md) - SystemCommand
-- [DES-DD-006](../.specs/04_future_state/design/desktop_design.md) - SystemCommands
+- [DES-IPC-004](../.adrs/ - SystemCommand
+- [DES-DD-006](../.adrs/ - SystemCommands
 
 ### 6.2. window_create
 
@@ -2364,12 +2364,12 @@ pub async fn window_set_size(
 Dialog commands provide native OS dialog operations for file selection, directory browsing, and user prompts. These commands enable the frontend to interact with the host operating system's native dialogs for a consistent user experience.
 
 **Related Requirements:**
-- [REQ-IPC-019](../.specs/04_future_state/reqs/ipc_requirements.md) - File Dialog Commands
-- [REQ-DESK-066](../.specs/04_future_state/reqs/desktop_requirements.md) - Native Dialogs
+- [REQ-IPC-019](../.adrs/ - File Dialog Commands
+- [REQ-DESK-066](../.adrs/ - Native Dialogs
 
 **Related Design Elements:**
-- [DES-IPC-004](../.specs/04_future_state/design/ipc_protocol.md) - SystemCommand
-- [DES-DD-006](../.specs/04_future_state/design/desktop_design.md) - SystemCommands
+- [DES-IPC-004](../.adrs/ - SystemCommand
+- [DES-DD-006](../.adrs/ - SystemCommands
 
 ### 7.2. dialog_open_file
 
@@ -2826,12 +2826,12 @@ pub async fn dialog_message(
 Configuration commands provide application settings management operations. These commands enable the frontend to get, set, and reset application configuration settings.
 
 **Related Requirements:**
-- [REQ-IPC-020](../.specs/04_future_state/reqs/ipc_requirements.md) - Settings Commands
-- [REQ-FR-001](../.specs/04_future_state/reqs/system_overview.md) - Application Management
+- [REQ-IPC-020](../.adrs/ - Settings Commands
+- [REQ-FR-001](../.adrs/ - Application Management
 
 **Related Design Elements:**
-- [DES-IPC-004](../.specs/04_future_state/design/ipc_protocol.md) - SystemCommand
-- [DES-DD-006](../.specs/04_future_state/design/desktop_design.md) - SystemCommands
+- [DES-IPC-004](../.adrs/ - SystemCommand
+- [DES-DD-006](../.adrs/ - SystemCommands
 
 ### 8.2. config_get
 
@@ -3172,12 +3172,12 @@ pub async fn config_list(
 Plugin commands provide plugin management operations for extending Tachyon functionality. These commands enable the frontend to list, install, uninstall, and manage application plugins.
 
 **Related Requirements:**
-- [REQ-IPC-018](../.specs/04_future_state/reqs/ipc_requirements.md) - Search Commands
-- [REQ-FR-001](../.specs/04_future_state/reqs/system_overview.md) - Application Management
+- [REQ-IPC-018](../.adrs/ - Search Commands
+- [REQ-FR-001](../.adrs/ - Application Management
 
 **Related Design Elements:**
-- [DES-IPC-004](../.specs/04_future_state/design/ipc_protocol.md) - SystemCommand
-- [DES-DD-006](../.specs/04_future_state/design/desktop_design.md) - SystemCommands
+- [DES-IPC-004](../.adrs/ - SystemCommand
+- [DES-DD-006](../.adrs/ - SystemCommands
 
 ### 9.2. plugin_list
 
@@ -3605,17 +3605,17 @@ pub async fn plugin_disable(
 Event commands provide event subscription and management operations for the IPC event system. These commands enable the frontend to subscribe to, unsubscribe from, and manage event listeners.
 
 **Related Requirements:**
-- [REQ-IPC-021](../.specs/04_future_state/reqs/ipc_requirements.md) - File Change Events
-- [REQ-IPC-022](../.specs/04_future_state/reqs/ipc_requirements.md) - Cache Invalidation Events
-- [REQ-IPC-023](../.specs/04_future_state/reqs/ipc_requirements.md) - Sync Status Events
-- [REQ-IPC-024](../.specs/04_future_state/reqs/ipc_requirements.md) - Error Events
-- [REQ-IPC-025](../.specs/04_future_state/reqs/ipc_requirements.md) - Progress Events
+- [REQ-IPC-021](../.adrs/ - File Change Events
+- [REQ-IPC-022](../.adrs/ - Cache Invalidation Events
+- [REQ-IPC-023](../.adrs/ - Sync Status Events
+- [REQ-IPC-024](../.adrs/ - Error Events
+- [REQ-IPC-025](../.adrs/ - Progress Events
 
 **Related Design Elements:**
-- [DES-IPC-005](../.specs/04_future_state/design/ipc_protocol.md) - DocumentEvent
-- [DES-IPC-006](../.specs/04_future_state/design/ipc_protocol.md) - RepositoryEvent
-- [DES-IPC-007](../.specs/04_future_state/design/ipc_protocol.md) - SystemEvent
-- [DES-DD-007](../.specs/04_future_state/design/desktop_design.md) - DocumentEvents
+- [DES-IPC-005](../.adrs/ - DocumentEvent
+- [DES-IPC-006](../.adrs/ - RepositoryEvent
+- [DES-IPC-007](../.adrs/ - SystemEvent
+- [DES-DD-007](../.adrs/ - DocumentEvents
 
 ### 10.2. event_subscribe
 
@@ -3874,15 +3874,15 @@ pub async fn event_list(
 The IPC API uses structured error handling with comprehensive error codes and messages. All errors follow the JSON-RPC 2.0 error specification with Tachyon-specific extensions for detailed error context and recovery guidance.
 
 **Related Requirements:**
-- [REQ-IPC-066](../.specs/04_future_state/reqs/ipc_requirements.md) - Error Types
-- [REQ-IPC-067](../.specs/04_future_state/reqs/ipc_requirements.md) - Error Context
-- [REQ-IPC-068](../.specs/04_future_state/reqs/ipc_requirements.md) - Error Categorization
-- [REQ-IPC-069](../.specs/04_future_state/reqs/ipc_requirements.md) - Error Propagation
-- [REQ-SEC-081](../.specs/04_future_state/reqs/security_requirements.md) - Capability Enforcement
+- [REQ-IPC-066](../.adrs/ - Error Types
+- [REQ-IPC-067](../.adrs/ - Error Context
+- [REQ-IPC-068](../.adrs/ - Error Categorization
+- [REQ-IPC-069](../.adrs/ - Error Propagation
+- [REQ-SEC-081](../.adrs/ - Capability Enforcement
 
 **Related Design Elements:**
-- [DES-IPC-008](../.specs/04_future_state/design/ipc_protocol.md) - IpcError
-- [DES-SEC-001](../.specs/04_future_state/design/security_design.md) - Error Handling
+- [DES-IPC-008](../.adrs/ - IpcError
+- [DES-SEC-001](../.adrs/ - Error Handling
 
 ### 11.2. Error Response Format
 
@@ -4068,25 +4068,25 @@ pub async fn get_document(
 The IPC API implements comprehensive security controls to protect against unauthorized access, injection attacks, and information disclosure. Security is implemented through multiple layers following the defense-in-depth principle.
 
 **Related Requirements:**
-- [REQ-IPC-056](../.specs/04_future_state/reqs/ipc_requirements.md) - Capability Enforcement
-- [REQ-IPC-057](../.specs/04_future_state/reqs/ipc_requirements.md) - Input Validation
-- [REQ-IPC-058](../.specs/04_future_state/reqs/ipc_requirements.md) - Output Sanitization
-- [REQ-IPC-059](../.specs/04_future_state/reqs/ipc_requirements.md) - Path Traversal Prevention
-- [REQ-IPC-060](../.specs/04_future_state/reqs/ipc_requirements.md) - Command Authorization
-- [REQ-SEC-081](../.specs/04_future_state/reqs/security_requirements.md) - Capability Enforcement
-- [REQ-SEC-082](../.specs/04_future_state/reqs/security_requirements.md) - Message Validation
-- [REQ-SEC-083](../.specs/04_future_state/reqs/security_requirements.md) - IPC Rate Limiting
-- [REQ-SEC-084](../.specs/04_future_state/reqs/security_requirements.md) - IPC Logging
-- [REQ-SEC-085](../.specs/04_future_state/reqs/security_requirements.md) - Desktop Isolation
+- [REQ-IPC-056](../.adrs/ - Capability Enforcement
+- [REQ-IPC-057](../.adrs/ - Input Validation
+- [REQ-IPC-058](../.adrs/ - Output Sanitization
+- [REQ-IPC-059](../.adrs/ - Path Traversal Prevention
+- [REQ-IPC-060](../.adrs/ - Command Authorization
+- [REQ-SEC-081](../.adrs/ - Capability Enforcement
+- [REQ-SEC-082](../.adrs/ - Message Validation
+- [REQ-SEC-083](../.adrs/ - IPC Rate Limiting
+- [REQ-SEC-084](../.adrs/ - IPC Logging
+- [REQ-SEC-085](../.adrs/ - Desktop Isolation
 
 **Related Design Elements:**
-- [DES-IPC-009](../.specs/04_future_state/design/ipc_protocol.md) - IpcAuth
-- [DES-SEC-001](../.specs/04_future_state/design/security_design.md) - AuthenticationProvider
-- [DES-SEC-002](../.specs/04_future_state/design/security_design.md) - AuthorizationMiddleware
-- [DES-SEC-003](../.specs/04_future_state/design/security_design.md) - InputValidator
-- [DES-SEC-004](../.specs/04_future_state/design/security_design.md) - OutputSanitizer
-- [DES-SEC-005](../.specs/04_future_state/design/security_design.md) - SecurityLogger
-- [DES-SEC-006](../.specs/04_future_state/design/security_design.md) - RateLimiter
+- [DES-IPC-009](../.adrs/ - IpcAuth
+- [DES-SEC-001](../.adrs/ - AuthenticationProvider
+- [DES-SEC-002](../.adrs/ - AuthorizationMiddleware
+- [DES-SEC-003](../.adrs/ - InputValidator
+- [DES-SEC-004](../.adrs/ - OutputSanitizer
+- [DES-SEC-005](../.adrs/ - SecurityLogger
+- [DES-SEC-006](../.adrs/ - RateLimiter
 
 ### 12.2. Authentication
 
@@ -4463,114 +4463,114 @@ pub struct IpcLogger {
 
 | ADR | Title | Description |
 |-----|-------|-------------|
-| [ADR-001](../.specs/02_adrs/ADR-001-rust_language_selection.md) | Rust Language Selection | Rationale for selecting Rust as the primary implementation language |
-| [ADR-010](../.specs/02_adrs/ADR-010-security_architecture.md) | Security Architecture | Security architecture and threat modeling approach |
+| [ADR-001](../.adrs/adr-001-three-tier-jit-compilation.md) | Rust Language Selection | Rationale for selecting Rust as the primary implementation language |
+| [ADR-010](../.adrs/adr-010-synchronization-primitives.md) | Security Architecture | Security architecture and threat modeling approach |
 
 ### 13.3. Requirements
 
 | Requirement ID | Description |
 |----------------|-------------|
-| [REQ-IPC-001](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Protocol Requirements |
-| [REQ-IPC-002](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Type Safety |
-| [REQ-IPC-003](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Performance |
-| [REQ-IPC-004](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Security |
-| [REQ-IPC-005](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Reliability |
-| [REQ-IPC-006](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Scalability |
-| [REQ-IPC-007](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Testability |
-| [REQ-IPC-008](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Observability |
-| [REQ-IPC-009](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Maintainability |
-| [REQ-IPC-010](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Documentation |
-| [REQ-IPC-011](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Error Handling |
-| [REQ-IPC-012](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Logging |
-| [REQ-IPC-013](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Metrics |
-| [REQ-IPC-014](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Tracing |
-| [REQ-IPC-015](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Rate Limiting |
-| [REQ-IPC-016](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Caching |
-| [REQ-IPC-017](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Compression |
-| [REQ-IPC-018](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Encryption |
-| [REQ-IPC-019](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Authentication |
-| [REQ-IPC-020](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Authorization |
-| [REQ-IPC-021](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Input Validation |
-| [REQ-IPC-022](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Output Sanitization |
-| [REQ-IPC-023](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Path Traversal Prevention |
-| [REQ-IPC-024](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Command Authorization |
-| [REQ-IPC-025](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Subscription |
-| [REQ-IPC-026](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Unsubscription |
-| [REQ-IPC-027](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Filtering |
-| [REQ-IPC-028](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Transformation |
-| [REQ-IPC-029](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Aggregation |
-| [REQ-IPC-030](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Correlation |
-| [REQ-IPC-031](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Deduplication |
-| [REQ-IPC-032](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Ordering |
-| [REQ-IPC-033](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Buffering |
-| [REQ-IPC-034](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Persistence |
-| [REQ-IPC-035](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Replay |
-| [REQ-IPC-036](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Archiving |
-| [REQ-IPC-037](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Compression |
-| [REQ-IPC-038](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Encryption |
-| [REQ-IPC-039](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Authentication |
-| [REQ-IPC-040](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Authorization |
-| [REQ-IPC-041](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Input Validation |
-| [REQ-IPC-042](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Output Sanitization |
-| [REQ-IPC-043](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Path Traversal Prevention |
-| [REQ-IPC-044](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Event Command Authorization |
-| [REQ-IPC-045](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Backpressure |
-| [REQ-IPC-046](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Flow Control |
-| [REQ-IPC-047](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Buffering |
-| [REQ-IPC-048](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Compression |
-| [REQ-IPC-049](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Encryption |
-| [REQ-IPC-050](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Authentication |
-| [REQ-IPC-051](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Authorization |
-| [REQ-IPC-052](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Input Validation |
-| [REQ-IPC-053](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Output Sanitization |
-| [REQ-IPC-054](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Path Traversal Prevention |
-| [REQ-IPC-055](../.specs/04_future_state/reqs/ipc_requirements.md) | IPC Stream Command Authorization |
-| [REQ-IPC-056](../.specs/04_future_state/reqs/ipc_requirements.md) | Capability Enforcement |
-| [REQ-IPC-057](../.specs/04_future_state/reqs/ipc_requirements.md) | Input Validation |
-| [REQ-IPC-058](../.specs/04_future_state/reqs/ipc_requirements.md) | Output Sanitization |
-| [REQ-IPC-059](../.specs/04_future_state/reqs/ipc_requirements.md) | Path Traversal Prevention |
-| [REQ-IPC-060](../.specs/04_future_state/reqs/ipc_requirements.md) | Command Authorization |
-| [REQ-IPC-061](../.specs/04_future_state/reqs/ipc_requirements.md) | Document Commands |
-| [REQ-IPC-062](../.specs/04_future_state/reqs/ipc_requirements.md) | Git Commands |
-| [REQ-IPC-063](../.specs/04_future_state/reqs/ipc_requirements.md) | Window Commands |
-| [REQ-IPC-064](../.specs/04_future_state/reqs/ipc_requirements.md) | Dialog Commands |
-| [REQ-IPC-065](../.specs/04_future_state/reqs/ipc_requirements.md) | Configuration Commands |
-| [REQ-IPC-066](../.specs/04_future_state/reqs/ipc_requirements.md) | Error Types |
-| [REQ-IPC-067](../.specs/04_future_state/reqs/ipc_requirements.md) | Error Context |
-| [REQ-IPC-068](../.specs/04_future_state/reqs/ipc_requirements.md) | Error Categorization |
-| [REQ-IPC-069](../.specs/04_future_state/reqs/ipc_requirements.md) | Error Propagation |
-| [REQ-IPC-070](../.specs/04_future_state/reqs/ipc_requirements.md) | Error Recovery |
-| [REQ-SEC-081](../.specs/04_future_state/reqs/security_requirements.md) | Capability Enforcement |
-| [REQ-SEC-082](../.specs/04_future_state/reqs/security_requirements.md) | Message Validation |
-| [REQ-SEC-083](../.specs/04_future_state/reqs/security_requirements.md) | IPC Rate Limiting |
-| [REQ-SEC-084](../.specs/04_future_state/reqs/security_requirements.md) | IPC Logging |
-| [REQ-SEC-085](../.specs/04_future_state/reqs/security_requirements.md) | Desktop Isolation |
+| [REQ-IPC-001](../.adrs/ | IPC Protocol Requirements |
+| [REQ-IPC-002](../.adrs/ | IPC Type Safety |
+| [REQ-IPC-003](../.adrs/ | IPC Performance |
+| [REQ-IPC-004](../.adrs/ | IPC Security |
+| [REQ-IPC-005](../.adrs/ | IPC Reliability |
+| [REQ-IPC-006](../.adrs/ | IPC Scalability |
+| [REQ-IPC-007](../.adrs/ | IPC Testability |
+| [REQ-IPC-008](../.adrs/ | IPC Observability |
+| [REQ-IPC-009](../.adrs/ | IPC Maintainability |
+| [REQ-IPC-010](../.adrs/ | IPC Documentation |
+| [REQ-IPC-011](../.adrs/ | IPC Error Handling |
+| [REQ-IPC-012](../.adrs/ | IPC Logging |
+| [REQ-IPC-013](../.adrs/ | IPC Metrics |
+| [REQ-IPC-014](../.adrs/ | IPC Tracing |
+| [REQ-IPC-015](../.adrs/ | IPC Rate Limiting |
+| [REQ-IPC-016](../.adrs/ | IPC Caching |
+| [REQ-IPC-017](../.adrs/ | IPC Compression |
+| [REQ-IPC-018](../.adrs/ | IPC Encryption |
+| [REQ-IPC-019](../.adrs/ | IPC Authentication |
+| [REQ-IPC-020](../.adrs/ | IPC Authorization |
+| [REQ-IPC-021](../.adrs/ | IPC Input Validation |
+| [REQ-IPC-022](../.adrs/ | IPC Output Sanitization |
+| [REQ-IPC-023](../.adrs/ | IPC Path Traversal Prevention |
+| [REQ-IPC-024](../.adrs/ | IPC Command Authorization |
+| [REQ-IPC-025](../.adrs/ | IPC Event Subscription |
+| [REQ-IPC-026](../.adrs/ | IPC Event Unsubscription |
+| [REQ-IPC-027](../.adrs/ | IPC Event Filtering |
+| [REQ-IPC-028](../.adrs/ | IPC Event Transformation |
+| [REQ-IPC-029](../.adrs/ | IPC Event Aggregation |
+| [REQ-IPC-030](../.adrs/ | IPC Event Correlation |
+| [REQ-IPC-031](../.adrs/ | IPC Event Deduplication |
+| [REQ-IPC-032](../.adrs/ | IPC Event Ordering |
+| [REQ-IPC-033](../.adrs/ | IPC Event Buffering |
+| [REQ-IPC-034](../.adrs/ | IPC Event Persistence |
+| [REQ-IPC-035](../.adrs/ | IPC Event Replay |
+| [REQ-IPC-036](../.adrs/ | IPC Event Archiving |
+| [REQ-IPC-037](../.adrs/ | IPC Event Compression |
+| [REQ-IPC-038](../.adrs/ | IPC Event Encryption |
+| [REQ-IPC-039](../.adrs/ | IPC Event Authentication |
+| [REQ-IPC-040](../.adrs/ | IPC Event Authorization |
+| [REQ-IPC-041](../.adrs/ | IPC Event Input Validation |
+| [REQ-IPC-042](../.adrs/ | IPC Event Output Sanitization |
+| [REQ-IPC-043](../.adrs/ | IPC Event Path Traversal Prevention |
+| [REQ-IPC-044](../.adrs/ | IPC Event Command Authorization |
+| [REQ-IPC-045](../.adrs/ | IPC Stream Backpressure |
+| [REQ-IPC-046](../.adrs/ | IPC Stream Flow Control |
+| [REQ-IPC-047](../.adrs/ | IPC Stream Buffering |
+| [REQ-IPC-048](../.adrs/ | IPC Stream Compression |
+| [REQ-IPC-049](../.adrs/ | IPC Stream Encryption |
+| [REQ-IPC-050](../.adrs/ | IPC Stream Authentication |
+| [REQ-IPC-051](../.adrs/ | IPC Stream Authorization |
+| [REQ-IPC-052](../.adrs/ | IPC Stream Input Validation |
+| [REQ-IPC-053](../.adrs/ | IPC Stream Output Sanitization |
+| [REQ-IPC-054](../.adrs/ | IPC Stream Path Traversal Prevention |
+| [REQ-IPC-055](../.adrs/ | IPC Stream Command Authorization |
+| [REQ-IPC-056](../.adrs/ | Capability Enforcement |
+| [REQ-IPC-057](../.adrs/ | Input Validation |
+| [REQ-IPC-058](../.adrs/ | Output Sanitization |
+| [REQ-IPC-059](../.adrs/ | Path Traversal Prevention |
+| [REQ-IPC-060](../.adrs/ | Command Authorization |
+| [REQ-IPC-061](../.adrs/ | Document Commands |
+| [REQ-IPC-062](../.adrs/ | Git Commands |
+| [REQ-IPC-063](../.adrs/ | Window Commands |
+| [REQ-IPC-064](../.adrs/ | Dialog Commands |
+| [REQ-IPC-065](../.adrs/ | Configuration Commands |
+| [REQ-IPC-066](../.adrs/ | Error Types |
+| [REQ-IPC-067](../.adrs/ | Error Context |
+| [REQ-IPC-068](../.adrs/ | Error Categorization |
+| [REQ-IPC-069](../.adrs/ | Error Propagation |
+| [REQ-IPC-070](../.adrs/ | Error Recovery |
+| [REQ-SEC-081](../.adrs/ | Capability Enforcement |
+| [REQ-SEC-082](../.adrs/ | Message Validation |
+| [REQ-SEC-083](../.adrs/ | IPC Rate Limiting |
+| [REQ-SEC-084](../.adrs/ | IPC Logging |
+| [REQ-SEC-085](../.adrs/ | Desktop Isolation |
 
 ### 13.4. Design Elements
 
 | Design Element | Description |
 |----------------|-------------|
-| [DES-IPC-001](../.specs/04_future_state/design/ipc_protocol.md) | IPC Protocol |
-| [DES-IPC-002](../.specs/04_future_state/design/ipc_protocol.md) | IPC Command |
-| [DES-IPC-003](../.specs/04_future_state/design/ipc_protocol.md) | IPC Event |
-| [DES-IPC-004](../.specs/04_future_state/design/ipc_protocol.md) | IPC Stream |
-| [DES-IPC-005](../.specs/04_future_state/design/ipc_protocol.md) | IPC Message |
-| [DES-IPC-006](../.specs/04_future_state/design/ipc_protocol.md) | IPC Envelope |
-| [DES-IPC-007](../.specs/04_future_state/design/ipc_protocol.md) | IPC Type |
-| [DES-IPC-008](../.specs/04_future_state/design/ipc_protocol.md) | IpcError |
-| [DES-IPC-009](../.specs/04_future_state/design/ipc_protocol.md) | IpcAuth |
-| [DES-SEC-001](../.specs/04_future_state/design/security_design.md) | AuthenticationProvider |
-| [DES-SEC-002](../.specs/04_future_state/design/security_design.md) | AuthorizationMiddleware |
-| [DES-SEC-003](../.specs/04_future_state/design/security_design.md) | InputValidator |
-| [DES-SEC-004](../.specs/04_future_state/design/security_design.md) | OutputSanitizer |
-| [DES-SEC-005](../.specs/04_future_state/design/security_design.md) | SecurityLogger |
-| [DES-SEC-006](../.specs/04_future_state/design/security_design.md) | RateLimiter |
+| [DES-IPC-001](../.adrs/ | IPC Protocol |
+| [DES-IPC-002](../.adrs/ | IPC Command |
+| [DES-IPC-003](../.adrs/ | IPC Event |
+| [DES-IPC-004](../.adrs/ | IPC Stream |
+| [DES-IPC-005](../.adrs/ | IPC Message |
+| [DES-IPC-006](../.adrs/ | IPC Envelope |
+| [DES-IPC-007](../.adrs/ | IPC Type |
+| [DES-IPC-008](../.adrs/ | IpcError |
+| [DES-IPC-009](../.adrs/ | IpcAuth |
+| [DES-SEC-001](../.adrs/ | AuthenticationProvider |
+| [DES-SEC-002](../.adrs/ | AuthorizationMiddleware |
+| [DES-SEC-003](../.adrs/ | InputValidator |
+| [DES-SEC-004](../.adrs/ | OutputSanitizer |
+| [DES-SEC-005](../.adrs/ | SecurityLogger |
+| [DES-SEC-006](../.adrs/ | RateLimiter |
 
 ### 13.5. Test Plan
 
 | Test Plan Section | Description |
 |-------------------|-------------|
-| [Test Plan](../.specs/04_future_state/test_plan.md) | Comprehensive test plan for IPC API |
+| [Test Plan](../.adrs/ | Comprehensive test plan for IPC API |
 
 ### 13.6. External References
 

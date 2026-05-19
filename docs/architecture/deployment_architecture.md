@@ -4,7 +4,7 @@
 **Date:** February 2026
 **Status:** Proposed
 **Classification:** Architecture Documentation
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-TSK-V1.0](../../.specs/tasks.md), [TACHYON-REQ-BLD-V1.0](../../.specs/04_future_state/reqs/build_requirements.md), [TACHYON-DES-BLD-V1.0](../../.specs/04_future_state/design/build_design.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-TSK-V1.0](../../.adrs/ [TACHYON-REQ-BLD-V1.0](../../.adrs/ [TACHYON-DES-BLD-V1.0](../../.adrs/
 
 ---
 
@@ -2025,30 +2025,30 @@ graph TB
 
 | ADR ID | Title | Reference |
 |---------|-------|-----------|
-| [ADR-002](../../.specs/02_adrs/002_tauri_for_desktop_application.md) | Tauri for Desktop Application | Desktop deployment framework |
-| [ADR-003](../../.specs/02_adrs/003_axum_for_http2_server.md) | Axum for HTTP/2 Server | Server deployment framework |
-| [ADR-004](../../.specs/02_adrs/004_leptos_for_web_frontend.md) | Leptos for Web Frontend | Web deployment framework |
-| [ADR-006](../../.specs/02_adrs/006_nix_flakes_for_build_system.md) | Nix Flakes for Build System | Build system architecture |
+| [ADR-002](../../.adrs/adr-002-bm25-search-parameters.md) | Tauri for Desktop Application | Desktop deployment framework |
+| [ADR-003](../../.adrs/adr-003-lru-cache-target.md) | Axum for HTTP/2 Server | Server deployment framework |
+| [ADR-004](../../.adrs/adr-004-debounce-window.md) | Leptos for Web Frontend | Web deployment framework |
+| [ADR-006](../../.adrs/adr-006-direct-libgit2-integration.md) | Nix Flakes for Build System | Build system architecture |
 
 ### 10.2. Related Requirements
 
 | Requirement ID | Title | Reference |
 |----------------|-------|-----------|
-| REQ-BLD-001 through REQ-BLD-020 | Nix Flakes Requirements | [Build Requirements](../../.specs/04_future_state/reqs/build_requirements.md) |
-| REQ-BLD-026 through REQ-BLD-045 | Cross-Platform Build Support | [Build Requirements](../../.specs/04_future_state/reqs/build_requirements.md) |
-| REQ-BLD-046 through REQ-BLD-060 | Build Artifacts | [Build Requirements](../../.specs/04_future_state/reqs/build_requirements.md) |
-| REQ-BLD-061 through REQ-BLD-075 | Deployment Procedures | [Build Requirements](../../.specs/04_future_state/reqs/build_requirements.md) |
-| REQ-BLD-076 through REQ-BLD-090 | Version Management | [Build Requirements](../../.specs/04_future_state/reqs/build_requirements.md) |
+| REQ-BLD-001 through REQ-BLD-020 | Nix Flakes Requirements | [Build Requirements](../../.adrs/ |
+| REQ-BLD-026 through REQ-BLD-045 | Cross-Platform Build Support | [Build Requirements](../../.adrs/ |
+| REQ-BLD-046 through REQ-BLD-060 | Build Artifacts | [Build Requirements](../../.adrs/ |
+| REQ-BLD-061 through REQ-BLD-075 | Deployment Procedures | [Build Requirements](../../.adrs/ |
+| REQ-BLD-076 through REQ-BLD-090 | Version Management | [Build Requirements](../../.adrs/ |
 
 ### 10.3. Related Design Elements
 
 | Design Element ID | Title | Reference |
 |------------------|-------|-----------|
-| DES-BLD-001 | Flake Configuration | [Build Design](../../.specs/04_future_state/design/build_design.md) |
-| DES-BLD-002 | Cargo Configuration | [Build Design](../../.specs/04_future_state/design/build_design.md) |
-| DES-BLD-003 | Release Profiles | [Build Design](../../.specs/04_future_state/design/build_design.md) |
-| DES-BLD-004 | Dependency Locking | [Build Design](../../.specs/04_future_state/design/build_design.md) |
-| DES-BLD-006 | Platform Targets | [Build Design](../../.specs/04_future_state/design/build_design.md) |
+| DES-BLD-001 | Flake Configuration | [Build Design](../../.adrs/ |
+| DES-BLD-002 | Cargo Configuration | [Build Design](../../.adrs/ |
+| DES-BLD-003 | Release Profiles | [Build Design](../../.adrs/ |
+| DES-BLD-004 | Dependency Locking | [Build Design](../../.adrs/ |
+| DES-BLD-006 | Platform Targets | [Build Design](../../.adrs/ |
 
 ### 10.4. External References
 

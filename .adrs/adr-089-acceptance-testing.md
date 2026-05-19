@@ -30,7 +30,7 @@ The Tachyon project adopts a comprehensive acceptance testing framework based on
 
 ### Acceptance Criteria Verification
 
-All acceptance criteria from [`.specs/00_requirements/acceptance_criteria.md`](.specs/00_requirements/acceptance_criteria.md) are verified through:
+All acceptance criteria from [`.adrs/ are verified through:
 
 | Criterion Category | Verification Method | Status |
 |------------------|-------------------|--------|
@@ -105,10 +105,10 @@ All acceptance criteria from [`.specs/00_requirements/acceptance_criteria.md`](.
 
 ## References
 
-- [`.specs/00_requirements/acceptance_criteria.md`](.specs/00_requirements/acceptance_criteria.md)
-- [`.specs/00_requirements/traceability_matrix.md`](.specs/00_requirements/traceability_matrix.md)
-- [`.specs/07_ci_cd/quality_gates.md`](.specs/07_ci_cd/quality_gates.md)
-- [`.specs/07_ci_cd/formal_verification.md`](.specs/07_ci_cd/formal_verification.md)
+- [`.adrs/
+- [`.adrs/
+- [`.adrs/
+- [`.adrs/
 
 ---
 

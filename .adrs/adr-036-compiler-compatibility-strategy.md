@@ -24,7 +24,7 @@ Cross-compilation is required for:
 - macOS builds on Linux
 - ARM/RISC-V builds on x86_64
 
-**Traceability:** `.specs/04_5_cross_platform/compiler_compatibility.md`
+**Traceability:** `.adrs/
 
 ---
 
@@ -208,7 +208,7 @@ debug = true
 3. **Cross-Compilation Testing:** Verify builds on all target triples
 4. **Performance Testing:** Benchmark compiler-specific optimizations
 
-**Traceability:** `.specs/04_5_cross_platform/testing_matrix.md`
+**Traceability:** `.adrs/
 
 ---
 
@@ -230,7 +230,7 @@ debug = true
 **Approval Date:** 2026-02-11
 
 **Related Documents:**
-- [Compiler Compatibility Analysis](.specs/04_5_cross_platform/compiler_compatibility.md)
-- [Testing Matrix](.specs/04_5_cross_platform/testing_matrix.md)
+- [Compiler Compatibility Analysis](.adrs/
+- [Testing Matrix](.adrs/
 - ADR-035: OS Compatibility Strategy
 - ADR-037: Architecture Compatibility Strategy

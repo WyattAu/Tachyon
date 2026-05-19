@@ -46,10 +46,10 @@ The Tachyon REST API serves as the primary communication layer for:
 ### 1.2. Document Dependencies
 
 This document depends on the following specifications:
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md) - Axum for HTTP/2 Server
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 ### 1.3. API Versioning
 
@@ -2483,10 +2483,10 @@ List endpoints support filtering and sorting to customize result sets.
 
 | Document | Path | Description |
 |----------|------|-------------|
-| [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards |
-| [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language |
-| [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md) | Axum for HTTP/2 Server |
-| [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) | Security Architecture |
+| [TACHYON-STD-V1.0](../.adrs/ | Coding and Documentation Standards |
+| [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language |
+| [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md) | Axum for HTTP/2 Server |
+| [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) | Security Architecture |
 
 ### 15.3. Related Requirements
 

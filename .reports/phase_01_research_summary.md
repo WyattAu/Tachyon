@@ -86,11 +86,11 @@ Phase 1: Epistemological Discovery has been successfully completed. This phase c
 
 | Artifact | Path | Status | Description |
 |----------|------|-------------|
-| Yellow Paper | `.specs/01_research/yellow_paper.md` | Complete | Main literature review with mathematical formulations |
-| Bibliography | `.specs/01_research/bibliography.md` | Complete | 78 multi-lingual citations |
-| Test Vectors | `.specs/01_research/test_vectors.toml` | Complete | 42 ground truth test vectors |
-| TQA Reports | `.specs/01_research/tqa_reports.md` | Complete | Translation quality assurance for 54 sources |
-| Domain Constraints | `.specs/01_research/domain_constraints.toml` | Complete | 97 constraint definitions |
+| Yellow Paper | `.adrs/ | Complete | Main literature review with mathematical formulations |
+| Bibliography | `.adrs/ | Complete | 78 multi-lingual citations |
+| Test Vectors | `.adrs/ | Complete | 42 ground truth test vectors |
+| TQA Reports | `.adrs/ | Complete | Translation quality assurance for 54 sources |
+| Domain Constraints | `.adrs/ | Complete | 97 constraint definitions |
 | Knowledge Graph | `.knowledge_graph/concept_mappings.json` | Complete | 87 cross-lingual concept mappings |
 | Research Summary | `.reports/phase_01_research_summary.md` | This document | Phase completion report |
 

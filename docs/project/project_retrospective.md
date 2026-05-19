@@ -36,12 +36,12 @@ The retrospective encompasses the entire project lifecycle from initial concepti
 
 This document references and depends upon the following project artifacts:
 
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TSK-V1.0](../.specs/tasks.md) - Execution Tasks and Work Breakdown Structure
-- [TACHYON-ADR-V1.0](../.specs/02_adrs/) - Architectural Decision Records (ADR-001 through ADR-010)
-- [TACHYON-REQ-V1.0](../.specs/04_future_state/reqs/) - Requirements Specifications
-- [TACHYON-DSN-V1.0](../.specs/04_future_state/design/) - Design Documents
-- [TACHYON-TST-V1.0](../.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-TSK-V1.0](../.adrs/ - Execution Tasks and Work Breakdown Structure
+- [TACHYON-ADR-V1.0](../.adrs/) - Architectural Decision Records (ADR-001 through ADR-010)
+- [TACHYON-REQ-V1.0](../.adrs/ - Requirements Specifications
+- [TACHYON-DSN-V1.0](../.adrs/ - Design Documents
+- [TACHYON-TST-V1.0](../.adrs/ - Test Plan
 
 ### 1.3. Retrospective Framework
 
@@ -1481,67 +1481,67 @@ This section provides complete references to all project documents referenced in
 **Standards and Specifications:**
 
 1. **TACHYON-STD-V1.0** - Coding and Documentation Standards
-   - Path: [`.specs/01_standards/coding_standards.md`](../.specs/01_standards/coding_standards.md)
+   - Path: [`.adrs/
    - Description: Comprehensive coding and documentation standards governing the Tachyon project
 
 2. **TACHYON-TSK-V1.0** - Execution Tasks and Work Breakdown Structure
-   - Path: [`.specs/tasks.md`](../.specs/tasks.md)
+   - Path: [`.adrs/
    - Description: Complete task breakdown structure with 87 documentation artifacts
 
 **Architectural Decision Records:**
 
 3. **ADR-001** - Rust as Primary Language
-   - Path: [`.specs/02_adrs/001_rust_as_primary_language.md`](../.specs/02_adrs/001_rust_as_primary_language.md)
+   - Path: [`.adrs/adr-001-three-tier-jit-compilation.md](../.adrs/adr-001-three-tier-jit-compilation.md)
    - Description: Decision to use Rust Edition 2024 as the primary programming language
 
 4. **ADR-002** - Tauri for Desktop Application
-   - Path: [`.specs/02_adrs/002_tauri_for_desktop_application.md`](../.specs/02_adrs/002_tauri_for_desktop_application.md)
+   - Path: [`.adrs/adr-002-bm25-search-parameters.md](../.adrs/adr-002-bm25-search-parameters.md)
    - Description: Decision to use Tauri for cross-platform desktop application
 
 5. **ADR-003** - Axum for HTTP/2 Server
-   - Path: [`.specs/02_adrs/003_axum_for_http2_server.md`](../.specs/02_adrs/003_axum_for_http2_server.md)
+   - Path: [`.adrs/adr-003-lru-cache-target.md](../.adrs/adr-003-lru-cache-target.md)
    - Description: Decision to use Axum for HTTP/2 server component
 
 6. **ADR-004** - Leptos for Web Frontend
-   - Path: [`.specs/02_adrs/004_leptos_for_web_frontend.md`](../.specs/02_adrs/004_leptos_for_web_frontend.md)
+   - Path: [`.adrs/adr-004-debounce-window.md](../.adrs/adr-004-debounce-window.md)
    - Description: Decision to use Leptos for reactive web frontend
 
 7. **ADR-005** - Bun for JavaScript Runtime
-   - Path: [`.specs/02_adrs/005_bun_for_javascript_runtime.md`](../.specs/02_adrs/005_bun_for_javascript_runtime.md)
+   - Path: [`.adrs/adr-005-last-write-wins-conflict-resolution.md](../.adrs/adr-005-last-write-wins-conflict-resolution.md)
    - Description: Decision to use Bun for JavaScript runtime
 
 8. **ADR-006** - Nix Flakes for Build System
-   - Path: [`.specs/02_adrs/006_nix_flakes_for_build_system.md`](../.specs/02_adrs/006_nix_flakes_for_build_system.md)
+   - Path: [`.adrs/adr-006-direct-libgit2-integration.md](../.adrs/adr-006-direct-libgit2-integration.md)
    - Description: Decision to use Nix Flakes for reproducible builds
 
 9. **ADR-007** - Tokio for Async Runtime
-   - Path: [`.specs/02_adrs/007_tokio_for_async_runtime.md`](../.specs/02_adrs/007_tokio_for_async_runtime.md)
+   - Path: [`.adrs/adr-007-thread-safety-strategy.md](../.adrs/adr-007-thread-safety-strategy.md)
    - Description: Decision to use Tokio for asynchronous runtime
 
 10. **ADR-008** - Workspace Structure for Rust Crates
-    - Path: [`.specs/02_adrs/008_workspace_structure_for_rust_crates.md`](../.specs/02_adrs/008_workspace_structure_for_rust_crates.md)
+    - Path: [`.adrs/adr-008-deadlock-prevention.md](../.adrs/adr-008-deadlock-prevention.md)
     - Description: Decision on Rust workspace structure and crate organization
 
 11. **ADR-009** - IPC Communication Architecture
-    - Path: [`.specs/02_adrs/009_ipc_communication_architecture.md`](../.specs/02_adrs/009_ipc_communication_architecture.md)
+    - Path: [`.adrs/adr-009-race-condition-mitigation.md](../.adrs/adr-009-race-condition-mitigation.md)
     - Description: Decision on inter-process communication architecture
 
 12. **ADR-010** - Security Architecture
-    - Path: [`.specs/02_adrs/010_security_architecture.md`](../.specs/02_adrs/010_security_architecture.md)
+    - Path: [`.adrs/adr-010-synchronization-primitives.md](../.adrs/adr-010-synchronization-primitives.md)
     - Description: Decision on defense-in-depth security architecture
 
 **Requirements and Design:**
 
 13. **TACHYON-REQ-V1.0** - Requirements Specifications
-    - Path: [`.specs/04_future_state/reqs/`](../.specs/04_future_state/reqs/)
+    - Path: [`.adrs/
     - Description: Complete requirements specifications for the Tachyon system
 
 14. **TACHYON-DSN-V1.0** - Design Documents
-    - Path: [`.specs/04_future_state/design/`](../.specs/04_future_state/design/)
+    - Path: [`.adrs/
     - Description: Complete design documents for the Tachyon system
 
 15. **TACHYON-TST-V1.0** - Test Plan
-    - Path: [`.specs/04_future_state/test_plan.md`](../.specs/04_future_state/test_plan.md)
+    - Path: [`.adrs/
     - Description: Comprehensive test plan for the Tachyon system
 
 ### 11.2. International Standards

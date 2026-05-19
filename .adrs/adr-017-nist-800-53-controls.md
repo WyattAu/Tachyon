@@ -143,7 +143,7 @@ The security requirements in Tachyon map to several NIST SP 800-53 control famil
 
 ## 7. References
 
-- Tachyon Requirements: [`.specs/00_requirements/requirements.md`](.specs/00_requirements/requirements.md)
-- Tachyon Architecture: [`.specs/02_architecture/blue_paper.md`](.specs/02_architecture/blue_paper.md)
-- Threat Model: [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md)
+- Tachyon Requirements: [`.adrs/
+- Tachyon Architecture: [`.adrs/
+- Threat Model: [`.adrs/
 - NIST SP 800-53 Revision 5: https://csrc.nist.gov/publications/detail/sp800-53/rev5/

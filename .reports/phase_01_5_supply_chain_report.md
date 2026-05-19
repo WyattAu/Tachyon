@@ -26,8 +26,8 @@ Phase 1.5 Supply Chain Hardening has been successfully completed. All critical d
 | Objective | Status | Notes |
 |-----------|--------|-------|
 | Secure the Supply Chain and Materialize Interfaces | COMPLETED | Critical dependencies materialized to .dep_spec/ |
-| Generate SBOM in SPDX format | COMPLETED | .specs/01_5_supply_chain/sbom.spdx |
-| Generate SHA-256 Lockfile | COMPLETED | .specs/01_5_supply_chain/supply_chain.lock |
+| Generate SBOM in SPDX format | COMPLETED | .adrs/ |
+| Generate SHA-256 Lockfile | COMPLETED | .adrs/ |
 | Run security scans | COMPLETED | Vulnerability report generated |
 | Verify license compliance | COMPLETED | All 32 dependencies compliant |
 | Materialize critical dependencies | COMPLETED | 5 critical dependencies materialized |
@@ -51,10 +51,10 @@ Phase 1.5 Supply Chain Hardening has been successfully completed. All critical d
 
 | Artifact | Path | Size | Status |
 |----------|------|------|--------|
-| SBOM | .specs/01_5_supply_chain/sbom.spdx | ~5KB | COMPLETE |
-| SHA-256 Lockfile | .specs/01_5_supply_chain/supply_chain.lock | ~3KB | COMPLETE |
-| Vulnerability Report | .specs/01_5_supply_chain/vulnerability_report.md | ~8KB | COMPLETE |
-| License Compliance | .specs/01_5_supply_chain/license_compliance.md | ~10KB | COMPLETE |
+| SBOM | .adrs/ | ~5KB | COMPLETE |
+| SHA-256 Lockfile | .adrs/ | ~3KB | COMPLETE |
+| Vulnerability Report | .adrs/ | ~8KB | COMPLETE |
+| License Compliance | .adrs/ | ~10KB | COMPLETE |
 
 ### Dependency Specifications
 

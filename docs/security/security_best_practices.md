@@ -4,7 +4,7 @@
 **Date:** February 2026
 **Status:** Approved for Implementation
 **Classification:** Security Documentation
-**Dependencies:** [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md), [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md), [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md), [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md), [TACHYON-REQ-SEC-V1.0](../.specs/04_future_state/reqs/security_requirements.md)
+**Dependencies:** [TACHYON-STD-V1.0](../.adrs/ [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md), [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md), [TACHYON-TMA-V1.0](../.adrs/ [TACHYON-REQ-SEC-V1.0](../.adrs/
 
 ---
 
@@ -26,7 +26,7 @@
 
 ### 1.1. Purpose and Scope
 
-This document establishes comprehensive security best practices for the Tachyon toolchain, providing actionable guidance for developers, operators, and security practitioners. The practices defined herein align with the defense-in-depth security architecture established in [ADR-010](../.specs/02_adrs/010_security_architecture.md) and address the threats identified in the [Threat Model Analysis](../.specs/03_threat_model/analysis.md).
+This document establishes comprehensive security best practices for the Tachyon toolchain, providing actionable guidance for developers, operators, and security practitioners. The practices defined herein align with the defense-in-depth security architecture established in [ADR-010](../.adrs/adr-010-synchronization-primitives.md) and address the threats identified in the [Threat Model Analysis](../.adrs/
 
 The Tachyon system encompasses a hybrid architecture comprising:
 - A Rust-based core engine with Tokio asynchronous runtime
@@ -49,7 +49,7 @@ The security best practices presented in this document support the following sec
 | **Accountability** | Enable traceability of all user actions and system events for audit purposes | High |
 | **Non-Repudiation** | Prevent users from denying actions they performed within the system | Medium |
 
-These objectives are derived from the security requirements defined in [TACHYON-REQ-SEC-V1.0](../.specs/04_future_state/reqs/security_requirements.md) and form the foundation for all security practices.
+These objectives are derived from the security requirements defined in [TACHYON-REQ-SEC-V1.0](../.adrs/ and form the foundation for all security practices.
 
 ### 1.3. Target Audience
 
@@ -78,7 +78,7 @@ This document is organized into the following sections:
 
 ### 2.1. Foundational Security Principles
 
-The security best practices for the Tachyon toolchain are founded upon the following core principles, which align with the defense-in-depth architecture defined in [ADR-010](../.specs/02_adrs/010_security_architecture.md):
+The security best practices for the Tachyon toolchain are founded upon the following core principles, which align with the defense-in-depth architecture defined in [ADR-010](../.adrs/adr-010-synchronization-primitives.md):
 
 #### 2.1.1. Defense-in-Depth
 
@@ -225,7 +225,7 @@ Security practices should be implemented using the following methodology:
 
 ### 3.1. Rust Secure Coding Practices
 
-Rust's type system and ownership model provide inherent security benefits, but developers must follow secure coding practices to maximize these benefits. These practices align with [ADR-001](../.specs/02_adrs/001_rust_as_primary_language.md) and address memory safety vulnerabilities identified in the threat model.
+Rust's type system and ownership model provide inherent security benefits, but developers must follow secure coding practices to maximize these benefits. These practices align with [ADR-001](../.adrs/adr-001-three-tier-jit-compilation.md) and address memory safety vulnerabilities identified in the threat model.
 
 #### 3.1.1. Memory Safety Best Practices
 
@@ -631,7 +631,7 @@ export async function getDocument(id: string): Promise<Document> {
 
 ## 4. AUTHENTICATION BEST PRACTICES
 
-Authentication mechanisms form the first line of defense against unauthorized access. These practices address spoofing threats identified in the threat model and implement requirements from [REQ-SEC-011 through REQ-SEC-020](../.specs/04_future_state/reqs/security_requirements.md).
+Authentication mechanisms form the first line of defense against unauthorized access. These practices address spoofing threats identified in the threat model and implement requirements from [REQ-SEC-011 through REQ-SEC-020](../.adrs/
 
 ### 4.1. Password Security
 
@@ -1484,7 +1484,7 @@ pub fn redact_internal_blocks(content: &str, user: &User) -> String {
 
 ## 6. DATA PROTECTION BEST PRACTICES
 
-Data protection practices ensure confidentiality and integrity of sensitive data. These practices address information disclosure and tampering threats identified in the threat model and implement requirements from [REQ-SEC-026 through REQ-SEC-040](../.specs/04_future_state/reqs/security_requirements.md).
+Data protection practices ensure confidentiality and integrity of sensitive data. These practices address information disclosure and tampering threats identified in the threat model and implement requirements from [REQ-SEC-026 through REQ-SEC-040](../.adrs/
 
 ### 6.1. Encryption at Rest
 
@@ -1873,7 +1873,7 @@ impl GitVerificationService {
 
 ## 7. NETWORK SECURITY BEST PRACTICES
 
-Network security practices protect data in transit and prevent network-based attacks. These practices address spoofing and information disclosure threats identified in the threat model and implement requirements from [REQ-SEC-071 through REQ-SEC-085](../.specs/04_future_state/reqs/security_requirements.md).
+Network security practices protect data in transit and prevent network-based attacks. These practices address spoofing and information disclosure threats identified in the threat model and implement requirements from [REQ-SEC-071 through REQ-SEC-085](../.adrs/
 
 ### 7.1. HTTP/2 Security
 
@@ -2320,7 +2320,7 @@ impl IpcValidator {
 
 ## 8. OPERATIONAL SECURITY BEST PRACTICES
 
-Operational security practices ensure secure deployment, monitoring, and incident response. These practices implement requirements from [REQ-SEC-056 through REQ-SEC-070](../.specs/04_future_state/reqs/security_requirements.md).
+Operational security practices ensure secure deployment, monitoring, and incident response. These practices implement requirements from [REQ-SEC-056 through REQ-SEC-070](../.adrs/
 
 ### 8.1. Audit Logging
 
@@ -2785,11 +2785,11 @@ This document references the following standards, specifications, and external r
 
 | Document ID | Document Title | Relevance |
 |-------------|----------------|-----------|
-| [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards | Establishes documentation standards and conventions |
-| [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language | Defines Rust security benefits and practices |
-| [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) | Security Architecture | Establishes defense-in-depth security architecture |
-| [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md) | Threat Model Analysis | Identifies threats and attack vectors |
-| [TACHYON-REQ-SEC-V1.0](../.specs/04_future_state/reqs/security_requirements.md) | Security Requirements | Defines functional security requirements |
+| [TACHYON-STD-V1.0](../.adrs/ | Coding and Documentation Standards | Establishes documentation standards and conventions |
+| [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language | Defines Rust security benefits and practices |
+| [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) | Security Architecture | Establishes defense-in-depth security architecture |
+| [TACHYON-TMA-V1.0](../.adrs/ | Threat Model Analysis | Identifies threats and attack vectors |
+| [TACHYON-REQ-SEC-V1.0](../.adrs/ | Security Requirements | Defines functional security requirements |
 
 ### 9.2. Security Standards and Frameworks
 

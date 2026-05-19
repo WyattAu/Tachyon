@@ -121,8 +121,8 @@ The Tachyon project adopts a comprehensive knowledge transfer framework:
 
 ## References
 
-- [`.specs/08_5_knowledge_base/`](.specs/08_5_knowledge_base/) - Knowledge Base Directory
-- [`.specs/10_metrics/knowledge_base.md`](.specs/10_metrics/knowledge_base.md) - Knowledge Base Metrics
+- [`.adrs/ - Knowledge Base Directory
+- [`.adrs/ - Knowledge Base Metrics
 - Knowledge Transfer Best Practices
 
 ---

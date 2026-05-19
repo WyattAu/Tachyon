@@ -100,11 +100,11 @@ The following stakeholders have interests in the Tachyon archive framework:
 
 This archive framework references and is referenced by the following documents:
 
-- **[TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md)** - Coding and Documentation Standards
-- **[TACHYON-ADR-001](../.specs/02_adrs/ADR-001-rust_adoption.md)** - Rust Technology Adoption
-- **[TACHYON-ADR-010](../.specs/02_adrs/ADR-010-security_architecture.md)** - Security Architecture
-- **[TACHYON-TST-V1.0](../.specs/04_future_state/test_plan.md)** - Test Plan
-- **[TACHYON-RBK-V1.0](../.specs/09_rollback_plan/rollback_plan.md)** - Rollback Plan
+- **[TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- **[TACHYON-ADR-001](../.adrs/adr-001-three-tier-jit-compilation.md)** - Rust Technology Adoption
+- **[TACHYON-ADR-010](../.adrs/adr-010-synchronization-primitives.md)** - Security Architecture
+- **[TACHYON-TST-V1.0](../.adrs/ - Test Plan
+- **[TACHYON-RBK-V1.0](../.adrs/ - Rollback Plan
 
 ---
 
@@ -2704,20 +2704,20 @@ Best practices are identified and shared:
 | Document | ID | Location |
 |----------|-----|----------|
 | Security Architecture | TACHYON-SEC-001-V1.0 | [`docs/security/security_architecture.md`](docs/security/security_architecture.md) |
-| Threat Model | TACHYON-THR-001-V1.0 | [`.specs/03_threat_model/threat_model.md`](.specs/03_threat_model/threat_model.md) |
+| Threat Model | TACHYON-THR-001-V1.0 | [`.adrs/ |
 
 #### 10.3.3. Quality Documentation
 
 | Document | ID | Location |
 |----------|-----|----------|
 | Deployment Guide | TACHYON-QLT-001-V1.0 | [`docs/quality/deployment_guide.md`](docs/quality/deployment_guide.md) |
-| Test Plan | TACHYON-TST-V1.0 | [`.specs/04_future_state/test_plan.md`](.specs/04_future_state/test_plan.md) |
+| Test Plan | TACHYON-TST-V1.0 | [`.adrs/ |
 
 #### 10.3.4. Operations Documentation
 
 | Document | ID | Location |
 |----------|-----|----------|
-| Rollback Plan | TACHYON-RBK-V1.0 | [`.specs/09_rollback_plan/rollback_plan.md`](.specs/09_rollback_plan/rollback_plan.md) |
+| Rollback Plan | TACHYON-RBK-V1.0 | [`.adrs/ |
 
 #### 10.3.5. Project Documentation
 
@@ -2734,14 +2734,14 @@ Best practices are identified and shared:
 
 | ADR | Title | Location |
 |-----|-------|----------|
-| ADR-001 | Rust Technology Adoption | [`.specs/02_adrs/ADR-001-rust_adoption.md`](.specs/02_adrs/ADR-001-rust_adoption.md) |
-| ADR-010 | Security Architecture | [`.specs/02_adrs/ADR-010-security_architecture.md`](.specs/02_adrs/ADR-010-security_architecture.md) |
+| ADR-001 | Rust Technology Adoption | [`.adrs/adr-001-three-tier-jit-compilation.md](.adrs/adr-001-three-tier-jit-compilation.md) |
+| ADR-010 | Security Architecture | [`.adrs/adr-010-synchronization-primitives.md](.adrs/adr-010-synchronization-primitives.md) |
 
 ### 10.5. Standards and Guidelines
 
 | Document | ID | Location |
 |----------|-----|----------|
-| Coding and Documentation Standards | TACHYON-STD-V1.0 | [`.specs/01_standards/coding_standards.md`](.specs/01_standards/coding_standards.md) |
+| Coding and Documentation Standards | TACHYON-STD-V1.0 | [`.adrs/ |
 
 ### 10.6. Additional Resources
 

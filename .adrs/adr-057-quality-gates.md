@@ -97,16 +97,16 @@ Quality gates exist but can be bypassed by developers.
 
 ## Implementation Notes
 
-- Quality gates documented in .specs/07_ci_cd/quality_gates.md
+- Quality gates documented in .adrs/
 - Integrated into CI/CD pipeline in .github/workflows/ci.yml
 - Gate thresholds defined with specific metrics
 - Override procedures with designated approvers
 
 ## References
 
-- .specs/07_ci_cd/quality_gates.md
-- .specs/00_requirements/acceptance_criteria.md
-- .specs/03_security/compliance_matrix.md
+- .adrs/
+- .adrs/
+- .adrs/
 - ISO/IEC 25010: https://www.iso.org/standard/35733.html
 - NIST 800-53: https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final
 

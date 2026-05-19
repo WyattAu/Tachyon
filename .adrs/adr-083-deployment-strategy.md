@@ -86,10 +86,10 @@ We will implement a three-tier deployment strategy with environment-specific app
 - Code coverage maintained (>90%)
 
 ## References
-- [Deployment Plan](../.specs/09_operations/deployment_plan.md)
-- [Deployment Strategy (Phase 6)](../.specs/07_ci_cd/deployment_strategy.md)
-- [Rollback Procedures (Phase 6)](../.specs/07_ci_cd/rollback_procedures.md)
-- [Pipeline Configuration (Phase 6)](../.specs/07_ci_cd/pipeline_config.toml)
+- [Deployment Plan](../.adrs/
+- [Deployment Strategy (Phase 6)](../.adrs/
+- [Rollback Procedures (Phase 6)](../.adrs/
+- [Pipeline Configuration (Phase 6)](../.adrs/
 - [ADR-052: Deployment Strategy](./adr-052-deployment-strategy.md)
 
 ## Decision Date

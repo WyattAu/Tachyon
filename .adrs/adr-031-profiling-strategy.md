@@ -627,11 +627,11 @@ jobs:
 
 ## Related Documents
 
-- [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) - Performance targets
-- [`benchmark_suite.md`](.specs/04_performance/benchmark_suite.md) - Benchmark design
-- [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) - Optimization plan
-- [`thread_safety_analysis.md`](.specs/02_5_concurrency/thread_safety_analysis.md) - Concurrency analysis
-- [`deadlock_analysis.md`](.specs/02_5_concurrency/deadlock_analysis.md) - Lock analysis
+- [`performance_requirements.md`](.adrs/ - Performance targets
+- [`benchmark_suite.md`](.adrs/ - Benchmark design
+- [`optimization_roadmap.md`](.adrs/ - Optimization plan
+- [`thread_safety_analysis.md`](.adrs/ - Concurrency analysis
+- [`deadlock_analysis.md`](.adrs/ - Lock analysis
 
 ---
 

@@ -39,9 +39,9 @@ This guide is intended for DevOps engineers, system administrators, and operatio
 ### 1.2. Document Dependencies
 
 This guide depends on and references the following documents:
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 - [TACHYON-ARC-V1.0](../docs/architecture/system_architecture_overview.md) - System Architecture Overview
 - [TACHYON-DEP-V1.0](../docs/quality/deployment_guide.md) - Deployment Guide
 
@@ -1814,7 +1814,7 @@ This Operations Guide references the following internal Tachyon project document
 
 #### 9.1.1. Standards and Governance
 
-- **[TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md)** - Coding and Documentation Standards
+- **[TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
   - Establishes documentation structure and quality standards
   - Defines ISO/IEEE compliance requirements
   - Specifies PhD thesis level rigor requirements
@@ -1833,19 +1833,19 @@ This Operations Guide references the following internal Tachyon project document
 
 #### 9.1.3. Architectural Decision Records
 
-- **[TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md)** - Rust as Primary Language
+- **[TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md)** - Rust as Primary Language
   - Justifies Rust selection for core components
   - Documents memory safety and performance characteristics
   - Specifies Rust edition and minimum supported versions
 
-- **[TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md)** - Security Architecture
+- **[TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md)** - Security Architecture
   - Defines defense-in-depth security strategy
   - Specifies security controls and layers
   - Documents security operational requirements
 
 #### 9.1.4. Task Documentation
 
-- **[TACHYON-TSK-V1.0](../.specs/tasks.md)** - Execution Tasks and Work Breakdown Structure
+- **[TACHYON-TSK-V1.0](../.adrs/ - Execution Tasks and Work Breakdown Structure
   - Defines all project tasks and their relationships
   - Specifies task dependencies and execution order
   - Documents task deliverables and acceptance criteria

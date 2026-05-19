@@ -13,7 +13,7 @@ A deterministic, high-performance knowledge management platform for teams and in
 - **WASM Frontend** — WebAssembly-based web UI
 - **CLI** — Command-line interface for scripting and automation
 - **PostgreSQL Backend** — Persistent storage with migrations
-- **Formal Verification** — TLA+ specs and Lean4 proofs in `specs/`
+- **Formal Verification** — TLA+ specs and Lean4 proofs in `.adrs/
 
 ## Quick Start
 
@@ -128,10 +128,10 @@ This forces WebKitGTK to use software rendering. Performance will be reduced but
 
 ## Formal Verification
 
-The `specs/` directory contains formal specifications:
+The `.adrs/ directory contains formal specifications:
 
-- **TLA+** (`specs/tla/`) — Temporal logic models for concurrency, state machines, and distributed consensus
-- **Lean4** (`specs/lean/`) — Proof-carrying code for correctness properties
+- **TLA+** (`.adrs/ — Temporal logic models for concurrency, state machines, and distributed consensus
+- **Lean4** (`.adrs/ — Proof-carrying code for correctness properties
 
 ## License
 

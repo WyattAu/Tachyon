@@ -21,7 +21,7 @@ Phase 8: Execution Graph Generation has been completed successfully. This phase 
 
 ### Key Achievements
 
-- **Master Plan Created:** `.specs/08_roadmap/master_plan.toml` with 127 tasks
+- **Master Plan Created:** `.adrs/ with 127 tasks
 - **Task Dependencies:** Formal dependency specification with 42 critical path tasks identified
 - **Verification Criteria:** Quantitative and qualitative criteria defined for all tasks
 - **Risk Mitigation:** Comprehensive contingency plans for high-risk tasks
@@ -50,10 +50,10 @@ Phase 8: Execution Graph Generation has been completed successfully. This phase 
 
 ### 3.1. Specification Documents
 
-#### `.specs/08_roadmap/master_plan.toml`
+#### `.adrs/
 
 **Status:** CREATED
-**Location:** `.specs/08_roadmap/master_plan.toml`
+**Location:** `.adrs/
 **Description:** Master execution plan with topological sort of 127 tasks
 
 **Content Overview:**

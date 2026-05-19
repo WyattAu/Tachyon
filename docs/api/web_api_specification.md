@@ -48,12 +48,12 @@ Out of scope:
 ### 1.3. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-WEB-V1.0](../../.specs/04_future_state/reqs/web_requirements.md) - Web Frontend Requirements
-- [TACHYON-DES-WD-V1.0](../../.specs/04_future_state/design/web_design.md) - Web Frontend Design
-- [TACHYON-ADR-004-V1.0](../../.specs/02_adrs/004_leptos_for_web_frontend.md) - ADR-004: Leptos for Web Frontend
-- [TACHYON-ADR-005-V1.0](../../.specs/02_adrs/005_bun_for_javascript_runtime.md) - ADR-005: Bun for JavaScript Runtime
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-WEB-V1.0](../../.adrs/ - Web Frontend Requirements
+- [TACHYON-DES-WD-V1.0](../../.adrs/ - Web Frontend Design
+- [TACHYON-ADR-004-V1.0](../../.adrs/adr-004-debounce-window.md) - ADR-004: Leptos for Web Frontend
+- [TACHYON-ADR-005-V1.0](../../.adrs/adr-005-last-write-wins-conflict-resolution.md) - ADR-005: Bun for JavaScript Runtime
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 ### 1.4. Terminology
 
@@ -4343,17 +4343,17 @@ describe('Performance Optimization', () => {
 
 | Document ID | Title | Reference |
 |-----------|--------|-------------|
-| [TACHYON-REQ-WEB-V1.0](../../.specs/04_future_state/reqs/web_requirements.md) - Web Frontend Requirements |
-| [TACHYON-DES-WD-V1.0](../../.specs/04_future_state/design/web_design.md) - Web Frontend Design |
-| [TACHYON-ADR-004-V1.0](../../.specs/02_adrs/004_leptos_for_web_frontend.md) - ADR-004: Leptos for Web Frontend |
-| [TACHYON-ADR-005-V1.0](../../.specs/02_adrs/005_bun_for_javascript_runtime.md) - ADR-005: Bun for JavaScript Runtime |
-| [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis |
+| [TACHYON-REQ-WEB-V1.0](../../.adrs/ - Web Frontend Requirements |
+| [TACHYON-DES-WD-V1.0](../../.adrs/ - Web Frontend Design |
+| [TACHYON-ADR-004-V1.0](../../.adrs/adr-004-debounce-window.md) - ADR-004: Leptos for Web Frontend |
+| [TACHYON-ADR-005-V1.0](../../.adrs/adr-005-last-write-wins-conflict-resolution.md) - ADR-005: Bun for JavaScript Runtime |
+| [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis |
 
 ### 9.2. Standards References
 
 | Document ID | Title | Reference |
 |-----------|--------|-------------|
-| [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards |
+| [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards |
 | [ISO/IEC 26514:2021](https://www.iso.org/standard/26514) - Systems and Software Engineering - Documentation |
 | [IEEE 1063:2001](https://standards.ieee.org/standard/1063.html) - Standard for Software User Documentation |
 | [ISO/IEC 829:2001](https://www.iso.org/standard/829.html) - Systems and Software Engineering - Lifecycle Processes |

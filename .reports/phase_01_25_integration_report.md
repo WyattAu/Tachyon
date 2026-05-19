@@ -37,21 +37,21 @@ Phase 1.25 Cross-Lingual Knowledge Integration has been completed successfully. 
 
 | Artifact | Status | Lines | Languages |
 |----------|--------|-------|-----------|
-| `.specs/01_research/yellow_paper.md` | Read | 621 | 15 |
-| `.specs/01_research/bibliography.md` | Read | 240 | 15 |
-| `.specs/01_research/tqa_reports.md` | Read | 325 | 15 |
-| `.specs/01_research/domain_constraints.toml` | Read | 628 | 15 |
-| `.specs/00_requirements/requirements.md` | Read | 1549 | 15 |
+| `.adrs/ | Read | 621 | 15 |
+| `.adrs/ | Read | 240 | 15 |
+| `.adrs/ | Read | 325 | 15 |
+| `.adrs/ | Read | 628 | 15 |
+| `.adrs/ | Read | 1549 | 15 |
 | `.knowledge_graph/concept_mappings.json` | Read | 735 | 15 |
 
 ### 2.2. Output Artifacts (Phase 1.25)
 
 | Artifact | Status | Lines | Purpose |
 |----------|--------|-------|---------|
-| `.specs/01_25_knowledge_integration/integrated_findings.md` | Created | 400+ | Synthesized research findings |
-| `.specs/01_25_knowledge_integration/concept_mappings.md` | Created | 400+ | Cross-lingual concept mappings |
-| `.specs/01_25_knowledge_integration/gap_analysis.md` | Created | 400+ | Knowledge gap analysis |
-| `.specs/01_25_knowledge_integration/conflict_resolution.md` | Created | 400+ | Conflict resolution documentation |
+| `.adrs/ | Created | 400+ | Synthesized research findings |
+| `.adrs/ | Created | 400+ | Cross-lingual concept mappings |
+| `.adrs/ | Created | 400+ | Knowledge gap analysis |
+| `.adrs/ | Created | 400+ | Conflict resolution documentation |
 
 ---
 

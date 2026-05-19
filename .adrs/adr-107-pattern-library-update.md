@@ -100,7 +100,7 @@ Rejected Reason: Centralized global pattern library provides maximum value for c
 
 ### Pattern Extraction
 
-From `.specs/08_5_knowledge_base/pattern_library.md` extract all patterns and format for global library:
+From `.adrs/ extract all patterns and format for global library:
 
 ```markdown
 ## Pattern Category
@@ -142,7 +142,7 @@ From `.specs/08_5_knowledge_base/pattern_library.md` extract all patterns and fo
 
 ## References
 
-- [Tachyon Pattern Library](.specs/08_5_knowledge_base/pattern_library.md)
+- [Tachyon Pattern Library](.adrs/
 - [Global Pattern Library](.patterns/global_pattern_library.md)
 
 ---

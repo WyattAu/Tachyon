@@ -148,5 +148,5 @@ const DB_PASSWORD: &str = "SuperSecret123";  // Leaked to VCS!
 ## References
 
 - [Rust Patterns](.patterns/rust_patterns.md)
-- [Pattern Library Specification](.specs/08_5_knowledge_base/pattern_library.md)
-- [Anti-Pattern Library Specification](.specs/08_5_knowledge_base/anti_patterns.md)
+- [Pattern Library Specification](.adrs/
+- [Anti-Pattern Library Specification](.adrs/

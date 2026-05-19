@@ -4,7 +4,7 @@
 **Date:** February 2026
 **Status:** Approved
 **Classification:** Quality Assurance and Verification
-**Dependencies:** [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md), [TACHYON-TST-V1.0](../../specs/04_future_state/test_plan.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-TST-V1.0](../../.adrs/
 
 ---
 
@@ -31,7 +31,7 @@
 
 ### 1.1. Document Purpose
 
-This document presents the comprehensive verification results for all documentation artifacts created during Phase 11 of the Tachyon project development lifecycle. The verification process ensures that all documentation meets the rigorous standards established in [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md) and complies with ISO/IEC 26514:2021, IEEE 1063:2001, and other applicable international standards.
+This document presents the comprehensive verification results for all documentation artifacts created during Phase 11 of the Tachyon project development lifecycle. The verification process ensures that all documentation meets the rigorous standards established in [TACHYON-STD-V1.0](../../.adrs/ and complies with ISO/IEC 26514:2021, IEEE 1063:2001, and other applicable international standards.
 
 ### 1.2. Verification Scope
 
@@ -406,8 +406,8 @@ The architecture documentation suite is comprehensive, accurate, and fully compl
 
 The security documentation verification encompasses the following documents:
 
-1. **[TACHYON-DES-SEC-V1.0](../../specs/04_future_state/design/security_design.md)** - Security Design
-2. **[TACHYON-TMA-V1.0](../../specs/03_threat_model/analysis.md)** - Threat Model Analysis
+1. **[TACHYON-DES-SEC-V1.0](../../.adrs/ - Security Design
+2. **[TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 ### 4.2. Verification Criteria
 
@@ -430,7 +430,7 @@ Security documentation was evaluated against the following criteria:
 
 **Document Information:**
 - **Document Version:** 1.0
-- **Path:** [`.specs/04_future_state/design/security_design.md`](../../specs/04_future_state/design/security_design.md)
+- **Path:** [`.adrs/
 - **Lines:** 1265
 - **Sections:** 8
 - **Status:** Draft
@@ -506,7 +506,7 @@ All internal references were validated:
 
 **Document Information:**
 - **Document ID:** TACHYON-TMA-V1.0
-- **Path:** [`.specs/03_threat_model/analysis.md`](../../specs/03_threat_model/analysis.md)
+- **Path:** [`.adrs/
 - **Lines:** 1589
 - **Sections:** 9
 - **Status:** Approved for Implementation
@@ -1613,7 +1613,7 @@ Integration documentation was evaluated against the following criteria:
 
 **Document Information:**
 - **Document ID:** TACHYON-INT-001-V1.0
-- **Path:** [`.specs/04_future_state/design/ipc_protocol.md`](../../specs/04_future_state/design/ipc_protocol.md)
+- **Path:** [`.adrs/
 - **Lines:** 1412
 - **Sections:** 8
 - **Status:** Approved for Implementation
@@ -2344,8 +2344,8 @@ The project documentation suite is comprehensive, accurate, and fully compliant 
 
 The standards compliance verification encompasses the following:
 
-1. **[TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md)** - Coding and Documentation Standards
-2. **[TACHYON-TST-V1.0](../../specs/04_future_state/test_plan.md)** - Test Plan
+1. **[TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+2. **[TACHYON-TST-V1.0](../../.adrs/ - Test Plan
 
 ### 12.2. Verification Criteria
 
@@ -2367,7 +2367,7 @@ Standards compliance was evaluated against the following criteria:
 
 **Document Information:**
 - **Document ID:** TACHYON-STD-V1.0
-- **Path:** [`.specs/01_standards/coding_standards.md`](../../specs/01_standards/coding_standards.md)
+- **Path:** [`.adrs/
 - **Lines:** 2721
 - **Sections:** 10
 - **Status:** Approved for Implementation
@@ -2461,7 +2461,7 @@ All internal references were validated:
 
 **Document Information:**
 - **Document ID:** TACHYON-TST-V1.0
-- **Path:** [`.specs/04_future_state/test_plan.md`](../../specs/04_future_state/test_plan.md)
+- **Path:** [`.adrs/
 - **Lines:** 1985
 - **Sections:** 12
 - **Status:** Approved for Implementation
@@ -2797,15 +2797,15 @@ The documentation suite is ready for publication and provides a solid foundation
 
 **Tachyon Project Documentation:**
 
-1. **[TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md)** - Coding and Documentation Standards
+1. **[TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
    - Document ID: TACHYON-STD-V1.0
-   - Path: `.specs/01_standards/coding_standards.md`
+   - Path: `.adrs/
    - Lines: 2,721
    - Status: Approved for Implementation
 
-2. **[TACHYON-TST-V1.0](../../specs/04_future_state/test_plan.md)** - Test Plan
+2. **[TACHYON-TST-V1.0](../../.adrs/ - Test Plan
    - Document ID: TACHYON-TST-V1.0
-   - Path: `.specs/04_future_state/test_plan.md`
+   - Path: `.adrs/
    - Lines: 1,985
    - Status: Approved for Implementation
 
@@ -2831,15 +2831,15 @@ The documentation suite is ready for publication and provides a solid foundation
 
 **Security Documentation:**
 
-6. **[TACHYON-DES-SEC-V1.0](../../specs/04_future_state/design/security_design.md)** - Security Design
+6. **[TACHYON-DES-SEC-V1.0](../../.adrs/ - Security Design
    - Document ID: TACHYON-DES-SEC-V1.0
-   - Path: `.specs/04_future_state/design/security_design.md`
+   - Path: `.adrs/
    - Lines: 1,265
    - Status: Draft
 
-7. **[TACHYON-TMA-V1.0](../../specs/03_threat_model/analysis.md)** - Threat Model Analysis
+7. **[TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
    - Document ID: TACHYON-TMA-V1.0
-   - Path: `.specs/03_threat_model/analysis.md`
+   - Path: `.adrs/
    - Lines: 1,985
    - Status: Draft
 
@@ -2901,7 +2901,7 @@ The documentation suite is ready for publication and provides a solid foundation
 
 16. **[TACHYON-INT-001-V1.0](../integration/ipc_protocol.md)** - IPC Protocol Design
    - Document ID: TACHYON-INT-001-V1.0
-   - Path: `.specs/04_future_state/design/ipc_protocol.md`
+   - Path: `.adrs/
    - Lines: 1,412
    - Status: Approved for Implementation
 

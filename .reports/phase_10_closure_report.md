@@ -96,7 +96,7 @@ The Tachyon project objectives as defined in Phase 0:
 
 ### 2.1 Requirements Verification
 
-All requirements from [`.specs/00_requirements/requirements.md`](.specs/00_requirements/requirements.md) have been verified:
+All requirements from [`.adrs/ have been verified:
 
 | Requirement Category | Total | Implemented | Verified | Status |
 |------------------|-------|------------|---------|--------|
@@ -108,7 +108,7 @@ All requirements from [`.specs/00_requirements/requirements.md`](.specs/00_requi
 
 ### 2.2 Acceptance Criteria
 
-All acceptance criteria from [`.specs/00_requirements/acceptance_criteria.md`](.specs/00_requirements/acceptance_criteria.md) have been verified:
+All acceptance criteria from [`.adrs/ have been verified:
 
 | Criterion Category | Total | Met | Status |
 |------------------|------|-----|--------|
@@ -119,7 +119,7 @@ All acceptance criteria from [`.specs/00_requirements/acceptance_criteria.md`](.
 
 ### 2.3 Traceability
 
-The traceability matrix in [`.specs/00_requirements/traceability_matrix.md`](.specs/00_requirements/traceability_matrix.md) confirms complete traceability from requirements to implementation.
+The traceability matrix in [`.adrs/ confirms complete traceability from requirements to implementation.
 
 ---
 
@@ -127,7 +127,7 @@ The traceability matrix in [`.specs/00_requirements/traceability_matrix.md`](.sp
 
 ### 3.1 Quality Indicators
 
-See [`.specs/10_metrics/quality_indicators.md`](.specs/10_metrics/quality_indicators.md) for detailed quality indicators.
+See [`.adrs/ for detailed quality indicators.
 
 ### 3.2 Code Quality
 
@@ -161,7 +161,7 @@ See [`.specs/10_metrics/quality_indicators.md`](.specs/10_metrics/quality_indica
 
 ### 4.1 Performance Metrics
 
-See [`.specs/10_metrics/project_metrics.md`](.specs/10_metrics/project_metrics.md) and [`.specs/10_metrics/quality_indicators.md`](.specs/10_metrics/quality_indicators.md) for detailed performance metrics.
+See [`.adrs/ and [`.adrs/ for detailed performance metrics.
 
 ### 4.2 Performance Results
 
@@ -188,7 +188,7 @@ See [`.specs/10_metrics/project_metrics.md`](.specs/10_metrics/project_metrics.m
 
 ### 5.2 Compliance
 
-See [`.specs/10_metrics/compliance.md`](.specs/10_metrics/compliance.md) and [ADR-094](.adrs/adr-094-compliance-finalization.md) for compliance details.
+See [`.adrs/ and [ADR-094](.adrs/adr-094-compliance-finalization.md) for compliance details.
 
 | Standard | Status | Last Verified |
 |----------|--------|---------------|
@@ -203,7 +203,7 @@ See [`.specs/10_metrics/compliance.md`](.specs/10_metrics/compliance.md) and [AD
 
 ## 6. Technical Debt Assessment
 
-See [`.specs/10_metrics/technical_debt.md`](.specs/10_metrics/technical_debt.md) for detailed technical debt analysis.
+See [`.adrs/ for detailed technical debt analysis.
 
 ### 6.1 Debt Summary
 
@@ -227,7 +227,7 @@ See [`.specs/10_metrics/technical_debt.md`](.specs/10_metrics/technical_debt.md)
 
 ## 7. Schedule Assessment
 
-See [`.specs/10_metrics/schedule_variance.md`](.specs/10_metrics/schedule_variance.md) for detailed schedule analysis.
+See [`.adrs/ for detailed schedule analysis.
 
 ### 7.1 Schedule Metrics
 
@@ -242,7 +242,7 @@ See [`.specs/10_metrics/schedule_variance.md`](.specs/10_metrics/schedule_varian
 
 ## 8. Risk Assessment
 
-See [`.specs/10_metrics/risk_dashboard.md`](.specs/10_metrics/risk_dashboard.md) for detailed risk analysis.
+See [`.adrs/ for detailed risk analysis.
 
 ### 8.1 Risk Summary
 
@@ -267,7 +267,7 @@ See [`.specs/10_metrics/risk_dashboard.md`](.specs/10_metrics/risk_dashboard.md)
 
 ## 9. Knowledge Base Assessment
 
-See [`.specs/10_metrics/knowledge_base.md`](.specs/10_metrics/knowledge_base.md) for detailed knowledge base metrics.
+See [`.adrs/ for detailed knowledge base metrics.
 
 ### 9.1 Knowledge Base Summary
 
@@ -392,7 +392,7 @@ The following areas are recommended for ongoing improvement:
 
 ### Appendix A: Metrics Summary
 
-See [`.specs/10_metrics/`](.specs/10_metrics/) for detailed metrics specifications.
+See [`.adrs/ for detailed metrics specifications.
 
 ### Appendix B: ADR Index
 
@@ -404,7 +404,7 @@ See [`docs/`](docs/) for complete project documentation.
 
 ### Appendix D: Compliance Matrix
 
-See [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md) for compliance details.
+See [`.adrs/ for compliance details.
 
 ---
 

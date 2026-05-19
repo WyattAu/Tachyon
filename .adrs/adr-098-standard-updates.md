@@ -399,7 +399,7 @@ alerting:
 ## Related Decisions
 
 - [ADR-097](adr-097-monitoring-strategy.md) - Continuous Monitoring Strategy
-- [`.specs/11_continuous_monitoring/standard_updates.md`](../.specs/11_continuous_monitoring/standard_updates.md) - Standard Updates Monitoring Specification
+- [`.adrs/ - Standard Updates Monitoring Specification
 
 ## References
 

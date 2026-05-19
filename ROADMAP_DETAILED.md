@@ -24,7 +24,7 @@
 
 ### Critical
 
-1. **2,338 broken `.specs/` links** across 134 files. The `.specs/` directory was migrated to `.adrs/` but cross-references were never updated. `scripts/fix_doc_links.sh` exists but was never run at scale.
+1. **2,338 broken `.adrs/ links** across 134 files. The `.adrs/ directory was migrated to `.adrs/` but cross-references were never updated. `scripts/fix_doc_links.sh` exists but was never run at scale.
 
 ### High
 
@@ -43,10 +43,10 @@
 
 ## Phase 1: Infrastructure Hardening (1-2 weeks)
 
-### 1.1 Fix broken `.specs/` references
+### 1.1 Fix broken `.adrs/ references
 
 - Run `scripts/fix_doc_links.sh` across all 134 affected files
-- Validate with `rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ --count`
+- Validate with `rg '\.adrs/ docs/ .adrs/ .reports/ .patterns/ --count`
 - Target: zero broken references
 
 ### 1.2 Fix CD pipeline
@@ -294,7 +294,7 @@ Based on the 78-item gap analysis in `SSG_CAPABILITIES_GAP_ANALYSIS.md`.
 
 ### 7.3 Documentation finalization
 
-- Fix all 2,338 broken `.specs/` references
+- Fix all 2,338 broken `.adrs/ references
 - Validate all performance claims with benchmarks
 - Add architecture decision records for all major choices
 - User guide with screenshots
@@ -348,4 +348,4 @@ Phases 2 and 3 can run in parallel. Phase 4 depends on Phase 3. Phase 5 depends 
 | CRDT performance at scale | Medium | High | Benchmark early, lazy loading |
 | Breaking API changes | Medium | High | Version negotiation from Phase 4 |
 | Dependency vulnerability | Low | Critical | Continuous `cargo audit`, pinning |
-| Broken doc links regress | Medium | Low | CI check for `.specs/` references |
+| Broken doc links regress | Medium | Low | CI check for `.adrs/ references |

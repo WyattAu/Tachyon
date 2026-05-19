@@ -23,7 +23,7 @@ Each OS has unique behaviors for:
 - Database operations (SQLite configuration)
 - Desktop UI (WebView providers)
 
-**Traceability:** `.specs/04_5_cross_platform/os_compatibility.md`
+**Traceability:** `.adrs/
 
 ---
 
@@ -186,7 +186,7 @@ rusqlite = { version = "0.29", features = ["bundled"] }
 3. **CI/CD:** Automated tests on all Tier 1 platforms
 4. **Manual Testing:** Tier 2 and Tier 3 platforms
 
-**Traceability:** `.specs/04_5_cross_platform/testing_matrix.md`
+**Traceability:** `.adrs/
 
 ---
 
@@ -208,7 +208,7 @@ rusqlite = { version = "0.29", features = ["bundled"] }
 **Approval Date:** 2026-02-11
 
 **Related Documents:**
-- [OS Compatibility Analysis](.specs/04_5_cross_platform/os_compatibility.md)
-- [Testing Matrix](.specs/04_5_cross_platform/testing_matrix.md)
+- [OS Compatibility Analysis](.adrs/
+- [Testing Matrix](.adrs/
 - ADR-036: Compiler Compatibility Strategy
 - ADR-037: Architecture Compatibility Strategy

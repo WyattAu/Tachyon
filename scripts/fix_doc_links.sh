@@ -25,18 +25,18 @@ for target in "${TARGETS[@]}"; do
     while IFS= read -r -d '' file; do
         changed=0
 
-        if grep -qE '\]\(\.specs/01_standards/|\]\(\.specs/02_adrs/|\]\(\.specs/04_future_state/|\]\(\.specs/08_roadmap/|\]\(\.specs/' "$file"; then
-            $SED_CMD -E 's|\]\(\.specs/01_standards/|\]\(.adrs/|g; s|\]\(\.specs/02_adrs/|\]\(.adrs/|g; s|\]\(\.specs/04_future_state/|\]\(.adrs/|g; s|\]\(\.specs/08_roadmap/|\]\(.adrs/|g; s|\]\(\.specs/|\]\(.adrs/|g' "$file"
+        if grep -qE '\]\(\.adrs/ "$file"; then
+            $SED_CMD -E 's|\]\(\.adrs/ s|\]\(\.adrs/|\]\(.adrs/|g; s|\]\(\.adrs/ s|\]\(\.adrs/ s|\]\(\.adrs/ "$file"
             changed=1
         fi
 
-        if grep -q '\.\./specs/' "$file"; then
-            $SED_CMD 's|\.\./specs/|../.adrs/|g' "$file"
+        if grep -q '\.\./.adrs/ "$file"; then
+            $SED_CMD 's|\.\./.adrs/ "$file"
             changed=1
         fi
 
-        if grep -q '\.\./\.\./specs/' "$file"; then
-            $SED_CMD 's|\.\./\.\./specs/|../../.adrs/|g' "$file"
+        if grep -q '\.\./\.\./.adrs/ "$file"; then
+            $SED_CMD 's|\.\./\.\./.adrs/ "$file"
             changed=1
         fi
 

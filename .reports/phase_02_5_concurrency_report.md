@@ -24,10 +24,10 @@ Phase 2.5: Concurrency Analysis has been completed, providing comprehensive thre
 
 | Artifact ID | Artifact Name | Location | Status |
 |-------------|----------------|----------|---------|
-| C-01 | Thread Safety Analysis | `.specs/02_5_concurrency/thread_safety_analysis.md` | COMPLETE |
-| C-02 | Deadlock Analysis | `.specs/02_5_concurrency/deadlock_analysis.md` | COMPLETE |
-| C-03 | Synchronization Design | `.specs/02_5_concurrency/synchronization_design.md` | COMPLETE |
-| C-04 | Formal Proofs | `.specs/02_5_concurrency/proof.lean` | COMPLETE |
+| C-01 | Thread Safety Analysis | `.adrs/ | COMPLETE |
+| C-02 | Deadlock Analysis | `.adrs/ | COMPLETE |
+| C-03 | Synchronization Design | `.adrs/ | COMPLETE |
+| C-04 | Formal Proofs | `.adrs/ | COMPLETE |
 | C-05 | ADR-007: Thread Safety Strategy | `.adrs/adr-007-thread-safety-strategy.md` | COMPLETE |
 | C-06 | ADR-008: Deadlock Prevention | `.adrs/adr-008-deadlock-prevention.md` | COMPLETE |
 | C-07 | ADR-009: Race Condition Mitigation | `.adrs/adr-009-race-condition-mitigation.md` | COMPLETE |
@@ -378,7 +378,7 @@ Phase 2.5: Concurrency Analysis has been completed, providing comprehensive thre
 - synchronization_design.md: Synchronization primitive selection
 - proof.lean: Formal proofs of concurrency properties
 - ADR-007 through ADR-012: All architecture decision records
-- .specs/02_architecture/blue_paper.md: Original system architecture
-- .specs/00_requirements/requirements.md: System requirements
-- .specs/09_compliance/compliance_matrix.md: Multi-standard compliance
+- .adrs/ Original system architecture
+- .adrs/ System requirements
+- .adrs/ Multi-standard compliance
 

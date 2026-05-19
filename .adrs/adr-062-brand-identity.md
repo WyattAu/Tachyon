@@ -228,7 +228,7 @@ Without a defined brand identity, Tachyon's documentation and user-facing materi
 
 ## References
 
-- [White Paper](../.specs/05_branding/white_paper.md)
+- [White Paper](../.adrs/
 - [ADR-063: UX Philosophy](./adr-063-ux-philosophy.md)
 - [ADR-064: Documentation Strategy](./adr-064-documentation-strategy.md)
 - [WCAG 2.1 AA Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)

@@ -64,5 +64,5 @@ The automated consistency checks system includes:
 - NIST SP 800-53: Security and Privacy Controls
 
 ## References
-- [.specs/07_5_doc_verification/consistency_checks.md](../.specs/07_5_doc_verification/consistency_checks.md)
+- [.adrs/
 - [ADR-057: Quality Gates](./adr-057-quality-gates.md)

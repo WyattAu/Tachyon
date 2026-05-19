@@ -58,11 +58,11 @@ The security requirements defined in this document are designed to achieve the f
 ### 1.4. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) - Security Requirements
-- [TACHYON-DSN-SEC-V1.0](../../.specs/04_future_state/design/security_design.md) - Security Design
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture ADR
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) - Threat Model Analysis
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-SEC-V1.0](../../.adrs/ - Security Requirements
+- [TACHYON-DSN-SEC-V1.0](../../.adrs/ - Security Design
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture ADR
+- [TACHYON-TMA-V1.0](../../.adrs/ - Threat Model Analysis
 
 ### 1.5. Compliance Framework
 
@@ -79,7 +79,7 @@ This security requirements document aligns with the following standards and fram
 
 ### 2.1. Security Architecture Principles
 
-The Tachyon security architecture implements a defense-in-depth approach with multiple layers of security controls, ensuring that if one layer fails, other layers provide protection. This approach aligns with [ADR-010](../../.specs/02_adrs/010_security_architecture.md) and is designed to mitigate threats identified in the threat model analysis [1].
+The Tachyon security architecture implements a defense-in-depth approach with multiple layers of security controls, ensuring that if one layer fails, other layers provide protection. This approach aligns with [ADR-010](../../.adrs/adr-010-synchronization-primitives.md) and is designed to mitigate threats identified in the threat model analysis [1].
 
 **Defense-in-Depth Layers:**
 
@@ -156,9 +156,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing (Credential Theft)  
-**Related Design:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md) AuthenticationProvider
+**Related Design:** [DES-SEC-001](../../.adrs/ AuthenticationProvider
 
 **Requirement:** The system shall support multi-factor authentication (MFA) for all user accounts in server deployment mode.
 
@@ -202,9 +202,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing (Credential Stuffing, Brute Force)  
-**Related Design:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md) AuthenticationProvider
+**Related Design:** [DES-SEC-001](../../.adrs/ AuthenticationProvider
 
 **Requirement:** The system shall enforce strong password requirements to prevent credential-based attacks.
 
@@ -252,9 +252,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing (Third-Party Compromise)  
-**Related Design:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md) AuthenticationProvider
+**Related Design:** [DES-SEC-001](../../.adrs/ AuthenticationProvider
 
 **Requirement:** The system shall support OAuth 2.0 for authentication with external providers.
 
@@ -301,9 +301,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing (Enterprise SSO Compromise)  
-**Related Design:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md) AuthenticationProvider
+**Related Design:** [DES-SEC-001](../../.adrs/ AuthenticationProvider
 
 **Requirement:** The system shall support SAML 2.0 for enterprise single sign-on (SSO) integration.
 
@@ -343,9 +343,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Medium  
 **Status:** Optional  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing (Third-Party Compromise)  
-**Related Design:** [DES-SEC-001](../../.specs/04_future_state/design/security_design.md) AuthenticationProvider
+**Related Design:** [DES-SEC-001](../../.adrs/ AuthenticationProvider
 
 **Requirement:** The system shall support OpenID Connect for federated authentication.
 
@@ -382,9 +382,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Elevation of Privilege, Information Disclosure  
-**Related Design:** [DES-SEC-003](../../.specs/04_future_state/design/security_design.md) PermissionManager
+**Related Design:** [DES-SEC-003](../../.adrs/ PermissionManager
 
 **Requirement:** The system shall implement Role-Based Access Control (RBAC) for all resources.
 
@@ -432,9 +432,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Elevation of Privilege, Information Disclosure  
-**Related Design:** [DES-SEC-003](../../.specs/04_future_state/design/security_design.md) PermissionManager
+**Related Design:** [DES-SEC-003](../../.adrs/ PermissionManager
 
 **Requirement:** The system shall support Attribute-Based Access Control (ABAC) for fine-grained permissions.
 
@@ -480,9 +480,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Information Disclosure, Elevation of Privilege  
-**Related Design:** [DES-SEC-003](../../.specs/04_future_state/design/security_design.md) PermissionManager
+**Related Design:** [DES-SEC-003](../../.adrs/ PermissionManager
 
 **Requirement:** The system shall enforce access control directives from document frontmatter.
 
@@ -522,9 +522,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Information Disclosure  
-**Related Design:** [DES-SEC-003](../../.specs/04_future_state/design/security_design.md) PermissionManager
+**Related Design:** [DES-SEC-003](../../.adrs/ PermissionManager
 
 **Requirement:** The system shall redact `::: internal` blocks from documents for unauthorized users.
 
@@ -564,9 +564,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Medium  
 **Status:** Optional  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Elevation of Privilege  
-**Related Design:** [DES-SEC-003](../../.specs/04_future_state/design/security_design.md) PermissionManager
+**Related Design:** [DES-SEC-003](../../.adrs/ PermissionManager
 
 **Requirement:** The system shall support permission inheritance for hierarchical roles.
 
@@ -610,9 +610,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Information Disclosure, Tampering  
-**Related Design:** [DES-SEC-004](../../.specs/04_future_state/design/security_design.md) Encryption
+**Related Design:** [DES-SEC-004](../../.adrs/ Encryption
 
 **Requirement:** The system shall encrypt sensitive data at rest using AES-256 encryption.
 
@@ -651,9 +651,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Information Disclosure, Tampering  
-**Related Design:** [DES-SEC-004](../../.specs/04_future_state/design/security_design.md) Encryption
+**Related Design:** [DES-SEC-004](../../.adrs/ Encryption
 
 **Requirement:** The system shall implement secure key management with proper rotation.
 
@@ -700,9 +700,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Information Disclosure, Tampering  
-**Related Design:** [DES-SEC-004](../../.specs/04_future_state/design/security_design.md) Encryption
+**Related Design:** [DES-SEC-004](../../.adrs/ Encryption
 
 **Requirement:** The system shall encrypt SQLite database files at rest.
 
@@ -742,9 +742,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Information Disclosure, Tampering  
-**Related Design:** [DES-SEC-004](../../.specs/04_future_state/design/security_design.md) Encryption
+**Related Design:** [DES-SEC-004](../../.adrs/ Encryption
 
 **Requirement:** The system shall encrypt sensitive configuration values at rest.
 
@@ -784,9 +784,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Information Disclosure, Tampering  
-**Related Design:** [DES-SEC-004](../../.specs/04_future_state/design/security_design.md) Encryption
+**Related Design:** [DES-SEC-004](../../.adrs/ Encryption
 
 **Requirement:** The system shall encrypt all backup files with strong encryption.
 
@@ -830,9 +830,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing, Information Disclosure  
-**Related Design:** [DES-SEC-004](../../.specs/04_future_state/design/security_design.md) Encryption
+**Related Design:** [DES-SEC-004](../../.adrs/ Encryption
 
 **Requirement:** The system shall enforce TLS 1.3 for all network communications.
 
@@ -872,9 +872,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing, Man-in-the-Middle  
-**Related Design:** [DES-SEC-004](../../.specs/04_future_state/design/security_design.md) Encryption
+**Related Design:** [DES-SEC-004](../../.adrs/ Encryption
 
 **Requirement:** The system shall validate TLS certificates with proper chain verification.
 
@@ -914,9 +914,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing, Man-in-the-Middle  
-**Related Design:** [DES-SEC-004](../../.specs/04_future_state/design/security_design.md) Encryption
+**Related Design:** [DES-SEC-004](../../.adrs/ Encryption
 
 **Requirement:** The system shall send Strict-Transport-Security headers to enforce HTTPS.
 
@@ -949,9 +949,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Information Disclosure, Tampering  
-**Related Design:** [DES-SEC-004](../../.specs/04_future_state/design/security_design.md) Encryption
+**Related Design:** [DES-SEC-004](../../.adrs/ Encryption
 
 **Requirement:** The system shall use only approved cipher suites with secure defaults.
 
@@ -991,9 +991,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Information Disclosure, Tampering  
-**Related Design:** [DES-SEC-004](../../.specs/04_future_state/design/security_design.md) Encryption
+**Related Design:** [DES-SEC-004](../../.adrs/ Encryption
 
 **Requirement:** The system shall support Perfect Forward Secrecy for TLS connections.
 
@@ -1030,9 +1030,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Tampering, Elevation of Privilege  
-**Related Design:** [DES-SEC-005](../../.specs/04_future_state/design/security_design.md) Input Validation
+**Related Design:** [DES-SEC-005](../../.adrs/ Input Validation
 
 **Requirement:** The system shall validate all inputs against defined schemas before processing.
 
@@ -1072,9 +1072,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Tampering, Information Disclosure  
-**Related Design:** [DES-SEC-005](../../.specs/04_future_state/design/security_design.md) Input Validation
+**Related Design:** [DES-SEC-005](../../.adrs/ Input Validation
 
 **Requirement:** The system shall sanitize all user-generated content to prevent XSS attacks.
 
@@ -1114,9 +1114,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Tampering, Elevation of Privilege  
-**Related Design:** [DES-SEC-005](../../.specs/04_future_state/design/security_design.md) Input Validation
+**Related Design:** [DES-SEC-005](../../.adrs/ Input Validation
 
 **Requirement:** The system shall use parameterized queries to prevent SQL injection.
 
@@ -1156,9 +1156,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Tampering, Information Disclosure  
-**Related Design:** [DES-SEC-005](../../.specs/04_future_state/design/security_design.md) Input Validation
+**Related Design:** [DES-SEC-005](../../.adrs/ Input Validation
 
 **Requirement:** The system shall prevent path traversal attacks through canonicalization and allow-lists.
 
@@ -1198,9 +1198,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Tampering, Information Disclosure  
-**Related Design:** [DES-SEC-005](../../.specs/04_future_state/design/security_design.md) Input Validation
+**Related Design:** [DES-SEC-005](../../.adrs/ Input Validation
 
 **Requirement:** The system shall implement Content Security Policy (CSP) headers to prevent XSS.
 
@@ -1244,9 +1244,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing, Tampering  
-**Related Design:** [DES-SEC-002](../../.specs/04_future_state/design/security_design.md) JwtToken
+**Related Design:** [DES-SEC-002](../../.adrs/ JwtToken
 
 **Requirement:** The system shall use cryptographically secure session tokens (JWT) with proper signing.
 
@@ -1286,9 +1286,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing, Tampering  
-**Related Design:** [DES-SEC-002](../../.specs/04_future_state/design/security_design.md) JwtToken
+**Related Design:** [DES-SEC-002](../../.adrs/ JwtToken
 
 **Requirement:** The system shall implement configurable session timeout with automatic invalidation.
 
@@ -1328,9 +1328,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing, Tampering  
-**Related Design:** [DES-SEC-002](../../.specs/04_future_state/design/security_design.md) JwtToken
+**Related Design:** [DES-SEC-002](../../.adrs/ JwtToken
 
 **Requirement:** The system shall support session refresh with token rotation.
 
@@ -1370,9 +1370,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing, Tampering  
-**Related Design:** [DES-SEC-002](../../.specs/04_future_state/design/security_design.md) JwtToken
+**Related Design:** [DES-SEC-002](../../.adrs/ JwtToken
 
 **Requirement:** The system shall limit concurrent sessions per user with configurable limits.
 
@@ -1412,9 +1412,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Spoofing, Tampering  
-**Related Design:** [DES-SEC-002](../../.specs/04_future_state/design/security_design.md) JwtToken
+**Related Design:** [DES-SEC-002](../../.adrs/ JwtToken
 
 **Requirement:** The system shall support session revocation for security incidents.
 
@@ -1458,9 +1458,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Repudiation  
-**Related Design:** [DES-SEC-006](../../.specs/04_future_state/design/security_design.md) Audit Logging
+**Related Design:** [DES-SEC-006](../../.adrs/ Audit Logging
 
 **Requirement:** The system shall log all security-relevant events with full context.
 
@@ -1500,9 +1500,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Repudiation, Tampering  
-**Related Design:** [DES-SEC-006](../../.specs/04_future_state/design/security_design.md) Audit Logging
+**Related Design:** [DES-SEC-006](../../.adrs/ Audit Logging
 
 **Requirement:** The system shall use write-once, read-many storage for audit logs.
 
@@ -1542,9 +1542,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Repudiation, Tampering  
-**Related Design:** [DES-SEC-006](../../.specs/04_future_state/design/security_design.md) Audit Logging
+**Related Design:** [DES-SEC-006](../../.adrs/ Audit Logging
 
 **Requirement:** The system shall cryptographically sign audit logs to prevent tampering.
 
@@ -1584,9 +1584,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Repudiation  
-**Related Design:** [DES-SEC-006](../../.specs/04_future_state/design/security_design.md) Audit Logging
+**Related Design:** [DES-SEC-006](../../.adrs/ Audit Logging
 
 **Requirement:** The system shall retain audit logs for minimum 90 days with configurable retention.
 
@@ -1626,9 +1626,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** Critical  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Repudiation, Information Disclosure  
-**Related Design:** [DES-SEC-006](../../.specs/04_future_state/design/security_design.md) Audit Logging
+**Related Design:** [DES-SEC-006](../../.adrs/ Audit Logging
 
 **Requirement:** The system shall restrict audit log access to authorized personnel with access logging.
 
@@ -1672,9 +1672,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** All Threat Categories  
-**Related Design:** [DES-SEC-006](../../.specs/04_future_state/design/security_design.md) Audit Logging
+**Related Design:** [DES-SEC-006](../../.adrs/ Audit Logging
 
 **Requirement:** The system shall comply with ISO/IEC 27001:2022 Information Security Management Systems.
 
@@ -1714,9 +1714,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Information Disclosure  
-**Related Design:** [DES-SEC-006](../../.specs/04_future_state/design/security_design.md) Audit Logging
+**Related Design:** [DES-SEC-006](../../.adrs/ Audit Logging
 
 **Requirement:** The system shall comply with General Data Protection Regulation (GDPR) requirements.
 
@@ -1757,9 +1757,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** All Threat Categories  
-**Related Design:** [DES-SEC-006](../../.specs/04_future_state/design/security_design.md) Audit Logging
+**Related Design:** [DES-SEC-006](../../.adrs/ Audit Logging
 
 **Requirement:** The system shall comply with NIST SP 800-53 Security and Privacy Controls.
 
@@ -1800,9 +1800,9 @@ This traceability ensures that requirements are derived from architectural decis
 
 **Priority:** High  
 **Status:** Required  
-**Related ADR:** [ADR-010](../../.specs/02_adrs/010_security_architecture.md)  
+**Related ADR:** [ADR-010](../../.adrs/adr-010-synchronization-primitives.md)  
 **Related Threat:** Tampering, Information Disclosure  
-**Related Design:** [DES-SEC-005](../../.specs/04_future_state/design/security_design.md) Input Validation
+**Related Design:** [DES-SEC-005](../../.adrs/ Input Validation
 
 **Requirement:** The system shall address OWASP Top 10 Web Application Security Risks.
 
@@ -1852,15 +1852,15 @@ This traceability ensures that requirements are derived from architectural decis
 
 ### 11.1. Internal References
 
-[1] TACHYON-STD-V1.0, "TACHYON: CODING AND DOCUMENTATION STANDARDS," February 2026. Available: [../../.specs/01_standards/coding_standards.md](../../.specs/01_standards/coding_standards.md)
+[1] TACHYON-STD-V1.0, "TACHYON: CODING AND DOCUMENTATION STANDARDS," February 2026. Available: [../../.adrs/
 
-[2] TACHYON-REQ-SEC-V1.0, "TACHYON: SECURITY REQUIREMENTS," February 2026. Available: [../../.specs/04_future_state/reqs/security_requirements.md](../../.specs/04_future_state/reqs/security_requirements.md)
+[2] TACHYON-REQ-SEC-V1.0, "TACHYON: SECURITY REQUIREMENTS," February 2026. Available: [../../.adrs/
 
-[3] TACHYON-DSN-SEC-V1.0, "TACHYON: SECURITY DESIGN," February 2026. Available: [../../.specs/04_future_state/design/security_design.md](../../.specs/04_future_state/design/security_design.md)
+[3] TACHYON-DSN-SEC-V1.0, "TACHYON: SECURITY DESIGN," February 2026. Available: [../../.adrs/
 
-[4] TACHYON-ADR-010-V1.0, "ADR-010: SECURITY ARCHITECTURE," February 2026. Available: [../../.specs/02_adrs/010_security_architecture.md](../../.specs/02_adrs/010_security_architecture.md)
+[4] TACHYON-ADR-010-V1.0, "ADR-010: SECURITY ARCHITECTURE," February 2026. Available: [../../.adrs/adr-010-synchronization-primitives.md](../../.adrs/adr-010-synchronization-primitives.md)
 
-[5] TACHYON-TMA-V1.0, "TACHYON: THREAT MODEL ANALYSIS," February 2026. Available: [../../.specs/03_threat_model/analysis.md](../../.specs/03_threat_model/analysis.md)
+[5] TACHYON-TMA-V1.0, "TACHYON: THREAT MODEL ANALYSIS," February 2026. Available: [../../.adrs/
 
 ### 11.2. Standards and Frameworks
 

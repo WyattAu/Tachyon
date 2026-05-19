@@ -43,13 +43,13 @@ This document specifies:
 
 ### Design Principles
 
-The Event API adheres to the following principles as defined in [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md):
+The Event API adheres to the following principles as defined in [TACHYON-STD-V1.0](../.adrs/
 
-1. **Type Safety:** All events are strongly typed using Rust's type system per [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md)
+1. **Type Safety:** All events are strongly typed using Rust's type system per [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md)
 2. **Immutability:** Events are immutable after creation
 3. **Causality:** Event ordering preserves causal relationships
 4. **Observability:** All events are logged for audit trails
-5. **Security:** Event access follows capability-based security per [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md)
+5. **Security:** Event access follows capability-based security per [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md)
 
 ### System Context
 
@@ -79,11 +79,11 @@ The Event API operates within the Tachyon system architecture as follows:
 
 ### Related Documents
 
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TST-V1.0](../.specs/04_future_state/test_plan.md) - Test Plan
-- [API Interfaces](../.specs/04_future_state/design/api_interfaces.md) - API Interface Definitions
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TST-V1.0](../.adrs/ - Test Plan
+- [API Interfaces](../.adrs/ - API Interface Definitions
 
 ---
 
@@ -2670,7 +2670,7 @@ All errors are returned in a consistent format:
 
 ### Overview
 
-The Event API implements comprehensive security measures aligned with [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md). Security is implemented through capability-based access control, encryption, and audit logging.
+The Event API implements comprehensive security measures aligned with [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md). Security is implemented through capability-based access control, encryption, and audit logging.
 
 ### Authentication
 
@@ -3036,7 +3036,7 @@ impl TokenBucket {
 
 | Document | Path | Description |
 |----------|------|-------------|
-| API Interfaces | [`.specs/04_future_state/design/api_interfaces.md`](../.specs/04_future_state/design/api_interfaces.md) | API interface definitions |
+| API Interfaces | [`.adrs/ | API interface definitions |
 | System Architecture | [`docs/architecture/system_architecture_overview.md`](../docs/architecture/system_architecture_overview.md) | System architecture overview |
 | Data Architecture | [`docs/architecture/data_architecture.md`](../docs/architecture/data_architecture.md) | Data architecture specification |
 | Deployment Guide | [`docs/quality/deployment_guide.md`](../docs/quality/deployment_guide.md) | Deployment procedures |

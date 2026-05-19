@@ -112,17 +112,17 @@ Using GitHub Actions, GitLab CI, or similar managed services.
 
 ## Implementation Notes
 
-- Pipeline configuration stored in .specs/07_ci_cd/pipeline_config.toml
+- Pipeline configuration stored in .adrs/
 - GitHub Actions workflows in .github/workflows/
-- Quality gates defined in .specs/07_ci_cd/quality_gates.md
+- Quality gates defined in .adrs/
 - Documentation for each stage in corresponding specification documents
 
 ## References
 
-- .specs/07_ci_cd/pipeline_config.toml
-- .specs/07_ci_cd/quality_gates.md
-- .specs/00_requirements/requirements.md
-- .specs/00_requirements/tool_requirements.md
+- .adrs/
+- .adrs/
+- .adrs/
+- .adrs/
 
 ---
 

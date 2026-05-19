@@ -48,12 +48,12 @@ Out of scope:
 
 This document depends on the following documents:
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-REQ-DESK-V1.0](../../.specs/04_future_state/reqs/desktop_requirements.md) - Desktop Application Requirements
-- [TACHYON-DES-DESK-V1.0](../../.specs/04_future_state/design/desktop_design.md) - Desktop Application Design
-- [TACHYON-ADR-002-V1.0](../../.specs/02_adrs/002_tauri_for_desktop_application.md) - Tauri for Desktop Application
-- [TACHYON-ADR-009-V1.0](../../.specs/02_adrs/009_ipc_communication_architecture.md) - IPC Communication Architecture
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-REQ-DESK-V1.0](../../.adrs/ - Desktop Application Requirements
+- [TACHYON-DES-DESK-V1.0](../../.adrs/ - Desktop Application Design
+- [TACHYON-ADR-002-V1.0](../../.adrs/adr-002-bm25-search-parameters.md) - Tauri for Desktop Application
+- [TACHYON-ADR-009-V1.0](../../.adrs/adr-009-race-condition-mitigation.md) - IPC Communication Architecture
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 ### 1.4. Target Audience
 
@@ -161,7 +161,7 @@ Example:
 - REQ-IPC-026: Command Registration
 
 **ADR Reference:**
-- [ADR-009: IPC Communication Architecture](../../.specs/02_adrs/009_ipc_communication_architecture.md) - Type Safety section
+- [ADR-009: IPC Communication Architecture](../../.adrs/adr-009-race-condition-mitigation.md) - Type Safety section
 
 ### 2.2. Principle of Least Privilege
 
@@ -187,7 +187,7 @@ Example:
 - REQ-SEC-015: Principle of Least Privilege
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md) - Capability-Based Access Control section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Capability-Based Access Control section
 
 ### 2.3. Fail-Safe Error Handling
 
@@ -212,7 +212,7 @@ Example:
 - REQ-SEC-018: Fail-Safe Error Handling
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../.specs/02_adrs/010_security_architecture.md) - Fail-Safe Error Handling section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Fail-Safe Error Handling section
 
 ### 2.4. Idempotency
 
@@ -2830,7 +2830,7 @@ const result = await createDocument({
 - REQ-IPC-027: Command Execution
 
 **ADR Reference:**
-- [ADR-009: IPC Communication Architecture](../../specs/02_adrs/009_ipc_communication_architecture.md) - Type Safety section
+- [ADR-009: IPC Communication Architecture](../../.adrs/adr-009-race-condition-mitigation.md) - Type Safety section
 
 #### 6.1.2. Command Handler Best Practices
 
@@ -3014,7 +3014,7 @@ onCleanup(() => {
 - REQ-IPC-032: Event Subscription
 
 **ADR Reference:**
-- [ADR-009: IPC Communication Architecture](../../specs/02_adrs/009_ipc_communication_architecture.md) - Bidirectional Communication section
+- [ADR-009: IPC Communication Architecture](../../.adrs/adr-009-race-condition-mitigation.md) - Bidirectional Communication section
 
 #### 6.2.2. Event Emission Best Practices
 
@@ -3167,7 +3167,7 @@ jq '.types' tauri-types.json > src/types/tauri.d.ts
 - REQ-IPC-032: Type Generation
 
 **ADR Reference:**
-- [ADR-009: IPC Communication Architecture](../../specs/02_adrs/009_ipc_communication_architecture.md) - Efficient Serialization section
+- [ADR-009: IPC Communication Architecture](../../.adrs/adr-009-race-condition-mitigation.md) - Efficient Serialization section
 
 #### 6.3.2. Serialization Best Practices
 
@@ -3299,7 +3299,7 @@ async function getDocument(request: GetDocumentRequest): Promise<GetDocumentResp
 - REQ-SEC-018: Fail-Safe Error Handling
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Fail-Safe Error Handling section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Fail-Safe Error Handling section
 
 #### 6.4.2. Error Handling Best Practices
 
@@ -3436,7 +3436,7 @@ pub async fn get_document(
 - REQ-SEC-015: Principle of Least Privilege
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Capability-Based Access Control section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Capability-Based Access Control section
 
 #### 6.5.2. Input Validation and Sanitization
 
@@ -3503,7 +3503,7 @@ fn sanitize_path(path: &str) -> String {
 - REQ-SEC-017: Path Sanitization
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Input Validation Layer section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Input Validation Layer section
 
 #### 6.5.3. Rate Limiting
 
@@ -3607,7 +3607,7 @@ pub async fn create_document(
 - REQ-SEC-020: DoS Prevention
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Security Controls section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Security Controls section
 
 ---
 
@@ -3762,7 +3762,7 @@ pub async fn get_document(
 - REQ-SEC-002: Session Management
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Defense-in-Depth Strategy section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Defense-in-Depth Strategy section
 
 #### 7.1.2. Session Management
 
@@ -3942,7 +3942,7 @@ pub async fn delete_document(
 - REQ-SEC-006: Permission Management
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Capability-Based Access Control section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Capability-Based Access Control section
 
 ### 7.3. Input Validation
 
@@ -4059,7 +4059,7 @@ pub async fn create_document(
 - REQ-SEC-008: Path Validation
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Input Validation Layer section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Input Validation Layer section
 
 #### 7.3.2. Type Validation
 
@@ -4248,7 +4248,7 @@ pub async fn create_document(
 - REQ-SEC-012: DoS Prevention
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Security Controls section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Security Controls section
 
 #### 7.4.2. Event Rate Limiting
 
@@ -4344,7 +4344,7 @@ pub async fn get_document(
 - REQ-SEC-016: Security Event Tracking
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Audit Logging Layer section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Audit Logging Layer section
 
 #### 7.5.2. Error Logging
 
@@ -4439,7 +4439,7 @@ pub async fn sync_repository(
 - REQ-SEC-020: Credential Management
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Encryption Layer section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Encryption Layer section
 
 #### 7.6.2. Data Encryption
 
@@ -4495,7 +4495,7 @@ pub enum EncryptionError {
 - REQ-SEC-022: Encryption at Rest
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Encryption Layer section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Encryption Layer section
 ---
 
 ## 8. API PERFORMANCE
@@ -4562,7 +4562,7 @@ pub async fn get_document(
 - REQ-DESK-087: Initial Load Time
 
 **ADR Reference:**
-- [ADR-009: IPC Communication Architecture](../../specs/02_adrs/009_ipc_communication_architecture.md) - Performance Characteristics section
+- [ADR-009: IPC Communication Architecture](../../.adrs/adr-009-race-condition-mitigation.md) - Performance Characteristics section
 
 #### 8.1.2. Event Latency
 
@@ -4777,7 +4777,7 @@ impl Default for CacheConfig {
 - REQ-DESK-042: Cache Invalidation
 
 **ADR Reference:**
-- [ADR-009: IPC Communication Architecture](../../specs/02_adrs/009_ipc_communication_architecture.md) - Performance Characteristics section
+- [ADR-009: IPC Communication Architecture](../../.adrs/adr-009-race-condition-mitigation.md) - Performance Characteristics section
 
 #### 8.3.2. Cache Invalidation
 
@@ -5166,7 +5166,7 @@ pub enum AlertType {
 - REQ-SEC-026: Threshold Monitoring
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Security Controls section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Security Controls section
 ---
 
 ## 9. API DOCUMENTATION
@@ -5204,8 +5204,8 @@ info:
     **Documentation:**
     For detailed API documentation, see:
     - [Desktop API Specification](./desktop_api_specification.md)
-    - [IPC Communication Architecture](../../specs/02_adrs/009_ipc_communication_architecture.md)
-    - [Security Architecture](../../specs/02_adrs/010_security_architecture.md)
+    - [IPC Communication Architecture](../../.adrs/adr-009-race-condition-mitigation.md)
+    - [Security Architecture](../../.adrs/adr-010-synchronization-primitives.md)
   version: 1.0.0
   contact:
     name: Tachyon Project
@@ -7750,7 +7750,7 @@ function renderHtml(html: string): string {
 - REQ-SEC-003: Rate Limiting
 
 **ADR Reference:**
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Security Controls section
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Security Controls section
 ---
 
 ## 10. REFERENCES
@@ -7763,9 +7763,9 @@ This section provides references to all relevant documents, standards, and exter
 
 | ADR ID | Title | Location | Relevance |
 |---------|-------|-----------|------------|
-| **ADR-002** | Tauri for Desktop Application | [`.specs/02_adrs/002_tauri_for_desktop_application.md`](../../specs/02_adrs/002_tauri_for_desktop_application.md) | Framework selection and architecture |
-| **ADR-009** | IPC Communication Architecture | [`.specs/02_adrs/009_ipc_communication_architecture.md`](../../specs/02_adrs/009_ipc_communication_architecture.md) | IPC patterns and protocols |
-| **ADR-010** | Security Architecture | [`.specs/02_adrs/010_security_architecture.md`](../../specs/02_adrs/010_security_architecture.md) | Security controls and threat mitigation |
+| **ADR-002** | Tauri for Desktop Application | [`.adrs/adr-002-bm25-search-parameters.md](../../.adrs/adr-002-bm25-search-parameters.md) | Framework selection and architecture |
+| **ADR-009** | IPC Communication Architecture | [`.adrs/adr-009-race-condition-mitigation.md](../../.adrs/adr-009-race-condition-mitigation.md) | IPC patterns and protocols |
+| **ADR-010** | Security Architecture | [`.adrs/adr-010-synchronization-primitives.md](../../.adrs/adr-010-synchronization-primitives.md) | Security controls and threat mitigation |
 
 **ADR-002: Tauri for Desktop Application**
 - **Decision:** Selected Tauri v2.10.0 as the desktop application framework
@@ -7807,116 +7807,116 @@ This section provides references to all relevant documents, standards, and exter
 
 | Requirement ID | Title | Location | Relevance |
 |----------------|-------|-----------|------------|
-| **REQ-DESK-001** | Application Lifecycle | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Application initialization and shutdown |
-| **REQ-DESK-002** | Window Management | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Window creation and management |
-| **REQ-DESK-003** | Window State Persistence | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Window state persistence |
-| **REQ-DESK-004** | System Tray Integration | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | System tray functionality |
-| **REQ-DESK-005** | Native Notifications | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Native notification support |
-| **REQ-DESK-006** | Global Hotkeys | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Global hotkey support |
-| **REQ-DESK-007** | Dark Mode Support | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Dark mode UI theme |
-| **REQ-DESK-008** | Responsive UI | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Responsive UI design |
-| **REQ-DESK-009** | Accessibility Support | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Accessibility features |
-| **REQ-DESK-010** | Keyboard Navigation | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Keyboard navigation support |
-| **REQ-DESK-011** | Screen Reader Support | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Screen reader compatibility |
-| **REQ-DESK-012** | High Contrast Mode | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | High contrast mode |
-| **REQ-DESK-013** | Font Size Adjustment | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Font size adjustment |
-| **REQ-DESK-014** | Focus Indicators | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Focus indicators |
-| **REQ-DESK-015** | Color Blindness Support | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Color blindness support |
-| **REQ-DESK-016** | Local Document Storage | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Local document storage |
-| **REQ-DESK-017** | Document Metadata | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Document metadata |
-| **REQ-DESK-018** | Document Versioning | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Document versioning |
-| **REQ-DESK-019** | Document Search | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Document search functionality |
-| **REQ-DESK-020** | Document Filtering | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Document filtering |
-| **REQ-DESK-021** | Document Sorting | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Document sorting |
-| **REQ-DESK-022** | Document Pagination | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Document pagination |
-| **REQ-DESK-023** | Document Export | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Document export |
-| **REQ-DESK-024** | Document Import | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Document import |
-| **REQ-DESK-025** | Document Preview | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Document preview |
-| **REQ-DESK-026** | Document Editing | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Document editing |
-| **REQ-DESK-027** | Markdown Rendering | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Markdown rendering |
-| **REQ-DESK-028** | Code Syntax Highlighting | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Code syntax highlighting |
-| **REQ-DESK-029** | Image Support | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Image support |
-| **REQ-DESK-030** | Table Support | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Table support |
-| **REQ-DESK-031** | Math Formula Support | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Math formula support |
-| **REQ-DESK-032** | Diagram Support | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Diagram support |
-| **REQ-DESK-033** | Git Integration | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Git integration |
-| **REQ-DESK-034** | Repository Management | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Repository management |
-| **REQ-DESK-035** | Branch Management | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Branch management |
-| **REQ-DESK-036** | Commit Management | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Commit management |
-| **REQ-DESK-037** | Merge Management | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Merge management |
-| **REQ-DESK-038** | Conflict Resolution | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Conflict resolution |
-| **REQ-DESK-039** | Remote Sync | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Remote sync |
-| **REQ-DESK-040** | Offline Mode | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Offline mode |
-| **REQ-DESK-041** | LRU Cache | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | LRU cache |
-| **REQ-DESK-042** | Cache Invalidation | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Cache invalidation |
-| **REQ-DESK-043** | File System Access | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | File system access |
-| **REQ-DESK-044** | Clipboard Integration | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Clipboard integration |
-| **REQ-DESK-045** | Drag and Drop | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Drag and drop |
-| **REQ-DESK-046** | File Dialogs | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | File dialogs |
-| **REQ-DESK-047** | Server Health Monitoring | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Server health monitoring |
-| **REQ-DESK-048** | Server Status Display | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Server status display |
-| **REQ-DESK-049** | Server Restart | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Server restart |
-| **REQ-DESK-050** | Server Configuration | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Server configuration |
-| **REQ-DESK-051** | Server Logs | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Server logs |
-| **REQ-DESK-052** | Server Metrics | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Server metrics |
-| **REQ-DESK-053** | Server Alerts | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Server alerts |
-| **REQ-DESK-054** | Auto-Update | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Auto-update |
-| **REQ-DESK-055** | Update Notifications | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Update notifications |
-| **REQ-DESK-056** | Update Download | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Update download |
-| **REQ-DESK-057** | Update Installation | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Update installation |
-| **REQ-DESK-058** | Error Reporting | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Error reporting |
-| **REQ-DESK-059** | Crash Reporting | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Crash reporting |
-| **REQ-DESK-060** | Telemetry | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Telemetry |
-| **REQ-DESK-061** | Analytics | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Analytics |
-| **REQ-DESK-062** | User Feedback | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | User feedback |
-| **REQ-DESK-063** | Feature Requests | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Feature requests |
-| **REQ-DESK-064** | Bug Reports | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Bug reports |
-| **REQ-DESK-065** | Documentation | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Documentation |
-| **REQ-DESK-066** | Tutorials | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Tutorials |
-| **REQ-DESK-067** | Examples | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Examples |
-| **REQ-DESK-068** | FAQ | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | FAQ |
-| **REQ-DESK-069** | Support | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Support |
-| **REQ-DESK-070** | Community | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Community |
-| **REQ-DESK-071** | Contributing | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Contributing |
-| **REQ-DESK-072** | Code of Conduct | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Code of conduct |
-| **REQ-DESK-073** | License | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | License |
-| **REQ-DESK-074** | Privacy Policy | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Privacy policy |
-| **REQ-DESK-075** | Terms of Service | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Terms of service |
-| **REQ-DESK-076** | Data Collection | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Data collection |
-| **REQ-DESK-077** | Data Storage | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Data storage |
-| **REQ-DESK-078** | Data Sharing | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Data sharing |
-| **REQ-DESK-079** | Data Deletion | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Data deletion |
-| **REQ-DESK-080** | Data Export | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Data export |
-| **REQ-DESK-081** | Data Import | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Data import |
-| **REQ-DESK-082** | Data Backup | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Data backup |
-| **REQ-DESK-083** | Data Restore | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Data restore |
-| **REQ-DESK-084** | Data Encryption | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Data encryption |
-| **REQ-DESK-085** | Data Compression | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Data compression |
-| **REQ-DESK-086** | Hot-Reload Latency | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Hot-reload latency |
-| **REQ-DESK-087** | Initial Load Time | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Initial load time |
-| **REQ-DESK-088** | Large File Handling | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Large file handling |
-| **REQ-DESK-089** | Memory Usage | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Memory usage |
-| **REQ-DESK-090** | Responsive UI | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Responsive UI |
-| **REQ-DESK-091** | Memory Usage | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Memory usage |
-| **REQ-DESK-092** | CPU Usage | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | CPU usage |
-| **REQ-DESK-093** | Disk Usage | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Disk usage |
-| **REQ-DESK-094** | Network Usage | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Network usage |
-| **REQ-DESK-095** | Battery Usage | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Battery usage |
-| **REQ-DESK-096** | Thermal Management | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Thermal management |
-| **REQ-DESK-097** | Power Management | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Power management |
-| **REQ-DESK-098** | Background Tasks | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Background tasks |
-| **REQ-DESK-099** | Scheduled Tasks | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Scheduled tasks |
-| **REQ-DESK-100** | Task Queuing | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task queuing |
-| **REQ-DESK-101** | Task Prioritization | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task prioritization |
-| **REQ-DESK-102** | Task Cancellation | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task cancellation |
-| **REQ-DESK-103** | Task Retry | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task retry |
-| **REQ-DESK-104** | Task Timeout | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task timeout |
-| **REQ-DESK-105** | Task Progress | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task progress |
-| **REQ-DESK-106** | Task Notifications | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task notifications |
-| **REQ-DESK-107** | Task History | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task history |
-| **REQ-DESK-108** | Task Logging | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task logging |
-| **REQ-DESK-109** | Task Metrics | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task metrics |
-| **REQ-DESK-110** | Task Analytics | [`.specs/04_future_state/reqs/desktop_requirements.md`](../../specs/04_future_state/reqs/desktop_requirements.md) | Task analytics |
+| **REQ-DESK-001** | Application Lifecycle | [`.adrs/ | Application initialization and shutdown |
+| **REQ-DESK-002** | Window Management | [`.adrs/ | Window creation and management |
+| **REQ-DESK-003** | Window State Persistence | [`.adrs/ | Window state persistence |
+| **REQ-DESK-004** | System Tray Integration | [`.adrs/ | System tray functionality |
+| **REQ-DESK-005** | Native Notifications | [`.adrs/ | Native notification support |
+| **REQ-DESK-006** | Global Hotkeys | [`.adrs/ | Global hotkey support |
+| **REQ-DESK-007** | Dark Mode Support | [`.adrs/ | Dark mode UI theme |
+| **REQ-DESK-008** | Responsive UI | [`.adrs/ | Responsive UI design |
+| **REQ-DESK-009** | Accessibility Support | [`.adrs/ | Accessibility features |
+| **REQ-DESK-010** | Keyboard Navigation | [`.adrs/ | Keyboard navigation support |
+| **REQ-DESK-011** | Screen Reader Support | [`.adrs/ | Screen reader compatibility |
+| **REQ-DESK-012** | High Contrast Mode | [`.adrs/ | High contrast mode |
+| **REQ-DESK-013** | Font Size Adjustment | [`.adrs/ | Font size adjustment |
+| **REQ-DESK-014** | Focus Indicators | [`.adrs/ | Focus indicators |
+| **REQ-DESK-015** | Color Blindness Support | [`.adrs/ | Color blindness support |
+| **REQ-DESK-016** | Local Document Storage | [`.adrs/ | Local document storage |
+| **REQ-DESK-017** | Document Metadata | [`.adrs/ | Document metadata |
+| **REQ-DESK-018** | Document Versioning | [`.adrs/ | Document versioning |
+| **REQ-DESK-019** | Document Search | [`.adrs/ | Document search functionality |
+| **REQ-DESK-020** | Document Filtering | [`.adrs/ | Document filtering |
+| **REQ-DESK-021** | Document Sorting | [`.adrs/ | Document sorting |
+| **REQ-DESK-022** | Document Pagination | [`.adrs/ | Document pagination |
+| **REQ-DESK-023** | Document Export | [`.adrs/ | Document export |
+| **REQ-DESK-024** | Document Import | [`.adrs/ | Document import |
+| **REQ-DESK-025** | Document Preview | [`.adrs/ | Document preview |
+| **REQ-DESK-026** | Document Editing | [`.adrs/ | Document editing |
+| **REQ-DESK-027** | Markdown Rendering | [`.adrs/ | Markdown rendering |
+| **REQ-DESK-028** | Code Syntax Highlighting | [`.adrs/ | Code syntax highlighting |
+| **REQ-DESK-029** | Image Support | [`.adrs/ | Image support |
+| **REQ-DESK-030** | Table Support | [`.adrs/ | Table support |
+| **REQ-DESK-031** | Math Formula Support | [`.adrs/ | Math formula support |
+| **REQ-DESK-032** | Diagram Support | [`.adrs/ | Diagram support |
+| **REQ-DESK-033** | Git Integration | [`.adrs/ | Git integration |
+| **REQ-DESK-034** | Repository Management | [`.adrs/ | Repository management |
+| **REQ-DESK-035** | Branch Management | [`.adrs/ | Branch management |
+| **REQ-DESK-036** | Commit Management | [`.adrs/ | Commit management |
+| **REQ-DESK-037** | Merge Management | [`.adrs/ | Merge management |
+| **REQ-DESK-038** | Conflict Resolution | [`.adrs/ | Conflict resolution |
+| **REQ-DESK-039** | Remote Sync | [`.adrs/ | Remote sync |
+| **REQ-DESK-040** | Offline Mode | [`.adrs/ | Offline mode |
+| **REQ-DESK-041** | LRU Cache | [`.adrs/ | LRU cache |
+| **REQ-DESK-042** | Cache Invalidation | [`.adrs/ | Cache invalidation |
+| **REQ-DESK-043** | File System Access | [`.adrs/ | File system access |
+| **REQ-DESK-044** | Clipboard Integration | [`.adrs/ | Clipboard integration |
+| **REQ-DESK-045** | Drag and Drop | [`.adrs/ | Drag and drop |
+| **REQ-DESK-046** | File Dialogs | [`.adrs/ | File dialogs |
+| **REQ-DESK-047** | Server Health Monitoring | [`.adrs/ | Server health monitoring |
+| **REQ-DESK-048** | Server Status Display | [`.adrs/ | Server status display |
+| **REQ-DESK-049** | Server Restart | [`.adrs/ | Server restart |
+| **REQ-DESK-050** | Server Configuration | [`.adrs/ | Server configuration |
+| **REQ-DESK-051** | Server Logs | [`.adrs/ | Server logs |
+| **REQ-DESK-052** | Server Metrics | [`.adrs/ | Server metrics |
+| **REQ-DESK-053** | Server Alerts | [`.adrs/ | Server alerts |
+| **REQ-DESK-054** | Auto-Update | [`.adrs/ | Auto-update |
+| **REQ-DESK-055** | Update Notifications | [`.adrs/ | Update notifications |
+| **REQ-DESK-056** | Update Download | [`.adrs/ | Update download |
+| **REQ-DESK-057** | Update Installation | [`.adrs/ | Update installation |
+| **REQ-DESK-058** | Error Reporting | [`.adrs/ | Error reporting |
+| **REQ-DESK-059** | Crash Reporting | [`.adrs/ | Crash reporting |
+| **REQ-DESK-060** | Telemetry | [`.adrs/ | Telemetry |
+| **REQ-DESK-061** | Analytics | [`.adrs/ | Analytics |
+| **REQ-DESK-062** | User Feedback | [`.adrs/ | User feedback |
+| **REQ-DESK-063** | Feature Requests | [`.adrs/ | Feature requests |
+| **REQ-DESK-064** | Bug Reports | [`.adrs/ | Bug reports |
+| **REQ-DESK-065** | Documentation | [`.adrs/ | Documentation |
+| **REQ-DESK-066** | Tutorials | [`.adrs/ | Tutorials |
+| **REQ-DESK-067** | Examples | [`.adrs/ | Examples |
+| **REQ-DESK-068** | FAQ | [`.adrs/ | FAQ |
+| **REQ-DESK-069** | Support | [`.adrs/ | Support |
+| **REQ-DESK-070** | Community | [`.adrs/ | Community |
+| **REQ-DESK-071** | Contributing | [`.adrs/ | Contributing |
+| **REQ-DESK-072** | Code of Conduct | [`.adrs/ | Code of conduct |
+| **REQ-DESK-073** | License | [`.adrs/ | License |
+| **REQ-DESK-074** | Privacy Policy | [`.adrs/ | Privacy policy |
+| **REQ-DESK-075** | Terms of Service | [`.adrs/ | Terms of service |
+| **REQ-DESK-076** | Data Collection | [`.adrs/ | Data collection |
+| **REQ-DESK-077** | Data Storage | [`.adrs/ | Data storage |
+| **REQ-DESK-078** | Data Sharing | [`.adrs/ | Data sharing |
+| **REQ-DESK-079** | Data Deletion | [`.adrs/ | Data deletion |
+| **REQ-DESK-080** | Data Export | [`.adrs/ | Data export |
+| **REQ-DESK-081** | Data Import | [`.adrs/ | Data import |
+| **REQ-DESK-082** | Data Backup | [`.adrs/ | Data backup |
+| **REQ-DESK-083** | Data Restore | [`.adrs/ | Data restore |
+| **REQ-DESK-084** | Data Encryption | [`.adrs/ | Data encryption |
+| **REQ-DESK-085** | Data Compression | [`.adrs/ | Data compression |
+| **REQ-DESK-086** | Hot-Reload Latency | [`.adrs/ | Hot-reload latency |
+| **REQ-DESK-087** | Initial Load Time | [`.adrs/ | Initial load time |
+| **REQ-DESK-088** | Large File Handling | [`.adrs/ | Large file handling |
+| **REQ-DESK-089** | Memory Usage | [`.adrs/ | Memory usage |
+| **REQ-DESK-090** | Responsive UI | [`.adrs/ | Responsive UI |
+| **REQ-DESK-091** | Memory Usage | [`.adrs/ | Memory usage |
+| **REQ-DESK-092** | CPU Usage | [`.adrs/ | CPU usage |
+| **REQ-DESK-093** | Disk Usage | [`.adrs/ | Disk usage |
+| **REQ-DESK-094** | Network Usage | [`.adrs/ | Network usage |
+| **REQ-DESK-095** | Battery Usage | [`.adrs/ | Battery usage |
+| **REQ-DESK-096** | Thermal Management | [`.adrs/ | Thermal management |
+| **REQ-DESK-097** | Power Management | [`.adrs/ | Power management |
+| **REQ-DESK-098** | Background Tasks | [`.adrs/ | Background tasks |
+| **REQ-DESK-099** | Scheduled Tasks | [`.adrs/ | Scheduled tasks |
+| **REQ-DESK-100** | Task Queuing | [`.adrs/ | Task queuing |
+| **REQ-DESK-101** | Task Prioritization | [`.adrs/ | Task prioritization |
+| **REQ-DESK-102** | Task Cancellation | [`.adrs/ | Task cancellation |
+| **REQ-DESK-103** | Task Retry | [`.adrs/ | Task retry |
+| **REQ-DESK-104** | Task Timeout | [`.adrs/ | Task timeout |
+| **REQ-DESK-105** | Task Progress | [`.adrs/ | Task progress |
+| **REQ-DESK-106** | Task Notifications | [`.adrs/ | Task notifications |
+| **REQ-DESK-107** | Task History | [`.adrs/ | Task history |
+| **REQ-DESK-108** | Task Logging | [`.adrs/ | Task logging |
+| **REQ-DESK-109** | Task Metrics | [`.adrs/ | Task metrics |
+| **REQ-DESK-110** | Task Analytics | [`.adrs/ | Task analytics |
 
 **Requirements Summary:**
 - **Application Lifecycle:** REQ-DESK-001 through REQ-DESK-015
@@ -7937,18 +7937,18 @@ This section provides references to all relevant documents, standards, and exter
 
 | Design Element | Location | Relevance |
 |---------------|-----------|------------|
-| **Desktop Application Architecture** | [`.specs/04_future_state/design/desktop_design.md`](../../specs/04_future_state/design/desktop_design.md) | Overall architecture and component design |
-| **Application State** | [`.specs/04_future_state/design/desktop_design.md`](../../specs/04_future_state/design/desktop_design.md) | Application state management |
-| **IPC Command Handlers** | [`.specs/04_future_state/design/desktop_design.md`](../../specs/04_future_state/design/desktop_design.md) | IPC command handler implementation |
-| **UI Components** | [`.specs/04_future_state/design/desktop_design.md`](../../specs/04_future_state/design/desktop_design.md) | UI component design |
-| **Type Definitions** | [`.specs/04_future_state/design/desktop_design.md`](../../specs/04_future_state/design/desktop_design.md) | Rust and TypeScript type definitions |
+| **Desktop Application Architecture** | [`.adrs/ | Overall architecture and component design |
+| **Application State** | [`.adrs/ | Application state management |
+| **IPC Command Handlers** | [`.adrs/ | IPC command handler implementation |
+| **UI Components** | [`.adrs/ | UI component design |
+| **Type Definitions** | [`.adrs/ | Rust and TypeScript type definitions |
 
 #### 10.1.4. Standards
 
 | Standard | Location | Relevance |
 |----------|-----------|------------|
-| **Coding Standards** | [`.specs/01_standards/coding_standards.md`](../../specs/01_standards/coding_standards.md) | Documentation structure and writing style |
-| **Documentation Standards** | [`.specs/01_standards/coding_standards.md`](../../specs/01_standards/coding_standards.md) | PhD thesis level rigor requirements |
+| **Coding Standards** | [`.adrs/ | Documentation structure and writing style |
+| **Documentation Standards** | [`.adrs/ | PhD thesis level rigor requirements |
 
 ### 10.2. External References
 

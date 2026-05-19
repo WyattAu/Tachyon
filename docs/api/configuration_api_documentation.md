@@ -39,10 +39,10 @@ The Configuration API addresses the following requirements:
 ### 1.2. Document Dependencies
 
 This document depends on the following specifications:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-REQ-V1.0](../../.specs/06_requirements/requirements.md) - Requirements Specification
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-REQ-V1.0](../../.adrs/ - Requirements Specification
 
 ### 1.3. Configuration API Overview
 
@@ -2250,7 +2250,7 @@ tachyon config restore --backup /path/to/backup.toml
 
 ### 11.1. Security Architecture
 
-The Configuration API implements defense-in-depth security measures aligned with [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md).
+The Configuration API implements defense-in-depth security measures aligned with [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md).
 
 **Security Layers:**
 1. **Encryption at Rest:** Sensitive configuration values encrypted in storage
@@ -2540,27 +2540,27 @@ tachyon --server-port 8443 --tls
 ### 12.1. Related Documents
 
 **Standards:**
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
 
 **Architecture Decision Records:**
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-002-V1.0](../../.specs/02_adrs/002_tauri_for_desktop_application.md) - Tauri for Desktop Application
-- [TACHYON-ADR-003-V1.0](../../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-002-V1.0](../../.adrs/adr-002-bm25-search-parameters.md) - Tauri for Desktop Application
+- [TACHYON-ADR-003-V1.0](../../.adrs/adr-003-lru-cache-target.md) - Axum for HTTP/2 Server
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 **Requirements:**
-- [TACHYON-REQ-V1.0](../../.specs/06_requirements/requirements.md) - Requirements Specification
+- [TACHYON-REQ-V1.0](../../.adrs/ - Requirements Specification
 - REQ-060: Configuration Management Requirements
 - REQ-061: Feature Flag Requirements
 - REQ-062: Configuration Validation Requirements
 
 **Design Documents:**
-- [TACHYON-DSN-V1.0](../../.specs/07_designs/designs.md) - Design Documents
+- [TACHYON-DSN-V1.0](../../.adrs/ - Design Documents
 - DSN-044: Configuration Data Model Design
 - DSN-045: Feature Flag Design
 
 **Test Plan:**
-- [TACHYON-TST-V1.0](../../.specs/08_test_plan/test_plan.md) - Test Plan
+- [TACHYON-TST-V1.0](../../.adrs/ - Test Plan
 
 ### 12.2. External References
 

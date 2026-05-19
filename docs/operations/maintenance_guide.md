@@ -38,9 +38,9 @@ The Tachyon toolchain encompasses:
 ### 1.2. Document Dependencies
 
 This document depends on the following documents:
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 - [TACHYON-ARC-001-V1.0](../../docs/architecture/system_architecture_overview.md) - System Architecture Overview
 - [TACHYON-ARC-004-V1.0](../../docs/architecture/deployment_architecture.md) - Deployment Architecture
 
@@ -2241,12 +2241,12 @@ Maintenance documentation must comply with the following standards:
 
 This document references the following internal Tachyon project documents:
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Tachyon Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - ADR-001: Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - ADR-010: Security Architecture
+- [TACHYON-STD-V1.0](../../.adrs/ - Tachyon Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - ADR-001: Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - ADR-010: Security Architecture
 - [TACHYON-ARC-001-V1.0](../architecture/system_architecture_overview.md) - System Architecture Overview
 - [TACHYON-ARC-004-V1.0](../architecture/deployment_architecture.md) - Deployment Architecture
-- [TACHYON-TSK-078](../../.specs/tasks.md) - TSK-078: Maintenance Guide Task Definition
+- [TACHYON-TSK-078](../../.adrs/ - TSK-078: Maintenance Guide Task Definition
 
 ### 9.2. External Standards
 
@@ -2749,12 +2749,12 @@ Maintenance documentation must comply with the following standards:
 
 This document references the following internal Tachyon project documents:
 
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) - Tachyon Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) - ADR-001: Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) - ADR-010: Security Architecture
+- [TACHYON-STD-V1.0](../../.adrs/ - Tachyon Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - ADR-001: Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - ADR-010: Security Architecture
 - [TACHYON-ARC-001-V1.0](../architecture/system_architecture_overview.md) - System Architecture Overview
 - [TACHYON-ARC-004-V1.0](../architecture/deployment_architecture.md) - Deployment Architecture
-- [TACHYON-TSK-078](../../.specs/tasks.md) - TSK-078: Maintenance Guide Task Definition
+- [TACHYON-TSK-078](../../.adrs/ - TSK-078: Maintenance Guide Task Definition
 
 ### 9.2. External Standards
 

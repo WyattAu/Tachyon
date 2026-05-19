@@ -284,7 +284,7 @@ Code review or architecture review without execution.
 
 ### Performance Thresholds
 
-Based on domain constraints from [`.specs/01_research/domain_constraints.toml`](.specs/01_research/domain_constraints.toml):
+Based on domain constraints from [`.adrs/
 
 ```toml
 [thresholds.jit_rendering]
@@ -332,8 +332,8 @@ max_false_positive_rate = 0.01  # 1% false positive rate
 ### Step 1: Criteria Definition
 
 For each task, define verification criteria based on:
-- **Requirement Mappings:** Linked to acceptance criteria from [`.specs/00_requirements/acceptance_criteria.md`](.specs/00_requirements/acceptance_criteria.md)
-- **Domain Constraints:** Performance thresholds from [`.specs/01_research/domain_constraints.toml`](.specs/01_research/domain_constraints.toml)
+- **Requirement Mappings:** Linked to acceptance criteria from [`.adrs/
+- **Domain Constraints:** Performance thresholds from [`.adrs/
 - **Quality Standards:** Compliance with IEEE 1016-2009 and ISO/IEC 25010
 
 ### Step 2: Test Implementation
@@ -417,7 +417,7 @@ allowed_failures = 0
 
 [quality_gates.performance]
 max_regression_percent = 5.0
-baseline_file = ".specs/06_5_regression/baseline_metrics.toml"
+baseline_file = ".adrs/
 ```
 
 ## Verification Tracking
@@ -439,10 +439,10 @@ Monitor verification results over time:
 
 ## References
 
-- Master Plan: `.specs/08_roadmap/master_plan.toml`
-- Acceptance Criteria: `.specs/00_requirements/acceptance_criteria.md`
-- Domain Constraints: `.specs/01_research/domain_constraints.toml`
-- Blue Paper: `.specs/02_architecture/blue_paper.md`
+- Master Plan: `.adrs/
+- Acceptance Criteria: `.adrs/
+- Domain Constraints: `.adrs/
+- Blue Paper: `.adrs/
 - ADR-072: Execution Graph Architecture
 - ADR-073: Task Dependencies Specification
 - ADR-075: Risk Mitigation Strategy

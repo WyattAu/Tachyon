@@ -14,7 +14,7 @@ This document contains design and implementation patterns from the Tachyon proje
 
 **Pattern Sources:**
 - Tachyon Project Phase 12 Knowledge Transfer
-- Tachyon Pattern Library (.specs/08_5_knowledge_base/pattern_library.md)
+- Tachyon Pattern Library (.adrs/
 - Architecture Decisions (.adrs/)
 
 ---
@@ -44,7 +44,7 @@ async fn main() {
 }
 ```
 
-**Traceability:** .specs/02_architecture/blue_paper.md:194-196, ADR-001
+**Traceability:** .adrs/ ADR-001
 
 **Benefits:**
 - Efficient CPU core utilization
@@ -88,7 +88,7 @@ where
 }
 ```
 
-**Traceability:** .specs/02_architecture/blue_paper.md:135-142, ADR-013
+**Traceability:** .adrs/ ADR-013
 
 **Benefits:**
 - Lock-free read operations
@@ -166,7 +166,7 @@ async fn render_document(path: &Path) -> CompilationTier {
 }
 ```
 
-**Traceability:** .specs/02_architecture/blue_paper.md:124-133, ADR-002
+**Traceability:** .adrs/ ADR-002
 
 **Benefits:**
 - Compile-time state validation
@@ -213,7 +213,7 @@ async fn render_document(path: &Path, commit: &str, role: &str) -> Result<String
 }
 ```
 
-**Traceability:** .specs/02_architecture/blue_paper.md:396-426, ADR-002
+**Traceability:** .adrs/ ADR-002
 
 **Metrics:**
 - Cache hit latency: <1ms
@@ -244,7 +244,7 @@ fn cache_key(path: &Path, commit: &str, role: &str) -> String {
 }
 ```
 
-**Traceability:** .specs/02_architecture/blue_paper.md:134-142
+**Traceability:** .adrs/
 
 **Benefits:**
 - Correct redaction per user role
@@ -279,7 +279,7 @@ let query = query_parser.parse_query(query_str)?;
 let top_docs = searcher.search(&query, &TopDocs::with_limit(100))?;
 ```
 
-**Traceability:** .specs/02_architecture/blue_paper.md:472-498
+**Traceability:** .adrs/
 
 **Parameters:**
 - k1: Term saturation (default 1.5)
@@ -324,7 +324,7 @@ impl RenderPool {
 }
 ```
 
-**Traceability:** .specs/04_performance/performance_requirements.md:123-134
+**Traceability:** .adrs/
 
 **Limits:**
 - Desktop: 10 concurrent renders
@@ -365,7 +365,7 @@ test:
     - fuzzing_tests
 ```
 
-**Traceability:** .specs/07_ci_cd/pipeline_config.toml:19-23
+**Traceability:** .adrs/
 
 **Benefits:**
 - Clear failure isolation
@@ -393,7 +393,7 @@ security = { max_severity = "medium", allowed_failures = 0 }
 performance = { max_regression_percent = 5.0, allowed_failures = 0 }
 ```
 
-**Traceability:** .specs/07_ci_cd/quality_gates.md
+**Traceability:** .adrs/
 
 **Thresholds:**
 - Test coverage: 95% minimum
@@ -432,7 +432,7 @@ production:
       action: retire_blue
 ```
 
-**Traceability:** .specs/07_ci_cd/deployment_strategy.md
+**Traceability:** .adrs/
 
 **Benefits:**
 - Zero-downtime deployment
@@ -469,7 +469,7 @@ staging:
       delay: "30m"
 ```
 
-**Traceability:** .specs/07_ci_cd/deployment_strategy.md
+**Traceability:** .adrs/
 
 **Benefits:**
 - Early issue detection
@@ -510,7 +510,7 @@ fn search(query: SearchQuery) -> Result<Vec<Document>> {
 }
 ```
 
-**Traceability:** .specs/08_5_knowledge_base/pattern_library.md
+**Traceability:** .adrs/
 
 **Benefits:**
 - Prevents injection attacks

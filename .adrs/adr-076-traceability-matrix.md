@@ -260,13 +260,13 @@ fn validate_uniqueness(matrix: &TraceabilityMatrix) -> Result<(), ValidationErro
 
 ### Procedure 1: Requirement Addition
 
-When a new requirement is added to [`.specs/00_requirements/requirements.md`](.specs/00_requirements/requirements.md):
+When a new requirement is added to [`.adrs/
 
 1. Add requirement entry to traceability matrix
 2. Identify affected tasks (new or existing)
 3. Create task mappings or update existing task definitions
 4. Map requirement to applicable standards
-5. Update requirements traceability in [`.specs/00_requirements/traceability_matrix.md`](.specs/00_requirements/traceability_matrix.md)
+5. Update requirements traceability in [`.adrs/
 6. Update version and change log
 
 **Implementation:**
@@ -285,11 +285,11 @@ jobs:
           from datetime import datetime
           
           # Load traceability matrix
-          with open('.specs/08_roadmap/master_plan.toml', 'r') as f:
+          with open('.adrs/ 'r') as f:
               matrix = toml.load(f)
           
           # Get new requirements
-          with open('.specs/00_requirements/requirements.md', 'r') as f:
+          with open('.adrs/ 'r') as f:
               content = f.read()
           
           # Parse requirements
@@ -335,7 +335,7 @@ jobs:
           import toml
           
           # Load master plan
-          with open('.specs/08_roadmap/master_plan.toml', 'r') as f:
+          with open('.adrs/ 'r') as f:
               matrix = toml.load(f)
           
           # Validate task completeness
@@ -393,7 +393,7 @@ jobs:
           import sys
           
           # Load traceability matrix
-          with open('.specs/08_roadmap/master_plan.toml', 'r') as f:
+          with open('.adrs/ 'r') as f:
               matrix = toml.load(f)
           
           errors = []
@@ -565,10 +565,10 @@ If traceability matrix becomes corrupted or inconsistent:
 
 ## References
 
-- Master Plan: `.specs/08_roadmap/master_plan.toml`
-- Requirements: `.specs/00_requirements/requirements.md`
-- Acceptance Criteria: `.specs/00_requirements/acceptance_criteria.md`
-- Existing Traceability: `.specs/00_requirements/traceability_matrix.md`
+- Master Plan: `.adrs/
+- Requirements: `.adrs/
+- Acceptance Criteria: `.adrs/
+- Existing Traceability: `.adrs/
 - ADR-072: Execution Graph Architecture
 - ADR-073: Task Dependencies Specification
 - ADR-074: Verification Criteria Definition

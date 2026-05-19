@@ -101,9 +101,9 @@ The Tachyon project adopts a structured lessons learned framework:
 ### Knowledge Base Integration
 
 Lessons learned are integrated into:
-- [`.specs/08_5_knowledge_base/lessons_learned.md`](.specs/08_5_knowledge_base/lessons_learned.md) - Comprehensive lessons database
-- [`.specs/08_5_knowledge_base/pattern_library.md`](.specs/08_5_knowledge_base/pattern_library.md) - Patterns for application
-- [`.specs/08_5_knowledge_base/anti_patterns.md`](.specs/08_5_knowledge_base/anti_patterns.md) - Anti-patterns to avoid
+- [`.adrs/ - Comprehensive lessons database
+- [`.adrs/ - Patterns for application
+- [`.adrs/ - Anti-patterns to avoid
 
 ## Related Decisions
 
@@ -113,7 +113,7 @@ Lessons learned are integrated into:
 
 ## References
 
-- [`.specs/08_5_knowledge_base/lessons_learned.md`](.specs/08_5_knowledge_base/lessons_learned.md)
+- [`.adrs/
 - [`.reports/phase_10_closure_report.md`](.reports/phase_10_closure_report.md) - Project Closure Report
 - Post-Project Review Best Practices
 

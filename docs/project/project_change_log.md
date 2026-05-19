@@ -39,13 +39,13 @@ The Tachyon project encompasses a multi-component toolchain including:
 ### 1.2. Document Dependencies
 
 This document depends on and references the following specifications:
-- [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](.specs/02_adrs/001_rust_as_primary_language.md) - Rust Language Selection
-- [TACHYON-ADR-010-V1.0](.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-TSK-V1.0](.specs/tasks.md) - Execution Tasks and Work Breakdown Structure
-- [TACHYON-REQ-V1.0](.specs/04_future_state/reqs/) - Requirements Specification
-- [TACHYON-DSN-V1.0](.specs/04_future_state/design/) - Design Documents
-- [TACHYON-TST-V1.0](.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](.adrs/adr-001-three-tier-jit-compilation.md) - Rust Language Selection
+- [TACHYON-ADR-010-V1.0](.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-TSK-V1.0](.adrs/ - Execution Tasks and Work Breakdown Structure
+- [TACHYON-REQ-V1.0](.adrs/ - Requirements Specification
+- [TACHYON-DSN-V1.0](.adrs/ - Design Documents
+- [TACHYON-TST-V1.0](.adrs/ - Test Plan
 
 ### 1.3. Change Log Framework
 
@@ -2396,37 +2396,37 @@ This document references the following internal Tachyon project documents:
 
 **10.1.1. Standards and Guidelines**
 
-- [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
+- [TACHYON-STD-V1.0](.adrs/ - Coding and Documentation Standards
   - Establishes coding and documentation standards for the Tachyon project
   - Provides guidelines for document structure, writing style, and quality assurance
 
 **10.1.2. Architectural Decision Records**
 
-- [TACHYON-ADR-001-V1.0](.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
+- [TACHYON-ADR-001-V1.0](.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
   - Establishes Rust as the primary language for the Tachyon toolchain
   - Provides rationale for language selection and technical requirements
 
-- [TACHYON-ADR-010-V1.0](.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [TACHYON-ADR-010-V1.0](.adrs/adr-010-synchronization-primitives.md) - Security Architecture
   - Establishes the security architecture for the Tachyon toolchain
   - Provides security requirements, controls, and compliance guidelines
 
 **10.1.3. Requirements and Design**
 
-- [TACHYON-TSK-V1.0](.specs/tasks.md) - Execution Tasks and Work Breakdown Structure
+- [TACHYON-TSK-V1.0](.adrs/ - Execution Tasks and Work Breakdown Structure
   - Defines the comprehensive execution graph and task breakdown structure
   - Provides task organization, dependencies, and acceptance criteria
 
-- [TACHYON-REQ-V1.0](.specs/04_future_state/reqs/) - Requirements Specification
+- [TACHYON-REQ-V1.0](.adrs/ - Requirements Specification
   - Defines the comprehensive requirements for the Tachyon system
   - Provides functional, non-functional, and constraint requirements
 
-- [TACHYON-DSN-V1.0](.specs/04_future_state/design/) - Design Documents
+- [TACHYON-DSN-V1.0](.adrs/ - Design Documents
   - Defines the comprehensive design for the Tachyon system
   - Provides architectural, component, and interface designs
 
 **10.1.4. Test Planning**
 
-- [TACHYON-TST-V1.0](.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-TST-V1.0](.adrs/ - Test Plan
   - Defines the comprehensive test plan for the Tachyon system
   - Provides test strategy, test cases, and test procedures
 

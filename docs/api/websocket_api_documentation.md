@@ -116,10 +116,10 @@ The WebSocket API implementation utilizes the following technologies:
 - **Serialization:** JSON parsing with language-appropriate libraries
 
 **Dependencies:**
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md) - Axum for HTTP/2 Server
-- [TACHYON-ADR-007-V1.0](../.specs/02_adrs/007_tokio_for_async_runtime.md) - Tokio for Async Runtime
-- [TACHYON-DES-API-V1.0](../.specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md) - Axum for HTTP/2 Server
+- [TACHYON-ADR-007-V1.0](../.adrs/adr-007-thread-safety-strategy.md) - Tokio for Async Runtime
+- [TACHYON-DES-API-V1.0](../.adrs/ - API Interfaces Design
 
 #### 1.4.4. Performance Characteristics
 
@@ -354,13 +354,13 @@ async fn validate_message_size(msg: &Message) -> Result<(), ApiError> {
 ### 2.5. Dependencies
 
 **Related Requirements:**
-- [REQ-SRV-091](../.specs/04_future_state/reqs/server_requirements.md) - WebSocket Endpoint
-- [REQ-SRV-092](../.specs/04_future_state/reqs/server_requirements.md) - Connection Authentication
-- [REQ-SRV-093](../.specs/04_future_state/reqs/server_requirements.md) - Connection Management
+- [REQ-SRV-091](../.adrs/ - WebSocket Endpoint
+- [REQ-SRV-092](../.adrs/ - Connection Authentication
+- [REQ-SRV-093](../.adrs/ - Connection Management
 
 **Related Design Elements:**
-- [DES-WS-001](../.specs/04_future_state/design/api_interfaces.md) - WebSocket Endpoint
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
+- [DES-WS-001](../.adrs/ - WebSocket Endpoint
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
 
 ### 2.6. Security Considerations
 
@@ -487,7 +487,7 @@ pub struct SubscribePayload {
 - User must have read permission for the document
 
 **Dependencies:**
-- [REQ-SRV-095](../.specs/04_future_state/reqs/server_requirements.md) - Subscription Management
+- [REQ-SRV-095](../.adrs/ - Subscription Management
 
 #### 3.2.3. Unsubscribe Payload
 
@@ -602,7 +602,7 @@ pub enum EditOperation {
 - User must have write permission for the document
 
 **Dependencies:**
-- [REQ-SRV-096](../.specs/04_future_state/reqs/server_requirements.md) - Content Updates
+- [REQ-SRV-096](../.adrs/ - Content Updates
 
 #### 3.2.5. Presence Request Payload
 
@@ -657,7 +657,7 @@ pub enum PresenceRequestType {
 - User must have read permission for requested documents
 
 **Dependencies:**
-- [REQ-SRV-097](../.specs/04_future_state/reqs/server_requirements.md) - User Presence
+- [REQ-SRV-097](../.adrs/ - User Presence
 
 #### 3.2.6. Typing Payload
 
@@ -699,7 +699,7 @@ pub struct TypingPayload {
 - Typing indicators are rate-limited (max 1 per 2 seconds)
 
 **Dependencies:**
-- [REQ-SRV-099](../.specs/04_future_state/reqs/server_requirements.md) - Typing Indicators
+- [REQ-SRV-099](../.adrs/ - Typing Indicators
 
 #### 3.2.7. Cursor Payload
 
@@ -759,7 +759,7 @@ pub struct CursorSelection {
 - Cursor updates are rate-limited (max 10 per second)
 
 **Dependencies:**
-- [REQ-SRV-100](../.specs/04_future_state/reqs/server_requirements.md) - Cursor Sharing
+- [REQ-SRV-100](../.adrs/ - Cursor Sharing
 
 ### 3.3. Server Message Types
 
@@ -920,7 +920,7 @@ pub struct UserSummary {
 - `version`: Must be valid Git commit hash or document version identifier
 
 **Dependencies:**
-- [REQ-SRV-096](../.specs/04_future_state/reqs/server_requirements.md) - Content Updates
+- [REQ-SRV-096](../.adrs/ - Content Updates
 
 #### 3.3.3. Presence Update Payload
 
@@ -1016,7 +1016,7 @@ pub enum PresenceStatus {
 - `cursor_position`: Non-negative, must be within document bounds
 
 **Dependencies:**
-- [REQ-SRV-097](../.specs/04_future_state/reqs/server_requirements.md) - User Presence
+- [REQ-SRV-097](../.adrs/ - User Presence
 
 #### 3.3.4. Conflict Payload
 
@@ -1139,7 +1139,7 @@ pub struct ConflictResolution {
 - `operations`: Max 10 operations per conflict
 
 **Dependencies:**
-- [REQ-SRV-098](../.specs/04_future_state/reqs/server_requirements.md) - Conflict Notifications
+- [REQ-SRV-098](../.adrs/ - Conflict Notifications
 
 #### 3.3.5. Error Payload
 
@@ -1490,17 +1490,17 @@ The following JSON Schema defines the complete message format for validation pur
 ### 3.5. Dependencies
 
 **Related Requirements:**
-- [REQ-SRV-094](../.specs/04_future_state/reqs/server_requirements.md) - Heartbeat Mechanism
-- [REQ-SRV-095](../.specs/04_future_state/reqs/server_requirements.md) - Subscription Management
-- [REQ-SRV-096](../.specs/04_future_state/reqs/server_requirements.md) - Content Updates
-- [REQ-SRV-097](../.specs/04_future_state/reqs/server_requirements.md) - User Presence
-- [REQ-SRV-098](../.specs/04_future_state/reqs/server_requirements.md) - Conflict Notifications
-- [REQ-SRV-099](../.specs/04_future_state/reqs/server_requirements.md) - Typing Indicators
-- [REQ-SRV-100](../.specs/04_future_state/reqs/server_requirements.md) - Cursor Sharing
+- [REQ-SRV-094](../.adrs/ - Heartbeat Mechanism
+- [REQ-SRV-095](../.adrs/ - Subscription Management
+- [REQ-SRV-096](../.adrs/ - Content Updates
+- [REQ-SRV-097](../.adrs/ - User Presence
+- [REQ-SRV-098](../.adrs/ - Conflict Notifications
+- [REQ-SRV-099](../.adrs/ - Typing Indicators
+- [REQ-SRV-100](../.adrs/ - Cursor Sharing
 
 **Related Design Elements:**
-- [DES-WS-002](../.specs/04_future_state/design/api_interfaces.md) - Client Message
-- [DES-WS-003](../.specs/04_future_state/design/api_interfaces.md) - Server Message
+- [DES-WS-002](../.adrs/ - Client Message
+- [DES-WS-003](../.adrs/ - Server Message
 
 ---
 
@@ -2149,16 +2149,16 @@ async fn handle_cursor_update(
 ### 4.5. Dependencies
 
 **Related Requirements:**
-- [REQ-SRV-021](../.specs/04_future_state/reqs/server_requirements.md) - Document List
-- [REQ-SRV-022](../.specs/04_future_state/reqs/server_requirements.md) - Document Retrieval
-- [REQ-SRV-023](../.specs/04_future_state/reqs/server_requirements.md) - Document Creation
-- [REQ-SRV-024](../.specs/04_future_state/reqs/server_requirements.md) - Document Update
-- [REQ-SRV-041](../.specs/04_future_state/reqs/server_requirements.md) - JIT Rendering
-- [REQ-SRV-047](../.specs/04_future_state/reqs/server_requirements.md) - Commit Management
+- [REQ-SRV-021](../.adrs/ - Document List
+- [REQ-SRV-022](../.adrs/ - Document Retrieval
+- [REQ-SRV-023](../.adrs/ - Document Creation
+- [REQ-SRV-024](../.adrs/ - Document Update
+- [REQ-SRV-041](../.adrs/ - JIT Rendering
+- [REQ-SRV-047](../.adrs/ - Commit Management
 
 **Related Design Elements:**
-- [DES-WS-001](../.specs/04_future_state/design/api_interfaces.md) - WebSocket Endpoint
-- [TACHYON-DES-API-V1.0](../.specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
+- [DES-WS-001](../.adrs/ - WebSocket Endpoint
+- [TACHYON-DES-API-V1.0](../.adrs/ - API Interfaces Design
 
 ---
 
@@ -2565,15 +2565,15 @@ where $C_{workspace}$ represents the set of channels for a specific workspace.
 ### 5.5. Dependencies
 
 **Related Requirements:**
-- [REQ-SRV-021](../.specs/04_future_state/reqs/server_requirements.md) - Document List
-- [REQ-SRV-081](../.specs/04_future_state/reqs/server_requirements.md) - RBAC Enforcement
-- [REQ-SRV-101](../.specs/04_future_state/reqs/server_requirements.md) - Workspace Management
-- [REQ-SRV-102](../.specs/04_future_state/reqs/server_requirements.md) - User Presence
-- [REQ-SRV-103](../.specs/04_future_state/reqs/server_requirements.md) - Notification System
+- [REQ-SRV-021](../.adrs/ - Document List
+- [REQ-SRV-081](../.adrs/ - RBAC Enforcement
+- [REQ-SRV-101](../.adrs/ - Workspace Management
+- [REQ-SRV-102](../.adrs/ - User Presence
+- [REQ-SRV-103](../.adrs/ - Notification System
 
 **Related Design Elements:**
-- [DES-WS-001](../.specs/04_future_state/design/api_interfaces.md) - WebSocket Endpoint
-- [TACHYON-DES-API-V1.0](../.specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
+- [DES-WS-001](../.adrs/ - WebSocket Endpoint
+- [TACHYON-DES-API-V1.0](../.adrs/ - API Interfaces Design
 
 ---
 
@@ -2703,11 +2703,11 @@ All WebSocket connections must use WSS (WebSocket Secure) with TLS 1.3:
 ### 13.2. Related Documents
 
 **Tachyon Project Documents:**
-- [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-DES-API-V1.0](../.specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
-- [TACHYON-REQ-SRV-V1.0](../.specs/04_future_state/reqs/server_requirements.md) - Server Requirements
+- [TACHYON-STD-V1.0](../.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-DES-API-V1.0](../.adrs/ - API Interfaces Design
+- [TACHYON-REQ-SRV-V1.0](../.adrs/ - Server Requirements
 
 ### 13.3. External References
 

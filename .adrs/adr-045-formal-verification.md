@@ -18,7 +18,7 @@ Phase 5 requires verification that **Lean4/Coq proofs compile and pass** if they
 
 ### 1.1. Existing Formal Proofs
 
-From [`proof.lean`](../.specs/02_architecture/proof.lean) and [`concurrency/proof.lean`](../.specs/02_5_concurrency/proof.lean):
+From [`proof.lean`](../.adrs/ and [`concurrency/proof.lean`](../.adrs/
 
 | Proof | Component | Property | Status |
 |-------|-----------|----------|---------|
@@ -71,7 +71,7 @@ curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf 
 source ~/.elan/env/leanvar
 
 # Compile proofs
-cd .specs/02_architecture/
+cd .adrs/
 leanpkg build
 
 # Verify no errors
@@ -176,7 +176,7 @@ theorem lru_eviction_correctness (capacity : Nat) (keys : List String) (new_key 
 **Verification Requirements:**
 - [ ] Compile proof without errors
 - [ ] Run proof successfully
-- [ ] Map to implementation: [`cache/lru.rs`](../.specs/06_prototypes/prototype/src/cache/lru.rs)
+- [ ] Map to implementation: [`cache/lru.rs`](../.adrs/
 
 ### 3.2. BM25 Non-Negativity
 
@@ -197,7 +197,7 @@ theorem bm25_non_negativity
 **Verification Requirements:**
 - [ ] Compile proof without errors
 - [ ] Run proof successfully
-- [ ] Map to implementation: [`search/bm25.rs`](../.specs/06_prototypes/prototype/src/search/bm25.rs)
+- [ ] Map to implementation: [`search/bm25.rs`](../.adrs/
 
 ### 3.3. Deadlock Freedom
 
@@ -215,7 +215,7 @@ theorem deadlock_freedom
 **Verification Requirements:**
 - [ ] Compile proof without errors
 - [ ] Run proof successfully
-- [ ] Map to implementation: Lock ordering in [`concurrency/lock_ordering.rs`](../.specs/06_prototypes/prototype/tests/concurrency/lock_ordering.rs)
+- [ ] Map to implementation: Lock ordering in [`concurrency/lock_ordering.rs`](../.adrs/
 
 ### 3.4. Thread Safety Properties
 
@@ -242,12 +242,12 @@ theorem thread_safety
 ### 4.1. Lean4 Project Structure
 
 ```
-.specs/02_architecture/
+.adrs/
 ├── leanpkg.toml          # Lean package configuration
 ├── proof.lean              # Main proof file
 └── Lakefile               # Lean build configuration
 
-.specs/06_prototypes/prototype/tests/verification/
+.adrs/
 ├── mod.rs
 ├── lru_tests.rs           # LRU eviction tests
 ├── bm25_tests.rs          # BM25 non-negativity tests
@@ -444,8 +444,8 @@ def verify (args : List String) : Script IO Unit :=
 
 ## 9. References
 
-- [Blue Paper](../.specs/02_architecture/blue_paper.md)
-- [Proof.lean](../.specs/02_architecture/proof.lean)
-- [Concurrency Proof.lean](../.specs/02_5_concurrency/proof.lean)
+- [Blue Paper](../.adrs/
+- [Proof.lean](../.adrs/
+- [Concurrency Proof.lean](../.adrs/
 - [ADR-040: Prototype Architecture](./adr-040-prototype-architecture.md)
 - [ADR-043: Concurrency Testing](./adr-043-concurrency-testing.md)

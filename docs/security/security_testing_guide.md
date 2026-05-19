@@ -5,7 +5,7 @@
 **Status:** Approved for Implementation
 **Classification:** Security Testing and Quality Assurance
 **Compliance Level:** ISO/IEC 27001:2013, NIST SP 800-53, OWASP Testing Guide v4.2
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md), [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md), [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md), [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-REQ-SEC-V1.0](../../.adrs/ [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md), [TACHYON-TMA-V1.0](../../.adrs/ [TACHYON-TST-V1.0](../../.adrs/
 
 ---
 
@@ -60,11 +60,11 @@ The Tachyon security testing philosophy follows a defense-in-depth approach with
 
 This security testing guide integrates with the following documents:
 
-- [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md): Defines security requirements that must be validated
-- [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md): Defines security architecture and controls
-- [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md): Defines threat model and attack vectors
-- [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md): Defines overall testing strategy
-- [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md): Defines documentation and coding standards
+- [TACHYON-REQ-SEC-V1.0](../../.adrs/ Defines security requirements that must be validated
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md): Defines security architecture and controls
+- [TACHYON-TMA-V1.0](../../.adrs/ Defines threat model and attack vectors
+- [TACHYON-TST-V1.0](../../.adrs/ Defines overall testing strategy
+- [TACHYON-STD-V1.0](../../.adrs/ Defines documentation and coding standards
 
 ### 1.5. Security Testing Objectives
 
@@ -104,7 +104,7 @@ The following metrics are used to measure security testing effectiveness:
 4. **Data Layer Testing:** Validate encryption at rest, access controls, and audit logging
 5. **Infrastructure Layer Testing:** Validate supply chain security, build security, and deployment security
 
-**Rationale:** Testing at multiple layers ensures that if one layer fails, other layers provide protection. This approach aligns with the defense-in-depth architecture defined in [ADR-010](../../.specs/02_adrs/010_security_architecture.md).
+**Rationale:** Testing at multiple layers ensures that if one layer fails, other layers provide protection. This approach aligns with the defense-in-depth architecture defined in [ADR-010](../../.adrs/adr-010-synchronization-primitives.md).
 
 ### 1.7.2. Threat-Based Testing
 
@@ -117,7 +117,7 @@ The following metrics are used to measure security testing effectiveness:
 3. **Adversary Simulation:** Tests simulate adversary behavior and capabilities
 4. **Zero-Day Simulation:** Tests attempt to discover unknown vulnerabilities through fuzzing and mutation testing
 
-**Rationale:** Threat-based testing ensures that identified threats are explicitly validated and mitigations are effective. This approach aligns with the threat model analysis in [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md).
+**Rationale:** Threat-based testing ensures that identified threats are explicitly validated and mitigations are effective. This approach aligns with the threat model analysis in [TACHYON-TMA-V1.0](../../.adrs/
 
 ### 1.7.3. Test-Driven Security
 
@@ -130,7 +130,7 @@ The following metrics are used to measure security testing effectiveness:
 3. **Continuous Integration:** Security tests execute on every commit and pull request
 4. **Quality Gates:** Failed security tests block code integration
 
-**Rationale:** Test-driven security ensures that security requirements are explicitly validated and security controls are designed with testability in mind. This approach aligns with the test-first development philosophy in [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md).
+**Rationale:** Test-driven security ensures that security requirements are explicitly validated and security controls are designed with testability in mind. This approach aligns with the test-first development philosophy in [TACHYON-TST-V1.0](../../.adrs/
 
 ### 1.7.4. Automated Testing
 
@@ -143,7 +143,7 @@ The following metrics are used to measure security testing effectiveness:
 3. **Automated Dependency Analysis:** Automated tools analyze dependencies for vulnerabilities
 4. **Automated Reporting:** Automated tools generate security test reports
 
-**Rationale:** Automated testing reduces manual testing burden, ensures consistent execution, and enables rapid feedback. This approach aligns with the test automation strategy in [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md).
+**Rationale:** Automated testing reduces manual testing burden, ensures consistent execution, and enables rapid feedback. This approach aligns with the test automation strategy in [TACHYON-TST-V1.0](../../.adrs/
 
 ### 1.7.5. Evidence-Based Testing
 
@@ -156,7 +156,7 @@ The following metrics are used to measure security testing effectiveness:
 3. **Traceability:** Test results are traceable to requirements and threats
 4. **Auditability:** Test execution is logged for audit purposes
 
-**Rationale:** Evidence-based testing enables forensic analysis, auditability, and continuous improvement. This approach aligns with the audit logging requirements in [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md).
+**Rationale:** Evidence-based testing enables forensic analysis, auditability, and continuous improvement. This approach aligns with the audit logging requirements in [TACHYON-REQ-SEC-V1.0](../../.adrs/
 
 ### 1.7.6. Continuous Testing
 
@@ -169,7 +169,7 @@ The following metrics are used to measure security testing effectiveness:
 3. **Nightly Testing:** Comprehensive security tests execute nightly
 4. **Release Testing:** Full security test suite executes before release
 
-**Rationale:** Continuous testing ensures that security vulnerabilities are identified early, reducing remediation cost and impact. This approach aligns with the continuous integration strategy in [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md).
+**Rationale:** Continuous testing ensures that security vulnerabilities are identified early, reducing remediation cost and impact. This approach aligns with the continuous integration strategy in [TACHYON-TST-V1.0](../../.adrs/
 
 ### 1.7.7. Risk-Based Testing
 
@@ -182,7 +182,7 @@ The following metrics are used to measure security testing effectiveness:
 3. **Threat Prioritization:** High-likelihood, high-impact threats are tested first
 4. **Resource Allocation:** Testing resources are allocated based on risk assessment
 
-**Rationale:** Risk-based testing ensures that limited testing resources are allocated to the most critical areas. This approach aligns with the risk assessment in [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md).
+**Rationale:** Risk-based testing ensures that limited testing resources are allocated to the most critical areas. This approach aligns with the risk assessment in [TACHYON-TMA-V1.0](../../.adrs/
 
 ### 1.7.8. Compliance Testing
 
@@ -195,7 +195,7 @@ The following metrics are used to measure security testing effectiveness:
 3. **Industry Standards:** Tests validate compliance with industry best practices
 4. **Internal Standards:** Tests validate compliance with internal security standards
 
-**Rationale:** Compliance testing ensures that the system meets regulatory and industry requirements. This approach aligns with the security requirements in [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md).
+**Rationale:** Compliance testing ensures that the system meets regulatory and industry requirements. This approach aligns with the security requirements in [TACHYON-REQ-SEC-V1.0](../../.adrs/
 
 ---
 
@@ -2785,13 +2785,13 @@ This security testing guide references the following internal project documents:
 
 | Document ID | Title | Section | Purpose |
 |-------------|-------|---------|---------|
-| [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards | All sections | Defines documentation standards and format |
-| [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md) | Security Requirements | All sections | Defines security requirements to be validated |
-| [TACHYON-ADR-001-V1.0](../../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language | 4.1-4.7 | Provides memory safety and type security rationale |
-| [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md) | Security Architecture | 4.1-4.8 | Defines defense-in-depth security architecture |
-| [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md) | Threat Model Analysis | 2 | Defines threat model and attack vectors |
-| [TACHYON-TST-V1.0](../../.specs/04_future_state/test_plan.md) | Test Plan | 2-8 | Defines overall testing strategy and methodology |
-| [TACHYON-DSN-SEC-V1.0](../../.specs/04_future_state/design/security_design.md) | Security Design | 4 | Defines security control implementations |
+| [TACHYON-STD-V1.0](../../.adrs/ | Coding and Documentation Standards | All sections | Defines documentation standards and format |
+| [TACHYON-REQ-SEC-V1.0](../../.adrs/ | Security Requirements | All sections | Defines security requirements to be validated |
+| [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language | 4.1-4.7 | Provides memory safety and type security rationale |
+| [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) | Security Architecture | 4.1-4.8 | Defines defense-in-depth security architecture |
+| [TACHYON-TMA-V1.0](../../.adrs/ | Threat Model Analysis | 2 | Defines threat model and attack vectors |
+| [TACHYON-TST-V1.0](../../.adrs/ | Test Plan | 2-8 | Defines overall testing strategy and methodology |
+| [TACHYON-DSN-SEC-V1.0](../../.adrs/ | Security Design | 4 | Defines security control implementations |
 
 **Rationale:** Internal references provide traceability to related project documents.
 

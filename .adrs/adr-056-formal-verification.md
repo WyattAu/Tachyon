@@ -97,17 +97,17 @@ Use only one proof assistant (either Lean4 or Coq, not both).
 
 ## Implementation Notes
 
-- Formal verification documented in .specs/07_ci_cd/formal_verification.md
+- Formal verification documented in .adrs/
 - GitHub Actions workflow in .github/workflows/formal_verification.yml
 - Proof assistants: Lean4 (lake), Coq (make), CBMC for model checking
-- Proofs in .specs/02_architecture/proof.lean and .specs/02_5_concurrency/proof.lean
+- Proofs in .adrs/ and .adrs/
 
 ## References
 
-- .specs/07_ci_cd/formal_verification.md
-- .specs/02_architecture/proof.lean
-- .specs/02_5_concurrency/proof.lean
-- .specs/03_security/security_test_plan.md
+- .adrs/
+- .adrs/
+- .adrs/
+- .adrs/
 - .adrs/adr-045-formal-verification.md
 
 ---

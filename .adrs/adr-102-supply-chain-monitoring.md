@@ -340,9 +340,9 @@ pub async fn generate_sbom(
 ## Related Decisions
 
 - [ADR-097](adr-097-monitoring-strategy.md) - Continuous Monitoring Strategy
-- [`.specs/11_continuous_monitoring/supply_chain_monitoring.md`](../.specs/11_continuous_monitoring/supply_chain_monitoring.md) - Supply Chain Monitoring Specification
-- [`.specs/01_5_supply_chain/sbom.spdx`](../.specs/01_5_supply_chain/sbom.spdx) - SBOM
-- [`.specs/01_5_supply_chain/vulnerability_report.md`](../.specs/01_5_supply_chain/vulnerability_report.md) - Vulnerability Report
+- [`.adrs/ - Supply Chain Monitoring Specification
+- [`.adrs/ - SBOM
+- [`.adrs/ - Vulnerability Report
 
 ## References
 

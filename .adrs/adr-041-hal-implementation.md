@@ -16,7 +16,7 @@ Phase 5 instruction requires implementation of a **Hardware Abstraction Layer (H
 
 ### 1.1. System Analysis
 
-After comprehensive analysis of the Tachyon system architecture ([`blue_paper.md`](../.specs/02_architecture/blue_paper.md)), the following findings were established:
+After comprehensive analysis of the Tachyon system architecture ([`blue_paper.md`](../.adrs/ the following findings were established:
 
 | Component | Hardware Interface | Analysis |
 |-----------|-------------------|------------|
@@ -70,9 +70,9 @@ All critical dependencies are pure software libraries:
    - Tauri abstracts desktop platform differences
 
 3. **No Hardware Specification:**
-   - [`blue_paper.md`](../.specs/02_architecture/blue_paper.md) contains no hardware specifications
-   - [`requirements.md`](../.specs/00_requirements/requirements.md) has no hardware requirements
-   - [`thread_safety_analysis.md`](../.specs/02_5_concurrency/thread_safety_analysis.md) and [`deadlock_analysis.md`](../.specs/02_5_concurrency/deadlock_analysis.md) discuss only software concurrency
+   - [`blue_paper.md`](../.adrs/ contains no hardware specifications
+   - [`requirements.md`](../.adrs/ has no hardware requirements
+   - [`thread_safety_analysis.md`](../.adrs/ and [`deadlock_analysis.md`](../.adrs/ discuss only software concurrency
 
 4. **Hardware-in-the-Loop (HIL) Not Applicable:**
    - HIL testing requires hardware to test against
@@ -143,7 +143,7 @@ While HAL is not required, Tachyon implements a **Software Abstraction Layer (SA
 2. **Platform Dependencies:**
    - Behavior may vary across platforms (Linux, macOS, Windows)
    - File watching latency differs by platform
-   - (Mitigation: Cross-platform testing in [`testing_matrix.md`](../.specs/04_5_cross_platform/testing_matrix.md))
+   - (Mitigation: Cross-platform testing in [`testing_matrix.md`](../.adrs/
 
 ### 3.3. Mitigation Strategies
 
@@ -265,10 +265,10 @@ All mock objects must verify:
 
 ## 8. References
 
-- [Blue Paper: Tachyon System Architecture Specification](../.specs/02_architecture/blue_paper.md)
+- [Blue Paper: Tachyon System Architecture Specification](../.adrs/
 - [ADR-040: Prototype Architecture](./adr-040-prototype-architecture.md)
-- [Thread Safety Analysis](../.specs/02_5_concurrency/thread_safety_analysis.md)
-- [Deadlock Analysis](../.specs/02_5_concurrency/deadlock_analysis.md)
-- [Threat Model: STRIDE Analysis](../.specs/03_security/threat_model.md)
-- [Testing Matrix](../.specs/04_5_cross_platform/testing_matrix.md)
+- [Thread Safety Analysis](../.adrs/
+- [Deadlock Analysis](../.adrs/
+- [Threat Model: STRIDE Analysis](../.adrs/
+- [Testing Matrix](../.adrs/
 - [ADR-046: Hardware Testing](./adr-046-hardware-testing.md)

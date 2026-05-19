@@ -4,7 +4,7 @@
 **Date:** February 2026
 **Status:** Proposed
 **Classification:** Technical Specification Document
-**Dependencies:** [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md), [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md), [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md), [TACHYON-ADR-007-V1.0](../.specs/02_adrs/007_tokio_for_async_runtime.md), [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md)
+**Dependencies:** [TACHYON-STD-V1.0](../.adrs/ [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md), [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md), [TACHYON-ADR-007-V1.0](../.adrs/adr-007-thread-safety-strategy.md), [TACHYON-TMA-V1.0](../.adrs/
 
 ---
 
@@ -45,7 +45,7 @@ The User API encompasses the following functional domains:
 4. **Authorization Enforcement:** Implement Role-Based Access Control (RBAC) for user operations
 5. **User Profile Management:** Manage user preferences, settings, and metadata
 
-The User API operates within the Tachyon server component, implemented using Rust with the Axum web framework and Tokio async runtime. All endpoints enforce authentication and authorization according to the security requirements specified in [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md).
+The User API operates within the Tachyon server component, implemented using Rust with the Axum web framework and Tokio async runtime. All endpoints enforce authentication and authorization according to the security requirements specified in [TACHYON-TMA-V1.0](../.adrs/
 
 ### 1.3. Target Audience
 
@@ -63,12 +63,12 @@ This specification adheres to the following standards and requirements:
 
 | Standard/Requirement | Reference | Relevance |
 |---------------------|-------------|-------------|
-| ISO/IEC 26514:2021 | [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) | Documentation quality and structure |
-| IEEE 1063-2001 | [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) | User documentation standards |
-| Rust Edition 2024 | [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) | Type safety and memory safety |
-| Axum v0.7 | [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md) | HTTP/2 server framework |
-| Tokio v1 | [TACHYON-ADR-007-V1.0](../.specs/02_adrs/007_tokio_for_async_runtime.md) | Async runtime |
-| STRIDE Threat Model | [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md) | Security threat analysis |
+| ISO/IEC 26514:2021 | [TACHYON-STD-V1.0](../.adrs/ | Documentation quality and structure |
+| IEEE 1063-2001 | [TACHYON-STD-V1.0](../.adrs/ | User documentation standards |
+| Rust Edition 2024 | [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) | Type safety and memory safety |
+| Axum v0.7 | [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md) | HTTP/2 server framework |
+| Tokio v1 | [TACHYON-ADR-007-V1.0](../.adrs/adr-007-thread-safety-strategy.md) | Async runtime |
+| STRIDE Threat Model | [TACHYON-TMA-V1.0](../.adrs/ | Security threat analysis |
 
 ---
 
@@ -441,7 +441,7 @@ pub enum UserStatus {
 
 - REQ-SRV-001: User Management
 - REQ-SRV-081: RBAC Enforcement
-- [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md): Axum HTTP/2 framework
+- [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md): Axum HTTP/2 framework
 
 **Rationale:**
 
@@ -729,7 +729,7 @@ pub struct UserActivityStats {
 
 - REQ-SRV-002: User Retrieval
 - REQ-SRV-081: RBAC Enforcement
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md): Rust type safety
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md): Rust type safety
 
 **Rationale:**
 
@@ -1006,8 +1006,8 @@ fn validate_password_complexity(password: &str) -> Result<(), validator::Validat
 - REQ-SRV-003: User Creation
 - REQ-SRV-081: RBAC Enforcement
 - REQ-SEC-001: Password Security
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md): Rust type safety
-- [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md): Security requirements
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md): Rust type safety
+- [TACHYON-TMA-V1.0](../.adrs/ Security requirements
 
 **Rationale:**
 
@@ -1308,8 +1308,8 @@ pub async fn update_user(
 
 - REQ-SRV-004: User Update
 - REQ-SRV-081: RBAC Enforcement
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md): Rust type safety
-- [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md): Security requirements
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md): Rust type safety
+- [TACHYON-TMA-V1.0](../.adrs/ Security requirements
 
 **Rationale:**
 
@@ -1562,8 +1562,8 @@ pub async fn delete_user(
 
 - REQ-SRV-005: User Deletion
 - REQ-SRV-081: RBAC Enforcement
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md): Rust type safety
-- [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md): Security requirements
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md): Rust type safety
+- [TACHYON-TMA-V1.0](../.adrs/ Security requirements
 
 **Rationale:**
 
@@ -1910,8 +1910,8 @@ pub struct ActivityStatistics {
 
 - REQ-SRV-006: User Activity Tracking
 - REQ-SRV-081: RBAC Enforcement
-- [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md): Rust type safety
-- [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md): Security requirements
+- [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md): Rust type safety
+- [TACHYON-TMA-V1.0](../.adrs/ Security requirements
 
 **Rationale:**
 
@@ -2174,7 +2174,7 @@ pub async fn performance_middleware(
 
 - REQ-PERF-001: Latency Requirements
 - REQ-PERF-002: Performance Monitoring
-- [TACHYON-ADR-007-V1.0](../.specs/02_adrs/007_tokio_for_async_runtime.md): Tokio async runtime
+- [TACHYON-ADR-007-V1.0](../.adrs/adr-007-thread-safety-strategy.md): Tokio async runtime
 
 **Rationale:**
 
@@ -2317,7 +2317,7 @@ pub struct CacheKey {
 
 - REQ-PERF-003: Caching Strategy
 - REQ-PERF-004: Cache Invalidation
-- [TACHYON-ADR-007-V1.0](../.specs/02_adrs/007_tokio_for_async_runtime.md): Tokio async runtime
+- [TACHYON-ADR-007-V1.0](../.adrs/adr-007-thread-safety-strategy.md): Tokio async runtime
 
 **Rationale:**
 
@@ -2383,44 +2383,44 @@ This section provides comprehensive references to all documents, standards, and 
 
 | Document ID | Title | Location | Relevance |
 |-------------|-------|----------|-----------|
-| [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards | API documentation standards |
-| IEEE 1063-2001 | [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) | User Documentation Standards | User-facing documentation |
+| [TACHYON-STD-V1.0](../.adrs/ | Coding and Documentation Standards | API documentation standards |
+| IEEE 1063-2001 | [TACHYON-STD-V1.0](../.adrs/ | User Documentation Standards | User-facing documentation |
 
 #### 7.1.2. Architectural Decision Records
 
 | ADR ID | Title | Location | Relevance |
 |----------|-------|----------|-----------|
-| [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language | Type system and memory safety |
-| [TACHYON-ADR-003-V1.0](../.specs/02_adrs/003_axum_for_http2_server.md) | Axum for HTTP/2 Server | Web framework selection |
-| [TACHYON-ADR-007-V1.0](../.specs/02_adrs/007_tokio_for_async_runtime.md) | Tokio for Async Runtime | Async runtime selection |
+| [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language | Type system and memory safety |
+| [TACHYON-ADR-003-V1.0](../.adrs/adr-003-lru-cache-target.md) | Axum for HTTP/2 Server | Web framework selection |
+| [TACHYON-ADR-007-V1.0](../.adrs/adr-007-thread-safety-strategy.md) | Tokio for Async Runtime | Async runtime selection |
 
 #### 7.1.3. Security Documents
 
 | Document ID | Title | Location | Relevance |
 |-------------|-------|----------|-----------|
-| [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md) | Threat Model Analysis | Security threat analysis |
-| [TACHYON-TMA-V1.0](../.specs/03_threat_model/analysis.md) | Security Requirements | Security requirements |
+| [TACHYON-TMA-V1.0](../.adrs/ | Threat Model Analysis | Security threat analysis |
+| [TACHYON-TMA-V1.0](../.adrs/ | Security Requirements | Security requirements |
 
 #### 7.1.4. Requirements Documents
 
 | Requirement ID | Title | Location | Relevance |
 |--------------|-------|----------|-----------|
-| REQ-SRV-001 | User Management | [../.specs/04_future_state/reqs/server_requirements.md](../.specs/04_future_state/reqs/server_requirements.md) | User CRUD operations |
-| REQ-SRV-081 | RBAC Enforcement | [../.specs/04_future_state/reqs/server_requirements.md](../.specs/04_future_state/reqs/server_requirements.md) | Role-based access control |
-| REQ-SEC-001 | Password Security | [../.specs/04_future_state/reqs/security_requirements.md](../.specs/04_future_state/reqs/security_requirements.md) | Password hashing and complexity |
-| REQ-SEC-002 | Token Security | [../.specs/04_future_state/reqs/security_requirements.md](../.specs/04_future_state/reqs/security_requirements.md) | JWT token security |
-| REQ-SEC-003 | RBAC Implementation | [../.specs/04_future_state/reqs/security_requirements.md](../.specs/04_future_state/reqs/security_requirements.md) | Role-based access control |
-| REQ-PERF-001 | Latency Requirements | [../.specs/04_future_state/reqs/server_requirements.md](../.specs/04_future_state/reqs/server_requirements.md) | Performance targets |
-| REQ-PERF-002 | Performance Monitoring | [../.specs/04_future_state/reqs/server_requirements.md](../.specs/04_future_state/reqs/server_requirements.md) | Performance monitoring |
-| REQ-PERF-003 | Caching Strategy | [../.specs/04_future_state/reqs/server_requirements.md](../.specs/04_future_state/reqs/server_requirements.md) | Caching requirements |
+| REQ-SRV-001 | User Management | [../.adrs/ | User CRUD operations |
+| REQ-SRV-081 | RBAC Enforcement | [../.adrs/ | Role-based access control |
+| REQ-SEC-001 | Password Security | [../.adrs/ | Password hashing and complexity |
+| REQ-SEC-002 | Token Security | [../.adrs/ | JWT token security |
+| REQ-SEC-003 | RBAC Implementation | [../.adrs/ | Role-based access control |
+| REQ-PERF-001 | Latency Requirements | [../.adrs/ | Performance targets |
+| REQ-PERF-002 | Performance Monitoring | [../.adrs/ | Performance monitoring |
+| REQ-PERF-003 | Caching Strategy | [../.adrs/ | Caching requirements |
 
 #### 7.1.5. Design Documents
 
 | Design ID | Title | Location | Relevance |
 |-----------|-------|----------|-----------|
-| [TACHYON-DES-API-V1.0](../.specs/04_future_state/design/api_interfaces.md) | API Interfaces Design | REST API design patterns |
-| [TACHYON-DES-SRV-V1.0](../.specs/04_future_state/design/server_design.md) | Server Design | Server component design |
-| [TACHYON-DES-DD-001](../.specs/04_future_state/design/data_models.md) | Data Models Design | User data structures |
+| [TACHYON-DES-API-V1.0](../.adrs/ | API Interfaces Design | REST API design patterns |
+| [TACHYON-DES-SRV-V1.0](../.adrs/ | Server Design | Server component design |
+| [TACHYON-DES-DD-001](../.adrs/ | Data Models Design | User data structures |
 
 #### 7.1.6. External References
 
@@ -2433,7 +2433,7 @@ This section provides comprehensive references to all documents, standards, and 
 | JWT Specification | https://tools.ietf.org/html/rfc7519 | JSON Web Token |
 | OAuth 2.0 | https://oauth.net/2/ | OAuth 2.0 framework |
 | Argon2 Documentation | https://github.com/P-H-C/phc-argon2 | Password hashing |
-| HTTP/2 Specification | https://httpwg.org/specs/rfc7540 | HTTP/2 protocol |
+| HTTP/2 Specification | https://httpwg.org/.adrs/ | HTTP/2 protocol |
 
 ---
 

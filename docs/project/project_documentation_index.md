@@ -163,8 +163,8 @@ The Architecture Documentation category encompasses documents describing the str
 - Deployment Topology
 
 **Related Documents:**
-- Design Documents: [`desktop_design.md`](.specs/04_future_state/design/desktop_design.md), [`server_design.md`](.specs/04_future_state/design/server_design.md), [`web_design.md`](.specs/04_future_state/design/web_design.md)
-- Requirements: [`system_overview.md`](.specs/04_future_state/reqs/system_overview.md)
+- Design Documents: [`desktop_design.md`](.adrs/ [`server_design.md`](.adrs/ [`web_design.md`](.adrs/
+- Requirements: [`system_overview.md`](.adrs/
 - ADRs: ADR-001 (Rust), ADR-002 (Tauri), ADR-003 (Axum), ADR-004 (Leptos)
 
 **Maintenance Schedule:** Reviewed quarterly or upon major architectural changes.
@@ -182,8 +182,8 @@ The Architecture Documentation category encompasses documents describing the str
 - Data Migration Strategies
 
 **Related Documents:**
-- Design Documents: [`data_models.md`](.specs/04_future_state/design/data_models.md)
-- Requirements: [`ipc_requirements.md`](.specs/04_future_state/reqs/ipc_requirements.md)
+- Design Documents: [`data_models.md`](.adrs/
+- Requirements: [`ipc_requirements.md`](.adrs/
 - ADRs: ADR-009 (IPC Communication)
 
 **Maintenance Schedule:** Reviewed quarterly or upon data model changes.
@@ -201,8 +201,8 @@ The Architecture Documentation category encompasses documents describing the str
 - Disaster Recovery Planning
 
 **Related Documents:**
-- Design Documents: [`build_design.md`](.specs/04_future_state/design/build_design.md)
-- Requirements: [`build_requirements.md`](.specs/04_future_state/reqs/build_requirements.md)
+- Design Documents: [`build_design.md`](.adrs/
+- Requirements: [`build_requirements.md`](.adrs/
 - ADRs: ADR-003 (Axum), ADR-006 (Nix Flakes), ADR-010 (Security)
 
 **Maintenance Schedule:** Reviewed quarterly or upon deployment infrastructure changes.
@@ -257,9 +257,9 @@ The Security Documentation category encompasses documents describing the securit
 - Cryptographic Standards
 
 **Related Documents:**
-- Design Documents: [`security_design.md`](.specs/04_future_state/design/security_design.md)
-- Requirements: [`security_requirements.md`](.specs/04_future_state/reqs/security_requirements.md)
-- Threat Model: [`threat_model.md`](.specs/03_threat_model/analysis.md)
+- Design Documents: [`security_design.md`](.adrs/
+- Requirements: [`security_requirements.md`](.adrs/
+- Threat Model: [`threat_model.md`](.adrs/
 - ADRs: ADR-010 (Security Architecture)
 
 **Maintenance Schedule:** Reviewed quarterly or upon security incident findings.
@@ -277,9 +277,9 @@ The Security Documentation category encompasses documents describing the securit
 - Continuous Threat Monitoring
 
 **Related Documents:**
-- Threat Analysis: [`analysis.md`](.specs/03_threat_model/analysis.md)
-- Design Documents: [`security_design.md`](.specs/04_future_state/design/security_design.md)
-- Requirements: [`security_requirements.md`](.specs/04_future_state/reqs/security_requirements.md)
+- Threat Analysis: [`analysis.md`](.adrs/
+- Design Documents: [`security_design.md`](.adrs/
+- Requirements: [`security_requirements.md`](.adrs/
 - ADRs: ADR-010 (Security Architecture)
 
 **Maintenance Schedule:** Reviewed quarterly or upon system changes.
@@ -337,8 +337,8 @@ The Quality Documentation category encompasses documents describing the quality 
 - Troubleshooting Common Issues
 
 **Related Documents:**
-- Design Documents: [`build_design.md`](.specs/04_future_state/design/build_design.md)
-- Requirements: [`build_requirements.md`](.specs/04_future_state/reqs/build_requirements.md)
+- Design Documents: [`build_design.md`](.adrs/
+- Requirements: [`build_requirements.md`](.adrs/
 - Architecture: [`deployment_architecture.md`](docs/architecture/deployment_architecture.md)
 - ADRs: ADR-003 (Axum), ADR-006 (Nix Flakes), ADR-010 (Security)
 
@@ -555,7 +555,7 @@ The User Documentation category encompasses documents designed for end-users of 
 
 **Related Documents:**
 - Quality: [`deployment_guide.md`](docs/quality/deployment_guide.md)
-- Design: [`build_design.md`](.specs/04_future_state/design/build_design.md)
+- Design: [`build_design.md`](.adrs/
 - ADRs: ADR-006 (Nix Flakes)
 
 **Maintenance Schedule:** Reviewed quarterly or upon installation procedure changes.
@@ -574,7 +574,7 @@ The User Documentation category encompasses documents designed for end-users of 
 - Advanced Usage
 
 **Related Documents:**
-- Design: [`desktop_design.md`](.specs/04_future_state/design/desktop_design.md), [`server_design.md`](.specs/04_future_state/design/server_design.md), [`web_design.md`](.specs/04_future_state/design/web_design.md)
+- Design: [`desktop_design.md`](.adrs/ [`server_design.md`](.adrs/ [`web_design.md`](.adrs/
 - ADRs: ADR-001 (Rust), ADR-002 (Tauri), ADR-004 (Leptos)
 
 **Maintenance Schedule:** Reviewed quarterly or upon feature changes.
@@ -701,7 +701,7 @@ The Developer Documentation category encompasses documents designed for develope
 - Code Review Guidelines
 
 **Related Documents:**
-- Standards: [`coding_standards.md`](.specs/01_standards/coding_standards.md)
+- Standards: [`coding_standards.md`](.adrs/
 - ADRs: ADR-001 (Rust), ADR-004 (Leptos)
 
 **Maintenance Schedule:** Reviewed quarterly or upon coding standard changes.
@@ -720,7 +720,7 @@ The Developer Documentation category encompasses documents designed for develope
 - License and Copyright
 
 **Related Documents:**
-- Standards: [`coding_standards.md`](.specs/01_standards/coding_standards.md)
+- Standards: [`coding_standards.md`](.adrs/
 - All ADRs
 
 **Maintenance Schedule:** Reviewed quarterly or upon contribution process changes.
@@ -740,7 +740,7 @@ The Developer Documentation category encompasses documents designed for develope
 
 **Related Documents:**
 - Architecture: [`system_architecture_overview.md`](docs/architecture/system_architecture_overview.md)
-- Design: [`desktop_design.md`](.specs/04_future_state/design/desktop_design.md), [`server_design.md`](.specs/04_future_state/design/server_design.md), [`web_design.md`](.specs/04_future_state/design/web_design.md)
+- Design: [`desktop_design.md`](.adrs/ [`server_design.md`](.adrs/ [`web_design.md`](.adrs/
 - ADRs: ADR-001 (Rust), ADR-003 (Axum), ADR-007 (Tokio)
 
 **Maintenance Schedule:** Reviewed quarterly or upon debugging procedure changes.
@@ -778,7 +778,7 @@ The Developer Documentation category encompasses documents designed for develope
 - Test Data Management
 
 **Related Documents:**
-- Test Plan: [`test_plan.md`](.specs/04_future_state/test_plan.md)
+- Test Plan: [`test_plan.md`](.adrs/
 - All ADRs
 
 **Maintenance Schedule:** Reviewed quarterly or upon testing framework changes.
@@ -852,7 +852,7 @@ The Project Documentation category encompasses documents describing the project 
 - Success Metrics
 
 **Related Documents:**
-- Requirements: [`system_overview.md`](.specs/04_future_state/reqs/system_overview.md)
+- Requirements: [`system_overview.md`](.adrs/
 - All ADRs
 
 **Maintenance Schedule:** Updated monthly or upon strategic direction changes.
@@ -872,7 +872,7 @@ The Project Documentation category encompasses documents describing the project 
 
 **Related Documents:**
 - Roadmap: [`project_roadmap.md`](docs/project/project_roadmap.md)
-- Tasks: [`tasks.md`](.specs/tasks.md)
+- Tasks: [`tasks.md`](.adrs/
 - All ADRs
 
 **Maintenance Schedule:** Updated monthly or upon schedule changes.
@@ -1210,13 +1210,13 @@ This document references the following internal specification documents:
 
 | Reference ID | Title | File Path | Purpose |
 |--------------|-------|-----------|---------|
-| TACHYON-STD-V1.0 | Coding and Documentation Standards | [`.specs/01_standards/coding_standards.md`](.specs/01_standards/coding_standards.md) | Defines coding and documentation standards |
-| TACHYON-TSK-V1.0 | Execution Tasks and Work Breakdown Structure | [`.specs/tasks.md`](.specs/tasks.md) | Defines project tasks and dependencies |
-| TACHYON-REQ-V1.0 | Requirements Specification | [`.specs/04_future_state/reqs/`](.specs/04_future_state/reqs/) | Defines system requirements |
-| TACHYON-DSN-V1.0 | Design Documents | [`.specs/04_future_state/design/`](.specs/04_future_state/design/) | Defines system design |
-| TACHYON-TST-V1.0 | Test Plan | [`.specs/04_future_state/test_plan.md`](.specs/04_future_state/test_plan.md) | Defines testing strategy |
-| TACHYON-ADR-V1.0 | Architectural Decision Records | [`.specs/02_adrs/`](.specs/02_adrs/) | Records architectural decisions |
-| TACHYON-THR-V1.0 | Threat Model | [`.specs/03_threat_model/analysis.md`](.specs/03_threat_model/analysis.md) | Defines security threats |
+| TACHYON-STD-V1.0 | Coding and Documentation Standards | [`.adrs/ | Defines coding and documentation standards |
+| TACHYON-TSK-V1.0 | Execution Tasks and Work Breakdown Structure | [`.adrs/ | Defines project tasks and dependencies |
+| TACHYON-REQ-V1.0 | Requirements Specification | [`.adrs/ | Defines system requirements |
+| TACHYON-DSN-V1.0 | Design Documents | [`.adrs/ | Defines system design |
+| TACHYON-TST-V1.0 | Test Plan | [`.adrs/ | Defines testing strategy |
+| TACHYON-ADR-V1.0 | Architectural Decision Records | [`.adrs/`](.adrs/) | Records architectural decisions |
+| TACHYON-THR-V1.0 | Threat Model | [`.adrs/ | Defines security threats |
 
 ### 12.2. Architectural Decision Records (ADRs)
 
@@ -1224,16 +1224,16 @@ The following ADRs are referenced throughout the documentation suite:
 
 | ADR ID | Title | File Path | Status |
 |--------|-------|-----------|--------|
-| ADR-001 | Rust as Primary Language | [`.specs/02_adrs/001_rust_as_primary_language.md`](.specs/02_adrs/001_rust_as_primary_language.md) | Accepted |
-| ADR-002 | Tauri for Desktop Application | [`.specs/02_adrs/002_tauri_for_desktop_application.md`](.specs/02_adrs/002_tauri_for_desktop_application.md) | Accepted |
-| ADR-003 | Axum for HTTP/2 Server | [`.specs/02_adrs/003_axum_for_http2_server.md`](.specs/02_adrs/003_axum_for_http2_server.md) | Accepted |
-| ADR-004 | Leptos for Web Frontend | [`.specs/02_adrs/004_leptos_for_web_frontend.md`](.specs/02_adrs/004_leptos_for_web_frontend.md) | Accepted |
-| ADR-005 | Bun for JavaScript Runtime | [`.specs/02_adrs/005_bun_for_javascript_runtime.md`](.specs/02_adrs/005_bun_for_javascript_runtime.md) | Accepted |
-| ADR-006 | Nix Flakes for Build System | [`.specs/02_adrs/006_nix_flakes_for_build_system.md`](.specs/02_adrs/006_nix_flakes_for_build_system.md) | Accepted |
-| ADR-007 | Tokio for Async Runtime | [`.specs/02_adrs/007_tokio_for_async_runtime.md`](.specs/02_adrs/007_tokio_for_async_runtime.md) | Accepted |
-| ADR-008 | Workspace Structure for Rust Crates | [`.specs/02_adrs/008_workspace_structure_for_rust_crates.md`](.specs/02_adrs/008_workspace_structure_for_rust_crates.md) | Accepted |
-| ADR-009 | IPC Communication Architecture | [`.specs/02_adrs/009_ipc_communication_architecture.md`](.specs/02_adrs/009_ipc_communication_architecture.md) | Accepted |
-| ADR-010 | Security Architecture | [`.specs/02_adrs/010_security_architecture.md`](.specs/02_adrs/010_security_architecture.md) | Accepted |
+| ADR-001 | Rust as Primary Language | [`.adrs/adr-001-three-tier-jit-compilation.md](.adrs/adr-001-three-tier-jit-compilation.md) | Accepted |
+| ADR-002 | Tauri for Desktop Application | [`.adrs/adr-002-bm25-search-parameters.md](.adrs/adr-002-bm25-search-parameters.md) | Accepted |
+| ADR-003 | Axum for HTTP/2 Server | [`.adrs/adr-003-lru-cache-target.md](.adrs/adr-003-lru-cache-target.md) | Accepted |
+| ADR-004 | Leptos for Web Frontend | [`.adrs/adr-004-debounce-window.md](.adrs/adr-004-debounce-window.md) | Accepted |
+| ADR-005 | Bun for JavaScript Runtime | [`.adrs/adr-005-last-write-wins-conflict-resolution.md](.adrs/adr-005-last-write-wins-conflict-resolution.md) | Accepted |
+| ADR-006 | Nix Flakes for Build System | [`.adrs/adr-006-direct-libgit2-integration.md](.adrs/adr-006-direct-libgit2-integration.md) | Accepted |
+| ADR-007 | Tokio for Async Runtime | [`.adrs/adr-007-thread-safety-strategy.md](.adrs/adr-007-thread-safety-strategy.md) | Accepted |
+| ADR-008 | Workspace Structure for Rust Crates | [`.adrs/adr-008-deadlock-prevention.md](.adrs/adr-008-deadlock-prevention.md) | Accepted |
+| ADR-009 | IPC Communication Architecture | [`.adrs/adr-009-race-condition-mitigation.md](.adrs/adr-009-race-condition-mitigation.md) | Accepted |
+| ADR-010 | Security Architecture | [`.adrs/adr-010-synchronization-primitives.md](.adrs/adr-010-synchronization-primitives.md) | Accepted |
 
 ### 12.3. External Standards
 

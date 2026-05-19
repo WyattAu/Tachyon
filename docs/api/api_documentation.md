@@ -59,11 +59,11 @@ This document depends on the following specification documents:
 
 | Document ID | Title | Purpose |
 |-------------|-------|---------|
-| [TACHYON-STD-V1.0](../.specs/01_standards/coding_standards.md) | Coding and Documentation Standards | Establishes documentation format and quality standards |
-| [TACHYON-ADR-001-V1.0](../.specs/02_adrs/001_rust_as_primary_language.md) | Rust as Primary Language | Defines language-specific API conventions |
-| [TACHYON-ADR-010-V1.0](../.specs/02_adrs/010_security_architecture.md) | Security Architecture | Defines security requirements for all APIs |
-| [TACHYON-REQ-V1.0](../.specs/06_requirements/requirements.md) | Requirements Specification | Defines functional and non-functional requirements |
-| [TACHYON-DSN-V1.0](../.specs/07_designs/designs.md) | Design Documents | Provides architectural design context |
+| [TACHYON-STD-V1.0](../.adrs/ | Coding and Documentation Standards | Establishes documentation format and quality standards |
+| [TACHYON-ADR-001-V1.0](../.adrs/adr-001-three-tier-jit-compilation.md) | Rust as Primary Language | Defines language-specific API conventions |
+| [TACHYON-ADR-010-V1.0](../.adrs/adr-010-synchronization-primitives.md) | Security Architecture | Defines security requirements for all APIs |
+| [TACHYON-REQ-V1.0](../.adrs/ | Requirements Specification | Defines functional and non-functional requirements |
+| [TACHYON-DSN-V1.0](../.adrs/ | Design Documents | Provides architectural design context |
 
 ### 1.3. API Design Philosophy
 
@@ -7785,17 +7785,17 @@ Validates client migration.
 | Tachyon System Architecture Overview | System architecture documentation | [`docs/architecture/system_architecture_overview.md`](docs/architecture/system_architecture_overview.md) |
 | Tachyon Data Architecture | Data model and storage documentation | [`docs/architecture/data_architecture.md`](docs/architecture/data_architecture.md) |
 | Tachyon Deployment Architecture | Deployment and infrastructure documentation | [`docs/architecture/deployment_architecture.md`](docs/architecture/deployment_architecture.md) |
-| Tachyon Coding Standards | Coding standards and conventions | [`.specs/01_standards/coding_standards.md`](.specs/01_standards/coding_standards.md) |
-| Tachyon Requirements | System requirements specifications | [`.specs/04_future_state/reqs/`](.specs/04_future_state/reqs/) |
-| Tachyon Design Documents | System design specifications | [`.specs/04_future_state/design/`](.specs/04_future_state/design/) |
-| Tachyon Test Plan | Testing strategy and procedures | [`.specs/04_future_state/test_plan.md`](.specs/04_future_state/test_plan.md) |
+| Tachyon Coding Standards | Coding standards and conventions | [`.adrs/ |
+| Tachyon Requirements | System requirements specifications | [`.adrs/ |
+| Tachyon Design Documents | System design specifications | [`.adrs/ |
+| Tachyon Test Plan | Testing strategy and procedures | [`.adrs/ |
 
 ### 18.2. Architecture Decision Records (ADRs)
 
 | ADR | Title | Location |
 |-----|-------|----------|
-| ADR-001 | Rust as Primary Language | [`.specs/02_adrs/001_rust_as_primary_language.md`](.specs/02_adrs/001_rust_as_primary_language.md) |
-| ADR-010 | Security Architecture | [`.specs/02_adrs/010_security_architecture.md`](.specs/02_adrs/010_security_architecture.md) |
+| ADR-001 | Rust as Primary Language | [`.adrs/adr-001-three-tier-jit-compilation.md](.adrs/adr-001-three-tier-jit-compilation.md) |
+| ADR-010 | Security Architecture | [`.adrs/adr-010-synchronization-primitives.md](.adrs/adr-010-synchronization-primitives.md) |
 
 ### 18.3. External Standards
 

@@ -643,7 +643,7 @@ quality_gates:
 
 ## References
 
-- [White Paper](../.specs/05_branding/white_paper.md)
+- [White Paper](../.adrs/
 - [ADR-062: Brand Identity](./adr-062-brand-identity.md)
 - [ADR-063: UX Philosophy](./adr-063-ux-philosophy.md)
 - [ADR-064: Documentation Strategy](./adr-064-documentation-strategy.md)

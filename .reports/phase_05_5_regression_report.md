@@ -42,9 +42,9 @@
 
 | Document | Path | Status | Lines | Description |
 |-----------|------|-------|--------|-------------|
-| Baseline Metrics | `.specs/06_5_regression/baseline_metrics.toml` | COMPLETED | 341 | Comprehensive performance baseline with all metrics defined |
-| Detection Strategy | `.specs/06_5_regression/detection_strategy.md` | COMPLETED | 477 | Statistical detection methods with CI/CD integration |
-| Alerting Rules | `.specs/06_5_regression/alerting_rules.md` | COMPLETED | 469 | Alerting thresholds and escalation rules |
+| Baseline Metrics | `.adrs/ | COMPLETED | 341 | Comprehensive performance baseline with all metrics defined |
+| Detection Strategy | `.adrs/ | COMPLETED | 477 | Statistical detection methods with CI/CD integration |
+| Alerting Rules | `.adrs/ | COMPLETED | 469 | Alerting thresholds and escalation rules |
 
 ### 2.2. Architecture Decision Records
 
@@ -215,7 +215,7 @@
 
 **Status:** PENDING (Implementation)
 
-The regression detection GitHub Actions workflow has been designed in [`detection_strategy.md`](../.specs/06_5_regression/detection_strategy.md) and requires implementation.
+The regression detection GitHub Actions workflow has been designed in [`detection_strategy.md`](../.adrs/ and requires implementation.
 
 **Workflow Steps:**
 
@@ -247,7 +247,7 @@ The regression detection GitHub Actions workflow has been designed in [`detectio
 
 **Status:** PENDING (Configuration)
 
-Slack alert format has been defined in [`alerting_rules.md`](../.specs/06_5_regression/alerting_rules.md).
+Slack alert format has been defined in [`alerting_rules.md`](../.adrs/
 
 **Alert Channels:**
 
@@ -261,7 +261,7 @@ Slack alert format has been defined in [`alerting_rules.md`](../.specs/06_5_regr
 
 **Status:** PENDING (Configuration)
 
-PagerDuty service integration has been defined in [`alerting_rules.md`](../.specs/06_5_regression/alerting_rules.md).
+PagerDuty service integration has been defined in [`alerting_rules.md`](../.adrs/
 
 **Escalation Policy:**
 
@@ -395,15 +395,15 @@ PagerDuty service integration has been defined in [`alerting_rules.md`](../.spec
 
 | Document | Relationship |
 |-----------|-------------|
-| [`baseline_metrics.toml`](../.specs/06_5_regression/baseline_metrics.toml) | Baseline data |
-| [`detection_strategy.md`](../.specs/06_5_regression/detection_strategy.md) | Detection methods |
-| [`alerting_rules.md`](../.specs/06_5_regression/alerting_rules.md) | Alerting thresholds |
+| [`baseline_metrics.toml`](../.adrs/ | Baseline data |
+| [`detection_strategy.md`](../.adrs/ | Detection methods |
+| [`alerting_rules.md`](../.adrs/ | Alerting thresholds |
 | [`adr-047-baseline-establishment.md`](../.adrs/adr-047-baseline-establishment.md) | Baseline establishment |
 | [`adr-048-regression-detection.md`](../.adrs/adr-048-regression-detection.md) | Regression detection |
 | [`adr-049-trend-analysis.md`](../.adrs/adr-049-trend-analysis.md) | Trend analysis |
 | [`adr-050-alerting-thresholds.md`](../.adrs/adr-050-alerting-thresholds.md) | Thresholds |
-| [`performance_requirements.md`](../.specs/04_performance/performance_requirements.md) | Requirements source |
-| [`benchmark_suite.md`](../.specs/04_performance/benchmark_suite.md) | Benchmark definitions |
+| [`performance_requirements.md`](../.adrs/ | Requirements source |
+| [`benchmark_suite.md`](../.adrs/ | Benchmark definitions |
 
 ---
 

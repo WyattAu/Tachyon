@@ -5,7 +5,7 @@
 **Status:** Approved for Implementation
 **Classification:** Security Documentation
 **Compliance Level:** ISO/IEC 27001:2022, NIST SP 800-53 Rev. 5, OWASP ASVS 4.0, GDPR 2016/679
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-TMA-V1.0](../../.specs/03_threat_model/analysis.md), [TACHYON-ADR-010-V1.0](../../.specs/02_adrs/010_security_architecture.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-TMA-V1.0](../../.adrs/ [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md)
 
 ---
 
@@ -1914,9 +1914,9 @@ graph TB
 
 | Document ID | Title | Version | Path |
 |-------------|-------|---------|------|
-| **TACHYON-STD-V1.0** | Coding and Documentation Standards | 1.0 | [.specs/01_standards/coding_standards.md](../../.specs/01_standards/coding_standards.md) |
-| **TACHYON-TMA-V1.0** | Threat Model Analysis | 1.0 | [.specs/03_threat_model/analysis.md](../../.specs/03_threat_model/analysis.md) |
-| **TACHYON-ADR-010-V1.0** | Security Architecture | 1.0 | [.specs/02_adrs/010_security_architecture.md](../../.specs/02_adrs/010_security_architecture.md) |
+| **TACHYON-STD-V1.0** | Coding and Documentation Standards | 1.0 | [.adrs/ |
+| **TACHYON-TMA-V1.0** | Threat Model Analysis | 1.0 | [.adrs/ |
+| **TACHYON-ADR-010-V1.0** | Security Architecture | 1.0 | [.adrs/adr-010-synchronization-primitives.md](../../.adrs/adr-010-synchronization-primitives.md) |
 | **TACHYON-SEC-001-V1.0** | Security Policy | 1.0 | [.docs/security/security_policy.md](security_policy.md) |
 | **TACHYON-SEC-005-V1.0** | Incident Response and Recovery | 1.0 | [.docs/security/incident_response_recovery.md](incident_response_recovery.md) |
 | **TACHYON-SEC-006-V1.0** | Security Testing and Auditing | 1.0 | [.docs/security/security_testing_auditing.md](security_testing_auditing.md) |

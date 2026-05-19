@@ -353,9 +353,9 @@ The implementation roadmap defines a phased approach to achieving 100% complianc
 
 ## 10. References
 
-- Tachyon Requirements: [`.specs/00_requirements/requirements.md`](.specs/00_requirements/requirements.md)
-- Tachyon Architecture: [`.specs/02_architecture/blue_paper.md`](.specs/02_architecture/blue_paper.md)
-- Threat Model: [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md)
-- Security Test Plan: [`.specs/03_security/security_test_plan.md`](.specs/03_security/security_test_plan.md)
-- Compliance Matrix: [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md)
+- Tachyon Requirements: [`.adrs/
+- Tachyon Architecture: [`.adrs/
+- Threat Model: [`.adrs/
+- Security Test Plan: [`.adrs/
+- Compliance Matrix: [`.adrs/
 - All ADRs: [`.adrs/`](.adrs/)

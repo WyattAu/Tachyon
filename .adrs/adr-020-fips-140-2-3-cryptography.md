@@ -214,9 +214,9 @@ Tachyon uses cryptography for multiple purposes including data encryption, secur
 
 ## 9. References
 
-- Tachyon Requirements: [`.specs/00_requirements/requirements.md`](.specs/00_requirements/requirements.md)
-- Tachyon Architecture: [`.specs/02_architecture/blue_paper.md`](.specs/02_architecture/blue_paper.md)
-- Threat Model: [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md)
+- Tachyon Requirements: [`.adrs/
+- Tachyon Architecture: [`.adrs/
+- Threat Model: [`.adrs/
 - FIPS 140-2 Standard: https://csrc.nist.gov/publications/detail/fips/140/2/final
 - FIPS 140-3 Standard: https://csrc.nist.gov/publications/detail/fips/140/3/final
 - NIST SP 800-53 ADR: [`.adrs/adr-017-nist-800-53-controls.md`](.adrs/adr-017-nist-800-53-controls.md)

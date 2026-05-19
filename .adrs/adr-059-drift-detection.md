@@ -75,5 +75,5 @@ The drift detection system provides:
 - ISO/IEC 27001: Information Security Management
 
 ## References
-- [.specs/07_5_doc_verification/drift_detection.md](../.specs/07_5_doc_verification/drift_detection.md)
+- [.adrs/
 - [ADR-058: Consistency Checks](./adr-058-consistency-checks.md)

@@ -4,7 +4,7 @@
 **Date:** February 2026
 **Status:** Proposed
 **Classification:** API Specification
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-REQ-DESK-V1.0](../../.specs/04_future_state/reqs/desktop_requirements.md), [TACHYON-DES-DESK-V1.0](../../.specs/04_future_state/design/desktop_design.md), [TACHYON-ADR-002-V1.0](../../.specs/02_adrs/002_tauri_for_desktop_application.md), [TACHYON-ADR-009-V1.0](../../.specs/02_adrs/009_ipc_communication_architecture.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-REQ-DESK-V1.0](../../.adrs/ [TACHYON-DES-DESK-V1.0](../../.adrs/ [TACHYON-ADR-002-V1.0](../../.adrs/adr-002-bm25-search-parameters.md), [TACHYON-ADR-009-V1.0](../../.adrs/adr-009-race-condition-mitigation.md)
 
 ---
 
@@ -2798,7 +2798,7 @@ pub fn collect_performance_metrics() -> EventPerformanceMetrics {
 
 ### 9.1. Requirements References
 
-This specification references the following requirements from [`.specs/04_future_state/reqs/desktop_requirements.md`](../../.specs/04_future_state/reqs/desktop_requirements.md):
+This specification references the following requirements from [`.adrs/
 
 | Requirement ID | Title | Reference Section |
 |----------------|-------|------------------|
@@ -2863,7 +2863,7 @@ This specification references the following requirements from [`.specs/04_future
 
 ### 9.2. Design References
 
-This specification references the following design elements from [`.specs/04_future_state/design/desktop_design.md`](../../.specs/04_future_state/design/desktop_design.md):
+This specification references the following design elements from [`.adrs/
 
 | Design Element ID | Title | Reference Section |
 |-------------------|-------|------------------|

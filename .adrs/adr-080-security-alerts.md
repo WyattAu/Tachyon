@@ -10,7 +10,7 @@
 ## Context and Problem Statement
 
 ### Context
-The supply chain monitoring system ([`.specs/09_5_supply_monitoring/monitoring_strategy.md`](.specs/09_5_supply_monitoring/monitoring_strategy.md)) requires an alerting mechanism to notify teams of security incidents, compliance issues, and supply chain threats. The alerting rules ([`.specs/09_5_supply_monitoring/alerting_rules.md`](.specs/09_5_supply_monitoring/alerting_rules.md)) define the alert conditions and severity levels.
+The supply chain monitoring system ([`.adrs/ requires an alerting mechanism to notify teams of security incidents, compliance issues, and supply chain threats. The alerting rules ([`.adrs/ define the alert conditions and severity levels.
 
 ### Problem Statement
 We lack an automated security alerting system that provides:
@@ -33,7 +33,7 @@ Current challenges:
 ## Decision Drivers
 
 ### Security Requirements
-From [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md):
+From [`.adrs/
 - **NIST-AU-02:** Audit Events
 - **NIST-AU-06:** Audit Review, Analysis, and Reporting
 - **NIST-IR-04:** Incident Handling
@@ -474,10 +474,10 @@ components:
 ## References
 
 **Internal Documents:**
-- [`.specs/09_5_supply_monitoring/monitoring_strategy.md`](.specs/09_5_supply_monitoring/monitoring_strategy.md) - Monitoring Strategy
-- [`.specs/09_5_supply_monitoring/alerting_rules.md`](.specs/09_5_supply_monitoring/alerting_rules.md) - Alerting Rules
-- [`.specs/03_security/threat_model.md`](.specs/03_security/threat_model.md) - Threat Model
-- [`.specs/03_security/compliance_matrix.md`](.specs/03_security/compliance_matrix.md) - Compliance Matrix
+- [`.adrs/ - Monitoring Strategy
+- [`.adrs/ - Alerting Rules
+- [`.adrs/ - Threat Model
+- [`.adrs/ - Compliance Matrix
 
 **External Services:**
 - PagerDuty: https://www.pagerduty.com

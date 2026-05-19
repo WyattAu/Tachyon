@@ -5,7 +5,7 @@
 **Status:** Proposed
 **Classification:** API Specification Document
 **Compliance Level:** ISO/IEC 26514:2021, IEEE 1016-2009
-**Dependencies:** [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md), [TACHYON-ADR-001-V1.0](../../specs/02_adrs/001_rust_as_primary_language.md), [TACHYON-ADR-010-V1.0](../../specs/02_adrs/010_security_architecture.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md), [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md)
 
 ---
 
@@ -5294,13 +5294,13 @@ Plugin developers should follow these security best practices to ensure their pl
 
 This document references the following Tachyon specification documents:
 
-- [TACHYON-STD-V1.0](../../specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-TSK-V1.0](../../specs/tasks.md) - Execution Tasks and Work Breakdown Structure
-- [TACHYON-ADR-001-V1.0](../../specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](../../specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-REQ-DESK-V1.0](../../specs/04_future_state/reqs/desktop_requirements.md) - Desktop Application Requirements
-- [TACHYON-DES-API-V1.0](../../specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
-- [TACHYON-TST-V1.0](../../specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](../../.adrs/ - Coding and Documentation Standards
+- [TACHYON-TSK-V1.0](../../.adrs/ - Execution Tasks and Work Breakdown Structure
+- [TACHYON-ADR-001-V1.0](../../.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](../../.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-REQ-DESK-V1.0](../../.adrs/ - Desktop Application Requirements
+- [TACHYON-DES-API-V1.0](../../.adrs/ - API Interfaces Design
+- [TACHYON-TST-V1.0](../../.adrs/ - Test Plan
 
 ### 14.2. External References
 
@@ -5313,7 +5313,7 @@ This document references the following external standards and specifications:
 - [IEEE 1063-2001](https://standards.ieee.org/standard/1063-2001.html) - Standard for Software User Documentation
 - [IEEE 1016-2009](https://standards.ieee.org/standard/1016-2009.html) - Standard for Information Technology
 - [WCAG 2.1](https://www.w3.org/WAI/WCAG21/quickref/) - Web Content Accessibility Guidelines
-- [RFC 7540](https://httpwg.org/specs/rfc7540) - Hypertext Transfer Protocol Version 2 (HTTP/2)
+- [RFC 7540](https://httpwg.org/.adrs/ - Hypertext Transfer Protocol Version 2 (HTTP/2)
 - [WebAssembly Specification](https://webassembly.github.io/spec/core/) - WebAssembly Core Specification
 
 ### 14.3. Technology References
@@ -5336,11 +5336,11 @@ This document references the following technologies and frameworks:
 
 This document is related to the following Architectural Decision Records:
 
-- [ADR-001: Rust as Primary Language](../../specs/02_adrs/001_rust_as_primary_language.md) - Establishes Rust as the primary programming language
-- [ADR-002: Tauri for Desktop Application](../../specs/02_adrs/002_tauri_for_desktop_application.md) - Selects Tauri for desktop application wrapper
-- [ADR-003: Axum for HTTP/2 Server](../../specs/02_adrs/003_axum_for_http2_server.md) - Selects Axum for HTTP/2 server component
-- [ADR-004: Leptos for Web Frontend](../../specs/02_adrs/004_leptos_for_web_frontend.md) - Selects Leptos for web frontend
-- [ADR-010: Security Architecture](../../specs/02_adrs/010_security_architecture.md) - Defines security architecture and controls
+- [ADR-001: Rust as Primary Language](../../.adrs/adr-001-three-tier-jit-compilation.md) - Establishes Rust as the primary programming language
+- [ADR-002: Tauri for Desktop Application](../../.adrs/adr-002-bm25-search-parameters.md) - Selects Tauri for desktop application wrapper
+- [ADR-003: Axum for HTTP/2 Server](../../.adrs/adr-003-lru-cache-target.md) - Selects Axum for HTTP/2 server component
+- [ADR-004: Leptos for Web Frontend](../../.adrs/adr-004-debounce-window.md) - Selects Leptos for web frontend
+- [ADR-010: Security Architecture](../../.adrs/adr-010-synchronization-primitives.md) - Defines security architecture and controls
 
 ### 14.5. Glossary
 

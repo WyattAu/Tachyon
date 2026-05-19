@@ -25,9 +25,9 @@ Phase 4.5 has successfully completed the cross-platform compatibility analysis f
 
 | Deliverable | Status | Location | Description |
 |-----------|--------|----------|-------------|
-| OS Compatibility Analysis | COMPLETE | `.specs/04_5_cross_platform/os_compatibility.md` | OS-specific behaviors and abstractions |
-| Compiler Compatibility Analysis | COMPLETE | `.specs/04_5_cross_platform/compiler_compatibility.md` | Compiler requirements and portability |
-| Testing Matrix | COMPLETE | `.specs/04_5_cross_platform/testing_matrix.md` | Testing strategy and CI/CD |
+| OS Compatibility Analysis | COMPLETE | `.adrs/ | OS-specific behaviors and abstractions |
+| Compiler Compatibility Analysis | COMPLETE | `.adrs/ | Compiler requirements and portability |
+| Testing Matrix | COMPLETE | `.adrs/ | Testing strategy and CI/CD |
 | ADR-035: OS Compatibility Strategy | COMPLETE | `.adrs/adr-035-os-compatibility-strategy.md` | Platform abstraction layer |
 | ADR-036: Compiler Compatibility Strategy | COMPLETE | `.adrs/adr-036-compiler-compatibility-strategy.md` | MSRV and conditional compilation |
 | ADR-037: Architecture Compatibility Strategy | COMPLETE | `.adrs/adr-037-architecture-compatibility-strategy.md` | Architecture-independent data handling |
@@ -398,9 +398,9 @@ Phase 4.5 has successfully completed the cross-platform compatibility analysis f
 
 | Document ID | Title | Location |
 |-------------|-------|----------|
-| TACHYON-OSCOMP-V1.0 | OS Compatibility Analysis | `.specs/04_5_cross_platform/os_compatibility.md` |
-| TACHYON-COMP-V1.0 | Compiler Compatibility Analysis | `.specs/04_5_cross_platform/compiler_compatibility.md` |
-| TACHYON-TM-V1.0 | Testing Matrix | `.specs/04_5_cross_platform/testing_matrix.md` |
+| TACHYON-OSCOMP-V1.0 | OS Compatibility Analysis | `.adrs/ |
+| TACHYON-COMP-V1.0 | Compiler Compatibility Analysis | `.adrs/ |
+| TACHYON-TM-V1.0 | Testing Matrix | `.adrs/ |
 | ADR-035 | OS Compatibility Strategy | `.adrs/adr-035-os-compatibility-strategy.md` |
 | ADR-036 | Compiler Compatibility Strategy | `.adrs/adr-036-compiler-compatibility-strategy.md` |
 | ADR-037 | Architecture Compatibility Strategy | `.adrs/adr-037-architecture-compatibility-strategy.md` |

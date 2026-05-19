@@ -56,12 +56,12 @@ This document addresses the following integration aspects:
 
 This document depends on the following specifications:
 
-- [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) - Coding and Documentation Standards
-- [TACHYON-ADR-001-V1.0](.specs/02_adrs/001_rust_as_primary_language.md) - Rust as Primary Language
-- [TACHYON-ADR-010-V1.0](.specs/02_adrs/010_security_architecture.md) - Security Architecture
-- [TACHYON-DES-API-V1.0](.specs/04_future_state/design/api_interfaces.md) - API Interfaces Design
-- [TACHYON-DES-SEC-V1.0](.specs/04_future_state/design/security_design.md) - Security Design
-- [TACHYON-TST-V1.0](.specs/04_future_state/test_plan.md) - Test Plan
+- [TACHYON-STD-V1.0](.adrs/ - Coding and Documentation Standards
+- [TACHYON-ADR-001-V1.0](.adrs/adr-001-three-tier-jit-compilation.md) - Rust as Primary Language
+- [TACHYON-ADR-010-V1.0](.adrs/adr-010-synchronization-primitives.md) - Security Architecture
+- [TACHYON-DES-API-V1.0](.adrs/ - API Interfaces Design
+- [TACHYON-DES-SEC-V1.0](.adrs/ - Security Design
+- [TACHYON-TST-V1.0](.adrs/ - Test Plan
 
 ### 1.4. Intended Audience
 
@@ -76,7 +76,7 @@ This document is intended for:
 
 #### 1.5.1. Code Examples
 
-Code examples are provided in Rust, TypeScript, and JSON where appropriate. Rust examples follow the conventions established in [ADR-001](.specs/02_adrs/001_rust_as_primary_language.md).
+Code examples are provided in Rust, TypeScript, and JSON where appropriate. Rust examples follow the conventions established in [ADR-001](.adrs/adr-001-three-tier-jit-compilation.md).
 
 #### 1.5.2. API Endpoint Notation
 
@@ -120,7 +120,7 @@ The framework implements the following architectural principles:
 3. **Async-First:** All integration operations are asynchronous using Tokio
 4. **Extensibility:** Plugin-based architecture for custom integrations
 5. **Observability:** Comprehensive logging and metrics for all operations
-6. **Security:** Defense-in-depth security controls per [ADR-010](.specs/02_adrs/10_security_architecture.md)
+6. **Security:** Defense-in-depth security controls per [ADR-010](.adrs/10_security_architecture.md)
 
 ### 2.2. Core Abstractions
 
@@ -344,7 +344,7 @@ pub struct RetryConfig {
 - Shutdown must be idempotent
 - Error messages must be user-friendly and actionable
 
-**Dependencies:** [ADR-001](.specs/02_adrs/001_rust_as_primary_language.md), [ADR-010](.specs/02_adrs/010_security_architecture.md)  
+**Dependencies:** [ADR-001](.adrs/adr-001-three-tier-jit-compilation.md), [ADR-010](.adrs/adr-010-synchronization-primitives.md)  
 **Rationale:** Provides a unified abstraction for all integration types, ensuring consistent behavior and enabling extensibility.  
 **Security Considerations:** All integration configurations must be validated; security settings must be enforced; sensitive credentials must be encrypted at rest.
 
@@ -1311,7 +1311,7 @@ fn constant_time_compare(a: &str, b: &str) -> bool {
 - Constant-time comparison prevents timing attacks
 - Signature format: `sha256=<hex_digest>`
 
-**Dependencies:** [ADR-010](.specs/02_adrs/010_security_architecture.md)  
+**Dependencies:** [ADR-010](.adrs/adr-010-synchronization-primitives.md)  
 **Rationale:** Ensures webhook payload integrity and authenticity.  
 **Security Considerations:** Constant-time comparison prevents timing attacks; secrets must be stored encrypted.
 
@@ -2047,7 +2047,7 @@ pub enum OAuthProviderStatus {
 - `scopes`: Must be non-empty
 - `redirect_uris`: Must be non-empty, all must be valid HTTPS URLs
 
-**Dependencies:** [INT-FRM-001](#int-frm-001-integration-trait), [DES-SEC-001](.specs/04_future_state/design/security_design.md#des-sec-001-authenticationprovider)  
+**Dependencies:** [INT-FRM-001](#int-frm-001-integration-trait), [DES-SEC-001](.adrs/  
 **Rationale:** Enables configuration of custom OAuth providers.  
 **Security Considerations:** Client secrets must be encrypted at rest; URLs must use HTTPS; authorization required.
 
@@ -2495,7 +2495,7 @@ impl PkceState {
 - Code challenge must be SHA256 hash of verifier
 - Challenge method must be "S256"
 
-**Dependencies:** [ADR-010](.specs/02_adrs/010_security_architecture.md)  
+**Dependencies:** [ADR-010](.adrs/adr-010-synchronization-primitives.md)  
 **Rationale:** Prevents authorization code interception attacks for public clients.  
 **Security Considerations:** Verifier must be stored securely; challenge must be used in authorization request; verifier must be used in token exchange.
 
@@ -5343,7 +5343,7 @@ pub enum RecoveryError {
 
 ### 11.1. Security Overview
 
-Integration security encompasses protection of all integration endpoints, data in transit, data at rest, and integration credentials. Security controls align with [ADR-010](.specs/02_adrs/010_security_architecture.md) and implement defense-in-depth strategy.
+Integration security encompasses protection of all integration endpoints, data in transit, data at rest, and integration credentials. Security controls align with [ADR-010](.adrs/adr-010-synchronization-primitives.md) and implement defense-in-depth strategy.
 
 **Security Principles:**
 
@@ -5485,7 +5485,7 @@ pub enum AuthError {
 - Tokens must be validated on every request
 - Revoked tokens must be rejected immediately
 
-**Dependencies:** [ADR-010](.specs/02_adrs/010_security_architecture.md), [DES-SEC-001](.specs/04_future_state/design/security_design.md#des-sec-001-authenticationprovider)  
+**Dependencies:** [ADR-010](.adrs/adr-010-synchronization-primitives.md), [DES-SEC-001](.adrs/  
 **Rationale:** Ensures only authorized users can access integrations.  
 **Security Considerations:** JWT validation prevents token tampering; token blacklist enables immediate revocation; session validation prevents session hijacking.
 
@@ -5685,7 +5685,7 @@ pub enum CryptoError {
 - Encryption keys must be stored securely
 - Nonces must be unique per encryption
 
-**Dependencies:** [ADR-010](.specs/02_adrs/010_security_architecture.md)  
+**Dependencies:** [ADR-010](.adrs/adr-010-synchronization-primitives.md)  
 **Rationale:** Protects sensitive configuration values at rest.  
 **Security Considerations:** AES-256-GCM provides authenticated encryption; unique nonces prevent replay attacks; keys must be rotated regularly.
 
@@ -5735,7 +5735,7 @@ fn root_certs() -> Vec<&'static [u8]> {
 - Root certificates must be up-to-date
 - Weak ciphers must be disabled
 
-**Dependencies:** [ADR-010](.specs/02_adrs/010_security_architecture.md)  
+**Dependencies:** [ADR-010](.adrs/adr-010-synchronization-primitives.md)  
 **Rationale:** Encrypts all integration communication in transit.  
 **Security Considerations:** TLS 1.3 provides strong encryption; root certificates prevent MITM attacks; weak ciphers disabled.
 
@@ -5851,7 +5851,7 @@ fn is_private_ip(host: &str) -> bool {
 - Private IP addresses must be blocked
 - HTML must be sanitied before rendering
 
-**Dependencies:** [ADR-010](.specs/02_adrs/010_security_architecture.md)  
+**Dependencies:** [ADR-010](.adrs/adr-010-synchronization-primitives.md)  
 **Rationale:** Prevents injection attacks and SSRF vulnerabilities.  
 **Security Considerations:** URL validation prevents SSRF; HTML sanitization prevents XSS; JSON validation prevents injection.
 
@@ -5939,7 +5939,7 @@ pub enum RateLimitError {
 - Rate limit headers must be returned
 - Rate limits must be configurable
 
-**Dependencies:** [ADR-010](.specs/02_adrs/010_security_architecture.md)  
+**Dependencies:** [ADR-010](.adrs/adr-010-synchronization-primitives.md)  
 **Rationale:** Prevents abuse and ensures fair resource allocation.  
 **Security Considerations:** Rate limiting prevents DoS; per-user limits prevent abuse; headers inform clients of limits.
 
@@ -5953,13 +5953,13 @@ This document references the following specifications, design documents, and arc
 
 | Reference | Document ID | Description |
 |-----------|-------------|-------------|
-| Coding and Documentation Standards | [TACHYON-STD-V1.0](.specs/01_standards/coding_standards.md) | Coding and documentation standards for Tachyon project |
-| Rust as Primary Language | [TACHYON-ADR-001-V1.0](.specs/02_adrs/001_rust_as_primary_language.md) | Selection of Rust as primary programming language |
-| Security Architecture | [TACHYON-ADR-010-V1.0](.specs/02_adrs/010_security_architecture.md) | Security architecture and defense-in-depth strategy |
-| API Interfaces Design | [TACHYON-DES-API-V1.0](.specs/04_future_state/design/api_interfaces.md) | API interfaces design for Tachyon server |
-| Security Design | [TACHYON-DES-SEC-V1.0](.specs/04_future_state/design/security_design.md) | Security design including authentication and authorization |
-| Test Plan | [TACHYON-TST-V1.0](.specs/04_future_state/test_plan.md) | Comprehensive test plan for Tachyon project |
-| Tasks | [TACHYON-TSK-V1.0](.specs/tasks.md) | Execution tasks and work breakdown structure |
+| Coding and Documentation Standards | [TACHYON-STD-V1.0](.adrs/ | Coding and documentation standards for Tachyon project |
+| Rust as Primary Language | [TACHYON-ADR-001-V1.0](.adrs/adr-001-three-tier-jit-compilation.md) | Selection of Rust as primary programming language |
+| Security Architecture | [TACHYON-ADR-010-V1.0](.adrs/adr-010-synchronization-primitives.md) | Security architecture and defense-in-depth strategy |
+| API Interfaces Design | [TACHYON-DES-API-V1.0](.adrs/ | API interfaces design for Tachyon server |
+| Security Design | [TACHYON-DES-SEC-V1.0](.adrs/ | Security design including authentication and authorization |
+| Test Plan | [TACHYON-TST-V1.0](.adrs/ | Comprehensive test plan for Tachyon project |
+| Tasks | [TACHYON-TSK-V1.0](.adrs/ | Execution tasks and work breakdown structure |
 
 ### 12.2. External References
 

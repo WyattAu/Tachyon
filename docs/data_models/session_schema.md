@@ -4,7 +4,7 @@
 **Date:** February 2026
 **Status:** Proposed
 **Classification:** Data Model Specification
-**Dependencies:** [TACHYON-STD-V1.0](../../.specs/01_standards/coding_standards.md), [TACHYON-DES-DM-V1.0](../../.specs/04_future_state/design/data_models.md), [TACHYON-REQ-SEC-V1.0](../../.specs/04_future_state/reqs/security_requirements.md)
+**Dependencies:** [TACHYON-STD-V1.0](../../.adrs/ [TACHYON-DES-DM-V1.0](../../.adrs/ [TACHYON-REQ-SEC-V1.0](../../.adrs/
 
 ---
 
@@ -1358,12 +1358,12 @@ pub struct AuditLoggingConfig {
 
 | Reference ID | Title | Location |
 |--------------|-------|----------|
-| TACHYON-STD-V1.0 | Coding and Documentation Standards | [`.specs/01_standards/coding_standards.md`](../../.specs/01_standards/coding_standards.md) |
-| TACHYON-DES-DM-V1.0 | Data Models Design | [`.specs/04_future_state/design/data_models.md`](../../.specs/04_future_state/design/data_models.md) |
-| TACHYON-REQ-SEC-V1.0 | Security Requirements | [`.specs/04_future_state/reqs/security_requirements.md`](../../.specs/04_future_state/reqs/security_requirements.md) |
-| TACHYON-ADR-001-V1.0 | Rust as Primary Language | [`.specs/02_adrs/001_rust_as_primary_language.md`](../../.specs/02_adrs/001_rust_as_primary_language.md) |
-| TACHYON-ADR-009-V1.0 | IPC Communication Architecture | [`.specs/02_adrs/009_ipc_communication_architecture.md`](../../.specs/02_adrs/009_ipc_communication_architecture.md) |
-| TACHYON-ADR-010-V1.0 | Security Architecture | [`.specs/02_adrs/010_security_architecture.md`](../../.specs/02_adrs/010_security_architecture.md) |
+| TACHYON-STD-V1.0 | Coding and Documentation Standards | [`.adrs/ |
+| TACHYON-DES-DM-V1.0 | Data Models Design | [`.adrs/ |
+| TACHYON-REQ-SEC-V1.0 | Security Requirements | [`.adrs/ |
+| TACHYON-ADR-001-V1.0 | Rust as Primary Language | [`.adrs/adr-001-three-tier-jit-compilation.md](../../.adrs/adr-001-three-tier-jit-compilation.md) |
+| TACHYON-ADR-009-V1.0 | IPC Communication Architecture | [`.adrs/adr-009-race-condition-mitigation.md](../../.adrs/adr-009-race-condition-mitigation.md) |
+| TACHYON-ADR-010-V1.0 | Security Architecture | [`.adrs/adr-010-synchronization-primitives.md](../../.adrs/adr-010-synchronization-primitives.md) |
 
 ### 12.2. External References
 

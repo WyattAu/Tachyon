@@ -455,9 +455,9 @@ steps:
 
 ## Related Documents
 
-- [`performance_requirements.md`](.specs/04_performance/performance_requirements.md) - Performance targets
-- [`benchmark_suite.md`](.specs/04_performance/benchmark_suite.md) - Detailed benchmark design
-- [`optimization_roadmap.md`](.specs/04_performance/optimization_roadmap.md) - Optimization plan
+- [`performance_requirements.md`](.adrs/ - Performance targets
+- [`benchmark_suite.md`](.adrs/ - Detailed benchmark design
+- [`optimization_roadmap.md`](.adrs/ - Optimization plan
 - [`profiling_strategy.md`](.adrs/adr-031-profiling-strategy.md) - Profiling methodology
 
 ---

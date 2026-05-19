@@ -7,7 +7,7 @@
 
 ## 1. Context and Problem Statement
 
-**Context:** With performance baseline established in [`baseline_metrics.toml`](../.specs/06_5_regression/baseline_metrics.toml) (ADR-047), we need an automated system to detect performance regressions in the CI/CD pipeline.
+**Context:** With performance baseline established in [`baseline_metrics.toml`](../.adrs/ (ADR-047), we need an automated system to detect performance regressions in the CI/CD pipeline.
 
 **Problem:** Manual performance regression detection is:
 - Time-consuming and error-prone
@@ -27,7 +27,7 @@
 
 ## 2. Decision
 
-**Decision:** Implement an automated regression detection system using statistical analysis methods (Welch's t-test, percentile comparison, moving average tracking) as defined in [`detection_strategy.md`](../.specs/06_5_regression/detection_strategy.md).
+**Decision:** Implement an automated regression detection system using statistical analysis methods (Welch's t-test, percentile comparison, moving average tracking) as defined in [`detection_strategy.md`](../.adrs/
 
 **Rationale:**
 - Enables early detection of performance regressions
@@ -447,12 +447,12 @@ jobs:
             -- --measurement-time 5000 \
             -- --sample-size 150 \
             -- --save-baseline target/criterion/main \
-            -- --baseline-load .specs/06_5_regression/baseline_metrics.toml
+            -- --baseline-load .adrs/
 
       - name: Analyze Regression
         run: |
           cargo run --bin regressor \
-            --baseline .specs/06_5_regression/baseline_metrics.toml \
+            --baseline .adrs/ \
             --current target/criterion/new \
             --output regression_result.json
 
@@ -905,9 +905,9 @@ pub enum ValidationResult {
 
 | Document | Relationship |
 |-----------|-------------|
-| [`baseline_metrics.toml`](../.specs/06_5_regression/baseline_metrics.toml) | Baseline data source |
-| [`detection_strategy.md`](../.specs/06_5_regression/detection_strategy.md) | Statistical methods |
-| [`alerting_rules.md`](../.specs/06_5_regression/alerting_rules.md) | Alerting thresholds |
+| [`baseline_metrics.toml`](../.adrs/ | Baseline data source |
+| [`detection_strategy.md`](../.adrs/ | Statistical methods |
+| [`alerting_rules.md`](../.adrs/ | Alerting thresholds |
 | [`phase_05_5_regression_report.md`](../.reports/phase_05_5_regression_report.md) | Completion status |
 | [`adr-047-baseline-establishment.md`](adr-047-baseline-establishment.md) | Baseline establishment |
 

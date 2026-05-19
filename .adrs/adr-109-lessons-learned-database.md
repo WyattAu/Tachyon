@@ -144,8 +144,8 @@ From project retrospectives, post-mortem analysis, architecture decisions, and p
 
 ## References
 
-- [Tachyon Project Analysis](.specs/10_metrics/post_mortem.md)
-- [Lessons Learned](.specs/08_5_knowledge_base/lessons_learned.md)
+- [Tachyon Project Analysis](.adrs/
+- [Lessons Learned](.adrs/
 - [Global Lessons Learned Database](.patterns/lessons_learned_database.md)
 
 ---

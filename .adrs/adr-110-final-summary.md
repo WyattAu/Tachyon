@@ -179,10 +179,10 @@ All 110 ADRs from ADR-001 through ADR-110 capture the complete architectural evo
 
 ## References
 
-- [Requirements Specification](.specs/00_requirements/requirements.md)
-- [Blue Paper](.specs/02_architecture/blue_paper.md)
-- [Threat Model](.specs/03_security/threat_model.md)
-- [Pattern Library](.specs/08_5_knowledge_base/pattern_library.md)
+- [Requirements Specification](.adrs/
+- [Blue Paper](.adrs/
+- [Threat Model](.adrs/
+- [Pattern Library](.adrs/
 - [All Phase Reports](.reports/)
 - [Knowledge Graph](.knowledge_graph/final_graph.json)
 
