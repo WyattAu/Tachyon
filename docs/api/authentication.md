@@ -481,6 +481,6 @@ HTTP/1.1 204 No Content
 
 ## Next Steps
 
-- [User Guide: Authentication](../user-guide/authentication.md)
-- [User Guide: API Keys](../user-guide/api-keys.md)
+- [User Guide: Authentication](../user/authentication.md)
+- [User Guide: API Keys](../user/api-keys.md)
 - [Developer: API Guide](../developer/api.md)

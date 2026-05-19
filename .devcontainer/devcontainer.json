@@ -1,0 +1,30 @@
+{
+  "name": "Tachyon Development",
+  "image": "ghcr.io/catthehacker/ubuntu:act-latest",
+  "features": {
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "stable",
+      "components": "rustfmt,clippy",
+      "targets": "wasm32-unknown-unknown"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "pnpm": true
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "cargo install trunk --version 0.21.14 && npm install -g playwright && npx playwright install chromium",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "serayuzgur.crates",
+        "vadimcn.vscode-lldb",
+        "mkhl.direnv"
+      ]
+    }
+  },
+  "remoteUser": "root"
+}

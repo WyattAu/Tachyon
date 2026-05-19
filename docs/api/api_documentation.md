@@ -7782,9 +7782,9 @@ Validates client migration.
 
 | Document | Description | Location |
 |----------|-------------|----------|
-| Tachyon System Architecture Overview | System architecture documentation | [`.docs/architecture/system_architecture_overview.md`](.docs/architecture/system_architecture_overview.md) |
-| Tachyon Data Architecture | Data model and storage documentation | [`.docs/architecture/data_architecture.md`](.docs/architecture/data_architecture.md) |
-| Tachyon Deployment Architecture | Deployment and infrastructure documentation | [`.docs/architecture/deployment_architecture.md`](.docs/architecture/deployment_architecture.md) |
+| Tachyon System Architecture Overview | System architecture documentation | [`docs/architecture/system_architecture_overview.md`](docs/architecture/system_architecture_overview.md) |
+| Tachyon Data Architecture | Data model and storage documentation | [`docs/architecture/data_architecture.md`](docs/architecture/data_architecture.md) |
+| Tachyon Deployment Architecture | Deployment and infrastructure documentation | [`docs/architecture/deployment_architecture.md`](docs/architecture/deployment_architecture.md) |
 | Tachyon Coding Standards | Coding standards and conventions | [`.specs/01_standards/coding_standards.md`](.specs/01_standards/coding_standards.md) |
 | Tachyon Requirements | System requirements specifications | [`.specs/04_future_state/reqs/`](.specs/04_future_state/reqs/) |
 | Tachyon Design Documents | System design specifications | [`.specs/04_future_state/design/`](.specs/04_future_state/design/) |
@@ -7908,7 +7908,7 @@ Validates client migration.
 
 **Document Security:** Unclassified
 
-**Document Storage:** [`.docs/api/api_documentation.md`](.docs/api/api_documentation.md)
+**Document Storage:** [`docs/api/api_documentation.md`](docs/api/api_documentation.md)
 
 **Document URL:** https://docs.tachyon.com/api/api_documentation.html
 
