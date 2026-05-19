@@ -5,6 +5,7 @@
 
 #![allow(dead_code)]
 
+mod ai;
 mod error;
 mod marketplace;
 mod sandbox;
@@ -17,6 +18,7 @@ pub use registry_client::{
     PluginDownloadResponse, PluginListResponse, RegistryClient, RegistryConfig, SearchQuery,
 };
 
+pub use ai::{AiCapability, AiCapabilityType, AiError, AiRequest, AiResponse, Embedding};
 pub use error::{PluginRuntimeError, PluginRuntimeResult};
 pub use marketplace::{
     MarketplaceError, MarketplaceResult, PluginCompatibility, PluginId, PluginInstallStatus,

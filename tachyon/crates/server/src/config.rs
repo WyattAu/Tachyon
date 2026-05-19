@@ -234,6 +234,18 @@ pub struct SecurityConfig {
     /// Trusted origins for CORS (in addition to configured origins)
     #[serde(default)]
     pub trusted_origins: Vec<String>,
+    /// Allowed CORS origins for security policy enforcement
+    #[serde(default = "default_cors_allowed_origins")]
+    pub cors_allowed_origins: Vec<String>,
+    /// Maximum request body size in bytes
+    #[serde(default = "default_max_request_size_bytes")]
+    pub max_request_size_bytes: usize,
+    /// Session expiry time in hours
+    #[serde(default = "default_session_expiry_hours")]
+    pub session_expiry_hours: u64,
+    /// Maximum number of concurrent sessions per user
+    #[serde(default = "default_max_concurrent_sessions")]
+    pub max_concurrent_sessions: usize,
 }
 
 fn default_true() -> bool {
@@ -242,6 +254,22 @@ fn default_true() -> bool {
 
 fn default_frame_ancestors() -> String {
     "'none'".to_string()
+}
+
+fn default_cors_allowed_origins() -> Vec<String> {
+    vec!["http://localhost:8080".to_string()]
+}
+
+fn default_max_request_size_bytes() -> usize {
+    10 * 1024 * 1024
+}
+
+fn default_session_expiry_hours() -> u64 {
+    24
+}
+
+fn default_max_concurrent_sessions() -> usize {
+    100
 }
 
 impl SecurityConfig {
@@ -520,6 +548,10 @@ impl Default for SecurityConfig {
             coep_enabled: true,
             frame_ancestors: "'none'".to_string(),
             trusted_origins: Vec::new(),
+            cors_allowed_origins: default_cors_allowed_origins(),
+            max_request_size_bytes: default_max_request_size_bytes(),
+            session_expiry_hours: default_session_expiry_hours(),
+            max_concurrent_sessions: default_max_concurrent_sessions(),
         }
     }
 }
@@ -684,6 +716,28 @@ impl ServerConfig {
                     );
                 }
             }
+        }
+
+        if self.security.max_request_size_bytes == 0 {
+            errors.push("Security max_request_size_bytes must be greater than 0".to_string());
+        }
+        if self.security.max_request_size_bytes > 100 * 1024 * 1024 {
+            warnings.push(
+                "Security max_request_size_bytes exceeds 100MB; consider a smaller limit"
+                    .to_string(),
+            );
+        }
+        if self.security.session_expiry_hours == 0 {
+            errors.push("Security session_expiry_hours must be greater than 0".to_string());
+        }
+        if self.security.session_expiry_hours > 720 {
+            warnings.push(
+                "Security session_expiry_hours exceeds 30 days; consider a shorter expiry"
+                    .to_string(),
+            );
+        }
+        if self.security.max_concurrent_sessions == 0 {
+            errors.push("Security max_concurrent_sessions must be greater than 0".to_string());
         }
 
         if let Some(ref level) = self.log.level {
@@ -910,6 +964,21 @@ impl ServerConfig {
                 .filter(|s| !s.is_empty())
                 .collect();
         }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES") {
+            if let Ok(v) = val.parse::<usize>() {
+                config.security.max_request_size_bytes = v;
+            }
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS") {
+            if let Ok(v) = val.parse::<u64>() {
+                config.security.session_expiry_hours = v;
+            }
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS") {
+            if let Ok(v) = val.parse::<usize>() {
+                config.security.max_concurrent_sessions = v;
+            }
+        }
 
         // Database pool configuration
         if let Ok(val) = std::env::var("TACHYON_DB_MAX_CONNECTIONS") {
@@ -1028,7 +1097,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_db_pool_config_from_env() {
         std::env::set_var("TACHYON_DB_MAX_CONNECTIONS", "20");
         std::env::set_var("TACHYON_DB_MIN_CONNECTIONS", "5");
@@ -1037,5 +1105,62 @@ mod tests {
         assert_eq!(config.db_min_connections, 5);
         std::env::remove_var("TACHYON_DB_MAX_CONNECTIONS");
         std::env::remove_var("TACHYON_DB_MIN_CONNECTIONS");
+    }
+
+    #[test]
+    fn test_security_config_defaults() {
+        let config = SecurityConfig::default();
+        assert_eq!(config.cors_allowed_origins, vec!["http://localhost:8080"]);
+        assert_eq!(config.max_request_size_bytes, 10 * 1024 * 1024);
+        assert_eq!(config.session_expiry_hours, 24);
+        assert_eq!(config.max_concurrent_sessions, 100);
+    }
+
+    #[test]
+    fn test_security_config_validation_max_request_size_zero() {
+        let mut config = ServerConfig::default();
+        config.jwt.secrets = vec!["a-properly-long-secret-key-for-testing".to_string()];
+        config.security.max_request_size_bytes = 0;
+        let result = config.validate();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("max_request_size_bytes")));
+    }
+
+    #[test]
+    fn test_security_config_validation_session_expiry_zero() {
+        let mut config = ServerConfig::default();
+        config.jwt.secrets = vec!["a-properly-long-secret-key-for-testing".to_string()];
+        config.security.session_expiry_hours = 0;
+        let result = config.validate();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("session_expiry_hours")));
+    }
+
+    #[test]
+    fn test_security_config_validation_max_concurrent_sessions_zero() {
+        let mut config = ServerConfig::default();
+        config.jwt.secrets = vec!["a-properly-long-secret-key-for-testing".to_string()];
+        config.security.max_concurrent_sessions = 0;
+        let result = config.validate();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("max_concurrent_sessions")));
+    }
+
+    #[test]
+    #[serial]
+    fn test_security_config_from_env() {
+        std::env::set_var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES", "5242880");
+        std::env::set_var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS", "48");
+        std::env::set_var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS", "50");
+        let config = ServerConfig::from_env();
+        assert_eq!(config.security.max_request_size_bytes, 5242880);
+        assert_eq!(config.security.session_expiry_hours, 48);
+        assert_eq!(config.security.max_concurrent_sessions, 50);
+        std::env::remove_var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES");
+        std::env::remove_var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS");
+        std::env::remove_var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS");
     }
 }

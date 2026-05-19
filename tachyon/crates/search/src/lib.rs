@@ -5,6 +5,7 @@
 
 pub mod api;
 pub mod error;
+pub mod faceted;
 pub mod indexer;
 pub mod query;
 pub mod ranking;
@@ -13,6 +14,7 @@ pub mod types;
 // Re-export common types for convenience
 pub use api::{SearchApiState, create_router};
 pub use error::{ErrorCategory, SearchError, SearchResult};
+pub use faceted::{DateRange, HighlightedResult, SavedSearch, SearchFacets};
 pub use indexer::IndexManager;
 pub use query::QueryEngine;
 pub use ranking::{BM25Ranker, FieldWeights, QueryStats, ResultAggregator};

@@ -9,6 +9,8 @@ pub struct HealthResponse {
     pub version: String,
     pub uptime_secs: u64,
     pub checks: HealthChecks,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memory: Option<MemoryInfo>,
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -24,6 +26,12 @@ pub struct HealthCheck {
     pub status: String,
     pub latency_ms: Option<u64>,
     pub error: Option<String>,
+}
+
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct MemoryInfo {
+    pub rss_bytes: u64,
+    pub rss_mb: u64,
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -106,6 +114,7 @@ pub(crate) async fn health_check(State(state): State<crate::HealthState>) -> Jso
     let redis_check = check_redis(&state).await;
     let tantivy_check = check_tantivy().await;
     let smtp_check = check_smtp(&state).await;
+    let memory = get_memory_info();
 
     let overall = if db_check.status == "ok"
         && (redis_check.status == "ok" || redis_check.status == "disabled")
@@ -129,6 +138,7 @@ pub(crate) async fn health_check(State(state): State<crate::HealthState>) -> Jso
             tantivy: tantivy_check,
             smtp: smtp_check,
         },
+        memory,
     })
 }
 
@@ -297,6 +307,29 @@ async fn check_smtp(state: &crate::HealthState) -> HealthCheck {
     }
 }
 
+fn get_memory_info() -> Option<MemoryInfo> {
+    #[cfg(target_os = "linux")]
+    {
+        let status = std::fs::read_to_string("/proc/self/status").ok()?;
+        for line in status.lines() {
+            if let Some(rest) = line.strip_prefix("VmRSS:") {
+                let kb_str = rest.trim();
+                let num_str: String = kb_str.chars().take_while(|c| c.is_ascii_digit()).collect();
+                let kb: u64 = num_str.parse().ok()?;
+                return Some(MemoryInfo {
+                    rss_bytes: kb * 1024,
+                    rss_mb: kb / 1024,
+                });
+            }
+        }
+        None
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -412,5 +445,99 @@ mod tests {
     fn test_redis_readiness_invalid_scheme() {
         let result = check_redis_readiness(true, Some("http://localhost:6379"));
         assert!(result.contains("invalid Redis scheme"));
+    }
+
+    #[test]
+    fn test_memory_info_structure() {
+        let info = MemoryInfo {
+            rss_bytes: 262_144_000,
+            rss_mb: 250,
+        };
+        assert_eq!(info.rss_bytes, 262_144_000);
+        assert_eq!(info.rss_mb, 250);
+    }
+
+    #[test]
+    fn test_memory_info_serialization() {
+        let info = MemoryInfo {
+            rss_bytes: 104_857_600,
+            rss_mb: 100,
+        };
+        let json = serde_json::to_value(&info).unwrap();
+        assert_eq!(json["rss_bytes"], 104_857_600);
+        assert_eq!(json["rss_mb"], 100);
+    }
+
+    #[test]
+    fn test_health_response_with_memory() {
+        let response = HealthResponse {
+            status: "healthy".to_string(),
+            version: "0.1.0".to_string(),
+            uptime_secs: 3600,
+            checks: HealthChecks {
+                database: HealthCheck {
+                    status: "ok".to_string(),
+                    latency_ms: Some(5),
+                    error: None,
+                },
+                redis: HealthCheck {
+                    status: "disabled".to_string(),
+                    latency_ms: None,
+                    error: None,
+                },
+                tantivy: HealthCheck {
+                    status: "disabled".to_string(),
+                    latency_ms: None,
+                    error: None,
+                },
+                smtp: HealthCheck {
+                    status: "disabled".to_string(),
+                    latency_ms: None,
+                    error: None,
+                },
+            },
+            memory: Some(MemoryInfo {
+                rss_bytes: 52_428_800,
+                rss_mb: 50,
+            }),
+        };
+        assert_eq!(response.status, "healthy");
+        assert!(response.memory.is_some());
+        assert_eq!(response.memory.as_ref().unwrap().rss_mb, 50);
+    }
+
+    #[test]
+    fn test_health_response_without_memory() {
+        let response = HealthResponse {
+            status: "healthy".to_string(),
+            version: "0.1.0".to_string(),
+            uptime_secs: 60,
+            checks: HealthChecks {
+                database: HealthCheck {
+                    status: "ok".to_string(),
+                    latency_ms: Some(1),
+                    error: None,
+                },
+                redis: HealthCheck {
+                    status: "disabled".to_string(),
+                    latency_ms: None,
+                    error: None,
+                },
+                tantivy: HealthCheck {
+                    status: "disabled".to_string(),
+                    latency_ms: None,
+                    error: None,
+                },
+                smtp: HealthCheck {
+                    status: "disabled".to_string(),
+                    latency_ms: None,
+                    error: None,
+                },
+            },
+            memory: None,
+        };
+        assert!(response.memory.is_none());
+        let json = serde_json::to_value(&response).unwrap();
+        assert!(!json.as_object().unwrap().contains_key("memory"));
     }
 }

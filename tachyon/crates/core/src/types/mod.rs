@@ -7,6 +7,7 @@ pub mod edge;
 pub mod error;
 #[cfg(test)]
 mod graph_invariants;
+pub mod graph_layout;
 pub mod node;
 pub mod repository;
 pub mod session;
@@ -17,6 +18,7 @@ pub use crdt::*;
 pub use document::*;
 pub use edge::*;
 pub use error::*;
+pub use graph_layout::*;
 pub use node::*;
 pub use repository::*;
 pub use session::*;
