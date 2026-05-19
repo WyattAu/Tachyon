@@ -554,6 +554,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(ssg_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
         .merge(oauth2_router.layer(RequestBodyLimitLayer::new(1024 * 1024)));
 
+    let api_v2 = crate::routes::v2::v2_routes();
+
     let ws_router = Router::new()
         .route("/ws", get(handle_websocket_upgrade))
         .with_state(connection_manager)
@@ -627,6 +629,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(ws_router)
         .merge(crdt_ws_router)
         .nest("/api/v1", api_v1)
+        .nest("/api/v2", api_v2)
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())

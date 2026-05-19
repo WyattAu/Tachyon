@@ -30,6 +30,7 @@ pub mod ssg;
 pub mod tags;
 pub mod team;
 pub mod user;
+pub mod v2;
 pub mod webhook;
 
 use crate::config::GuestConfig;

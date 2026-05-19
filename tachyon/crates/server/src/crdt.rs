@@ -2,6 +2,7 @@
 
 use dashmap::DashMap;
 use std::sync::Arc;
+use std::time::Instant;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, GetString, ReadTxn, Text, TextRef, Transact};
 
@@ -12,26 +13,71 @@ pub(crate) struct CrdtDocument {
 
 pub struct CrdtDocumentManager {
     documents: DashMap<String, Arc<CrdtDocument>>,
+    last_accessed: DashMap<String, Instant>,
+    max_documents: usize,
 }
 
 impl CrdtDocumentManager {
     pub fn new() -> Self {
+        Self::with_max_documents(Self::default_max_documents())
+    }
+
+    pub fn with_max_documents(max_documents: usize) -> Self {
         Self {
             documents: DashMap::new(),
+            last_accessed: DashMap::new(),
+            max_documents,
         }
+    }
+
+    fn default_max_documents() -> usize {
+        std::env::var("TACHYON_CRDT_MAX_DOCUMENTS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1000)
     }
 
     #[allow(private_interfaces)]
     pub fn get_or_create(&self, document_id: &str) -> Arc<CrdtDocument> {
-        self.documents
-            .entry(document_id.to_string())
-            .or_insert_with(|| {
-                let doc = Doc::new();
-                let text = doc.get_or_insert_text("content");
-                Arc::new(CrdtDocument { doc, text })
-            })
-            .value()
-            .clone()
+        self.touch_access(document_id);
+        if let Some(entry) = self.documents.get(document_id) {
+            return entry.value().clone();
+        }
+        if self.documents.len() >= self.max_documents {
+            self.evict_lru();
+        }
+        let doc = Doc::new();
+        let text = doc.get_or_insert_text("content");
+        let arc = Arc::new(CrdtDocument { doc, text });
+        self.documents.insert(document_id.to_string(), arc.clone());
+        self.touch_access(document_id);
+        arc
+    }
+
+    fn touch_access(&self, document_id: &str) {
+        self.last_accessed
+            .insert(document_id.to_string(), Instant::now());
+    }
+
+    fn evict_lru(&self) {
+        let lru_key = self
+            .last_accessed
+            .iter()
+            .min_by_key(|entry| *entry.value())
+            .map(|entry| entry.key().clone());
+        if let Some(key) = lru_key {
+            self.documents.remove(&key);
+            self.last_accessed.remove(&key);
+        }
+    }
+
+    pub fn document_count(&self) -> usize {
+        self.documents.len()
+    }
+
+    pub fn clear(&self) {
+        self.documents.clear();
+        self.last_accessed.clear();
     }
 
     pub fn apply_update(&self, document_id: &str, update: &[u8]) -> Result<Vec<u8>, String> {
@@ -245,7 +291,7 @@ mod tests {
             h.join().unwrap();
         }
 
-        assert_eq!(manager.documents.len(), 10);
+        assert_eq!(manager.document_count(), 10);
     }
 
     #[test]
@@ -269,7 +315,7 @@ mod tests {
             h.join().unwrap();
         }
 
-        assert_eq!(manager.documents.len(), 1);
+        assert_eq!(manager.document_count(), 1);
     }
 
     #[test]
@@ -277,6 +323,47 @@ mod tests {
         let manager = CrdtDocumentManager::default();
         let _ = manager.get_or_create("default-doc");
         assert!(manager.get_text("default-doc").is_ok());
+    }
+
+    #[test]
+    fn test_eviction_when_limit_exceeded() {
+        let manager = CrdtDocumentManager::with_max_documents(3);
+        manager.get_or_create("doc-a");
+        manager.get_or_create("doc-b");
+        manager.get_or_create("doc-c");
+        assert_eq!(manager.document_count(), 3);
+
+        manager.get_or_create("doc-d");
+        assert_eq!(manager.document_count(), 3);
+        assert!(manager.get_text("doc-d").is_ok());
+    }
+
+    #[test]
+    fn test_recently_accessed_not_evicted() {
+        let manager = CrdtDocumentManager::with_max_documents(3);
+        manager.get_or_create("doc-a");
+        manager.get_or_create("doc-b");
+        manager.get_or_create("doc-c");
+
+        manager.get_or_create("doc-b");
+        manager.get_or_create("doc-c");
+
+        manager.get_or_create("doc-d");
+        assert_eq!(manager.document_count(), 3);
+        assert!(manager.get_text("doc-b").is_ok());
+        assert!(manager.get_text("doc-c").is_ok());
+        assert!(manager.get_text("doc-d").is_ok());
+    }
+
+    #[test]
+    fn test_clear_removes_all_documents() {
+        let manager = CrdtDocumentManager::with_max_documents(5);
+        manager.get_or_create("doc-a");
+        manager.get_or_create("doc-b");
+        assert_eq!(manager.document_count(), 2);
+
+        manager.clear();
+        assert_eq!(manager.document_count(), 0);
     }
 
     proptest! {

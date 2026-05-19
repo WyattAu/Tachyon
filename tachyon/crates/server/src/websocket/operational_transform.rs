@@ -1,3 +1,7 @@
+// DEPRECATED: This module is maintained for backward compatibility only.
+// New code should use the CRDT-based collaboration via Yrs (websocket/crdt_handler.rs).
+// This module will be removed in a future version.
+//
 // Operational Transform implementation
 // Simple character-level OT for text editing
 

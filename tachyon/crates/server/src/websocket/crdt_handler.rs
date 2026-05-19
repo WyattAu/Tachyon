@@ -31,6 +31,7 @@ use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, info, warn};
 
 use crate::crdt::CrdtDocumentManager;
+use crate::websocket::types::{PresenceInfo, PresenceStatus};
 use tachyon_core::types::crdt::{CollaborationInfo, CrdtDocumentState, SelectionRange};
 
 // ============================================================================
@@ -68,6 +69,11 @@ enum RelayEvent {
     Joined { room: String },
     /// A client left a room.
     Left { room: String },
+    /// Presence update for a room.
+    Presence {
+        room: String,
+        users: Vec<PresenceInfo>,
+    },
 }
 
 /// CRDT connection manager — public API compatible with the old handler.
@@ -236,6 +242,54 @@ impl CrdtConnectionManager {
             info!(client_id = %client_id, room = %room, "Cleaned up stale CRDT client");
         }
     }
+
+    /// Broadcast current presence for a document room.
+    pub async fn broadcast_presence(&self, room: &str) {
+        let users = self.get_active_users(room).await;
+        let _ = self.broadcast_tx.send(RelayEvent::Presence {
+            room: room.to_string(),
+            users,
+        });
+    }
+
+    /// Get the list of users currently in a document room.
+    pub async fn get_active_users(&self, room: &str) -> Vec<PresenceInfo> {
+        let room_clients = self.room_clients.read().await;
+        let clients = match room_clients.get(room) {
+            Some(c) => c.clone(),
+            None => return Vec::new(),
+        };
+        drop(room_clients);
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        let all_clients = self.clients.read().await;
+        clients
+            .iter()
+            .filter_map(|client_id| {
+                all_clients.get(client_id).map(|c| {
+                    let idle_secs = c.last_seen.elapsed().as_secs();
+                    let status = if idle_secs < 30 {
+                        PresenceStatus::Active
+                    } else if idle_secs < 300 {
+                        PresenceStatus::Idle
+                    } else {
+                        PresenceStatus::Away
+                    };
+                    PresenceInfo {
+                        user_id: client_id.clone(),
+                        username: client_id.clone(),
+                        status,
+                        cursor_pos: None,
+                        last_seen: now,
+                    }
+                })
+            })
+            .collect()
+    }
 }
 
 impl Default for CrdtConnectionManager {
@@ -369,6 +423,20 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                                 event_room = %event_room,
                                 "Client left room"
                             );
+                        }
+                        Ok(RelayEvent::Presence {
+                            room: event_room,
+                            users,
+                        }) => {
+                            if event_room == room_for_send {
+                                if let Ok(json) = serde_json::to_string(&users) {
+                                    let msg = format!("3{}", json);
+                                    if let Err(e) = ws_sender.send(Message::Text(msg.into())).await {
+                                        warn!(client_id = %client_id_for_send, error = %e, "Failed to send presence message");
+                                        break;
+                                    }
+                                }
+                            }
                         }
                         Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                             warn!(client_id = %client_id_for_send, lagged = n, "Broadcast receiver lagged");

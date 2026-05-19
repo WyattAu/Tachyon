@@ -10,6 +10,7 @@ pub mod request_id;
 pub mod request_limit;
 pub mod request_tracing;
 pub mod security_headers;
+pub mod versioning;
 
 #[cfg(test)]
 mod tests;
@@ -26,3 +27,4 @@ pub use request_id::*;
 pub use request_limit::*;
 pub use request_tracing::*;
 pub use security_headers::*;
+pub use versioning::*;

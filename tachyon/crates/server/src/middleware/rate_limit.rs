@@ -591,6 +591,131 @@ impl Default for LoginAttemptTracker {
     }
 }
 
+// ============================================================================
+// Per-User Rate Limiter: Higher limits for authenticated users
+// ============================================================================
+
+/// Per-user rate limiter that provides higher limits for authenticated users
+/// compared to anonymous (per-IP) requests. Works alongside the existing
+/// per-IP limiter.
+///
+/// Configurable via environment variables:
+/// - `TACHYON_RATE_LIMIT_AUTHENTICATED_RPM`: Requests per minute for authenticated users (default: 3000)
+/// - `TACHYON_RATE_LIMIT_ANONYMOUS_RPM`: Requests per minute for anonymous users (default: 1000)
+/// - `TACHYON_RATE_LIMIT_USER_WINDOW_SECS`: Window in seconds (default: 60)
+#[derive(Debug, Clone)]
+pub struct UserRateLimiter {
+    buckets: Arc<DashMap<String, TokenBucket>>,
+    authenticated_rpm: u32,
+    anonymous_rpm: u32,
+    window_secs: u64,
+}
+
+impl Default for UserRateLimiter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl UserRateLimiter {
+    pub fn new() -> Self {
+        let authenticated_rpm: u32 = std::env::var("TACHYON_RATE_LIMIT_AUTHENTICATED_RPM")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(3000);
+
+        let anonymous_rpm: u32 = std::env::var("TACHYON_RATE_LIMIT_ANONYMOUS_RPM")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(1000);
+
+        let window_secs: u64 = std::env::var("TACHYON_RATE_LIMIT_USER_WINDOW_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(60);
+
+        Self {
+            buckets: Arc::new(DashMap::new()),
+            authenticated_rpm,
+            anonymous_rpm,
+            window_secs,
+        }
+    }
+
+    /// Check rate limit for a user. Pass `Some(user_id)` for authenticated users
+    /// and `None` for anonymous requests.
+    pub fn check(&self, user_id: Option<&str>) -> UserRateLimitResult {
+        let key = match user_id {
+            Some(uid) => format!("user:{}", uid),
+            None => "anonymous".to_string(),
+        };
+
+        let rpm = if user_id.is_some() {
+            self.authenticated_rpm
+        } else {
+            self.anonymous_rpm
+        };
+
+        let mut bucket = self
+            .buckets
+            .entry(key)
+            .or_insert_with(|| TokenBucket::new(rpm, self.window_secs));
+
+        if bucket.try_consume(1.0) {
+            UserRateLimitResult::Allowed {
+                remaining: bucket.tokens.floor() as u32,
+                limit: rpm,
+                authenticated: user_id.is_some(),
+            }
+        } else {
+            let retry_after = bucket.time_to_next_token().as_secs();
+            UserRateLimitResult::Throttled {
+                retry_after,
+                limit: rpm,
+                authenticated: user_id.is_some(),
+            }
+        }
+    }
+
+    /// Clean up stale buckets. Call periodically (e.g., every 60s).
+    pub fn cleanup(&self) {
+        let cutoff =
+            std::time::Instant::now() - std::time::Duration::from_secs(self.window_secs * 2);
+        self.buckets
+            .retain(|_, bucket| bucket.last_refill >= cutoff);
+    }
+
+    /// Get the configured RPM for authenticated users.
+    pub fn authenticated_rpm(&self) -> u32 {
+        self.authenticated_rpm
+    }
+
+    /// Get the configured RPM for anonymous users.
+    pub fn anonymous_rpm(&self) -> u32 {
+        self.anonymous_rpm
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum UserRateLimitResult {
+    Allowed {
+        remaining: u32,
+        limit: u32,
+        authenticated: bool,
+    },
+    Throttled {
+        retry_after: u64,
+        limit: u32,
+        authenticated: bool,
+    },
+}
+
+impl UserRateLimitResult {
+    pub fn is_allowed(&self) -> bool {
+        matches!(self, UserRateLimitResult::Allowed { .. })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -764,5 +889,70 @@ mod tests {
         // Cleanup should not remove entries that haven't expired
         tracker.cleanup();
         assert_eq!(tracker.attempts.len(), 1);
+    }
+
+    // ── User Rate Limiter Tests ──────────────────────────────────────────
+
+    #[test]
+    fn test_user_rate_limiter_allows_authenticated() {
+        let limiter = UserRateLimiter::new();
+        let result = limiter.check(Some("user-123"));
+        assert!(result.is_allowed());
+        if let UserRateLimitResult::Allowed { authenticated, .. } = result {
+            assert!(authenticated);
+        } else {
+            panic!("Expected Allowed");
+        }
+    }
+
+    #[test]
+    fn test_user_rate_limiter_allows_anonymous() {
+        let limiter = UserRateLimiter::new();
+        let result = limiter.check(None);
+        assert!(result.is_allowed());
+        if let UserRateLimitResult::Allowed { authenticated, .. } = result {
+            assert!(!authenticated);
+        } else {
+            panic!("Expected Allowed");
+        }
+    }
+
+    #[test]
+    fn test_user_rate_limiter_authenticated_higher_limit() {
+        let limiter = UserRateLimiter::new();
+        assert!(
+            limiter.authenticated_rpm() > limiter.anonymous_rpm(),
+            "Authenticated users should have higher RPM than anonymous"
+        );
+    }
+
+    #[test]
+    fn test_user_rate_limiter_user_isolation() {
+        let limiter = UserRateLimiter::new();
+
+        // Exhaust anonymous limit
+        for _ in 0..limiter.anonymous_rpm() {
+            let result = limiter.check(None);
+            assert!(result.is_allowed());
+        }
+
+        // Authenticated user should still be allowed
+        let result = limiter.check(Some("user-456"));
+        assert!(result.is_allowed());
+    }
+
+    #[test]
+    fn test_user_rate_limiter_cleanup() {
+        let limiter = UserRateLimiter::new();
+
+        limiter.check(Some("user-cleanup-test"));
+        assert_eq!(limiter.buckets.len(), 1);
+
+        limiter.cleanup();
+        assert_eq!(
+            limiter.buckets.len(),
+            1,
+            "Fresh entry should not be cleaned up"
+        );
     }
 }

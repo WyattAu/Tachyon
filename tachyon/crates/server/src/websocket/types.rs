@@ -147,6 +147,24 @@ pub struct SelectionRange {
     pub end: usize,
 }
 
+/// Presence information for a document.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PresenceInfo {
+    pub user_id: String,
+    pub username: String,
+    pub status: PresenceStatus,
+    pub cursor_pos: Option<(usize, usize)>,
+    pub last_seen: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PresenceStatus {
+    Active,
+    Idle,
+    Away,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

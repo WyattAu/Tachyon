@@ -165,6 +165,65 @@ impl CrdtDocumentState {
 // Collaboration Session Info
 // ============================================================================
 
+/// A CRDT operation for offline queuing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum CrdtOperation {
+    Insert { position: u32, text: String },
+    Delete { position: u32, length: u32 },
+}
+
+/// Queued offline operation awaiting sync.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OfflineOperation {
+    pub document_id: String,
+    pub client_id: String,
+    pub operation: CrdtOperation,
+    pub timestamp: u64,
+    pub sequence: u64,
+}
+
+/// Operation queue for offline edits.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OfflineQueue {
+    operations: Vec<OfflineOperation>,
+    max_size: usize,
+}
+
+impl Default for OfflineQueue {
+    fn default() -> Self {
+        Self::new(1000)
+    }
+}
+
+impl OfflineQueue {
+    pub fn new(max_size: usize) -> Self {
+        Self {
+            operations: Vec::new(),
+            max_size,
+        }
+    }
+
+    pub fn push(&mut self, op: OfflineOperation) {
+        if self.operations.len() >= self.max_size {
+            self.operations.remove(0);
+        }
+        self.operations.push(op);
+    }
+
+    pub fn drain(&mut self) -> Vec<OfflineOperation> {
+        std::mem::take(&mut self.operations)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.operations.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.operations.len()
+    }
+}
+
 /// Summary of active collaboration on a document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CollaborationInfo {
@@ -290,5 +349,71 @@ mod tests {
         };
         let json = serde_json::to_string(&info).unwrap();
         assert!(json.contains("Alice"));
+    }
+
+    #[test]
+    fn test_offline_queue_push_and_drain() {
+        let mut queue = OfflineQueue::default();
+        assert!(queue.is_empty());
+        assert_eq!(queue.len(), 0);
+
+        queue.push(OfflineOperation {
+            document_id: "doc-1".to_string(),
+            client_id: "client-1".to_string(),
+            operation: CrdtOperation::Insert {
+                position: 0,
+                text: "hello".to_string(),
+            },
+            timestamp: 1000,
+            sequence: 1,
+        });
+        assert_eq!(queue.len(), 1);
+        assert!(!queue.is_empty());
+
+        let ops = queue.drain();
+        assert_eq!(ops.len(), 1);
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn test_offline_queue_eviction() {
+        let mut queue = OfflineQueue::new(3);
+        for i in 0..4 {
+            queue.push(OfflineOperation {
+                document_id: "doc-1".to_string(),
+                client_id: "client-1".to_string(),
+                operation: CrdtOperation::Insert {
+                    position: i,
+                    text: format!("op{}", i),
+                },
+                timestamp: 1000 + i as u64,
+                sequence: i as u64,
+            });
+        }
+        assert_eq!(queue.len(), 3);
+        let ops = queue.drain();
+        assert_eq!(ops[0].sequence, 1);
+        assert_eq!(ops[2].sequence, 3);
+    }
+
+    #[test]
+    fn test_offline_queue_order_preserved() {
+        let mut queue = OfflineQueue::default();
+        for i in 0..5 {
+            queue.push(OfflineOperation {
+                document_id: "doc-1".to_string(),
+                client_id: "client-1".to_string(),
+                operation: CrdtOperation::Delete {
+                    position: i,
+                    length: 1,
+                },
+                timestamp: 2000 + i as u64,
+                sequence: i as u64,
+            });
+        }
+        let ops = queue.drain();
+        for (idx, op) in ops.iter().enumerate() {
+            assert_eq!(op.sequence, idx as u64);
+        }
     }
 }
