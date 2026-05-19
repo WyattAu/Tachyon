@@ -22,7 +22,7 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         Path, State,
     },
-    response::Response,
+    response::{IntoResponse, Response},
 };
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
@@ -52,12 +52,14 @@ enum RelayEvent {
         room: String,
         sender: String,
         data: Vec<u8>,
+        seq: u64,
     },
     /// Selection update from a client to relay to others.
     Selection {
         room: String,
         sender: String,
         data: Vec<u8>,
+        seq: u64,
     },
     /// A client joined a room.
     Joined { room: String },
@@ -80,6 +82,9 @@ pub struct CrdtConnectionManager {
     broadcast_tx: broadcast::Sender<RelayEvent>,
     /// Server-side Yrs document manager for applying and storing CRDT state.
     crdt_manager: Arc<CrdtDocumentManager>,
+    seq_counter: Arc<std::sync::atomic::AtomicU64>,
+    max_connections: usize,
+    heartbeat_interval_secs: u64,
 }
 
 impl CrdtConnectionManager {
@@ -91,7 +96,37 @@ impl CrdtConnectionManager {
             documents: Arc::new(RwLock::new(HashMap::new())),
             broadcast_tx,
             crdt_manager: Arc::new(CrdtDocumentManager::new()),
+            seq_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            max_connections: 1000,
+            heartbeat_interval_secs: 30,
         }
+    }
+
+    pub fn with_config(max_connections: usize, heartbeat_interval_secs: u64) -> Self {
+        let (broadcast_tx, _) = broadcast::channel(256);
+        Self {
+            clients: Arc::new(RwLock::new(HashMap::new())),
+            room_clients: Arc::new(RwLock::new(HashMap::new())),
+            documents: Arc::new(RwLock::new(HashMap::new())),
+            broadcast_tx,
+            crdt_manager: Arc::new(CrdtDocumentManager::new()),
+            seq_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            max_connections,
+            heartbeat_interval_secs,
+        }
+    }
+
+    fn next_seq(&self) -> u64 {
+        self.seq_counter
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub async fn active_connection_count(&self) -> usize {
+        self.clients.read().await.len()
+    }
+
+    pub fn max_connections(&self) -> usize {
+        self.max_connections
     }
 
     /// Get a reference to the server-side CRDT document manager.
@@ -220,6 +255,16 @@ pub async fn handle_crdt_websocket_upgrade(
     State(manager): State<CrdtConnectionManager>,
     Path(room): Path<String>,
 ) -> Response {
+    let current = manager.active_connection_count().await;
+    if current >= manager.max_connections() {
+        return (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            axum::Json(serde_json::json!({
+                "error": "Maximum WebSocket connections reached",
+            })),
+        )
+            .into_response();
+    }
     ws.on_upgrade(move |socket| handle_crdt_socket(socket, manager, room))
 }
 
@@ -268,7 +313,11 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // Forward relay events to this client's WebSocket.
     let room_for_send = room.clone();
     let client_id_for_send = client_id.clone();
+    let heartbeat_secs = manager.heartbeat_interval_secs;
     let send_task = async move {
+        let mut heartbeat = tokio::time::interval(tokio::time::Duration::from_secs(heartbeat_secs));
+        heartbeat.tick().await; // skip the immediate first tick
+
         loop {
             tokio::select! {
                 msg = relay_rx.recv() => {
@@ -277,6 +326,7 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             room: event_room,
                             sender,
                             data,
+                            seq: _,
                         }) => {
                             if event_room == room_for_send && sender != client_id_for_send {
                                 if let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
@@ -289,6 +339,7 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             room: event_room,
                             sender,
                             data,
+                            seq: _,
                         }) => {
                             if event_room == room_for_send && sender != client_id_for_send {
                                 if let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
@@ -326,6 +377,12 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                         }
                     }
                 }
+                _ = heartbeat.tick() => {
+                    if ws_sender.send(Message::Ping(vec![].into())).await.is_err() {
+                        info!(client_id = %client_id_for_send, "Failed to send heartbeat ping — connection dead");
+                        break;
+                    }
+                }
             }
         }
     };
@@ -350,7 +407,6 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                     let msg_type = data_vec[0];
                     match msg_type {
                         0 => {
-                            // Sync: apply update to server-side Yrs document, then broadcast.
                             if data_vec.len() > 1 {
                                 if let Err(e) =
                                     crdt_manager.apply_update(&room_for_recv, &data_vec[1..])
@@ -363,22 +419,24 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                                     );
                                 }
                             }
+                            let seq = manager_for_recv.next_seq();
                             let _ = broadcast_tx.send(RelayEvent::Binary {
                                 room: room_for_recv.clone(),
                                 sender: client_id_for_recv.clone(),
                                 data: data_vec,
+                                seq,
                             });
                         }
                         1 => {
-                            // Awareness: forward unchanged.
+                            let seq = manager_for_recv.next_seq();
                             let _ = broadcast_tx.send(RelayEvent::Binary {
                                 room: room_for_recv.clone(),
                                 sender: client_id_for_recv.clone(),
                                 data: data_vec,
+                                seq,
                             });
                         }
                         2 => {
-                            // Selection update: parse, validate, and broadcast.
                             if let Some(selection) = parse_selection_update(&data_vec) {
                                 debug!(
                                     client_id = %client_id_for_recv,
@@ -387,10 +445,12 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                                     end = selection.end,
                                     "Selection update"
                                 );
+                                let seq = manager_for_recv.next_seq();
                                 let _ = broadcast_tx.send(RelayEvent::Selection {
                                     room: room_for_recv.clone(),
                                     sender: client_id_for_recv.clone(),
                                     data: data_vec,
+                                    seq,
                                 });
                             } else {
                                 warn!(
@@ -400,11 +460,12 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             }
                         }
                         _ => {
-                            // Unknown type: forward unchanged.
+                            let seq = manager_for_recv.next_seq();
                             let _ = broadcast_tx.send(RelayEvent::Binary {
                                 room: room_for_recv.clone(),
                                 sender: client_id_for_recv.clone(),
                                 data: data_vec,
+                                seq,
                             });
                         }
                     }
@@ -414,20 +475,17 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                     break;
                 }
                 Ok(Message::Ping(_data)) => {
-                    // y-websocket handles ping/pong via the WebSocket layer.
                     debug!(client_id = %client_id_for_recv, "Received ping");
                 }
-                Ok(Message::Pong(_)) => {
-                    // Ignore pongs.
-                }
+                Ok(Message::Pong(_)) => {}
                 Ok(Message::Text(text)) => {
-                    // y-websocket may occasionally send text messages.
-                    // Forward them as binary (the protocol is binary).
                     let data_vec: Vec<u8> = text.as_bytes().to_vec();
+                    let seq = manager_for_recv.next_seq();
                     if let Err(e) = broadcast_tx.send(RelayEvent::Binary {
                         room: room_for_recv.clone(),
                         sender: client_id_for_recv.clone(),
                         data: data_vec,
+                        seq,
                     }) {
                         warn!(client_id = %client_id_for_recv, error = %e, "Failed to broadcast text message");
                     }

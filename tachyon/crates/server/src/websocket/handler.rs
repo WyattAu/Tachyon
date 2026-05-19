@@ -52,6 +52,9 @@ pub struct ConnectionManager {
     broadcast_tx: broadcast::Sender<WebSocketMessage>,
     document_states: Arc<RwLock<HashMap<String, DocumentState>>>,
     document_presence: Arc<RwLock<HashMap<String, Vec<PresenceInfo>>>>,
+    seq_counter: Arc<std::sync::atomic::AtomicU64>,
+    max_connections: usize,
+    heartbeat_interval_secs: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -71,7 +74,37 @@ impl ConnectionManager {
             broadcast_tx,
             document_states: Arc::new(RwLock::new(HashMap::new())),
             document_presence: Arc::new(RwLock::new(HashMap::new())),
+            seq_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            max_connections: 1000,
+            heartbeat_interval_secs: 30,
         }
+    }
+
+    pub fn with_config(max_connections: usize, heartbeat_interval_secs: u64) -> Self {
+        let (broadcast_tx, _) = broadcast::channel(1024);
+        Self {
+            clients: Arc::new(RwLock::new(HashMap::new())),
+            rooms: Arc::new(RwLock::new(HashMap::new())),
+            broadcast_tx,
+            document_states: Arc::new(RwLock::new(HashMap::new())),
+            document_presence: Arc::new(RwLock::new(HashMap::new())),
+            seq_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            max_connections,
+            heartbeat_interval_secs,
+        }
+    }
+
+    fn next_seq(&self) -> u64 {
+        self.seq_counter
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub async fn active_connection_count(&self) -> usize {
+        self.clients.read().await.len()
+    }
+
+    pub fn max_connections(&self) -> usize {
+        self.max_connections
     }
 
     pub async fn client_count(&self) -> usize {
@@ -209,13 +242,17 @@ impl ConnectionManager {
     }
 
     pub async fn broadcast(&self, message: WebSocketMessage) {
-        let _ = self.broadcast_tx.send(message);
+        let seq = self.next_seq();
+        let msg = message.with_seq(seq);
+        let _ = self.broadcast_tx.send(msg);
     }
 
     pub async fn broadcast_to_room(&self, room_id: &str, message: WebSocketMessage) {
         let rooms = self.rooms.read().await;
         if let Some(members) = rooms.get(room_id) {
-            let _ = self.broadcast_tx.send(message);
+            let seq = self.next_seq();
+            let msg = message.with_seq(seq);
+            let _ = self.broadcast_tx.send(msg);
             debug!(room_id = %room_id, member_count = members.len(), "Broadcasting to room");
         }
     }
@@ -359,6 +396,16 @@ pub async fn handle_websocket_upgrade(
     ws: WebSocketUpgrade,
     State(manager): State<ConnectionManager>,
 ) -> Response {
+    let current = manager.active_connection_count().await;
+    if current >= manager.max_connections() {
+        return (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            axum::Json(serde_json::json!({
+                "error": "Maximum WebSocket connections reached",
+            })),
+        )
+            .into_response();
+    }
     ws.on_upgrade(move |socket| handle_socket(socket, manager))
 }
 
@@ -413,8 +460,9 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
     // tokio-tungstenite handles protocol-level Ping/Pong automatically,
     // but we send application-level pings via the broadcast channel as a backup.
     let client_id_send = client_id.clone();
+    let heartbeat_secs = manager.heartbeat_interval_secs;
     let send_task = async move {
-        let mut heartbeat = tokio::time::interval(tokio::time::Duration::from_secs(30));
+        let mut heartbeat = tokio::time::interval(tokio::time::Duration::from_secs(heartbeat_secs));
         heartbeat.tick().await; // skip the immediate first tick
 
         loop {

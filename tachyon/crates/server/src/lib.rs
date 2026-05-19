@@ -127,6 +127,7 @@ pub mod error;
 pub mod graph_extractor;
 pub mod graphql;
 pub mod middleware;
+pub mod pagination;
 pub mod proofs;
 pub mod routes;
 pub mod storage;

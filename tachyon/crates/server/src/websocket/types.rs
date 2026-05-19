@@ -23,6 +23,9 @@ pub struct WebSocketMessage {
     pub user_id: Option<String>,
     pub data: Option<Value>,
     pub timestamp: DateTime<Utc>,
+    /// Monotonically increasing sequence number for message ordering.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seq: Option<u64>,
 }
 
 impl WebSocketMessage {
@@ -33,7 +36,13 @@ impl WebSocketMessage {
             user_id: None,
             data: None,
             timestamp: Utc::now(),
+            seq: None,
         }
+    }
+
+    pub fn with_seq(mut self, seq: u64) -> Self {
+        self.seq = Some(seq);
+        self
     }
 
     pub fn with_document(mut self, document_id: String) -> Self {
