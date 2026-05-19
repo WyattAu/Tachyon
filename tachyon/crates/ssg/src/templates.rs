@@ -8,7 +8,7 @@
 //! - Customizable via ColorTheme CSS custom properties
 //! - Accessible (semantic HTML, ARIA labels)
 
-use crate::manifest::{ColorTheme, SiteConfig};
+use crate::manifest::{ColorTheme, SidebarItem, SiteConfig};
 use crate::render::{CategoryContext, DocCard, IndexContext, PageContext, TocEntry};
 
 /// Generate CSS custom properties from a ColorTheme.
@@ -83,6 +83,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     let breadcrumbs_html = render_breadcrumbs(ctx.breadcrumbs);
     let toc_html = render_toc_sidebar(ctx.toc);
     let prev_next_html = render_prev_next(ctx.prev_link, ctx.next_link);
+    let sidebar_html = render_sidebar(&ctx.site.menu_items, ctx.current_slug);
 
     format!(
         r#"<!DOCTYPE html>
@@ -103,6 +104,9 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
   {favicon}
   {json_ld}
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
   <style>
     :root {{
       --tachyon-primary: #2563eb;
@@ -153,14 +157,44 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     .dark .doc-content a {{ color: var(--tachyon-accent); }}
     .dark .doc-content th {{ background: #1f2937; }}
     .dark .doc-content th, .dark .doc-content td {{ border-color: #374151; }}
+    .admonition {{ border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0.25rem; }}
+    .admonition-title {{ font-weight: 600; margin-bottom: 0.25rem; }}
+    .admonition-note {{ border-color: #2563eb; background: #eff6ff; }}
+    .admonition-note .admonition-title {{ color: #2563eb; }}
+    .admonition-warning {{ border-color: #d97706; background: #fffbeb; }}
+    .admonition-warning .admonition-title {{ color: #d97706; }}
+    .admonition-tip {{ border-color: #059669; background: #ecfdf5; }}
+    .admonition-tip .admonition-title {{ color: #059669; }}
+    .admonition-danger {{ border-color: #dc2626; background: #fef2f2; }}
+    .admonition-danger .admonition-title {{ color: #dc2626; }}
+    .admonition-info {{ border-color: #0891b2; background: #ecfeff; }}
+    .admonition-info .admonition-title {{ color: #0891b2; }}
+    .admonition-success {{ border-color: #16a34a; background: #f0fdf4; }}
+    .admonition-success .admonition-title {{ color: #16a34a; }}
+    @media (prefers-color-scheme: dark) {{
+      html:not(.light) .admonition-note {{ background: #1e3a5f; }}
+      html:not(.light) .admonition-warning {{ background: #422006; }}
+      html:not(.light) .admonition-tip {{ background: #064e3b; }}
+      html:not(.light) .admonition-danger {{ background: #450a0a; }}
+      html:not(.light) .admonition-info {{ background: #164e63; }}
+      html:not(.light) .admonition-success {{ background: #052e16; }}
+    }}
+    .dark .admonition-note {{ background: #1e3a5f; }}
+    .dark .admonition-warning {{ background: #422006; }}
+    .dark .admonition-tip {{ background: #064e3b; }}
+    .dark .admonition-danger {{ background: #450a0a; }}
+    .dark .admonition-info {{ background: #164e63; }}
+    .dark .admonition-success {{ background: #052e16; }}
     {custom_css}
   </style>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
   {nav}
+  <button id="tachyon-sidebar-toggle" class="md:hidden fixed bottom-4 right-4 z-50 bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors" aria-label="Toggle sidebar">&#9776;</button>
   <main class="flex-1">
     {breadcrumbs_html}
     <div class="flex">
+      {sidebar_html}
       <div class="doc-content flex-1">
         <article>
           <header class="mb-8">
@@ -209,6 +243,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         breadcrumbs_html = breadcrumbs_html,
         toc_html = toc_html,
         prev_next_html = prev_next_html,
+        sidebar_html = sidebar_html,
         json_ld = &ctx.json_ld,
     )
 }
@@ -525,6 +560,94 @@ fn render_toc_sidebar(toc: &[TocEntry]) -> String {
   </nav>
 </aside>"#
     )
+}
+
+/// Render a collapsible sidebar from the site menu structure.
+fn render_sidebar(menu_items: &[SidebarItem], current_slug: Option<&str>) -> String {
+    render_sidebar_inner(menu_items, current_slug)
+}
+
+pub(crate) fn render_sidebar_test(
+    menu_items: &[SidebarItem],
+    current_slug: Option<&str>,
+) -> String {
+    render_sidebar_inner(menu_items, current_slug)
+}
+
+fn render_sidebar_inner(menu_items: &[SidebarItem], current_slug: Option<&str>) -> String {
+    if menu_items.is_empty() {
+        return String::new();
+    }
+    let items: String = menu_items
+        .iter()
+        .map(|item| render_sidebar_item(item, current_slug, 0))
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!(
+        r#"<aside id="tachyon-sidebar" class="hidden md:block w-60 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 mr-4 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
+  <nav class="sidebar" aria-label="Site navigation">
+    <ul class="space-y-1">
+{items}
+    </ul>
+  </nav>
+</aside>
+<script>
+document.addEventListener('DOMContentLoaded', function() {{
+  var toggle = document.getElementById('tachyon-sidebar-toggle');
+  var sidebar = document.getElementById('tachyon-sidebar');
+  if (toggle && sidebar) {{
+    toggle.addEventListener('click', function() {{
+      sidebar.classList.toggle('hidden');
+      sidebar.classList.toggle('md:block');
+    }});
+  }}
+}});
+</script>"#
+    )
+}
+
+fn render_sidebar_item(item: &SidebarItem, current_slug: Option<&str>, depth: usize) -> String {
+    let is_active = current_slug
+        .map(|slug| {
+            let item_slug = item.href.trim_end_matches(".html");
+            slug == item_slug
+        })
+        .unwrap_or(false);
+    let active_class = if is_active {
+        " bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium"
+    } else {
+        " text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+    };
+    let indent_style = format!("padding-left: {}rem;", depth as f32 * 0.75);
+    let link = format!(
+        r#"<li><a href="{}" class="block text-sm rounded px-2 py-1.5{}" style="{}">{}</a></li>"#,
+        escape_html(&item.href),
+        active_class,
+        indent_style,
+        escape_html(&item.label),
+    );
+    if item.children.is_empty() {
+        link
+    } else {
+        let children_html: String = item
+            .children
+            .iter()
+            .map(|child| render_sidebar_item(child, current_slug, depth + 1))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!(
+            r#"{link}
+<details class="ml-2">
+  <summary class="text-xs text-gray-500 dark:text-gray-400 cursor-pointer py-1 select-none">{label}</summary>
+  <ul class="space-y-1 mt-1">
+{children_html}
+  </ul>
+</details>"#,
+            link = link,
+            label = escape_html(&item.label),
+            children_html = children_html,
+        )
+    }
 }
 
 /// Render prev/next page navigation links.

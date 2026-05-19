@@ -14,7 +14,7 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "postCreateCommand": "cargo install trunk --version 0.21.14 && npm install -g playwright && npx playwright install chromium",
+  "postCreateCommand": "cargo build && cargo install trunk --version 0.21.14 && npm install -g playwright && npx playwright install chromium",
   "customizations": {
     "vscode": {
       "extensions": [

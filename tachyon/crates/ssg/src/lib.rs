@@ -18,7 +18,9 @@ mod templates;
 pub use build::SiteGenerator;
 pub use error::{SsgError, SsgResult};
 pub use i18n::{language_display_name, text_direction};
-pub use manifest::{BuildResult, ColorTheme, NavLink, SiteConfig, SsgDocument, TranslationConfig};
+pub use manifest::{
+    BuildResult, ColorTheme, NavLink, SidebarItem, SiteConfig, SsgDocument, TranslationConfig,
+};
 pub use templates::{DEFAULT_BASE_TEMPLATE, DEFAULT_DOC_TEMPLATE, DEFAULT_INDEX_TEMPLATE};
 
 pub mod slug {
@@ -286,6 +288,195 @@ mod tests {
         assert!(tmp.join("en/feed.xml").exists());
         assert!(tmp.join("zh/sitemap.xml").exists());
         assert!(tmp.join("zh/feed.xml").exists());
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_admonition_note() {
+        use crate::render::render_admonitions;
+        let input = r#"<blockquote>
+<p>[!NOTE]</p>
+<p>This is a note</p>
+</blockquote>"#;
+        let output = render_admonitions(input);
+        assert!(output.contains(r#"<div class="admonition admonition-note">"#));
+        assert!(output.contains(r#"<p class="admonition-title">Note</p>"#));
+        assert!(output.contains("This is a note"));
+        assert!(!output.contains("<blockquote>"));
+    }
+
+    #[test]
+    fn test_admonition_warning() {
+        use crate::render::render_admonitions;
+        let input = r#"<blockquote>
+<p>[!WARNING]</p>
+<p>Be careful!</p>
+</blockquote>"#;
+        let output = render_admonitions(input);
+        assert!(output.contains(r#"admonition-warning"#));
+        assert!(output.contains(r#"admonition-title">Warning"#));
+        assert!(output.contains("Be careful!"));
+    }
+
+    #[test]
+    fn test_admonition_tip() {
+        use crate::render::render_admonitions;
+        let input = r#"<blockquote>
+<p>[!TIP]</p>
+<p>Try this approach</p>
+</blockquote>"#;
+        let output = render_admonitions(input);
+        assert!(output.contains(r#"admonition-tip"#));
+        assert!(output.contains(r#"admonition-title">Tip"#));
+    }
+
+    #[test]
+    fn test_admonition_danger() {
+        use crate::render::render_admonitions;
+        let input = r#"<blockquote>
+<p>[!DANGER]</p>
+<p>This will delete everything</p>
+</blockquote>"#;
+        let output = render_admonitions(input);
+        assert!(output.contains(r#"admonition-danger"#));
+        assert!(output.contains(r#"admonition-title">Danger"#));
+    }
+
+    #[test]
+    fn test_admonition_info_and_success() {
+        use crate::render::render_admonitions;
+        let info_input = r#"<blockquote>
+<p>[!INFO]</p>
+<p>Some info</p>
+</blockquote>"#;
+        let output = render_admonitions(info_input);
+        assert!(output.contains(r#"admonition-info"#));
+        assert!(output.contains(r#"admonition-title">Info"#));
+
+        let success_input = r#"<blockquote>
+<p>[!SUCCESS]</p>
+<p>It worked</p>
+</blockquote>"#;
+        let output = render_admonitions(success_input);
+        assert!(output.contains(r#"admonition-success"#));
+        assert!(output.contains(r#"admonition-title">Success"#));
+    }
+
+    #[test]
+    fn test_admonition_no_match_plain_blockquote() {
+        use crate::render::render_admonitions;
+        let input = r#"<blockquote>
+<p>Just a regular quote</p>
+</blockquote>"#;
+        let output = render_admonitions(input);
+        assert!(output.contains("<blockquote>"));
+        assert!(!output.contains("admonition"));
+    }
+
+    #[test]
+    fn test_sidebar_generation() {
+        use crate::templates::render_sidebar_test;
+        let items = vec![
+            SidebarItem {
+                label: "Getting Started".to_string(),
+                href: "getting-started.html".to_string(),
+                children: vec![],
+            },
+            SidebarItem {
+                label: "Guides".to_string(),
+                href: "#".to_string(),
+                children: vec![SidebarItem {
+                    label: "Configuration".to_string(),
+                    href: "configuration.html".to_string(),
+                    children: vec![],
+                }],
+            },
+        ];
+        let html = render_sidebar_test(&items, Some("getting-started"));
+        assert!(html.contains("Getting Started"));
+        assert!(html.contains("getting-started.html"));
+        assert!(html.contains("bg-blue-50"));
+        assert!(html.contains("Guides"));
+        assert!(html.contains("Configuration"));
+        assert!(html.contains(r#"id="tachyon-sidebar""#));
+    }
+
+    #[test]
+    fn test_sidebar_empty() {
+        use crate::templates::render_sidebar_test;
+        let html = render_sidebar_test(&[], Some("test"));
+        assert!(html.is_empty());
+    }
+
+    #[test]
+    fn test_toc_integration() {
+        use crate::render::extract_toc;
+        let html = r#"<h1 id="intro">Introduction</h1><p>Some text</p><h2 id="details">Details</h2><p>More text</p>"#;
+        let toc = extract_toc(html);
+        assert_eq!(toc.len(), 2);
+        assert_eq!(toc[0].id, "intro");
+        assert_eq!(toc[0].title, "Introduction");
+        assert_eq!(toc[0].level, 1);
+        assert_eq!(toc[1].id, "details");
+        assert_eq!(toc[1].level, 2);
+    }
+
+    #[test]
+    fn test_latex_cdn_in_output() {
+        let config = SiteConfig::default();
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "test-latex".to_string(),
+            title: "LaTeX Test".to_string(),
+            content: "# LaTeX Test\n\nSome content".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-katex-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("test-latex.html")).unwrap();
+        assert!(html.contains("katex.min.css"));
+        assert!(html.contains("katex.min.js"));
+        assert!(html.contains("auto-render.min.js"));
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_admonition_css_in_output() {
+        let config = SiteConfig::default();
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "test-admonition-css".to_string(),
+            title: "Admonition CSS Test".to_string(),
+            content: "# Test\n\nContent".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-adm-css-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("test-admonition-css.html")).unwrap();
+        assert!(html.contains("admonition-note"));
+        assert!(html.contains("admonition-warning"));
+        assert!(html.contains("admonition-tip"));
+        assert!(html.contains("admonition-danger"));
 
         let _ = std::fs::remove_dir_all(&tmp);
     }

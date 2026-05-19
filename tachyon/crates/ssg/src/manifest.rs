@@ -58,6 +58,9 @@ pub struct SiteConfig {
     /// Custom color theme
     #[serde(default)]
     pub color_theme: Option<ColorTheme>,
+    /// Sidebar menu items (used to generate collapsible sidebar navigation)
+    #[serde(default)]
+    pub menu_items: Vec<SidebarItem>,
 }
 
 impl Default for SiteConfig {
@@ -79,6 +82,7 @@ impl Default for SiteConfig {
             language: "en".to_string(),
             translations: vec![],
             color_theme: None,
+            menu_items: vec![],
         }
     }
 }
@@ -88,6 +92,15 @@ impl Default for SiteConfig {
 pub struct NavLink {
     pub label: String,
     pub href: String,
+}
+
+/// A sidebar menu item, supporting one level of nesting.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SidebarItem {
+    pub label: String,
+    pub href: String,
+    #[serde(default)]
+    pub children: Vec<SidebarItem>,
 }
 
 /// Configuration for a translated version of the site.

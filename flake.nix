@@ -84,6 +84,7 @@
         # Rust development tools
         rustDevTools = with pkgs; [
           cargo-audit
+          cargo-deny
           cargo-outdated
           cargo-tarpaulin
           cargo-watch

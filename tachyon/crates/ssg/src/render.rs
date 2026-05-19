@@ -332,11 +332,52 @@ pub(crate) fn render_markdown(content: &str) -> String {
         }
     };
 
-    if let Ok(latex) = renderer.latex().render_from_text(&result) {
+    let result = if let Ok(latex) = renderer.latex().render_from_text(&result) {
         latex
     } else {
         result
+    };
+
+    render_admonitions(&result)
+}
+
+pub(crate) fn render_admonitions(html: &str) -> String {
+    let re = regex::Regex::new(
+        r#"(?si)<blockquote>\s*<p>\s*\[!(NOTE|WARNING|TIP|DANGER|INFO|SUCCESS)\]\s*</p>\s*(.*?)</blockquote>"#,
+    )
+    .unwrap();
+
+    re.replace_all(html, |caps: &regex::Captures| {
+        let admonition_type = &caps[1];
+        let title = capitalize_first(admonition_type);
+        let content = caps[2].trim();
+        format!(
+            r#"<div class="admonition admonition-{type}">
+<p class="admonition-title">{title}</p>
+{content}
+</div>"#,
+            type = admonition_type.to_lowercase(),
+            title = title,
+            content = content,
+        )
+    })
+    .to_string()
+}
+
+fn capitalize_first(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    if let Some(first) = chars.next() {
+        for c in first.to_uppercase() {
+            result.push(c);
+        }
     }
+    for c in chars {
+        for lc in c.to_lowercase() {
+            result.push(lc);
+        }
+    }
+    result
 }
 
 pub(crate) fn truncate_text(html: &str, max_chars: usize) -> String {

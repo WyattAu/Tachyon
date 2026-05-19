@@ -6,7 +6,7 @@
 
 .PHONY: help all build test clean install fmt lint check audit doc serve deploy docker \
        quickstart quickstart-setup quickstart-start quickstart-stop quickstart-test quickstart-status quickstart-clean \
-       init init-example web-build web-dev
+       init init-example web-build web-dev docs-preview link-check
 
 # Default target when running `make`
 .DEFAULT_GOAL := help
@@ -375,3 +375,27 @@ reset-db: ## Reset database (WARNING: Destructive!)
 	@read -p "Are you sure? Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ] || exit 1
 	rm -f tachyon/data/tachyon.db
 	@echo "$(GREEN)✓ Database reset$(NC)"
+
+# ============================================================================
+# Documentation Preview Target
+# ============================================================================
+
+docs-preview: ## Build docs with SSG and serve locally
+	@echo "$(BLUE)Building SSG binary...$(NC)"
+	cd tachyon && $(CARGO) build --release -p tachyon-ssg
+	@echo "$(BLUE)Generating documentation...$(NC)"
+	cd tachyon && ./target/release/tachyon-ssg-cli --input documentation/ --output /tmp/tachyon-docs
+	@echo "$(GREEN)✓ Docs generated at /tmp/tachyon-docs$(NC)"
+	@echo "$(BLUE)Serving at http://localhost:8080 (Ctrl+C to stop)$(NC)"
+	cd /tmp/tachyon-docs && python3 -m http.server 8080
+
+link-check: ## Check for stale .specs/ references in markdown files
+	@echo "$(BLUE)Checking for stale .specs/ references...$(NC)"
+	@count=$$(rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ --type md --files-with-matches 2>/dev/null | wc -l); \
+	if [ "$$count" -gt 0 ]; then \
+		echo "$(RED)Found $$count file(s) with stale .specs/ references:$(NC)"; \
+		rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ --type md --files-with-matches 2>/dev/null; \
+		exit 1; \
+	else \
+		echo "$(GREEN)✓ No stale .specs/ references found$(NC)"; \
+	fi
