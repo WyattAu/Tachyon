@@ -20,15 +20,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
         with:
           targets: wasm32-unknown-unknown
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cargo/registry
@@ -49,15 +49,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
         with:
           components: rustfmt, clippy
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cargo/registry
@@ -92,13 +92,13 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cargo/registry
@@ -123,13 +123,13 @@ jobs:
     timeout-minutes: 30
     needs: [check, lint, test]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cargo/registry
@@ -141,7 +141,7 @@ jobs:
         working-directory: tachyon
         run: cargo build --release -p tachyon-server
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tachyon-server
           path: tachyon/target/release/tachyon-server
@@ -153,15 +153,15 @@ jobs:
     timeout-minutes: 30
     needs: [check, lint]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
         with:
           targets: wasm32-unknown-unknown
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cargo/registry
@@ -176,7 +176,7 @@ jobs:
         working-directory: tachyon/crates/frontend
         run: trunk build --release
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: frontend-dist
           path: tachyon/crates/frontend/dist
@@ -188,13 +188,13 @@ jobs:
     timeout-minutes: 30
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cargo/registry
@@ -207,7 +207,7 @@ jobs:
         run: TMPDIR=/tmp cargo bench -p tachyon-benchmarks -- --output-format bencher | tee benchmark-results.txt
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: benchmark-results
           path: tachyon/benchmark-results.txt
@@ -232,16 +232,16 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
 
       - name: Install tarpaulin
         run: cargo install cargo-tarpaulin
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cargo/registry
@@ -267,7 +267,7 @@ jobs:
           fi
           echo "Coverage ${COVERAGE} meets threshold ${THRESHOLD}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: coverage-report
           path: tachyon/coverage/
@@ -278,7 +278,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Check for broken .specs/ references
         run: |
           COUNT=$(rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ .knowledge_graph/ ROADMAP.md ROADMAP_DETAILED.md --type md --files-with-matches 2>/dev/null | wc -l)
@@ -295,17 +295,52 @@ jobs:
     needs: [build, build-frontend]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
           context: .
           file: Dockerfile
           push: false
           tags: tachyon:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  mutation:
+    name: Mutation Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336ea8814c7da3abe9610734e93e21d4dc5 # stable
+
+      - name: Cache cargo
+        uses: actions/cache@0057852b503f07ce41675d3b3c89c5c3e0c51784 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: mutation-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+
+      - name: Install cargo-mutant
+        run: cargo install cargo-mutant
+
+      - name: Run mutation tests
+        working-directory: tachyon
+        run: cargo mutant --no-times --files crates/core/src/ crates/database/src/ crates/search/src/
+
+      - uses: actions/upload-artifact@ea165f8d65e6edbf925cbdc8c6af8f37d45251c4 # v4
+        if: always()
+        with:
+          name: mutation-results
+          path: tachyon/mutants.out/
+          retention-days: 30

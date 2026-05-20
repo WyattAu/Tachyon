@@ -45,7 +45,7 @@ Tachyon is built as a Rust workspace with 16 crates:
 | `tachyon-search` | Tantivy + PostgreSQL hybrid search |
 | `tachyon-renderer` | Markdown to HTML with syntax highlighting, KaTeX, sanitization |
 | `tachyon-rbac` | Casbin-based role-based access control |
-| `tachyon-storage` | Memory and SQLite storage backends |
+| `tachyon-storage` | Memory and PostgreSQL storage backends |
 | `tachyon-ssg` | Static site generator with i18n, RSS, sitemap |
 | `tachyon-import-export` | Obsidian, Docusaurus, ZIP, JSON, HTML import/export |
 | `tachyon-plugin-runtime` | WASM sandbox via Wasmtime 44 |

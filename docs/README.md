@@ -1,0 +1,1 @@
+# Documentation\n\nSee [documentation/](documentation/) for the canonical source, or visit [wyattau.github.io/Tachyon](https://wyattau.github.io/Tachyon).\n\nThe previous auto-generated docs have been archived in `docs.archived/` due to stale references to Bun, SQLite, and config.toml.

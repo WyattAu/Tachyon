@@ -34,7 +34,6 @@ harness = false
 tachyon-core = { path = "../core" }
 tachyon-server = { path = "../server" }
 tachyon-desktop = { path = "../desktop" }
-tachyon-desktop-app = { path = "../desktop/src-tauri" }
 tachyon-rbac = { path = "../rbac" }
 tachyon-search = { path = "../search" }
 tachyon-database = { path = "../database" }
@@ -90,4 +89,7 @@ default = []
 integration-tests = []
 fuzz-tests = []
 benchmark-tests = []
-desktop-tests = []
+desktop-tests = ["dep:tachyon-desktop-app"]
+
+[target.'cfg(feature = "desktop-tests")'.dependencies]
+tachyon-desktop-app = { path = "../desktop/src-tauri", optional = true }
