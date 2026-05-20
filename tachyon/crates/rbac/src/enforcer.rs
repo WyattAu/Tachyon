@@ -174,6 +174,10 @@ impl Enforcer {
         if let Some(ref _session_manager) = self.session_manager {
             // Note: This is a synchronous wrapper around async session validation
             // In production, you'd use a different approach or make the enforcer async
+            tracing::warn!(
+                "Session validation is being skipped in synchronous authorize() call; \
+                 consider using authorize_async() for full session validation"
+            );
         }
 
         // Evaluate policies

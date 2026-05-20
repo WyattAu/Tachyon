@@ -129,11 +129,11 @@ impl BM25Ranker {
                 debug!("Sorted results by date (oldest first)");
             }
             SortOrder::TitleAsc => {
-                results.sort_by_key(|a| a.title.clone());
+                results.sort_by(|a, b| a.title.cmp(&b.title));
                 debug!("Sorted results by title (A-Z)");
             }
             SortOrder::TitleDesc => {
-                results.sort_by_key(|b| std::cmp::Reverse(b.title.clone()));
+                results.sort_by(|a, b| b.title.cmp(&a.title));
                 debug!("Sorted results by title (Z-A)");
             }
         }

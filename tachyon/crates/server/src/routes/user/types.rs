@@ -120,7 +120,11 @@ impl UserState {
             team_id: None,
         };
 
-        let signing_secret = self.jwt_secrets.first().map(|s| s.as_str()).unwrap_or("");
+        let signing_secret = self
+            .jwt_secrets
+            .first()
+            .map(|s| s.as_str())
+            .ok_or_else(|| "JWT secret not configured".to_string())?;
 
         encode(
             &Header::default(),

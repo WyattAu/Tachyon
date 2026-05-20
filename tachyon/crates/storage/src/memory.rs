@@ -75,10 +75,10 @@ fn sort_documents(docs: &mut [Document], sort_by: SortField, sort_dir: SortDirec
             docs.sort_by_key(|a| a.metadata.created_at);
         }
         (SortField::Title, SortDirection::Asc) => {
-            docs.sort_by_key(|a| a.metadata.title.clone());
+            docs.sort_by(|a, b| a.metadata.title.cmp(&b.metadata.title));
         }
         (SortField::Title, SortDirection::Desc) => {
-            docs.sort_by_key(|b| std::cmp::Reverse(b.metadata.title.clone()));
+            docs.sort_by(|a, b| b.metadata.title.cmp(&a.metadata.title));
         }
     }
 }

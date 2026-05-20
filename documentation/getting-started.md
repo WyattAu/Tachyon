@@ -35,7 +35,7 @@ trunk build --release --packages tachyon-frontend
 git clone https://github.com/WyattAu/Tachyon.git
 cd Tachyon
 nix develop  # or 'use flake' if you have direnv
-cargo run --release
+cargo run --release -p tachyon-server
 ```
 
 ## Configuration
@@ -44,7 +44,7 @@ Create a `.env` file in the `tachyon/` directory:
 
 ```env
 DATABASE_URL=postgres://user:password@localhost/tachyon
-JWT_SECRET=your-secret-key-here
+TACHYON_JWT_SECRET=your-secret-key-here
 RUST_LOG=tachyon_server=debug
 ```
 
@@ -52,7 +52,7 @@ RUST_LOG=tachyon_server=debug
 
 ```bash
 # Start the server (backend + frontend)
-cargo run --release
+cargo run --release -p tachyon-server
 
 # Or separately:
 cargo run --release --bin tachyon-server    # Backend on :8080

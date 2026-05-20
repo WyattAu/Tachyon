@@ -36,7 +36,7 @@ Tachyon is a full-stack Rust application:
 │                    │                                 │
 │  ┌────────┐ ┌─────┴──────┐ ┌──────────┐            │
 │  │ Tantivy│ │ PostgreSQL │ │ Redis    │            │
-│  │ Search │ │ (sqlx)     │ │ (cache)  │            │
+│  │ Search │ │ (sqlx)     │ │(optional)│            │
 │  └────────┘ └────────────┘ └──────────┘            │
 └─────────────────────────────────────────────────────┘
 ```

@@ -6,3 +6,4 @@ e2e/playwright-report/
 
 # Database files
 *.db
+data/

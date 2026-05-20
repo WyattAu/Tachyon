@@ -444,7 +444,7 @@ pub async fn list_repositories(
         .map(|r| RepositoryResponse::from(r.clone()))
         .collect();
 
-    repo_list.sort_by_key(|a| a.name.clone());
+    repo_list.sort_by(|a, b| a.name.cmp(&b.name));
 
     let total = repo_list.len();
 

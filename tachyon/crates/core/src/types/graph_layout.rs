@@ -81,18 +81,16 @@ impl ForceDirectedLayout {
 
         let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
         for edge in edges {
-            let src = nodes
-                .iter()
-                .position(|nd| nd.id == edge.source_id)
-                .unwrap_or(0);
-            let tgt = nodes
-                .iter()
-                .position(|nd| nd.id == edge.target_id)
-                .unwrap_or(0);
-            if src < n && tgt < n {
-                adj[src].push(tgt);
-                adj[tgt].push(src);
-            }
+            let src = match nodes.iter().position(|nd| nd.id == edge.source_id) {
+                Some(idx) => idx,
+                None => continue,
+            };
+            let tgt = match nodes.iter().position(|nd| nd.id == edge.target_id) {
+                Some(idx) => idx,
+                None => continue,
+            };
+            adj[src].push(tgt);
+            adj[tgt].push(src);
         }
 
         let area = self.width * self.height;

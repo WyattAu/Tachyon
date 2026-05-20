@@ -1,15 +1,27 @@
 # Tachyon Monorepo Makefile
 # Provides convenient commands for building, testing, and managing the project
 
-# Default target when running `make`
 .DEFAULT_GOAL := help
 
-.PHONY: help all build test clean install fmt lint check audit doc serve deploy docker \
+.PHONY: help all build build-release build-server build-cli build-desktop build-frontend \
+       test test-verbose test-crate-% test-core test-database test-server test-search \
+       test-renderer test-rbac test-cli coverage \
+       fmt fmt-check lint lint-fix check fix \
+       audit audit-json security-monitor \
+       doc doc-build \
+       clean clean-all \
+       serve serve-release run \
+       deploy deploy-staging deploy-production \
+       docker-build docker-up docker-down docker-logs docker-clean \
+       bench \
+       install update outdated watch tree \
+       ci ci-lite \
+       version status \
+       init init-example \
        quickstart quickstart-setup quickstart-start quickstart-stop quickstart-test quickstart-status quickstart-clean \
-       init init-example web-build web-dev docs-preview link-check
-
-# Default target when running `make`
-.DEFAULT_GOAL := help
+       web-build web-dev \
+       backup-db migrate reset-db \
+       docs-preview link-check
 
 # Colors for terminal output
 BLUE := \033[36m
@@ -185,13 +197,13 @@ doc-build: ## Build documentation without opening
 clean: ## Clean build artifacts
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
 	cd tachyon && $(CARGO) clean
-	rm -rf target/
+	rm -rf tachyon/target/
 	@echo "$(GREEN)✓ Clean complete$(NC)"
 
 clean-all: ## Clean everything including caches
 	@echo "$(BLUE)Cleaning everything...$(NC)"
 	cd tachyon && $(CARGO) clean
-	rm -rf target/
+	rm -rf tachyon/target/
 	rm -rf ~/.cargo/registry/cache
 	rm -rf ~/.cargo/git/checkouts
 	@echo "$(GREEN)✓ Deep clean complete$(NC)"
@@ -320,9 +332,6 @@ init: ## Initialize a new Tachyon repository
 init-example: ## Initialize example repository
 	cd tachyon && $(CARGO) run -p tachyon-cli -- init --path /tmp/tachyon-example --name "Example Repo"
 
-quickstart: ## Run quickstart setup (clone, build, run)
-	./scripts/quickstart.sh setup
-
 quickstart-start: ## Start development server via quickstart
 	./scripts/quickstart.sh start
 
@@ -335,46 +344,14 @@ quickstart-test: ## Run event-triggering crawl bot
 quickstart-status: ## Show quickstart status
 	./scripts/quickstart.sh status
 
-event-crawl: ## Run comprehensive event-triggering crawl bot
-	cd tachyon/web && bun run event-crawler.ts
-
-quickstart-stop: ## Stop development server
-	./scripts/quickstart.sh stop
-
-quickstart-test: ## Run event-triggering crawl tests
-	./scripts/quickstart.sh test
-
-quickstart-status: ## Show project status
-	./scripts/quickstart.sh status
+# event-crawl: ## Run comprehensive event-triggering crawl bot
+# Disabled: tachyon/web/ directory does not exist
+# 	cd tachyon/web && bun run event-crawler.ts
 
 quickstart-clean: ## Clean all build artifacts
 	./scripts/quickstart.sh clean
 
 quickstart: quickstart-setup quickstart-start ## Full quickstart (setup + start)
-
-web-build: ## Build Leptos frontend WASM (alias for build-frontend)
-	$(MAKE) build-frontend
-
-web-dev: ## Start Leptos frontend dev server
-	cd tachyon/crates/frontend && trunk serve --open
-
-# ============================================================================
-# Maintenance Targets
-# ============================================================================
-
-backup-db: ## Backup the database
-	@mkdir -p backups
-	@cp tachyon/data/tachyon.db backups/tachyon-$(shell date +%Y%m%d-%H%M%S).db
-	@echo "$(GREEN)✓ Database backed up to backups/$(NC)"
-
-migrate: ## Run database migrations
-	cd tachyon && $(CARGO) run -p tachyon-server -- migrate
-
-reset-db: ## Reset database (WARNING: Destructive!)
-	@echo "$(RED)WARNING: This will delete all data!$(NC)"
-	@read -p "Are you sure? Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ] || exit 1
-	rm -f tachyon/data/tachyon.db
-	@echo "$(GREEN)✓ Database reset$(NC)"
 
 # ============================================================================
 # Documentation Preview Target

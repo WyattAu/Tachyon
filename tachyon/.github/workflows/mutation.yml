@@ -14,7 +14,6 @@ jobs:
   mutation-test:
     name: Mutation Tests
     runs-on: ubuntu-latest
-    needs: check
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -29,7 +28,7 @@ jobs:
         run: |
           # Only test core, database, search crates to keep CI time reasonable.
           # For full mutation testing run locally: cargo mutant
-          cargo mutant --no-times --files tachyon/crates/core/src/ tachyon/crates/database/src/ tachyon/crates/search/src/
+          cargo mutant --no-times --files crates/core/src/ crates/database/src/ crates/search/src/
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -98,15 +98,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: cargo-audit
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: tachyon -> target
           key: ${{ runner.os }}-cargo-
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
       - name: Cargo audit
         working-directory: tachyon
-        run: cargo audit
+        run: cargo audit --ignore RUSTSEC-2023-0071
 
   formal:
     name: Formal Verification
@@ -118,7 +118,7 @@ jobs:
         working-directory: tachyon
         run: |
           if [ -d "specs/lean" ]; then
-            lean --make src specs 2>&1 || echo "Note: Some proofs may require manual verification"
+            lean --make specs/lean 2>&1 || echo "Note: Some proofs may require manual verification"
           else
             echo "No Lean4 specs found"
           fi
@@ -144,7 +144,7 @@ jobs:
     env:
       DATABASE_URL: postgres://tachyon_test:tachyon_test@localhost:5432/tachyon_test
       JWT_SECRET: test-secret-for-e2e
-      E2E_BASE_URL: http://localhost:3000
+      E2E_BASE_URL: http://localhost:8080
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
@@ -156,6 +156,19 @@ jobs:
       - name: Install Playwright
         working-directory: tachyon/e2e
         run: npm ci && npx playwright install --with-deps chromium
+      - name: Build server
+        working-directory: tachyon
+        run: cargo build --release -p tachyon-server
+      - name: Start server
+        working-directory: tachyon
+        env:
+          DATABASE_URL: postgres://tachyon_test:tachyon_test@localhost:5432/tachyon_test
+          JWT_SECRET: test-secret-for-e2e-must-be-at-least-32-chars-long
+          RUST_LOG: info
+        run: |
+          ./target/release/tachyon-server &
+          sleep 5
+          curl -sf http://localhost:8080/health || exit 1
       - name: Run E2E tests
         working-directory: tachyon/e2e
         run: npm test

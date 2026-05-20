@@ -1,6 +1,6 @@
 # Tachyon Production Roadmap
 
-**Version:** 13.0.0 | **Date:** 2026-05-19 | **Status:** All phases complete
+**Version:** 12.0.0 | **Date:** 2026-05-19 | **Status:** All phases complete
 
 ---
 
@@ -301,7 +301,7 @@ Based on the 78-item gap analysis in `SSG_CAPABILITIES_GAP_ANALYSIS.md`.
 
 ### 7.4 Release
 
-- Tag v13.0.0
+- Tag v12.0.0
 - Multi-arch Docker images on GHCR
 - GitHub Release with SBOM
 - Documentation site deployed

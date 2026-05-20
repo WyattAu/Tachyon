@@ -9,11 +9,11 @@ A deterministic, high-performance knowledge management system built with Rust.
 
 ## Features
 
-- **Markdown rendering** -- CommonMark + GFM, syntax highlighting for 12+ languages, KaTeX math, HTML sanitization
+- **Markdown rendering** -- CommonMark + GFM, syntax highlighting for 11 languages (tree-sitter), KaTeX math, HTML sanitization
 - **Real-time collaboration** -- WebSocket with operational transform, live cursors, presence detection
 - **Full-text search** -- PostgreSQL tsvector with trigram fuzzy matching, tag filtering, field-level queries
 - **RBAC** -- Role-based access control with fine-grained permissions, audit logging
-- **SEO** -- Server-side rendering, JSON-LD, Open Graph, robots.txt, sitemap.xml
+- **SEO** -- Client-side rendering (CSR) via Leptos WASM, JSON-LD, Open Graph, robots.txt, sitemap.xml
 - **Caching** -- Path-aware Cache-Control with stale-while-revalidate, ETags
 - **API** -- RESTful API with Swagger UI, WebSocket for real-time updates
 - **Auth** -- JWT authentication with guest access support
