@@ -7,10 +7,13 @@ export class AppPage {
     await this.page.goto(path);
     await this.page.waitForLoadState('domcontentloaded');
     try {
-      await this.page.waitForSelector('#app > *', { timeout: 10000 });
+      // Wait for WASM hydration to render content inside #app
+      await this.page.waitForSelector('#app > *', { timeout: 15000 });
     } catch {
       // WASM may not have hydrated, continue anyway
     }
+    // Give WASM hydration extra time to render landmarks
+    await this.page.waitForTimeout(1000);
   }
 
   async register(username: string, email: string, password: string) {

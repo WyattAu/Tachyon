@@ -381,6 +381,12 @@ async function checkSkipNavigation(page: import('@playwright/test').Page): Promi
 
 async function checkMainLandmark(page: import('@playwright/test').Page): Promise<A11yViolation[]> {
   const violations: A11yViolation[] = [];
+  // Wait for WASM hydration to render the main landmark
+  try {
+    await page.waitForSelector('main, [role="main"]', { timeout: 10000 });
+  } catch {
+    // Main landmark never appeared
+  }
   const main = page.locator('main, [role="main"]');
   if (await main.count() === 0) {
     violations.push({
