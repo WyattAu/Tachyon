@@ -185,6 +185,25 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     .dark .admonition-danger {{ background: #450a0a; }}
     .dark .admonition-info {{ background: #164e63; }}
     .dark .admonition-success {{ background: #052e16; }}
+    nav.toc {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }}
+    nav.toc ul {{ list-style: none; padding-left: 0; margin: 0; }}
+    nav.toc li {{ margin-bottom: 0.25rem; }}
+    nav.toc li a {{ color: #4b5563; text-decoration: none; font-size: 0.875rem; line-height: 1.5; }}
+    nav.toc li a:hover {{ color: #2563eb; text-decoration: underline; }}
+    nav.toc li.toc-h3 {{ padding-left: 1rem; }}
+    .code-block-wrapper {{ position: relative; }}
+    .code-block-wrapper pre {{ margin-bottom: 0; }}
+    .code-copy-btn {{ position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(255,255,255,0.1); color: #9ca3af; border: 1px solid rgba(255,255,255,0.2); border-radius: 0.25rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; cursor: pointer; opacity: 0; transition: opacity 0.2s; }}
+    .code-block-wrapper:hover .code-copy-btn {{ opacity: 1; }}
+    .code-copy-btn:hover {{ background: rgba(255,255,255,0.2); color: #f9fafb; }}
+    @media (prefers-color-scheme: dark) {{
+      html:not(.light) nav.toc {{ background: #1f2937; border-color: #374151; }}
+      html:not(.light) nav.toc li a {{ color: #9ca3af; }}
+      html:not(.light) nav.toc li a:hover {{ color: #60a5fa; }}
+    }}
+    .dark nav.toc {{ background: #1f2937; border-color: #374151; }}
+    .dark nav.toc li a {{ color: #9ca3af; }}
+    .dark nav.toc li a:hover {{ color: #60a5fa; }}
     {custom_css}
   </style>
 </head>

@@ -45,9 +45,10 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Archive Configuration Files
+        env:
+          ENVIRONMENT: ${{ inputs.environment || 'scheduled' }}
         run: |
           TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-          ENVIRONMENT="${{ inputs.environment || 'scheduled' }}"
           tar -czf "/tmp/config-${ENVIRONMENT}-${TIMESTAMP}.tar.gz" \
             .env.example \
             docker-compose.yml \

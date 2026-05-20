@@ -1,5 +1,6 @@
 # Documentation files containing example tokens and configuration snippets
 docs/
+docs.archived/
 
 # Seed/test data with intentional bcrypt hashes for development
 scripts/seed-data.sql

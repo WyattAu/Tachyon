@@ -24,6 +24,90 @@ fn strip_html_tags(html: &str) -> String {
     re.replace_all(html, "").to_string()
 }
 
+pub(crate) fn add_heading_ids(html: &str) -> String {
+    let re = regex::Regex::new(r#"<(h[23])(\s[^>]*)?>([\s\S]*?)</h[23]>"#).unwrap();
+    let mut id_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+
+    re.replace_all(html, |caps: &regex::Captures| {
+        let tag = &caps[1];
+        let attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        let content = &caps[3];
+
+        if attrs.contains(r#"id=""#) {
+            return caps[0].to_string();
+        }
+
+        let text = strip_html_tags(content);
+        let base_id = crate::slug::slugify(&text);
+        let count = id_counts.entry(base_id.clone()).or_insert(0);
+        *count += 1;
+        let id = if *count == 1 {
+            base_id
+        } else {
+            format!("{}-{}", base_id, count)
+        };
+
+        format!(r#"<{} id="{}"{}>{}</{}>"#, tag, id, attrs, content, tag)
+    })
+    .to_string()
+}
+
+pub(crate) fn extract_inline_toc(html: &str) -> Vec<TocEntry> {
+    let re = regex::Regex::new(r#"<h([23])[^>]*id="([^"]*)"[^>]*>(.*?)</h[23]>"#).unwrap();
+    re.captures_iter(html)
+        .map(|cap| TocEntry {
+            level: cap[1].parse().unwrap_or(2),
+            id: cap[2].to_string(),
+            title: strip_html_tags(&cap[3]),
+        })
+        .collect()
+}
+
+pub(crate) fn render_inline_toc(toc: &[TocEntry]) -> String {
+    if toc.len() < 2 {
+        return String::new();
+    }
+    let items: String = toc
+        .iter()
+        .map(|entry| {
+            let class = if entry.level == 3 { "toc-h3" } else { "toc-h2" };
+            format!(
+                r##"<li class="{}"><a href="#{}">{}</a></li>"##,
+                class,
+                entry.id,
+                escape_for_html(&entry.title),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    format!(r#"<nav class="toc"><ul>{}</ul></nav>"#, items)
+}
+
+fn escape_for_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+pub(crate) fn add_copy_buttons(html: &str) -> String {
+    let re =
+        regex::Regex::new(r#"<pre([^>]*)>\s*<code([^>]*)>([\s\S]*?)</code>\s*</pre>"#).unwrap();
+
+    re.replace_all(html, |caps: &regex::Captures| {
+        let pre_attrs = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        let code_attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        let code_content = &caps[3];
+
+        format!(
+            r#"<div class="code-block-wrapper"><pre{}><code{}>{}</code></pre><button class="code-copy-btn" onclick="(function(b){{var c=b.parentElement.querySelector('code');navigator.clipboard.writeText(c.textContent).then(function(){{b.textContent='Copied!';setTimeout(function(){{b.textContent='Copy'}},2000)}})}})(this)" aria-label="Copy code to clipboard">Copy</button></div>"#,
+            pre_attrs, code_attrs, code_content
+        )
+    })
+    .to_string()
+}
+
 pub(crate) struct PageContext<'a> {
     pub(crate) site: &'a SiteConfig,
     pub(crate) title: &'a str,
@@ -338,7 +422,17 @@ pub(crate) fn render_markdown(content: &str) -> String {
         result
     };
 
-    render_admonitions(&result)
+    let result = render_admonitions(&result);
+    let result = add_heading_ids(&result);
+    let toc_entries = extract_inline_toc(&result);
+    let toc_html = render_inline_toc(&toc_entries);
+    let result = add_copy_buttons(&result);
+
+    if toc_html.is_empty() {
+        result
+    } else {
+        format!("{}\n{}", toc_html, result)
+    }
 }
 
 pub(crate) fn render_admonitions(html: &str) -> String {

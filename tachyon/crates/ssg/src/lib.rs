@@ -545,4 +545,142 @@ sudo certbot --nginx -d docs.example.com
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
+
+    #[test]
+    fn test_add_heading_ids() {
+        use crate::render::add_heading_ids;
+        let html = r#"<h2>First Section</h2><p>text</p><h3>Sub Section</h3>"#;
+        let result = add_heading_ids(html);
+        assert!(result.contains(r#"<h2 id="first-section">"#));
+        assert!(result.contains(r#"<h3 id="sub-section">"#));
+    }
+
+    #[test]
+    fn test_add_heading_ids_preserves_existing() {
+        use crate::render::add_heading_ids;
+        let html = r#"<h2 id="custom-id">Title</h2>"#;
+        let result = add_heading_ids(html);
+        assert!(result.contains(r#"<h2 id="custom-id">"#));
+        assert!(!result.contains("custom-id-"));
+    }
+
+    #[test]
+    fn test_add_heading_ids_deduplicates() {
+        use crate::render::add_heading_ids;
+        let html = r#"<h2>Same</h2><h2>Same</h2>"#;
+        let result = add_heading_ids(html);
+        assert!(result.contains(r#"<h2 id="same">"#));
+        assert!(result.contains(r#"<h2 id="same-2">"#));
+    }
+
+    #[test]
+    fn test_inline_toc_two_headings() {
+        use crate::render::{add_heading_ids, extract_inline_toc, render_inline_toc};
+        let html = r#"<h2>Alpha</h2><p>text</p><h3>Beta</h3><p>more</p>"#;
+        let html = add_heading_ids(html);
+        let toc = extract_inline_toc(&html);
+        assert_eq!(toc.len(), 2);
+        let rendered = render_inline_toc(&toc);
+        assert!(rendered.contains(r#"<nav class="toc">"#));
+        assert!(rendered.contains(r#"#alpha"#));
+        assert!(rendered.contains(r#"#beta"#));
+        assert!(rendered.contains(r#"toc-h2"#));
+        assert!(rendered.contains(r#"toc-h3"#));
+    }
+
+    #[test]
+    fn test_inline_toc_hidden_when_single_heading() {
+        use crate::render::{add_heading_ids, extract_inline_toc, render_inline_toc};
+        let html = r#"<h2>Only One</h2><p>text</p>"#;
+        let html = add_heading_ids(html);
+        let toc = extract_inline_toc(&html);
+        assert_eq!(toc.len(), 1);
+        let rendered = render_inline_toc(&toc);
+        assert!(rendered.is_empty());
+    }
+
+    #[test]
+    fn test_inline_toc_hidden_when_no_headings() {
+        use crate::render::render_inline_toc;
+        let rendered = render_inline_toc(&[]);
+        assert!(rendered.is_empty());
+    }
+
+    #[test]
+    fn test_add_copy_buttons() {
+        use crate::render::add_copy_buttons;
+        let html = r#"<pre><code class="language-bash">echo hello
+</code></pre>"#;
+        let result = add_copy_buttons(html);
+        assert!(result.contains(r#"class="code-block-wrapper""#));
+        assert!(result.contains(r#"class="code-copy-btn""#));
+        assert!(result.contains("navigator.clipboard.writeText"));
+        assert!(result.contains("Copied!"));
+        assert!(result.contains(r#"class="language-bash""#));
+        assert!(result.contains("echo hello"));
+    }
+
+    #[test]
+    fn test_add_copy_buttons_multiple_blocks() {
+        use crate::render::add_copy_buttons;
+        let html = r#"<pre><code>block1</code></pre><p>text</p><pre><code>block2</code></pre>"#;
+        let result = add_copy_buttons(html);
+        assert_eq!(result.matches("code-block-wrapper").count(), 2);
+        assert_eq!(result.matches("code-copy-btn").count(), 2);
+    }
+
+    #[test]
+    fn test_render_markdown_includes_toc_and_copy() {
+        use crate::render::render_markdown;
+        let md = r#"# Title
+
+## Section One
+
+Some text with `code`.
+
+```rust
+fn main() {}
+```
+
+## Section Two
+
+More content.
+
+### Subsection
+
+Details.
+"#;
+        let html = render_markdown(md);
+        assert!(
+            html.contains(r#"<nav class="toc">"#),
+            "inline TOC should be present"
+        );
+        assert!(
+            html.contains(r#"#section-one"#),
+            "TOC should link to section-one"
+        );
+        assert!(
+            html.contains(r#"#section-two"#),
+            "TOC should link to section-two"
+        );
+        assert!(
+            html.contains(r#"#subsection"#),
+            "TOC should link to subsection"
+        );
+        assert!(
+            html.contains(r#"class="code-copy-btn""#),
+            "copy button should be present"
+        );
+    }
+
+    #[test]
+    fn test_render_markdown_no_toc_for_single_heading() {
+        use crate::render::render_markdown;
+        let md = "# Title\n\n## Only Section\n\nSome text.\n";
+        let html = render_markdown(md);
+        assert!(
+            !html.contains(r#"<nav class="toc">"#),
+            "TOC should not appear with single h2/h3"
+        );
+    }
 }

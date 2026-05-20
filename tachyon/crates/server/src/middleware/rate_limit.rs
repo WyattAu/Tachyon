@@ -5,7 +5,7 @@ use axum::{
     extract::{Request, State},
     http::{HeaderMap, StatusCode, Uri},
     middleware::Next,
-    response::Response,
+    response::{IntoResponse, Response},
     Json,
 };
 use dashmap::DashMap;
@@ -347,13 +347,45 @@ pub struct RateLimitErrorResponse {
     pub retry_after: u64,
 }
 
+fn insert_rate_limit_headers(headers: &mut HeaderMap, info: &RateLimitInfo) {
+    let now_unix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or(Duration::ZERO)
+        .as_secs();
+    let reset_unix = now_unix + info.reset;
+
+    headers.insert(
+        "X-RateLimit-Limit",
+        axum::http::HeaderValue::from_str(&info.limit.to_string())
+            .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
+    );
+    headers.insert(
+        "X-RateLimit-Remaining",
+        axum::http::HeaderValue::from_str(&info.remaining.to_string())
+            .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
+    );
+    headers.insert(
+        "X-RateLimit-Reset",
+        axum::http::HeaderValue::from_str(&reset_unix.to_string())
+            .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
+    );
+
+    if let Some(retry_after) = info.retry_after {
+        headers.insert(
+            "Retry-After",
+            axum::http::HeaderValue::from_str(&retry_after.to_string())
+                .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
+        );
+    }
+}
+
 pub async fn rate_limit_middleware(
     State(state): State<RateLimitState>,
     request: Request,
     next: Next,
-) -> Result<Response, (StatusCode, Json<RateLimitErrorResponse>)> {
+) -> Response {
     if !state.config.enabled {
-        return Ok(next.run(request).await);
+        return next.run(request).await;
     }
 
     if let RateLimitStore::InMemory(store) = &state.store {
@@ -395,43 +427,21 @@ pub async fn rate_limit_middleware(
                     "Rate limit exceeded"
                 );
 
-                return Err((
-                    StatusCode::TOO_MANY_REQUESTS,
-                    Json(RateLimitErrorResponse {
-                        error: "RATE_LIMIT_EXCEEDED".to_string(),
-                        message: format!(
-                            "Rate limit exceeded. Try again in {} seconds.",
-                            retry_after
-                        ),
-                        retry_after,
-                    }),
-                ));
+                let body = Json(RateLimitErrorResponse {
+                    error: "RATE_LIMIT_EXCEEDED".to_string(),
+                    message: format!("Rate limit exceeded. Try again in {} seconds.", retry_after),
+                    retry_after,
+                });
+                let mut response = (StatusCode::TOO_MANY_REQUESTS, body).into_response();
+                insert_rate_limit_headers(response.headers_mut(), &info);
+                return response;
             }
 
-            let response = next.run(request).await;
-
-            let mut response = response;
-            let headers = response.headers_mut();
-
-            headers.insert(
-                "X-RateLimit-Limit",
-                axum::http::HeaderValue::from_str(&info.limit.to_string())
-                    .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
-            );
-            headers.insert(
-                "X-RateLimit-Remaining",
-                axum::http::HeaderValue::from_str(&info.remaining.to_string())
-                    .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
-            );
-            headers.insert(
-                "X-RateLimit-Reset",
-                axum::http::HeaderValue::from_str(&info.reset.to_string())
-                    .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
-            );
-
-            Ok(response)
+            let mut response = next.run(request).await;
+            insert_rate_limit_headers(response.headers_mut(), &info);
+            response
         }
-        Err(_) => Ok(next.run(request).await),
+        Err(_) => next.run(request).await,
     }
 }
 

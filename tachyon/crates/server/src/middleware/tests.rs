@@ -443,6 +443,94 @@ async fn rate_limit_exceeded_returns_429() {
 }
 
 #[tokio::test]
+async fn rate_limit_429_includes_headers() {
+    let config = test_config();
+    let rate_limit_config = RateLimitConfig {
+        enabled: true,
+        redis_url: None,
+        default_requests_per_minute: 2,
+        cleanup_interval_secs: 60,
+        endpoint_limits: HashMap::new(),
+    };
+    let app = build_rate_limit_app(&config, rate_limit_config);
+
+    for _ in 0..2 {
+        let response = send_request(
+            app.clone(),
+            Method::GET,
+            "/api/v1/documents",
+            HeaderMap::new(),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    let response = send_request(app, Method::GET, "/api/v1/documents", HeaderMap::new()).await;
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+
+    let headers = response.headers();
+    assert!(
+        headers.contains_key("x-ratelimit-limit"),
+        "429 response should include X-RateLimit-Limit"
+    );
+    assert!(
+        headers.contains_key("x-ratelimit-remaining"),
+        "429 response should include X-RateLimit-Remaining"
+    );
+    assert!(
+        headers.contains_key("x-ratelimit-reset"),
+        "429 response should include X-RateLimit-Reset"
+    );
+    assert!(
+        headers.contains_key("retry-after"),
+        "429 response should include Retry-After"
+    );
+
+    let remaining: u32 = headers
+        .get("x-ratelimit-remaining")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert_eq!(remaining, 0, "Remaining should be 0 when rate limited");
+
+    let limit: u32 = headers
+        .get("x-ratelimit-limit")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert_eq!(limit, 2, "Limit should match configured value");
+
+    let retry_after: u64 = headers
+        .get("retry-after")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert!(retry_after > 0, "Retry-After should be positive");
+
+    let reset: u64 = headers
+        .get("x-ratelimit-reset")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    let now_unix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    assert!(
+        reset > now_unix,
+        "X-RateLimit-Reset should be a future Unix timestamp"
+    );
+}
+
+#[tokio::test]
 async fn rate_limit_decrementing_remaining() {
     let config = test_config();
     let rate_limit_config = RateLimitConfig {
