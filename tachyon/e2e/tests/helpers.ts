@@ -6,6 +6,11 @@ export class AppPage {
   async goto(path = '/') {
     await this.page.goto(path);
     await this.page.waitForLoadState('domcontentloaded');
+    try {
+      await this.page.waitForSelector('#app > *', { timeout: 10000 });
+    } catch {
+      // WASM may not have hydrated, continue anyway
+    }
   }
 
   async register(username: string, email: string, password: string) {
@@ -14,12 +19,12 @@ export class AppPage {
     await this.page.fill('[name="email"]', email);
     await this.page.fill('[name="password"]', password);
     await this.page.click('button[type="submit"]');
-    await this.page.waitForURL('**/login');
+    await this.page.waitForURL('**/dashboard');
   }
 
   async login(email: string, password: string) {
     await this.goto('/login');
-    await this.page.fill('[name="email"]', email);
+    await this.page.fill('[name="username"]', email);
     await this.page.fill('[name="password"]', password);
     await this.page.click('button[type="submit"]');
     await this.page.waitForURL('**/');

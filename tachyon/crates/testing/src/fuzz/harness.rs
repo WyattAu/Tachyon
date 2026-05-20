@@ -14,14 +14,14 @@
 // Each target is a distinct fuzzer entry point consumed by libfuzzer
 // via the cargo-fuzz toolchain.
 
-#[cfg(fuzzing)]
+#[cfg(feature = "fuzz-tests")]
 mod targets {
     /// Fuzz target: Markdown parser resilience.
     ///
     /// Feeds arbitrary byte sequences to pulldown-cmark and verifies
     /// the parser never panics, even on malformed UTF-8 or extremely
     /// long inputs.
-    #[cfg(fuzzing)]
+    #[cfg(feature = "fuzz-tests")]
     pub fn fuzz_markdown_parse(data: &[u8]) {
         if let Ok(s) = std::str::from_utf8(data) {
             let parser = pulldown_cmark::Parser::new(s);
@@ -57,7 +57,7 @@ mod targets {
     /// Feeds arbitrary strings as search queries to verify the query
     /// parser handles injection attempts, unicode edge cases, and
     /// extremely long inputs without panicking.
-    #[cfg(fuzzing)]
+    #[cfg(feature = "fuzz-tests")]
     pub fn fuzz_search_query(data: &[u8]) {
         if let Ok(query) = std::str::from_utf8(data) {
             use tachyon_search::SearchRequest;
@@ -75,7 +75,7 @@ mod targets {
     /// Feeds arbitrary byte sequences as JSON bodies to verify the
     /// server's JSON deserialization handles malformed, oversized,
     /// and deeply nested payloads without panicking.
-    #[cfg(fuzzing)]
+    #[cfg(feature = "fuzz-tests")]
     pub fn fuzz_json_request(data: &[u8]) {
         // Attempt deserialization into common request types.
         let _ = serde_json::from_slice::<serde_json::Value>(data);
@@ -115,10 +115,11 @@ pub fn run_fuzz_harness() {
         b"eyJhbGciOiJIUzI1NiJ9.\x00\x00\x00.",
     ];
 
+    let long_query: Vec<u8> = b"a".repeat(10_000);
     let search_corpus: &[&[u8]] = &[
         b"normal query",
         b"",
-        b"a".repeat(10_000).as_bytes(),
+        &long_query,
         b"DROP TABLE users; --",
         b"\x00\x01\x02\x03",
         b"query with 'quotes' and \"double quotes\"",

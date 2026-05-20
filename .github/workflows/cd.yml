@@ -80,6 +80,7 @@ jobs:
       should_deploy_production: ${{ steps.version.outputs.should_deploy_production }}
       should_build_frontend: ${{ steps.version.outputs.should_build_frontend }}
       is_rollback: ${{ steps.version.outputs.is_rollback }}
+      docker_platforms: ${{ steps.version.outputs.docker_platforms }}
     steps:
       - name: Determine version and targets
         id: version
@@ -95,6 +96,7 @@ jobs:
           SHOULD_DEPLOY_PRODUCTION=false
           SHOULD_BUILD_FRONTEND=false
           IS_ROLLBACK=false
+          DOCKER_PLATFORMS="linux/amd64"
 
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
@@ -103,6 +105,7 @@ jobs:
             SHOULD_BUILD_FRONTEND=true
             SHOULD_DEPLOY_PRODUCTION=true
             SHOULD_DEPLOY_STAGING=true
+            DOCKER_PLATFORMS="linux/amd64,linux/arm64"
           elif [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
             VERSION="${GITHUB_SHA:0:7}"
             IS_MAIN=true
@@ -144,6 +147,7 @@ jobs:
           echo "should_deploy_production=$SHOULD_DEPLOY_PRODUCTION" >> "$GITHUB_OUTPUT"
           echo "should_build_frontend=$SHOULD_BUILD_FRONTEND" >> "$GITHUB_OUTPUT"
           echo "is_rollback=$IS_ROLLBACK" >> "$GITHUB_OUTPUT"
+          echo "docker_platforms=$DOCKER_PLATFORMS" >> "$GITHUB_OUTPUT"
 
           echo "### Deployment Plan" >> "$GITHUB_STEP_SUMMARY"
           echo "| Property | Value |" >> "$GITHUB_STEP_SUMMARY"
@@ -156,6 +160,7 @@ jobs:
           echo "| Deploy staging | $SHOULD_DEPLOY_STAGING |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Deploy production | $SHOULD_DEPLOY_PRODUCTION |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Rollback | $IS_ROLLBACK |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Docker platforms | \`$DOCKER_PLATFORMS\` |" >> "$GITHUB_STEP_SUMMARY"
 
   # ===========================================================================
   # Build and push multi-arch Docker images (parallel)
@@ -172,6 +177,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up QEMU
+        if: contains(needs.prepare.outputs.docker_platforms, 'arm64')
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -200,7 +206,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.server
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ needs.prepare.outputs.docker_platforms }}
           push: true
           tags: ${{ steps.meta-server.outputs.tags }}
           labels: ${{ steps.meta-server.outputs.labels }}
@@ -222,6 +228,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up QEMU
+        if: contains(needs.prepare.outputs.docker_platforms, 'arm64')
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -250,7 +257,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.frontend
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ needs.prepare.outputs.docker_platforms }}
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}

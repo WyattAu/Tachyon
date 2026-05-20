@@ -6,9 +6,16 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -68,14 +75,16 @@ jobs:
           RUST_LOG: warn
         run: |
           cargo run --release -p tachyon-server &
+          SERVER_READY=false
           for i in $(seq 1 120); do
             if curl -sf http://localhost:8080/health; then
               echo "Server ready after ${i}s"
+              SERVER_READY=true
               break
             fi
             sleep 1
           done
-          if [ "$i" -eq 120 ]; then
+          if [ "$SERVER_READY" != "true" ]; then
             echo "::error::Server failed to start within 120 seconds"
             exit 1
           fi
@@ -100,6 +109,12 @@ jobs:
         env:
           E2E_BASE_URL: http://localhost:8080
         run: npx playwright test --reporter=list --retries=2
+
+      - name: Cleanup
+        if: always()
+        run: |
+          kill $(pgrep -f tachyon-server) 2>/dev/null || true
+          docker rm -f tachyon-pg 2>/dev/null || true
 
       - name: Upload test results
         if: always()

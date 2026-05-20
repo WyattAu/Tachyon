@@ -230,6 +230,7 @@ where
 
             {/* Sidebar */}
             <aside
+                id="main-nav"
                 role="navigation"
                 aria-label="Main navigation"
                 class={
@@ -400,6 +401,7 @@ where
                                     id="notification-panel"
                                     role="menu"
                                     tabindex="-1"
+                                    aria-live="assertive"
                                     class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
                                     style={move || if show_notifications.get() { "" } else { "display: none;" }}
                                 >
@@ -440,6 +442,8 @@ where
                                                             let fetch_ref = fetch_for_all;
                                                             view! {
                                                                 <div
+                                                                    role="alert"
+                                                                    aria-atomic="true"
                                                                     class={
                                                                         if is_read {
                                                                             "px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
@@ -527,7 +531,7 @@ where
                                                 {move || user_display_name.get().unwrap_or_default()}
                                             </p>
                                         </div>
-                                        <a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        <a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" attr:role="menuitem">
                                             "Settings"
                                         </a>
                                         <button

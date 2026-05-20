@@ -175,6 +175,7 @@ pub fn RegisterPage() -> impl IntoView {
                             <label for="reg-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Username"</label>
                             <input
                                 id="reg-username"
+                                name="username"
                                 type="text"
                                 class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="Choose a username"
@@ -189,6 +190,7 @@ pub fn RegisterPage() -> impl IntoView {
                             <label for="reg-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Email"</label>
                             <input
                                 id="reg-email"
+                                name="email"
                                 type="email"
                                 class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="you@example.com"
@@ -202,6 +204,7 @@ pub fn RegisterPage() -> impl IntoView {
                             <label for="reg-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Password"</label>
                             <input
                                 id="reg-password"
+                                name="password"
                                 type="password"
                                 class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="At least 8 characters"

@@ -568,12 +568,19 @@ fn extract_identifier(s: &str) -> Option<String> {
     )
 }
 
-async fn is_table_empty(pool: &DatabasePool, table: &str) -> DatabaseResult<bool> {
-    let quoted = if table.starts_with('"') {
-        table.to_string()
+fn sanitize_identifier(name: &str) -> Result<&str, DatabaseError> {
+    if name.chars().all(|c| c.is_alphanumeric() || c == '_') && !name.is_empty() {
+        Ok(name)
     } else {
-        format!("\"{}\"", table)
-    };
+        Err(DatabaseError::MigrationError(format!(
+            "Invalid SQL identifier: {}",
+            name
+        )))
+    }
+}
+
+async fn is_table_empty(pool: &DatabasePool, table: &str) -> DatabaseResult<bool> {
+    let quoted = format!("\"{}\"", sanitize_identifier(table)?);
     let query = format!("SELECT COUNT(*) FROM {}", quoted);
     let row: (i64,) = sqlx::query_as(&query)
         .fetch_one(pool.inner())
@@ -601,10 +608,10 @@ async fn build_reverse_sql(pool: &DatabasePool, stmts: &[StmtKind]) -> DatabaseR
                         table
                     )));
                 }
-                reverse.push(format!("DROP TABLE IF EXISTS {}", table));
+                reverse.push(format!("DROP TABLE IF EXISTS \"{}\"", sanitize_identifier(table)?));
             }
             StmtKind::CreateIndex { index } => {
-                reverse.push(format!("DROP INDEX IF EXISTS {}", index));
+                reverse.push(format!("DROP INDEX IF EXISTS \"{}\"", sanitize_identifier(index)?));
             }
             StmtKind::AddColumn { table, column } => {
                 let empty = is_table_empty(pool, table).await?;
@@ -616,8 +623,9 @@ async fn build_reverse_sql(pool: &DatabasePool, stmts: &[StmtKind]) -> DatabaseR
                     )));
                 }
                 reverse.push(format!(
-                    "ALTER TABLE {} DROP COLUMN IF EXISTS {}",
-                    table, column
+                    "ALTER TABLE \"{}\" DROP COLUMN IF EXISTS \"{}\"",
+                    sanitize_identifier(table)?,
+                    sanitize_identifier(column)?
                 ));
             }
             StmtKind::Unsafe { reason } => {

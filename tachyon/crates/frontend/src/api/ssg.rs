@@ -31,34 +31,55 @@ impl ApiClient {
                 .await
                 .map_err(|e| ApiError::Serialization(e.to_string()))?;
 
-            if let Some(window) = web_sys::window() {
-                let js_bytes = js_sys::Uint8Array::new_with_length(blob.len() as u32);
-                js_bytes.copy_from(&blob);
+            let window = web_sys::window()
+                .ok_or_else(|| ApiError::Api("No browser window available".into()))?;
 
-                let parts = js_sys::Array::new();
-                parts.push(&js_bytes.buffer());
+            let js_bytes = js_sys::Uint8Array::new_with_length(blob.len() as u32);
+            js_bytes.copy_from(&blob);
 
-                let bag = web_sys::BlobPropertyBag::new();
-                bag.set_type("application/zip");
-                let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &bag)
-                    .map_err(|e| ApiError::Api(format!("Failed to create blob: {:?}", e)))?;
+            let parts = js_sys::Array::new();
+            parts.push(&js_bytes.buffer());
 
-                let url = web_sys::Url::create_object_url_with_blob(&blob)
-                    .map_err(|e| ApiError::Api(format!("Failed to create object URL: {:?}", e)))?;
+            let bag = web_sys::BlobPropertyBag::new();
+            bag.set_type("application/zip");
+            let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &bag)
+                .map_err(|e| ApiError::Api(format!("Failed to create blob: {:?}", e)))?;
 
-                let document = window.document().unwrap();
-                let a = document.create_element("a").unwrap();
-                a.set_attribute("href", &url).unwrap();
-                a.set_attribute("download", "tachyon-site.zip").unwrap();
+            let object_url = web_sys::Url::create_object_url_with_blob(&blob)
+                .map_err(|e| ApiError::Api(format!("Failed to create object URL: {:?}", e)))?;
 
-                let body = document.body().unwrap();
-                body.append_child(&a).unwrap();
-                a.dyn_ref::<web_sys::HtmlElement>().unwrap().click();
-                body.remove_child(&a).unwrap();
-                web_sys::Url::revoke_object_url(&url).unwrap();
-            }
+            let result = (|| -> Result<(), ApiError> {
+                let document = window
+                    .document()
+                    .ok_or_else(|| ApiError::Api("No document available".into()))?;
+                let a = document.create_element("a").map_err(|e| {
+                    ApiError::Api(format!("Failed to create anchor element: {:?}", e))
+                })?;
+                a.set_attribute("href", &object_url)
+                    .map_err(|e| ApiError::Api(format!("Failed to set href: {:?}", e)))?;
+                a.set_attribute("download", "tachyon-site.zip")
+                    .map_err(|e| {
+                        ApiError::Api(format!("Failed to set download attribute: {:?}", e))
+                    })?;
 
-            Ok(())
+                let body = document
+                    .body()
+                    .ok_or_else(|| ApiError::Api("No body element available".into()))?;
+                body.append_child(&a)
+                    .map_err(|e| ApiError::Api(format!("Failed to append anchor: {:?}", e)))?;
+                a.dyn_ref::<web_sys::HtmlElement>()
+                    .ok_or_else(|| ApiError::Api("Failed to cast anchor to HtmlElement".into()))?
+                    .click();
+                body.remove_child(&a)
+                    .map_err(|e| ApiError::Api(format!("Failed to remove anchor: {:?}", e)))?;
+
+                Ok(())
+            })();
+
+            web_sys::Url::revoke_object_url(&object_url)
+                .map_err(|e| ApiError::Api(format!("Failed to revoke object URL: {:?}", e)))?;
+
+            result
         } else {
             let status = response.status();
             let text = response.text().await.unwrap_or_default();

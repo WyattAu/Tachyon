@@ -1,4 +1,5 @@
 use leptos::*;
+use wasm_bindgen::JsCast;
 
 #[component]
 pub fn VisuallyHidden(
@@ -36,14 +37,21 @@ pub fn AccessibleDialog(
     children: Children,
 ) -> impl IntoView {
     let dialog_ref = create_node_ref::<html::Dialog>();
+    let previous_focus = StoredValue::new(None::<web_sys::Element>);
 
     create_effect(move |_| {
         if let Some(dialog) = dialog_ref.get() {
             if open.get() {
+                if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+                    previous_focus.set_value(doc.active_element());
+                }
                 let _ = dialog.show_modal();
                 let _ = dialog.focus();
             } else {
                 let _ = dialog.close();
+                if let Some(el) = previous_focus.get_value() {
+                    let _ = el.unchecked_into::<web_sys::HtmlElement>().focus();
+                }
             }
         }
     });

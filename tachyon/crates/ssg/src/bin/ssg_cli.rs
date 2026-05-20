@@ -257,7 +257,7 @@ fn cmd_build(
         site_config.nav_links = vec![
             NavLink {
                 label: "Home".to_string(),
-                href: "/".to_string(),
+                href: "./index.html".to_string(),
             },
             NavLink {
                 label: "GitHub".to_string(),

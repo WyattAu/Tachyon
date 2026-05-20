@@ -168,7 +168,7 @@ pub fn ClientSearch(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> impl
                             let count = items.len();
                             view! {
                                 <div>
-                                    <div class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                                    <div class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700" aria-live="polite">
                                         {format!(
                                             "{} result{} found",
                                             count,

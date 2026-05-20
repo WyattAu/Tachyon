@@ -6,6 +6,7 @@ use super::types::{MutationRoot, QueryRoot};
 
 pub type TachyonSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
+#[cfg(test)]
 pub fn build_schema() -> TachyonSchema {
     Schema::build(QueryRoot, MutationRoot, EmptySubscription).finish()
 }
@@ -63,7 +64,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_graphql_document_query_placeholder() {
+    async fn test_graphql_document_query_requires_pool() {
         let schema = build_schema();
         let query = r#"{ document(id: "123") { id title } }"#;
         let response: Response = schema.execute(query).await;
@@ -71,7 +72,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_graphql_search_placeholder() {
+    async fn test_graphql_search_requires_pool() {
         let schema = build_schema();
         let query = r#"{ search(query: "test") { total results { id title } } }"#;
         let response: Response = schema.execute(query).await;

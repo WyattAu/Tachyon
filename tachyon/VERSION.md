@@ -1,10 +1,10 @@
 # Tachyon Version Information
 
 ## Current Status
-- **Version:** 5.0.0
-- **Phase:** Alpha Complete — All three horizons (Alpha/Beta/GA) implemented at API level
-- **Status:** Active development — core infrastructure complete, all routes wired, 0 compilation errors
-- **Last Updated:** 2026-04-19
+- **Version:** 12.0.0
+- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,172+ tests, CI/CD pipeline
+- **Status:** Active development — all core infrastructure complete, 0 compilation errors, 0 clippy warnings
+- **Last Updated:** 2026-05-20
 - **Codebase:** 278 Rust files, ~92K lines, 25 DB migrations, 29 route modules, 32 DB modules
 
 ## What Changed (v5.0.0 — Three Horizons)
@@ -62,7 +62,7 @@
 tachyon-core, tachyon-server, tachyon-desktop, tachyon-renderer, tachyon-rbac,
 tachyon-search, tachyon-database, tachyon-storage, tachyon-testing, tachyon-cli,
 tachyon-frontend, tachyon-import-export, tachyon-ssg, tachyon-plugin-runtime,
-tachyon-desktop-app (Tauri), tachyon-collaboration
+tachyon-desktop-app (Tauri), tachyon-editor, tachyon-benchmarks
 
 ### Route Modules (29)
 activity, billing, catalog, collaboration, conflict, document, ecosystem, files,

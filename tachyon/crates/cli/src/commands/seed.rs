@@ -923,6 +923,7 @@ async fn clear_tables(pool: &tachyon_database::DatabasePool) -> CliResult<()> {
         "users",
     ];
 
+    // SAFETY: Table names are compile-time constants defined in TABLES array above.
     for table in &tables {
         let sql = format!("DELETE FROM {} CASCADE", table);
         let mut conn = pool
@@ -1700,6 +1701,14 @@ fn generate_seed_sql(writer: &mut DryRunWriter, counts: &SeedCounts) {
 // Stats
 // ============================================================================
 
+fn sanitize_identifier(name: &str) -> Result<&str, String> {
+    if name.chars().all(|c| c.is_alphanumeric() || c == '_') && !name.is_empty() {
+        Ok(name)
+    } else {
+        Err(format!("Invalid SQL identifier: {}", name))
+    }
+}
+
 pub fn execute_stats(database_url: &str) -> CliResult<()> {
     let rt = tokio::runtime::Runtime::new()
         .map_err(|e| CliError::database(format!("Failed to create runtime: {}", e)))?;
@@ -1744,8 +1753,10 @@ async fn execute_stats_async(database_url: &str) -> CliResult<()> {
     println!("{}", "-".repeat(57));
 
     for table in &tables {
-        let count_sql = format!("SELECT COUNT(*) as count FROM {}", table);
-        let size_sql = format!("SELECT pg_total_relation_size('{}') as size", table);
+        let safe_table = sanitize_identifier(table)
+            .map_err(|e| CliError::database(e))?;
+        let count_sql = format!("SELECT COUNT(*) as count FROM {}", safe_table);
+        let size_sql = format!("SELECT pg_total_relation_size('{}') as size", safe_table);
 
         let (count, size): (i64, i64) =
             sqlx::query_as::<_, (i64, i64)>(&format!("SELECT ({}), ({})", count_sql, size_sql))

@@ -17,6 +17,7 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
     let (query, set_query) = signal(String::new());
     let (selected, set_selected) = signal(0usize);
     let (filtered, set_filtered) = signal(Vec::<CommandItem>::new());
+    let previous_focus: RwSignal<Option<web_sys::Element>> = RwSignal::new(None);
 
     let all_commands: Vec<CommandItem> = vec![
         CommandItem {
@@ -105,6 +106,7 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
     let set_open_for_listener = set_open;
     let set_query_for_listener = set_query;
     let set_selected_for_listener = set_selected;
+    let previous_focus_for_listener = previous_focus;
 
     Effect::new(move |_| {
         let cb = wasm_bindgen::closure::Closure::<dyn Fn(wasm_bindgen::JsValue)>::new(
@@ -121,7 +123,14 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
                 let key = ev.key();
                 if (ev.meta_key() || ev.ctrl_key()) && key == "k" {
                     ev.prevent_default();
-                    set_open_for_listener.update(|o| *o = !*o);
+                    set_open_for_listener.update(|o| {
+                        if !*o {
+                            if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+                                previous_focus_for_listener.set(doc.active_element());
+                            }
+                        }
+                        *o = !*o;
+                    });
                     set_query_for_listener.set(String::new());
                     set_selected_for_listener.set(0);
                 }
@@ -174,6 +183,9 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
             _ => {}
         }
         set_open.set(false);
+        if let Some(el) = previous_focus.get() {
+            let _ = el.unchecked_into::<web_sys::HtmlElement>().focus();
+        }
     };
 
     let on_input = move |ev| {
@@ -212,6 +224,9 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
 
     let on_backdrop_click = move |_: leptos::ev::MouseEvent| {
         set_open.set(false);
+        if let Some(el) = previous_focus.get() {
+            let _ = el.unchecked_into::<web_sys::HtmlElement>().focus();
+        }
     };
 
     let on_modal_click = move |ev: leptos::ev::MouseEvent| {
@@ -221,6 +236,9 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
     let on_escape_keydown = move |ev: web_sys::KeyboardEvent| {
         if ev.key() == "Escape" {
             set_open.set(false);
+            if let Some(el) = previous_focus.get() {
+                let _ = el.unchecked_into::<web_sys::HtmlElement>().focus();
+            }
         }
     };
 
