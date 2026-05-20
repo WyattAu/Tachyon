@@ -290,7 +290,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         config.guest.clone(),
     );
     let session_state = SessionState::new(pool.clone(), config.jwt.expiration_secs);
-    let repository_state = RepositoryState::new();
+    let repository_state = RepositoryState::new(pool.clone());
     let node_state = NodeState::new(pool.clone());
     let catalog_state = CatalogState::new(pool.clone());
     let team_state = TeamState::new(pool.clone());

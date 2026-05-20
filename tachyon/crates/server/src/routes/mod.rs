@@ -92,7 +92,7 @@ pub async fn create_router() -> Router {
         guest_config,
     );
     let session_state = SessionState::new(pool.clone(), 3600);
-    let repository_state = RepositoryState::new();
+    let repository_state = RepositoryState::new(pool.clone());
     let node_state = NodeState::new(pool.clone());
     let catalog_state = CatalogState::new(pool.clone());
     let review_state = ReviewState::new(pool.clone(), reqwest::Client::new());

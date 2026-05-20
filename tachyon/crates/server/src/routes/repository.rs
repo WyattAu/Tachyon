@@ -6,67 +6,23 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 use crate::error::ServerError;
-
-/// Repository data structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RepositoryData {
-    /// Repository ID
-    pub id: String,
-    /// Repository name
-    pub name: String,
-    /// Repository description
-    pub description: Option<String>,
-    /// Repository metadata
-    pub metadata: Option<serde_json::Value>,
-    /// Current branch
-    pub branch: String,
-    /// Owner ID
-    pub owner_id: String,
-    /// Created at
-    pub created_at: DateTime<Utc>,
-    /// Updated at
-    pub updated_at: DateTime<Utc>,
-    /// Remote URL (if any)
-    pub remote_url: Option<String>,
-    /// Is initialized
-    pub is_initialized: bool,
-}
+use tachyon_database::{DatabasePool, RepositoryId, RepositoryRepository};
 
 /// Application state for repository routes
 #[derive(Clone)]
 pub struct RepositoryState {
-    /// In-memory repository store (for demo mode)
-    pub repositories: Arc<RwLock<HashMap<String, RepositoryData>>>,
+    pub pool: DatabasePool,
 }
 
 impl RepositoryState {
-    /// Create a new repository state
-    pub fn new() -> Self {
-        Self {
-            repositories: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    /// Create a repository state with existing repositories
-    pub fn with_repositories(repositories: HashMap<String, RepositoryData>) -> Self {
-        Self {
-            repositories: Arc::new(RwLock::new(repositories)),
-        }
-    }
-}
-
-impl Default for RepositoryState {
-    fn default() -> Self {
-        Self::new()
+    pub fn new(pool: DatabasePool) -> Self {
+        Self { pool }
     }
 }
 
@@ -118,13 +74,16 @@ pub struct RepositoryResponse {
     /// Repository description
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    /// Repository metadata
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<serde_json::Value>,
+    /// Repository type
+    pub repository_type: String,
     /// Current branch
-    pub branch: String,
+    pub default_branch: Option<String>,
     /// Owner ID
     pub owner_id: String,
+    /// Visibility
+    pub visibility: String,
+    /// Status
+    pub status: String,
     /// Created at
     pub created_at: String,
     /// Updated at
@@ -132,23 +91,22 @@ pub struct RepositoryResponse {
     /// Remote URL
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote_url: Option<String>,
-    /// Is initialized
-    pub is_initialized: bool,
 }
 
-impl From<RepositoryData> for RepositoryResponse {
-    fn from(repo: RepositoryData) -> Self {
+impl From<tachyon_database::types::RepositoryMetadata> for RepositoryResponse {
+    fn from(repo: tachyon_database::types::RepositoryMetadata) -> Self {
         Self {
             id: repo.id,
             name: repo.name,
             description: repo.description,
-            metadata: repo.metadata,
-            branch: repo.branch,
+            repository_type: repo.repository_type,
+            default_branch: repo.default_branch,
             owner_id: repo.owner_id,
+            visibility: repo.visibility,
+            status: repo.status,
             created_at: repo.created_at.to_rfc3339(),
             updated_at: repo.updated_at.to_rfc3339(),
             remote_url: repo.remote_url,
-            is_initialized: repo.is_initialized,
         }
     }
 }
@@ -200,25 +158,46 @@ pub async fn init_repository(
 
     let now = Utc::now();
     let owner_id = req.owner_id.unwrap_or_else(|| "default_user".to_string());
+    let id = Uuid::new_v4().to_string();
+    let slug = req.name.to_lowercase().replace(' ', "-");
 
-    let repo = RepositoryData {
-        id: format!("repo_{}", Uuid::new_v4()),
+    let metadata = tachyon_database::types::RepositoryMetadata {
+        id: id.clone(),
         name: req.name.clone(),
+        slug: Some(slug),
         description: req.description,
-        metadata: req.metadata,
-        branch: "main".to_string(),
+        repository_type: "git".to_string(),
         owner_id,
+        visibility: "private".to_string(),
+        status: "active".to_string(),
+        default_branch: Some("main".to_string()),
+        auto_sync: false,
+        sync_interval_seconds: 300,
+        file_watching_enabled: false,
+        remote_url: None,
+        last_commit_hash: None,
+        current_branch: Some("main".to_string()),
+        commits_ahead: None,
+        commits_behind: None,
+        document_count: 0,
+        total_storage_bytes: 0,
+        member_count: 1,
+        local_path: None,
         created_at: now,
         updated_at: now,
-        remote_url: None,
-        is_initialized: true,
     };
 
-    let response = RepositoryResponse::from(repo.clone());
+    let repo = RepositoryRepository::new(state.pool.clone());
+    repo.create(metadata).await?;
 
-    // Store repository
-    let mut repos = state.repositories.write().await;
-    repos.insert(repo.id.clone(), repo);
+    let created = repo
+        .get_by_id(
+            &id.parse::<RepositoryId>()
+                .map_err(|_| ServerError::internal("Invalid repository ID"))?,
+        )
+        .await?;
+
+    let response = RepositoryResponse::from(created);
 
     info!("Repository initialized: {}", response.id);
 
@@ -243,39 +222,57 @@ pub async fn clone_repository(
 ) -> Result<Json<RepositoryResponse>, ServerError> {
     info!("Cloning repository from: {}", req.source);
 
-    // Check if source exists
-    let source_repo = {
-        let repos = state.repositories.read().await;
-        repos.get(&req.source).cloned()
+    let repo = RepositoryRepository::new(state.pool.clone());
+
+    let source = repo
+        .get_by_id(
+            &req.source
+                .parse::<RepositoryId>()
+                .map_err(|_| ServerError::not_found("repository", &req.source))?,
+        )
+        .await
+        .map_err(|_| ServerError::not_found("repository", &req.source))?;
+
+    let now = Utc::now();
+    let id = Uuid::new_v4().to_string();
+    let slug = req.name.to_lowercase().replace(' ', "-");
+
+    let metadata = tachyon_database::types::RepositoryMetadata {
+        id: id.clone(),
+        name: req.name,
+        slug: Some(slug),
+        description: source.description.clone(),
+        repository_type: source.repository_type.clone(),
+        owner_id: source.owner_id.clone(),
+        visibility: source.visibility.clone(),
+        status: "active".to_string(),
+        default_branch: source.default_branch.clone(),
+        auto_sync: source.auto_sync,
+        sync_interval_seconds: source.sync_interval_seconds,
+        file_watching_enabled: source.file_watching_enabled,
+        remote_url: source.remote_url.clone(),
+        last_commit_hash: None,
+        current_branch: source.current_branch.clone(),
+        commits_ahead: None,
+        commits_behind: None,
+        document_count: 0,
+        total_storage_bytes: 0,
+        member_count: 1,
+        local_path: None,
+        created_at: now,
+        updated_at: now,
     };
 
-    let repo = match source_repo {
-        Some(source) => {
-            let now = Utc::now();
-            RepositoryData {
-                id: format!("repo_{}", Uuid::new_v4()),
-                name: req.name,
-                description: source.description.clone(),
-                metadata: source.metadata.clone(),
-                branch: source.branch.clone(),
-                owner_id: source.owner_id.clone(),
-                created_at: now,
-                updated_at: now,
-                remote_url: source.remote_url.clone(),
-                is_initialized: source.is_initialized,
-            }
-        }
-        None => {
-            warn!("Source repository not found: {}", req.source);
-            return Err(ServerError::not_found("repository", &req.source));
-        }
-    };
+    repo.create(metadata).await?;
 
-    let response = RepositoryResponse::from(repo.clone());
+    let created = repo
+        .get_by_id(
+            &id.parse::<RepositoryId>()
+                .map_err(|_| ServerError::internal("Invalid repository ID"))?,
+        )
+        .await?;
 
-    // Store repository
-    let mut repos = state.repositories.write().await;
-    repos.insert(repo.id.clone(), repo);
+    let response = RepositoryResponse::from(created);
 
     info!("Repository cloned: {}", response.id);
 
@@ -304,29 +301,31 @@ pub async fn commit(
 ) -> Result<Json<serde_json::Value>, ServerError> {
     info!("Committing to repository: {}", repository_id);
 
-    let mut repos = state.repositories.write().await;
+    let repo = RepositoryRepository::new(state.pool.clone());
 
-    match repos.get_mut(&repository_id) {
-        Some(repo) => {
-            repo.updated_at = Utc::now();
+    let repo_id = repository_id
+        .parse::<RepositoryId>()
+        .map_err(|_| ServerError::not_found("repository", &repository_id))?;
 
-            let commit_id = format!("commit_{}", Uuid::new_v4());
-            info!("Commit created: {}", commit_id);
+    let mut metadata = repo
+        .get_by_id(&repo_id)
+        .await
+        .map_err(|_| ServerError::not_found("repository", &repository_id))?;
 
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "commit_id": commit_id,
-                "repository_id": repository_id,
-                "branch": repo.branch,
-                "message": req.message,
-                "timestamp": Utc::now().to_rfc3339()
-            })))
-        }
-        None => {
-            debug!("Repository not found: {}", repository_id);
-            Err(ServerError::not_found("repository", &repository_id))
-        }
-    }
+    metadata.updated_at = Utc::now();
+    repo.update(metadata).await?;
+
+    let commit_id = format!("commit_{}", Uuid::new_v4());
+    info!("Commit created: {}", commit_id);
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "commit_id": commit_id,
+        "repository_id": repository_id,
+        "branch": "main",
+        "message": req.message,
+        "timestamp": Utc::now().to_rfc3339()
+    })))
 }
 
 /// Push changes to remote
@@ -354,32 +353,33 @@ pub async fn push(
 
     let branch = req.branch.unwrap_or_else(|| "main".to_string());
 
-    let repos = state.repositories.read().await;
+    let repo = RepositoryRepository::new(state.pool.clone());
 
-    match repos.get(&repository_id) {
-        Some(repo) => {
-            if !repo.is_initialized {
-                return Err(ServerError::bad_request("Repository is not initialized"));
-            }
+    let repo_id = repository_id
+        .parse::<RepositoryId>()
+        .map_err(|_| ServerError::not_found("repository", &repository_id))?;
 
-            info!(
-                "Pushed to repository: {} (branch: {})",
-                repository_id, branch
-            );
+    let metadata = repo
+        .get_by_id(&repo_id)
+        .await
+        .map_err(|_| ServerError::not_found("repository", &repository_id))?;
 
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "repository_id": repository_id,
-                "branch": branch,
-                "message": "Pushed successfully",
-                "timestamp": Utc::now().to_rfc3339()
-            })))
-        }
-        None => {
-            debug!("Repository not found: {}", repository_id);
-            Err(ServerError::not_found("repository", &repository_id))
-        }
+    if metadata.status != "active" {
+        return Err(ServerError::bad_request("Repository is not initialized"));
     }
+
+    info!(
+        "Pushed to repository: {} (branch: {})",
+        repository_id, branch
+    );
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "repository_id": repository_id,
+        "branch": branch,
+        "message": "Pushed successfully",
+        "timestamp": Utc::now().to_rfc3339()
+    })))
 }
 
 /// Get repository status
@@ -402,24 +402,30 @@ pub async fn status(
 ) -> Result<Json<RepositoryStatus>, ServerError> {
     debug!("Getting repository status: {}", repository_id);
 
-    let repos = state.repositories.read().await;
+    let repo = RepositoryRepository::new(state.pool.clone());
 
-    match repos.get(&repository_id) {
-        Some(repo) => Ok(Json(RepositoryStatus {
-            repository_id: repo.id.clone(),
-            name: repo.name.clone(),
-            branch: repo.branch.clone(),
-            status: if repo.is_initialized {
-                "clean".to_string()
-            } else {
-                "not_initialized".to_string()
-            },
-            uncommitted_changes: 0,
-            unpushed_commits: 0,
-            last_commit: None,
-        })),
-        None => Err(ServerError::not_found("repository", &repository_id)),
-    }
+    let repo_id = repository_id
+        .parse::<RepositoryId>()
+        .map_err(|_| ServerError::not_found("repository", &repository_id))?;
+
+    let metadata = repo
+        .get_by_id(&repo_id)
+        .await
+        .map_err(|_| ServerError::not_found("repository", &repository_id))?;
+
+    Ok(Json(RepositoryStatus {
+        repository_id: metadata.id,
+        name: metadata.name,
+        branch: metadata.current_branch.unwrap_or_default(),
+        status: if metadata.status == "active" {
+            "clean".to_string()
+        } else {
+            "not_initialized".to_string()
+        },
+        uncommitted_changes: 0,
+        unpushed_commits: 0,
+        last_commit: metadata.last_commit_hash,
+    }))
 }
 
 /// List all repositories
@@ -437,15 +443,15 @@ pub async fn list_repositories(
 ) -> Result<Json<RepositoryListResponse>, ServerError> {
     debug!("Listing repositories");
 
-    let repos = state.repositories.read().await;
+    let repo = RepositoryRepository::new(state.pool.clone());
+    let repos = repo
+        .list_by_owner("default_user", None, None)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to list repositories: {}", e)))?;
 
-    let mut repo_list: Vec<RepositoryResponse> = repos
-        .values()
-        .map(|r| RepositoryResponse::from(r.clone()))
-        .collect();
-
+    let mut repo_list: Vec<RepositoryResponse> =
+        repos.into_iter().map(RepositoryResponse::from).collect();
     repo_list.sort_by(|a, b| a.name.cmp(&b.name));
-
     let total = repo_list.len();
 
     Ok(Json(RepositoryListResponse {
@@ -474,12 +480,16 @@ pub async fn get_repository(
 ) -> Result<Json<RepositoryResponse>, ServerError> {
     debug!("Getting repository: {}", repository_id);
 
-    let repos = state.repositories.read().await;
+    let repo = RepositoryRepository::new(state.pool.clone());
+    let repo_id = repository_id
+        .parse::<RepositoryId>()
+        .map_err(|_| ServerError::not_found("repository", &repository_id))?;
+    let metadata = repo
+        .get_by_id(&repo_id)
+        .await
+        .map_err(|_| ServerError::not_found("repository", &repository_id))?;
 
-    match repos.get(&repository_id) {
-        Some(repo) => Ok(Json(RepositoryResponse::from(repo.clone()))),
-        None => Err(ServerError::not_found("repository", &repository_id)),
-    }
+    Ok(Json(RepositoryResponse::from(metadata)))
 }
 
 /// Delete a repository
@@ -502,18 +512,16 @@ pub async fn delete_repository(
 ) -> Result<StatusCode, ServerError> {
     debug!("Deleting repository: {}", repository_id);
 
-    let mut repos = state.repositories.write().await;
+    let repo = RepositoryRepository::new(state.pool.clone());
+    let repo_id = repository_id
+        .parse::<RepositoryId>()
+        .map_err(|_| ServerError::not_found("repository", &repository_id))?;
+    repo.delete(&repo_id)
+        .await
+        .map_err(|_| ServerError::not_found("repository", &repository_id))?;
 
-    match repos.remove(&repository_id) {
-        Some(_) => {
-            info!("Repository deleted: {}", repository_id);
-            Ok(StatusCode::NO_CONTENT)
-        }
-        None => {
-            debug!("Repository not found for deletion: {}", repository_id);
-            Err(ServerError::not_found("repository", &repository_id))
-        }
-    }
+    info!("Repository deleted: {}", repository_id);
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Create the repository router (without state - caller must use .with_state())
@@ -565,44 +573,69 @@ mod tests {
     }
 
     #[test]
-    fn test_repository_data_creation() {
+    fn test_repository_response_from_metadata() {
         let now = Utc::now();
-        let repo = RepositoryData {
+        let meta = tachyon_database::types::RepositoryMetadata {
             id: "repo-123".to_string(),
             name: "test-repo".to_string(),
+            slug: Some("test-repo".to_string()),
             description: Some("Test".to_string()),
-            metadata: None,
-            branch: "main".to_string(),
+            repository_type: "git".to_string(),
             owner_id: "user-1".to_string(),
+            visibility: "private".to_string(),
+            status: "active".to_string(),
+            default_branch: Some("main".to_string()),
+            auto_sync: false,
+            sync_interval_seconds: 300,
+            file_watching_enabled: false,
+            remote_url: Some("https://example.com/repo.git".to_string()),
+            last_commit_hash: None,
+            current_branch: Some("main".to_string()),
+            commits_ahead: None,
+            commits_behind: None,
+            document_count: 0,
+            total_storage_bytes: 0,
+            member_count: 1,
+            local_path: None,
             created_at: now,
             updated_at: now,
-            remote_url: None,
-            is_initialized: true,
         };
 
-        assert_eq!(repo.id, "repo-123");
-        assert!(repo.is_initialized);
+        let response = RepositoryResponse::from(meta);
+        assert_eq!(response.id, "repo-123");
+        assert_eq!(response.name, "test-repo");
+        assert_eq!(response.visibility, "private");
     }
 
     #[test]
-    fn test_repository_response_from_data() {
-        let now = Utc::now();
-        let repo = RepositoryData {
-            id: "repo-123".to_string(),
-            name: "test-repo".to_string(),
-            description: Some("Test".to_string()),
-            metadata: None,
-            branch: "main".to_string(),
-            owner_id: "user-1".to_string(),
-            created_at: now,
-            updated_at: now,
-            remote_url: Some("https://example.com/repo.git".to_string()),
-            is_initialized: true,
+    fn test_repository_list_response_serialization() {
+        let list = RepositoryListResponse {
+            repositories: vec![],
+            total: 0,
         };
 
-        let response = RepositoryResponse::from(repo);
-        assert_eq!(response.id, "repo-123");
-        assert_eq!(response.name, "test-repo");
-        assert!(response.is_initialized);
+        let json = serde_json::to_string(&list).unwrap();
+        assert!(json.contains("\"total\":0"));
+    }
+
+    #[test]
+    fn test_commit_request_construction() {
+        let req = CommitRequest {
+            message: "fix: typo".to_string(),
+            metadata: None,
+        };
+
+        assert_eq!(req.message, "fix: typo");
+    }
+
+    #[test]
+    fn test_clone_repository_request_construction() {
+        let req = CloneRepositoryRequest {
+            source: "repo-1".to_string(),
+            name: "my-clone".to_string(),
+        };
+
+        assert_eq!(req.source, "repo-1");
+        assert_eq!(req.name, "my-clone");
     }
 }

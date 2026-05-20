@@ -488,7 +488,6 @@ test.describe('Accessibility', () => {
   test('404 page meets accessibility standards', async ({ page }) => {
     const app = new AppPage(page);
     await app.goto('/this-does-not-exist');
-    await page.waitForLoadState('networkidle');
 
     const violations = await runA11yAudit(page, '404');
     const criticals = violations.filter(v => v.severity === 'critical');

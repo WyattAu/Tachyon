@@ -19,81 +19,24 @@ jobs:
   backup-database:
     name: Backup Database
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: tachyon
-          POSTGRES_PASSWORD: tachyon
-          POSTGRES_DB: tachyon
-        ports:
-          - "5432:5432"
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
-      - name: Generate Backup ID
-        id: meta
+      - name: Placeholder - database backup requires real credentials
         run: |
-          TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-          ENVIRONMENT="${{ inputs.environment || 'scheduled' }}"
-          BACKUP_ID="db-${ENVIRONMENT}-${TIMESTAMP}"
-          echo "backup_id=${BACKUP_ID}" >> "$GITHUB_OUTPUT"
-          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
-
-      - name: Create Database Dump
-        env:
-          PGHOST: localhost
-          PGUSER: tachyon
-          PGPASSWORD: tachyon
-          PGDATABASE: tachyon
-          BACKUP_ID: ${{ steps.meta.outputs.backup_id }}
-        run: |
-          pg_dump -F c -f "/tmp/${BACKUP_ID}.dump"
-          gzip "/tmp/${BACKUP_ID}.dump"
-          echo "Dump size: $(du -h /tmp/${BACKUP_ID}.dump.gz | cut -f1)"
-
-      - name: Verify Backup Integrity
-        env:
-          BACKUP_ID: ${{ steps.meta.outputs.backup_id }}
-        run: |
-          gunzip -k "/tmp/${BACKUP_ID}.dump.gz"
-          pg_restore -l "/tmp/${BACKUP_ID}.dump" > /tmp/restore-list.txt
-          TABLE_COUNT=$(wc -l < /tmp/restore-list.txt)
-          echo "Backup contains ${TABLE_COUNT} items"
-          if [ "$TABLE_COUNT" -eq 0 ]; then
-            echo "Backup appears empty"
-            exit 1
-          fi
-
-      - name: Upload Database Backup
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.meta.outputs.backup_id }}
-          path: /tmp/${{ steps.meta.outputs.backup_id }}.dump.gz
-          retention-days: 7
-
-      - name: Notify Slack (success)
-        if: ${{ success() && secrets.SLACK_WEBHOOK_URL != '' }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          BACKUP_ID: ${{ steps.meta.outputs.backup_id }}
-        run: |
-          curl -s -X POST "$SLACK_WEBHOOK_URL" \
-            -H "Content-Type: application/json" \
-            -d "{\"text\": \"Database backup completed: ${BACKUP_ID}\"}" || true
-
-      - name: Notify Slack (failure)
-        if: ${{ failure() && secrets.SLACK_WEBHOOK_URL != '' }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          BACKUP_ID: ${{ steps.meta.outputs.backup_id }}
-        run: |
-          curl -s -X POST "$SLACK_WEBHOOK_URL" \
-            -H "Content-Type: application/json" \
-            -d "{\"text\": \"Database backup FAILED: ${BACKUP_ID}\"}" || true
+          echo "::warning::Database backup is not configured."
+          echo "To back up a real database, this workflow needs the following secrets:"
+          echo "  - PGHOST: PostgreSQL host (or SSH into the production server first)"
+          echo "  - PGPORT: PostgreSQL port"
+          echo "  - PGPASSWORD: PostgreSQL password"
+          echo "  - PGDATABASE: Database name"
+          echo ""
+          echo "The typical approach is to SSH into the production server and run"
+          echo "pg_dump there, since the database is not publicly accessible."
+          echo ""
+          echo "Steps to enable:"
+          echo "  1. Add an SSH step using appleboy/ssh-action or similar"
+          echo "  2. SSH into the server and run: pg_dump -F c -f /tmp/backup.dump"
+          echo "  3. Copy the dump back or upload it as an artifact"
+          echo "  4. Remove this placeholder step and uncomment the real backup steps"
 
   backup-configuration:
     name: Backup Configuration
@@ -118,41 +61,3 @@ jobs:
           name: config-${{ inputs.environment || 'scheduled' }}-${{ github.run_number }}
           path: /tmp/config-${{ inputs.environment || 'scheduled' }}-*.tar.gz
           retention-days: 7
-
-  cleanup:
-    name: Cleanup Old Backups
-    runs-on: ubuntu-latest
-    needs: [backup-database, backup-configuration]
-    if: always()
-    permissions:
-      actions: write
-    steps:
-      - name: Delete Expired Artifacts
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.runId,
-            });
-
-            const now = Date.now();
-            const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-
-            for (const artifact of artifacts.data) {
-              const created = new Date(artifact.created_at).getTime();
-              const ageDays = (now - created) / (24 * 60 * 60 * 1000);
-              console.log(`Artifact: ${artifact.name}, age: ${ageDays.toFixed(1)} days`);
-
-              if (now - created > sevenDaysMs) {
-                console.log(`Deleting expired artifact: ${artifact.name}`);
-                await github.rest.actions.deleteArtifact({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  artifact_id: artifact.id,
-                });
-              }
-            }
-
-            console.log("Cleanup complete. GitHub artifact retention (7 days) handles most cleanup automatically.");

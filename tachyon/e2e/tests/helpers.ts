@@ -5,7 +5,7 @@ export class AppPage {
 
   async goto(path = '/') {
     await this.page.goto(path);
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   async register(username: string, email: string, password: string) {

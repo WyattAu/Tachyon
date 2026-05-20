@@ -696,10 +696,6 @@ test.describe('Accessibility Automated Report', () => {
       const app = new AppPage(page);
       await app.goto(path);
 
-      if (path.includes('does-not-exist')) {
-        await page.waitForLoadState('networkidle');
-      }
-
       const result = await runFullAudit(page, name, path);
 
       const report = formatReport([result]);
@@ -714,10 +710,6 @@ test.describe('Accessibility Automated Report', () => {
     const allResults: PageAuditResult[] = [];
 
     for (const { name, path } of pagesToAudit) {
-      await app.goto(path);
-      if (path.includes('does-not-exist')) {
-        await page.waitForLoadState('networkidle');
-      }
       const result = await runFullAudit(page, name, path);
       allResults.push(result);
     }
