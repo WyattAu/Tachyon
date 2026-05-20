@@ -452,6 +452,71 @@ mod tests {
     }
 
     #[test]
+    fn test_render_markdown_with_code_blocks() {
+        use crate::render::render_markdown;
+        let deployment_content = r#"# Deployment
+
+## Docker
+
+```bash
+docker build -t tachyon .
+docker run -d -p 8080:8080 tachyon
+```
+
+### Docker Compose
+
+```yaml
+services:
+  db:
+    image: postgres:16
+  app:
+    build: .
+```
+
+## Static Site
+
+```bash
+cargo build --release -p tachyon-ssg
+./target/release/tachyon-ssg-cli build --input ./docs --output ./site
+```
+
+## Nginx
+
+```nginx
+server {
+    listen 80;
+    server_name docs.example.com;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+    }
+}
+```
+
+## TLS
+
+```bash
+sudo certbot --nginx -d docs.example.com
+```
+"#;
+        let html = render_markdown(deployment_content);
+        eprintln!("=== RENDERED MARKDOWN ({} bytes) ===\n{}", html.len(), html);
+        assert!(html.contains("Docker"), "Docker section missing");
+        assert!(
+            html.contains("Docker Compose"),
+            "Docker Compose section missing"
+        );
+        assert!(html.contains("Static Site"), "Static Site section missing");
+        assert!(html.contains("Nginx"), "Nginx section missing");
+        assert!(html.contains("TLS"), "TLS section missing");
+        assert!(
+            html.contains("docker build"),
+            "docker build command missing"
+        );
+        assert!(html.contains("listen 80"), "nginx content missing");
+        assert!(html.contains("certbot"), "certbot command missing");
+    }
+
+    #[test]
     fn test_admonition_css_in_output() {
         let config = SiteConfig::default();
         let generator = SiteGenerator::new(config);

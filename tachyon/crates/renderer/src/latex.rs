@@ -115,39 +115,110 @@ impl LatexRenderer {
         Ok(html)
     }
 
-    /// Render LaTeX from text, finding and replacing LaTeX delimiters
+    /// Render LaTeX from text, finding and replacing LaTeX delimiters.
+    ///
+    /// Skips content inside `<pre>` and `<code>` tags to avoid interpreting
+    /// `$` characters in code blocks as LaTeX delimiters.
     pub fn render_from_text<S: AsRef<str>>(&self, text: S) -> RendererResult<String> {
         let text = text.as_ref();
-        let chars: Vec<char> = text.chars().collect();
         let mut result = String::new();
-        let mut i = 0;
+        let mut pos = 0;
 
-        while i < chars.len() {
-            // Find display mode math
-            if let Some(start) = find_substring(&chars, i, &self.display_delimiter_start) {
-                if let Some(end) = find_substring(&chars, start, &self.display_delimiter_end) {
-                    let latex: String = chars[start..end].iter().collect();
-                    let html = self.render_display(&latex)?;
-                    result.push_str(&html);
-                    i = end + self.display_delimiter_end.len();
-                    continue;
+        while pos < text.len() {
+            let remaining = &text[pos..];
+
+            // Find the nearest special marker
+            let next_pre = remaining.find("<pre").map(|p| (p, "pre"));
+            let next_code = remaining.find("<code").map(|p| (p, "code"));
+            let next_display = remaining
+                .find(&self.display_delimiter_start)
+                .map(|p| (p, "display"));
+            let next_inline = remaining
+                .find(&self.inline_delimiter_start)
+                .map(|p| (p, "inline"));
+
+            // Pick the earliest match
+            let earliest = [next_pre, next_code, next_display, next_inline]
+                .into_iter()
+                .flatten()
+                .min_by_key(|(p, _)| *p);
+
+            let (offset, kind) = match earliest {
+                Some(e) => e,
+                None => {
+                    result.push_str(remaining);
+                    break;
                 }
-            }
+            };
 
-            // Find inline mode math
-            if let Some(start) = find_substring(&chars, i, &self.inline_delimiter_start) {
-                if let Some(end) = find_substring(&chars, start, &self.inline_delimiter_end) {
-                    let latex: String = chars[start..end].iter().collect();
-                    let html = self.render_inline(&latex)?;
-                    result.push_str(&html);
-                    i = end + self.inline_delimiter_end.len();
-                    continue;
+            // Copy text before the marker
+            result.push_str(&remaining[..offset]);
+
+            match kind {
+                "pre" => {
+                    let close = "</pre>";
+                    if let Some(end) = remaining[offset..].find(close) {
+                        let skip_end = offset + end + close.len();
+                        result.push_str(&remaining[offset..skip_end]);
+                        pos += skip_end;
+                    } else {
+                        result.push_str(&remaining[offset..]);
+                        break;
+                    }
                 }
+                "code" => {
+                    let close = "</code>";
+                    if let Some(end) = remaining[offset..].find(close) {
+                        let skip_end = offset + end + close.len();
+                        result.push_str(&remaining[offset..skip_end]);
+                        pos += skip_end;
+                    } else {
+                        result.push_str(&remaining[offset..]);
+                        break;
+                    }
+                }
+                "display" => {
+                    let after_open = offset + self.display_delimiter_start.len();
+                    if let Some(end) = remaining[after_open..].find(&self.display_delimiter_end) {
+                        let end = after_open + end;
+                        let latex = &remaining[after_open..end];
+                        match self.render_display(latex) {
+                            Ok(html) => {
+                                result.push_str(&html);
+                                pos += end + self.display_delimiter_end.len();
+                            }
+                            Err(_) => {
+                                result.push_str(&self.display_delimiter_start);
+                                pos += after_open;
+                            }
+                        }
+                    } else {
+                        result.push_str(&remaining[offset..offset + 1]);
+                        pos += 1;
+                    }
+                }
+                "inline" => {
+                    let after_open = offset + self.inline_delimiter_start.len();
+                    if let Some(end) = remaining[after_open..].find(&self.inline_delimiter_end) {
+                        let end = after_open + end;
+                        let latex = &remaining[after_open..end];
+                        match self.render_inline(latex) {
+                            Ok(html) => {
+                                result.push_str(&html);
+                                pos += end + self.inline_delimiter_end.len();
+                            }
+                            Err(_) => {
+                                result.push_str(&self.inline_delimiter_start);
+                                pos += after_open;
+                            }
+                        }
+                    } else {
+                        result.push_str(&remaining[offset..offset + 1]);
+                        pos += 1;
+                    }
+                }
+                _ => unreachable!(),
             }
-
-            // Copy regular text
-            result.push(chars[i]);
-            i += 1;
         }
 
         Ok(result)
@@ -220,24 +291,6 @@ impl Default for LatexRenderer {
     }
 }
 
-/// Find substring in character array
-fn find_substring(chars: &[char], start: usize, pattern: &str) -> Option<usize> {
-    let pattern_chars: Vec<char> = pattern.chars().collect();
-    if pattern_chars.is_empty() {
-        return None;
-    }
-
-    let mut i = start;
-    while i + pattern_chars.len() <= chars.len() {
-        if &chars[i..i + pattern_chars.len()] == pattern_chars.as_slice() {
-            return Some(i);
-        }
-        i += 1;
-    }
-
-    None
-}
-
 /// LaTeX document renderer for rendering complete LaTeX documents
 #[derive(Default)]
 pub struct LatexDocumentRenderer {
@@ -297,12 +350,45 @@ mod tests {
     }
 
     #[test]
-    fn test_render_from_text() {
+    fn test_render_from_text_preserves_content_before_delimiter() {
         let renderer = LatexRenderer::new();
-        let text = "The equation $E = mc^2$ is famous";
+        let text = "Hello world $E = mc^2$ more text";
         let result = renderer.render_from_text(text).unwrap();
-        // The text should at least contain the non-LaTeX parts
-        assert!(result.contains("The equation") || result.contains("famous"));
+        assert!(
+            result.contains("Hello world"),
+            "Content before $ was dropped"
+        );
+        assert!(
+            result.contains("more text"),
+            "Content after closing $ was dropped"
+        );
+    }
+
+    #[test]
+    fn test_render_from_text_dollar_sign_in_code_block() {
+        let renderer = LatexRenderer::new();
+        let html = "<h2>Docker</h2><pre><code>docker run -d \\\n  -p 8080:8080\n</code></pre><h2>Nginx</h2><pre><code>proxy_set_header Host $host;\nproxy_set_header X-Real-IP $remote_addr;\n</code></pre><h2>TLS</h2>";
+        let result = renderer.render_from_text(html).unwrap();
+        assert!(
+            result.contains("$host"),
+            "$host should be preserved in code block"
+        );
+        assert!(
+            result.contains("$remote_addr"),
+            "$remote_addr should be preserved in code block"
+        );
+        assert!(result.contains("Docker"), "Docker section was dropped");
+        assert!(result.contains("Nginx"), "Nginx section was dropped");
+        assert!(result.contains("TLS"), "TLS section was dropped");
+    }
+
+    #[test]
+    fn test_render_from_text_display_mode() {
+        let renderer = LatexRenderer::new();
+        let text = "Before $$x^2$$ after";
+        let result = renderer.render_from_text(text).unwrap();
+        assert!(result.contains("Before"), "Content before $$ was dropped");
+        assert!(result.contains("after"), "Content after $$ was dropped");
     }
 
     #[test]
