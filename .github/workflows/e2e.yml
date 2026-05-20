@@ -99,7 +99,7 @@ jobs:
           echo "Server health check passed (HTTP $HTTP_CODE)"
 
       - name: Cache Playwright browsers
-        uses: actions/cache@0057852b503f07ce41675d3b3c89c5c3e0c51784 # v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-v1.49.0
