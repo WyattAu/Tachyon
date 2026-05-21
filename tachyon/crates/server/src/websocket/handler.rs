@@ -1,6 +1,3 @@
-// WebSocket handler
-// Handles WebSocket connection upgrades and message routing
-
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -11,12 +8,14 @@ use axum::{
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{broadcast, mpsc, RwLock};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use super::operational_transform::{DocumentState, Operation};
-use super::types::{DocumentEdit, EditOperation, MessageType, WebSocketMessage};
+use super::types::{
+    DocumentEdit, EditOperation, HeartbeatConfig, HeartbeatMessage, MessageType, WebSocketMessage,
+};
 
 #[derive(Debug)]
 pub enum WebSocketUpgradeError {
@@ -54,7 +53,7 @@ pub struct ConnectionManager {
     document_presence: Arc<RwLock<HashMap<String, Vec<PresenceInfo>>>>,
     seq_counter: Arc<std::sync::atomic::AtomicU64>,
     max_connections: usize,
-    heartbeat_interval_secs: u64,
+    heartbeat_config: HeartbeatConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -76,12 +75,16 @@ impl ConnectionManager {
             document_presence: Arc::new(RwLock::new(HashMap::new())),
             seq_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             max_connections: 1000,
-            heartbeat_interval_secs: 30,
+            heartbeat_config: HeartbeatConfig::default(),
         }
     }
 
     pub fn with_config(max_connections: usize, heartbeat_interval_secs: u64) -> Self {
         let (broadcast_tx, _) = broadcast::channel(1024);
+        let heartbeat_config = HeartbeatConfig {
+            interval_secs: heartbeat_interval_secs,
+            ..HeartbeatConfig::default()
+        };
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),
             rooms: Arc::new(RwLock::new(HashMap::new())),
@@ -90,7 +93,7 @@ impl ConnectionManager {
             document_presence: Arc::new(RwLock::new(HashMap::new())),
             seq_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             max_connections,
-            heartbeat_interval_secs,
+            heartbeat_config,
         }
     }
 
@@ -154,6 +157,52 @@ impl ConnectionManager {
                 }
             }
             info!("Client disconnected");
+        }
+    }
+
+    pub async fn handle_heartbeat_timeout(&self, client_id: &str) {
+        warn!(client_id = %client_id, "Client disconnected due to heartbeat timeout");
+
+        let client = {
+            let mut clients = self.clients.write().await;
+            clients.remove(client_id)
+        };
+        if let Some(client) = client {
+            let client_rooms = client.rooms.clone();
+            {
+                let mut rooms = self.rooms.write().await;
+                for room_id in &client_rooms {
+                    if let Some(members) = rooms.get_mut(room_id) {
+                        members.retain(|id| id != client_id);
+                        if members.is_empty() {
+                            rooms.remove(room_id);
+                        }
+                    }
+                }
+            }
+
+            for room_id in &client_rooms {
+                if let Some(doc_id) = room_id.strip_prefix("doc:") {
+                    let should_remove = {
+                        let mut presence = self.document_presence.write().await;
+                        if let Some(list) = presence.get_mut(doc_id) {
+                            list.retain(|p| p.client_id != client_id);
+                            list.is_empty()
+                        } else {
+                            false
+                        }
+                    };
+                    if should_remove {
+                        self.document_presence.write().await.remove(doc_id);
+                    }
+
+                    if let Some(ref uid) = client.user_id {
+                        let leave_msg = WebSocketMessage::leave(doc_id.to_string(), uid.clone());
+                        self.broadcast_to_room(&format!("doc:{}", doc_id), leave_msg)
+                            .await;
+                    }
+                }
+            }
         }
     }
 
@@ -414,7 +463,12 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
     manager.add_client(client_id.clone()).await;
 
     let (mut sender, mut receiver) = socket.split();
-    let mut rx = manager.subscribe();
+    let mut broadcast_rx = manager.subscribe();
+    let config = manager.heartbeat_config.clone();
+
+    let (outgoing_tx, mut outgoing_rx) = mpsc::channel::<String>(32);
+    let (pong_tx, pong_rx) = mpsc::channel::<u64>(8);
+    let heartbeat_timed_out = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
     info!(client_id = %client_id, "WebSocket connection established");
 
@@ -424,6 +478,12 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
         while let Some(result) = receiver.next().await {
             match result {
                 Ok(Message::Text(text)) => {
+                    if let Ok(HeartbeatMessage::Pong { timestamp }) =
+                        serde_json::from_str::<HeartbeatMessage>(&text)
+                    {
+                        let _ = pong_tx.send(timestamp).await;
+                        continue;
+                    }
                     if let Ok(msg) = serde_json::from_str::<WebSocketMessage>(&text) {
                         handle_client_message(&manager_clone, &client_id_recv, msg).await;
                     } else {
@@ -443,10 +503,9 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
                 }
                 Ok(Message::Ping(_)) => {
                     debug!(client_id = %client_id_recv, "Received protocol ping");
-                    // tokio-tungstenite auto-responds with Pong at the protocol level
                 }
                 Ok(Message::Pong(_)) => {
-                    debug!(client_id = %client_id_recv, "Received pong — connection alive");
+                    debug!(client_id = %client_id_recv, "Received pong");
                 }
                 Err(e) => {
                     error!(client_id = %client_id_recv, error = %e, "WebSocket error");
@@ -456,18 +515,10 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
         }
     };
 
-    // Send task also handles periodic heartbeat pings to detect dead connections.
-    // tokio-tungstenite handles protocol-level Ping/Pong automatically,
-    // but we send application-level pings via the broadcast channel as a backup.
-    let client_id_send = client_id.clone();
-    let heartbeat_secs = manager.heartbeat_interval_secs;
     let send_task = async move {
-        let mut heartbeat = tokio::time::interval(tokio::time::Duration::from_secs(heartbeat_secs));
-        heartbeat.tick().await; // skip the immediate first tick
-
         loop {
             tokio::select! {
-                msg = rx.recv() => {
+                msg = broadcast_rx.recv() => {
                     match msg {
                         Ok(msg) => {
                             let json = match serde_json::to_string(&msg) {
@@ -477,7 +528,6 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
                                     continue;
                                 }
                             };
-
                             if sender.send(Message::Text(json.into())).await.is_err() {
                                 break;
                             }
@@ -490,13 +540,52 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
                         }
                     }
                 }
-                _ = heartbeat.tick() => {
-                    // Send a protocol-level Ping frame to detect dead connections.
-                    // tokio-tungstenite will auto-close the connection if Pong isn't received.
-                    if sender.send(Message::Ping(vec![].into())).await.is_err() {
-                        info!(client_id = %client_id_send, "Failed to send heartbeat ping — connection dead");
-                        break;
+                msg = outgoing_rx.recv() => {
+                    match msg {
+                        Some(json) => {
+                            if sender.send(Message::Text(json.into())).await.is_err() {
+                                break;
+                            }
+                        }
+                        None => break,
                     }
+                }
+            }
+        }
+    };
+
+    let heartbeat_timed_out_clone = heartbeat_timed_out.clone();
+    let heartbeat_task = async move {
+        if !config.enabled {
+            std::future::pending::<()>().await;
+        }
+
+        let mut interval =
+            tokio::time::interval(std::time::Duration::from_secs(config.interval_secs));
+        interval.tick().await;
+        let mut pong_rx = pong_rx;
+
+        loop {
+            interval.tick().await;
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let ping = HeartbeatMessage::Ping { timestamp: ts };
+            let json = serde_json::to_string(&ping).unwrap();
+            if outgoing_tx.send(json).await.is_err() {
+                break;
+            }
+            match tokio::time::timeout(
+                std::time::Duration::from_secs(config.timeout_secs),
+                pong_rx.recv(),
+            )
+            .await
+            {
+                Ok(Some(_)) => {}
+                Ok(None) | Err(_) => {
+                    heartbeat_timed_out_clone.store(true, std::sync::atomic::Ordering::Relaxed);
+                    break;
                 }
             }
         }
@@ -505,9 +594,14 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
     tokio::select! {
         _ = recv_task => {}
         _ = send_task => {}
+        _ = heartbeat_task => {}
     }
 
-    manager.remove_client(&client_id).await;
+    if heartbeat_timed_out.load(std::sync::atomic::Ordering::Relaxed) {
+        manager.handle_heartbeat_timeout(&client_id).await;
+    } else {
+        manager.remove_client(&client_id).await;
+    }
     info!(client_id = %client_id, "WebSocket connection closed");
 }
 
@@ -645,6 +739,39 @@ pub fn websocket_upgrade_error(err: WebSocketUpgradeError) -> Response {
     (axum::http::StatusCode::BAD_REQUEST, axum::Json(body)).into_response()
 }
 
+pub async fn run_heartbeat_loop(
+    config: HeartbeatConfig,
+    outgoing: mpsc::Sender<String>,
+    mut pong_rx: mpsc::Receiver<u64>,
+) -> bool {
+    let mut interval = tokio::time::interval(std::time::Duration::from_secs(config.interval_secs));
+    interval.tick().await;
+
+    loop {
+        interval.tick().await;
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let ping = HeartbeatMessage::Ping { timestamp: ts };
+        let json = serde_json::to_string(&ping).unwrap();
+        if outgoing.send(json).await.is_err() {
+            return false;
+        }
+        match tokio::time::timeout(
+            std::time::Duration::from_secs(config.timeout_secs),
+            pong_rx.recv(),
+        )
+        .await
+        {
+            Ok(Some(_)) => {}
+            Ok(None) | Err(_) => {
+                return true;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -678,5 +805,84 @@ mod tests {
 
         let received = rx.try_recv();
         assert!(received.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_connection_cleanup_on_timeout() {
+        let manager = ConnectionManager::new();
+        let client_id = "timeout-client".to_string();
+
+        manager.add_client(client_id.clone()).await;
+        manager.join_room(&client_id, "doc:test-doc").await;
+        manager
+            .set_user_info(&client_id, "user-1".to_string(), "Test User".to_string())
+            .await;
+
+        assert_eq!(manager.client_count().await, 1);
+        assert_eq!(manager.room_count("doc:test-doc").await, 1);
+
+        manager.handle_heartbeat_timeout(&client_id).await;
+
+        assert_eq!(manager.client_count().await, 0);
+        assert_eq!(manager.room_count("doc:test-doc").await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_pong_resets_timeout() {
+        let (outgoing_tx, mut outgoing_rx) = mpsc::channel::<String>(32);
+        let (pong_tx, pong_rx) = mpsc::channel::<u64>(8);
+
+        let config = HeartbeatConfig {
+            interval_secs: 1,
+            timeout_secs: 2,
+            enabled: true,
+        };
+
+        let pong_tx_clone = pong_tx.clone();
+        let responder = tokio::spawn(async move {
+            while let Some(_ping_json) = outgoing_rx.recv().await {
+                let _ = pong_tx_clone.send(12345).await;
+            }
+        });
+
+        let heartbeat_handle = tokio::spawn(run_heartbeat_loop(config, outgoing_tx, pong_rx));
+
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+        let finished = heartbeat_handle.is_finished();
+        assert!(
+            !finished,
+            "Heartbeat should not time out when pong is received"
+        );
+
+        heartbeat_handle.abort();
+        responder.abort();
+        drop(pong_tx);
+    }
+
+    #[tokio::test]
+    async fn test_heartbeat_loop_timeout() {
+        let (outgoing_tx, mut outgoing_rx) = mpsc::channel::<String>(32);
+        let (_pong_tx, pong_rx) = mpsc::channel::<u64>(8);
+
+        let config = HeartbeatConfig {
+            interval_secs: 1,
+            timeout_secs: 1,
+            enabled: true,
+        };
+
+        tokio::spawn(async move { while outgoing_rx.recv().await.is_some() {} });
+
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            run_heartbeat_loop(config, outgoing_tx, pong_rx),
+        )
+        .await;
+
+        assert!(result.is_ok());
+        assert!(
+            result.unwrap(),
+            "Heartbeat loop should return true on timeout"
+        );
     }
 }

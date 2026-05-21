@@ -1,9 +1,14 @@
+---
+title: OWASP Top 10 Security Audit
+description: Comprehensive OWASP Top 10 (2021) security audit for Tachyon Server
+date: 2026-05-21
+category: security
+order: 1
+---
+
 # OWASP Top 10 (2021) Security Audit — Tachyon Server
 
-Date: 2026-05-21
 Scope: `tachyon-server` crate — HTTP middleware, authentication, validation, and configuration.
-
----
 
 ## A01:2021 – Broken Access Control
 

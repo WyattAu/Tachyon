@@ -78,6 +78,16 @@ impl SiteGenerator {
         let output_size_bytes = dir_size(output_dir).map_err(|e| SsgError::Io(e.to_string()))?;
         let build_time_ms = start.elapsed().as_millis() as u64;
 
+        if self.config.robots_txt {
+            let base = self.config.base_url.trim_end_matches('/');
+            let robots_content =
+                format!("User-agent: *\nAllow: /\nSitemap: {}/sitemap.xml\n", base);
+            let robots_path = output_dir.join("robots.txt");
+            std::fs::write(&robots_path, robots_content)
+                .map_err(|e| SsgError::Io(format!("Failed to write robots.txt: {}", e)))?;
+            total_files += 1;
+        }
+
         tracing::info!(
             "SSG build complete: {} pages, {} categories, {} languages, {} files, {:.1}KB in {}ms",
             total_pages,

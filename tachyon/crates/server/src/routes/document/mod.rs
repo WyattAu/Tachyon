@@ -1,4 +1,5 @@
 pub mod document_attachments;
+pub mod document_batch;
 pub mod document_crud;
 pub mod document_search;
 pub mod document_templates;
@@ -192,6 +193,10 @@ impl From<crate::pagination::CursorPage<DocumentResponse>> for DocumentCursorPag
 pub use document_attachments::{
     delete_attachment, download_attachment, list_attachments, upload_attachment, AttachmentResponse,
 };
+pub use document_batch::{
+    batch_operations, BatchAction, BatchOperation, BatchOperationResult, BatchOperationStatus,
+    BatchRequest, BatchResponse,
+};
 pub use document_crud::{
     create_document, delete_document, get_document, get_document_metadata, list_documents,
     list_documents_cursor, render_markdown, update_document, CreateDocumentRequest,
@@ -214,6 +219,7 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
         .route("/documents", get(list_documents))
         .route("/documents/cursor", get(list_documents_cursor))
         .route("/documents", post(create_document))
+        .route("/documents/batch", post(document_batch::batch_operations))
         .route("/documents/search", get(search_documents))
         .route("/documents/{document_id}", get(get_document))
         .route("/documents/{document_id}", put(update_document))

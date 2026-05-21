@@ -129,6 +129,7 @@ pub(crate) struct PageContext<'a> {
     pub(crate) slug: &'a str,
     pub(crate) date: &'a str,
     pub(crate) json_ld: String,
+    pub(crate) hreflang_tags: String,
 }
 
 pub(crate) struct IndexContext<'a> {
@@ -234,6 +235,9 @@ impl crate::build::SiteGenerator {
             &page_url,
         );
 
+        let hreflang_tags =
+            build_hreflang_tags(&self.config, &doc.slug, lang_prefix, all_languages);
+
         let ctx = PageContext {
             site: &self.config,
             title: &doc.title,
@@ -255,6 +259,7 @@ impl crate::build::SiteGenerator {
             slug: &doc.slug,
             date: &doc.created_at.to_rfc3339(),
             json_ld,
+            hreflang_tags,
         };
 
         Ok(crate::templates::render_doc_page(&ctx))
@@ -376,6 +381,32 @@ impl crate::build::SiteGenerator {
     }
 }
 
+fn build_hreflang_tags(
+    config: &SiteConfig,
+    slug: &str,
+    _current_lang_prefix: Option<&str>,
+    all_languages: &[String],
+) -> String {
+    if all_languages.len() <= 1 {
+        return String::new();
+    }
+
+    let base = config.base_url.trim_end_matches('/');
+
+    let tags: Vec<String> = all_languages
+        .iter()
+        .map(|lang| {
+            let href = format!("{}/{}/{}.html", base, lang, slug);
+            format!(
+                r#"<link rel="alternate" hreflang="{}" href="{}">"#,
+                lang, href
+            )
+        })
+        .collect();
+
+    tags.join("\n  ")
+}
+
 pub(crate) fn generate_json_ld(
     title: &str,
     description: &str,
@@ -401,6 +432,178 @@ pub(crate) fn generate_json_ld(
 /// Replaces `{` and `}` to prevent format! macro interpretation.
 fn html_escape_content(s: &str) -> String {
     s.replace('{', "&#123;").replace('}', "&#125;")
+}
+
+pub fn process_code_groups(html: &str) -> String {
+    let wrapper_re = regex::Regex::new(
+        r#"<div class="code-block-wrapper"><pre[^>]*><code class="language-([^"]*)"[^>]*>([\s\S]*?)</code></pre><button[^>]*>Copy</button></div>"#,
+    )
+    .unwrap();
+
+    let bare_re = regex::Regex::new(
+        r#"<pre[^>]*><code class="language-([^"]*)"[^>]*>([\s\S]*?)</code></pre>"#,
+    )
+    .unwrap();
+
+    struct CodeBlock {
+        lang: String,
+        code: String,
+        start: usize,
+        end: usize,
+    }
+
+    let mut all_blocks: Vec<CodeBlock> = Vec::new();
+
+    for cap in wrapper_re.captures_iter(html) {
+        let m = cap.get(0).unwrap();
+        all_blocks.push(CodeBlock {
+            lang: cap[1].to_string(),
+            code: cap[2].to_string(),
+            start: m.start(),
+            end: m.end(),
+        });
+    }
+
+    for cap in bare_re.captures_iter(html) {
+        let m = cap.get(0).unwrap();
+        let overlaps = all_blocks
+            .iter()
+            .any(|b| m.start() >= b.start && m.start() < b.end);
+        if !overlaps {
+            all_blocks.push(CodeBlock {
+                lang: cap[1].to_string(),
+                code: cap[2].to_string(),
+                start: m.start(),
+                end: m.end(),
+            });
+        }
+    }
+
+    all_blocks.sort_by_key(|b| b.start);
+
+    if all_blocks.len() < 2 {
+        return html.to_string();
+    }
+
+    let mut adjacent_groups: Vec<Vec<usize>> = Vec::new();
+    let mut current_group: Vec<usize> = vec![0];
+
+    for i in 1..all_blocks.len() {
+        let prev_end = all_blocks[i - 1].end;
+        let curr_start = all_blocks[i].start;
+        let between = html[prev_end..curr_start].trim();
+        if between.is_empty() {
+            current_group.push(i);
+        } else {
+            if current_group.len() >= 2 {
+                adjacent_groups.push(current_group.clone());
+            }
+            current_group = vec![i];
+        }
+    }
+    if current_group.len() >= 2 {
+        adjacent_groups.push(current_group);
+    }
+
+    if adjacent_groups.is_empty() {
+        return html.to_string();
+    }
+
+    let mut result = html.to_string();
+
+    for group_indices in adjacent_groups.iter().rev() {
+        let first = &all_blocks[group_indices[0]];
+        let last = &all_blocks[*group_indices.last().unwrap()];
+
+        let mut seen_langs = std::collections::HashSet::new();
+        let mut unique_blocks: Vec<(String, String)> = Vec::new();
+        for &idx in group_indices {
+            let b = &all_blocks[idx];
+            if seen_langs.insert(b.lang.clone()) {
+                unique_blocks.push((b.lang.clone(), b.code.clone()));
+            }
+        }
+
+        if unique_blocks.len() < 2 {
+            continue;
+        }
+
+        let first_start = first.start;
+        let last_end = last.end;
+
+        let tabs: String = unique_blocks
+            .iter()
+            .enumerate()
+            .map(|(i, (lang, _))| {
+                let active = if i == 0 { " active" } else { "" };
+                let display = capitalize_render(lang);
+                format!(
+                    r#"<button class="tab{active}" data-lang="{lang}" onclick="this.parentElement.querySelectorAll('.tab,.tab-content').forEach(function(e){{e.classList.remove('active')}});this.classList.add('active');this.closest('.code-group').querySelectorAll('.tab-content[data-lang='+this.dataset.lang+']').forEach(function(e){{e.classList.add('active')}})">{display}</button>"#,
+                    active = active,
+                    lang = lang,
+                    display = display,
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let contents: String = unique_blocks
+            .iter()
+            .enumerate()
+            .map(|(i, (lang, code))| {
+                let active = if i == 0 { " active" } else { "" };
+                format!(
+                    r#"<div class="tab-content{active}" data-lang="{lang}"><pre><code class="language-{lang}">{code}</code></pre></div>"#,
+                    active = active,
+                    lang = lang,
+                    code = code,
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let replacement = format!(
+            r#"<div class="code-group"><div class="code-tabs">{tabs}</div>{contents}</div>"#,
+            tabs = tabs,
+            contents = contents,
+        );
+
+        result = format!(
+            "{}{}{}",
+            &result[..first_start],
+            replacement,
+            &result[last_end..]
+        );
+    }
+
+    result
+}
+
+fn capitalize_render(s: &str) -> String {
+    match s {
+        "js" => "JavaScript".to_string(),
+        "ts" => "TypeScript".to_string(),
+        "rust" => "Rust".to_string(),
+        "python" | "py" => "Python".to_string(),
+        "go" => "Go".to_string(),
+        "bash" | "sh" | "shell" => "Shell".to_string(),
+        "json" => "JSON".to_string(),
+        "yaml" | "yml" => "YAML".to_string(),
+        "toml" => "TOML".to_string(),
+        "html" => "HTML".to_string(),
+        "css" => "CSS".to_string(),
+        "sql" => "SQL".to_string(),
+        "java" => "Java".to_string(),
+        "c" => "C".to_string(),
+        "cpp" | "c++" => "C++".to_string(),
+        _ => {
+            let mut c = s.chars();
+            match c.next() {
+                None => String::new(),
+                Some(f) => f.to_uppercase().chain(c).collect(),
+            }
+        }
+    }
 }
 
 pub(crate) fn render_markdown(content: &str) -> String {
@@ -430,6 +633,7 @@ pub(crate) fn render_markdown(content: &str) -> String {
     let toc_html = render_inline_toc(&toc_entries);
     let result = replace_mermaid_placeholders(&result, &mermaid_blocks);
     let result = add_copy_buttons(&result);
+    let result = process_code_groups(&result);
 
     if toc_html.is_empty() {
         result

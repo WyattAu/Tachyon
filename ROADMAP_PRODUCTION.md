@@ -89,7 +89,7 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 ### 0.1 Documentation Cleanup
 
-- [ ] Archive `docs/` directory (80+ files reference fictional Bun/SQLite architecture)
+- [x] Archive `docs/` directory (80+ files reference fictional Bun/SQLite architecture)
 - [ ] Create `docs/` from `documentation/` SSG source as canonical documentation
 - [ ] Fix all version references (Axum 0.8, Rust 1.85+, PostgreSQL 16+)
 - [ ] Run `scripts/fix_doc_links.sh` to repair 2,584 broken `.adrs/` links
@@ -97,10 +97,10 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 ### 0.2 CI/CD Security Hardening
 
-- [ ] Pin all GitHub Actions by commit SHA with tag comment (~60 references)
-- [ ] Remove dead workflows from `tachyon/.github/workflows/` or merge unique jobs
+- [x] Pin all GitHub Actions by commit SHA with tag comment (~60 references)
+- [x] Remove dead workflows from `tachyon/.github/workflows/` or merge unique jobs
 - [ ] Consolidate release.yml and cd.yml (eliminate duplicate Docker builds)
-- [ ] Add Playwright browser caching (saves ~300MB per run)
+- [x] Add Playwright browser caching (saves ~300MB per run)
 - [ ] Cache cargo-audit, cargo-tarpaulin, cargo-deny binaries
 
 ### 0.3 Workspace Hygiene
@@ -108,8 +108,8 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 - [ ] Remove `casbin` `runtime-async-std` feature (use tokio throughout)
 - [ ] Remove dead `tree-sitter-sql = "0.0"` placeholder
 - [ ] Run `cargo udeps` to remove unused dependencies
-- [ ] Decouple `tachyon-testing` from `tachyon-desktop-app`
-- [ ] Remove empty root `crates/` directory
+- [x] Decouple `tachyon-testing` from `tachyon-desktop-app`
+- [x] Remove empty root `crates/` directory
 - [ ] Unify test count in VERSION.md (automate from `cargo test`)
 
 **Completion Criteria:** Zero broken documentation links. All actions pinned by SHA. No unused dependencies.
@@ -162,17 +162,17 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 ### 2.1 Rate Limiting Enhancement
 
-- [ ] Per-user authenticated rate limits (already partially in rate_limit middleware)
-- [ ] Rate limit response headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`)
-- [ ] Per-endpoint configuration (tighter on auth endpoints, relaxed on reads)
+- [x] Per-user authenticated rate limits (already partially in rate_limit middleware)
+- [x] Rate limit response headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`)
+- [x] Per-endpoint configuration (tighter on auth endpoints, relaxed on reads)
 - [ ] Redis-backed distributed rate limiting for multi-instance
 
 ### 2.2 API Completeness
 
-- [ ] Complete OpenAPI 3.1 spec via utoipa (partially generated)
-- [ ] API versioning: formalize `/api/v1/` and `/api/v2/` routing
-- [ ] Cursor-based pagination (replace offset-based where applicable)
-- [ ] Batch operations for bulk document operations
+- [x] Complete OpenAPI 3.1 spec via utoipa (partially generated)
+- [x] API versioning: formalize `/api/v1/` and `/api/v2/` routing
+- [x] Cursor-based pagination (replace offset-based where applicable)
+- [x] Batch operations for bulk document operations
 - [ ] GraphQL subscriptions for real-time data
 
 ### 2.3 Performance Baseline
@@ -185,10 +185,10 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 ### 2.4 WebSocket Reliability
 
-- [ ] Heartbeat mechanism for connection health
+- [x] Heartbeat mechanism for connection health
 - [ ] Reconnection with exponential backoff (client-side)
 - [ ] Message ordering guarantees (sequence numbers)
-- [ ] Presence cleanup on unexpected disconnect
+- [x] Presence cleanup on unexpected disconnect
 
 **Completion Criteria:** API passes load test at 1000 concurrent users with P99 < 200ms. Rate limiting enforced per user.
 
@@ -232,30 +232,30 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 - [ ] Wire tree-sitter syntax highlighting into SSG code blocks
 - [ ] Wire KaTeX math rendering into SSG markdown processing
 - [ ] Theme selection (github-dark, monokai, dracula, one-dark-pro)
-- [ ] Mermaid diagram rendering
+- [x] Mermaid diagram rendering
 
 ### 4.2 Navigation and Search
 
-- [ ] Per-page table of contents (auto-generated from headings)
-- [ ] Breadcrumb navigation from document path
-- [ ] Prev/next page navigation
-- [ ] Client-side search via Pagefind integration
+- [x] Per-page table of contents (auto-generated from headings)
+- [x] Breadcrumb navigation from document path
+- [x] Prev/next page navigation
+- [x] Client-side search via Pagefind integration
 - [ ] Mobile-responsive sidebar with hamburger menu
 
 ### 4.3 Content Features
 
-- [ ] Admonitions/callouts (`> [!NOTE]`, `> [!WARNING]`, etc.)
-- [ ] Code groups (multi-language tab switching)
-- [ ] Copy button on code blocks
+- [x] Admonitions/callouts (`> [!NOTE]`, `> [!WARNING]`, etc.)
+- [x] Code groups (multi-language tab switching)
+- [x] Copy button on code blocks
 - [ ] Custom containers/cards
 
 ### 4.4 SEO and Meta
 
-- [ ] JSON-LD structured data (already partially done)
-- [ ] `robots.txt` generation
-- [ ] `hreflang` links for internationalization
+- [x] JSON-LD structured data (already partially done)
+- [x] `robots.txt` generation
+- [x] `hreflang` links for internationalization
 - [ ] Open Graph image generation
-- [ ] Canonical URLs
+- [x] Canonical URLs
 
 ### 4.5 Build Performance
 
@@ -274,12 +274,12 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 ### 5.1 Security Audit
 
-- [ ] OWASP Top 10 penetration test
-- [ ] CSP headers tuned for production (already implemented, needs tuning)
-- [ ] SQL injection test (parameterized queries verified)
-- [ ] XSS test (ammonia sanitization verified)
-- [ ] CSRF protection for state-changing operations
-- [ ] JWT secret rotation mechanism
+- [x] OWASP Top 10 penetration test
+- [x] CSP headers tuned for production (already implemented, needs tuning)
+- [x] SQL injection test (parameterized queries verified)
+- [x] XSS test (ammonia sanitization verified)
+- [x] CSRF protection for state-changing operations
+- [x] JWT secret rotation mechanism
 
 ### 5.2 Compliance
 
@@ -291,7 +291,7 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 ### 5.3 Incident Response
 
-- [ ] Runbook for common failure modes
+- [x] Runbook for common failure modes
 - [ ] Automated rollback procedures
 - [ ] Alerting for anomalous patterns (high error rate, latency spikes)
 - [ ] Post-mortem template

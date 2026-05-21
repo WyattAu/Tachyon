@@ -55,3 +55,8 @@ weight = 9
 name = "Collaboration"
 url = "/collaboration.html"
 weight = 10
+
+[[menu.main]]
+name = "Security"
+url = "/security/owasp-audit.html"
+weight = 11

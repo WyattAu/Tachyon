@@ -100,7 +100,7 @@ mod tests {
         let result = generator.build_to_dir(&docs, &tmp).unwrap();
 
         assert_eq!(result.pages, 2);
-        assert_eq!(result.total_files, 5);
+        assert_eq!(result.total_files, 6);
         assert!(result.build_time_ms > 0);
         assert!(result.output_size_bytes > 0);
         assert_eq!(result.languages, 1);
@@ -110,6 +110,7 @@ mod tests {
         assert!(tmp.join("configuration.html").exists());
         assert!(tmp.join("sitemap.xml").exists());
         assert!(tmp.join("feed.xml").exists());
+        assert!(tmp.join("robots.txt").exists());
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -989,5 +990,197 @@ Details.
             config.mermaid_enabled,
             "mermaid_enabled should default to true"
         );
+        assert!(config.robots_txt, "robots_txt should default to true");
+    }
+
+    #[test]
+    fn test_code_groups_two_adjacent_blocks() {
+        use crate::render::process_code_groups;
+        let input = r#"<div class="code-block-wrapper"><pre><code class="language-rust">fn main() {}</code></pre><button class="code-copy-btn" onclick="x">Copy</button></div><div class="code-block-wrapper"><pre><code class="language-typescript">console.log("hi")</code></pre><button class="code-copy-btn" onclick="x">Copy</button></div>"#;
+        let result = process_code_groups(input);
+        assert!(
+            result.contains(r#"class="code-group""#),
+            "should contain code-group div"
+        );
+        assert!(
+            result.contains(r#"class="tab active""#),
+            "should contain active tab"
+        );
+        assert!(
+            result.contains(r#"data-lang="rust""#),
+            "should have rust tab"
+        );
+        assert!(
+            result.contains(r#"data-lang="typescript""#),
+            "should have typescript tab"
+        );
+        assert!(
+            result.contains("fn main()"),
+            "rust code should be preserved"
+        );
+        assert!(
+            result.contains("console.log"),
+            "typescript code should be preserved"
+        );
+    }
+
+    #[test]
+    fn test_code_groups_no_grouping_single_block() {
+        use crate::render::process_code_groups;
+        let input = r#"<div class="code-block-wrapper"><pre><code class="language-rust">fn main() {}</code></pre><button class="code-copy-btn" onclick="x">Copy</button></div>"#;
+        let result = process_code_groups(input);
+        assert!(
+            !result.contains(r#"class="code-group""#),
+            "single block should not be grouped"
+        );
+    }
+
+    #[test]
+    fn test_code_groups_non_adjacent_not_grouped() {
+        use crate::render::process_code_groups;
+        let input = r#"<pre><code class="language-rust">fn main() {}</code></pre><p>Some text between</p><pre><code class="language-typescript">console.log("hi")</code></pre>"#;
+        let result = process_code_groups(input);
+        assert!(
+            !result.contains(r#"class="code-group""#),
+            "non-adjacent blocks should not be grouped"
+        );
+    }
+
+    #[test]
+    fn test_robots_txt_generation() {
+        let config = SiteConfig {
+            base_url: "https://docs.example.com".to_string(),
+            ..Default::default()
+        };
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "test-robots".to_string(),
+            title: "Test".to_string(),
+            content: "# Test\n\nContent.".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-robots-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let robots = std::fs::read_to_string(tmp.join("robots.txt")).unwrap();
+        assert!(
+            robots.contains("User-agent: *"),
+            "should contain User-agent"
+        );
+        assert!(robots.contains("Allow: /"), "should contain Allow: /");
+        assert!(
+            robots.contains("Sitemap: https://docs.example.com/sitemap.xml"),
+            "should contain sitemap URL"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_canonical_url_in_output() {
+        let config = SiteConfig {
+            base_url: "https://mydocs.example.com".to_string(),
+            ..Default::default()
+        };
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "canonical-test".to_string(),
+            title: "Canonical Test".to_string(),
+            content: "# Test\n\nContent.".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-canonical-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("canonical-test.html")).unwrap();
+        assert!(
+            html.contains(
+                r#"<link rel="canonical" href="https://mydocs.example.com/canonical-test.html">"#
+            ),
+            "should contain canonical URL"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_hreflang_multilingual() {
+        let config = SiteConfig {
+            base_url: "https://docs.example.com".to_string(),
+            language: "en".to_string(),
+            translations: vec![TranslationConfig {
+                language: "zh".to_string(),
+                name: "中文".to_string(),
+                base_url: "https://docs.example.com/zh".to_string(),
+            }],
+            ..Default::default()
+        };
+        let generator = SiteGenerator::new(config);
+        let docs = vec![
+            SsgDocument {
+                slug: "hreflang-test".to_string(),
+                title: "Hreflang Test".to_string(),
+                content: "# Test\n\nContent.".to_string(),
+                description: None,
+                author: None,
+                tags: vec![],
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+                order: 0,
+                language: "en".to_string(),
+            },
+            SsgDocument {
+                slug: "hreflang-test".to_string(),
+                title: "Hreflang 测试".to_string(),
+                content: "# 测试\n\n内容.".to_string(),
+                description: None,
+                author: None,
+                tags: vec![],
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+                order: 0,
+                language: "zh".to_string(),
+            },
+        ];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-hreflang-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let en_html = std::fs::read_to_string(tmp.join("en").join("hreflang-test.html")).unwrap();
+        assert!(
+            en_html.contains(r#"hreflang="en""#),
+            "should contain en hreflang"
+        );
+        assert!(
+            en_html.contains(r#"hreflang="zh""#),
+            "should contain zh hreflang"
+        );
+        assert!(
+            en_html.contains(r#"https://docs.example.com/en/hreflang-test.html"#),
+            "should contain en alternate URL"
+        );
+        assert!(
+            en_html.contains(r#"https://docs.example.com/zh/hreflang-test.html"#),
+            "should contain zh alternate URL"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 }

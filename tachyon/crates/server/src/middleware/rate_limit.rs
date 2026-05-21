@@ -619,6 +619,7 @@ pub struct UserRateLimiter {
     authenticated_rpm: u32,
     anonymous_rpm: u32,
     window_secs: u64,
+    endpoint_overrides: Arc<HashMap<String, RateLimit>>,
 }
 
 impl Default for UserRateLimiter {
@@ -644,12 +645,72 @@ impl UserRateLimiter {
             .and_then(|v| v.parse().ok())
             .unwrap_or(60);
 
+        let endpoint_overrides = Self::load_endpoint_overrides();
+
         Self {
             buckets: Arc::new(DashMap::new()),
             authenticated_rpm,
             anonymous_rpm,
             window_secs,
+            endpoint_overrides: Arc::new(endpoint_overrides),
         }
+    }
+
+    fn load_endpoint_overrides() -> HashMap<String, RateLimit> {
+        let mut overrides = HashMap::new();
+
+        overrides.insert("/api/v1/auth/login".to_string(), RateLimit::new(5, 60));
+        overrides.insert("/api/v1/auth/register".to_string(), RateLimit::new(3, 60));
+        overrides.insert(
+            "/api/v1/auth/password-reset".to_string(),
+            RateLimit::new(3, 60),
+        );
+        overrides.insert("/health".to_string(), RateLimit::new(1000, 60));
+        overrides.insert("/ready".to_string(), RateLimit::new(1000, 60));
+
+        if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS") {
+            if let Ok(parsed) = serde_json::from_str::<EndpointRateLimitsJson>(&json_str) {
+                for (path, cfg) in parsed {
+                    overrides.insert(path, RateLimit::new(cfg.max, cfg.window));
+                }
+            }
+        }
+
+        overrides
+    }
+
+    pub fn with_endpoint_overrides(overrides: HashMap<String, RateLimit>) -> Self {
+        let authenticated_rpm: u32 = std::env::var("TACHYON_RATE_LIMIT_AUTHENTICATED_RPM")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(3000);
+
+        let anonymous_rpm: u32 = std::env::var("TACHYON_RATE_LIMIT_ANONYMOUS_RPM")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(1000);
+
+        let window_secs: u64 = std::env::var("TACHYON_RATE_LIMIT_USER_WINDOW_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(60);
+
+        Self {
+            buckets: Arc::new(DashMap::new()),
+            authenticated_rpm,
+            anonymous_rpm,
+            window_secs,
+            endpoint_overrides: Arc::new(overrides),
+        }
+    }
+
+    fn get_endpoint_limit(&self, path: &str) -> Option<RateLimit> {
+        for (pattern, limit) in self.endpoint_overrides.iter() {
+            if path.starts_with(pattern) || path == pattern {
+                return Some(*limit);
+            }
+        }
+        None
     }
 
     /// Check rate limit for a user. Pass `Some(user_id)` for authenticated users
@@ -687,6 +748,39 @@ impl UserRateLimiter {
         }
     }
 
+    /// Check rate limit for a user against a specific endpoint path.
+    /// If an endpoint-specific override exists, it is used; otherwise falls back
+    /// to the global user/anonymous limit.
+    pub fn check_for_endpoint(&self, user_id: Option<&str>, path: &str) -> UserRateLimitResult {
+        if let Some(endpoint_limit) = self.get_endpoint_limit(path) {
+            let key = match user_id {
+                Some(uid) => format!("user:{}:{}", uid, path),
+                None => format!("anonymous:{}", path),
+            };
+
+            let mut bucket = self.buckets.entry(key).or_insert_with(|| {
+                TokenBucket::new(endpoint_limit.max_requests, endpoint_limit.window_secs)
+            });
+
+            if bucket.try_consume(1.0) {
+                UserRateLimitResult::Allowed {
+                    remaining: bucket.tokens.floor() as u32,
+                    limit: endpoint_limit.max_requests,
+                    authenticated: user_id.is_some(),
+                }
+            } else {
+                let retry_after = bucket.time_to_next_token().as_secs();
+                UserRateLimitResult::Throttled {
+                    retry_after,
+                    limit: endpoint_limit.max_requests,
+                    authenticated: user_id.is_some(),
+                }
+            }
+        } else {
+            self.check(user_id)
+        }
+    }
+
     /// Clean up stale buckets. Call periodically (e.g., every 60s).
     pub fn cleanup(&self) {
         let cutoff =
@@ -704,7 +798,20 @@ impl UserRateLimiter {
     pub fn anonymous_rpm(&self) -> u32 {
         self.anonymous_rpm
     }
+
+    /// Get a reference to the endpoint overrides map.
+    pub fn endpoint_overrides(&self) -> &HashMap<String, RateLimit> {
+        &self.endpoint_overrides
+    }
 }
+
+#[derive(Debug, Clone, Deserialize)]
+struct EndpointRateConfig {
+    max: u32,
+    window: u64,
+}
+
+type EndpointRateLimitsJson = HashMap<String, EndpointRateConfig>;
 
 #[derive(Debug, Clone)]
 pub enum UserRateLimitResult {
@@ -723,6 +830,65 @@ pub enum UserRateLimitResult {
 impl UserRateLimitResult {
     pub fn is_allowed(&self) -> bool {
         matches!(self, UserRateLimitResult::Allowed { .. })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EndpointRateLimits {
+    pub limits: HashMap<String, RateLimit>,
+}
+
+impl EndpointRateLimits {
+    pub fn new() -> Self {
+        Self {
+            limits: HashMap::new(),
+        }
+    }
+
+    pub fn with_defaults() -> Self {
+        let mut limits = HashMap::new();
+        limits.insert("/api/v1/auth/login".to_string(), RateLimit::new(5, 60));
+        limits.insert("/api/v1/auth/register".to_string(), RateLimit::new(3, 60));
+        limits.insert(
+            "/api/v1/auth/password-reset".to_string(),
+            RateLimit::new(3, 60),
+        );
+        limits.insert("/health".to_string(), RateLimit::new(1000, 60));
+        limits.insert("/ready".to_string(), RateLimit::new(1000, 60));
+        Self { limits }
+    }
+
+    pub fn insert(&mut self, path: impl Into<String>, limit: RateLimit) {
+        self.limits.insert(path.into(), limit);
+    }
+
+    pub fn get_limit(&self, path: &str) -> Option<&RateLimit> {
+        for (pattern, limit) in &self.limits {
+            if path.starts_with(pattern) || path == pattern {
+                return Some(limit);
+            }
+        }
+        None
+    }
+
+    pub fn from_env() -> Self {
+        let mut limits = Self::with_defaults();
+        if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS") {
+            if let Ok(parsed) = serde_json::from_str::<EndpointRateLimitsJson>(&json_str) {
+                for (path, cfg) in parsed {
+                    limits
+                        .limits
+                        .insert(path, RateLimit::new(cfg.max, cfg.window));
+                }
+            }
+        }
+        limits
+    }
+}
+
+impl Default for EndpointRateLimits {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -964,5 +1130,83 @@ mod tests {
             1,
             "Fresh entry should not be cleaned up"
         );
+    }
+
+    #[test]
+    fn test_endpoint_rate_limit_applies_tighter_limit() {
+        let overrides = HashMap::from([("/api/v1/auth/login".to_string(), RateLimit::new(5, 60))]);
+        let limiter = UserRateLimiter::with_endpoint_overrides(overrides);
+
+        for _ in 0..5 {
+            let result = limiter.check_for_endpoint(None, "/api/v1/auth/login");
+            assert!(result.is_allowed());
+        }
+
+        let result = limiter.check_for_endpoint(None, "/api/v1/auth/login");
+        assert!(
+            !result.is_allowed(),
+            "6th request to auth/login should be throttled"
+        );
+    }
+
+    #[test]
+    fn test_endpoint_fallback_to_global_limit() {
+        let overrides = HashMap::from([("/api/v1/auth/login".to_string(), RateLimit::new(5, 60))]);
+        let limiter = UserRateLimiter::with_endpoint_overrides(overrides);
+
+        let result = limiter.check_for_endpoint(Some("user-abc"), "/api/v1/documents");
+        assert!(result.is_allowed());
+        if let UserRateLimitResult::Allowed { limit, .. } = result {
+            assert_eq!(
+                limit,
+                limiter.authenticated_rpm(),
+                "Should use global limit for unmatched path"
+            );
+        }
+    }
+
+    #[test]
+    fn test_endpoint_rate_limit_per_path_isolation() {
+        let overrides = HashMap::from([
+            ("/api/v1/auth/login".to_string(), RateLimit::new(2, 60)),
+            ("/api/v1/auth/register".to_string(), RateLimit::new(2, 60)),
+        ]);
+        let limiter = UserRateLimiter::with_endpoint_overrides(overrides);
+
+        limiter.check_for_endpoint(None, "/api/v1/auth/login");
+        limiter.check_for_endpoint(None, "/api/v1/auth/login");
+
+        let login_result = limiter.check_for_endpoint(None, "/api/v1/auth/login");
+        assert!(!login_result.is_allowed(), "Login should be throttled");
+
+        let register_result = limiter.check_for_endpoint(None, "/api/v1/auth/register");
+        assert!(
+            register_result.is_allowed(),
+            "Register should still be allowed (separate bucket)"
+        );
+    }
+
+    #[test]
+    fn test_endpoint_rate_limits_default_overrides() {
+        let limiter = UserRateLimiter::new();
+        assert!(limiter
+            .endpoint_overrides()
+            .contains_key("/api/v1/auth/login"));
+        assert!(limiter.endpoint_overrides().contains_key("/health"));
+        assert!(limiter.endpoint_overrides().contains_key("/ready"));
+    }
+
+    #[test]
+    fn test_endpoint_rate_limits_health_relaxed() {
+        let overrides = HashMap::from([("/health".to_string(), RateLimit::new(1000, 60))]);
+        let limiter = UserRateLimiter::with_endpoint_overrides(overrides);
+
+        for _ in 0..10 {
+            let result = limiter.check_for_endpoint(None, "/health");
+            assert!(
+                result.is_allowed(),
+                "Health endpoint should allow many requests"
+            );
+        }
     }
 }

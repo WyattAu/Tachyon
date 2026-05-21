@@ -1,11 +1,11 @@
 # Tachyon Version Information
 
 ## Current Status
-- **Version:** 12.0.0
-- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,172+ tests, CI/CD pipeline
+- **Version:** 13.0.0
+- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,166+ tests, CI/CD pipeline
 - **Status:** Active development — all core infrastructure complete, 0 compilation errors, 0 clippy warnings
-- **Last Updated:** 2026-05-20
-- **Codebase:** 278 Rust files, ~92K lines, 25 DB migrations, 29 route modules, 32 DB modules
+- **Last Updated:** 2026-05-21
+- **Codebase:** 278 Rust files, ~95K lines, 25 DB migrations, 29 route modules, 32 DB modules
 
 ## What Changed (v5.0.0 — Three Horizons)
 

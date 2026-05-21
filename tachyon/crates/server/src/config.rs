@@ -204,6 +204,12 @@ pub struct EndpointRateLimit {
     pub window_secs: u64,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct EndpointRateLimitJsonEntry {
+    max: u32,
+    window: u64,
+}
+
 /// Security configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityConfig {
@@ -533,6 +539,20 @@ impl Default for RateLimitConfig {
                 window_secs: 60,
             },
         );
+        endpoint_limits.insert(
+            "/health".to_string(),
+            EndpointRateLimit {
+                max_requests: 1000,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/ready".to_string(),
+            EndpointRateLimit {
+                max_requests: 1000,
+                window_secs: 60,
+            },
+        );
 
         Self {
             enabled: true,
@@ -856,6 +876,23 @@ impl ServerConfig {
 
         if let Ok(rate_limit_enabled) = std::env::var("TACHYON_RATE_LIMIT_ENABLED") {
             config.rate_limit.enabled = rate_limit_enabled != "0" && rate_limit_enabled != "false";
+        }
+
+        if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS") {
+            if let Ok(parsed) = serde_json::from_str::<
+                std::collections::HashMap<String, EndpointRateLimitJsonEntry>,
+            >(&json_str)
+            {
+                for (path, entry) in parsed {
+                    config.rate_limit.endpoint_limits.insert(
+                        path,
+                        EndpointRateLimit {
+                            max_requests: entry.max,
+                            window_secs: entry.window,
+                        },
+                    );
+                }
+            }
         }
 
         if let Ok(site_title) = std::env::var("TACHYON_SITE_TITLE") {

@@ -123,6 +123,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
   <title>{title} — {site_title}</title>
   <meta name="description" content="{description}">
   <link rel="canonical" href="{page_url}">
+  {hreflang_tags}
   <meta property="og:title" content="{title}">
   <meta property="og:description" content="{description}">
   <meta property="og:url" content="{page_url}">
@@ -226,6 +227,24 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     .code-copy-btn {{ position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(255,255,255,0.1); color: #9ca3af; border: 1px solid rgba(255,255,255,0.2); border-radius: 0.25rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; cursor: pointer; opacity: 0; transition: opacity 0.2s; }}
     .code-block-wrapper:hover .code-copy-btn {{ opacity: 1; }}
     .code-copy-btn:hover {{ background: rgba(255,255,255,0.2); color: #f9fafb; }}
+    .code-group {{ margin-bottom: 1rem; border-radius: 0.5rem; overflow: hidden; border: 1px solid #e5e7eb; }}
+    .code-tabs {{ display: flex; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; }}
+    .code-tabs .tab {{ padding: 0.375rem 0.75rem; font-size: 0.75rem; font-weight: 500; color: #6b7280; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; }}
+    .code-tabs .tab.active {{ color: #2563eb; border-bottom-color: #2563eb; background: #fff; }}
+    .code-tabs .tab:hover {{ color: #374151; }}
+    .code-group .tab-content {{ display: none; }}
+    .code-group .tab-content.active {{ display: block; }}
+    .code-group .tab-content pre {{ margin: 0; border-radius: 0; border: none; }}
+    @media (prefers-color-scheme: dark) {{
+      html:not(.light) .code-group {{ border-color: #374151; }}
+      html:not(.light) .code-tabs {{ background: #1f2937; border-color: #374151; }}
+      html:not(.light) .code-tabs .tab {{ color: #9ca3af; }}
+      html:not(.light) .code-tabs .tab.active {{ color: #60a5fa; border-bottom-color: #60a5fa; background: #111827; }}
+    }}
+    .dark .code-group {{ border-color: #374151; }}
+    .dark .code-tabs {{ background: #1f2937; border-color: #374151; }}
+    .dark .code-tabs .tab {{ color: #9ca3af; }}
+    .dark .code-tabs .tab.active {{ color: #60a5fa; border-bottom-color: #60a5fa; background: #111827; }}
     @media (prefers-color-scheme: dark) {{
       html:not(.light) nav.toc {{ background: #1f2937; border-color: #374151; }}
       html:not(.light) nav.toc li a {{ color: #9ca3af; }}
@@ -305,6 +324,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         pagefind_search = pagefind_search,
         pagefind_js = pagefind_js,
         mermaid_script = mermaid_script,
+        hreflang_tags = ctx.hreflang_tags,
     )
 }
 

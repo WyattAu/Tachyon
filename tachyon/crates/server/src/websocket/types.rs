@@ -165,6 +165,30 @@ pub enum PresenceStatus {
     Away,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct HeartbeatConfig {
+    pub interval_secs: u64,
+    pub timeout_secs: u64,
+    pub enabled: bool,
+}
+
+impl Default for HeartbeatConfig {
+    fn default() -> Self {
+        Self {
+            interval_secs: 30,
+            timeout_secs: 10,
+            enabled: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum HeartbeatMessage {
+    Ping { timestamp: u64 },
+    Pong { timestamp: u64 },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -194,5 +218,60 @@ mod tests {
         let msg = WebSocketMessage::edit("doc-1".to_string(), "user-1".to_string(), edit);
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("edit"));
+    }
+
+    #[test]
+    fn test_heartbeat_config_defaults() {
+        let config = HeartbeatConfig::default();
+        assert_eq!(config.interval_secs, 30);
+        assert_eq!(config.timeout_secs, 10);
+        assert!(config.enabled);
+    }
+
+    #[test]
+    fn test_ping_message_serialization() {
+        let ping = HeartbeatMessage::Ping {
+            timestamp: 1234567890,
+        };
+        let json = serde_json::to_string(&ping).unwrap();
+        assert!(json.contains("\"type\":\"ping\""));
+        assert!(json.contains("\"timestamp\":1234567890"));
+
+        let parsed: HeartbeatMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            parsed,
+            HeartbeatMessage::Ping {
+                timestamp: 1234567890
+            }
+        );
+    }
+
+    #[test]
+    fn test_pong_message_serialization() {
+        let pong = HeartbeatMessage::Pong {
+            timestamp: 1234567890,
+        };
+        let json = serde_json::to_string(&pong).unwrap();
+        assert!(json.contains("\"type\":\"pong\""));
+        assert!(json.contains("\"timestamp\":1234567890"));
+
+        let parsed: HeartbeatMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            parsed,
+            HeartbeatMessage::Pong {
+                timestamp: 1234567890
+            }
+        );
+    }
+
+    #[test]
+    fn test_heartbeat_config_disabled() {
+        let config = HeartbeatConfig {
+            enabled: false,
+            ..Default::default()
+        };
+        assert!(!config.enabled);
+        assert_eq!(config.interval_secs, 30);
+        assert_eq!(config.timeout_secs, 10);
     }
 }
