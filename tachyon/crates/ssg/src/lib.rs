@@ -683,4 +683,311 @@ Details.
             "TOC should not appear with single h2/h3"
         );
     }
+
+    #[test]
+    fn test_breadcrumbs_structured_data() {
+        let config = SiteConfig::default();
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "docs/guides/advanced".to_string(),
+            title: "Advanced Guide".to_string(),
+            content: "# Advanced Guide\n\nContent.".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-breadcrumb-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html =
+            std::fs::read_to_string(tmp.join("docs").join("guides").join("advanced.html")).unwrap();
+        assert!(
+            html.contains(r#"itemscope itemtype="https://schema.org/BreadcrumbList""#),
+            "should have BreadcrumbList schema"
+        );
+        assert!(
+            html.contains(r#"itemprop="itemListElement""#),
+            "should have itemListElement"
+        );
+        assert!(
+            html.contains(r#"class="breadcrumbs""#),
+            "should have breadcrumbs class"
+        );
+        assert!(
+            html.contains(r#"aria-current="page""#),
+            "last breadcrumb should have aria-current"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_pagefind_attributes_in_output() {
+        let config = SiteConfig::default();
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "test-pagefind".to_string(),
+            title: "Pagefind Test".to_string(),
+            content: "# Pagefind Test\n\nContent.".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-pagefind-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("test-pagefind.html")).unwrap();
+        assert!(
+            html.contains(r#"data-pagefind-body"#),
+            "should have data-pagefind-body on content"
+        );
+        assert!(
+            html.contains(r#"data-pagefind-ignore"#),
+            "should have data-pagefind-ignore on nav/sidebar/footer"
+        );
+        assert!(html.contains(r#"id="search""#), "should have search div");
+        assert!(
+            html.contains("pagefind-ui.css"),
+            "should include pagefind CSS"
+        );
+        assert!(
+            html.contains("pagefind-ui.js"),
+            "should include pagefind JS"
+        );
+        assert!(
+            html.contains("npx pagefind"),
+            "should have pagefind build comment"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_pagefind_disabled() {
+        let config = SiteConfig {
+            pagefind_enabled: false,
+            ..Default::default()
+        };
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "no-pagefind".to_string(),
+            title: "No Pagefind".to_string(),
+            content: "# No Pagefind\n\nContent.".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-no-pagefind-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("no-pagefind.html")).unwrap();
+        assert!(
+            !html.contains("pagefind-ui.css"),
+            "should not include pagefind CSS when disabled"
+        );
+        assert!(
+            !html.contains("pagefind-ui.js"),
+            "should not include pagefind JS when disabled"
+        );
+        assert!(
+            !html.contains(r#"id="search""#),
+            "should not have search div when disabled"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_mermaid_blocks() {
+        use crate::render::process_mermaid_blocks;
+        let input = r#"<pre><code class="language-mermaid">graph TD
+  A --&gt; B
+  B --&gt; C
+</code></pre>"#;
+        let output = process_mermaid_blocks(input);
+        assert!(
+            output.contains(r#"<div class="mermaid">"#),
+            "mermaid block should become div: {}",
+            output
+        );
+        assert!(
+            output.contains("graph TD"),
+            "mermaid content should be preserved"
+        );
+        assert!(
+            output.contains("A --> B"),
+            "HTML entities should be unescaped in mermaid content"
+        );
+        assert!(
+            !output.contains("<pre>"),
+            "pre tag should be removed for mermaid blocks"
+        );
+    }
+
+    #[test]
+    fn test_mermaid_blocks_non_mermaid_untouched() {
+        use crate::render::process_mermaid_blocks;
+        let input = r#"<pre><code class="language-bash">echo hello</code></pre>"#;
+        let output = process_mermaid_blocks(input);
+        assert!(
+            output.contains("<pre>"),
+            "non-mermaid blocks should be untouched"
+        );
+        assert!(
+            output.contains("language-bash"),
+            "non-mermaid language class should be preserved"
+        );
+    }
+
+    #[test]
+    fn test_mermaid_blocks_mixed() {
+        use crate::render::process_mermaid_blocks;
+        let input = r#"<pre><code class="language-bash">echo hello</code></pre>
+<p>text</p>
+<pre><code class="language-mermaid">graph TD
+  A --&gt; B
+</code></pre>
+<pre><code class="language-rust">fn main() {}</code></pre>"#;
+        let output = process_mermaid_blocks(input);
+        assert!(output.contains(r#"<div class="mermaid">"#));
+        assert!(output.contains("language-bash"));
+        assert!(output.contains("language-rust"));
+        assert!(output.contains("echo hello"));
+        assert!(output.contains("fn main() {}"));
+    }
+
+    #[test]
+    fn test_mermaid_in_rendered_output() {
+        let config = SiteConfig::default();
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "test-mermaid".to_string(),
+            title: "Mermaid Test".to_string(),
+            content: "# Mermaid Test\n\n```mermaid\ngraph TD\n  A-->B\n```\n".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-mermaid-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("test-mermaid.html")).unwrap();
+        assert!(
+            html.contains(r#"<div class="mermaid">"#),
+            "mermaid div should be in output"
+        );
+        assert!(
+            html.contains("mermaid.min.js"),
+            "mermaid JS should be included"
+        );
+        assert!(
+            html.contains("mermaid.initialize"),
+            "mermaid init should be included"
+        );
+        assert!(
+            html.contains("graph TD"),
+            "mermaid content should be in output"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_mermaid_disabled() {
+        let config = SiteConfig {
+            mermaid_enabled: false,
+            ..Default::default()
+        };
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "no-mermaid".to_string(),
+            title: "No Mermaid".to_string(),
+            content: "# No Mermaid\n\n```mermaid\ngraph TD\n  A-->B\n```\n".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-no-mermaid-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("no-mermaid.html")).unwrap();
+        assert!(
+            !html.contains("mermaid.min.js"),
+            "mermaid JS should not be included when disabled"
+        );
+        assert!(
+            !html.contains("mermaid.initialize"),
+            "mermaid init should not be included when disabled"
+        );
+        assert!(
+            html.contains(r#"<div class="mermaid">"#),
+            "mermaid blocks should still be converted to divs"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_mermaid_not_wrapped_by_copy_button() {
+        use crate::render::render_markdown;
+        let md = "# Test\n\n```mermaid\ngraph TD\n  A-->B\n```\n\n```bash\necho hello\n```\n";
+        let html = render_markdown(md);
+        let mermaid_pos = html.find(r#"<div class="mermaid">"#);
+        let copy_pos = html.find(r#"class="code-copy-btn""#);
+        assert!(mermaid_pos.is_some(), "mermaid div should exist");
+        assert!(
+            copy_pos.is_some(),
+            "copy button should exist for non-mermaid blocks"
+        );
+        if let (Some(m), Some(c)) = (mermaid_pos, copy_pos) {
+            let mermaid_end = html[m..].find("</div>").map(|i| m + i).unwrap_or(m);
+            assert!(
+                c > mermaid_end || c < m,
+                "copy button should not be inside mermaid block"
+            );
+        }
+    }
+
+    #[test]
+    fn test_site_config_new_defaults() {
+        let config = SiteConfig::default();
+        assert!(
+            config.pagefind_enabled,
+            "pagefind_enabled should default to true"
+        );
+        assert!(
+            config.mermaid_enabled,
+            "mermaid_enabled should default to true"
+        );
+    }
 }

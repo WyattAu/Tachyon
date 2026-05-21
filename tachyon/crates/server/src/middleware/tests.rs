@@ -1084,3 +1084,358 @@ async fn test_full_middleware_chain_composition() {
         "Full chain: Permissions-Policy missing"
     );
 }
+
+// ============================================================================
+// 10. Comprehensive Security Headers Verification
+// ============================================================================
+
+fn build_production_app() -> Router {
+    let mut config = crate::config::ServerConfig::default();
+    config.jwt.secrets = vec!["a-sufficiently-long-secret-key-for-tests-32ch".to_string()];
+    config.security.development = false;
+    config.security.environment = "production".to_string();
+    config.security.hsts_enabled = true;
+    config.security.enable_hsts = true;
+    config.security.permissions_policy = true;
+    config.security.coep_enabled = true;
+
+    let security_config = std::sync::Arc::new(config.security.clone());
+
+    Router::new()
+        .merge(health_handler())
+        .merge(api_handler())
+        .layer(
+            ServiceBuilder::new()
+                .layer(from_fn(request_id_middleware))
+                .layer(from_fn(cache_control_middleware))
+                .layer(from_fn(audit_middleware))
+                .layer(from_fn(request_size_limit))
+                .layer(compression_layer())
+                .map_response(move |response: Response| {
+                    add_security_headers_from_config(response, &security_config)
+                }),
+        )
+}
+
+#[tokio::test]
+async fn security_verification_csp_present_and_complete() {
+    let app = build_production_app();
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let csp = response
+        .headers()
+        .get("content-security-policy")
+        .expect("CSP header must be present")
+        .to_str()
+        .unwrap();
+
+    assert!(
+        csp.contains("default-src"),
+        "CSP must contain default-src: got {}",
+        csp
+    );
+    assert!(
+        csp.contains("script-src"),
+        "CSP must contain script-src: got {}",
+        csp
+    );
+    assert!(
+        csp.contains("style-src"),
+        "CSP must contain style-src: got {}",
+        csp
+    );
+    assert!(
+        csp.contains("object-src 'none'"),
+        "CSP must block objects: got {}",
+        csp
+    );
+}
+
+#[tokio::test]
+async fn security_verification_hsts_production() {
+    let app = build_production_app();
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let hsts = response
+        .headers()
+        .get("strict-transport-security")
+        .expect("HSTS header must be present in production");
+
+    let hsts_str = hsts.to_str().unwrap();
+    assert!(
+        hsts_str.contains("max-age="),
+        "HSTS must contain max-age: got {}",
+        hsts_str
+    );
+    assert!(
+        hsts_str.contains("includeSubDomains"),
+        "HSTS must contain includeSubDomains: got {}",
+        hsts_str
+    );
+    assert!(
+        hsts_str.contains("preload"),
+        "HSTS must contain preload: got {}",
+        hsts_str
+    );
+}
+
+#[tokio::test]
+async fn security_verification_x_frame_options() {
+    let app = build_production_app();
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    let xfo = response
+        .headers()
+        .get("x-frame-options")
+        .expect("X-Frame-Options must be present")
+        .to_str()
+        .unwrap();
+
+    assert!(
+        xfo == "DENY" || xfo == "SAMEORIGIN",
+        "X-Frame-Options must be DENY or SAMEORIGIN: got {}",
+        xfo
+    );
+}
+
+#[tokio::test]
+async fn security_verification_x_content_type_options() {
+    let app = build_production_app();
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    let xcto = response
+        .headers()
+        .get("x-content-type-options")
+        .expect("X-Content-Type-Options must be present")
+        .to_str()
+        .unwrap();
+
+    assert_eq!(xcto, "nosniff");
+}
+
+#[tokio::test]
+async fn security_verification_referrer_policy() {
+    let app = build_production_app();
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    let rp = response
+        .headers()
+        .get("referrer-policy")
+        .expect("Referrer-Policy must be present")
+        .to_str()
+        .unwrap();
+
+    let valid_policies = [
+        "no-referrer",
+        "strict-origin",
+        "strict-origin-when-cross-origin",
+        "same-origin",
+    ];
+    assert!(
+        valid_policies.contains(&rp),
+        "Referrer-Policy must be strict-origin-when-cross-origin or stricter: got {}",
+        rp
+    );
+}
+
+#[tokio::test]
+async fn security_verification_permissions_policy() {
+    let app = build_production_app();
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    let pp = response
+        .headers()
+        .get("permissions-policy")
+        .expect("Permissions-Policy must be present")
+        .to_str()
+        .unwrap();
+
+    assert!(
+        pp.contains("camera"),
+        "Permissions-Policy must restrict camera: got {}",
+        pp
+    );
+    assert!(
+        pp.contains("microphone"),
+        "Permissions-Policy must restrict microphone: got {}",
+        pp
+    );
+    assert!(
+        pp.contains("geolocation"),
+        "Permissions-Policy must restrict geolocation: got {}",
+        pp
+    );
+}
+
+#[tokio::test]
+async fn security_verification_request_id_on_every_response() {
+    let app = build_production_app();
+
+    for path in &["/health", "/api/v1/documents"] {
+        let response = send_request(app.clone(), Method::GET, path, HeaderMap::new()).await;
+        assert!(
+            response.headers().contains_key("x-request-id"),
+            "X-Request-Id must be present on response for {}",
+            path
+        );
+    }
+}
+
+#[tokio::test]
+async fn security_verification_cache_control_api() {
+    let app = build_production_app();
+    let response = send_request(app, Method::GET, "/api/v1/documents", HeaderMap::new()).await;
+
+    let cc = response
+        .headers()
+        .get("cache-control")
+        .expect("Cache-Control must be present on API response")
+        .to_str()
+        .unwrap();
+
+    assert!(
+        cc.contains("max-age=") || cc.contains("no-store"),
+        "Cache-Control must have max-age or no-store: got {}",
+        cc
+    );
+}
+
+#[tokio::test]
+async fn security_verification_rate_limit_headers() {
+    let mut config = test_config();
+    config.jwt.secrets = vec!["a-sufficiently-long-secret-key-for-tests-32ch".to_string()];
+
+    let rate_limit_config = RateLimitConfig {
+        enabled: true,
+        redis_url: None,
+        default_requests_per_minute: 100,
+        cleanup_interval_secs: 60,
+        endpoint_limits: HashMap::new(),
+    };
+    let app = build_rate_limit_app(&config, rate_limit_config);
+
+    let response = send_request(app, Method::GET, "/api/v1/documents", HeaderMap::new()).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(
+        response.headers().contains_key("x-ratelimit-limit"),
+        "X-RateLimit-Limit must be present on non-429 responses"
+    );
+    assert!(
+        response.headers().contains_key("x-ratelimit-remaining"),
+        "X-RateLimit-Remaining must be present on non-429 responses"
+    );
+}
+
+#[tokio::test]
+async fn security_verification_cors_preflight_headers() {
+    let config = test_config();
+    let security_config = std::sync::Arc::new(config.security.clone());
+    let cors_layer = crate::build_cors_layer(&config);
+
+    let app = Router::new()
+        .route(
+            "/api/v1/documents",
+            get(|| async { "ok" }).options(|| async { "ok" }),
+        )
+        .layer(
+            ServiceBuilder::new()
+                .layer(from_fn(request_id_middleware))
+                .layer(from_fn(request_size_limit))
+                .layer(compression_layer())
+                .layer(cors_layer)
+                .map_response(move |response: Response| {
+                    add_security_headers_from_config(response, &security_config)
+                }),
+        );
+
+    let mut headers = HeaderMap::new();
+    headers.insert("origin", HeaderValue::from_static("http://example.com"));
+    headers.insert(
+        "access-control-request-method",
+        HeaderValue::from_static("GET"),
+    );
+
+    let response = send_request(app, Method::OPTIONS, "/api/v1/documents", headers).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(
+        response
+            .headers()
+            .contains_key("access-control-allow-origin"),
+        "CORS preflight must include Access-Control-Allow-Origin"
+    );
+    assert!(
+        response
+            .headers()
+            .contains_key("access-control-allow-methods"),
+        "CORS preflight must include Access-Control-Allow-Methods"
+    );
+}
+
+#[tokio::test]
+async fn security_verification_cross_origin_policies_production() {
+    let app = build_production_app();
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    let headers = response.headers();
+
+    assert!(
+        headers.contains_key("cross-origin-opener-policy"),
+        "Cross-Origin-Opener-Policy must be present in production"
+    );
+    assert_eq!(
+        headers
+            .get("cross-origin-opener-policy")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "same-origin"
+    );
+
+    assert!(
+        headers.contains_key("cross-origin-resource-policy"),
+        "Cross-Origin-Resource-Policy must be present in production"
+    );
+    assert_eq!(
+        headers
+            .get("cross-origin-resource-policy")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "same-origin"
+    );
+}
+
+#[tokio::test]
+async fn security_verification_no_hsts_in_dev() {
+    let config = test_config();
+    let app = build_test_app(&config);
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    assert!(
+        !response.headers().contains_key("strict-transport-security"),
+        "HSTS must NOT be present in development mode"
+    );
+}
+
+#[tokio::test]
+async fn security_verification_csp_upgrade_insecure_requests_production() {
+    let app = build_production_app();
+    let response = send_request(app, Method::GET, "/health", HeaderMap::new()).await;
+
+    let csp = response
+        .headers()
+        .get("content-security-policy")
+        .unwrap()
+        .to_str()
+        .unwrap();
+
+    assert!(
+        csp.contains("upgrade-insecure-requests"),
+        "Production CSP must contain upgrade-insecure-requests: got {}",
+        csp
+    );
+}

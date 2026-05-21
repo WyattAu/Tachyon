@@ -95,12 +95,26 @@ pub struct JwtConfig {
     pub issuer: String,
     /// Audience for JWT claims
     pub audience: String,
+    /// Enable JWT key rotation detection logging.
+    /// When true and multiple secrets are configured, validates against all
+    /// secrets and logs when a non-primary secret is used.
+    #[serde(default = "default_jwt_rotation_enabled")]
+    pub rotation_enabled: bool,
+}
+
+fn default_jwt_rotation_enabled() -> bool {
+    true
 }
 
 impl JwtConfig {
     /// The active signing key (always the first secret).
     pub fn signing_secret(&self) -> &str {
         self.secrets.first().map(|s| s.as_str()).unwrap_or("")
+    }
+
+    /// Whether rotation is effectively active (enabled AND multiple secrets configured).
+    pub fn is_rotation_active(&self) -> bool {
+        self.rotation_enabled && self.secrets.len() > 1
     }
 }
 
@@ -408,6 +422,7 @@ impl Default for JwtConfig {
             expiration_secs: 24 * 60 * 60, // 24 hours
             issuer: "tachyon-server".to_string(),
             audience: "tachyon-client".to_string(),
+            rotation_enabled: true,
         }
     }
 }
@@ -821,6 +836,10 @@ impl ServerConfig {
             if let Ok(exp) = jwt_expiration.parse::<u64>() {
                 config.jwt.expiration_secs = exp;
             }
+        }
+
+        if let Ok(rotation) = std::env::var("TACHYON_JWT_ROTATION_ENABLED") {
+            config.jwt.rotation_enabled = rotation != "0" && rotation != "false";
         }
 
         if let Ok(guest_login) = std::env::var("TACHYON_GUEST_LOGIN_ENABLED") {

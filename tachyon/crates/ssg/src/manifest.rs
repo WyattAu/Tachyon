@@ -61,6 +61,12 @@ pub struct SiteConfig {
     /// Sidebar menu items (used to generate collapsible sidebar navigation)
     #[serde(default)]
     pub menu_items: Vec<SidebarItem>,
+    /// Enable Pagefind client-side search integration
+    #[serde(default = "default_true")]
+    pub pagefind_enabled: bool,
+    /// Enable Mermaid diagram rendering
+    #[serde(default = "default_true")]
+    pub mermaid_enabled: bool,
 }
 
 impl Default for SiteConfig {
@@ -83,6 +89,8 @@ impl Default for SiteConfig {
             translations: vec![],
             color_theme: None,
             menu_items: vec![],
+            pagefind_enabled: true,
+            mermaid_enabled: true,
         }
     }
 }

@@ -1,8 +1,16 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
+use serde::Serialize;
 use serde_json::json;
 use std::collections::BTreeMap;
+
+/// Standard error response body returned by all API error handlers.
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct ErrorResponse {
+    pub code: String,
+    pub message: String,
+}
 
 /// Unified error type for all server route handlers.
 /// Implements From for sub-crate error types so the ? operator works seamlessly.

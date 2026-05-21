@@ -1,4 +1,5 @@
 use crate::error::ServerError;
+use crate::pagination::{CursorPage, CursorParams};
 use crate::validation::{ValidatedDocumentTitle, ValidatedTagList};
 use axum::{
     extract::{Extension, Path, Query, State},
@@ -18,7 +19,9 @@ use tachyon_renderer::{MarkdownParser, RenderConfig, Renderer};
 use tachyon_search::SearchDocument;
 use tracing::{debug, info, warn};
 
-use super::{DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState};
+use super::{
+    DocumentCursorPage, DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState,
+};
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -776,4 +779,113 @@ pub async fn render_markdown(body: String) -> Result<Json<serde_json::Value>, Se
         "code_block_count": result.metadata.code_block_count,
         "render_time_ms": result.stats.render_time_ms,
     })))
+}
+
+/// List documents with cursor-based pagination.
+///
+/// `GET /api/v1/documents/cursor?after=&before=&limit=`
+///
+/// Query params: `after` (cursor from previous page's `next_cursor`),
+///   `before` (cursor from previous page's `prev_cursor`), `limit` (default 20, max 100).
+/// Response: 200 with `CursorPage<DocumentResponse>`.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/cursor",
+    params(CursorParams),
+    responses(
+        (status = 200, description = "Cursor-paginated list of documents", body = DocumentCursorPage),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "documents",
+)]
+pub async fn list_documents_cursor(
+    Query(params): Query<CursorParams>,
+    State(state): State<DocumentState>,
+) -> Result<Json<CursorPage<DocumentResponse>>, ServerError> {
+    let limit = params.limit();
+    let direction = params.direction();
+
+    let fetch_limit = limit + 1;
+
+    let all_docs = state
+        .repository
+        .list_all(Some(fetch_limit as i64 * 2), Some(0))
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to list documents: {}", e)))?;
+
+    let mut items: Vec<DocumentResponse> = all_docs
+        .into_iter()
+        .map(|m| {
+            let tags = m.parse_tags().unwrap_or_default();
+            DocumentResponse {
+                id: m.id,
+                title: m.title,
+                slug: m.slug,
+                html: None,
+                content: String::new(),
+                status: m.status,
+                visibility: m.visibility,
+                tags,
+                author_id: m.author_id,
+                repository_id: m.project_id,
+                word_count: m.word_count as usize,
+                character_count: m.character_count as usize,
+                created_at: m.created_at.to_rfc3339(),
+                updated_at: m.updated_at.to_rfc3339(),
+                published_at: m.published_at.map(|t| t.to_rfc3339()),
+            }
+        })
+        .collect();
+
+    let cursor_id = if let Some(ref cursor_str) = params.after {
+        crate::pagination::Cursor(cursor_str.clone())
+            .decode()
+            .map(|(id, _)| id)
+    } else if let Some(ref cursor_str) = params.before {
+        crate::pagination::Cursor(cursor_str.clone())
+            .decode()
+            .map(|(id, _)| id)
+    } else {
+        None
+    };
+
+    if let Some(ref cid) = cursor_id {
+        if direction == "asc" {
+            let pos = items.iter().position(|d| d.id == *cid).unwrap_or(0);
+            items = items.into_iter().skip(pos + 1).collect();
+        } else {
+            let pos = items.iter().position(|d| d.id == *cid).unwrap_or(0);
+            if pos > 0 {
+                items = items.into_iter().take(pos).collect();
+                items.reverse();
+            } else {
+                items.clear();
+            }
+        }
+    }
+
+    let has_extra = items.len() > limit;
+    if has_extra {
+        items.truncate(limit);
+    }
+
+    let has_next = if direction == "asc" {
+        has_extra
+    } else {
+        cursor_id.is_some()
+    };
+    let has_prev = if direction == "asc" {
+        cursor_id.is_some()
+    } else {
+        has_extra
+    };
+
+    let first_id = items.first().map(|d| d.id.clone());
+    let last_id = items.last().map(|d| d.id.clone());
+
+    let page = CursorPage::new(items, has_next, has_prev)
+        .with_cursors(first_id.as_deref(), last_id.as_deref(), direction)
+        .with_total_count(0);
+
+    Ok(Json(page))
 }

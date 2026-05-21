@@ -236,6 +236,11 @@ impl SiteGenerator {
             )?;
             let filename = format!("{}.html", doc.slug);
             let path = write_dir.join(&filename);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| {
+                    SsgError::Io(format!("Failed to create dir {:?}: {}", parent, e))
+                })?;
+            }
             std::fs::write(&path, html).map_err(|e| {
                 SsgError::Io(format!("Failed to write {}/{}: {}", lang, filename, e))
             })?;

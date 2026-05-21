@@ -8,7 +8,7 @@ use std::fmt;
 
 /// An opaque pagination cursor encoding the position and sort direction.
 /// Format: `{id}:{direction}` where direction is "asc" or "desc".
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Cursor(pub String);
 
 impl fmt::Display for Cursor {
@@ -35,7 +35,7 @@ impl Cursor {
 }
 
 /// Parameters for cursor-based pagination requests.
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Default, utoipa::IntoParams)]
 pub struct CursorParams {
     /// Cursor from the previous page's `next_cursor`.
     pub after: Option<String>,
@@ -60,8 +60,8 @@ impl CursorParams {
 }
 
 /// A page of results with cursor-based pagination metadata.
-#[derive(Debug, Clone, Serialize)]
-pub struct CursorPage<T: Serialize> {
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
+pub struct CursorPage<T: Serialize + utoipa::ToSchema> {
     pub data: Vec<T>,
     pub has_next: bool,
     pub has_prev: bool,
@@ -70,7 +70,7 @@ pub struct CursorPage<T: Serialize> {
     pub total_count: Option<i64>,
 }
 
-impl<T: Serialize> CursorPage<T> {
+impl<T: Serialize + utoipa::ToSchema> CursorPage<T> {
     pub fn new(data: Vec<T>, has_next: bool, has_prev: bool) -> Self {
         Self {
             data,

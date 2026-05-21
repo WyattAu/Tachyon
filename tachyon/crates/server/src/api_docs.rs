@@ -21,6 +21,7 @@ fn openapi_spec() -> &'static OpenApiSpec {
         title = "Tachyon API",
         version = "1.0.0",
         description = "Tachyon Knowledge Management System API\n\nA comprehensive API for managing documents, knowledge graphs, projects, and collaborative workflows.",
+        terms_of_service = "https://tachyon.local/terms",
         contact(
             name = "Tachyon Support",
             email = "support@tachyon.local"
@@ -68,6 +69,7 @@ fn openapi_spec() -> &'static OpenApiSpec {
     ),
     paths(
         crate::routes::document::document_crud::list_documents,
+        crate::routes::document::document_crud::list_documents_cursor,
         crate::routes::document::document_crud::create_document,
         crate::routes::document::document_crud::get_document,
         crate::routes::document::document_crud::update_document,
@@ -235,6 +237,8 @@ fn openapi_spec() -> &'static OpenApiSpec {
         tachyon_database::UserRecord,
         crate::routes::document::DocumentResponse,
         crate::routes::document::DocumentSearchResponse,
+        crate::routes::document::DocumentCursorPage,
+        crate::pagination::Cursor,
         crate::routes::document::document_crud::CreateDocumentRequest,
         crate::routes::document::document_crud::UpdateDocumentRequest,
         crate::routes::search::SearchResultsResponse,
@@ -366,6 +370,7 @@ fn openapi_spec() -> &'static OpenApiSpec {
         crate::routes::ssg::SsgBuildResponse,
         crate::routes::ssg::SsgBuildResultWrapper,
         crate::routes::ssg::SsgNavLink,
+        crate::error::ErrorResponse,
     )),
     modifiers(&SecurityAddon)
 )]

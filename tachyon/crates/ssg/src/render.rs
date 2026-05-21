@@ -406,13 +406,15 @@ fn html_escape_content(s: &str) -> String {
 pub(crate) fn render_markdown(content: &str) -> String {
     use tachyon_renderer::{RenderConfig, Renderer};
 
+    let (content, mermaid_blocks) = extract_mermaid_blocks(content);
+
     let config = RenderConfig::default();
     let renderer = Renderer::new(config);
 
-    let result = match renderer.render(content, None) {
+    let result = match renderer.render(&content, None) {
         Ok(result) => result.content,
         Err(_) => {
-            format!("<div>{}</div>", html_escape_content(content))
+            format!("<div>{}</div>", html_escape_content(&content))
         }
     };
 
@@ -426,6 +428,7 @@ pub(crate) fn render_markdown(content: &str) -> String {
     let result = add_heading_ids(&result);
     let toc_entries = extract_inline_toc(&result);
     let toc_html = render_inline_toc(&toc_entries);
+    let result = replace_mermaid_placeholders(&result, &mermaid_blocks);
     let result = add_copy_buttons(&result);
 
     if toc_html.is_empty() {
@@ -433,6 +436,80 @@ pub(crate) fn render_markdown(content: &str) -> String {
     } else {
         format!("{}\n{}", toc_html, result)
     }
+}
+
+pub(crate) fn extract_mermaid_blocks(content: &str) -> (String, Vec<String>) {
+    let mut blocks = Vec::new();
+    let mut result = String::with_capacity(content.len());
+    let mut in_code_block = false;
+    let mut in_mermaid = false;
+    let mut mermaid_content = String::new();
+
+    for line in content.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("```") && !in_code_block {
+            let lang = trimmed.trim_start_matches('`').trim();
+            if lang == "mermaid" {
+                in_mermaid = true;
+                mermaid_content.clear();
+            } else {
+                result.push_str(line);
+                result.push('\n');
+            }
+            in_code_block = true;
+        } else if trimmed.starts_with("```") && in_code_block {
+            if in_mermaid {
+                blocks.push(mermaid_content.trim().to_string());
+                result.push_str(&format!("\n\nMERMPLACEHOLDER{}END\n\n", blocks.len() - 1));
+                in_mermaid = false;
+            } else {
+                result.push_str(line);
+                result.push('\n');
+            }
+            in_code_block = false;
+        } else if in_mermaid {
+            mermaid_content.push_str(line);
+            mermaid_content.push('\n');
+        } else {
+            result.push_str(line);
+            result.push('\n');
+        }
+    }
+
+    (result, blocks)
+}
+
+pub(crate) fn replace_mermaid_placeholders(html: &str, blocks: &[String]) -> String {
+    let mut result = html.to_string();
+    for (i, block) in blocks.iter().enumerate() {
+        let placeholder = format!("MERMPLACEHOLDER{}END", i);
+        let escaped = block
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;");
+        let replacement = format!(r#"<div class="mermaid">{}</div>"#, escaped);
+        result = result.replace(&placeholder, &replacement);
+    }
+    result
+}
+
+pub(crate) fn process_mermaid_blocks(html: &str) -> String {
+    let re = regex::Regex::new(
+        r#"<pre[^>]*>\s*<code[^>]*class="language-mermaid"[^>]*>([\s\S]*?)</code>\s*</pre>"#,
+    )
+    .unwrap();
+
+    re.replace_all(html, |caps: &regex::Captures| {
+        let content = &caps[1];
+        let unescaped = content
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'");
+        format!(r#"<div class="mermaid">{}</div>"#, unescaped.trim())
+    })
+    .to_string()
 }
 
 pub(crate) fn render_admonitions(html: &str) -> String {

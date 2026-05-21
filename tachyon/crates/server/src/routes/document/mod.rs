@@ -166,12 +166,36 @@ pub struct DocumentSearchResponse {
     pub page_size: usize,
 }
 
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct DocumentCursorPage {
+    pub data: Vec<DocumentResponse>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<crate::pagination::CursorPage<DocumentResponse>> for DocumentCursorPage {
+    fn from(page: crate::pagination::CursorPage<DocumentResponse>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
+}
+
 pub use document_attachments::{
     delete_attachment, download_attachment, list_attachments, upload_attachment, AttachmentResponse,
 };
 pub use document_crud::{
     create_document, delete_document, get_document, get_document_metadata, list_documents,
-    render_markdown, update_document, CreateDocumentRequest, UpdateDocumentRequest,
+    list_documents_cursor, render_markdown, update_document, CreateDocumentRequest,
+    UpdateDocumentRequest,
 };
 pub use document_search::{get_backlinks, search_documents, BacklinkItem, BacklinksResponse};
 pub use document_templates::{
@@ -188,6 +212,7 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
 
     axum::Router::new()
         .route("/documents", get(list_documents))
+        .route("/documents/cursor", get(list_documents_cursor))
         .route("/documents", post(create_document))
         .route("/documents/search", get(search_documents))
         .route("/documents/{document_id}", get(get_document))
@@ -287,5 +312,114 @@ mod tests {
         let json = serde_json::to_string(&response).unwrap();
         assert!(json.contains("\"count\":1"));
         assert!(json.contains("Doc A"));
+    }
+
+    #[test]
+    fn test_cursor_params_empty_returns_first_page() {
+        let params = crate::pagination::CursorParams::default();
+        assert_eq!(params.limit(), 20);
+        assert_eq!(params.direction(), "asc");
+        assert!(params.after.is_none());
+        assert!(params.before.is_none());
+    }
+
+    #[test]
+    fn test_cursor_params_after_returns_next_page() {
+        let params = crate::pagination::CursorParams {
+            after: Some("doc123:asc".to_string()),
+            before: None,
+            limit: Some(10),
+        };
+        assert_eq!(params.limit(), 10);
+        assert_eq!(params.direction(), "asc");
+    }
+
+    #[test]
+    fn test_cursor_params_before_returns_prev_page() {
+        let params = crate::pagination::CursorParams {
+            after: None,
+            before: Some("doc456:desc".to_string()),
+            limit: None,
+        };
+        assert_eq!(params.limit(), 20);
+        assert_eq!(params.direction(), "desc");
+    }
+
+    #[test]
+    fn test_cursor_params_limit_clamping() {
+        let params_zero = crate::pagination::CursorParams {
+            limit: Some(0),
+            ..Default::default()
+        };
+        assert_eq!(params_zero.limit(), 1);
+
+        let params_huge = crate::pagination::CursorParams {
+            limit: Some(500),
+            ..Default::default()
+        };
+        assert_eq!(params_huge.limit(), 100);
+    }
+
+    #[test]
+    fn test_cursor_page_serialization() {
+        let page = crate::pagination::CursorPage::new(
+            vec![DocumentResponse {
+                id: "doc1".to_string(),
+                title: "First".to_string(),
+                slug: Some("first".to_string()),
+                html: None,
+                content: "content".to_string(),
+                status: "draft".to_string(),
+                visibility: "private".to_string(),
+                tags: vec![],
+                author_id: "user1".to_string(),
+                repository_id: None,
+                word_count: 1,
+                character_count: 7,
+                created_at: "2026-01-01T00:00:00+00:00".to_string(),
+                updated_at: "2026-01-01T00:00:00+00:00".to_string(),
+                published_at: None,
+            }],
+            true,
+            false,
+        )
+        .with_cursors(Some("doc1"), Some("doc1"), "asc");
+
+        assert!(page.has_next);
+        assert!(!page.has_prev);
+        assert_eq!(page.data.len(), 1);
+        assert!(page.next_cursor.is_some());
+    }
+
+    #[test]
+    fn test_document_cursor_page_from_pagination() {
+        let pagination_page = crate::pagination::CursorPage::new(
+            vec![DocumentResponse {
+                id: "doc1".to_string(),
+                title: "Test".to_string(),
+                slug: None,
+                html: None,
+                content: "".to_string(),
+                status: "draft".to_string(),
+                visibility: "private".to_string(),
+                tags: vec![],
+                author_id: "user1".to_string(),
+                repository_id: None,
+                word_count: 0,
+                character_count: 0,
+                created_at: "2026-01-01T00:00:00+00:00".to_string(),
+                updated_at: "2026-01-01T00:00:00+00:00".to_string(),
+                published_at: None,
+            }],
+            false,
+            false,
+        );
+
+        let doc_page = DocumentCursorPage::from(pagination_page);
+        assert_eq!(doc_page.data.len(), 1);
+        assert!(!doc_page.has_next);
+        assert!(!doc_page.has_prev);
+        assert!(doc_page.next_cursor.is_none());
+        assert!(doc_page.prev_cursor.is_none());
     }
 }

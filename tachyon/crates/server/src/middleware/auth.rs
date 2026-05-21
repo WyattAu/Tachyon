@@ -14,6 +14,7 @@ use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::Row;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tachyon_core::{UserAction, UserRole};
 use tachyon_database::{DatabasePool, Permission};
@@ -24,7 +25,7 @@ use tachyon_rbac::AuthContext as RbacAuthContext;
 use tachyon_rbac::{Enforcer, EnforcerConfig as RbacEnforcerConfig};
 use tachyon_rbac::{SessionId, UserId};
 use tokio::sync::RwLock;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -109,16 +110,50 @@ pub struct AuthState {
     config: Arc<ServerConfig>,
     pool: DatabasePool,
     enforcer: Arc<RwLock<Enforcer>>,
+    secret_usage: Arc<SecretUsageTracker>,
+}
+
+#[derive(Debug, Default)]
+pub struct SecretUsageTracker {
+    counters: Vec<AtomicU64>,
+}
+
+impl SecretUsageTracker {
+    pub fn new(count: usize) -> Self {
+        Self {
+            counters: (0..count).map(|_| AtomicU64::new(0)).collect(),
+        }
+    }
+
+    pub fn record(&self, index: usize) {
+        if let Some(counter) = self.counters.get(index) {
+            counter.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    pub fn snapshot(&self) -> Vec<(usize, u64)> {
+        self.counters
+            .iter()
+            .enumerate()
+            .map(|(i, c)| (i, c.load(Ordering::Relaxed)))
+            .collect()
+    }
 }
 
 impl AuthState {
     pub fn new(config: ServerConfig, pool: DatabasePool) -> Self {
         let enforcer = Enforcer::with_config(RbacEnforcerConfig::default());
+        let secret_usage = SecretUsageTracker::new(config.jwt.secrets.len());
         Self {
             config: Arc::new(config),
             pool,
             enforcer: Arc::new(RwLock::new(enforcer)),
+            secret_usage: Arc::new(secret_usage),
         }
+    }
+
+    pub fn secret_usage_snapshot(&self) -> Vec<(usize, u64)> {
+        self.secret_usage.snapshot()
     }
 
     pub fn generate_jwt(&self, user_id: &str, role: UserRole) -> Result<String, AuthError> {
@@ -146,8 +181,12 @@ impl AuthState {
             team_id,
         };
 
+        let kid = secret_kid(self.config.jwt.signing_secret(), 0);
+        let mut header = Header::new(Algorithm::HS256);
+        header.kid = Some(kid);
+
         encode(
-            &Header::default(),
+            &header,
             &claims,
             &EncodingKey::from_secret(self.config.jwt.signing_secret().as_bytes()),
         )
@@ -163,13 +202,32 @@ impl AuthState {
         validation.set_issuer(&[issuer]);
         validation.set_audience(&[audience]);
 
-        for secret in &self.config.jwt.secrets {
+        for (index, secret) in self.config.jwt.secrets.iter().enumerate() {
             match decode::<Claims>(
                 token,
                 &DecodingKey::from_secret(secret.as_bytes()),
                 &validation,
             ) {
-                Ok(token_data) => return Ok(token_data.claims),
+                Ok(token_data) => {
+                    if index > 0 {
+                        let kid_in_token = token_data.header.kid.as_deref().unwrap_or("none");
+                        let current_kid = secret_kid(self.config.jwt.signing_secret(), 0);
+                        if self.config.jwt.is_rotation_active() {
+                            info!(
+                                secret_index = index,
+                                token_kid = %kid_in_token,
+                                current_kid = %current_kid,
+                                "JWT validated with non-primary secret — rotation in progress"
+                            );
+                        }
+                        warn!(
+                            secret_index = index,
+                            "JWT validated with non-primary secret"
+                        );
+                    }
+                    self.secret_usage.record(index);
+                    return Ok(token_data.claims);
+                }
                 Err(_) => continue,
             }
         }
@@ -439,6 +497,14 @@ impl PermissionGuard {
     }
 }
 
+fn secret_kid(secret: &str, index: usize) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(secret.as_bytes());
+    let hash = hasher.finalize();
+    let hex = hex::encode(&hash[..8]);
+    format!("k{}-{}", index, hex)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -464,6 +530,13 @@ mod tests {
             &EncodingKey::from_secret(secret.as_ref()),
         )
         .expect("token encoding should succeed")
+    }
+
+    fn encode_test_token_with_kid(claims: &Claims, secret: &str, kid: &str) -> String {
+        let mut header = Header::new(Algorithm::HS256);
+        header.kid = Some(kid.to_string());
+        encode(&header, claims, &EncodingKey::from_secret(secret.as_ref()))
+            .expect("token encoding should succeed")
     }
 
     fn decode_test_token(
@@ -628,5 +701,106 @@ mod tests {
             result.is_err(),
             "Token signed with new secret should fail with old secret only"
         );
+    }
+
+    #[test]
+    fn test_secret_kid_format() {
+        let kid = secret_kid("test-secret-key-for-testing-only-long-enough", 0);
+        assert!(kid.starts_with("k0-"));
+        assert!(kid.len() > 5);
+    }
+
+    #[test]
+    fn test_secret_kid_deterministic() {
+        let kid1 = secret_kid("same-secret-key-for-testing-only-long-enough", 0);
+        let kid2 = secret_kid("same-secret-key-for-testing-only-long-enough", 0);
+        assert_eq!(kid1, kid2);
+    }
+
+    #[test]
+    fn test_secret_kid_differs_per_index() {
+        let kid0 = secret_kid("same-secret-key-for-testing-only-long-enough", 0);
+        let kid1 = secret_kid("same-secret-key-for-testing-only-long-enough", 1);
+        assert_ne!(kid0, kid1);
+    }
+
+    #[test]
+    fn test_secret_usage_tracker() {
+        let tracker = SecretUsageTracker::new(3);
+        tracker.record(0);
+        tracker.record(0);
+        tracker.record(2);
+
+        let snap = tracker.snapshot();
+        assert_eq!(snap[0], (0, 2));
+        assert_eq!(snap[1], (1, 0));
+        assert_eq!(snap[2], (2, 1));
+    }
+
+    #[test]
+    fn test_secret_usage_tracker_out_of_bounds() {
+        let tracker = SecretUsageTracker::new(2);
+        tracker.record(5);
+        let snap = tracker.snapshot();
+        assert_eq!(snap.len(), 2);
+        assert_eq!(snap[0], (0, 0));
+        assert_eq!(snap[1], (1, 0));
+    }
+
+    #[test]
+    fn test_jwt_with_kid_header() {
+        let secret = "test-secret-key-for-testing-only-long-enough";
+        let claims = make_test_claims("user-kid-test", "admin");
+        let kid = secret_kid(secret, 0);
+        let token = encode_test_token_with_kid(&claims, secret, &kid);
+
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.set_issuer(&["tachyon-test"]);
+        validation.set_audience(&["tachyon-test"]);
+
+        let decoded = decode::<Claims>(
+            &token,
+            &DecodingKey::from_secret(secret.as_ref()),
+            &validation,
+        );
+        assert!(decoded.is_ok());
+        assert_eq!(decoded.unwrap().header.kid, Some(kid));
+    }
+
+    #[test]
+    fn test_rotation_config_default() {
+        let config = crate::config::JwtConfig::default();
+        assert!(config.rotation_enabled);
+        assert!(!config.is_rotation_active());
+    }
+
+    #[test]
+    fn test_rotation_config_active_with_multiple_secrets() {
+        let config = crate::config::JwtConfig {
+            secrets: vec![
+                "first-secret-that-is-at-least-32-characters".to_string(),
+                "second-secret-that-is-at-least-32-characters".to_string(),
+            ],
+            expiration_secs: 3600,
+            issuer: "test".to_string(),
+            audience: "test".to_string(),
+            rotation_enabled: true,
+        };
+        assert!(config.is_rotation_active());
+    }
+
+    #[test]
+    fn test_rotation_config_disabled() {
+        let config = crate::config::JwtConfig {
+            secrets: vec![
+                "first-secret-that-is-at-least-32-characters".to_string(),
+                "second-secret-that-is-at-least-32-characters".to_string(),
+            ],
+            expiration_secs: 3600,
+            issuer: "test".to_string(),
+            audience: "test".to_string(),
+            rotation_enabled: false,
+        };
+        assert!(!config.is_rotation_active());
     }
 }

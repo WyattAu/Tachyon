@@ -85,6 +85,35 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     let prev_next_html = render_prev_next(ctx.prev_link, ctx.next_link);
     let sidebar_html = render_sidebar(&ctx.site.menu_items, ctx.current_slug);
 
+    let pagefind_css = if ctx.site.pagefind_enabled {
+        r#"<link href="/pagefind/pagefind-ui.css" rel="stylesheet">"#.to_string()
+    } else {
+        String::new()
+    };
+
+    let pagefind_search = if ctx.site.pagefind_enabled {
+        r#"<div id="search" class="max-w-4xl mx-auto px-4 py-2"></div>"#.to_string()
+    } else {
+        String::new()
+    };
+
+    let pagefind_js = if ctx.site.pagefind_enabled {
+        r##"<!-- Run: npx pagefind --site <output_dir> post-build to generate the search index -->
+<script src="/pagefind/pagefind-ui.js"></script>
+<script>window.addEventListener('DOMContentLoaded',function(){new PagefindUI({element:"#search",showSubResults:true})});</script>"##
+            .to_string()
+    } else {
+        String::new()
+    };
+
+    let mermaid_script = if ctx.site.mermaid_enabled {
+        r##"<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"default"});</script>"##
+            .to_string()
+    } else {
+        String::new()
+    };
+
     format!(
         r#"<!DOCTYPE html>
 <html lang="{language}" dir="{dir}" class="{theme_class}">
@@ -107,6 +136,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+  {pagefind_css}
   <style>
     :root {{
       --tachyon-primary: #2563eb;
@@ -204,17 +234,22 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     .dark nav.toc {{ background: #1f2937; border-color: #374151; }}
     .dark nav.toc li a {{ color: #9ca3af; }}
     .dark nav.toc li a:hover {{ color: #60a5fa; }}
+    .breadcrumbs {{ list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; padding: 0; margin: 0; }}
+    .breadcrumbs-item + .breadcrumbs-item::before {{ content: "/"; color: #9ca3af; margin-right: 0.25rem; }}
+    .mermaid {{ margin: 1rem 0; text-align: center; }}
+    .dark .breadcrumbs-item + .breadcrumbs-item::before {{ color: #4b5563; }}
     {custom_css}
   </style>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
   {nav}
+  {pagefind_search}
   <button id="tachyon-sidebar-toggle" class="md:hidden fixed bottom-4 right-4 z-50 bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors" aria-label="Toggle sidebar">&#9776;</button>
   <main class="flex-1">
     {breadcrumbs_html}
     <div class="flex">
       {sidebar_html}
-      <div class="doc-content flex-1">
+      <div class="doc-content flex-1" data-pagefind-body>
         <article>
           <header class="mb-8">
             {tags_html}
@@ -226,18 +261,20 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
           </header>
           {body}
         </article>
-        {prev_next_html}
-      </div>
-      {toc_html}
-    </div>
-  </main>
-  <footer class="border-t border-gray-200 dark:border-gray-700 py-6 mt-12">
-    <div class="max-w-4xl mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
-      {footer}
-    </div>
-  </footer>
-</body>
-</html>"#,
+         {prev_next_html}
+       </div>
+       {toc_html}
+     </div>
+   </main>
+   <footer data-pagefind-ignore class="border-t border-gray-200 dark:border-gray-700 py-6 mt-12">
+     <div class="max-w-4xl mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
+       {footer}
+     </div>
+   </footer>
+   {pagefind_js}
+   {mermaid_script}
+ </body>
+ </html>"#,
         title = ctx.title,
         site_title = ctx.site.title,
         description = escape_html(ctx.description),
@@ -264,6 +301,10 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         prev_next_html = prev_next_html,
         sidebar_html = sidebar_html,
         json_ld = &ctx.json_ld,
+        pagefind_css = pagefind_css,
+        pagefind_search = pagefind_search,
+        pagefind_js = pagefind_js,
+        mermaid_script = mermaid_script,
     )
 }
 
@@ -454,7 +495,7 @@ fn render_nav(
     };
 
     format!(
-        r#"<nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sticky top-0 z-50">
+        r#"<nav data-pagefind-ignore class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sticky top-0 z-50">
   <div class="max-w-6xl mx-auto flex items-center justify-between">
     <div class="flex items-center gap-4">
       <a href="index.html" class="flex items-center font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
@@ -527,22 +568,41 @@ fn render_breadcrumbs(breadcrumbs: &[(String, String)]) -> String {
     }
     let items: Vec<String> = breadcrumbs
         .iter()
-        .map(|(label, href)| {
+        .enumerate()
+        .map(|(i, (label, href))| {
             let display = capitalize_first(label);
-            format!(
-                r#"<a href="{}" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">{}</a>"#,
-                href, display
-            )
+            let position = i + 1;
+            if i == breadcrumbs.len() - 1 {
+                format!(
+                    r#"<li class="breadcrumbs-item" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" aria-current="page">
+      <span itemprop="name" class="text-sm text-gray-900 dark:text-gray-100 font-medium">{display}</span>
+      <meta itemprop="position" content="{position}" />
+    </li>"#,
+                    display = display,
+                    position = position,
+                )
+            } else {
+                format!(
+                    r#"<li class="breadcrumbs-item" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+      <a itemprop="item" href="{href}"><span itemprop="name" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">{display}</span></a>
+      <meta itemprop="position" content="{position}" />
+    </li>"#,
+                    href = href,
+                    display = display,
+                    position = position,
+                )
+            }
         })
         .collect();
-    let last = items.len() - 1;
-    let joined = items
-        .iter()
-        .take(last)
-        .cloned()
-        .collect::<Vec<_>>()
-        .join(r#"<span class="text-gray-400 dark:text-gray-600 mx-1">/</span>"#);
-    format!(r#"<nav class="max-w-4xl mx-auto px-4 py-2" aria-label="Breadcrumb">{joined}</nav>"#)
+    let items_html = items.join("\n    ");
+    format!(
+        r#"<nav class="max-w-4xl mx-auto px-4 py-2" aria-label="Breadcrumb">
+  <ol class="breadcrumbs" itemscope itemtype="https://schema.org/BreadcrumbList">
+    {items_html}
+  </ol>
+</nav>"#,
+        items_html = items_html,
+    )
 }
 
 /// Render a TOC sidebar from extracted heading entries.
@@ -570,7 +630,7 @@ fn render_toc_sidebar(toc: &[TocEntry]) -> String {
         .collect::<Vec<_>>()
         .join("\n        ");
     format!(
-        r#"<aside class="toc-sidebar hidden lg:block w-56 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 pl-6 ml-6 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
+        r#"<aside class="toc-sidebar hidden lg:block w-56 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 pl-6 ml-6 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto" data-pagefind-ignore>
   <nav class="toc" aria-label="Table of Contents">
     <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">On this page</h2>
     <ul class="space-y-1">
@@ -603,7 +663,7 @@ fn render_sidebar_inner(menu_items: &[SidebarItem], current_slug: Option<&str>) 
         .collect::<Vec<_>>()
         .join("\n");
     format!(
-        r#"<aside id="tachyon-sidebar" class="hidden md:block w-60 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 mr-4 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
+        r#"<aside id="tachyon-sidebar" data-pagefind-ignore class="hidden md:block w-60 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 mr-4 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
   <nav class="sidebar" aria-label="Site navigation">
     <ul class="space-y-1">
 {items}
