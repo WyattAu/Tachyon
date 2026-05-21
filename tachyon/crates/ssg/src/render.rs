@@ -130,6 +130,7 @@ pub(crate) struct PageContext<'a> {
     pub(crate) date: &'a str,
     pub(crate) json_ld: String,
     pub(crate) hreflang_tags: String,
+    pub(crate) og_image: Option<&'a str>,
 }
 
 pub(crate) struct IndexContext<'a> {
@@ -260,6 +261,7 @@ impl crate::build::SiteGenerator {
             date: &doc.created_at.to_rfc3339(),
             json_ld,
             hreflang_tags,
+            og_image: self.config.og_image.as_deref(),
         };
 
         Ok(crate::templates::render_doc_page(&ctx))

@@ -128,9 +128,12 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
   <meta property="og:description" content="{description}">
   <meta property="og:url" content="{page_url}">
   <meta property="og:type" content="article">
+  <meta property="og:site_name" content="{site_title}">
+{og_image_tags}
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="{title}">
   <meta name="twitter:description" content="{description}">
+{twitter_image_tags}
   {favicon}
   {json_ld}
   <script src="https://cdn.tailwindcss.com"></script>
@@ -257,6 +260,35 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     .breadcrumbs-item + .breadcrumbs-item::before {{ content: "/"; color: #9ca3af; margin-right: 0.25rem; }}
     .mermaid {{ margin: 1rem 0; text-align: center; }}
     .dark .breadcrumbs-item + .breadcrumbs-item::before {{ color: #4b5563; }}
+    /* Mobile sidebar overlay panel */
+    @media (max-width: 767px) {{
+      .sidebar-open {{
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 16rem !important;
+        max-height: 100vh !important;
+        z-index: 45 !important;
+        background: white !important;
+        padding: 1rem !important;
+        margin: 0 !important;
+        border-right: 1px solid #e5e7eb !important;
+        overflow-y: auto !important;
+        box-shadow: 2px 0 8px rgba(0,0,0,0.15) !important;
+        transition: transform 0.2s ease-out;
+      }}
+      .sidebar-closed {{
+        display: none !important;
+      }}
+      .dark .sidebar-open {{
+        background: #111827 !important;
+        border-right-color: #374151 !important;
+      }}
+    }}
+    @media (min-width: 768px) {{
+      .sidebar-closed {{ display: block; }}
+    }}
     {custom_css}
   </style>
 </head>
@@ -325,6 +357,20 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         pagefind_js = pagefind_js,
         mermaid_script = mermaid_script,
         hreflang_tags = ctx.hreflang_tags,
+        og_image_tags = ctx
+            .og_image
+            .map(|url| format!(
+                r#"  <meta property="og:image" content="{}">"#,
+                escape_html(url)
+            ))
+            .unwrap_or_default(),
+        twitter_image_tags = ctx
+            .og_image
+            .map(|url| format!(
+                r#"  <meta name="twitter:image" content="{}">"#,
+                escape_html(url)
+            ))
+            .unwrap_or_default(),
     )
 }
 
@@ -683,21 +729,42 @@ fn render_sidebar_inner(menu_items: &[SidebarItem], current_slug: Option<&str>) 
         .collect::<Vec<_>>()
         .join("\n");
     format!(
-        r#"<aside id="tachyon-sidebar" data-pagefind-ignore class="hidden md:block w-60 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 mr-4 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
+        r#"<aside id="tachyon-sidebar" data-pagefind-ignore class="sidebar-closed md:block w-60 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 mr-4 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
   <nav class="sidebar" aria-label="Site navigation">
     <ul class="space-y-1">
 {items}
     </ul>
   </nav>
 </aside>
+<div id="tachyon-sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-40 md:hidden"></div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {{
   var toggle = document.getElementById('tachyon-sidebar-toggle');
   var sidebar = document.getElementById('tachyon-sidebar');
-  if (toggle && sidebar) {{
+  var overlay = document.getElementById('tachyon-sidebar-overlay');
+  function openSidebar() {{
+    sidebar.classList.remove('sidebar-closed');
+    sidebar.classList.add('sidebar-open');
+    overlay.classList.remove('hidden');
+    toggle.innerHTML = '&times;';
+  }}
+  function closeSidebar() {{
+    sidebar.classList.remove('sidebar-open');
+    sidebar.classList.add('sidebar-closed');
+    overlay.classList.add('hidden');
+    toggle.innerHTML = '&#9776;';
+  }}
+  if (toggle && sidebar && overlay) {{
     toggle.addEventListener('click', function() {{
-      sidebar.classList.toggle('hidden');
-      sidebar.classList.toggle('md:block');
+      if (sidebar.classList.contains('sidebar-open')) {{
+        closeSidebar();
+      }} else {{
+        openSidebar();
+      }}
+    }});
+    overlay.addEventListener('click', closeSidebar);
+    sidebar.querySelectorAll('a').forEach(function(link) {{
+      link.addEventListener('click', closeSidebar);
     }});
   }}
 }});

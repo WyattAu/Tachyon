@@ -70,6 +70,8 @@ pub struct SiteConfig {
     /// Generate robots.txt in output
     #[serde(default = "default_true")]
     pub robots_txt: bool,
+    /// Default Open Graph image URL (used in og:image and twitter:image meta tags)
+    pub og_image: Option<String>,
 }
 
 impl Default for SiteConfig {
@@ -95,6 +97,7 @@ impl Default for SiteConfig {
             pagefind_enabled: true,
             mermaid_enabled: true,
             robots_txt: true,
+            og_image: None,
         }
     }
 }
