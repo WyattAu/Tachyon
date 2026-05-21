@@ -1,11 +1,23 @@
 # Tachyon Version Information
 
 ## Current Status
-- **Version:** 13.0.0
-- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,166+ tests, CI/CD pipeline
+- **Version:** 14.0.0
+- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,526+ tests, CI/CD pipeline
 - **Status:** Active development — all core infrastructure complete, 0 compilation errors, 0 clippy warnings
 - **Last Updated:** 2026-05-21
 - **Codebase:** 278 Rust files, ~95K lines, 25 DB migrations, 29 route modules, 32 DB modules
+
+## What Changed (v14.0.0 — Dependency Hygiene)
+
+### Removed 17 unused dependencies across 7 crates
+- **server**: `tokio-tungstenite` moved from runtime to dev-dependency (only used in integration tests)
+- **frontend**: `wasm-logger`, `send_wrapper` (zero imports)
+- **rbac**: `casbin` (heavy crate — RBAC reimplemented from scratch), `anyhow` (zero imports)
+- **database**: `tachyon-rbac` (zero imports — RBAC storage implemented directly via sqlx)
+- **search**: `anyhow`, `thiserror`, `axum-tungstenite`, `tower`, `tower-http`, `async-trait` (6 unused)
+- **renderer**: `tokio`, `serde_yaml`, `tree-sitter-toml`, `tree-sitter-markdown` (incompatible versions, skipped)
+- **ssg**: `tachyon-core` (zero imports — defines own SsgDocument type)
+- **workspace**: `axum-tungstenite` removed from workspace dependencies
 
 ## What Changed (v5.0.0 — Three Horizons)
 

@@ -30,8 +30,7 @@ axum = { version = "0.8", features = ["tracing", "macros", "ws", "multipart"] }
 tower = { version = "0.5", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "compression-full", "limit", "fs"] }
 
-# WebSocket
-tokio-tungstenite = "0.26"
+# WebSocket (uses axum built-in WS)
 futures-util = "0.3"
 
 # Serialization
@@ -118,6 +117,8 @@ http-body-util = "0.1"
 tempfile = "3"
 bytes = "1"
 tower = { version = "0.5", features = ["util"] }
+# WebSocket client for integration tests
+tokio-tungstenite = "0.26"
 
 [[test]]
 name = "integration"

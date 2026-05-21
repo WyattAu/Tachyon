@@ -41,7 +41,6 @@ yrs = "0.25"
 # Server Logic
 axum = { version = "0.8", features = ["macros", "ws"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "compression-full", "limit"] }
-axum-tungstenite = { version = "0.3", default-features = false }
 notify = "6"
 rust-embed = "8"
 clap = { version = "4", features = ["derive"] }

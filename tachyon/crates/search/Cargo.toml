@@ -17,7 +17,7 @@ tachyon-rbac = { path = "../rbac" }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-anyhow = { workspace = true }
+# NOTE: anyhow removed — zero imports; uses custom SearchError
 tracing = { workspace = true }
 
 # Search Engine
@@ -26,18 +26,14 @@ tantivy = { workspace = true }
 # Date/Time handling
 chrono = { version = "0.4", features = ["serde"] }
 
-# Error handling
-thiserror = "1"
+# NOTE: thiserror removed — zero imports; SearchError is hand-rolled
 
-# HTTP/WebSocket API
+# HTTP/WebSocket API (uses axum built-in WS)
 axum = { workspace = true }
-axum-tungstenite = { workspace = true }
-tower = "0.4"
-tower-http = { workspace = true }
+# NOTE: axum-tungstenite, tower, tower-http removed — zero imports; axum handles WS natively
 futures-util = "0.3"
 
-# Async support
-async-trait = "0.1"
+# NOTE: async-trait removed — zero imports; no #[async_trait] used
 
 [features]
 staging = []

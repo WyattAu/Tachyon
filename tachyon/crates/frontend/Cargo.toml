@@ -86,13 +86,10 @@ js-sys = "0.3"
 # WASM utilities
 console_error_panic_hook = "0.1"
 log = "0.4"
-wasm-logger = "0.2"
+# NOTE: wasm-logger removed — zero imports; log crate used with console_error_panic_hook backend
 
 # UUID - with js feature for WASM support
 uuid = { version = "1.11", features = ["v4", "serde", "js"] }
-
-# Thread safety for WASM (wrapping non-Send types)
-send_wrapper = "0.6"
 
 # Native editor engine
 tachyon-editor = { path = "../editor" }

@@ -7,7 +7,7 @@ rust-version = "1.75"
 [dependencies]
 # Core Types
 tachyon-core = { path = "../core" }
-tachyon-rbac = { path = "../rbac" }
+# NOTE: tachyon-rbac removed — zero imports; database crate implements RBAC storage directly via sqlx
 
 # Async Runtime
 tokio = { workspace = true }
