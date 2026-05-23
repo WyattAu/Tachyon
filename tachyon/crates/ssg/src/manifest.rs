@@ -67,6 +67,9 @@ pub struct SiteConfig {
     /// Enable Mermaid diagram rendering
     #[serde(default = "default_true")]
     pub mermaid_enabled: bool,
+    /// Enable syntax highlighting in code blocks via Highlight.js
+    #[serde(default = "default_true")]
+    pub syntax_highlighting_enabled: bool,
     /// Generate robots.txt in output
     #[serde(default = "default_true")]
     pub robots_txt: bool,
@@ -96,6 +99,7 @@ impl Default for SiteConfig {
             menu_items: vec![],
             pagefind_enabled: true,
             mermaid_enabled: true,
+            syntax_highlighting_enabled: true,
             robots_txt: true,
             og_image: None,
         }

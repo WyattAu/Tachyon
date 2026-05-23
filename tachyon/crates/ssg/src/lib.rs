@@ -981,6 +981,90 @@ Details.
     }
 
     #[test]
+    fn test_syntax_highlighting_enabled_by_default() {
+        let config = SiteConfig::default();
+        assert!(
+            config.syntax_highlighting_enabled,
+            "syntax_highlighting_enabled should default to true"
+        );
+    }
+
+    #[test]
+    fn test_syntax_highlighting_cdn_in_output() {
+        let config = SiteConfig::default();
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "code-example".to_string(),
+            title: "Code Example".to_string(),
+            content: "# Code\n\n```rust\nfn main() {}\n```\n".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-highlight-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("code-example.html")).unwrap();
+        assert!(
+            html.contains("highlight.min.js"),
+            "highlight.js CDN should be included"
+        );
+        assert!(
+            html.contains("hljs.highlightAll"),
+            "hljs.highlightAll should be called"
+        );
+        assert!(
+            html.contains("github-dark.min.css"),
+            "highlight.js theme CSS should be included"
+        );
+        assert!(
+            html.contains("language-mermaid"),
+            "mermaid exclusion in hljs selector should be present"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_syntax_highlighting_disabled() {
+        let config = SiteConfig {
+            syntax_highlighting_enabled: false,
+            ..SiteConfig::default()
+        };
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "no-highlight".to_string(),
+            title: "No Highlight".to_string(),
+            content: "# Code\n\n```rust\nfn main() {}\n```\n".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-no-highlight-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("no-highlight.html")).unwrap();
+        assert!(
+            !html.contains("highlight.min.js"),
+            "highlight.js should NOT be included when disabled"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
     fn test_site_config_new_defaults() {
         let config = SiteConfig::default();
         assert!(
@@ -990,6 +1074,10 @@ Details.
         assert!(
             config.mermaid_enabled,
             "mermaid_enabled should default to true"
+        );
+        assert!(
+            config.syntax_highlighting_enabled,
+            "syntax_highlighting_enabled should default to true"
         );
         assert!(config.robots_txt, "robots_txt should default to true");
     }

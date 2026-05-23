@@ -114,6 +114,15 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         String::new()
     };
 
+    let highlight_script = if ctx.site.syntax_highlighting_enabled {
+        r##"<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js"></script>
+<script>document.addEventListener('DOMContentLoaded',function(){hljs.highlightAll({cssSelector:'pre code:not(.language-mermaid)'})});</script>"##
+            .to_string()
+    } else {
+        String::new()
+    };
+
     format!(
         r#"<!DOCTYPE html>
 <html lang="{language}" dir="{dir}" class="{theme_class}">
@@ -322,8 +331,9 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
        {footer}
      </div>
    </footer>
-   {pagefind_js}
-   {mermaid_script}
+    {pagefind_js}
+    {highlight_script}
+    {mermaid_script}
  </body>
  </html>"#,
         title = ctx.title,
@@ -356,6 +366,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         pagefind_search = pagefind_search,
         pagefind_js = pagefind_js,
         mermaid_script = mermaid_script,
+        highlight_script = highlight_script,
         hreflang_tags = ctx.hreflang_tags,
         og_image_tags = ctx
             .og_image

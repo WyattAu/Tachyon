@@ -69,7 +69,7 @@ The CRDT implementation satisfies:
 - **Associativity**: Grouping of operations does not affect result
 - **Idempotence**: Applying an operation twice yields the same result as once
 
-Formal proofs are available in `tachyon/.adrs/
+Formal proofs are available in `.adrs/` (Architecture Decision Records).
 
 ## Presence Detection
 
