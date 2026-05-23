@@ -237,8 +237,14 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
 
+      - name: Cache tarpaulin binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cargo/bin/cargo-tarpaulin
+          key: cargo-tarpaulin-bin-v1
+
       - name: Install tarpaulin
-        run: cargo install cargo-tarpaulin
+        run: command -v cargo-tarpaulin || cargo install cargo-tarpaulin
 
       - name: Cache cargo
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4

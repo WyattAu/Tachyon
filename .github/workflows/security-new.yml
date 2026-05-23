@@ -34,15 +34,24 @@ jobs:
             ~/.cargo/git
           key: ${{ runner.os }}-cargo-audit-${{ hashFiles('tachyon/Cargo.lock') }}
       
+      - name: Cache cargo-audit binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: cargo-audit-bin-v1
+      
       - name: Install cargo-audit
-        run: cargo install cargo-audit
+        run: command -v cargo-audit || cargo install cargo-audit
       
       - name: Run audit
         working-directory: tachyon
-        run: cargo audit --ignore RUSTSEC-2023-0071
+        run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2026-0097
         # RUSTSEC-2023-0071: rsa Marvin Attack (medium severity)
         # Transitive dep via sqlx-mysql -> rsa. No fixed version available.
         # We use PostgreSQL, not MySQL; this code path is never exercised.
+        # RUSTSEC-2026-0097: rand 0.7.3 unsound with custom logger calling thread_rng()
+        # Only affects wiremock (dev-dep) -> http-types -> rand 0.7.3.
+        # Not exploitable in our codebase, not in production builds.
 
   dependency-review:
     name: Dependency Review
