@@ -1032,6 +1032,43 @@ Details.
     }
 
     #[test]
+    fn test_syntax_highlighting_custom_theme() {
+        let config = SiteConfig {
+            code_theme: "monokai".to_string(),
+            ..SiteConfig::default()
+        };
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "theme-test".to_string(),
+            title: "Theme Test".to_string(),
+            content: "# Code\n\n```rust\nfn main() {}\n```\n".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-theme-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("theme-test.html")).unwrap();
+        assert!(
+            html.contains("monokai.min.css"),
+            "custom theme CSS should be included"
+        );
+        assert!(
+            !html.contains("github-dark.min.css"),
+            "default theme CSS should NOT be included"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
     fn test_syntax_highlighting_disabled() {
         let config = SiteConfig {
             syntax_highlighting_enabled: false,
@@ -1078,6 +1115,10 @@ Details.
         assert!(
             config.syntax_highlighting_enabled,
             "syntax_highlighting_enabled should default to true"
+        );
+        assert_eq!(
+            config.code_theme, "github-dark",
+            "code_theme should default to github-dark"
         );
         assert!(config.robots_txt, "robots_txt should default to true");
     }

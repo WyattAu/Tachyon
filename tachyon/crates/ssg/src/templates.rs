@@ -115,10 +115,12 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     };
 
     let highlight_script = if ctx.site.syntax_highlighting_enabled {
-        r##"<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/github-dark.min.css">
+        let theme = &ctx.site.code_theme;
+        format!(
+            r##"<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/{theme}.min.css">
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js"></script>
-<script>document.addEventListener('DOMContentLoaded',function(){hljs.highlightAll({cssSelector:'pre code:not(.language-mermaid)'})});</script>"##
-            .to_string()
+<script>document.addEventListener('DOMContentLoaded',function(){{hljs.highlightAll({{cssSelector:'pre code:not(.language-mermaid)'}})}});</script>"##
+        )
     } else {
         String::new()
     };

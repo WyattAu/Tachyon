@@ -13,6 +13,9 @@ fn default_footer() -> String {
 fn default_language() -> String {
     "en".to_string()
 }
+fn default_code_theme() -> String {
+    "github-dark".to_string()
+}
 
 /// Site-wide configuration for static site generation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,6 +73,10 @@ pub struct SiteConfig {
     /// Enable syntax highlighting in code blocks via Highlight.js
     #[serde(default = "default_true")]
     pub syntax_highlighting_enabled: bool,
+    /// Code syntax highlighting theme (e.g., "github-dark", "monokai", "dracula", "one-dark-pro")
+    /// See: https://highlightjs.org/static/demo/
+    #[serde(default = "default_code_theme")]
+    pub code_theme: String,
     /// Generate robots.txt in output
     #[serde(default = "default_true")]
     pub robots_txt: bool,
@@ -100,6 +107,7 @@ impl Default for SiteConfig {
             pagefind_enabled: true,
             mermaid_enabled: true,
             syntax_highlighting_enabled: true,
+            code_theme: default_code_theme(),
             robots_txt: true,
             og_image: None,
         }
