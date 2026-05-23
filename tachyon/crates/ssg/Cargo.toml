@@ -44,3 +44,6 @@ regex = "1"
 
 # File watching (for serve command)
 notify = { workspace = true }
+
+# Image optimization
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }

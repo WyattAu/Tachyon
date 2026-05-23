@@ -320,6 +320,7 @@ fn cmd_build(
     println!();
 
     // Build
+    let image_optimization = site_config.image_optimization_enabled;
     println!("🔨 Building static site...");
     let generator = SiteGenerator::new(site_config);
     let result = generator.build_to_dir(&docs, &output)?;
@@ -375,6 +376,18 @@ fn cmd_build(
     // Write .nojekyll (GitHub Pages requirement)
     fs::write(output.join(".nojekyll"), "")?;
     println!("   Wrote .nojekyll");
+
+    // Copy static assets (images, fonts, CSS, etc.)
+    println!();
+    let asset_stats = tachyon_ssg::assets::copy_static_assets(&input, &output, image_optimization)?;
+    if asset_stats.files_copied > 0 {
+        println!(
+            "📦 Copied {} static assets ({} images optimized, {:.1}KB saved)",
+            asset_stats.files_copied,
+            asset_stats.images_optimized,
+            asset_stats.bytes_saved as f64 / 1024.0,
+        );
+    }
 
     println!();
     println!("🚀 Site ready at: {}", output.display());

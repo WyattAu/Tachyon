@@ -82,6 +82,9 @@ pub struct SiteConfig {
     pub robots_txt: bool,
     /// Default Open Graph image URL (used in og:image and twitter:image meta tags)
     pub og_image: Option<String>,
+    /// Enable image optimization (compress and convert images in input dir)
+    #[serde(default)]
+    pub image_optimization_enabled: bool,
 }
 
 impl Default for SiteConfig {
@@ -110,6 +113,7 @@ impl Default for SiteConfig {
             code_theme: default_code_theme(),
             robots_txt: true,
             og_image: None,
+            image_optimization_enabled: false,
         }
     }
 }

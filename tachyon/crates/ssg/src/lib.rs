@@ -6,6 +6,7 @@
 //! Produces HTML pages with navigation, index, sitemap, and RSS feed.
 //! Designed to compete with Docusaurus as the best SSG for markdown content.
 
+pub mod assets;
 mod build;
 mod build_cache;
 mod error;
