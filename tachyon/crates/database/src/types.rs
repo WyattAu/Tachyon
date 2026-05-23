@@ -724,12 +724,26 @@ pub struct DatabaseConfig {
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
-            max_connections: 10,
-            min_connections: 0, // Don't pre-establish connections to avoid startup blocking
-            connection_timeout: 30,
+            max_connections: std::env::var("TACHYON_DB_MAX_CONNECTIONS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(10),
+            min_connections: std::env::var("TACHYON_DB_MIN_CONNECTIONS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
+            connection_timeout: std::env::var("TACHYON_DB_CONNECTION_TIMEOUT")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(30),
             enable_extensions: true,
-            enable_query_logging: false,
-            schema: "public".to_string(),
+            enable_query_logging: std::env::var("TACHYON_DB_QUERY_LOGGING")
+                .ok()
+                .map(|s| s == "true" || s == "1")
+                .unwrap_or(false),
+            schema: std::env::var("TACHYON_DB_SCHEMA")
+                .ok()
+                .unwrap_or_else(|| "public".to_string()),
         }
     }
 }

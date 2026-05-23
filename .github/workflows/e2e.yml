@@ -110,7 +110,14 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: Run E2E tests
+      - name: Run smoke tests (fast)
+        working-directory: tachyon/e2e
+        env:
+          E2E_BASE_URL: http://localhost:8080
+        run: npx playwright test --config=playwright.smoke.config.ts --reporter=list
+        timeout-minutes: 5
+
+      - name: Run full E2E suite
         working-directory: tachyon/e2e
         env:
           E2E_BASE_URL: http://localhost:8080
