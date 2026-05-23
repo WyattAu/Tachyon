@@ -1,0 +1,6 @@
+[advisories]
+# RUSTSEC-2026-0097: rand 0.7.3 unsound with custom logger calling thread_rng()
+# This only affects dev-dependency (wiremock -> http-types -> rand 0.7.3)
+# Our code does not use a custom logger that calls thread_rng(), so this is not exploitable.
+# wiremock is a dev-only dependency, not included in production builds.
+ignore = ["RUSTSEC-2026-0097"]
