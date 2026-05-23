@@ -8932,6 +8932,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "notify",
  "regex",
  "serde",
  "serde_json",

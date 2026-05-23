@@ -58,3 +58,6 @@ tachyon/.cargo/config.toml
 
 # GitHub workflow drafts
 .github/workflows/cd-new.yml
+
+# SSG build cache (incremental builds)
+.build-cache.json

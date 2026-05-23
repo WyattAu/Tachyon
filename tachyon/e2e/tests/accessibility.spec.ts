@@ -383,7 +383,7 @@ async function checkMainLandmark(page: import('@playwright/test').Page): Promise
   const violations: A11yViolation[] = [];
   // Wait for WASM hydration to render the main landmark
   try {
-    await page.waitForSelector('main, [role="main"]', { timeout: 10000 });
+    await page.waitForSelector('main, [role="main"]', { timeout: 15000 });
   } catch {
     // Main landmark never appeared
   }

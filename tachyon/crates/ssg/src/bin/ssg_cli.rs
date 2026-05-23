@@ -68,6 +68,29 @@ enum Cli {
         #[arg(short, long, default_value = "docs")]
         target: PathBuf,
     },
+
+    /// Serve the site locally with live rebuild on file changes
+    Serve {
+        /// Input directory containing markdown files
+        #[arg(short, long, default_value = "docs")]
+        input: PathBuf,
+
+        /// Output directory for generated HTML
+        #[arg(short, long, default_value = "site")]
+        output: PathBuf,
+
+        /// Path to site configuration TOML file
+        #[arg(short, long)]
+        config: Option<PathBuf>,
+
+        /// Port to serve on
+        #[arg(short, long, default_value = "3000")]
+        port: u16,
+
+        /// Base URL for canonical links
+        #[arg(long, default_value = "http://localhost:3000")]
+        base_url: String,
+    },
 }
 
 /// Parsed frontmatter from a markdown file.
@@ -214,6 +237,13 @@ fn main() -> Result<()> {
             with_404,
         ),
         Cli::Init { target } => cmd_init(&target),
+        Cli::Serve {
+            input,
+            output,
+            config,
+            port,
+            base_url,
+        } => cmd_serve(input, output, config, port, &base_url),
     }
 }
 
@@ -1062,7 +1092,232 @@ Tachyon uses Leptos in CSR mode because:
         "   2. Build site:  tachyon-ssg-cli build --input {} --output site",
         target.display()
     );
-    println!("   3. Preview:      python3 -m http.server 3000 -d site");
+    println!(
+        "   3. Preview:      tachyon-ssg-cli serve --input {} --port 3000",
+        target.display()
+    );
 
     Ok(())
+}
+
+/// Build site from input directory. Returns the SiteConfig used.
+fn rebuild_site(
+    input: &Path,
+    output: &Path,
+    config: Option<&Path>,
+    base_url: &str,
+) -> Result<SiteConfig> {
+    let mut site_config = if let Some(config_path) = config {
+        read_config(config_path)?
+    } else {
+        let config_path = input.join("site.toml");
+        if config_path.exists() {
+            read_config(&config_path)?
+        } else {
+            SiteConfig::default()
+        }
+    };
+    site_config.base_url = base_url.to_string();
+
+    let docs = collect_documents(input)?;
+    if docs.is_empty() {
+        println!("   No markdown files found, skipping build");
+        return Ok(site_config);
+    }
+
+    let generator = SiteGenerator::new(site_config.clone());
+    let result = generator.build_to_dir(&docs, output)?;
+
+    println!(
+        "   Rebuilt {} pages in {}ms",
+        result.pages, result.build_time_ms
+    );
+    Ok(site_config)
+}
+
+/// Serve the site with live rebuild on file changes.
+fn cmd_serve(
+    input: PathBuf,
+    output: PathBuf,
+    config: Option<PathBuf>,
+    port: u16,
+    base_url: &str,
+) -> Result<()> {
+    println!("🔥 Tachyon SSG — Development Server");
+    println!("   Input:  {}", input.display());
+    println!("   Output: {}", output.display());
+    println!("   URL:    http://localhost:{}", port);
+    println!();
+
+    // Initial build
+    println!("🔨 Initial build...");
+    rebuild_site(&input, &output, config.as_deref(), base_url)?;
+    println!();
+
+    // Start HTTP server in background thread
+    let output_clone = output.clone();
+    let server_handle = std::thread::spawn(move || {
+        serve_directory(&output_clone, port);
+    });
+
+    // Watch for file changes
+    println!("👁  Watching for changes in {}...", input.display());
+    println!("   Press Ctrl+C to stop");
+    println!();
+
+    use notify::{Config as NotifyConfig, RecommendedWatcher, RecursiveMode, Watcher};
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let mut watcher = RecommendedWatcher::new(
+        move |res| {
+            if let Ok(event) = res {
+                let _ = tx.send(event);
+            }
+        },
+        NotifyConfig::default(),
+    )?;
+
+    watcher.watch(&input, RecursiveMode::Recursive)?;
+
+    // Debounce: wait for 500ms of no changes before rebuilding
+    let debounce = std::time::Duration::from_millis(500);
+    let mut last_rebuild = std::time::Instant::now() - debounce;
+
+    while let Ok(_event) = rx.recv() {
+        // Drain queued events for debouncing
+        while rx.try_recv().is_ok() {}
+
+        let now = std::time::Instant::now();
+        if now.duration_since(last_rebuild) < debounce {
+            std::thread::sleep(debounce - now.duration_since(last_rebuild));
+        }
+        last_rebuild = std::time::Instant::now();
+
+        println!("\n🔄 Change detected, rebuilding...");
+        match rebuild_site(&input, &output, config.as_deref(), base_url) {
+            Ok(_) => println!("   ✅ Site rebuilt — refresh browser"),
+            Err(e) => println!("   ❌ Build failed: {}", e),
+        }
+    }
+
+    drop(server_handle);
+    Ok(())
+}
+
+/// Simple HTTP file server serving static files from a directory.
+fn serve_directory(dir: &Path, port: u16) {
+    use std::io::Read;
+    use std::net::TcpListener;
+
+    let addr = format!("0.0.0.0:{}", port);
+    let listener = match TcpListener::bind(&addr) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("Failed to bind to {}: {}", addr, e);
+            return;
+        }
+    };
+
+    for stream in listener.incoming() {
+        let mut stream = match stream {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+
+        let mut buf = [0u8; 4096];
+        let n = match stream.read(&mut buf) {
+            Ok(0) | Err(_) => continue,
+            Ok(n) => n,
+        };
+
+        let request = String::from_utf8_lossy(&buf[..n]);
+        let path = request
+            .lines()
+            .next()
+            .and_then(|line| line.split_whitespace().nth(1))
+            .unwrap_or("/")
+            .trim_start_matches('/');
+
+        let file_path = if path.is_empty() || path == "/" {
+            dir.join("index.html")
+        } else {
+            // Prevent path traversal
+            let safe = path
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == '_' || c == '/');
+            if !safe {
+                let _ = write_response(&mut stream, 400, "text/plain", b"Bad Request");
+                continue;
+            }
+            dir.join(path)
+        };
+
+        // Try exact path, then path + .html, then path/index.html
+        let (content_type, body) = if let Ok(data) = fs::read(&file_path) {
+            (mime_type(&file_path), data)
+        } else if let Ok(data) = fs::read(file_path.with_extension("html")) {
+            (b"text/html".to_vec(), data)
+        } else if let Ok(data) = fs::read(file_path.join("index.html")) {
+            (b"text/html".to_vec(), data)
+        } else {
+            // Try 404.html
+            if let Ok(data) = fs::read(dir.join("404.html")) {
+                let _ = write_response(&mut stream, 404, "text/html", &data);
+                continue;
+            }
+            let _ = write_response(&mut stream, 404, "text/plain", b"Not Found");
+            continue;
+        };
+
+        let _ = write_response(
+            &mut stream,
+            200,
+            unsafe { std::str::from_utf8_unchecked(&content_type) },
+            &body,
+        );
+    }
+}
+
+fn mime_type(path: &Path) -> Vec<u8> {
+    match path.extension().and_then(|e| e.to_str()) {
+        Some("html") => b"text/html".to_vec(),
+        Some("css") => b"text/css".to_vec(),
+        Some("js") => b"application/javascript".to_vec(),
+        Some("json") => b"application/json".to_vec(),
+        Some("png") => b"image/png".to_vec(),
+        Some("jpg") | Some("jpeg") => b"image/jpeg".to_vec(),
+        Some("gif") => b"image/gif".to_vec(),
+        Some("svg") => b"image/svg+xml".to_vec(),
+        Some("ico") => b"image/x-icon".to_vec(),
+        Some("xml") => b"application/xml".to_vec(),
+        Some("txt") => b"text/plain".to_vec(),
+        Some("wasm") => b"application/wasm".to_vec(),
+        Some("woff") | Some("woff2") => b"font/woff2".to_vec(),
+        _ => b"application/octet-stream".to_vec(),
+    }
+}
+
+fn write_response(
+    stream: &mut std::net::TcpStream,
+    status: u32,
+    content_type: &str,
+    body: &[u8],
+) -> std::io::Result<()> {
+    use std::io::Write;
+    let status_text = match status {
+        200 => "OK",
+        400 => "Bad Request",
+        404 => "Not Found",
+        _ => "Unknown",
+    };
+    let header = format!(
+        "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        status,
+        status_text,
+        content_type,
+        body.len()
+    );
+    stream.write_all(header.as_bytes())?;
+    stream.write_all(body)?;
+    stream.flush()
 }

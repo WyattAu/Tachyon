@@ -41,3 +41,6 @@ toml = "0.8"
 
 # Regex for TOC extraction
 regex = "1"
+
+# File watching (for serve command)
+notify = { workspace = true }

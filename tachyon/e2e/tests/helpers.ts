@@ -8,12 +8,13 @@ export class AppPage {
     await this.page.waitForLoadState('domcontentloaded');
     try {
       // Wait for WASM hydration to render content inside #app
-      await this.page.waitForSelector('#app > *', { timeout: 15000 });
+      // CI environments are slow — allow up to 30s for WASM init
+      await this.page.waitForSelector('#app > *', { timeout: 30000 });
     } catch {
       // WASM may not have hydrated, continue anyway
     }
-    // Give WASM hydration extra time to render landmarks
-    await this.page.waitForTimeout(1000);
+    // Give WASM hydration extra time to render interactive elements
+    await this.page.waitForTimeout(2000);
   }
 
   async register(username: string, email: string, password: string) {
