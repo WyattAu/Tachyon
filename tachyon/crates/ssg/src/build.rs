@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
 
+use crate::build_cache::BuildCache;
 use crate::error::{SsgError, SsgResult};
 use crate::manifest::{BuildResult, SiteConfig, SsgDocument};
 
@@ -42,6 +43,10 @@ impl SiteGenerator {
         let mut total_categories = 0usize;
         let mut all_generated_pages = Vec::new();
 
+        // Load incremental build cache
+        let cache_path = output_dir.join(".build-cache.json");
+        let mut cache = BuildCache::load(&cache_path);
+
         let languages = self.collect_languages(documents);
 
         if languages.len() > 1 {
@@ -50,7 +55,7 @@ impl SiteGenerator {
                     documents.iter().filter(|d| d.language == *lang).collect();
 
                 let (pages, categories, generated) =
-                    self.build_language_dir(&lang_docs, lang, output_dir, &languages)?;
+                    self.build_language_dir(&lang_docs, lang, output_dir, &languages, &mut cache)?;
 
                 total_pages += pages;
                 total_categories += categories;
@@ -67,7 +72,7 @@ impl SiteGenerator {
             let lang = languages.first().map(|s| s.as_str()).unwrap_or("en");
             let all_docs: Vec<&SsgDocument> = documents.iter().collect();
             let (pages, categories, generated) =
-                self.build_language_dir(&all_docs, lang, output_dir, &languages)?;
+                self.build_language_dir(&all_docs, lang, output_dir, &languages, &mut cache)?;
 
             total_pages += pages;
             total_categories += categories;
@@ -77,6 +82,9 @@ impl SiteGenerator {
 
         let output_size_bytes = dir_size(output_dir).map_err(|e| SsgError::Io(e.to_string()))?;
         let build_time_ms = start.elapsed().as_millis() as u64;
+
+        // Save incremental build cache
+        cache.save(&cache_path);
 
         if self.config.robots_txt {
             let base = self.config.base_url.trim_end_matches('/');
@@ -203,6 +211,7 @@ impl SiteGenerator {
         lang: &str,
         output_dir: &Path,
         all_languages: &[String],
+        cache: &mut BuildCache,
     ) -> SsgResult<(usize, usize, Vec<String>)> {
         let mut sorted_docs: Vec<&SsgDocument> = docs.to_vec();
         sorted_docs.sort_by_key(|d| (d.order, d.title.clone()));
@@ -224,6 +233,16 @@ impl SiteGenerator {
 
         let mut generated_pages = Vec::new();
 
+        // Prune stale cache entries and clean their output files
+        let active_slugs: Vec<&str> = sorted_docs.iter().map(|d| d.slug.as_str()).collect();
+        let stale = cache.prune_stale(&active_slugs);
+        for slug in &stale {
+            let stale_path = write_dir.join(format!("{}.html", slug));
+            if stale_path.exists() {
+                let _ = std::fs::remove_file(&stale_path);
+            }
+        }
+
         let tag_groups: BTreeMap<String, Vec<&SsgDocument>> = if self.config.group_by_tag {
             let mut map: BTreeMap<String, Vec<&SsgDocument>> = BTreeMap::new();
             for doc in &sorted_docs {
@@ -237,6 +256,16 @@ impl SiteGenerator {
         };
 
         for doc in &sorted_docs {
+            let filename = format!("{}.html", doc.slug);
+            let path = write_dir.join(&filename);
+
+            // Incremental: skip unchanged documents
+            if !cache.needs_rebuild(doc, &path) {
+                tracing::debug!("Skipping unchanged: {}", doc.slug);
+                generated_pages.push(doc.slug.clone());
+                continue;
+            }
+
             let html = self.render_document_page(
                 doc,
                 &sorted_docs,
@@ -244,8 +273,6 @@ impl SiteGenerator {
                 lang_prefix.as_deref(),
                 all_languages,
             )?;
-            let filename = format!("{}.html", doc.slug);
-            let path = write_dir.join(&filename);
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| {
                     SsgError::Io(format!("Failed to create dir {:?}: {}", parent, e))
@@ -254,6 +281,7 @@ impl SiteGenerator {
             std::fs::write(&path, html).map_err(|e| {
                 SsgError::Io(format!("Failed to write {}/{}: {}", lang, filename, e))
             })?;
+            cache.record(doc);
             generated_pages.push(doc.slug.clone());
         }
 

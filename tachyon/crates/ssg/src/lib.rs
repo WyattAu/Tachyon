@@ -7,6 +7,7 @@
 //! Designed to compete with Docusaurus as the best SSG for markdown content.
 
 mod build;
+mod build_cache;
 mod error;
 pub mod i18n;
 mod manifest;
