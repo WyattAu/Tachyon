@@ -290,11 +290,19 @@ impl WebSocketClient {
             return;
         }
 
-        // Exponential backoff with jitter: delay = base * 2^attempt + random jitter
-        let delay_ms = std::cmp::min(
+        // Exponential backoff with jitter: delay = base * 2^attempt ± random jitter
+        let base_delay = std::cmp::min(
             inner.config.base_reconnect_delay_ms * (1 << inner.reconnect_attempts),
             inner.config.max_reconnect_delay_ms,
         );
+        // Add ±25% jitter to prevent thundering herd on server restart
+        let jitter = if web_sys::window().is_some() {
+            let frac = js_sys::Math::random();
+            (base_delay as f64 * frac * 0.5) as u32 - (base_delay as f64 * 0.25) as u32
+        } else {
+            0
+        };
+        let delay_ms = base_delay.saturating_add(jitter);
 
         let attempts = inner.reconnect_attempts;
         drop(inner);
