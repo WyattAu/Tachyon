@@ -4,7 +4,8 @@ use dashmap::DashMap;
 use std::sync::Arc;
 use std::time::Instant;
 use yrs::updates::decoder::Decode;
-use yrs::{Doc, GetString, ReadTxn, Text, TextRef, Transact};
+use yrs::updates::encoder::Encode;
+use yrs::{Doc, GetString, ReadTxn, StateVector, Text, TextRef, Transact};
 
 pub(crate) struct CrdtDocument {
     doc: Doc,
@@ -15,6 +16,7 @@ pub struct CrdtDocumentManager {
     documents: DashMap<String, Arc<CrdtDocument>>,
     last_accessed: DashMap<String, Instant>,
     max_documents: usize,
+    pool: Option<sqlx::PgPool>,
 }
 
 impl CrdtDocumentManager {
@@ -27,7 +29,23 @@ impl CrdtDocumentManager {
             documents: DashMap::new(),
             last_accessed: DashMap::new(),
             max_documents,
+            pool: None,
         }
+    }
+
+    /// Create a manager with a database pool for persistence.
+    pub fn with_pool(pool: sqlx::PgPool) -> Self {
+        Self {
+            documents: DashMap::new(),
+            last_accessed: DashMap::new(),
+            max_documents: Self::default_max_documents(),
+            pool: Some(pool),
+        }
+    }
+
+    /// Set or replace the database pool.
+    pub fn set_pool(&mut self, pool: sqlx::PgPool) {
+        self.pool = Some(pool);
     }
 
     fn default_max_documents() -> usize {
@@ -54,6 +72,47 @@ impl CrdtDocumentManager {
         arc
     }
 
+    /// Get or create a document, loading persisted state from the database if available.
+    #[allow(private_interfaces)]
+    pub async fn get_or_load(&self, document_id: &str) -> Arc<CrdtDocument> {
+        self.touch_access(document_id);
+        if let Some(entry) = self.documents.get(document_id) {
+            return entry.value().clone();
+        }
+        if self.documents.len() >= self.max_documents {
+            self.evict_lru();
+        }
+
+        let doc = Doc::new();
+        let text = doc.get_or_insert_text("content");
+
+        // Try to load persisted state from database
+        if let Some(pool) = &self.pool {
+            if let Ok(uuid) = uuid::Uuid::parse_str(document_id) {
+                if let Ok(Some(row)) = tachyon_database::crdt::load_crdt_state(pool, uuid).await {
+                    if !row.state.is_empty() {
+                        // Apply persisted state to the new document
+                        if let Ok(update) = yrs::Update::decode_v1(&row.state) {
+                            let mut txn = doc.transact_mut();
+                            let _ = txn.apply_update(update);
+                            drop(txn);
+                            tracing::info!(
+                                "Loaded CRDT state for document {} (version {})",
+                                document_id,
+                                row.version
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        let arc = Arc::new(CrdtDocument { doc, text });
+        self.documents.insert(document_id.to_string(), arc.clone());
+        self.touch_access(document_id);
+        arc
+    }
+
     fn touch_access(&self, document_id: &str) {
         self.last_accessed
             .insert(document_id.to_string(), Instant::now());
@@ -66,9 +125,128 @@ impl CrdtDocumentManager {
             .min_by_key(|entry| *entry.value())
             .map(|entry| entry.key().clone());
         if let Some(key) = lru_key {
+            // Try to persist before evicting
+            if let Some(pool) = &self.pool {
+                if let Some(doc_arc) = self.documents.get(&key) {
+                    let state = {
+                        let txn = doc_arc.doc.transact();
+                        let sv = txn.state_vector();
+                        txn.encode_state_as_update_v1(&sv)
+                    };
+                    let pool = pool.clone();
+                    let key_clone = key.clone();
+                    // Spawn a fire-and-forget save task
+                    tokio::spawn(async move {
+                        if let Ok(uuid) = uuid::Uuid::parse_str(&key_clone) {
+                            let sv_empty = StateVector::default();
+                            let _ = tachyon_database::crdt::upsert_crdt_state(
+                                &pool,
+                                uuid,
+                                &sv_empty.encode_v1(),
+                                &state,
+                            )
+                            .await;
+                            tracing::debug!(
+                                "Persisted CRDT state for evicted document {}",
+                                key_clone
+                            );
+                        }
+                    });
+                }
+            }
             self.documents.remove(&key);
             self.last_accessed.remove(&key);
         }
+    }
+
+    /// Flush a specific document's state to the database.
+    pub async fn flush_document(&self, document_id: &str) -> Result<(), String> {
+        let pool = self.pool.as_ref().ok_or("No database pool configured")?;
+        let uuid = uuid::Uuid::parse_str(document_id)
+            .map_err(|e| format!("Invalid document ID: {}", e))?;
+
+        let doc_ref = self
+            .documents
+            .get(document_id)
+            .ok_or("Document not in memory")?;
+
+        let (state, state_vector) = {
+            let txn = doc_ref.doc.transact();
+            let sv = txn.state_vector();
+            let state = txn.encode_state_as_update_v1(&sv);
+            let state_vector = sv.encode_v1();
+            (state, state_vector)
+        };
+
+        tachyon_database::crdt::upsert_crdt_state(pool, uuid, &state_vector, &state)
+            .await
+            .map_err(|e| format!("Failed to flush CRDT state: {}", e))?;
+
+        Ok(())
+    }
+
+    /// Flush all in-memory documents to the database.
+    pub async fn flush_all(&self) -> Result<usize, String> {
+        let pool = self.pool.as_ref().ok_or("No database pool configured")?;
+
+        let mut count = 0usize;
+        for entry in self.documents.iter() {
+            let document_id = entry.key();
+            let doc_ref = entry.value();
+
+            if let Ok(uuid) = uuid::Uuid::parse_str(document_id) {
+                let (state, state_vector) = {
+                    let txn = doc_ref.doc.transact();
+                    let sv = txn.state_vector();
+                    let state = txn.encode_state_as_update_v1(&sv);
+                    let state_vector = sv.encode_v1();
+                    (state, state_vector)
+                };
+
+                if tachyon_database::crdt::upsert_crdt_state(pool, uuid, &state_vector, &state)
+                    .await
+                    .is_ok()
+                {
+                    count += 1;
+                }
+            }
+        }
+
+        tracing::info!("Flushed {} CRDT documents to database", count);
+        Ok(count)
+    }
+
+    /// Append a CRDT update to the database log.
+    pub async fn log_update(
+        &self,
+        document_id: &str,
+        update: &[u8],
+        client_id: Option<uuid::Uuid>,
+    ) -> Result<(), String> {
+        let pool = self.pool.as_ref().ok_or("No database pool configured")?;
+        let uuid = uuid::Uuid::parse_str(document_id)
+            .map_err(|e| format!("Invalid document ID: {}", e))?;
+
+        tachyon_database::crdt::append_update(pool, uuid, update, client_id)
+            .await
+            .map_err(|e| format!("Failed to log CRDT update: {}", e))?;
+
+        Ok(())
+    }
+
+    /// Garbage collect old updates for a document.
+    pub async fn gc_document_updates(
+        &self,
+        document_id: &str,
+        keep_count: i64,
+    ) -> Result<u64, String> {
+        let pool = self.pool.as_ref().ok_or("No database pool configured")?;
+        let uuid = uuid::Uuid::parse_str(document_id)
+            .map_err(|e| format!("Invalid document ID: {}", e))?;
+
+        tachyon_database::crdt::gc_updates(pool, uuid, keep_count)
+            .await
+            .map_err(|e| format!("Failed to GC CRDT updates: {}", e))
     }
 
     pub fn document_count(&self) -> usize {

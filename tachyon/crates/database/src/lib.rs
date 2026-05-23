@@ -8,6 +8,7 @@ pub mod attachment;
 pub mod billing;
 pub mod catalog;
 pub mod comment;
+pub mod crdt;
 pub mod document_review;
 pub mod document_version;
 pub mod error;
