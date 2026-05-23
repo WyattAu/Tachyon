@@ -1,23 +1,24 @@
 # Tachyon Version Information
 
 ## Current Status
-- **Version:** 14.0.0
-- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,526+ tests, CI/CD pipeline
+- **Version:** 15.0.0
+- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,533+ tests, CI/CD pipeline
 - **Status:** Active development — all core infrastructure complete, 0 compilation errors, 0 clippy warnings
-- **Last Updated:** 2026-05-21
-- **Codebase:** 278 Rust files, ~95K lines, 25 DB migrations, 29 route modules, 32 DB modules
+- **Last Updated:** 2026-05-23
+- **Codebase:** 278 Rust files, ~96K lines, 25 DB migrations, 29 route modules, 32 DB modules
 
-## What Changed (v14.0.0 — Dependency Hygiene)
+## What Changed (v15.0.0 — SSG & Operations)
 
-### Removed 17 unused dependencies across 7 crates
-- **server**: `tokio-tungstenite` moved from runtime to dev-dependency (only used in integration tests)
-- **frontend**: `wasm-logger`, `send_wrapper` (zero imports)
-- **rbac**: `casbin` (heavy crate — RBAC reimplemented from scratch), `anyhow` (zero imports)
-- **database**: `tachyon-rbac` (zero imports — RBAC storage implemented directly via sqlx)
-- **search**: `anyhow`, `thiserror`, `axum-tungstenite`, `tower`, `tower-http`, `async-trait` (6 unused)
-- **renderer**: `tokio`, `serde_yaml`, `tree-sitter-toml`, `tree-sitter-markdown` (incompatible versions, skipped)
-- **ssg**: `tachyon-core` (zero imports — defines own SsgDocument type)
-- **workspace**: `axum-tungstenite` removed from workspace dependencies
+### SSG Improvements
+- **Mobile sidebar**: Fixed overlay panel with backdrop, close on outside click, smooth slide-in animation
+- **Open Graph**: `og:site_name`, `og:image`, `twitter:image` meta tags (configurable via `SiteConfig.og_image`)
+- **Incremental builds**: `BuildCache` tracks content hashes per slug; skips rendering unchanged documents; prunes stale output files; persisted to `.build-cache.json`
+- **7 new build cache tests**
+
+### Operations Documentation
+- **Rollback procedures**: Automated deployment rollback with health verification, DB migration rollback, config rollback
+- **Alerting rules**: Metric thresholds, Prometheus alert rules, security anomaly detection, anomaly detection patterns
+- **Post-mortem template**: Structured incident review template with timeline, root cause analysis, action items
 
 ## What Changed (v5.0.0 — Three Horizons)
 

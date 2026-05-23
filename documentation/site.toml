@@ -60,3 +60,8 @@ weight = 10
 name = "Security"
 url = "/security/owasp-audit.html"
 weight = 11
+
+[[menu.main]]
+name = "Operations"
+url = "/operations/incident-response.html"
+weight = 12
