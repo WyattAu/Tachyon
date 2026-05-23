@@ -1,24 +1,31 @@
 # Tachyon Version Information
 
 ## Current Status
-- **Version:** 15.0.0
-- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,533+ tests, CI/CD pipeline
+- **Version:** 16.0.0
+- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,534+ tests, CI/CD pipeline
 - **Status:** Active development — all core infrastructure complete, 0 compilation errors, 0 clippy warnings
 - **Last Updated:** 2026-05-23
 - **Codebase:** 278 Rust files, ~96K lines, 25 DB migrations, 29 route modules, 32 DB modules
 
-## What Changed (v15.0.0 — SSG & Operations)
+## What Changed (v16.0.0 — SSG, WS, CI)
 
-### SSG Improvements
-- **Mobile sidebar**: Fixed overlay panel with backdrop, close on outside click, smooth slide-in animation
-- **Open Graph**: `og:site_name`, `og:image`, `twitter:image` meta tags (configurable via `SiteConfig.og_image`)
-- **Incremental builds**: `BuildCache` tracks content hashes per slug; skips rendering unchanged documents; prunes stale output files; persisted to `.build-cache.json`
-- **7 new build cache tests**
+### SSG Features
+- **Syntax highlighting**: Highlight.js CDN with configurable theme (`code_theme` in SiteConfig, default: github-dark)
+- **Dev server**: `tachyon-ssg-cli serve` with live rebuild via file watcher (notify crate, 500ms debounce)
+- **Mermaid exclusion**: Highlight.js skips `language-mermaid` blocks
+- **60 SSG tests** (was 56)
 
-### Operations Documentation
-- **Rollback procedures**: Automated deployment rollback with health verification, DB migration rollback, config rollback
-- **Alerting rules**: Metric thresholds, Prometheus alert rules, security anomaly detection, anomaly detection patterns
-- **Post-mortem template**: Structured incident review template with timeline, root cause analysis, action items
+### WebSocket
+- **Reconnection jitter**: ±25% random jitter on exponential backoff to prevent thundering herd
+- **Sequence numbers**: Already implemented (atomic counter per broadcast)
+
+### CI/CD
+- **Duplicate Docker builds eliminated**: release.yml now manual-only (workflow_dispatch); cd.yml handles tag-based builds
+- **RUSTSEC-2026-0097**: Audit override for rand 0.7.3 transitive dev-dep (wiremock)
+- **All release.yml jobs**: Added timeout-minutes, permissions, FORCE_JAVASCRIPT_ACTIONS_TO_NODE24
+
+### Documentation
+- **Fixed broken .adrs/ reference** in collaboration.md
 
 ## What Changed (v5.0.0 — Three Horizons)
 

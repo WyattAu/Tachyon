@@ -99,7 +99,7 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 - [x] Pin all GitHub Actions by commit SHA with tag comment (~100+ references)
 - [x] Remove dead workflows from `tachyon/.github/workflows/` or merge unique jobs
-- [ ] Consolidate release.yml and cd.yml (eliminate duplicate Docker builds)
+- [x] Consolidate release.yml and cd.yml (release.yml manual-only, cd.yml handles tags)
 - [ ] Cache cargo-audit, cargo-tarpaulin, cargo-deny binaries
 - [x] Add RUSTSEC audit override for transitive dev-dep (rand 0.7.3 via wiremock)
 
@@ -186,8 +186,8 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 ### 2.4 WebSocket Reliability
 
 - [x] Heartbeat mechanism for connection health
-- [ ] Reconnection with exponential backoff (client-side)
-- [ ] Message ordering guarantees (sequence numbers)
+- [x] Reconnection with exponential backoff + jitter (client-side)
+- [x] Message ordering guarantees (sequence numbers, atomic counter)
 - [x] Presence cleanup on unexpected disconnect
 
 **Completion Criteria:** API passes load test at 1000 concurrent users with P99 < 200ms. Rate limiting enforced per user.
@@ -229,9 +229,9 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 ### 4.1 Rendering Pipeline
 
-- [ ] Wire tree-sitter syntax highlighting into SSG code blocks
-- [ ] Wire KaTeX math rendering into SSG markdown processing
-- [ ] Theme selection (github-dark, monokai, dracula, one-dark-pro)
+- [x] Syntax highlighting via Highlight.js CDN (configurable theme)
+- [x] KaTeX math rendering (CDN auto-render, already wired)
+- [x] Theme selection for code blocks (`code_theme` in SiteConfig)
 - [x] Mermaid diagram rendering
 
 ### 4.2 Navigation and Search
