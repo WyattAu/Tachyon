@@ -203,7 +203,7 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 - [x] Persist CRDT document state to PostgreSQL (crdt_documents table, BYTEA state)
 - [x] Document snapshots at configurable intervals (version counter in DB)
-- [ ] Delta encoding for efficient sync (Yrs update compression)
+- [ ] Delta encoding for efficient sync (Yrs update compression) — encode_diff() + msg_type 3 done; needs end-to-end integration test
 - [x] CRDT garbage collection for old versions (gc_updates in DB module)
 
 ### 3.2 Collaboration Features
@@ -216,7 +216,7 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 ### 3.3 Offline Support
 
 - [ ] Offline-first CRDT edits in tachyon-editor
-- [ ] Sync queue priority ordering (tachyon-storage sync_queue)
+- [x] Sync queue priority ordering (tachyon-storage sync_queue)
 - [ ] Conflict resolution UI for manual merge decisions
 - [ ] IndexedDB persistence in WASM frontend
 

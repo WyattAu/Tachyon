@@ -21,6 +21,57 @@ use tracing::{info, warn};
 // Types
 // ---------------------------------------------------------------------------
 
+/// Priority level for sync queue entries.
+/// Higher priority entries are synced first.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SyncPriority {
+    /// Low priority — background sync, bulk operations.
+    Low = 0,
+    /// Normal priority — default for most operations.
+    #[default]
+    Normal = 1,
+    /// High priority — user-initiated actions, saves.
+    High = 2,
+    /// Critical — delete operations, conflict resolution.
+    Critical = 3,
+}
+
+impl std::fmt::Display for SyncPriority {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Low => write!(f, "low"),
+            Self::Normal => write!(f, "normal"),
+            Self::High => write!(f, "high"),
+            Self::Critical => write!(f, "critical"),
+        }
+    }
+}
+
+impl SyncPriority {
+    fn from_str_lossy(s: &str) -> Self {
+        match s {
+            "low" => Self::Low,
+            "normal" => Self::Normal,
+            "high" => Self::High,
+            "critical" => Self::Critical,
+            _ => Self::Normal,
+        }
+    }
+
+    /// Derive a default priority from the operation type.
+    /// Deletes are critical, creates/updates are normal.
+    pub fn from_operation(op: SyncOperation) -> Self {
+        match op {
+            SyncOperation::PermanentDelete => SyncPriority::Critical,
+            SyncOperation::Delete => SyncPriority::High,
+            SyncOperation::Create => SyncPriority::High,
+            SyncOperation::UpdateContent => SyncPriority::Normal,
+            SyncOperation::UpdateMetadata => SyncPriority::Low,
+        }
+    }
+}
+
 /// The kind of document mutation that was recorded while offline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -121,6 +172,8 @@ pub struct SyncQueueEntry {
     /// - UpdateMetadata: full `DocumentMetadata`
     /// - Delete / PermanentDelete: `null`
     pub payload: Option<String>,
+    /// Sync priority — higher priority entries are processed first.
+    pub priority: SyncPriority,
     /// Current processing status.
     pub status: SyncEntryStatus,
     /// How many times we've attempted to sync this entry.
@@ -229,6 +282,7 @@ impl SyncQueue {
                 operation       TEXT NOT NULL,
                 document_id     TEXT NOT NULL,
                 payload         TEXT,
+                priority        TEXT NOT NULL DEFAULT 'normal',
                 status          TEXT NOT NULL DEFAULT 'pending',
                 retry_count     INTEGER NOT NULL DEFAULT 0,
                 created_at      TEXT NOT NULL,
@@ -242,10 +296,10 @@ impl SyncQueue {
             message: format!("Failed to create sync_queue table: {}", e),
         })?;
 
-        // Index for efficient pending-entry queries
+        // Index for efficient priority-ordered pending-entry queries
         sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_sync_queue_status
-             ON sync_queue(status, created_at)",
+             ON sync_queue(status, priority DESC, created_at)",
         )
         .execute(&mut *conn)
         .await
@@ -259,25 +313,40 @@ impl SyncQueue {
 
     // ---- Enqueue ----
 
-    /// Enqueue a mutation for later sync.
+    /// Enqueue a mutation for later sync with automatic priority derived
+    /// from the operation type.
     pub async fn enqueue(
         &self,
         operation: SyncOperation,
         document_id: impl AsRef<str>,
         payload: Option<String>,
     ) -> Result<String, StorageError> {
+        let priority = SyncPriority::from_operation(operation);
+        self.enqueue_with_priority(operation, document_id, payload, priority)
+            .await
+    }
+
+    /// Enqueue a mutation with an explicit priority level.
+    pub async fn enqueue_with_priority(
+        &self,
+        operation: SyncOperation,
+        document_id: impl AsRef<str>,
+        payload: Option<String>,
+        priority: SyncPriority,
+    ) -> Result<String, StorageError> {
         let id = uuid::Uuid::now_v7().to_string();
         let doc_id = document_id.as_ref();
         let now = Utc::now().to_rfc3339();
 
         sqlx::query(
-            "INSERT INTO sync_queue (id, operation, document_id, payload, status, retry_count, created_at)
-             VALUES (?1, ?2, ?3, ?4, 'pending', 0, ?5)",
+            "INSERT INTO sync_queue (id, operation, document_id, payload, priority, status, retry_count, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, 'pending', 0, ?6)",
         )
         .bind(&id)
         .bind(operation.to_string())
         .bind(doc_id)
         .bind(&payload)
+        .bind(priority.to_string())
         .bind(&now)
         .execute(&self.pool)
         .await
@@ -316,14 +385,21 @@ impl SyncQueue {
         })
     }
 
-    /// Fetch pending entries (oldest first), up to `limit`.
+    /// Fetch pending entries, highest priority first, then oldest first.
     pub async fn pending_entries(&self, limit: usize) -> Result<Vec<SyncQueueEntry>, StorageError> {
         let rows = sqlx::query(
-            "SELECT id, operation, document_id, payload, status, retry_count,
+            "SELECT id, operation, document_id, payload, priority, status, retry_count,
                     created_at, last_attempt_at, last_error
              FROM sync_queue
              WHERE status IN ('pending', 'failed')
-             ORDER BY created_at ASC
+             ORDER BY
+                CASE priority
+                    WHEN 'critical' THEN 3
+                    WHEN 'high'     THEN 2
+                    WHEN 'normal'   THEN 1
+                    WHEN 'low'      THEN 0
+                END DESC,
+                created_at ASC
              LIMIT ?1",
         )
         .bind(limit as i64)
@@ -339,10 +415,17 @@ impl SyncQueue {
     /// Fetch all entries (for debugging / inspection).
     pub async fn all_entries(&self) -> Result<Vec<SyncQueueEntry>, StorageError> {
         let rows = sqlx::query(
-            "SELECT id, operation, document_id, payload, status, retry_count,
+            "SELECT id, operation, document_id, payload, priority, status, retry_count,
                     created_at, last_attempt_at, last_error
              FROM sync_queue
-             ORDER BY created_at DESC",
+             ORDER BY
+                CASE priority
+                    WHEN 'critical' THEN 3
+                    WHEN 'high'     THEN 2
+                    WHEN 'normal'   THEN 1
+                    WHEN 'low'      THEN 0
+                END DESC,
+                created_at ASC",
         )
         .fetch_all(&self.pool)
         .await
@@ -466,6 +549,9 @@ impl SyncQueue {
                 .try_get::<Option<&str>, _>("payload")
                 .unwrap_or(None)
                 .map(|s| s.to_string()),
+            priority: SyncPriority::from_str_lossy(
+                row.try_get::<&str, _>("priority").unwrap_or("normal"),
+            ),
             status: SyncEntryStatus::from_str_lossy(row.try_get::<&str, _>("status").unwrap_or("")),
             retry_count: row.try_get::<i32, _>("retry_count").unwrap_or(0) as u32,
             created_at,
@@ -653,7 +739,125 @@ mod tests {
 
         let entries = queue.pending_entries(10).await.unwrap();
         assert_eq!(entries.len(), 5);
-        assert_eq!(entries[0].operation, SyncOperation::Create);
-        assert_eq!(entries[4].operation, SyncOperation::PermanentDelete);
+        // PermanentDelete is critical (3), Delete/Create are high (2)
+        assert_eq!(entries[0].operation, SyncOperation::PermanentDelete);
+    }
+
+    #[tokio::test]
+    async fn test_priority_ordering() {
+        let queue = SyncQueue::in_memory().await.unwrap();
+
+        // Enqueue in mixed order — low first, then critical, then normal, then high
+        queue
+            .enqueue_with_priority(
+                SyncOperation::UpdateMetadata,
+                "doc-low",
+                None,
+                SyncPriority::Low,
+            )
+            .await
+            .unwrap();
+        queue
+            .enqueue_with_priority(
+                SyncOperation::PermanentDelete,
+                "doc-critical",
+                None,
+                SyncPriority::Critical,
+            )
+            .await
+            .unwrap();
+        queue
+            .enqueue_with_priority(
+                SyncOperation::UpdateContent,
+                "doc-normal",
+                None,
+                SyncPriority::Normal,
+            )
+            .await
+            .unwrap();
+        queue
+            .enqueue_with_priority(SyncOperation::Create, "doc-high", None, SyncPriority::High)
+            .await
+            .unwrap();
+
+        let entries = queue.pending_entries(10).await.unwrap();
+        assert_eq!(entries.len(), 4);
+        // Should be ordered: critical, high, normal, low
+        assert_eq!(entries[0].priority, SyncPriority::Critical);
+        assert_eq!(entries[0].document_id, "doc-critical");
+        assert_eq!(entries[1].priority, SyncPriority::High);
+        assert_eq!(entries[1].document_id, "doc-high");
+        assert_eq!(entries[2].priority, SyncPriority::Normal);
+        assert_eq!(entries[2].document_id, "doc-normal");
+        assert_eq!(entries[3].priority, SyncPriority::Low);
+        assert_eq!(entries[3].document_id, "doc-low");
+    }
+
+    #[tokio::test]
+    async fn test_priority_from_operation() {
+        assert_eq!(
+            SyncPriority::from_operation(SyncOperation::PermanentDelete),
+            SyncPriority::Critical
+        );
+        assert_eq!(
+            SyncPriority::from_operation(SyncOperation::Delete),
+            SyncPriority::High
+        );
+        assert_eq!(
+            SyncPriority::from_operation(SyncOperation::Create),
+            SyncPriority::High
+        );
+        assert_eq!(
+            SyncPriority::from_operation(SyncOperation::UpdateContent),
+            SyncPriority::Normal
+        );
+        assert_eq!(
+            SyncPriority::from_operation(SyncOperation::UpdateMetadata),
+            SyncPriority::Low
+        );
+    }
+
+    #[tokio::test]
+    async fn test_same_priority_oldest_first() {
+        let queue = SyncQueue::in_memory().await.unwrap();
+
+        // Enqueue three normal-priority items
+        queue
+            .enqueue_with_priority(
+                SyncOperation::UpdateContent,
+                "doc-first",
+                None,
+                SyncPriority::Normal,
+            )
+            .await
+            .unwrap();
+        // Small delay to ensure different timestamps
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        queue
+            .enqueue_with_priority(
+                SyncOperation::UpdateContent,
+                "doc-second",
+                None,
+                SyncPriority::Normal,
+            )
+            .await
+            .unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        queue
+            .enqueue_with_priority(
+                SyncOperation::UpdateContent,
+                "doc-third",
+                None,
+                SyncPriority::Normal,
+            )
+            .await
+            .unwrap();
+
+        let entries = queue.pending_entries(10).await.unwrap();
+        assert_eq!(entries.len(), 3);
+        // Same priority: oldest first
+        assert_eq!(entries[0].document_id, "doc-first");
+        assert_eq!(entries[1].document_id, "doc-second");
+        assert_eq!(entries[2].document_id, "doc-third");
     }
 }
