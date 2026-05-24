@@ -100,6 +100,7 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 - [x] Pin all GitHub Actions by commit SHA with tag comment (~100+ references)
 - [x] Remove dead workflows from `tachyon/.github/workflows/` or merge unique jobs
 - [x] Consolidate release.yml and cd.yml (release.yml manual-only, cd.yml handles tags)
+- [x] Cache cargo-audit, cargo-tarpaulin binaries (command -v || cargo install pattern)
 - [ ] Cache cargo-audit, cargo-tarpaulin, cargo-deny binaries
 - [x] Add RUSTSEC audit override for transitive dev-dep (rand 0.7.3 via wiremock)
 
@@ -110,7 +111,7 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 - [x] Remove unused dependencies (17 deps across 7 crates)
 - [x] Decouple `tachyon-testing` from `tachyon-desktop-app`
 - [x] Remove empty root `crates/` directory
-- [ ] Unify test count in VERSION.md (automate from `cargo test`)
+- [x] Unify test count in VERSION.md (scripts/count_tests.sh)
 
 **Completion Criteria:** Zero broken documentation links. All actions pinned by SHA. No unused dependencies.
 
@@ -207,7 +208,7 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 ### 3.2 Collaboration Features
 
-- [ ] Cursor and selection sharing (protocol already in crdt_handler.rs)
+- [x] Cursor and selection sharing (protocol already in crdt_handler.rs — msg_type 2)
 - [ ] Presence indicators with user avatars
 - [ ] Document version history with diff view
 - [ ] Comment threads anchored to text ranges (DB tables exist)
@@ -283,11 +284,11 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 ### 5.2 Compliance
 
-- [ ] SBOM automation verified (CycloneDX + SPDX)
-- [ ] Dependency vulnerability scanning (cargo-audit in CI)
-- [ ] Container scanning (Trivy in CI)
-- [ ] Secret scanning (TruffleHog + gitleaks in CI)
-- [ ] License compliance (cargo-deny)
+- [x] SBOM automation verified (SPDX workflow already exists)
+- [x] Dependency vulnerability scanning (cargo-audit in CI with RUSTSEC overrides)
+- [x] Container scanning (Trivy in security workflow)
+- [x] Secret scanning (TruffleHog in security workflow)
+- [x] License compliance (cargo-deny configured in deny.toml)
 
 ### 5.3 Incident Response
 

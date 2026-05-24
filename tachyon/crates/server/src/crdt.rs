@@ -297,6 +297,52 @@ impl CrdtDocumentManager {
         let encoded = txn.encode_state_as_update_v1(&sv);
         Ok(encoded)
     }
+
+    /// Encode only the diff between the client's known state vector and the
+    /// current document state. This is significantly smaller than sending the
+    /// full state for documents with long edit histories.
+    ///
+    /// Returns `None` if the client's state vector already covers the entire
+    /// document (client is already up-to-date).
+    pub fn encode_diff(
+        &self,
+        document_id: &str,
+        client_state_vector: &[u8],
+    ) -> Result<Option<Vec<u8>>, String> {
+        let doc_ref = self.get_or_create(document_id);
+        let client_sv = StateVector::decode_v1(client_state_vector)
+            .map_err(|e| format!("Failed to decode client state vector: {}", e))?;
+        let txn = doc_ref.doc.transact();
+        let server_sv = txn.state_vector();
+
+        // If the client's state vector already covers everything the server has,
+        // there's nothing to send. StateVector PartialOrd: client >= server means
+        // client has all server clocks.
+        if client_sv.partial_cmp(&server_sv) == Some(std::cmp::Ordering::Greater)
+            || client_sv == server_sv
+        {
+            drop(txn);
+            return Ok(None);
+        }
+
+        let diff = txn.encode_diff_v1(&client_sv);
+        drop(txn);
+
+        if diff.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(diff))
+        }
+    }
+
+    /// Get the current state vector for a document, encoded as v1 bytes.
+    /// Used by clients to request a diff-based sync.
+    pub fn get_state_vector(&self, document_id: &str) -> Result<Vec<u8>, String> {
+        let doc_ref = self.get_or_create(document_id);
+        let txn = doc_ref.doc.transact();
+        let sv = txn.state_vector();
+        Ok(sv.encode_v1())
+    }
 }
 
 impl Default for CrdtDocumentManager {
@@ -647,5 +693,138 @@ mod tests {
             assert_eq!(text_val1, text_val2,
                 "CRDT convergence failed after concurrent deletes");
         }
+    }
+
+    #[test]
+    fn test_encode_diff_returns_none_for_up_to_date_client() {
+        let manager = CrdtDocumentManager::new();
+        manager.set_text("doc-diff", "Hello").unwrap();
+
+        // Get the current state vector (client is up-to-date)
+        let sv = manager.get_state_vector("doc-diff").unwrap();
+        let result = manager.encode_diff("doc-diff", &sv).unwrap();
+        assert!(
+            result.is_none(),
+            "Should return None when client is up-to-date"
+        );
+    }
+
+    #[test]
+    fn test_encode_diff_returns_data_for_stale_client() {
+        let manager = CrdtDocumentManager::new();
+        manager.set_text("doc-stale", "Initial").unwrap();
+
+        // Capture state vector before additional edits
+        let sv_before = manager.get_state_vector("doc-stale").unwrap();
+
+        // Make additional edits
+        manager
+            .set_text("doc-stale", "Initial + more content")
+            .unwrap();
+
+        // Diff from old state vector should contain data
+        let diff = manager.encode_diff("doc-stale", &sv_before).unwrap();
+        assert!(diff.is_some(), "Should return Some when client is stale");
+        let diff_data = diff.unwrap();
+        assert!(!diff_data.is_empty(), "Diff data should not be empty");
+    }
+
+    #[test]
+    fn test_encode_diff_applied_converges() {
+        let manager = CrdtDocumentManager::new();
+        manager.set_text("doc-conv", "Version 1").unwrap();
+
+        // Simulate a client snapshot: get full state and state vector
+        let sv_client = manager.get_state_vector("doc-conv").unwrap();
+
+        // Client initializes from empty state using diff from empty SV
+        let empty_sv = yrs::StateVector::default().encode_v1();
+        let initial_state = manager.encode_diff("doc-conv", &empty_sv).unwrap().unwrap();
+
+        let client_doc = Doc::new();
+        {
+            let mut txn = client_doc.transact_mut();
+            let u = yrs::Update::decode_v1(&initial_state).unwrap();
+            txn.apply_update(u).unwrap();
+        }
+        // Verify client has "Version 1"
+        let client_text = client_doc.get_or_insert_text("content");
+        assert_eq!(
+            client_text.get_string(&client_doc.transact()),
+            "Version 1",
+            "Client should have initial state"
+        );
+
+        // Server gets more edits
+        manager
+            .set_text("doc-conv", "Version 2 with more text")
+            .unwrap();
+
+        // Client requests diff from its known state
+        let diff = manager
+            .encode_diff("doc-conv", &sv_client)
+            .unwrap()
+            .unwrap();
+
+        // Apply the diff
+        let update = yrs::Update::decode_v1(&diff).unwrap();
+        {
+            let mut txn = client_doc.transact_mut();
+            txn.apply_update(update).unwrap();
+        }
+
+        // Verify convergence
+        let server_text = manager.get_text("doc-conv").unwrap();
+        let client_result = client_text.get_string(&client_doc.transact());
+        assert_eq!(server_text, client_result,
+            "Client should converge with server after applying diff\n  server: {:?}\n  client: {:?}",
+            server_text, client_result);
+    }
+
+    #[test]
+    fn test_encode_diff_empty_state_vector() {
+        let manager = CrdtDocumentManager::new();
+        manager.set_text("doc-empty-sv", "Some content").unwrap();
+
+        // Empty state vector (new client, never seen the document)
+        let empty_sv = yrs::StateVector::default().encode_v1();
+        let diff = manager.encode_diff("doc-empty-sv", &empty_sv).unwrap();
+        assert!(diff.is_some());
+
+        // The diff from empty SV should produce a valid update that,
+        // when applied to an empty doc, converges with the server
+        let diff_data = diff.unwrap();
+        assert!(
+            !diff_data.is_empty(),
+            "Diff from empty SV should not be empty"
+        );
+
+        let client_doc = Doc::new();
+        {
+            let mut txn = client_doc.transact_mut();
+            let u = yrs::Update::decode_v1(&diff_data).unwrap();
+            txn.apply_update(u).unwrap();
+        }
+        let client_text = client_doc
+            .get_or_insert_text("content")
+            .get_string(&client_doc.transact());
+        let server_text = manager.get_text("doc-empty-sv").unwrap();
+        assert_eq!(
+            server_text, client_text,
+            "Diff from empty SV should converge to server state"
+        );
+    }
+
+    #[test]
+    fn test_get_state_vector_returns_valid_encoding() {
+        let manager = CrdtDocumentManager::new();
+        manager.set_text("doc-sv", "Test").unwrap();
+
+        let sv_bytes = manager.get_state_vector("doc-sv").unwrap();
+        assert!(!sv_bytes.is_empty());
+
+        // Should be decodable as a state vector
+        let sv = yrs::StateVector::decode_v1(&sv_bytes);
+        assert!(sv.is_ok());
     }
 }

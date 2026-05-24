@@ -74,6 +74,13 @@ enum RelayEvent {
         room: String,
         users: Vec<PresenceInfo>,
     },
+    /// Delta sync response sent directly to a specific client.
+    /// Contains only the diff between the client's state vector and the
+    /// current document state.
+    DeltaSync {
+        target_client: String,
+        data: Vec<u8>,
+    },
 }
 
 /// CRDT connection manager — public API compatible with the old handler.
@@ -438,6 +445,18 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                                 }
                             }
                         }
+                        Ok(RelayEvent::DeltaSync {
+                            target_client,
+                            data,
+                        }) => {
+                            if target_client == client_id_for_send {
+                                debug!(client_id = %client_id_for_send, len = data.len(), "Sending delta sync response");
+                                if let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
+                                    warn!(client_id = %client_id_for_send, error = %e, "Failed to send delta sync");
+                                    break;
+                                }
+                            }
+                        }
                         Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                             warn!(client_id = %client_id_for_send, lagged = n, "Broadcast receiver lagged");
                             break;
@@ -530,6 +549,48 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                                 );
                             }
                         }
+                        3 => {
+                            // Delta sync: client sends its state vector,
+                            // server responds with only the diff.
+                            if data_vec.len() > 1 {
+                                match crdt_manager.encode_diff(&room_for_recv, &data_vec[1..]) {
+                                    Ok(Some(diff)) => {
+                                        debug!(
+                                            client_id = %client_id_for_recv,
+                                            room = %room_for_recv,
+                                            diff_len = diff.len(),
+                                            "Delta sync: sending diff"
+                                        );
+                                        let msg = encode_delta_sync_response(&diff);
+                                        let _ = broadcast_tx.send(RelayEvent::DeltaSync {
+                                            target_client: client_id_for_recv.clone(),
+                                            data: msg,
+                                        });
+                                    }
+                                    Ok(None) => {
+                                        debug!(
+                                            client_id = %client_id_for_recv,
+                                            room = %room_for_recv,
+                                            "Delta sync: client already up-to-date"
+                                        );
+                                        // Send empty ack so client knows sync is complete
+                                        let ack = encode_delta_sync_response(&[]);
+                                        let _ = broadcast_tx.send(RelayEvent::DeltaSync {
+                                            target_client: client_id_for_recv.clone(),
+                                            data: ack,
+                                        });
+                                    }
+                                    Err(e) => {
+                                        warn!(
+                                            client_id = %client_id_for_recv,
+                                            room = %room_for_recv,
+                                            error = %e,
+                                            "Delta sync: failed to encode diff"
+                                        );
+                                    }
+                                }
+                            }
+                        }
                         _ => {
                             let seq = manager_for_recv.next_seq();
                             let _ = broadcast_tx.send(RelayEvent::Binary {
@@ -603,6 +664,20 @@ fn encode_sync_step1(update: &[u8]) -> Vec<u8> {
     msg.push(0); // message type: sync
     msg.push(1); // sync step 1
     msg.extend_from_slice(update);
+    msg
+}
+
+/// Encode a delta sync response message.
+///
+/// Format:
+/// - Byte 0: 0 (sync message type, consistent with y-websocket protocol)
+/// - Byte 1: 2 (sync step 2 = diff response)
+/// - Remaining: Yrs-encoded diff payload
+fn encode_delta_sync_response(diff: &[u8]) -> Vec<u8> {
+    let mut msg = Vec::with_capacity(2 + diff.len());
+    msg.push(0); // message type: sync
+    msg.push(2); // sync step 2: diff response
+    msg.extend_from_slice(diff);
     msg
 }
 
@@ -745,5 +820,34 @@ mod tests {
         assert_eq!(msg[0], 0);
         assert_eq!(msg[1], 1);
         assert_eq!(&msg[2..], &[0xAA, 0xBB, 0xCC]);
+    }
+
+    #[test]
+    fn test_encode_delta_sync_response() {
+        let diff = vec![0xDE, 0xAD, 0xBE, 0xEF];
+        let msg = encode_delta_sync_response(&diff);
+        assert_eq!(msg[0], 0, "message type should be sync (0)");
+        assert_eq!(msg[1], 2, "sync step should be 2 (diff response)");
+        assert_eq!(&msg[2..], &[0xDE, 0xAD, 0xBE, 0xEF]);
+    }
+
+    #[test]
+    fn test_encode_delta_sync_response_empty() {
+        let msg = encode_delta_sync_response(&[]);
+        assert_eq!(
+            msg,
+            vec![0, 2],
+            "empty diff should produce 2-byte header only"
+        );
+    }
+
+    #[test]
+    fn test_encode_delta_sync_response_large_payload() {
+        let diff: Vec<u8> = (0..1000).map(|i| (i % 256) as u8).collect();
+        let msg = encode_delta_sync_response(&diff);
+        assert_eq!(msg.len(), 2 + 1000);
+        assert_eq!(msg[0], 0);
+        assert_eq!(msg[1], 2);
+        assert_eq!(&msg[2..], &diff[..]);
     }
 }
