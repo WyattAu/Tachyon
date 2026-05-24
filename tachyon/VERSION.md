@@ -1,13 +1,37 @@
 # Tachyon Version Information
 
 ## Current Status
-- **Version:** 16.0.0
-- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,534+ tests, CI/CD pipeline
+- **Version:** 17.0.0
+- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,174+ unit tests + integration tests, CI/CD pipeline
 - **Status:** Active development — all core infrastructure complete, 0 compilation errors, 0 clippy warnings
 - **Last Updated:** 2026-05-23
 - **Codebase:** 278 Rust files, ~96K lines, 25 DB migrations, 29 route modules, 32 DB modules
 
-## What Changed (v16.0.0 — SSG, WS, CI)
+## What Changed (v17.0.0 — Performance, CRDT, Security)
+
+### CRDT Persistence (Phase 3.1)
+- **Database tables**: `crdt_documents` (state BYTEA, version counter), `crdt_updates` (update log with seq ordering)
+- **Save-on-evict**: LRU eviction now persists to PostgreSQL before dropping (fire-and-forget)
+- **Load-on-connect**: `get_or_load()` restores persisted state when clients connect
+- **Flush API**: `flush_document()` / `flush_all()` for explicit persistence
+- **Garbage collection**: `gc_document_updates()` prunes old update log entries
+
+### SSG
+- **Image optimization pipeline**: `assets` module with `image` crate (PNG/JPEG re-encoding)
+- **Static asset passthrough**: Images, fonts, CSS, JS copied from input to output
+- **Configurable code theme**: `code_theme` field (default: github-dark)
+
+### Performance
+- **N+1 query fixes**: Search index update (UNNEST batch), tag search (single OR-clause), batch operations (concurrent via join_all)
+- **Connection pool tuning**: `TACHYON_DB_MAX/MIN_CONNECTIONS`, `TACHYON_DB_CONNECTION_TIMEOUT` env vars
+- **WebSocket jitter**: ±25% random jitter on reconnect backoff
+
+### CI/CD
+- **Criterion benchmark regression** in CI (main-only)
+- **E2E smoke tests**: Fast critical-path tests (<5min)
+- **Duplicate Docker builds eliminated**: release.yml manual-only
+- **RUSTSEC-2026-0149**: wasmtime 44.0.1 → 44.0.2 (high severity fix)
+- **Binary caching**: cargo-audit and cargo-tarpaulin cached between runs
 
 ### SSG Features
 - **Syntax highlighting**: Highlight.js CDN with configurable theme (`code_theme` in SiteConfig, default: github-dark)
