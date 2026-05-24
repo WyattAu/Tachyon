@@ -463,28 +463,39 @@ impl DocumentRepository {
     ) -> DatabaseResult<Vec<DocumentMetadata>> {
         let limit = limit.unwrap_or(50);
 
-        let mut documents = Vec::new();
-        for tag in tags {
-            let select_sql = format!(
-                "{} WHERE tags::jsonb @> $1::jsonb ORDER BY updated_at DESC LIMIT $2",
-                DOCUMENT_SELECT_SQL
-            );
+        // Build a single query that matches ANY of the tags using OR conditions
+        let tag_conditions: Vec<String> = tags
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format!("tags::jsonb @> ${}::jsonb", i + 1))
+            .collect();
+        let where_clause = tag_conditions.join(" OR ");
 
-            let mut conn = self.pool.acquire().await?;
+        let select_sql = format!(
+            "{} WHERE {} ORDER BY updated_at DESC LIMIT ${}",
+            DOCUMENT_SELECT_SQL,
+            where_clause,
+            tags.len() + 1
+        );
+
+        let mut conn = self.pool.acquire().await?;
+        let mut q = query(&select_sql);
+        for tag in tags {
             let tag_json = serde_json::to_string(&vec![tag])
                 .map_err(|e| DatabaseError::SerializationError(e.to_string()))?;
-
-            let rows = query(&select_sql)
-                .bind(&tag_json)
-                .bind(limit)
-                .fetch_all(&mut *conn)
-                .await
-                .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
-
-            for row in rows {
-                documents.push(row_to_document_metadata(row)?);
-            }
+            q = q.bind(tag_json);
         }
+        q = q.bind(limit);
+
+        let rows = q
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        let documents = rows
+            .into_iter()
+            .map(row_to_document_metadata)
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(documents)
     }
@@ -516,34 +527,27 @@ impl DocumentRepository {
 
         let insert_sql = r#"
             INSERT INTO search_index (document_id, content_type, content, weight)
-            VALUES ($1::uuid, 'title', $2, 2.0)
+            VALUES ($1::uuid, 'title', $2, 2.0),
+                   ($1::uuid, 'content', $3, 1.0)
         "#;
         query(insert_sql)
             .bind(document_id.as_str())
             .bind(title)
-            .execute(&mut *conn)
-            .await
-            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
-
-        let insert_sql = r#"
-            INSERT INTO search_index (document_id, content_type, content, weight)
-            VALUES ($1::uuid, 'content', $2, 1.0)
-        "#;
-        query(insert_sql)
-            .bind(document_id.as_str())
             .bind(content)
             .execute(&mut *conn)
             .await
             .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        for tag in tags {
-            let insert_sql = r#"
+        // Batch-insert all tags in a single query using UNNEST
+        if !tags.is_empty() {
+            let tag_insert = r#"
                 INSERT INTO search_index (document_id, content_type, content, weight)
-                VALUES ($1::uuid, 'tag', $2, 1.5)
+                SELECT $1::uuid, 'tag', unnest($2::text[]), 1.5
             "#;
-            query(insert_sql)
+            let tag_array: Vec<String> = tags.to_vec();
+            query(tag_insert)
                 .bind(document_id.as_str())
-                .bind(tag)
+                .bind(&tag_array)
                 .execute(&mut *conn)
                 .await
                 .map_err(|e| DatabaseError::QueryError(e.to_string()))?;

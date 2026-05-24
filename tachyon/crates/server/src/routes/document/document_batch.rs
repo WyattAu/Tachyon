@@ -1,5 +1,6 @@
 use crate::error::ServerError;
 use axum::{extract::State, http::StatusCode, response::Json};
+use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 
@@ -71,12 +72,13 @@ pub async fn batch_operations(
 
     debug!("Processing batch of {} operations", req.operations.len());
 
-    let mut results = Vec::with_capacity(req.operations.len());
-
-    for op in req.operations {
-        let result = execute_batch_operation(&state, op).await;
-        results.push(result);
-    }
+    // Execute operations concurrently for better throughput
+    let futures: Vec<_> = req
+        .operations
+        .into_iter()
+        .map(|op| execute_batch_operation(&state, op))
+        .collect();
+    let results = join_all(futures).await;
 
     debug!(
         "Batch complete: {} ok, {} errors",
