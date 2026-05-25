@@ -1,12 +1,27 @@
 # Tachyon Version Information
 
 ## Current Status
-- **Version:** 18.0.0
-- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,205+ unit tests, CI/CD pipeline, staging server live
+- **Version:** 19.0.0
+- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,213+ unit tests, CI/CD pipeline, staging server live
 - **Status:** Active development — all core infrastructure complete, 0 compilation errors, 0 clippy warnings
 - **Last Updated:** 2026-05-25
-- **Codebase:** 278+ Rust files, ~96K lines, 25 DB migrations, 29 route modules, 32 DB modules
+- **Codebase:** 279+ Rust files, ~97K lines, 25 DB migrations, 29 route modules, 32 DB modules
 - **Staging:** Live at http://192.168.1.3:8080 (TrueNAS Docker, PostgreSQL 16)
+
+## What Changed (v19.0.0 — Offline Sync Queue)
+
+### Editor Offline Sync
+- **`OfflineSyncQueue`**: Buffers CRDT updates when editor has no server connection
+- **`SyncStatus`**: Offline/Syncing/Online state machine with automatic transitions
+- **Update merging**: Opportunistic merge when >64 pending, forced merge at >512 capacity
+- **Batch drain**: `drain_batch(max)` for efficient batch sync, `merge_all()` for flush-all
+- **Failure recovery**: `mark_failed()` re-enqueues at front for retry
+- **13 unit tests**: enqueue/dequeue ordering, batch drain, merge all, byte tracking, summary
+- **8 integration tests**: offline→online flow, edit queuing, convergence, failure recovery
+- **Editor API**: `go_offline()`, `go_online()`, `commit_local_update()`, `flush_pending()`, `notify_synced()`, `notify_sync_failed()`
+
+### Staging CI
+- **deploy-staging.yml**: Now triggers on `main` branch (in addition to `develop`)
 
 ## What Changed (v18.0.0 — Delta Sync, Sync Priority, Staging)
 

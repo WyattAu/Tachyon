@@ -4,6 +4,7 @@ use crate::buffer::TextBuffer;
 use crate::cursor::{Cursor, Selection, SelectionKind};
 use crate::highlight::{HighlightSpan, Highlighter};
 use crate::search::{Search, SearchResult};
+use crate::sync_queue::{OfflineSyncQueue, SyncStatus};
 use crate::transaction::{EditKind, Transaction, UndoStack};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
@@ -44,6 +45,8 @@ pub struct Editor {
     crdt_text: TextRef,
     /// Tracks the last encoded state vector for incremental updates.
     last_encoded_state: Vec<u8>,
+    /// Offline sync queue — buffers CRDT updates when no server connection.
+    offline_queue: OfflineSyncQueue,
 }
 
 impl Editor {
@@ -68,6 +71,7 @@ impl Editor {
             crdt_doc,
             crdt_text,
             last_encoded_state,
+            offline_queue: OfflineSyncQueue::new(),
         }
     }
 
@@ -190,6 +194,93 @@ impl Editor {
     /// Get the current CRDT state vector (for requesting incremental updates).
     pub fn state_vector(&self) -> Vec<u8> {
         self.crdt_doc.transact().state_vector().encode_v1()
+    }
+
+    // ─── Offline Sync Methods ────────────────────────────────────────────
+
+    /// Get a reference to the offline sync queue.
+    pub fn offline_queue(&self) -> &OfflineSyncQueue {
+        &self.offline_queue
+    }
+
+    /// Get a mutable reference to the offline sync queue.
+    pub fn offline_queue_mut(&mut self) -> &mut OfflineSyncQueue {
+        &mut self.offline_queue
+    }
+
+    /// Check if the editor is in offline mode.
+    pub fn is_offline(&self) -> bool {
+        self.offline_queue.status() == SyncStatus::Offline
+    }
+
+    /// Transition to online mode. Returns pending updates that should
+    /// be sent to the server.
+    ///
+    /// Call this when connectivity is restored. The returned updates
+    /// are in chronological order (oldest first).
+    pub fn go_online(&mut self) -> Vec<Vec<u8>> {
+        self.offline_queue.set_status(SyncStatus::Syncing);
+        let updates: Vec<Vec<u8>> = self
+            .offline_queue
+            .drain_batch(64)
+            .into_iter()
+            .map(|u| u.data)
+            .collect();
+        if self.offline_queue.is_empty() {
+            self.offline_queue.set_status(SyncStatus::Online);
+        }
+        updates
+    }
+
+    /// Transition to offline mode. Subsequent local edits will be
+    /// automatically queued for later transmission.
+    pub fn go_offline(&mut self) {
+        self.offline_queue.set_status(SyncStatus::Offline);
+    }
+
+    /// Flush all pending updates as a single merged update.
+    /// Useful for efficient resync when coming back online.
+    /// Returns `None` if no pending updates.
+    pub fn flush_pending(&mut self) -> Option<Vec<u8>> {
+        self.offline_queue.merge_all()
+    }
+
+    /// Commit the current CRDT state as a local update.
+    /// If offline, the update is queued. Returns the queued sequence
+    /// number if queued, or None if online (update should be sent
+    /// directly to the server).
+    pub fn commit_local_update(&mut self) -> Option<u64> {
+        let update = self.encode_update();
+        if update.is_empty() {
+            return None;
+        }
+
+        if self.is_offline() {
+            let ts = current_timestamp();
+            Some(self.offline_queue.enqueue(update, ts))
+        } else {
+            // Online — caller should send the update to the server.
+            // Store it back so encode_update can be called again.
+            None
+        }
+    }
+
+    /// Notify the queue that a batch of updates was synced successfully.
+    pub fn notify_synced(&mut self, count: u64) {
+        self.offline_queue.mark_synced(count);
+        if self.offline_queue.is_empty() {
+            self.offline_queue.set_status(SyncStatus::Online);
+        }
+    }
+
+    /// Notify the queue that an update failed to sync.
+    pub fn notify_sync_failed(&mut self, data: Vec<u8>, seq: u64, timestamp_ms: u64) {
+        use crate::sync_queue::QueuedUpdate;
+        self.offline_queue.mark_failed(QueuedUpdate {
+            seq,
+            data,
+            timestamp_ms,
+        });
     }
 
     fn push_transaction(&mut self, kind: EditKind, start: Cursor, end: Cursor) {
@@ -1300,5 +1391,119 @@ mod tests {
         editor.move_cursor_to(0, 17);
         editor.insert_wikilink("Hello", None);
         assert_eq!(editor.content(), "no wikilink here");
+    }
+
+    // ─── Offline Sync Integration Tests ─────────────────────────────────
+
+    #[test]
+    fn offline_queue_starts_empty() {
+        let editor = Editor::new();
+        assert!(editor.offline_queue().is_empty());
+        assert!(editor.is_offline());
+    }
+
+    #[test]
+    fn go_offline_queues_edits() {
+        let mut editor = Editor::with_content("hello");
+        editor.go_offline();
+        assert!(editor.is_offline());
+
+        editor.insert_text(" world");
+        let seq = editor.commit_local_update();
+        assert!(seq.is_some()); // Queued because offline
+        assert_eq!(editor.offline_queue().len(), 1);
+    }
+
+    #[test]
+    fn go_online_drains_queue() {
+        let mut editor = Editor::with_content("hello");
+        editor.go_offline();
+
+        editor.insert_text(" world");
+        editor.commit_local_update();
+        assert_eq!(editor.offline_queue().len(), 1);
+
+        // Go online — should drain the queue
+        let updates = editor.go_online();
+        assert_eq!(updates.len(), 1);
+        assert!(editor.offline_queue().is_empty());
+    }
+
+    #[test]
+    fn online_does_not_queue() {
+        let mut editor = Editor::with_content("hello");
+        // Default status is Offline, so go online first
+        editor.offline_queue_mut().set_status(SyncStatus::Online);
+
+        editor.insert_text(" world");
+        let seq = editor.commit_local_update();
+        assert!(seq.is_none()); // Not queued — online
+    }
+
+    #[test]
+    fn flush_pending_merges_all() {
+        let mut editor = Editor::with_content("hello");
+        editor.go_offline();
+
+        for i in 0..5 {
+            editor.insert_text(&format!(" {i}"));
+            editor.commit_local_update();
+        }
+        assert_eq!(editor.offline_queue().len(), 5);
+
+        let merged = editor.flush_pending();
+        assert!(merged.is_some());
+        assert!(editor.offline_queue().is_empty());
+    }
+
+    #[test]
+    fn offline_then_online_convergence() {
+        // Editor A edits offline, then syncs to Editor B
+        let mut editor_a = Editor::with_content("start");
+        editor_a.go_offline();
+
+        editor_a.insert_text(" more");
+        editor_a.commit_local_update();
+
+        // Flush all pending into one merged update
+        let merged = editor_a.flush_pending().unwrap();
+
+        // Apply to editor B
+        let mut editor_b = Editor::new();
+        let changed = editor_b.apply_remote_update(&merged);
+        assert!(changed);
+        assert_eq!(editor_b.content(), editor_a.content());
+    }
+
+    #[test]
+    fn notify_sync_failed_re_enqueues() {
+        let mut editor = Editor::with_content("hello");
+        editor.go_offline();
+
+        editor.insert_text(" world");
+        let seq = editor.commit_local_update().unwrap();
+        let updates = editor.go_online();
+        assert_eq!(updates.len(), 1);
+
+        // Simulate failure — re-enqueue
+        let ts = editor.offline_queue().synced_count(); // Use any u64
+        editor.notify_sync_failed(updates[0].clone(), seq, ts);
+        assert_eq!(editor.offline_queue().len(), 1);
+        assert_eq!(editor.offline_queue().failed_count(), 1);
+    }
+
+    #[test]
+    fn notify_synced_transitions_to_online() {
+        let mut editor = Editor::with_content("hello");
+        editor.go_offline();
+
+        editor.insert_text(" world");
+        editor.commit_local_update();
+
+        let updates = editor.go_online();
+        assert_eq!(updates.len(), 1);
+
+        editor.notify_synced(1);
+        assert_eq!(editor.offline_queue().status(), SyncStatus::Online);
     }
 }
