@@ -123,11 +123,11 @@ This document incorporates findings from the full audit conducted 2026-05-20.
 
 ### 1.1 Staging Infrastructure
 
-- [ ] Provision staging server (recommended: Hetzner/AWS/DigitalOcean)
+- [x] Provision staging server (TrueNAS Docker — 192.168.1.3:8080)
 - [ ] Configure DNS: staging.tachyon.dev
 - [ ] Configure GitHub secrets: STAGING_HOST, STAGING_SSH_KEY, STAGING_SSH_USER
 - [ ] Configure STAGING_POSTGRES_PASSWORD, STAGING_JWT_SECRET
-- [ ] Test CD pipeline: push to main -> build -> deploy -> health check
+- [x] Test CD pipeline: build -> patchelf -> scp -> docker compose up (deploy.sh)
 - [ ] Test rollback workflow
 
 ### 1.2 Production Infrastructure

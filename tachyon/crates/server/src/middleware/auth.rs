@@ -411,7 +411,10 @@ pub async fn auth_middleware(
         || path.starts_with("/api/static/")
         || path == "/health"
         || path == "/metrics"
-        || path == "/";
+        || path == "/"
+        // WebSocket upgrade paths — the WS handlers extract and validate
+        // tokens from query parameters during the upgrade handshake.
+        || path.starts_with("/ws");
 
     if is_public {
         return Ok(next.run(request).await);

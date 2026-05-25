@@ -1,13 +1,31 @@
 # Tachyon Version Information
 
 ## Current Status
-- **Version:** 17.0.0
-- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,174+ unit tests + integration tests, CI/CD pipeline
+- **Version:** 18.0.0
+- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,205+ unit tests, CI/CD pipeline, staging server live
 - **Status:** Active development — all core infrastructure complete, 0 compilation errors, 0 clippy warnings
-- **Last Updated:** 2026-05-23
-- **Codebase:** 278 Rust files, ~96K lines, 25 DB migrations, 29 route modules, 32 DB modules
+- **Last Updated:** 2026-05-25
+- **Codebase:** 278+ Rust files, ~96K lines, 25 DB migrations, 29 route modules, 32 DB modules
+- **Staging:** Live at http://192.168.1.3:8080 (TrueNAS Docker, PostgreSQL 16)
 
-## What Changed (v17.0.0 — Performance, CRDT, Security)
+## What Changed (v18.0.0 — Delta Sync, Sync Priority, Staging)
+
+### CRDT Delta Sync
+- **`encode_diff()`**: Returns `None` if client is up-to-date (StateVector comparison), otherwise minimal diff via `encode_diff_v1`
+- **`encode_delta_sync_response()`**: Formats diff as y-websocket sync step 2 message
+- **`msg_type 3`**: Delta sync request handler — client sends state vector, server responds with diff only
+- **5 CRDT delta tests**: up-to-date None, stale returns data, convergence after applying diff, empty SV, valid SV roundtrip
+
+### Sync Queue Priority
+- **`SyncPriority` enum**: Low(0), Normal(1), High(2), Critical(3) with auto-derivation from operation type
+- **Priority ordering**: `pending_entries()` returns highest priority first, then oldest (SQL ORDER BY)
+- **`enqueue_with_priority()`**: Explicit priority control for custom sync strategies
+- **4 new tests**: priority ordering, operation derivation, same-priority FIFO, multi-operation
+
+### Staging Deployment
+- **Live staging server**: TrueNAS Docker (192.168.1.3:8080), PostgreSQL 16, all APIs functional
+- **Deploy script**: `tachyon/deploy/staging/deploy.sh` — build, patchelf, scp, restart
+- **Verified**: Auth, document CRUD, security headers, rate limiting, health checks all working
 
 ### CRDT Persistence (Phase 3.1)
 - **Database tables**: `crdt_documents` (state BYTEA, version counter), `crdt_updates` (update log with seq ordering)
