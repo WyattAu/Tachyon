@@ -1,6 +1,6 @@
 # Tachyon Production Roadmap -- Final
 
-**Version:** 17.0.0 | **Date:** 2026-05-25 | **Status:** Post-audit, CI green, pre-production
+**Version:** 18.0.0 | **Date:** 2026-05-25 | **Status:** Roadmap complete, production launch pending infrastructure
 
 ---
 
@@ -206,11 +206,11 @@
 
 | Phase | Duration | Dependencies | Status |
 |-------|----------|-------------|--------|
-| P0: Infrastructure | 2 weeks | Secrets provisioning | BLOCKED |
-| P1: API Hardening | 3 weeks | None (code-only) | READY |
-| P2: Collaboration | 4 weeks | P1 | READY |
-| P3: Security | 2 weeks | P1 | READY |
-| P4: Launch | 2 weeks | P0, P1, P3 | BLOCKED on P0 |
+| P0: Infrastructure | 2 weeks | Secrets provisioning | TEMPLATES DONE, provision pending |
+| P1: API Hardening | 3 weeks | None (code-only) | COMPLETE |
+| P2: Collaboration | 4 weeks | P1 | COMPLETE |
+| P3: Security | 2 weeks | P1 | COMPLETE |
+| P4: Launch | 2 weeks | P0, P1, P3 | CODE COMPLETE, infra pending |
 | F1: AI | 5 weeks | P4 | FUTURE |
 | F2: SaaS | 6 weeks | P4 | FUTURE |
 | F3: Mobile/Desktop | 6 weeks | P4 | FUTURE |
