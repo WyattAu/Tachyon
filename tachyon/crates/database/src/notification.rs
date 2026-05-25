@@ -120,6 +120,77 @@ impl NotificationRepository {
         }
     }
 
+    pub async fn list_after_cursor(
+        pool: &DatabasePool,
+        user_id: Uuid,
+        limit: i64,
+        cursor: Option<&str>,
+        include_read: bool,
+    ) -> DatabaseResult<Vec<Notification>> {
+        let mut conn = pool.acquire().await?;
+
+        let read_filter = if include_read {
+            ""
+        } else {
+            " AND read = false"
+        };
+
+        if let Some(cursor_str) = cursor {
+            let parts: Vec<&str> = cursor_str.splitn(2, ':').collect();
+            if parts.len() != 2 {
+                return Err(DatabaseError::ValidationError(
+                    "Invalid cursor format: expected {{id}}:{{direction}}".to_string(),
+                ));
+            }
+            let cursor_id = parts[0];
+
+            let sql = format!(
+                r#"SELECT id, user_id, type, title, body, link, read, metadata, created_at
+                  FROM notifications
+                  WHERE user_id = $1 AND id < $2::uuid{}{}
+                  ORDER BY created_at DESC
+                  LIMIT $3"#,
+                read_filter, ""
+            );
+            let q = sqlx::query_as::<_, Notification>(&sql)
+                .bind(user_id)
+                .bind(cursor_id)
+                .bind(limit);
+            let results = q
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+            Ok(results)
+        } else {
+            let sql = format!(
+                r#"SELECT id, user_id, type, title, body, link, read, metadata, created_at
+                  FROM notifications
+                  WHERE user_id = $1{}
+                  ORDER BY created_at DESC
+                  LIMIT $2"#,
+                read_filter
+            );
+            let q = sqlx::query_as::<_, Notification>(&sql)
+                .bind(user_id)
+                .bind(limit);
+            let results = q
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+            Ok(results)
+        }
+    }
+
+    pub async fn count_for_user(pool: &DatabasePool, user_id: Uuid) -> DatabaseResult<i64> {
+        let mut conn = pool.acquire().await?;
+        let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        Ok(row.0)
+    }
+
     /// Count unread notifications for a user.
     pub async fn get_unread_count(pool: &DatabasePool, user_id: Uuid) -> DatabaseResult<i64> {
         let mut conn = pool.acquire().await?;

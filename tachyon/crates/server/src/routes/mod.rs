@@ -256,15 +256,16 @@ pub use review::{
 
 // Activity exports
 pub use activity::{
-    create_activity, create_activity_router, list_activity, ActivityListResponse, ActivityState,
-    ListActivityQuery,
+    create_activity, create_activity_router, list_activity, list_activity_cursor,
+    ActivityCursorPage, ActivityListResponse, ActivityState, ListActivityQuery,
 };
 
 // Notification exports
 pub use notification::{
-    create_notification_router, list_notifications, mark_all_read, mark_notification_read,
-    unread_count, ListNotificationsQuery, MarkAllReadResponse, MarkReadResponse,
-    NotificationListResponse, NotificationState, UnreadCountResponse,
+    create_notification_router, list_notifications, list_notifications_cursor, mark_all_read,
+    mark_notification_read, unread_count, ListNotificationsQuery, MarkAllReadResponse,
+    MarkReadResponse, NotificationCursorPage, NotificationListResponse, NotificationState,
+    UnreadCountResponse,
 };
 
 // Conflict exports

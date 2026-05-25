@@ -7,6 +7,8 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tachyon_database::{ActivityEvent, ActivityRepository, CreateActivityEvent, DatabasePool};
 
+use crate::pagination::{CursorPage, CursorParams};
+
 #[derive(Clone)]
 pub struct ActivityState {
     pub pool: DatabasePool,
@@ -98,8 +100,87 @@ pub async fn create_activity(
     Ok(Json(created))
 }
 
+#[utoipa::path(
+    get,
+    path = "/activity/cursor",
+    params(CursorParams),
+    responses(
+        (status = 200, description = "Cursor-paginated activity feed", body = ActivityCursorPage),
+        (status = 400, description = "Invalid cursor"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "activity",
+    security(("bearer_auth" = [])),
+)]
+pub async fn list_activity_cursor(
+    State(state): State<ActivityState>,
+    Query(params): Query<CursorParams>,
+) -> Result<Json<CursorPage<ActivityEvent>>, (StatusCode, String)> {
+    let limit = params.limit();
+    let direction = params.direction();
+    let fetch_limit = (limit + 1) as i64;
+    let cursor_str = params.after.as_deref().or(params.before.as_deref());
+
+    let events = ActivityRepository::list_after_cursor(&state.pool, fetch_limit, cursor_str)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let total_count = ActivityRepository::count(&state.pool).await.unwrap_or(0);
+
+    let mut items = events;
+    let has_extra = items.len() > limit;
+    if has_extra {
+        items.truncate(limit);
+    }
+
+    let has_next = if direction == "asc" {
+        has_extra
+    } else {
+        cursor_str.is_some()
+    };
+    let has_prev = if direction == "asc" {
+        cursor_str.is_some()
+    } else {
+        has_extra
+    };
+
+    let first_id = items.first().map(|e| e.id.to_string());
+    let last_id = items.last().map(|e| e.id.to_string());
+
+    let page = CursorPage::new(items, has_next, has_prev)
+        .with_cursors(first_id.as_deref(), last_id.as_deref(), direction)
+        .with_total_count(total_count);
+
+    Ok(Json(page))
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct ActivityCursorPage {
+    pub data: Vec<ActivityEvent>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<CursorPage<ActivityEvent>> for ActivityCursorPage {
+    fn from(page: CursorPage<ActivityEvent>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
+}
+
 pub fn create_activity_router() -> axum::Router<ActivityState> {
-    axum::Router::new().route("/activity", get(list_activity).post(create_activity))
+    axum::Router::new()
+        .route("/activity", get(list_activity).post(create_activity))
+        .route("/activity/cursor", get(list_activity_cursor))
 }
 
 #[cfg(test)]

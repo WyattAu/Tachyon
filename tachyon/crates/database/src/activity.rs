@@ -116,6 +116,59 @@ impl ActivityRepository {
         .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
         Ok(results)
     }
+
+    pub async fn list_after_cursor(
+        pool: &DatabasePool,
+        limit: i64,
+        cursor: Option<&str>,
+    ) -> DatabaseResult<Vec<ActivityEvent>> {
+        let mut conn = pool.acquire().await?;
+
+        if let Some(cursor_str) = cursor {
+            let parts: Vec<&str> = cursor_str.splitn(2, ':').collect();
+            if parts.len() != 2 {
+                return Err(DatabaseError::ValidationError(
+                    "Invalid cursor format: expected {{id}}:{{direction}}".to_string(),
+                ));
+            }
+            let cursor_id = parts[0];
+
+            let results = query_as::<_, ActivityEvent>(
+                r#"SELECT id, actor_id, event_type, target_type, target_id, description, metadata, created_at
+                  FROM activity_events
+                  WHERE id < $1::uuid
+                  ORDER BY created_at DESC
+                  LIMIT $2"#
+            )
+            .bind(cursor_id)
+            .bind(limit)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+            Ok(results)
+        } else {
+            let results = query_as::<_, ActivityEvent>(
+                r#"SELECT id, actor_id, event_type, target_type, target_id, description, metadata, created_at
+                  FROM activity_events
+                  ORDER BY created_at DESC
+                  LIMIT $1"#
+            )
+            .bind(limit)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+            Ok(results)
+        }
+    }
+
+    pub async fn count(pool: &DatabasePool) -> DatabaseResult<i64> {
+        let mut conn = pool.acquire().await?;
+        let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_events")
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        Ok(row.0)
+    }
 }
 
 #[cfg(test)]

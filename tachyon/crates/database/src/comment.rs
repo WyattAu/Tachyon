@@ -357,6 +357,76 @@ impl CommentRepository {
             .await?;
         Ok(count)
     }
+
+    #[instrument(skip(self))]
+    pub async fn list_by_document_after_cursor(
+        &self,
+        document_id: &str,
+        include_resolved: bool,
+        parent_id: Option<&str>,
+        limit: i64,
+        cursor: Option<&str>,
+    ) -> DatabaseResult<Vec<Comment>> {
+        let mut conn = self.pool.acquire().await?;
+
+        let mut conditions = vec!["document_id = $1::uuid".to_string()];
+        let mut bind_idx = 1u32;
+
+        if !include_resolved {
+            bind_idx += 1;
+            conditions.push(format!("status = ${}", bind_idx));
+        }
+
+        if parent_id.is_some() {
+            bind_idx += 1;
+            conditions.push(format!("parent_id = ${}::uuid", bind_idx));
+        }
+
+        let cursor_bind_idx = bind_idx + 1;
+        conditions.push(format!("id < ${}::uuid", cursor_bind_idx));
+
+        let where_clause = format!(" WHERE {}", conditions.join(" AND "));
+
+        let sql = if cursor.is_some() {
+            format!(
+                "{}{} ORDER BY created_at DESC LIMIT ${}",
+                COMMENT_SELECT_SQL,
+                where_clause,
+                cursor_bind_idx + 1
+            )
+        } else {
+            conditions.pop();
+            let where_clause = format!(" WHERE {}", conditions.join(" AND "));
+            format!(
+                "{}{} ORDER BY created_at DESC LIMIT ${}",
+                COMMENT_SELECT_SQL,
+                where_clause,
+                bind_idx + 1
+            )
+        };
+
+        let mut query = sqlx::query_as::<_, Comment>(&sql).bind(document_id);
+
+        if !include_resolved {
+            query = query.bind("open");
+        }
+        if let Some(pid) = parent_id {
+            query = query.bind(pid);
+        }
+        if let Some(cursor_str) = cursor {
+            let parts: Vec<&str> = cursor_str.splitn(2, ':').collect();
+            if parts.len() != 2 {
+                return Err(DatabaseError::ValidationError(
+                    "Invalid cursor format: expected {{id}}:{{direction}}".to_string(),
+                ));
+            }
+            query = query.bind(parts[0]);
+        }
+        query = query.bind(limit);
+
+        let comments = query.fetch_all(&mut *conn).await?;
+        Ok(comments)
+    }
 }
 
 #[cfg(test)]

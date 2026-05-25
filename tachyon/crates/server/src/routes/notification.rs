@@ -7,6 +7,8 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tachyon_database::{DatabasePool, Notification, NotificationRepository};
 
+use crate::pagination::{CursorPage, CursorParams};
+
 #[derive(Clone)]
 pub struct NotificationState {
     pub pool: DatabasePool,
@@ -187,9 +189,95 @@ pub async fn mark_all_read(
     Ok(Json(MarkAllReadResponse { updated }))
 }
 
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct NotificationCursorPage {
+    pub data: Vec<Notification>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<CursorPage<Notification>> for NotificationCursorPage {
+    fn from(page: CursorPage<Notification>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/notifications/cursor",
+    params(CursorParams),
+    responses(
+        (status = 200, description = "Cursor-paginated notifications", body = NotificationCursorPage),
+        (status = 400, description = "Invalid cursor"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "notifications",
+    security(("bearer_auth" = [])),
+)]
+pub async fn list_notifications_cursor(
+    State(state): State<NotificationState>,
+    Query(params): Query<CursorParams>,
+) -> Result<Json<CursorPage<Notification>>, (StatusCode, String)> {
+    let limit = params.limit();
+    let direction = params.direction();
+    let fetch_limit = (limit + 1) as i64;
+    let cursor_str = params.after.as_deref().or(params.before.as_deref());
+
+    let notifications = NotificationRepository::list_after_cursor(
+        &state.pool,
+        uuid::Uuid::nil(),
+        fetch_limit,
+        cursor_str,
+        true,
+    )
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let total_count = NotificationRepository::count_for_user(&state.pool, uuid::Uuid::nil())
+        .await
+        .unwrap_or(0);
+
+    let mut items = notifications;
+    let has_extra = items.len() > limit;
+    if has_extra {
+        items.truncate(limit);
+    }
+
+    let has_next = if direction == "asc" {
+        has_extra
+    } else {
+        cursor_str.is_some()
+    };
+    let has_prev = if direction == "asc" {
+        cursor_str.is_some()
+    } else {
+        has_extra
+    };
+
+    let first_id = items.first().map(|n| n.id.to_string());
+    let last_id = items.last().map(|n| n.id.to_string());
+
+    let page = CursorPage::new(items, has_next, has_prev)
+        .with_cursors(first_id.as_deref(), last_id.as_deref(), direction)
+        .with_total_count(total_count);
+
+    Ok(Json(page))
+}
+
 pub fn create_notification_router() -> axum::Router<NotificationState> {
     axum::Router::new()
         .route("/notifications", get(list_notifications))
+        .route("/notifications/cursor", get(list_notifications_cursor))
         .route("/notifications/unread-count", get(unread_count))
         .route("/notifications/read-all", post(mark_all_read))
         .route("/notifications/{id}/read", post(mark_notification_read))
