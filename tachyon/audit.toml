@@ -3,4 +3,12 @@
 # This only affects dev-dependency (wiremock -> http-types -> rand 0.7.3)
 # Our code does not use a custom logger that calls thread_rng(), so this is not exploitable.
 # wiremock is a dev-only dependency, not included in production builds.
-ignore = ["RUSTSEC-2026-0097"]
+#
+# RUSTSEC-2023-0071: rsa Marvin Attack (medium severity, no fix available)
+# Transitive dep via sqlx-mysql -> rsa. We use PostgreSQL, not MySQL.
+# This code path is never exercised in production.
+#
+# RUSTSEC-2026-0002: lru 0.12.5 IterMut violates Stacked Borrows
+# Transitive dep via tantivy -> lru. Only affects IterMut which is not used
+# in our search code paths. Awaiting upstream fix in tantivy.
+ignore = ["RUSTSEC-2026-0097", "RUSTSEC-2023-0071", "RUSTSEC-2026-0002"]

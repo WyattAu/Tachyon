@@ -45,13 +45,15 @@ jobs:
       
       - name: Run audit
         working-directory: tachyon
-        run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2026-0097
+        run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2026-0097 --ignore RUSTSEC-2026-0002
         # RUSTSEC-2023-0071: rsa Marvin Attack (medium severity)
         # Transitive dep via sqlx-mysql -> rsa. No fixed version available.
         # We use PostgreSQL, not MySQL; this code path is never exercised.
         # RUSTSEC-2026-0097: rand 0.7.3 unsound with custom logger calling thread_rng()
         # Only affects wiremock (dev-dep) -> http-types -> rand 0.7.3.
         # Not exploitable in our codebase, not in production builds.
+        # RUSTSEC-2026-0002: lru 0.12.5 IterMut violates Stacked Borrows
+        # Transitive dep via tantivy. IterMut not used in our search paths.
 
   dependency-review:
     name: Dependency Review
