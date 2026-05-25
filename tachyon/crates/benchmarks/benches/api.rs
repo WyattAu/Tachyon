@@ -28,12 +28,12 @@ fn bench_jwt_encode_decode(c: &mut Criterion) {
             "exp": 9999999999u64,
             "role": "admin"
         });
-        let key = EncodingKey::from_secret("test-secret-key-must-be-at-least-32-chars");
+        let key = EncodingKey::from_secret(b"test-secret-key-must-be-at-least-32-chars");
         b.iter(|| {
             let token = encode(&Header::default(), &claims, &key).unwrap();
             let _ = decode::<serde_json::Value>(
                 &token,
-                &DecodingKey::from_secret("test-secret-key-must-be-at-least-32-chars"),
+                &DecodingKey::from_secret(b"test-secret-key-must-be-at-least-32-chars"),
                 &Validation::new(Algorithm::HS256),
             );
         })

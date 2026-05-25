@@ -461,3 +461,248 @@ async fn test_crdt_manager_direct() {
     // Non-existent document returns empty string
     assert_eq!(manager.get_text("nonexistent").unwrap(), "");
 }
+
+#[tokio::test]
+async fn test_delta_sync_e2e() {
+    if skip_crdt_tests() {
+        println!("Skipping: RUN_CRDT_TESTS not set");
+        return;
+    }
+    let manager = tachyon_server::crdt::CrdtDocumentManager::new();
+    let doc_id = "delta-sync-e2e";
+
+    // Step 1-2: Create a document with initial content
+    manager.set_text(doc_id, "Version 1").unwrap();
+
+    // Step 3: Get the initial state vector (client snapshot point)
+    let old_sv = manager.get_state_vector(doc_id).unwrap();
+    let initial_full_state = manager.get_state(doc_id).unwrap();
+
+    // Step 4: Make additional edits to the document
+    manager
+        .set_text(doc_id, "Version 2 with more content")
+        .unwrap();
+
+    // Step 5: Call encode_diff with the OLD state vector
+    let diff = manager
+        .encode_diff(doc_id, &old_sv)
+        .unwrap()
+        .expect("Diff should be non-empty after additional edits");
+
+    // Step 6: Verify diff is non-empty and smaller than full state
+    assert!(!diff.is_empty(), "Diff data should not be empty");
+    let full_state = manager.get_state(doc_id).unwrap();
+    assert!(
+        diff.len() < full_state.len(),
+        "Diff ({}) should be smaller than full state ({})",
+        diff.len(),
+        full_state.len()
+    );
+
+    // Step 7: Apply the diff to a separate Yrs doc and verify convergence
+    let client_doc = Doc::new();
+    let client_text = client_doc.get_or_insert_text("content");
+
+    // Client first applies initial state (simulating having synced at T1)
+    {
+        let mut txn = client_doc.transact_mut();
+        let update = yrs::Update::decode_v1(&initial_full_state).unwrap();
+        txn.apply_update(update).unwrap();
+    }
+    assert_eq!(
+        client_text.get_string(&client_doc.transact()),
+        "Version 1",
+        "Client should have initial state before diff"
+    );
+
+    // Client applies the incremental diff
+    {
+        let mut txn = client_doc.transact_mut();
+        let update = yrs::Update::decode_v1(&diff).unwrap();
+        txn.apply_update(update).unwrap();
+    }
+
+    let server_text = manager.get_text(doc_id).unwrap();
+    let client_result = client_text.get_string(&client_doc.transact());
+    assert_eq!(
+        server_text, client_result,
+        "Client should converge with server after applying diff"
+    );
+}
+
+#[tokio::test]
+async fn test_crdt_persistence_survives_restart() {
+    if skip_crdt_tests() {
+        println!("Skipping: RUN_CRDT_TESTS not set");
+        return;
+    }
+    if crate::common::skip_without_db() {
+        println!("Skipping: TEST_DATABASE_URL not set");
+        return;
+    }
+
+    let db_pool: tachyon_database::DatabasePool = crate::common::setup::create_test_pool().await;
+    crate::common::setup::setup_database(&db_pool).await;
+
+    let pg_pool = db_pool.inner().clone();
+    let doc_uuid = uuid::Uuid::new_v4();
+    let doc_id = doc_uuid.to_string();
+
+    // Step 1-2: Create a CrdtDocumentManager and apply updates
+    let manager = tachyon_server::crdt::CrdtDocumentManager::with_pool(pg_pool.clone());
+    manager.set_text(&doc_id, "Persistent content").unwrap();
+
+    // Step 3: Flush to database
+    manager.flush_document(&doc_id).await.unwrap();
+    assert_eq!(manager.get_text(&doc_id).unwrap(), "Persistent content");
+
+    // Step 4: Drop the manager (simulates server restart)
+    drop(manager);
+
+    // Step 5: Load the persisted state from the database directly
+    let row = tachyon_database::crdt::load_crdt_state(&pg_pool, doc_uuid)
+        .await
+        .expect("DB query should succeed")
+        .expect("Persisted document should exist in database");
+
+    // Step 6: Verify the persisted state is non-empty
+    assert!(!row.state.is_empty(), "Persisted state should not be empty");
+    assert!(
+        row.version >= 1,
+        "Persisted version should be at least 1, got {}",
+        row.version
+    );
+
+    // Step 7: Decode and apply the persisted state to a fresh Yrs doc
+    let restored_doc = Doc::new();
+    let restored_text = restored_doc.get_or_insert_text("content");
+    {
+        let update = yrs::Update::decode_v1(&row.state).unwrap();
+        let mut txn = restored_doc.transact_mut();
+        txn.apply_update(update).unwrap();
+    }
+    assert_eq!(
+        restored_text.get_string(&restored_doc.transact()),
+        "Persistent content",
+        "Persisted state should decode to the original content"
+    );
+
+    // Step 8: Verify a NEW CrdtDocumentManager can reconstruct the state
+    let manager2 = tachyon_server::crdt::CrdtDocumentManager::with_pool(pg_pool.clone());
+    manager2.apply_update(&doc_id, &row.state).unwrap();
+    assert_eq!(
+        manager2.get_text(&doc_id).unwrap(),
+        "Persistent content",
+        "New manager should reconstruct state from persisted update"
+    );
+
+    // Cleanup
+    let _ = tachyon_database::crdt::delete_crdt_state(&pg_pool, doc_uuid).await;
+}
+
+#[tokio::test]
+async fn test_multi_client_convergence_with_edits() {
+    if skip_crdt_tests() {
+        println!("Skipping: RUN_CRDT_TESTS not set");
+        return;
+    }
+    let (addr, manager) = start_crdt_test_server().await;
+    let room_id = "test-multi-client-converge";
+
+    // Step 2: Simulate two clients connecting to the same room
+    let url1 = format!("ws://{}/ws/crdt/{}", addr, room_id);
+    let (ws1, _) = tokio_tungstenite::connect_async(&url1).await.unwrap();
+    let (mut write1, mut read1) = ws1.split();
+
+    let url2 = format!("ws://{}/ws/crdt/{}", addr, room_id);
+    let (ws2, _) = tokio_tungstenite::connect_async(&url2).await.unwrap();
+    let (mut write2, mut read2) = ws2.split();
+
+    // Drain any initial handshake messages
+    drain_messages(&mut read1, Duration::from_millis(100)).await;
+    drain_messages(&mut read2, Duration::from_millis(100)).await;
+
+    // Step 3: Client A sends an update
+    let doc_a = Doc::new();
+    let text_a = doc_a.get_or_insert_text("content");
+    let update_a = {
+        let mut txn = doc_a.transact_mut();
+        text_a.insert(&mut txn, 0, "Hello from A");
+        let sv = txn.state_vector();
+        txn.encode_state_as_update_v1(&sv)
+    };
+
+    write1
+        .send(Message::Binary(wrap_sync_message(&update_a).into()))
+        .await
+        .unwrap();
+
+    // Step 4: Verify Client B receives the relayed update
+    let relayed = read_next_binary(&mut read2, Duration::from_secs(2)).await;
+    assert!(
+        relayed.is_some(),
+        "Client B should receive Client A's update"
+    );
+    let relayed = relayed.unwrap();
+    assert!(relayed.len() > 1);
+    assert_eq!(relayed[0], 0, "Should be a sync message (type 0)");
+
+    // Apply relayed update to Client B's doc
+    let doc_b = Doc::new();
+    let text_b = doc_b.get_or_insert_text("content");
+    {
+        let update = yrs::Update::decode_v1(&relayed[1..]).unwrap();
+        let mut txn = doc_b.transact_mut();
+        txn.apply_update(update).unwrap();
+    }
+
+    // Step 5: Both clients converge to the same document state
+    let text_a_str = text_a.get_string(&doc_a.transact());
+    let text_b_str = text_b.get_string(&doc_b.transact());
+    assert_eq!(
+        text_a_str, text_b_str,
+        "Both clients should have same content after relay"
+    );
+    assert_eq!(text_a_str, "Hello from A");
+
+    // Client B also sends an update
+    let update_b = {
+        let mut txn = doc_b.transact_mut();
+        text_b.insert(&mut txn, 11, " and B");
+        let sv = txn.state_vector();
+        txn.encode_state_as_update_v1(&sv)
+    };
+
+    write2
+        .send(Message::Binary(wrap_sync_message(&update_b).into()))
+        .await
+        .unwrap();
+
+    // Client A receives Client B's update
+    let relayed_b = read_next_binary(&mut read1, Duration::from_secs(2)).await;
+    assert!(
+        relayed_b.is_some(),
+        "Client A should receive Client B's update"
+    );
+    let relayed_b = relayed_b.unwrap();
+    {
+        let update = yrs::Update::decode_v1(&relayed_b[1..]).unwrap();
+        let mut txn = doc_a.transact_mut();
+        txn.apply_update(update).unwrap();
+    }
+
+    // Verify final convergence across all three: Client A, Client B, Server
+    let final_a = text_a.get_string(&doc_a.transact());
+    let final_b = text_b.get_string(&doc_b.transact());
+    assert_eq!(
+        final_a, final_b,
+        "Both clients should converge to same final state"
+    );
+
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    let server_text = manager.crdt_manager().get_text(room_id).unwrap();
+    assert_eq!(
+        server_text, final_a,
+        "Server should match converged client state"
+    );
+}

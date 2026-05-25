@@ -47,14 +47,14 @@ struct ConnectedClient {
 
 /// Broadcast event for the relay.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 enum RelayEvent {
     /// Binary message from a client to relay to others.
     Binary {
         room: String,
         sender: String,
         data: Vec<u8>,
-        #[allow(dead_code)]
+        /// Sequence number preserved for future ordering/debugging.
+        #[expect(dead_code, reason = "seq used for ordering in future relay protocol")]
         seq: u64,
     },
     /// Selection update from a client to relay to others.
@@ -62,13 +62,14 @@ enum RelayEvent {
         room: String,
         sender: String,
         data: Vec<u8>,
-        #[allow(dead_code)]
+        /// Sequence number preserved for future ordering/debugging.
+        #[expect(dead_code, reason = "seq used for ordering in future relay protocol")]
         seq: u64,
     },
     /// A client joined a room.
     Joined { room: String },
     /// A client left a room.
-    Left { room: String },
+    Left { room: String, user_id: String },
     /// Presence update for a room.
     Presence {
         room: String,
@@ -423,11 +424,13 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             );
                         }
                         Ok(RelayEvent::Left {
-                            room: event_room, ..
+                            room: event_room,
+                            user_id,
                         }) => {
                             debug!(
                                 client_id = %client_id_for_send,
                                 event_room = %event_room,
+                                user_id = %user_id,
                                 "Client left room"
                             );
                         }
@@ -458,8 +461,8 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             }
                         }
                         Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                            warn!(client_id = %client_id_for_send, lagged = n, "Broadcast receiver lagged");
-                            break;
+                            warn!(client_id = %client_id_for_send, lagged = n, "Broadcast receiver lagged, continuing");
+                            continue;
                         }
                         Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                             debug!(client_id = %client_id_for_send, "Broadcast channel closed");
@@ -643,9 +646,10 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // Clean up: remove client and notify.
     if let Some(removed_room) = manager.leave_room(&client_id).await {
         info!(client_id = %client_id, room = %removed_room, "CRDT client disconnected");
-        let _ = manager
-            .broadcast_tx
-            .send(RelayEvent::Left { room: removed_room });
+        let _ = manager.broadcast_tx.send(RelayEvent::Left {
+            room: removed_room,
+            user_id: client_id.clone(),
+        });
     }
 }
 

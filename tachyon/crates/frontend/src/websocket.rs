@@ -143,6 +143,8 @@ struct WebSocketInner {
     heartbeat_handle: Option<i32>,
     /// Handle to the reconnect timeout timer
     reconnect_handle: Option<i32>,
+    /// Timestamp (ms since epoch) of last pong received from server
+    last_pong_received: f64,
 }
 
 pub struct WebSocketClient {
@@ -175,6 +177,7 @@ impl WebSocketClient {
                 binary_queue: Vec::new(),
                 heartbeat_handle: None,
                 reconnect_handle: None,
+                last_pong_received: js_sys::Date::now(),
             })),
         }
     }
@@ -239,9 +242,18 @@ impl WebSocketClient {
         let closure = Closure::<dyn Fn()>::new(move || {
             let inner = self_clone.inner.borrow();
             if inner.state == ConnectionState::Connected {
+                let elapsed = js_sys::Date::now() - inner.last_pong_received;
+                let timeout_ms = (inner.config.heartbeat_interval_ms as f64) * 2.0;
+                if elapsed > timeout_ms {
+                    drop(inner);
+                    web_sys::console::log_1(&"WebSocket pong timeout — forcing disconnect".into());
+                    self_clone.force_disconnect_pong_timeout();
+                    self_clone.stop_heartbeat();
+                    return;
+                }
                 if let Some(ws) = &inner.ws {
-                    // Send a lightweight ping JSON message
-                    let _ = ws.send_with_str(r#"{"type":"ping","timestamp":null}"#);
+                    let ts = js_sys::Date::now() as u64;
+                    let _ = ws.send_with_str(&format!(r#"{{"type":"ping","timestamp":{}}}"#, ts));
                 }
             } else {
                 // Connection lost during heartbeat — stop pinging
@@ -271,6 +283,16 @@ impl WebSocketClient {
             if let Some(window) = web_sys::window() {
                 window.clear_interval_with_handle(h);
             }
+        }
+    }
+
+    fn force_disconnect_pong_timeout(&self) {
+        let ws = {
+            let mut inner = self.inner.borrow_mut();
+            inner.ws.take()
+        };
+        if let Some(ws) = ws {
+            let _ = ws.close_with_code_and_reason(4000, "Pong timeout");
         }
     }
 
@@ -420,6 +442,7 @@ impl WebSocketClient {
                     web_sys::console::log_1(&"WebSocket connected".into());
                     let was_reconnect = is_reconnect;
                     self_clone.inner.borrow_mut().reconnect_attempts = 0;
+                    self_clone.inner.borrow_mut().last_pong_received = js_sys::Date::now();
                     self_clone.set_state(ConnectionState::Connected);
                     self_clone.start_heartbeat();
                     self_clone.flush_message_queue();
@@ -468,14 +491,30 @@ impl WebSocketClient {
                 onerror_closure.forget();
 
                 // === onmessage ===
+                let self_clone = self.clone();
                 let onmessage_closure =
                     Closure::<dyn Fn(MessageEvent)>::new(move |event: MessageEvent| {
                         let data = event.data();
 
                         // Handle text (JSON) messages
                         if let Some(txt) = data.as_string() {
-                            // Ignore pong/ping messages
-                            if txt == r#"{"type":"ping"}"# || txt == r#"{"type":"pong"}"# {
+                            // Handle server heartbeat ping — respond with pong
+                            if txt.starts_with(r#"{"type":"ping"#) {
+                                let ts = js_sys::Date::now() as u64;
+                                if let Some(ws) = &self_clone.inner.borrow().ws {
+                                    let _ = ws.send_with_str(&format!(
+                                        r#"{{"type":"pong","timestamp":{}}}"#,
+                                        ts
+                                    ));
+                                }
+                                self_clone.inner.borrow_mut().last_pong_received =
+                                    js_sys::Date::now();
+                                return;
+                            }
+                            // Handle server pong — record liveness
+                            if txt.starts_with(r#"{"type":"pong"#) {
+                                self_clone.inner.borrow_mut().last_pong_received =
+                                    js_sys::Date::now();
                                 return;
                             }
                             if let Ok(msg) = serde_json::from_str::<WsMessage>(&txt) {

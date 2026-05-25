@@ -805,13 +805,17 @@ pub async fn list_documents_cursor(
     let limit = params.limit();
     let direction = params.direction();
 
-    let fetch_limit = limit + 1;
+    let fetch_limit = (limit + 1) as i64;
+
+    let cursor_str = params.after.as_deref().or(params.before.as_deref());
 
     let all_docs = state
         .repository
-        .list_all(Some(fetch_limit as i64 * 2), Some(0))
+        .list_after_cursor(fetch_limit, cursor_str)
         .await
         .map_err(|e| ServerError::database(format!("Failed to list documents: {}", e)))?;
+
+    let total_count = state.repository.count_documents().await.unwrap_or(0);
 
     let mut items: Vec<DocumentResponse> = all_docs
         .into_iter()
@@ -837,33 +841,6 @@ pub async fn list_documents_cursor(
         })
         .collect();
 
-    let cursor_id = if let Some(ref cursor_str) = params.after {
-        crate::pagination::Cursor(cursor_str.clone())
-            .decode()
-            .map(|(id, _)| id)
-    } else if let Some(ref cursor_str) = params.before {
-        crate::pagination::Cursor(cursor_str.clone())
-            .decode()
-            .map(|(id, _)| id)
-    } else {
-        None
-    };
-
-    if let Some(ref cid) = cursor_id {
-        if direction == "asc" {
-            let pos = items.iter().position(|d| d.id == *cid).unwrap_or(0);
-            items = items.into_iter().skip(pos + 1).collect();
-        } else {
-            let pos = items.iter().position(|d| d.id == *cid).unwrap_or(0);
-            if pos > 0 {
-                items = items.into_iter().take(pos).collect();
-                items.reverse();
-            } else {
-                items.clear();
-            }
-        }
-    }
-
     let has_extra = items.len() > limit;
     if has_extra {
         items.truncate(limit);
@@ -872,10 +849,10 @@ pub async fn list_documents_cursor(
     let has_next = if direction == "asc" {
         has_extra
     } else {
-        cursor_id.is_some()
+        cursor_str.is_some()
     };
     let has_prev = if direction == "asc" {
-        cursor_id.is_some()
+        cursor_str.is_some()
     } else {
         has_extra
     };
@@ -885,7 +862,7 @@ pub async fn list_documents_cursor(
 
     let page = CursorPage::new(items, has_next, has_prev)
         .with_cursors(first_id.as_deref(), last_id.as_deref(), direction)
-        .with_total_count(0);
+        .with_total_count(total_count);
 
     Ok(Json(page))
 }

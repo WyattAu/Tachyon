@@ -642,6 +642,79 @@ impl DocumentRepository {
         Ok(())
     }
 
+    /// List documents using cursor-based pagination.
+    ///
+    /// When `cursor` is `Some`, the cursor string is decoded (format: `{id}:{direction}`)
+    /// and rows are fetched with `WHERE id < $cursor_id ORDER BY id DESC LIMIT $limit`.
+    /// When `cursor` is `None`, rows are fetched with
+    /// `ORDER BY updated_at DESC, id DESC LIMIT $limit`.
+    ///
+    /// # Arguments
+    /// * `limit` - Maximum number of documents to return
+    /// * `cursor` - Optional opaque cursor string (`{id}:{direction}`)
+    ///
+    /// # Returns
+    /// Result containing vector of documents or error
+    pub async fn list_after_cursor(
+        &self,
+        limit: i64,
+        cursor: Option<&str>,
+    ) -> DatabaseResult<Vec<DocumentMetadata>> {
+        let mut conn = self.pool.acquire().await?;
+
+        if let Some(cursor_str) = cursor {
+            let parts: Vec<&str> = cursor_str.splitn(2, ':').collect();
+            if parts.len() != 2 {
+                return Err(DatabaseError::ValidationError(
+                    "Invalid cursor format: expected {{id}}:{{direction}}".to_string(),
+                ));
+            }
+            let cursor_id = parts[0];
+
+            let sql = format!(
+                "{} WHERE id < $1::uuid ORDER BY id DESC LIMIT $2",
+                DOCUMENT_SELECT_SQL
+            );
+            let rows = query(&sql)
+                .bind(cursor_id)
+                .bind(limit)
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+            rows.into_iter().map(row_to_document_metadata).collect()
+        } else {
+            let sql = format!(
+                "{} ORDER BY updated_at DESC, id DESC LIMIT $1",
+                DOCUMENT_SELECT_SQL
+            );
+            let rows = query(&sql)
+                .bind(limit)
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+            rows.into_iter().map(row_to_document_metadata).collect()
+        }
+    }
+
+    /// Count all documents.
+    ///
+    /// # Returns
+    /// Result containing total document count or error
+    pub async fn count_documents(&self) -> DatabaseResult<i64> {
+        let count_sql = "SELECT COUNT(*) as count FROM documents";
+
+        let mut conn = self.pool.acquire().await?;
+        let row = query(count_sql)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        let count: i64 = row.get("count");
+        Ok(count)
+    }
+
     /// Count documents by author
     ///
     /// # Arguments
@@ -988,7 +1061,6 @@ fn count_placeholders(sql: &str) -> usize {
     let mut chars = sql.chars().peekable();
     while let Some(c) = chars.next() {
         if c == '$' {
-            // Skip the digit(s) after $
             while chars.peek().is_some_and(|c| c.is_ascii_digit()) {
                 chars.next();
             }
@@ -996,4 +1068,94 @@ fn count_placeholders(sql: &str) -> usize {
         }
     }
     count
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_count_placeholders_empty() {
+        assert_eq!(count_placeholders("SELECT 1"), 0);
+    }
+
+    #[test]
+    fn test_count_placeholders_single() {
+        assert_eq!(count_placeholders("SELECT * FROM t WHERE id = $1"), 1);
+    }
+
+    #[test]
+    fn test_count_placeholders_multiple() {
+        assert_eq!(
+            count_placeholders("SELECT * FROM t WHERE a = $1 AND b = $2 LIMIT $3"),
+            3
+        );
+    }
+
+    #[test]
+    fn test_apply_pagination_defaults() {
+        let base = "SELECT * FROM t ORDER BY id".to_string();
+        let (sql, limit, offset) = apply_pagination(&base, None, None);
+        assert_eq!(limit, Some(100));
+        assert_eq!(offset, Some(0));
+        assert!(sql.contains("LIMIT $1 OFFSET $2"));
+    }
+
+    #[test]
+    fn test_apply_pagination_with_values() {
+        let base = "SELECT * FROM t WHERE x = $1 ORDER BY id".to_string();
+        let (sql, limit, offset) = apply_pagination(&base, Some(25), Some(50));
+        assert_eq!(limit, Some(25));
+        assert_eq!(offset, Some(50));
+        assert!(sql.contains("LIMIT $2 OFFSET $3"));
+    }
+
+    #[test]
+    fn test_cursor_decode_valid() {
+        let cursor = "abc123:asc";
+        let parts: Vec<&str> = cursor.splitn(2, ':').collect();
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[0], "abc123");
+        assert_eq!(parts[1], "asc");
+    }
+
+    #[test]
+    fn test_cursor_decode_no_colon() {
+        let cursor = "abc123";
+        let parts: Vec<&str> = cursor.splitn(2, ':').collect();
+        assert_eq!(parts.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_list_after_cursor_invalid_format() {
+        let pool = DatabasePool::new("postgres://localhost:5432/test").await;
+        if pool.is_err() {
+            return;
+        }
+        let repo = DocumentRepository::new(pool.unwrap());
+        let result = repo.list_after_cursor(10, Some("invalidcursor")).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_list_after_cursor_no_db() {
+        let pool = DatabasePool::new("postgres://localhost:5432/nonexistent_test").await;
+        if pool.is_err() {
+            return;
+        }
+        let repo = DocumentRepository::new(pool.unwrap());
+        let result = repo.list_after_cursor(10, None).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_count_documents_no_db() {
+        let pool = DatabasePool::new("postgres://localhost:5432/nonexistent_test").await;
+        if pool.is_err() {
+            return;
+        }
+        let repo = DocumentRepository::new(pool.unwrap());
+        let result = repo.count_documents().await;
+        assert!(result.is_err());
+    }
 }

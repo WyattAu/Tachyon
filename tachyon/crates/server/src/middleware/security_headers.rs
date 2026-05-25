@@ -89,6 +89,7 @@ pub struct ContentSecurityPolicy {
     pub media_src: Vec<String>,
     pub object_src: Vec<String>,
     pub frame_src: Vec<String>,
+    pub worker_src: Vec<String>,
     pub frame_ancestors: Vec<String>,
     pub base_uri: Vec<String>,
     pub form_action: Vec<String>,
@@ -115,6 +116,7 @@ impl Default for ContentSecurityPolicy {
             media_src: vec!["'self'".to_string()],
             object_src: vec!["'none'".to_string()],
             frame_src: vec!["'self'".to_string()],
+            worker_src: vec!["'self'".to_string(), "blob:".to_string()],
             frame_ancestors: vec!["'none'".to_string()],
             base_uri: vec!["'self'".to_string()],
             form_action: vec!["'self'".to_string()],
@@ -154,6 +156,9 @@ impl ContentSecurityPolicy {
         }
         if !self.frame_src.is_empty() {
             directives.push(format!("frame-src {}", self.frame_src.join(" ")));
+        }
+        if !self.worker_src.is_empty() {
+            directives.push(format!("worker-src {}", self.worker_src.join(" ")));
         }
         if !self.frame_ancestors.is_empty() {
             directives.push(format!(
@@ -197,6 +202,7 @@ impl ContentSecurityPolicy {
             media_src: vec!["'self'".to_string()],
             object_src: vec!["'none'".to_string()],
             frame_src: vec!["'self'".to_string()],
+            worker_src: vec!["'self'".to_string(), "blob:".to_string()],
             frame_ancestors: vec!["'self'".to_string()],
             base_uri: vec!["'self'".to_string()],
             form_action: vec!["'self'".to_string()],
@@ -225,6 +231,7 @@ impl ContentSecurityPolicy {
             media_src: vec!["'self'".to_string()],
             object_src: vec!["'none'".to_string()],
             frame_src: vec!["'self'".to_string()],
+            worker_src: vec!["'self'".to_string(), "blob:".to_string()],
             frame_ancestors: vec!["'none'".to_string()],
             base_uri: vec!["'self'".to_string()],
             form_action: vec!["'self'".to_string()],
