@@ -186,6 +186,7 @@ pub struct AppState {
     pub email: crate::email::EmailService,
     pub metrics: Arc<crate::middleware::metrics::RequestMetrics>,
     pub api_cache: crate::middleware::api_cache::ApiCache,
+    pub audit_logger: crate::audit::AuditLogger,
 }
 
 /// Initialize application state from a [`ServerConfig`].
@@ -279,8 +280,11 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
 
     let http_client = reqwest::Client::new();
 
+    let audit_logger = crate::audit::AuditLogger::new(10_000);
+
     let document_state =
-        DocumentState::with_guest_config(pool.clone(), config.guest.clone(), http_client.clone());
+        DocumentState::with_guest_config(pool.clone(), config.guest.clone(), http_client.clone())
+            .with_audit_logger(audit_logger.clone());
     let user_state = UserState::with_guest_config(
         pool.clone(),
         config.jwt.secrets.clone(),
@@ -288,23 +292,30 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         config.jwt.issuer.clone(),
         config.jwt.audience.clone(),
         config.guest.clone(),
-    );
-    let session_state = SessionState::new(pool.clone(), config.jwt.expiration_secs);
-    let repository_state = RepositoryState::new(pool.clone());
-    let node_state = NodeState::new(pool.clone());
-    let catalog_state = CatalogState::new(pool.clone());
-    let team_state = TeamState::new(pool.clone());
-    let role_state = RoleState::new(pool.clone());
-    let search_state = SearchState::new(pool.clone());
+    )
+    .with_audit_logger(audit_logger.clone());
+    let session_state = SessionState::new(pool.clone(), config.jwt.expiration_secs)
+        .with_audit_logger(audit_logger.clone());
+    let repository_state =
+        RepositoryState::new(pool.clone()).with_audit_logger(audit_logger.clone());
+    let node_state = NodeState::new(pool.clone()).with_audit_logger(audit_logger.clone());
+    let catalog_state = CatalogState::new(pool.clone()).with_audit_logger(audit_logger.clone());
+    let team_state = TeamState::new(pool.clone()).with_audit_logger(audit_logger.clone());
+    let role_state = RoleState::new(pool.clone()).with_audit_logger(audit_logger.clone());
+    let search_state = SearchState::new(pool.clone()).with_audit_logger(audit_logger.clone());
     let seo_state = crate::routes::seo::SeoState {
         pool: pool.clone(),
         site_config: config.site.clone(),
     };
-    let review_state = ReviewState::new(pool.clone(), http_client.clone());
+    let review_state =
+        ReviewState::new(pool.clone(), http_client.clone()).with_audit_logger(audit_logger.clone());
     let activity_state = ActivityState::new(pool.clone());
     let notification_state = NotificationState::new(pool.clone());
     let tags_state = TagsState { pool: pool.clone() };
-    let webhook_state = WebhookState { pool: pool.clone() };
+    let webhook_state = WebhookState {
+        pool: pool.clone(),
+        audit_logger: audit_logger.clone(),
+    };
     let plugins_dir = std::env::current_dir()
         .unwrap_or_else(|_| std::env::temp_dir())
         .join("plugins");
@@ -312,8 +323,12 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     let plugin_state = PluginState {
         pool: pool.clone(),
         runtime: plugin_runtime,
+        audit_logger: audit_logger.clone(),
     };
-    let space_state = SpaceState { pool: pool.clone() };
+    let space_state = SpaceState {
+        pool: pool.clone(),
+        audit_logger: audit_logger.clone(),
+    };
     let conflict_state = ConflictState { pool: pool.clone() };
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let connection_manager = ConnectionManager::new();
@@ -370,6 +385,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         email,
         metrics: Arc::new(crate::middleware::metrics::RequestMetrics::new()),
         api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(60)),
+        audit_logger,
     })
 }
 
@@ -417,6 +433,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let pool = state.pool;
     let http_client = state.http_client;
     let metrics = state.metrics;
+    let audit_logger = state.audit_logger;
     use crate::routes::activity::create_activity_router;
     use crate::routes::billing::{create_billing_router, BillingState};
     use crate::routes::catalog::create_catalog_router;
@@ -490,9 +507,13 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     } else {
         None
     };
-    let billing_state = BillingState::new(pool.clone(), truelayer_client);
+    let billing_state =
+        BillingState::new(pool.clone(), truelayer_client).with_audit_logger(audit_logger.clone());
     let billing_router = create_billing_router().with_state(billing_state);
-    let organization_state = OrganizationState { pool: pool.clone() };
+    let organization_state = OrganizationState {
+        pool: pool.clone(),
+        audit_logger: audit_logger.clone(),
+    };
     let organization_router = create_organization_router().with_state(organization_state);
     let ssg_state = SsgState::new(pool.clone());
     let ssg_router = create_ssg_router().with_state(ssg_state);
@@ -512,6 +533,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let password_reset_state = PasswordResetState {
         pool: pool.clone(),
         client: http_client.clone(),
+        audit_logger: audit_logger.clone(),
     };
     let password_reset_router = create_password_reset_router().with_state(password_reset_state);
 
@@ -520,6 +542,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let files_state = FilesState {
         root_path: std::path::PathBuf::from(&files_root),
         uploads_dir: std::path::PathBuf::from(&files_root).join("uploads"),
+        audit_logger: audit_logger.clone(),
     };
     let files_router = create_files_router().with_state(files_state);
     let mfa_router = create_mfa_router().with_state(user_state.clone());

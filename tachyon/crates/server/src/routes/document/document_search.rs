@@ -14,6 +14,19 @@ use super::{DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentSta
 /// `GET /api/v1/documents/search`
 ///
 /// Requires a non-empty `search` query parameter. Supports `page` and `page_size` pagination.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/search",
+    params(
+        crate::routes::document::DocumentQuery,
+    ),
+    responses(
+        (status = 200, description = "Search results", body = DocumentSearchResponse),
+        (status = 400, description = "Search query is required"),
+        (status = 500, description = "Search failed"),
+    ),
+    tag = "documents",
+)]
 pub async fn search_documents(
     Query(query): Query<DocumentQuery>,
     State(state): State<DocumentState>,
@@ -81,13 +94,13 @@ pub async fn search_documents(
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct BacklinksResponse {
     pub backlinks: Vec<BacklinkItem>,
     pub count: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct BacklinkItem {
     pub id: String,
     pub title: String,
@@ -101,6 +114,19 @@ pub struct BacklinkItem {
 ///
 /// Queries the `outgoing_links` JSONB column to find all documents referencing
 /// this document by title. Returns up to 50 backlinks ordered by update time.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{document_id}/backlinks",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "Backlinks found", body = BacklinksResponse),
+        (status = 400, description = "Invalid document ID"),
+        (status = 404, description = "Document not found"),
+    ),
+    tag = "documents",
+)]
 pub async fn get_backlinks(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,

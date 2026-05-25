@@ -1,3 +1,4 @@
+use crate::audit::{AuditEvent, AuditEventType, AuditSeverity};
 use crate::error::ServerError;
 use crate::middleware::auth::AuthContext;
 use crate::routes::user::{
@@ -160,6 +161,20 @@ pub async fn verify_mfa(
 
     info!("MFA enabled for user {}", auth.user_id);
 
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::MfaEnabled,
+                AuditSeverity::Medium,
+                "mfa_enable",
+                format!("MFA enabled for user '{}'", auth.user_id),
+            )
+            .with_actor(&auth.user_id, "user")
+            .with_target(&auth.user_id, "user"),
+        )
+        .await;
+
     Ok(Json(serde_json::json!({"enabled": true})))
 }
 
@@ -227,6 +242,20 @@ pub async fn disable_mfa(
     .map_err(db_error)?;
 
     info!("MFA disabled for user {}", auth.user_id);
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::MfaDisabled,
+                AuditSeverity::Medium,
+                "mfa_disable",
+                format!("MFA disabled for user '{}'", auth.user_id),
+            )
+            .with_actor(&auth.user_id, "user")
+            .with_target(&auth.user_id, "user"),
+        )
+        .await;
 
     Ok(Json(serde_json::json!({"enabled": false})))
 }

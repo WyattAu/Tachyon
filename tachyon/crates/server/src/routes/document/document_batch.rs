@@ -72,13 +72,133 @@ pub async fn batch_operations(
 
     debug!("Processing batch of {} operations", req.operations.len());
 
-    // Execute operations concurrently for better throughput
-    let futures: Vec<_> = req
-        .operations
+    let mut archive_ids: Vec<tachyon_core::DocumentId> = Vec::new();
+    let mut publish_ids: Vec<tachyon_core::DocumentId> = Vec::new();
+    let mut non_status_ops: Vec<(usize, BatchOperation)> = Vec::new();
+
+    for (i, op) in req.operations.into_iter().enumerate() {
+        let doc_id = match tachyon_core::DocumentId::parse_str(&op.document_id) {
+            Ok(id) => id,
+            Err(e) => {
+                return Ok((
+                    StatusCode::OK,
+                    Json(BatchResponse {
+                        results: vec![BatchOperationResult {
+                            document_id: op.document_id,
+                            status: BatchOperationStatus::Error,
+                            error: Some(format!("Invalid document ID: {}", e)),
+                        }],
+                    }),
+                ));
+            }
+        };
+
+        match op.action {
+            BatchAction::Archive => {
+                archive_ids.push(doc_id);
+                non_status_ops.push((i, op));
+            }
+            BatchAction::Publish => {
+                publish_ids.push(doc_id);
+                non_status_ops.push((i, op));
+            }
+            BatchAction::Delete | BatchAction::UpdateTags => {
+                non_status_ops.push((i, op));
+            }
+        }
+    }
+
+    let mut results: Vec<(usize, BatchOperationResult)> = Vec::new();
+
+    if !archive_ids.is_empty() {
+        let archive_doc_ids: Vec<String> = archive_ids.iter().map(|id| id.as_str()).collect();
+        match state
+            .repository
+            .batch_update_status(&archive_ids, "archived", None)
+            .await
+        {
+            Ok(count) => {
+                debug!("Batch archived {} documents", count);
+                for doc_id_str in &archive_doc_ids {
+                    results.push((
+                        0,
+                        BatchOperationResult {
+                            document_id: doc_id_str.clone(),
+                            status: BatchOperationStatus::Ok,
+                            error: None,
+                        },
+                    ));
+                }
+            }
+            Err(e) => {
+                warn!("Batch archive failed: {}", e);
+                for doc_id_str in &archive_doc_ids {
+                    results.push((
+                        0,
+                        BatchOperationResult {
+                            document_id: doc_id_str.clone(),
+                            status: BatchOperationStatus::Error,
+                            error: Some(format!("Archive failed: {}", e)),
+                        },
+                    ));
+                }
+            }
+        }
+    }
+
+    if !publish_ids.is_empty() {
+        let publish_doc_ids: Vec<String> = publish_ids.iter().map(|id| id.as_str()).collect();
+        let now = chrono::Utc::now();
+        match state
+            .repository
+            .batch_update_status(&publish_ids, "published", Some(now))
+            .await
+        {
+            Ok(count) => {
+                debug!("Batch published {} documents", count);
+                for doc_id_str in &publish_doc_ids {
+                    results.push((
+                        0,
+                        BatchOperationResult {
+                            document_id: doc_id_str.clone(),
+                            status: BatchOperationStatus::Ok,
+                            error: None,
+                        },
+                    ));
+                }
+            }
+            Err(e) => {
+                warn!("Batch publish failed: {}", e);
+                for doc_id_str in &publish_doc_ids {
+                    results.push((
+                        0,
+                        BatchOperationResult {
+                            document_id: doc_id_str.clone(),
+                            status: BatchOperationStatus::Error,
+                            error: Some(format!("Publish failed: {}", e)),
+                        },
+                    ));
+                }
+            }
+        }
+    }
+
+    let other_futures: Vec<_> = non_status_ops
         .into_iter()
-        .map(|op| execute_batch_operation(&state, op))
+        .filter(|(_, op)| matches!(op.action, BatchAction::Delete | BatchAction::UpdateTags))
+        .map(|(idx, op)| {
+            let state = state.clone();
+            async move {
+                let result = execute_batch_operation(&state, op).await;
+                (idx, result)
+            }
+        })
         .collect();
-    let results = join_all(futures).await;
+    let other_results = join_all(other_futures).await;
+    results.extend(other_results);
+
+    results.sort_by_key(|(idx, _)| *idx);
+    let results: Vec<BatchOperationResult> = results.into_iter().map(|(_, r)| r).collect();
 
     debug!(
         "Batch complete: {} ok, {} errors",
@@ -112,43 +232,7 @@ async fn execute_batch_operation(
         }
     };
 
-    let mut metadata = match state.repository.get_by_id(&doc_id).await {
-        Ok(m) => m,
-        Err(e) => {
-            return BatchOperationResult {
-                document_id: op.document_id,
-                status: BatchOperationStatus::Error,
-                error: Some(format!("not found: {}", e)),
-            };
-        }
-    };
-
     match op.action {
-        BatchAction::Archive => {
-            metadata.status = "archived".to_string();
-            metadata.updated_at = chrono::Utc::now();
-            if let Err(e) = state.repository.update(metadata).await {
-                warn!("Batch archive failed for {}: {}", op.document_id, e);
-                return BatchOperationResult {
-                    document_id: op.document_id,
-                    status: BatchOperationStatus::Error,
-                    error: Some(format!("Archive failed: {}", e)),
-                };
-            }
-        }
-        BatchAction::Publish => {
-            metadata.status = "published".to_string();
-            metadata.updated_at = chrono::Utc::now();
-            metadata.published_at = Some(chrono::Utc::now());
-            if let Err(e) = state.repository.update(metadata).await {
-                warn!("Batch publish failed for {}: {}", op.document_id, e);
-                return BatchOperationResult {
-                    document_id: op.document_id,
-                    status: BatchOperationStatus::Error,
-                    error: Some(format!("Publish failed: {}", e)),
-                };
-            }
-        }
         BatchAction::Delete => {
             if let Err(e) = state.repository.delete(&doc_id).await {
                 warn!("Batch delete failed for {}: {}", op.document_id, e);
@@ -161,6 +245,16 @@ async fn execute_batch_operation(
             state.delete_from_tantivy(&op.document_id).await;
         }
         BatchAction::UpdateTags => {
+            let mut metadata = match state.repository.get_by_id(&doc_id).await {
+                Ok(m) => m,
+                Err(e) => {
+                    return BatchOperationResult {
+                        document_id: op.document_id,
+                        status: BatchOperationStatus::Error,
+                        error: Some(format!("not found: {}", e)),
+                    };
+                }
+            };
             let tags = op.tags.unwrap_or_default();
             metadata.tags = serde_json::to_string(&tags).unwrap_or_else(|_| "[]".to_string());
             metadata.updated_at = chrono::Utc::now();
@@ -173,6 +267,7 @@ async fn execute_batch_operation(
                 };
             }
         }
+        BatchAction::Archive | BatchAction::Publish => {}
     }
 
     BatchOperationResult {

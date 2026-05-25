@@ -1,6 +1,7 @@
 // Role API routes
 // Handles role management operations (admin only)
 
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 use axum::{
     extract::{Path, State},
@@ -15,12 +16,22 @@ use tracing::{debug, info, warn};
 pub struct RoleState {
     pub pool: DatabasePool,
     pub repo: RoleRepository,
+    pub audit_logger: AuditLogger,
 }
 
 impl RoleState {
     pub fn new(pool: DatabasePool) -> Self {
         let repo = RoleRepository::new(pool.clone());
-        Self { pool, repo }
+        Self {
+            pool,
+            repo,
+            audit_logger: AuditLogger::disabled(),
+        }
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
     }
 }
 
@@ -164,6 +175,20 @@ pub async fn create_role(
         ServerError::database(format!("Failed to create role: {}", e))
     })?;
 
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::RoleCreated,
+                AuditSeverity::Medium,
+                "role_create",
+                format!("Role '{}' created", created.name),
+            )
+            .with_target(created.id.to_string(), "role")
+            .with_metadata("name", serde_json::json!(created.name)),
+        )
+        .await;
+
     Ok(Json(RoleResponse::from(created)))
 }
 
@@ -222,6 +247,19 @@ pub async fn update_role(
         .await
         .map_err(|e| ServerError::database(format!("Failed to update role: {}", e)))?;
 
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::RoleUpdated,
+                AuditSeverity::Medium,
+                "role_update",
+                format!("Role '{}' updated", role.name),
+            )
+            .with_target(role.id.to_string(), "role"),
+        )
+        .await;
+
     Ok(Json(RoleResponse::from(updated)))
 }
 
@@ -254,6 +292,19 @@ pub async fn delete_role(
         .delete(role_id)
         .await
         .map_err(|e| ServerError::forbidden(format!("Cannot delete role: {}", e)))?;
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::RoleDeleted,
+                AuditSeverity::High,
+                "role_delete",
+                format!("Role '{}' deleted", role_id),
+            )
+            .with_target(role_id.to_string(), "role"),
+        )
+        .await;
 
     Ok(StatusCode::NO_CONTENT)
 }

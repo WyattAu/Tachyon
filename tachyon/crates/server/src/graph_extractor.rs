@@ -1,6 +1,6 @@
 use regex::Regex;
 use serde_json::json;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use tachyon_core::id::DocumentId;
 use tachyon_database::{
     DatabaseError, DatabasePool, DatabaseResult, DocumentRepository, GraphEdge, GraphNode,
@@ -161,10 +161,7 @@ impl GraphExtractor {
         let doc_slug = format!("doc:{}", document_id);
         match graph_repo.get_node_by_slug(&doc_slug).await {
             Ok(node) => {
-                let edges = graph_repo.get_node_edges(&node.id).await?;
-                for edge in edges {
-                    let _ = graph_repo.deactivate_edge(&edge.id).await;
-                }
+                let _ = graph_repo.deactivate_edges_for_node(&node.id).await;
                 graph_repo.deactivate_node(&node.id).await?;
                 info!("Removed graph entities for document {}", document_id);
             }
@@ -341,22 +338,50 @@ impl GraphExtractor {
     ) -> ExtractionResult {
         let mut result = ExtractionResult::default();
         let mut seen = HashSet::new();
+        let unique_tags: Vec<String> = tags
+            .iter()
+            .filter(|t| seen.insert((*t).clone()))
+            .cloned()
+            .collect();
 
-        for tag in tags {
-            if seen.contains(tag) {
-                continue;
+        if unique_tags.is_empty() {
+            return result;
+        }
+
+        let tag_slugs: Vec<String> = unique_tags
+            .iter()
+            .map(|t| format!("tag:{}", Self::slugify(t)))
+            .collect();
+
+        let existing_nodes = match graph_repo.get_nodes_by_slugs_batch(&tag_slugs).await {
+            Ok(nodes) => nodes,
+            Err(e) => {
+                for _tag in &unique_tags {
+                    result.errors.push(format!("tag batch lookup: {}", e));
+                }
+                return result;
             }
-            seen.insert(tag.clone());
+        };
 
+        let slug_to_node: HashMap<String, GraphNode> = existing_nodes
+            .into_iter()
+            .filter_map(|n| n.slug.clone().map(|s| (s, n)))
+            .collect();
+
+        for tag in &unique_tags {
             let tag_slug = format!("tag:{}", Self::slugify(tag));
-            let tag_node_id = match self
-                .get_or_create_concept_node(graph_repo, tag, &tag_slug)
-                .await
-            {
-                Ok(id) => id,
-                Err(e) => {
-                    result.errors.push(format!("tag '{}': {}", tag, e));
-                    continue;
+            let tag_node_id = if let Some(existing) = slug_to_node.get(&tag_slug) {
+                existing.id.clone()
+            } else {
+                match self
+                    .get_or_create_concept_node(graph_repo, tag, &tag_slug)
+                    .await
+                {
+                    Ok(id) => id,
+                    Err(e) => {
+                        result.errors.push(format!("tag '{}': {}", tag, e));
+                        continue;
+                    }
                 }
             };
 
@@ -455,6 +480,57 @@ impl GraphExtractor {
     ) -> ExtractionResult {
         let mut result = ExtractionResult::default();
 
+        let internal_slugs: Vec<String> = links
+            .iter()
+            .filter_map(|(_, url)| {
+                let is_internal = url.starts_with('/')
+                    || (!url.starts_with("http://")
+                        && !url.starts_with("https://")
+                        && !url.contains('.'));
+                if is_internal {
+                    Some(url.trim_start_matches('/').to_string())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let doc_by_slug: HashMap<String, tachyon_database::DocumentMetadata> =
+            if !internal_slugs.is_empty() {
+                match doc_repo.get_by_slugs_batch(&internal_slugs).await {
+                    Ok(docs) => docs
+                        .into_iter()
+                        .filter_map(|d| d.slug.clone().map(|s| (s, d)))
+                        .collect(),
+                    Err(e) => {
+                        result.errors.push(format!("batch slug lookup: {}", e));
+                        HashMap::new()
+                    }
+                }
+            } else {
+                HashMap::new()
+            };
+
+        let internal_node_slugs: Vec<String> = doc_by_slug
+            .values()
+            .map(|d| format!("doc:{}", d.id))
+            .collect();
+
+        let existing_graph_nodes: HashMap<String, GraphNode> = if !internal_node_slugs.is_empty() {
+            match graph_repo
+                .get_nodes_by_slugs_batch(&internal_node_slugs)
+                .await
+            {
+                Ok(nodes) => nodes
+                    .into_iter()
+                    .filter_map(|n| n.slug.clone().map(|s| (s, n)))
+                    .collect(),
+                Err(_) => HashMap::new(),
+            }
+        } else {
+            HashMap::new()
+        };
+
         for (text, url) in links {
             let is_internal = url.starts_with('/')
                 || (!url.starts_with("http://")
@@ -463,48 +539,32 @@ impl GraphExtractor {
 
             if is_internal {
                 let target_slug = url.trim_start_matches('/');
-                match doc_repo.get_by_slug(target_slug).await {
-                    Ok(Some(target_doc)) => {
-                        let target_graph_slug = format!("doc:{}", target_doc.id);
-                        match graph_repo.get_node_by_slug(&target_graph_slug).await {
-                            Ok(target_node) => {
-                                match self
-                                    .create_edge_if_missing(
-                                        graph_repo,
-                                        doc_node_id,
-                                        &target_node.id,
-                                        "references",
-                                        Some(text),
-                                        1.0,
-                                    )
-                                    .await
-                                {
-                                    Ok(true) => result.edges_created += 1,
-                                    Ok(false) => result.nodes_skipped += 1,
-                                    Err(e) => {
-                                        result.errors.push(format!("link edge '{}': {}", url, e))
-                                    }
-                                }
-                            }
-                            Err(_) => {
-                                result.errors.push(format!(
-                                    "target document node not found for slug: {}",
-                                    target_slug
-                                ));
-                            }
+                if let Some(target_doc) = doc_by_slug.get(target_slug) {
+                    let target_graph_slug = format!("doc:{}", target_doc.id);
+                    if let Some(target_node) = existing_graph_nodes.get(&target_graph_slug) {
+                        match self
+                            .create_edge_if_missing(
+                                graph_repo,
+                                doc_node_id,
+                                &target_node.id,
+                                "references",
+                                Some(text),
+                                1.0,
+                            )
+                            .await
+                        {
+                            Ok(true) => result.edges_created += 1,
+                            Ok(false) => result.nodes_skipped += 1,
+                            Err(e) => result.errors.push(format!("link edge '{}': {}", url, e)),
                         }
+                    } else {
+                        result.errors.push(format!(
+                            "target document node not found for slug: {}",
+                            target_slug
+                        ));
                     }
-                    Ok(None) => {
-                        debug!("Internal link target not found: {}", target_slug);
-                    }
-                    Err(DatabaseError::NotFound { .. }) => {
-                        debug!("Internal link target not found: {}", target_slug);
-                    }
-                    Err(e) => {
-                        result
-                            .errors
-                            .push(format!("link lookup '{}': {}", target_slug, e));
-                    }
+                } else {
+                    debug!("Internal link target not found: {}", target_slug);
                 }
             } else {
                 let ref_slug = format!("ref:{}", Self::slugify(url));

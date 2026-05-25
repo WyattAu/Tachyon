@@ -1,6 +1,7 @@
 // Search API Routes
 // Full-text search with faceted filtering and saved searches
 
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 use axum::{
     extract::{Path, Query, State},
@@ -29,6 +30,7 @@ pub struct SearchState {
     pub search_repo: SearchRepository,
     pub saved_search_repo: SavedSearchRepository,
     pub index_manager: Option<Arc<Mutex<IndexManager>>>,
+    pub audit_logger: AuditLogger,
 }
 
 impl SearchState {
@@ -38,11 +40,17 @@ impl SearchState {
             saved_search_repo: SavedSearchRepository::new(pool.clone()),
             pool,
             index_manager: None,
+            audit_logger: AuditLogger::disabled(),
         }
     }
 
     pub fn with_index_manager(mut self, index_manager: Arc<Mutex<IndexManager>>) -> Self {
         self.index_manager = Some(index_manager);
+        self
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
         self
     }
 
@@ -131,13 +139,13 @@ pub struct FacetItem {
     pub count: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct GlobalSearchResultsResponse {
     pub documents: SearchResultsResponse,
     pub projects: Vec<ProjectSearchResultItem>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ProjectSearchResultItem {
     pub id: String,
     pub name: String,
@@ -412,6 +420,16 @@ pub async fn search(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/search/global",
+    params(SearchQuery),
+    responses(
+        (status = 200, description = "Global search results", body = GlobalSearchResultsResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
 pub async fn global_search(
     Query(query): Query<SearchQuery>,
     State(state): State<SearchState>,
@@ -578,7 +596,21 @@ pub async fn create_saved_search(
     };
 
     match state.saved_search_repo.create(request).await {
-        Ok(saved) => Ok(Json(SavedSearchResponse::from(saved))),
+        Ok(saved) => {
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::SavedSearchCreated,
+                        AuditSeverity::Low,
+                        "saved_search_create",
+                        format!("Saved search '{}' created", saved.name),
+                    )
+                    .with_target(&saved.id, "saved_search"),
+                )
+                .await;
+            Ok(Json(SavedSearchResponse::from(saved)))
+        }
         Err(e) => {
             warn!("Failed to create saved search: {}", e);
             Err(ServerError::internal(format!(
@@ -677,7 +709,21 @@ pub async fn update_saved_search(
     };
 
     match state.saved_search_repo.update(&id, request).await {
-        Ok(saved) => Ok(Json(SavedSearchResponse::from(saved))),
+        Ok(saved) => {
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::SavedSearchUpdated,
+                        AuditSeverity::Low,
+                        "saved_search_update",
+                        format!("Saved search '{}' updated", id),
+                    )
+                    .with_target(&id, "saved_search"),
+                )
+                .await;
+            Ok(Json(SavedSearchResponse::from(saved)))
+        }
         Err(e) => {
             warn!("Failed to update saved search: {}", e);
             Err(ServerError::internal(format!(
@@ -707,7 +753,21 @@ pub async fn delete_saved_search(
     info!("Deleting saved search: {}", id);
 
     match state.saved_search_repo.delete(&id).await {
-        Ok(()) => Ok(StatusCode::NO_CONTENT),
+        Ok(()) => {
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::SavedSearchDeleted,
+                        AuditSeverity::Low,
+                        "saved_search_delete",
+                        format!("Saved search '{}' deleted", id),
+                    )
+                    .with_target(&id, "saved_search"),
+                )
+                .await;
+            Ok(StatusCode::NO_CONTENT)
+        }
         Err(e) => {
             warn!("Failed to delete saved search: {}", e);
             Err(ServerError::not_found("saved_search", &id))
@@ -715,6 +775,15 @@ pub async fn delete_saved_search(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/search/reindex",
+    responses(
+        (status = 200, description = "Reindex complete"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
 pub async fn reindex_tantivy(
     State(state): State<SearchState>,
 ) -> Result<Json<serde_json::Value>, ServerError> {
@@ -783,7 +852,7 @@ pub struct SuggestResponse {
     pub suggestions: Vec<tachyon_search::types::Suggestion>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct SuggestQuery {
     pub q: String,
     #[serde(default = "default_suggest_limit")]
@@ -800,6 +869,16 @@ fn default_suggest_limit() -> usize {
 ///
 /// Query params: `q` (required), `limit` (default 10).
 /// Response: 200 with `SuggestResponse` containing `query` and `suggestions`, or 503 if index unavailable.
+#[utoipa::path(
+    get,
+    path = "/api/v1/search/suggest",
+    params(SuggestQuery),
+    responses(
+        (status = 200, description = "Search suggestions"),
+        (status = 500, description = "Search index unavailable"),
+    ),
+    tag = "search",
+)]
 pub async fn suggest(
     Query(query): Query<SuggestQuery>,
     State(state): State<SearchState>,

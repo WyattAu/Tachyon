@@ -1,3 +1,4 @@
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 use axum::{
     extract::{Path, State},
@@ -11,6 +12,7 @@ use tracing::info;
 #[derive(Clone)]
 pub struct WebhookState {
     pub pool: DatabasePool,
+    pub audit_logger: AuditLogger,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
@@ -82,6 +84,18 @@ pub async fn create_webhook(
     .map_err(|e| ServerError::internal(format!("Failed to create webhook: {}", e)))?;
 
     info!("Webhook created: {} -> {}", webhook.id, webhook.url);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::WebhookCreated,
+                AuditSeverity::Medium,
+                "webhook_create",
+                format!("Webhook '{}' created", webhook.id),
+            )
+            .with_target(webhook.id.to_string(), "webhook"),
+        )
+        .await;
     Ok(Json(WebhookResponse::from(webhook)))
 }
 
@@ -144,6 +158,18 @@ pub async fn delete_webhook(
     }
 
     info!("Webhook deleted: {}", id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::WebhookDeleted,
+                AuditSeverity::Medium,
+                "webhook_delete",
+                format!("Webhook '{}' deleted", id),
+            )
+            .with_target(&id, "webhook"),
+        )
+        .await;
     Ok(StatusCode::NO_CONTENT)
 }
 

@@ -1,3 +1,4 @@
+use crate::audit::AuditLogger;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -5,6 +6,7 @@ use std::path::PathBuf;
 pub struct FilesState {
     pub root_path: PathBuf,
     pub uploads_dir: PathBuf,
+    pub audit_logger: AuditLogger,
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]

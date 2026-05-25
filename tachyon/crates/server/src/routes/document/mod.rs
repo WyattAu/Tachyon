@@ -14,6 +14,7 @@ use tachyon_search::IndexManager;
 use tokio::sync::Mutex;
 use tracing::warn;
 
+use crate::audit::AuditLogger;
 use crate::config::GuestConfig;
 
 #[derive(Clone)]
@@ -24,6 +25,7 @@ pub struct DocumentState {
     pub index_manager: Option<Arc<Mutex<IndexManager>>>,
     pub http_client: reqwest::Client,
     pub api_cache: crate::middleware::api_cache::ApiCache,
+    pub audit_logger: AuditLogger,
 }
 
 impl DocumentState {
@@ -38,6 +40,7 @@ impl DocumentState {
             api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(
                 60,
             )),
+            audit_logger: AuditLogger::disabled(),
         }
     }
 
@@ -56,11 +59,17 @@ impl DocumentState {
             api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(
                 60,
             )),
+            audit_logger: AuditLogger::disabled(),
         }
     }
 
     pub fn with_index_manager(mut self, index_manager: Arc<Mutex<IndexManager>>) -> Self {
         self.index_manager = Some(index_manager);
+        self
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
         self
     }
 

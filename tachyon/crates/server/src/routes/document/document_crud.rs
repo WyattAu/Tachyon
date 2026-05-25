@@ -1,3 +1,4 @@
+use crate::audit::{AuditEvent, AuditEventType, AuditSeverity};
 use crate::error::ServerError;
 use crate::pagination::{CursorPage, CursorParams};
 use crate::validation::{ValidatedDocumentTitle, ValidatedTagList};
@@ -242,6 +243,19 @@ pub async fn create_document(
     response.html = Some(html_content);
 
     info!("Document created successfully: {}", response.id);
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::NodeCreated,
+                AuditSeverity::Low,
+                "document_create",
+                format!("Document '{}' created", response.title),
+            )
+            .with_target(&response.id, "document"),
+        )
+        .await;
 
     state.api_cache.invalidate_documents().await;
 
@@ -499,6 +513,19 @@ pub async fn update_document(
 
     info!("Document updated successfully: {}", document_id);
 
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::NodeUpdated,
+                AuditSeverity::Low,
+                "document_update",
+                format!("Document '{}' updated", document_id),
+            )
+            .with_target(&document_id, "document"),
+        )
+        .await;
+
     state.api_cache.invalidate_documents().await;
 
     {
@@ -549,6 +576,19 @@ pub async fn delete_document(
             state.delete_from_tantivy(&document_id).await;
             state.api_cache.invalidate_documents().await;
             info!("Document deleted: {}", document_id);
+
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::NodeDeleted,
+                        AuditSeverity::Medium,
+                        "document_delete",
+                        format!("Document '{}' deleted", document_id),
+                    )
+                    .with_target(&document_id, "document"),
+                )
+                .await;
 
             {
                 let pool = state.pool.clone();
@@ -718,6 +758,19 @@ pub async fn list_documents(
 /// `GET /api/v1/documents/{document_id}/metadata`
 ///
 /// Response: 200 with a JSON object of metadata fields, or 400/404 on error.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{document_id}/metadata",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "Document metadata key-value pairs"),
+        (status = 400, description = "Invalid document ID"),
+        (status = 404, description = "Document not found"),
+    ),
+    tag = "documents",
+)]
 pub async fn get_document_metadata(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -761,6 +814,16 @@ pub async fn get_document_metadata(
 ///
 /// Request body: raw markdown string.
 /// Response: 200 with `html`, `word_count`, `character_count`, `heading_count`, `code_block_count`, `render_time_ms`.
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/render",
+    request_body = String,
+    responses(
+        (status = 200, description = "Rendered markdown"),
+        (status = 400, description = "Failed to render markdown"),
+    ),
+    tag = "rendering",
+)]
 pub async fn render_markdown(body: String) -> Result<Json<serde_json::Value>, ServerError> {
     debug!("Rendering markdown ({} bytes)", body.len());
 

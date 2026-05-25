@@ -1,3 +1,4 @@
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditOutcome, AuditSeverity};
 use crate::error::ServerError;
 use axum::{
     extract::{Path, State},
@@ -15,6 +16,7 @@ use tracing::{debug, info, warn};
 pub struct SessionState {
     pub pool: DatabasePool,
     pub expiration_secs: u64,
+    pub audit_logger: AuditLogger,
 }
 
 impl SessionState {
@@ -22,7 +24,13 @@ impl SessionState {
         Self {
             pool,
             expiration_secs,
+            audit_logger: AuditLogger::disabled(),
         }
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
     }
 }
 
@@ -96,6 +104,20 @@ pub async fn create_session(
     };
 
     info!("Session created: {}", response.id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::SessionCreated,
+                AuditSeverity::Low,
+                "session_create",
+                format!("Session created for user '{}'", req.user_id),
+            )
+            .with_actor(&req.user_id, "user")
+            .with_target(&response.id, "session")
+            .with_outcome(AuditOutcome::Success),
+        )
+        .await;
     Ok(Json(response))
 }
 
@@ -228,6 +250,18 @@ pub async fn revoke_session(
         .map_err(|e| ServerError::not_found("session", &format!("{}: {}", session_id, e)))?;
 
     info!("Session revoked: {}", session_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::SessionRevoked,
+                AuditSeverity::Medium,
+                "session_revoke",
+                format!("Session '{}' revoked", session_id),
+            )
+            .with_target(&session_id, "session"),
+        )
+        .await;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -307,6 +341,23 @@ pub async fn revoke_all_sessions(
         .map_err(|e| ServerError::internal(format!("Failed to revoke sessions: {}", e)))?;
 
     info!("Revoked {} sessions for user: {}", revoked_count, user_id);
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::SessionRevoked,
+                AuditSeverity::Medium,
+                "sessions_revoke_all",
+                format!(
+                    "All {} sessions revoked for user '{}'",
+                    revoked_count, user_id
+                ),
+            )
+            .with_target(&user_id, "user")
+            .with_metadata("revoked_count", serde_json::json!(revoked_count)),
+        )
+        .await;
 
     Ok(Json(serde_json::json!({
         "success": true,

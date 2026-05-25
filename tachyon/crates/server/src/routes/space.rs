@@ -1,6 +1,7 @@
 // Space Routes
 // REST API endpoints for space management and document hierarchy
 
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 use axum::{
     extract::{Path, Query, State},
@@ -19,6 +20,7 @@ use utoipa::IntoParams;
 #[derive(Clone)]
 pub struct SpaceState {
     pub pool: DatabasePool,
+    pub audit_logger: AuditLogger,
 }
 
 // ============================================================================
@@ -321,6 +323,19 @@ pub async fn create_space(
 
     let doc_count = 0;
     info!("Space created: {} ({})", space.name, space.slug);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::SpaceCreated,
+                AuditSeverity::Low,
+                "space_create",
+                format!("Space '{}' created", space.name),
+            )
+            .with_target(&space.id, "space")
+            .with_metadata("name", serde_json::json!(space.name)),
+        )
+        .await;
     Ok(Json(SpaceResponse::from_space(space, doc_count)))
 }
 
@@ -368,6 +383,18 @@ pub async fn update_space(
 
     let doc_count = repo.count_documents(&space_id).await.unwrap_or(0);
     info!("Space updated: {}", space_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::SpaceUpdated,
+                AuditSeverity::Low,
+                "space_update",
+                format!("Space '{}' updated", space_id),
+            )
+            .with_target(&space_id, "space"),
+        )
+        .await;
     Ok(Json(SpaceResponse::from_space(space, doc_count)))
 }
 
@@ -487,6 +514,21 @@ pub async fn move_document(
         "Document {} moved to space {:?}",
         document_id, body.space_id
     );
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::DocumentMoved,
+                AuditSeverity::Low,
+                "document_move",
+                format!(
+                    "Document '{}' moved to space {:?}",
+                    document_id, body.space_id
+                ),
+            )
+            .with_target(&document_id, "document"),
+        )
+        .await;
     Ok(StatusCode::NO_CONTENT)
 }
 

@@ -9,6 +9,7 @@ use subtle::ConstantTimeEq;
 use tachyon_database::error::DatabaseError;
 use tracing::{info, warn};
 
+use crate::audit::{AuditEvent, AuditEventType, AuditSeverity};
 use crate::truelayer::TrueLayerError;
 
 use super::types::{
@@ -319,6 +320,22 @@ pub async fn create_subscription(
         features: plan_features(&sub.plan),
     };
 
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::SubscriptionCreated,
+                AuditSeverity::Medium,
+                "subscription_create",
+                format!(
+                    "Subscription created for org '{}' plan '{}'",
+                    req.organization_id, sub.plan
+                ),
+            )
+            .with_target(&sub.id, "subscription"),
+        )
+        .await;
+
     Ok(Json(SubscriptionResponse {
         subscription: sub,
         plan_details,
@@ -537,7 +554,9 @@ pub async fn change_plan(
         now,
     );
 
-    match transition {
+    let audit_new_plan = req.new_plan.clone();
+    let audit_org_id = req.organization_id.clone();
+    let result = match transition {
         TransitionType::Upgrade => {
             let prorated_cents = (proration.prorated_amount * 100.0).round() as i64;
 
@@ -652,7 +671,23 @@ pub async fn change_plan(
                 next_billing_date: Some(sub.current_period_end.to_rfc3339()),
             }))
         }
-    }
+    };
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::PlanChanged,
+                AuditSeverity::Medium,
+                "plan_change",
+                format!(
+                    "Plan changed to '{}' for org '{}'",
+                    audit_new_plan, audit_org_id
+                ),
+            )
+            .with_metadata("new_plan", serde_json::json!(audit_new_plan)),
+        )
+        .await;
+    result
 }
 
 /// POST /api/v1/billing/subscriptions/{org_id}/cancel — Cancel subscription
@@ -714,6 +749,19 @@ pub async fn cancel_subscription(
                 }),
             )
         })?;
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::SubscriptionCancelled,
+                AuditSeverity::High,
+                "subscription_cancel",
+                format!("Subscription cancelled for org '{}'", org_id),
+            )
+            .with_target(&updated.id, "subscription"),
+        )
+        .await;
 
     Ok(Json(serde_json::json!({
         "success": true,

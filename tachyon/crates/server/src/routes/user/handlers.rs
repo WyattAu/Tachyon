@@ -6,6 +6,7 @@ use super::types::{
     UserErrorResponse, UserListResponse, UserQuery, UserResponse, UserState,
     REFRESH_TOKEN_EXPIRATION_SECS,
 };
+use crate::audit::{AuditEvent, AuditEventType, AuditSeverity};
 use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
@@ -26,6 +27,17 @@ use tracing::{debug, info, instrument, warn};
 /// Request body: JSON with `username` (3-50 chars), `display_name` (1-100 chars), `password` (8+ chars), optional `email`.
 /// Rate limit: 3 requests per minute per IP.
 /// Response: 200 with `AuthenticateResponse` (includes `access_token`, `refresh_token`, `user`), or 400/409/500 on error.
+#[utoipa::path(
+    post,
+    path = "/auth/register",
+    request_body = RegisterRequest,
+    responses(
+        (status = 200, description = "User registered", body = AuthenticateResponse),
+        (status = 400, description = "Validation error"),
+        (status = 409, description = "Username or email already exists"),
+    ),
+    tag = "auth",
+)]
 #[instrument(skip(state), fields(username = %req.username))]
 pub async fn register(
     State(state): State<UserState>,
@@ -98,6 +110,19 @@ pub async fn register(
     match repo.create(&user).await {
         Ok(created) => {
             info!("User registered: {} ({})", created.username, created.id);
+
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::UserRegistered,
+                        AuditSeverity::Medium,
+                        "user_register",
+                        format!("User '{}' registered", created.username),
+                    )
+                    .with_target(created.id.to_string(), "user"),
+                )
+                .await;
 
             let token = match state.generate_jwt(&created.id.to_string(), created.permissions.role)
             {
@@ -233,7 +258,21 @@ pub async fn create_user(
 
     let repo = state.user_repo();
     match repo.create(&user).await {
-        Ok(created) => Ok(Json(UserResponse::from(created))),
+        Ok(created) => {
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::UserRegistered,
+                        AuditSeverity::Medium,
+                        "user_create",
+                        format!("Admin created user '{}'", created.username),
+                    )
+                    .with_target(created.id.to_string(), "user"),
+                )
+                .await;
+            Ok(Json(UserResponse::from(created)))
+        }
         Err(e) => {
             let msg = e.to_string();
             if msg.contains("already exists") || msg.contains("duplicate") || msg.contains("unique")
@@ -346,7 +385,21 @@ pub async fn update_user(
         )
         .await
     {
-        Ok(user) => Ok(Json(UserResponse::from(user))),
+        Ok(user) => {
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::TeamMemberUpdated,
+                        AuditSeverity::Low,
+                        "user_update",
+                        format!("User '{}' updated", user_id),
+                    )
+                    .with_target(&user_id, "user"),
+                )
+                .await;
+            Ok(Json(UserResponse::from(user)))
+        }
         Err(_) => Err((
             StatusCode::NOT_FOUND,
             Json(UserErrorResponse {
@@ -358,6 +411,19 @@ pub async fn update_user(
 }
 
 /// Delete a user (soft-delete: sets is_active = false).
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/{user_id}",
+    params(
+        ("user_id" = String, Path, description = "User ID"),
+    ),
+    responses(
+        (status = 204, description = "User deactivated"),
+        (status = 400, description = "Invalid user ID"),
+        (status = 404, description = "User not found"),
+    ),
+    tag = "users",
+)]
 pub async fn delete_user(
     Path(user_id): Path<String>,
     State(state): State<UserState>,
@@ -374,7 +440,21 @@ pub async fn delete_user(
 
     let repo = state.user_repo();
     match repo.deactivate(&id).await {
-        Ok(()) => Ok(StatusCode::NO_CONTENT),
+        Ok(()) => {
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::TeamMemberRemoved,
+                        AuditSeverity::Medium,
+                        "user_delete",
+                        format!("User '{}' deactivated", user_id),
+                    )
+                    .with_target(&user_id, "user"),
+                )
+                .await;
+            Ok(StatusCode::NO_CONTENT)
+        }
         Err(_) => Err((
             StatusCode::NOT_FOUND,
             Json(UserErrorResponse {
@@ -508,6 +588,18 @@ pub async fn get_me(
 /// Requires `Authorization: Bearer <token>` header.
 /// Request body: JSON with optional `display_name`, `email`.
 /// Response: 200 with updated `UserResponse`, or 401/409/404 on error.
+#[utoipa::path(
+    put,
+    path = "/auth/me",
+    request_body = UpdateProfileRequest,
+    responses(
+        (status = 200, description = "Profile updated", body = UserResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+    ),
+    tag = "auth",
+    security(("bearer_auth" = []))
+)]
 pub async fn update_me(
     State(state): State<UserState>,
     headers: HeaderMap,
@@ -597,6 +689,16 @@ pub async fn update_me(
 /// Request body: JSON with `username` (or email), `password`.
 /// Rate limit: 5 requests per minute per IP.
 /// Response: 200 with `AuthenticateResponse`. Returns `mfa_required: true` if MFA is enabled.
+#[utoipa::path(
+    post,
+    path = "/auth/login",
+    request_body = AuthenticateRequest,
+    responses(
+        (status = 200, description = "Authentication result", body = AuthenticateResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "auth",
+)]
 pub async fn authenticate(
     State(state): State<UserState>,
     Json(req): Json<AuthenticateRequest>,
@@ -788,6 +890,14 @@ pub async fn authenticate(
 }
 
 /// Check authentication status.
+#[utoipa::path(
+    get,
+    path = "/auth/status",
+    responses(
+        (status = 200, description = "Auth status"),
+    ),
+    tag = "auth",
+)]
 pub async fn auth_status(
     State(state): State<UserState>,
     headers: HeaderMap,
@@ -831,6 +941,15 @@ pub async fn auth_status(
 ///
 /// Revokes the provided refresh token. If no refresh token is provided,
 /// returns success (backward compatible with stateless JWT logout).
+#[utoipa::path(
+    post,
+    path = "/auth/logout",
+    request_body = Option<LogoutRequest>,
+    responses(
+        (status = 200, description = "Logged out"),
+    ),
+    tag = "auth",
+)]
 pub async fn logout(
     State(state): State<UserState>,
     body: Option<Json<LogoutRequest>>,
@@ -861,6 +980,17 @@ pub async fn logout(
 /// Rate limit: 10 requests per minute per IP.
 /// Revokes the old refresh token and issues a new access + refresh token pair.
 /// Response: 200 with `AuthenticateResponse`, or 401/500 on error.
+#[utoipa::path(
+    post,
+    path = "/auth/refresh",
+    request_body = RefreshRequest,
+    responses(
+        (status = 200, description = "Token refreshed", body = AuthenticateResponse),
+        (status = 401, description = "Invalid or expired refresh token"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "auth",
+)]
 pub async fn refresh_token_handler(
     State(state): State<UserState>,
     Json(req): Json<RefreshRequest>,
@@ -984,6 +1114,16 @@ pub async fn refresh_token_handler(
 
 /// POST /auth/guest
 /// Rate limit: 3 requests per minute per IP
+#[utoipa::path(
+    post,
+    path = "/auth/guest",
+    responses(
+        (status = 200, description = "Guest token", body = AuthenticateResponse),
+        (status = 403, description = "Guest login disabled"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "auth",
+)]
 pub async fn guest_login(
     State(state): State<UserState>,
 ) -> Result<Json<AuthenticateResponse>, (StatusCode, Json<UserErrorResponse>)> {
@@ -1049,6 +1189,14 @@ pub async fn guest_login(
 }
 
 /// Get guest configuration status (public endpoint).
+#[utoipa::path(
+    get,
+    path = "/auth/guest-status",
+    responses(
+        (status = 200, description = "Guest configuration"),
+    ),
+    tag = "auth",
+)]
 pub async fn guest_status(
     State(state): State<UserState>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<UserErrorResponse>)> {

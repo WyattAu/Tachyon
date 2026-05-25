@@ -7,16 +7,26 @@ use serde::Deserialize;
 use tachyon_database::{DatabasePool, GraphEdge, GraphNode, GraphRepository};
 use tracing::{debug, info};
 
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 
 #[derive(Clone)]
 pub struct NodeState {
     pub pool: DatabasePool,
+    pub audit_logger: AuditLogger,
 }
 
 impl NodeState {
     pub fn new(pool: DatabasePool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            audit_logger: AuditLogger::disabled(),
+        }
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
     }
 
     fn repo(&self) -> GraphRepository {
@@ -175,6 +185,19 @@ pub async fn create_node(
     let created = state.repo().create_node(&node).await?;
 
     info!("Node created: {}", created.id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::NodeCreated,
+                AuditSeverity::Low,
+                "node_create",
+                format!("Node '{}' created", created.name),
+            )
+            .with_target(&created.id, "node")
+            .with_metadata("name", serde_json::json!(created.name)),
+        )
+        .await;
     Ok(Json(created))
 }
 
@@ -243,6 +266,18 @@ pub async fn update_node(
         .await?;
 
     info!("Node updated: {}", node_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::NodeUpdated,
+                AuditSeverity::Low,
+                "node_update",
+                format!("Node '{}' updated", node_id),
+            )
+            .with_target(&node_id, "node"),
+        )
+        .await;
     Ok(Json(updated))
 }
 
@@ -268,6 +303,18 @@ pub async fn delete_node(
     state.repo().deactivate_node(&node_id).await?;
 
     info!("Node deactivated: {}", node_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::NodeDeleted,
+                AuditSeverity::Medium,
+                "node_delete",
+                format!("Node '{}' deactivated", node_id),
+            )
+            .with_target(&node_id, "node"),
+        )
+        .await;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -359,6 +406,21 @@ pub async fn create_edge(
     let created = state.repo().create_edge(&edge).await?;
 
     info!("Edge created: {}", created.id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::EdgeCreated,
+                AuditSeverity::Low,
+                "edge_create",
+                format!(
+                    "Edge created: {} -> {}",
+                    created.source_id, created.target_id
+                ),
+            )
+            .with_target(&created.id, "edge"),
+        )
+        .await;
     Ok(Json(created))
 }
 
@@ -410,6 +472,18 @@ pub async fn delete_edge(
     state.repo().delete_edge(&edge_id).await?;
 
     info!("Edge deleted: {}", edge_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::EdgeDeleted,
+                AuditSeverity::Medium,
+                "edge_delete",
+                format!("Edge '{}' deleted", edge_id),
+            )
+            .with_target(&edge_id, "edge"),
+        )
+        .await;
     Ok(StatusCode::NO_CONTENT)
 }
 

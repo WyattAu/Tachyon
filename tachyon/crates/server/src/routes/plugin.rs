@@ -1,6 +1,7 @@
 // Plugin Routes
 // REST API endpoints for plugin management
 
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 use axum::{
     extract::{Path, Query, State},
@@ -17,6 +18,7 @@ use tracing::info;
 pub struct PluginState {
     pub pool: DatabasePool,
     pub runtime: PluginRuntime,
+    pub audit_logger: AuditLogger,
 }
 
 // ============================================================================
@@ -223,6 +225,18 @@ pub async fn create_plugin(
         .map_err(|e| ServerError::internal(format!("Failed to create plugin: {}", e)))?;
 
     info!("Installed plugin: {} v{}", plugin.name, plugin.version);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::PluginInstalled,
+                AuditSeverity::Low,
+                "plugin_install",
+                format!("Plugin '{}' v{} installed", plugin.name, plugin.version),
+            )
+            .with_target(&plugin.id, "plugin"),
+        )
+        .await;
     Ok(Json(PluginResponse::from(plugin)))
 }
 
@@ -273,6 +287,18 @@ pub async fn update_plugin(
         .map_err(|e| ServerError::internal(format!("Failed to update plugin: {}", e)))?;
 
     info!("Updated plugin: {}", plugin.name);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::PluginUpdated,
+                AuditSeverity::Low,
+                "plugin_update",
+                format!("Plugin '{}' updated", plugin.name),
+            )
+            .with_target(&plugin_id, "plugin"),
+        )
+        .await;
     Ok(Json(PluginResponse::from(plugin)))
 }
 
@@ -302,6 +328,18 @@ pub async fn delete_plugin(
         .map_err(|e| ServerError::not_found("plugin", &e.to_string()))?;
 
     info!("Uninstalled plugin: {}", plugin_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::PluginUninstalled,
+                AuditSeverity::Medium,
+                "plugin_uninstall",
+                format!("Plugin '{}' uninstalled", plugin_id),
+            )
+            .with_target(&plugin_id, "plugin"),
+        )
+        .await;
     Ok(StatusCode::NO_CONTENT)
 }
 

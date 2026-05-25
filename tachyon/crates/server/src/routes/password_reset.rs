@@ -1,3 +1,4 @@
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditOutcome, AuditSeverity};
 use crate::error::ServerError;
 use axum::{extract::State, http::HeaderMap, response::Json, routing::post, Router};
 use jsonwebtoken::{decode, DecodingKey, Validation};
@@ -16,6 +17,7 @@ use crate::middleware::auth::Claims;
 pub struct PasswordResetState {
     pub pool: DatabasePool,
     pub client: reqwest::Client,
+    pub audit_logger: AuditLogger,
 }
 
 pub fn create_password_reset_router() -> Router<PasswordResetState> {
@@ -167,6 +169,19 @@ pub async fn request_password_reset(
     .await;
 
     info!(email = %body.email, "Password reset email sent");
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::PasswordResetRequested,
+                AuditSeverity::Medium,
+                "password_reset_request",
+                "Password reset requested",
+            )
+            .with_metadata("email", serde_json::json!(body.email))
+            .with_outcome(AuditOutcome::Success),
+        )
+        .await;
 
     Ok(Json(MessageResponse {
         message: "If an account with that email exists, a password reset link has been sent."
@@ -225,6 +240,19 @@ pub async fn confirm_password_reset(
         .map_err(|e| ServerError::internal(format!("Failed to update password: {}", e)))?;
 
     info!(user_id = %token.user_id, "Password reset successful");
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::PasswordResetConfirmed,
+                AuditSeverity::High,
+                "password_reset_confirm",
+                format!("Password reset for user '{}'", token.user_id),
+            )
+            .with_target(&token.user_id, "user")
+            .with_outcome(AuditOutcome::Success),
+        )
+        .await;
 
     Ok(Json(MessageResponse {
         message: "Password has been reset successfully.".to_string(),

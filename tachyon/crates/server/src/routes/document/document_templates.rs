@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::DocumentState;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct TemplateResponse {
     pub id: String,
     pub name: String,
@@ -38,7 +38,7 @@ impl From<tachyon_database::DocumentTemplate> for TemplateResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateTemplateBody {
     pub name: String,
     pub description: Option<String>,
@@ -47,7 +47,7 @@ pub struct CreateTemplateBody {
     pub tags: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateTemplateBody {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -56,7 +56,7 @@ pub struct UpdateTemplateBody {
     pub tags: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct TemplateQuery {
     pub category: Option<String>,
 }
@@ -66,6 +66,16 @@ pub struct TemplateQuery {
 /// `GET /api/v1/templates`
 ///
 /// Supports an optional `category` query parameter to filter results.
+#[utoipa::path(
+    get,
+    path = "/api/v1/templates",
+    params(TemplateQuery),
+    responses(
+        (status = 200, description = "List of templates", body = Vec<TemplateResponse>),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "templates",
+)]
 pub async fn list_templates(
     Query(query): Query<TemplateQuery>,
     State(state): State<DocumentState>,
@@ -84,6 +94,18 @@ pub async fn list_templates(
 /// Get a template by ID.
 ///
 /// `GET /api/v1/templates/{template_id}`
+#[utoipa::path(
+    get,
+    path = "/api/v1/templates/{template_id}",
+    params(
+        ("template_id" = String, Path, description = "Template ID"),
+    ),
+    responses(
+        (status = 200, description = "Template found", body = TemplateResponse),
+        (status = 404, description = "Template not found"),
+    ),
+    tag = "templates",
+)]
 pub async fn get_template(
     Path(template_id): Path<String>,
     State(state): State<DocumentState>,
@@ -100,6 +122,16 @@ pub async fn get_template(
 /// Create a new document template.
 ///
 /// `POST /api/v1/templates`
+#[utoipa::path(
+    post,
+    path = "/api/v1/templates",
+    request_body = CreateTemplateBody,
+    responses(
+        (status = 200, description = "Template created", body = TemplateResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "templates",
+)]
 pub async fn create_template(
     State(state): State<DocumentState>,
     Json(body): Json<CreateTemplateBody>,
@@ -128,6 +160,19 @@ pub async fn create_template(
 /// `PUT /api/v1/templates/{template_id}`
 ///
 /// Accepts partial updates for name, description, content, category, and tags.
+#[utoipa::path(
+    put,
+    path = "/api/v1/templates/{template_id}",
+    params(
+        ("template_id" = String, Path, description = "Template ID"),
+    ),
+    request_body = UpdateTemplateBody,
+    responses(
+        (status = 200, description = "Template updated", body = TemplateResponse),
+        (status = 404, description = "Template not found"),
+    ),
+    tag = "templates",
+)]
 pub async fn update_template(
     Path(template_id): Path<String>,
     State(state): State<DocumentState>,
@@ -155,6 +200,18 @@ pub async fn update_template(
 /// Delete a document template.
 ///
 /// `DELETE /api/v1/templates/{template_id}`
+#[utoipa::path(
+    delete,
+    path = "/api/v1/templates/{template_id}",
+    params(
+        ("template_id" = String, Path, description = "Template ID"),
+    ),
+    responses(
+        (status = 204, description = "Template deleted"),
+        (status = 404, description = "Template not found"),
+    ),
+    tag = "templates",
+)]
 pub async fn delete_template(
     Path(template_id): Path<String>,
     State(state): State<DocumentState>,

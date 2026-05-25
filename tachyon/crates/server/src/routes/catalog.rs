@@ -15,6 +15,7 @@ use tachyon_database::{
 };
 use tracing::{debug, info, instrument};
 
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 
 /// Response wrapper for paginated catalog API responses.
@@ -25,6 +26,7 @@ type CatalogResult<T> = Result<(StatusCode, Json<ApiResponse<T>>), ServerError>;
 pub struct CatalogState {
     repo: Arc<CatalogRepository>,
     api_cache: crate::middleware::api_cache::ApiCache,
+    pub audit_logger: AuditLogger,
 }
 
 impl CatalogState {
@@ -34,11 +36,17 @@ impl CatalogState {
             api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(
                 60,
             )),
+            audit_logger: AuditLogger::disabled(),
         }
     }
 
     pub fn repo(&self) -> &CatalogRepository {
         &self.repo
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
     }
 }
 
@@ -136,6 +144,18 @@ pub async fn create_project(
     })?;
 
     info!("Project created successfully: {}", project.id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::ProjectCreated,
+                AuditSeverity::Low,
+                "project_create",
+                format!("Project '{}' created", project.name),
+            )
+            .with_target(&project.id, "project"),
+        )
+        .await;
     Ok((StatusCode::CREATED, Json(ApiResponse::success(project))))
 }
 
@@ -273,6 +293,18 @@ pub async fn update_project(
     })?;
 
     info!("Project updated successfully: {}", id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::ProjectUpdated,
+                AuditSeverity::Low,
+                "project_update",
+                format!("Project '{}' updated", id),
+            )
+            .with_target(&id, "project"),
+        )
+        .await;
     Ok((StatusCode::OK, Json(ApiResponse::success(request))))
 }
 
@@ -303,6 +335,18 @@ pub async fn delete_project(
     })?;
 
     info!("Project deleted successfully: {}", id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::ProjectDeleted,
+                AuditSeverity::Medium,
+                "project_delete",
+                format!("Project '{}' deleted", id),
+            )
+            .with_target(&id, "project"),
+        )
+        .await;
     Ok((
         StatusCode::OK,
         Json(ApiResponse::success(serde_json::json!({ "deleted": true }))),
@@ -348,6 +392,18 @@ pub async fn create_component(
         })?;
 
     info!("Component created successfully: {}", component.id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::ComponentCreated,
+                AuditSeverity::Low,
+                "component_create",
+                format!("Component '{}' created", component.name),
+            )
+            .with_target(&component.id, "component"),
+        )
+        .await;
     Ok((StatusCode::CREATED, Json(ApiResponse::success(component))))
 }
 
@@ -440,6 +496,18 @@ pub async fn delete_component(
     })?;
 
     info!("Component deleted successfully: {}", id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::ComponentDeleted,
+                AuditSeverity::Medium,
+                "component_delete",
+                format!("Component '{}' deleted", id),
+            )
+            .with_target(&id, "component"),
+        )
+        .await;
     Ok((
         StatusCode::OK,
         Json(ApiResponse::success(serde_json::json!({ "deleted": true }))),
@@ -478,8 +546,8 @@ pub async fn add_project_member(
 
     let member = ProjectMember {
         id: 0,
-        project_id,
-        user_id: request.user_id,
+        project_id: project_id.clone(),
+        user_id: request.user_id.clone(),
         role: request.role,
         added_by: request.added_by,
         added_at: Utc::now(),
@@ -495,6 +563,21 @@ pub async fn add_project_member(
         })?;
 
     info!("Member added successfully");
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::CatalogMemberAdded,
+                AuditSeverity::Low,
+                "catalog_member_add",
+                format!(
+                    "Member '{}' added to project '{}'",
+                    request.user_id, project_id
+                ),
+            )
+            .with_target(&project_id, "project"),
+        )
+        .await;
     Ok((StatusCode::CREATED, Json(ApiResponse::success(member))))
 }
 
@@ -563,6 +646,18 @@ pub async fn remove_project_member(
         })?;
 
     info!("Member removed successfully");
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::CatalogMemberRemoved,
+                AuditSeverity::Low,
+                "catalog_member_remove",
+                format!("Member '{}' removed from project '{}'", user_id, project_id),
+            )
+            .with_target(&project_id, "project"),
+        )
+        .await;
     Ok((
         StatusCode::OK,
         Json(ApiResponse::success(serde_json::json!({ "removed": true }))),

@@ -1,10 +1,10 @@
 // User API routes module
 // Handles user CRUD operations and authentication
 
-mod handlers;
+pub mod handlers;
 #[cfg(test)]
 mod tests;
-mod types;
+pub mod types;
 
 pub use handlers::*;
 pub use types::*;

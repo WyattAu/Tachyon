@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use super::DocumentState;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct AttachmentResponse {
     pub id: String,
     pub document_id: String,
@@ -36,6 +36,18 @@ impl From<tachyon_database::Attachment> for AttachmentResponse {
 /// List attachments for a document.
 ///
 /// `GET /api/v1/documents/{document_id}/attachments`
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{document_id}/attachments",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "List of attachments", body = Vec<AttachmentResponse>),
+        (status = 404, description = "Document not found"),
+    ),
+    tag = "attachments",
+)]
 pub async fn list_attachments(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -59,6 +71,19 @@ pub async fn list_attachments(
 /// `POST /api/v1/documents/{document_id}/attachments`
 ///
 /// Accepts multipart form data with a single file field.
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/{document_id}/attachments",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "Attachment uploaded", body = AttachmentResponse),
+        (status = 400, description = "No file provided"),
+        (status = 404, description = "Document not found"),
+    ),
+    tag = "attachments",
+)]
 pub async fn upload_attachment(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -101,6 +126,19 @@ pub async fn upload_attachment(
 /// `GET /api/v1/documents/{document_id}/attachments/{attachment_id}`
 ///
 /// Returns the raw file content with appropriate `Content-Type` and `Content-Disposition` headers.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{document_id}/attachments/{attachment_id}",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+        ("attachment_id" = String, Path, description = "Attachment ID"),
+    ),
+    responses(
+        (status = 200, description = "Attachment file content"),
+        (status = 404, description = "Attachment not found"),
+    ),
+    tag = "attachments",
+)]
 pub async fn download_attachment(
     Path((_document_id, attachment_id)): Path<(String, String)>,
     State(state): State<DocumentState>,
@@ -125,6 +163,19 @@ pub async fn download_attachment(
 /// Delete an attachment.
 ///
 /// `DELETE /api/v1/documents/{document_id}/attachments/{attachment_id}`
+#[utoipa::path(
+    delete,
+    path = "/api/v1/documents/{document_id}/attachments/{attachment_id}",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+        ("attachment_id" = String, Path, description = "Attachment ID"),
+    ),
+    responses(
+        (status = 204, description = "Attachment deleted"),
+        (status = 404, description = "Attachment not found"),
+    ),
+    tag = "attachments",
+)]
 pub async fn delete_attachment(
     Path((_document_id, attachment_id)): Path<(String, String)>,
     State(state): State<DocumentState>,

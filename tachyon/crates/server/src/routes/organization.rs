@@ -1,6 +1,7 @@
 // Organization Routes
 // REST API endpoints for organization (multi-tenant) management
 
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 use crate::middleware::AuthContext;
 use axum::{
@@ -19,6 +20,7 @@ use tracing::info;
 #[derive(Clone)]
 pub struct OrganizationState {
     pub pool: DatabasePool,
+    pub audit_logger: AuditLogger,
 }
 
 // ============================================================================
@@ -228,6 +230,19 @@ pub async fn create_organization(
 
     let member_count = repo.count_members(&org.id).await.unwrap_or(0);
     info!("Organization created: {} ({})", org.name, org.slug);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::OrganizationCreated,
+                AuditSeverity::Medium,
+                "organization_create",
+                format!("Organization '{}' created", org.name),
+            )
+            .with_actor(&auth.user_id, "user")
+            .with_target(&org.id, "organization"),
+        )
+        .await;
     Ok(Json(OrganizationResponse::from_org(org, member_count)))
 }
 
@@ -276,6 +291,18 @@ pub async fn update_organization(
 
     let member_count = repo.count_members(&org.id).await.unwrap_or(0);
     info!("Organization updated: {}", id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::OrganizationUpdated,
+                AuditSeverity::Medium,
+                "organization_update",
+                format!("Organization '{}' updated", id),
+            )
+            .with_target(&id, "organization"),
+        )
+        .await;
     Ok(Json(OrganizationResponse::from_org(org, member_count)))
 }
 
@@ -312,6 +339,18 @@ pub async fn delete_organization(
     })?;
 
     info!("Organization deleted: {}", id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::OrganizationDeleted,
+                AuditSeverity::High,
+                "organization_delete",
+                format!("Organization '{}' deleted", id),
+            )
+            .with_target(&id, "organization"),
+        )
+        .await;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -380,7 +419,7 @@ pub async fn add_member(
         .add_member(
             &org_id,
             AddOrganizationMemberRequest {
-                user_id: body.user_id,
+                user_id: body.user_id.clone(),
                 role: body.role,
             },
         )
@@ -397,6 +436,22 @@ pub async fn add_member(
         "Member added to organization {}: {}",
         org_id, member.user_id
     );
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::OrganizationMemberAdded,
+                AuditSeverity::Medium,
+                "organization_member_add",
+                format!(
+                    "Member '{}' added to organization '{}'",
+                    body.user_id, org_id
+                ),
+            )
+            .with_target(&org_id, "organization")
+            .with_metadata("member_id", serde_json::json!(body.user_id)),
+        )
+        .await;
     Ok(Json(OrganizationMemberResponse::from(member)))
 }
 
@@ -438,6 +493,22 @@ pub async fn update_member(
         "Member {} role updated to {} in org {}",
         user_id, role, org_id
     );
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::OrganizationMemberUpdated,
+                AuditSeverity::Medium,
+                "organization_member_update",
+                format!(
+                    "Member '{}' role updated to '{}' in org '{}'",
+                    user_id, role, org_id
+                ),
+            )
+            .with_target(&org_id, "organization")
+            .with_metadata("user_id", serde_json::json!(user_id)),
+        )
+        .await;
     Ok(Json(OrganizationMemberResponse::from(member)))
 }
 
@@ -468,6 +539,22 @@ pub async fn remove_member(
         .map_err(|e| ServerError::not_found("member", &format!("Member not found: {}", e)))?;
 
     info!("Member {} removed from organization {}", user_id, org_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::OrganizationMemberRemoved,
+                AuditSeverity::Medium,
+                "organization_member_remove",
+                format!(
+                    "Member '{}' removed from organization '{}'",
+                    user_id, org_id
+                ),
+            )
+            .with_target(&org_id, "organization")
+            .with_metadata("user_id", serde_json::json!(user_id)),
+        )
+        .await;
     Ok(StatusCode::NO_CONTENT)
 }
 

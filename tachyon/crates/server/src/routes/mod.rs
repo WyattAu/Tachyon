@@ -99,20 +99,30 @@ pub async fn create_router() -> Router {
     let activity_state = ActivityState::new(pool.clone());
     let notification_state = NotificationState::new(pool.clone());
     let tags_state = TagsState { pool: pool.clone() };
-    let webhook_state = WebhookState { pool: pool.clone() };
+    let webhook_state = WebhookState {
+        pool: pool.clone(),
+        audit_logger: crate::audit::AuditLogger::disabled(),
+    };
     let plugin_runtime = tachyon_plugin_runtime::PluginRuntime::new(
         std::env::temp_dir().join("tachyon-test-plugins"),
     );
     let plugin_state = PluginState {
         pool: pool.clone(),
         runtime: plugin_runtime,
+        audit_logger: crate::audit::AuditLogger::disabled(),
     };
-    let space_state = SpaceState { pool: pool.clone() };
+    let space_state = SpaceState {
+        pool: pool.clone(),
+        audit_logger: crate::audit::AuditLogger::disabled(),
+    };
     let team_state = TeamState::new(pool.clone());
     let role_state = RoleState::new(pool.clone());
     let search_state = SearchState::new(pool.clone());
     let billing_state = BillingState::new(pool.clone(), None); // No TrueLayer in tests
-    let organization_state = OrganizationState { pool: pool.clone() };
+    let organization_state = OrganizationState {
+        pool: pool.clone(),
+        audit_logger: crate::audit::AuditLogger::disabled(),
+    };
     let ssg_state = SsgState::new(pool.clone());
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let conflict_state = ConflictState { pool: pool.clone() };

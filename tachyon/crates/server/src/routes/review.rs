@@ -1,6 +1,7 @@
 // Document Review API Routes
 // Review workflow endpoints for document approval/rejection
 
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 use axum::{
     extract::{Path, State},
@@ -22,11 +23,21 @@ use tracing::info;
 pub struct ReviewState {
     pub pool: DatabasePool,
     pub http_client: reqwest::Client,
+    pub audit_logger: AuditLogger,
 }
 
 impl ReviewState {
     pub fn new(pool: DatabasePool, http_client: reqwest::Client) -> Self {
-        Self { pool, http_client }
+        Self {
+            pool,
+            http_client,
+            audit_logger: AuditLogger::disabled(),
+        }
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
     }
 }
 
@@ -148,6 +159,22 @@ pub async fn create_review(
         .map_err(|e| ServerError::database(format!("Failed to create review: {}", e)))?;
 
     info!("Review created for document {}: {}", document_id, review.id);
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::ReviewCreated,
+                AuditSeverity::Low,
+                "review_create",
+                format!(
+                    "Review '{}' created for document '{}'",
+                    review.id, document_id
+                ),
+            )
+            .with_target(&review.id, "review"),
+        )
+        .await;
 
     {
         let pool = state.pool.clone();
@@ -281,6 +308,19 @@ pub async fn update_review(
 
     info!("Review {} updated to {}", review_id, body.status);
 
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::ReviewUpdated,
+                AuditSeverity::Low,
+                "review_update",
+                format!("Review '{}' updated to '{}'", review_id, body.status),
+            )
+            .with_target(&review_id, "review"),
+        )
+        .await;
+
     let notification_type = match body.status.as_str() {
         "approved" => "review_approved",
         "rejected" => "review_rejected",
@@ -387,6 +427,19 @@ pub async fn create_comment(
             .await;
         });
     }
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::ReviewCommentAdded,
+                AuditSeverity::Low,
+                "review_comment",
+                format!("Comment added to review '{}'", review_id),
+            )
+            .with_target(&review_id, "review"),
+        )
+        .await;
 
     Ok(Json(CommentResponse::from(comment)))
 }

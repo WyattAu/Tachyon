@@ -1,6 +1,7 @@
 // Team API routes
 // Handles team management operations
 
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 use axum::{
     extract::{Path, Query, State},
@@ -16,6 +17,7 @@ pub struct TeamState {
     pub pool: DatabasePool,
     pub team_repo: TeamRepository,
     pub role_repo: RoleRepository,
+    pub audit_logger: AuditLogger,
 }
 
 impl TeamState {
@@ -26,7 +28,13 @@ impl TeamState {
             pool,
             team_repo,
             role_repo,
+            audit_logger: AuditLogger::disabled(),
         }
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
     }
 }
 
@@ -175,6 +183,20 @@ pub async fn create_team(
         );
         let _ = state.team_repo.add_member(&member).await;
     }
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::TeamCreated,
+                AuditSeverity::Medium,
+                "team_create",
+                format!("Team '{}' created", created.name),
+            )
+            .with_target(&created.id, "team")
+            .with_metadata("name", serde_json::json!(created.name)),
+        )
+        .await;
 
     Ok(Json(TeamResponse::from(created)))
 }
@@ -329,6 +351,19 @@ pub async fn update_team(
         .await
         .map_err(|e| ServerError::database(format!(r"Failed to update team: {}", e)))?;
 
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::TeamUpdated,
+                AuditSeverity::Low,
+                "team_update",
+                format!("Team '{}' updated", team_id),
+            )
+            .with_target(&team_id, "team"),
+        )
+        .await;
+
     Ok(Json(TeamResponse::from(updated)))
 }
 
@@ -359,6 +394,19 @@ pub async fn delete_team(
         .delete(&team_id)
         .await
         .map_err(|e| ServerError::not_found(r"Team not found:", &e.to_string()))?;
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::TeamDeleted,
+                AuditSeverity::High,
+                "team_delete",
+                format!("Team '{}' deleted", team_id),
+            )
+            .with_target(&team_id, "team"),
+        )
+        .await;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -429,12 +477,29 @@ pub async fn add_team_member(
         .await
         .map_err(|e| ServerError::not_found("role", &e.to_string()))?;
 
-    let member = TeamMember::new(team_id.clone(), req.user_id, role.id, role.name);
+    let member = TeamMember::new(team_id.clone(), req.user_id.clone(), role.id, role.name);
     let created = state
         .team_repo
         .add_member(&member)
         .await
         .map_err(|e| ServerError::database(format!(r"Failed to add member: {}", e)))?;
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::TeamMemberAdded,
+                AuditSeverity::Medium,
+                "team_member_add",
+                format!(
+                    "Member '{}' added to team '{}' with role '{}'",
+                    req.user_id, team_id, req.role_name
+                ),
+            )
+            .with_target(&team_id, "team")
+            .with_metadata("member_id", serde_json::json!(req.user_id)),
+        )
+        .await;
 
     Ok(Json(TeamMemberResponse::from(created)))
 }
@@ -477,6 +542,20 @@ pub async fn update_team_member(
         .await
         .map_err(|e| ServerError::database(format!(r"Failed to update member: {}", e)))?;
 
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::TeamMemberUpdated,
+                AuditSeverity::Medium,
+                "team_member_update",
+                format!("Member '{}' role updated in team '{}'", user_id, team_id),
+            )
+            .with_target(&team_id, "team")
+            .with_metadata("user_id", serde_json::json!(user_id)),
+        )
+        .await;
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -508,6 +587,20 @@ pub async fn remove_team_member(
         .remove_member(&team_id, &user_id)
         .await
         .map_err(|e| ServerError::not_found(r"Member not found:", &e.to_string()))?;
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::TeamMemberRemoved,
+                AuditSeverity::Medium,
+                "team_member_remove",
+                format!("Member '{}' removed from team '{}'", user_id, team_id),
+            )
+            .with_target(&team_id, "team")
+            .with_metadata("user_id", serde_json::json!(user_id)),
+        )
+        .await;
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -1,6 +1,7 @@
 #![allow(private_interfaces)]
 
 use super::types::*;
+use crate::audit::{AuditEvent, AuditEventType, AuditSeverity};
 use crate::error::ServerError;
 use axum::{
     extract::{Multipart, Query, State},
@@ -875,6 +876,20 @@ pub async fn upload_file(
     if let Err(e) = fs::write(&upload_path, &data).await {
         return Err(ServerError::internal(format!("Failed to save file: {}", e)));
     }
+
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::FileUploaded,
+                AuditSeverity::Low,
+                "file_upload",
+                format!("File '{}' uploaded ({} bytes)", filename, data.len()),
+            )
+            .with_metadata("filename", serde_json::json!(filename))
+            .with_metadata("size", serde_json::json!(data.len())),
+        )
+        .await;
 
     Ok(Json(UploadResponse {
         id: uuid::Uuid::new_v4().to_string(),

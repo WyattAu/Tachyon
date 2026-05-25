@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 use uuid::Uuid;
 
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 use tachyon_database::{DatabasePool, RepositoryId, RepositoryRepository};
 
@@ -18,11 +19,20 @@ use tachyon_database::{DatabasePool, RepositoryId, RepositoryRepository};
 #[derive(Clone)]
 pub struct RepositoryState {
     pub pool: DatabasePool,
+    pub audit_logger: AuditLogger,
 }
 
 impl RepositoryState {
     pub fn new(pool: DatabasePool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            audit_logger: AuditLogger::disabled(),
+        }
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
     }
 }
 
@@ -200,6 +210,18 @@ pub async fn init_repository(
     let response = RepositoryResponse::from(created);
 
     info!("Repository initialized: {}", response.id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::RepositoryInitialized,
+                AuditSeverity::Low,
+                "repository_init",
+                format!("Repository '{}' initialized", req.name),
+            )
+            .with_target(&response.id, "repository"),
+        )
+        .await;
 
     Ok(Json(response))
 }
@@ -275,6 +297,18 @@ pub async fn clone_repository(
     let response = RepositoryResponse::from(created);
 
     info!("Repository cloned: {}", response.id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::RepositoryCloned,
+                AuditSeverity::Low,
+                "repository_clone",
+                format!("Repository '{}' cloned from '{}'", response.id, req.source),
+            )
+            .with_target(&response.id, "repository"),
+        )
+        .await;
 
     Ok(Json(response))
 }
@@ -317,6 +351,19 @@ pub async fn commit(
 
     let commit_id = format!("commit_{}", Uuid::new_v4());
     info!("Commit created: {}", commit_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::RepositoryCommitted,
+                AuditSeverity::Low,
+                "repository_commit",
+                format!("Commit '{}' in repository '{}'", commit_id, repository_id),
+            )
+            .with_target(&repository_id, "repository")
+            .with_metadata("commit_id", serde_json::json!(commit_id)),
+        )
+        .await;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -521,6 +568,18 @@ pub async fn delete_repository(
         .map_err(|_| ServerError::not_found("repository", &repository_id))?;
 
     info!("Repository deleted: {}", repository_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::RepositoryDeleted,
+                AuditSeverity::Medium,
+                "repository_delete",
+                format!("Repository '{}' deleted", repository_id),
+            )
+            .with_target(&repository_id, "repository"),
+        )
+        .await;
     Ok(StatusCode::NO_CONTENT)
 }
 

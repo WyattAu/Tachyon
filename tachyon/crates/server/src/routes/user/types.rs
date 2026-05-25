@@ -1,5 +1,6 @@
 // Types and state for user routes
 
+use crate::audit::AuditLogger;
 use crate::config::GuestConfig;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use rand::Rng;
@@ -62,6 +63,8 @@ pub struct UserState {
     pub jwt_audience: String,
     /// Guest configuration
     pub guest_config: GuestConfig,
+    /// Audit logger
+    pub audit_logger: AuditLogger,
 }
 
 pub(crate) const REFRESH_TOKEN_EXPIRATION_SECS: u64 = 30 * 24 * 60 * 60;
@@ -83,7 +86,13 @@ impl UserState {
             jwt_issuer,
             jwt_audience,
             guest_config,
+            audit_logger: AuditLogger::disabled(),
         }
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
     }
 
     /// Get a UserRepository for this state.
@@ -171,7 +180,7 @@ impl UserState {
 // ============================================================================
 
 /// Request to register a new user.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct RegisterRequest {
     /// Username (3-50 chars, alphanumeric/underscore/hyphen)
     pub username: String,
@@ -215,7 +224,7 @@ pub struct UpdateUserRequest {
 }
 
 /// Request to update the current user's own profile.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateProfileRequest {
     /// Display name
     pub display_name: Option<String>,
@@ -233,7 +242,7 @@ pub struct ChangePasswordRequest {
 }
 
 /// Request for user authentication.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct AuthenticateRequest {
     /// Username or email
     pub username: String,
@@ -242,21 +251,21 @@ pub struct AuthenticateRequest {
 }
 
 /// Request to refresh an access token.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct RefreshRequest {
     /// Refresh token
     pub refresh_token: String,
 }
 
 /// Request to logout (revoke refresh token).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct LogoutRequest {
     /// Refresh token to revoke
     pub refresh_token: Option<String>,
 }
 
 /// Authentication response.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct AuthenticateResponse {
     /// Success flag
     pub success: bool,
@@ -352,7 +361,7 @@ pub struct UserQuery {
     pub role: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct UserErrorResponse {
     pub code: String,
     pub message: String,

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::DocumentState;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct VersionResponse {
     pub id: String,
     pub document_id: String,
@@ -32,7 +32,7 @@ impl From<tachyon_database::DocumentVersion> for VersionResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateVersionBody {
     pub content: String,
     pub commit_message: Option<String>,
@@ -43,6 +43,18 @@ pub struct CreateVersionBody {
 /// `GET /api/v1/documents/{document_id}/versions`
 ///
 /// Returns up to 50 most recent versions.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{document_id}/versions",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    responses(
+        (status = 200, description = "List of versions", body = Vec<VersionResponse>),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "versions",
+)]
 pub async fn list_versions(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -61,6 +73,19 @@ pub async fn list_versions(
 /// Get a specific document version.
 ///
 /// `GET /api/v1/documents/{document_id}/versions/{version_number}`
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{document_id}/versions/{version_number}",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+        ("version_number" = i32, Path, description = "Version number"),
+    ),
+    responses(
+        (status = 200, description = "Version found", body = VersionResponse),
+        (status = 404, description = "Version not found"),
+    ),
+    tag = "versions",
+)]
 pub async fn get_version(
     Path((document_id, version_number)): Path<(String, i32)>,
     State(state): State<DocumentState>,
@@ -79,6 +104,19 @@ pub async fn get_version(
 /// `POST /api/v1/documents/{document_id}/versions`
 ///
 /// Saves a snapshot of the document content with an optional commit message.
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/{document_id}/versions",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+    ),
+    request_body = CreateVersionBody,
+    responses(
+        (status = 200, description = "Version created", body = VersionResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "versions",
+)]
 pub async fn create_version(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
@@ -105,20 +143,20 @@ pub async fn create_version(
     Ok(Json(VersionResponse::from(version)))
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct DiffLine {
     pub content: String,
     pub line_type: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct DocumentDiffResponse {
     pub old_lines: Vec<DiffLine>,
     pub new_lines: Vec<DiffLine>,
     pub stats: DiffStats,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct DiffStats {
     pub added: usize,
     pub removed: usize,
@@ -131,6 +169,20 @@ pub struct DiffStats {
 ///
 /// Returns old/new line arrays with `added`, `removed`, or `unchanged` type annotations
 /// and diff statistics.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{document_id}/versions/{v1}/diff/{v2}",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+        ("v1" = i32, Path, description = "First version number"),
+        ("v2" = i32, Path, description = "Second version number"),
+    ),
+    responses(
+        (status = 200, description = "Version diff", body = DocumentDiffResponse),
+        (status = 404, description = "Version not found"),
+    ),
+    tag = "versions",
+)]
 pub async fn diff_versions(
     Path((document_id, v1, v2)): Path<(String, i32, i32)>,
     State(state): State<DocumentState>,

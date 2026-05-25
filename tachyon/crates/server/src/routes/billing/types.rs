@@ -7,6 +7,7 @@ use hmac::Hmac;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
+use crate::audit::AuditLogger;
 use crate::truelayer::TrueLayerClient;
 
 pub type HmacSha256 = Hmac<Sha256>;
@@ -33,11 +34,21 @@ pub struct ProrationResult {
 pub struct BillingState {
     pub pool: tachyon_database::DatabasePool,
     pub truelayer: Option<TrueLayerClient>,
+    pub audit_logger: AuditLogger,
 }
 
 impl BillingState {
     pub fn new(pool: tachyon_database::DatabasePool, truelayer: Option<TrueLayerClient>) -> Self {
-        Self { pool, truelayer }
+        Self {
+            pool,
+            truelayer,
+            audit_logger: AuditLogger::disabled(),
+        }
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
     }
 }
 

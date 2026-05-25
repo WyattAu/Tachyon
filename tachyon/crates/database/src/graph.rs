@@ -259,6 +259,43 @@ impl GraphRepository {
         Ok(records)
     }
 
+    pub async fn get_nodes_by_slugs_batch(
+        &self,
+        slugs: &[String],
+    ) -> DatabaseResult<Vec<GraphNode>> {
+        if slugs.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let sql =
+            "SELECT * FROM knowledge_graph_nodes WHERE slug = ANY($1::text[]) AND is_active = true";
+        let mut conn = self.pool.acquire().await?;
+        let records = query_as::<_, GraphNode>(sql)
+            .bind(slugs)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        Ok(records)
+    }
+
+    pub async fn deactivate_edges_for_node(&self, node_id: &str) -> DatabaseResult<u64> {
+        let sql = r#"
+            UPDATE knowledge_graph_edges
+            SET is_active = false, deactivated_at = NOW(), updated_at = NOW()
+            WHERE (source_id = $1 OR target_id = $1) AND is_active = true
+        "#;
+        let uuid = uuid::Uuid::parse_str(node_id)
+            .map_err(|e| DatabaseError::ValidationError(format!("Invalid UUID: {}", e)))?;
+        let mut conn = self.pool.acquire().await?;
+        let result = query(sql)
+            .bind(uuid)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+        Ok(result.rows_affected())
+    }
+
     #[instrument(skip(self))]
     #[allow(clippy::too_many_arguments)]
     pub async fn update_node(
@@ -995,51 +1032,58 @@ impl GraphRepository {
     // ========================================================================
 
     pub async fn get_graph_stats(&self) -> DatabaseResult<serde_json::Value> {
+        let sql = r#"
+            SELECT
+                (SELECT COUNT(*) FROM knowledge_graph_nodes WHERE is_active = true) AS node_count,
+                (SELECT COUNT(*) FROM knowledge_graph_edges WHERE is_active = true) AS edge_count,
+                (SELECT COALESCE(json_object_agg(node_type, cnt), '{}'::json)
+                 FROM (
+                     SELECT node_type, COUNT(*)::text AS cnt
+                     FROM knowledge_graph_nodes WHERE is_active = true
+                     GROUP BY node_type
+                 ) t
+                ) AS nodes_by_type,
+                (SELECT COALESCE(json_object_agg(edge_type, cnt), '{}'::json)
+                 FROM (
+                     SELECT edge_type, COUNT(*)::text AS cnt
+                     FROM knowledge_graph_edges WHERE is_active = true
+                     GROUP BY edge_type
+                 ) t
+                ) AS edges_by_type
+        "#;
+
         let mut conn = self.pool.acquire().await?;
+        let row = sqlx::query(sql)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
-        let node_count_row = sqlx::query(
-            "SELECT COUNT(*) as count FROM knowledge_graph_nodes WHERE is_active = true",
-        )
-        .fetch_one(&mut *conn)
-        .await
-        .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
-        let node_count: i64 = node_count_row.get("count");
+        let node_count: i64 = row.get("node_count");
+        let edge_count: i64 = row.get("edge_count");
+        let nodes_by_type_raw: serde_json::Value = row.get("nodes_by_type");
+        let edges_by_type_raw: serde_json::Value = row.get("edges_by_type");
 
-        let edge_count_row = sqlx::query(
-            "SELECT COUNT(*) as count FROM knowledge_graph_edges WHERE is_active = true",
-        )
-        .fetch_one(&mut *conn)
-        .await
-        .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
-        let edge_count: i64 = edge_count_row.get("count");
+        let nodes_by_type: serde_json::Map<String, serde_json::Value> = nodes_by_type_raw
+            .as_object()
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(k, v)| {
+                let cnt: i64 = v.as_str().and_then(|s| s.parse().ok()).unwrap_or(0);
+                (k, json!(cnt))
+            })
+            .collect();
 
-        let nodes_by_type_rows = sqlx::query(
-            "SELECT node_type, COUNT(*) as count FROM knowledge_graph_nodes WHERE is_active = true GROUP BY node_type ORDER BY count DESC"
-        )
-        .fetch_all(&mut *conn)
-        .await
-        .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
-
-        let mut nodes_by_type = serde_json::Map::new();
-        for row in nodes_by_type_rows {
-            let nt: String = row.get("node_type");
-            let cnt: i64 = row.get("count");
-            nodes_by_type.insert(nt, json!(cnt));
-        }
-
-        let edges_by_type_rows = sqlx::query(
-            "SELECT edge_type, COUNT(*) as count FROM knowledge_graph_edges WHERE is_active = true GROUP BY edge_type ORDER BY count DESC"
-        )
-        .fetch_all(&mut *conn)
-        .await
-        .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
-
-        let mut edges_by_type = serde_json::Map::new();
-        for row in edges_by_type_rows {
-            let et: String = row.get("edge_type");
-            let cnt: i64 = row.get("count");
-            edges_by_type.insert(et, json!(cnt));
-        }
+        let edges_by_type: serde_json::Map<String, serde_json::Value> = edges_by_type_raw
+            .as_object()
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(k, v)| {
+                let cnt: i64 = v.as_str().and_then(|s| s.parse().ok()).unwrap_or(0);
+                (k, json!(cnt))
+            })
+            .collect();
 
         let avg_degree = if node_count > 0 {
             (edge_count as f64 * 2.0) / node_count as f64

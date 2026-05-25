@@ -36,6 +36,34 @@ const DOCUMENT_SELECT_SQL: &str = r#"
     FROM documents
 "#;
 
+/// Lightweight document SELECT excluding heavy content/html columns for list queries.
+const DOCUMENT_SUMMARY_SELECT_SQL: &str = r#"
+    SELECT 
+        id::text as id,
+        title,
+        slug,
+        author_id::text as author_id,
+        description,
+        tags::text as tags,
+        frontmatter::text as frontmatter,
+        project_id::text as project_id,
+        visibility,
+        status,
+        content_type,
+        word_count,
+        character_count,
+        read_count,
+        edit_count,
+        NULL::text as content,
+        NULL::text as html,
+        created_at,
+        updated_at,
+        published_at,
+        content_hash,
+        conflict_detected
+    FROM documents
+"#;
+
 /// Repository SELECT SQL with UUID casting for PostgreSQL
 const REPOSITORY_SELECT_SQL: &str = r#"
     SELECT 
@@ -356,7 +384,7 @@ impl DocumentRepository {
     ) -> DatabaseResult<Vec<DocumentMetadata>> {
         let base_sql = format!(
             "{} WHERE author_id = $1::uuid ORDER BY updated_at DESC",
-            DOCUMENT_SELECT_SQL
+            DOCUMENT_SUMMARY_SELECT_SQL
         );
         let (sql, limit_val, offset_val) = apply_pagination(&base_sql, limit, offset);
 
@@ -394,7 +422,7 @@ impl DocumentRepository {
     ) -> DatabaseResult<Vec<DocumentMetadata>> {
         let base_sql = format!(
             "{} WHERE project_id = $1::uuid ORDER BY updated_at DESC",
-            DOCUMENT_SELECT_SQL
+            DOCUMENT_SUMMARY_SELECT_SQL
         );
         let (sql, limit_val, offset_val) = apply_pagination(&base_sql, limit, offset);
 
@@ -428,7 +456,7 @@ impl DocumentRepository {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> DatabaseResult<Vec<DocumentMetadata>> {
-        let base_sql = format!("{} ORDER BY updated_at DESC", DOCUMENT_SELECT_SQL);
+        let base_sql = format!("{} ORDER BY updated_at DESC", DOCUMENT_SUMMARY_SELECT_SQL);
         let (sql, limit_val, offset_val) = apply_pagination(&base_sql, limit, offset);
 
         let mut conn = self.pool.acquire().await?;
@@ -609,6 +637,26 @@ impl DocumentRepository {
         }
     }
 
+    /// Find multiple documents by their slugs in a single query.
+    pub async fn get_by_slugs_batch(
+        &self,
+        slugs: &[String],
+    ) -> DatabaseResult<Vec<DocumentMetadata>> {
+        if slugs.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let select_sql = format!("{} WHERE slug = ANY($1::text[])", DOCUMENT_SELECT_SQL);
+        let mut conn = self.pool.acquire().await?;
+        let rows = query(&select_sql)
+            .bind(slugs)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        rows.into_iter().map(row_to_document_metadata).collect()
+    }
+
     /// Find a document by its content hash (for deduplication).
     pub async fn get_by_content_hash(
         &self,
@@ -642,6 +690,36 @@ impl DocumentRepository {
         Ok(())
     }
 
+    /// Bulk-update the status of multiple documents in a single query.
+    pub async fn batch_update_status(
+        &self,
+        ids: &[DocumentId],
+        status: &str,
+        published_at: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> DatabaseResult<usize> {
+        if ids.is_empty() {
+            return Ok(0);
+        }
+
+        let id_strs: Vec<String> = ids.iter().map(|id| id.as_str()).collect();
+        let sql = r#"
+            UPDATE documents
+            SET status = $1, updated_at = NOW(), published_at = COALESCE($2, published_at)
+            WHERE id = ANY($3::uuid[])
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let result = query(sql)
+            .bind(status)
+            .bind(published_at)
+            .bind(&id_strs)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        Ok(result.rows_affected() as usize)
+    }
+
     /// List documents using cursor-based pagination.
     ///
     /// When `cursor` is `Some`, the cursor string is decoded (format: `{id}:{direction}`)
@@ -673,7 +751,7 @@ impl DocumentRepository {
 
             let sql = format!(
                 "{} WHERE id < $1::uuid ORDER BY id DESC LIMIT $2",
-                DOCUMENT_SELECT_SQL
+                DOCUMENT_SUMMARY_SELECT_SQL
             );
             let rows = query(&sql)
                 .bind(cursor_id)
@@ -686,7 +764,7 @@ impl DocumentRepository {
         } else {
             let sql = format!(
                 "{} ORDER BY updated_at DESC, id DESC LIMIT $1",
-                DOCUMENT_SELECT_SQL
+                DOCUMENT_SUMMARY_SELECT_SQL
             );
             let rows = query(&sql)
                 .bind(limit)
