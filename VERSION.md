@@ -1,8 +1,8 @@
 # Tachyon Project Version Tracking
 
-**Document ID:** TACHYON-VER-V1.8
-**Date:** 2026-05-19
-**Status:** PRODUCTION READY - Phase 7 Production Launch
+**Document ID:** TACHYON-VER-V1.9
+**Date:** 2026-05-25
+**Status:** PRODUCTION READY - Post-Audit v17.0.0
 
 ---
 
@@ -14,8 +14,8 @@
 | **Type** | Knowledge Management System |
 | **Deployment Modes** | Desktop, Server, Static |
 | **Primary Languages** | Rust, Leptos |
-| **Current Version** | 12.0.0 |
-| **Project Status** | PRODUCTION READY |
+| **Current Version** | 17.0.0 |
+| **Project Status** | PRODUCTION READY (Post-Audit) |
 
 ---
 
