@@ -217,8 +217,8 @@ pub use document_templates::{
     CreateTemplateBody, TemplateQuery, TemplateResponse, UpdateTemplateBody,
 };
 pub use document_versions::{
-    create_version, diff_versions, get_version, list_versions, CreateVersionBody, DiffLine,
-    DiffStats, DocumentDiffResponse, VersionResponse,
+    create_version, diff_versions, get_version, list_versions, restore_version, CreateVersionBody,
+    DiffLine, DiffStats, DocumentDiffResponse, RestoreVersionResponse, VersionResponse,
 };
 
 pub fn create_document_router() -> axum::Router<DocumentState> {
@@ -246,6 +246,10 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
         .route(
             "/documents/{document_id}/versions/{v1}/diff/{v2}",
             get(diff_versions),
+        )
+        .route(
+            "/documents/{document_id}/versions/{version_id}/restore",
+            post(restore_version),
         )
         .route(
             "/documents/{document_id}/attachments",

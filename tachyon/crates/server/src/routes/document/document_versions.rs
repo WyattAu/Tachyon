@@ -4,6 +4,7 @@ use axum::{
     response::Json,
 };
 use serde::{Deserialize, Serialize};
+use tachyon_database::DocumentVersionRepository;
 
 use super::DocumentState;
 
@@ -335,4 +336,75 @@ fn longest_common_subsequence<'a>(old: &[&'a str], new: &[&'a str]) -> Vec<&'a s
     }
     result.reverse();
     result
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct RestoreVersionResponse {
+    pub document_id: String,
+    pub restored_from_version: i32,
+    pub new_version_number: i32,
+    pub new_version_id: String,
+}
+
+/// Restore a document to a specific version.
+///
+/// `POST /api/v1/documents/{document_id}/versions/{version_id}/restore`
+///
+/// Creates a new version with the content of the specified version,
+/// effectively "restoring" the document to that earlier state.
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/{document_id}/versions/{version_id}/restore",
+    params(
+        ("document_id" = String, Path, description = "Document ID"),
+        ("version_id" = String, Path, description = "Version ID to restore"),
+    ),
+    responses(
+        (status = 200, description = "Version restored", body = RestoreVersionResponse),
+        (status = 404, description = "Version not found"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "versions",
+)]
+pub async fn restore_version(
+    Path((document_id, version_id)): Path<(String, String)>,
+    State(state): State<DocumentState>,
+) -> Result<Json<RestoreVersionResponse>, ServerError> {
+    let repo = DocumentVersionRepository::new(state.pool.clone());
+
+    let existing = repo
+        .get_by_id(&version_id)
+        .await
+        .map_err(|e| ServerError::not_found("Version", &format!("{}: {}", version_id, e)))?;
+
+    if existing.document_id != document_id {
+        return Err(ServerError::bad_request(
+            "Version does not belong to the specified document",
+        ));
+    }
+
+    let user_id = tachyon_core::generate_user_id();
+    let restored = repo
+        .create(tachyon_database::CreateVersionRequest {
+            document_id: document_id.clone(),
+            content: existing.content.clone(),
+            commit_message: Some(format!("Restored from version {}", existing.version_number)),
+            created_by: user_id.to_string(),
+        })
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to create restored version: {}", e)))?;
+
+    tracing::info!(
+        "Restored document {} to version {} (new version {})",
+        document_id,
+        existing.version_number,
+        restored.version_number
+    );
+
+    Ok(Json(RestoreVersionResponse {
+        document_id,
+        restored_from_version: existing.version_number,
+        new_version_number: restored.version_number,
+        new_version_id: restored.id,
+    }))
 }

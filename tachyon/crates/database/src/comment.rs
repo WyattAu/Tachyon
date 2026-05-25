@@ -19,6 +19,9 @@ const COMMENT_SELECT_SQL: &str = r#"
         anchor_selection,
         status,
         parent_id::text as parent_id,
+        thread_id::text as thread_id,
+        start_offset,
+        end_offset,
         mentions::text as mentions,
         created_at::text as created_at,
         updated_at::text as updated_at,
@@ -42,6 +45,9 @@ pub struct Comment {
     pub anchor_selection: Option<String>,
     pub status: String,
     pub parent_id: Option<String>,
+    pub thread_id: Option<String>,
+    pub start_offset: Option<i32>,
+    pub end_offset: Option<i32>,
     pub mentions: String,
     pub created_at: String,
     pub updated_at: String,
@@ -60,6 +66,9 @@ pub struct CreateCommentRequest {
     pub anchor_line_end: Option<i32>,
     pub anchor_selection: Option<String>,
     pub parent_id: Option<String>,
+    pub thread_id: Option<String>,
+    pub start_offset: Option<i32>,
+    pub end_offset: Option<i32>,
     pub mentions: Option<Vec<String>>,
 }
 
@@ -121,13 +130,17 @@ impl CommentRepository {
             }
         };
 
+        let thread_id = req.thread_id.or(req.parent_id.clone());
+
         let sql = r#"
             INSERT INTO document_comments (id, document_id, author_id, author_name, content,
                                            anchor_section, anchor_line_start, anchor_line_end,
-                                           anchor_selection, status, parent_id, mentions,
+                                           anchor_selection, status, parent_id, thread_id,
+                                           start_offset, end_offset, mentions,
                                            created_at, updated_at)
             VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5,
-                    $6, $7, $8, $9, 'open', $10::uuid, $11::jsonb,
+                    $6, $7, $8, $9, 'open', $10::uuid, $11::uuid,
+                    $12, $13, $14::jsonb,
                     NOW(), NOW())
             RETURNING
                 id::text as id,
@@ -141,6 +154,9 @@ impl CommentRepository {
                 anchor_selection,
                 status,
                 parent_id::text as parent_id,
+                thread_id::text as thread_id,
+                start_offset,
+                end_offset,
                 mentions::text as mentions,
                 created_at::text as created_at,
                 updated_at::text as updated_at,
@@ -160,6 +176,9 @@ impl CommentRepository {
             .bind(req.anchor_line_end)
             .bind(&req.anchor_selection)
             .bind(&req.parent_id)
+            .bind(&thread_id)
+            .bind(req.start_offset)
+            .bind(req.end_offset)
             .bind(&mentions)
             .fetch_one(&mut *conn)
             .await
@@ -294,6 +313,9 @@ impl CommentRepository {
                 anchor_selection,
                 status,
                 parent_id::text as parent_id,
+                thread_id::text as thread_id,
+                start_offset,
+                end_offset,
                 mentions::text as mentions,
                 created_at::text as created_at,
                 updated_at::text as updated_at,
@@ -477,6 +499,9 @@ mod tests {
             anchor_selection: None,
             status: "open".into(),
             parent_id: None,
+            thread_id: None,
+            start_offset: None,
+            end_offset: None,
             mentions: r#"["bob"]"#.into(),
             created_at: "2024-01-01T00:00:00Z".into(),
             updated_at: "2024-01-01T00:00:00Z".into(),
@@ -486,6 +511,7 @@ mod tests {
         assert_eq!(comment.status, "open");
         assert_eq!(comment.anchor_line_start, Some(1));
         assert!(comment.parent_id.is_none());
+        assert!(comment.thread_id.is_none());
         assert!(comment.resolved_at.is_none());
     }
 
@@ -503,6 +529,9 @@ mod tests {
             anchor_selection: None,
             status: "resolved".into(),
             parent_id: None,
+            thread_id: None,
+            start_offset: Some(10),
+            end_offset: Some(20),
             mentions: "[]".into(),
             created_at: "2024-01-01T00:00:00Z".into(),
             updated_at: "2024-01-01T00:01:00Z".into(),
@@ -512,6 +541,8 @@ mod tests {
         assert_eq!(comment.status, "resolved");
         assert!(comment.resolved_at.is_some());
         assert_eq!(comment.resolved_by.as_deref(), Some("user-2"));
+        assert_eq!(comment.start_offset, Some(10));
+        assert_eq!(comment.end_offset, Some(20));
     }
 
     #[test]
@@ -526,6 +557,9 @@ mod tests {
             anchor_line_end: Some(20),
             anchor_selection: None,
             parent_id: Some("parent-1".into()),
+            thread_id: Some("thread-1".into()),
+            start_offset: Some(100),
+            end_offset: Some(200),
             mentions: Some(vec!["bob".into()]),
         };
         assert_eq!(req.document_id, "doc-1");
@@ -534,6 +568,9 @@ mod tests {
             Some(["bob".to_string()].as_slice())
         );
         assert_eq!(req.parent_id.as_deref(), Some("parent-1"));
+        assert_eq!(req.thread_id.as_deref(), Some("thread-1"));
+        assert_eq!(req.start_offset, Some(100));
+        assert_eq!(req.end_offset, Some(200));
     }
 
     #[test]

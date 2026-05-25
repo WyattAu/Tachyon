@@ -8,9 +8,11 @@ mod api;
 mod components;
 mod i18n;
 mod markdown;
+mod offline;
 mod pages;
 mod storage;
 mod styles;
+pub mod sync_bridge;
 mod types;
 pub mod websocket;
 

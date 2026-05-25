@@ -2,7 +2,7 @@
 //! Presence tracking, inline comments, and @mentions
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
 };
@@ -77,10 +77,12 @@ pub struct Comment {
     pub author_id: String,
     pub author_name: String,
     pub content: String,
-    /// Optional anchor position (section/line)
     pub anchor: Option<CommentAnchor>,
     pub status: CommentStatus,
     pub parent_id: Option<String>,
+    pub thread_id: Option<String>,
+    pub start_offset: Option<i32>,
+    pub end_offset: Option<i32>,
     pub mentions: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -130,6 +132,9 @@ pub struct CreateCommentRequest {
     pub content: String,
     pub anchor: Option<CommentAnchor>,
     pub parent_id: Option<String>,
+    pub thread_id: Option<String>,
+    pub start_offset: Option<i32>,
+    pub end_offset: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
@@ -398,6 +403,9 @@ fn db_comment_to_comment(db: tachyon_database::comment::Comment) -> Comment {
         },
         status,
         parent_id: db.parent_id,
+        thread_id: db.thread_id,
+        start_offset: db.start_offset,
+        end_offset: db.end_offset,
         mentions,
         created_at,
         updated_at,
@@ -406,12 +414,18 @@ fn db_comment_to_comment(db: tachyon_database::comment::Comment) -> Comment {
     }
 }
 
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct ListCommentsQuery {
+    pub threaded: Option<String>,
+}
+
 /// GET /api/v1/collaboration/comments/{document_id} — List comments
 #[utoipa::path(
     get,
     path = "/collaboration/documents/{document_id}/comments",
     params(
         ("document_id" = String, Path, description = "Document ID"),
+        ("threaded" = Option<String>, Query, description = "Set to 'true' for threaded organization"),
     ),
     responses(
         (status = 200, description = "Document comments", body = CommentsResponse),
@@ -423,6 +437,7 @@ fn db_comment_to_comment(db: tachyon_database::comment::Comment) -> Comment {
 pub async fn list_comments(
     State(state): State<CollaborationState>,
     Path(document_id): Path<String>,
+    Query(query): Query<ListCommentsQuery>,
 ) -> Result<Json<CommentsResponse>, ServerError> {
     let repo = CommentRepository::new(state.pool.clone());
     let comments = repo
@@ -430,7 +445,26 @@ pub async fn list_comments(
         .await?;
 
     let total = comments.len();
-    let comments: Vec<Comment> = comments.into_iter().map(db_comment_to_comment).collect();
+    let mut comments: Vec<Comment> = comments.into_iter().map(db_comment_to_comment).collect();
+
+    if query.threaded.as_deref() == Some("true") {
+        comments.sort_by(|a, b| {
+            let a_thread = a
+                .thread_id
+                .as_ref()
+                .or(a.parent_id.as_ref())
+                .unwrap_or(&a.id);
+            let b_thread = b
+                .thread_id
+                .as_ref()
+                .or(b.parent_id.as_ref())
+                .unwrap_or(&b.id);
+            a_thread
+                .cmp(b_thread)
+                .then_with(|| a.parent_id.is_some().cmp(&b.parent_id.is_some()))
+                .then_with(|| a.created_at.cmp(&b.created_at))
+        });
+    }
 
     Ok(Json(CommentsResponse { comments, total }))
 }
@@ -467,6 +501,9 @@ pub async fn create_comment(
             .and_then(|a| a.line_end.map(|v| v as i32)),
         anchor_selection: req.anchor.as_ref().and_then(|a| a.selection_text.clone()),
         parent_id: req.parent_id.clone(),
+        thread_id: req.thread_id.clone(),
+        start_offset: req.start_offset,
+        end_offset: req.end_offset,
         mentions: None,
     };
 

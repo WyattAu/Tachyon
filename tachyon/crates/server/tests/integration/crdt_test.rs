@@ -706,3 +706,143 @@ async fn test_multi_client_convergence_with_edits() {
         "Server should match converged client state"
     );
 }
+
+#[tokio::test]
+async fn test_delta_sync_encoding() {
+    if skip_crdt_tests() {
+        println!("Skipping: RUN_CRDT_TESTS not set");
+        return;
+    }
+    let manager = tachyon_server::crdt::CrdtDocumentManager::new();
+    let doc_id = "delta-sync-encoding";
+
+    manager.set_text(doc_id, "Version 1").unwrap();
+
+    let client_sv = manager.get_state_vector(doc_id).unwrap();
+    let initial_state = manager.get_state(doc_id).unwrap();
+
+    manager.set_text(doc_id, "Version 2 with new data").unwrap();
+
+    let diff = manager
+        .encode_diff(doc_id, &client_sv)
+        .unwrap()
+        .expect("Diff should exist after edit");
+
+    assert!(!diff.is_empty(), "Diff should not be empty");
+
+    let full_state = manager.get_state(doc_id).unwrap();
+    assert!(
+        diff.len() < full_state.len(),
+        "Diff ({}) should be smaller than full state ({})",
+        diff.len(),
+        full_state.len()
+    );
+
+    let client_doc = Doc::new();
+    let client_text = client_doc.get_or_insert_text("content");
+    {
+        let mut txn = client_doc.transact_mut();
+        let update = yrs::Update::decode_v1(&initial_state).unwrap();
+        txn.apply_update(update).unwrap();
+    }
+    assert_eq!(client_text.get_string(&client_doc.transact()), "Version 1");
+
+    {
+        let mut txn = client_doc.transact_mut();
+        let update = yrs::Update::decode_v1(&diff).unwrap();
+        txn.apply_update(update).unwrap();
+    }
+
+    let server_text = manager.get_text(doc_id).unwrap();
+    let client_result = client_text.get_string(&client_doc.transact());
+    assert_eq!(
+        server_text, client_result,
+        "Client should converge with server after applying delta"
+    );
+}
+
+#[tokio::test]
+async fn test_concurrent_edits_with_delta_sync() {
+    if skip_crdt_tests() {
+        println!("Skipping: RUN_CRDT_TESTS not set");
+        return;
+    }
+    let (addr, manager) = start_crdt_test_server().await;
+    let room_id = "test-delta-concurrent";
+
+    let url1 = format!("ws://{}/ws/crdt/{}", addr, room_id);
+    let (ws1, _) = tokio_tungstenite::connect_async(&url1).await.unwrap();
+    let (mut write1, mut read1) = ws1.split();
+
+    let url2 = format!("ws://{}/ws/crdt/{}", addr, room_id);
+    let (ws2, _) = tokio_tungstenite::connect_async(&url2).await.unwrap();
+    let (mut write2, mut read2) = ws2.split();
+
+    drain_messages(&mut read1, Duration::from_millis(100)).await;
+    drain_messages(&mut read2, Duration::from_millis(100)).await;
+
+    let doc1 = Doc::new();
+    let text1 = doc1.get_or_insert_text("content");
+    let update1 = {
+        let mut txn = doc1.transact_mut();
+        text1.insert(&mut txn, 0, "Client1 ");
+        let sv = txn.state_vector();
+        txn.encode_state_as_update_v1(&sv)
+    };
+
+    let doc2 = Doc::new();
+    let text2 = doc2.get_or_insert_text("content");
+    let update2 = {
+        let mut txn = doc2.transact_mut();
+        text2.insert(&mut txn, 0, "Client2 ");
+        let sv = txn.state_vector();
+        txn.encode_state_as_update_v1(&sv)
+    };
+
+    write1
+        .send(Message::Binary(wrap_sync_message(&update1).into()))
+        .await
+        .unwrap();
+    write2
+        .send(Message::Binary(wrap_sync_message(&update2).into()))
+        .await
+        .unwrap();
+
+    let received_by_2 = read_next_binary(&mut read2, Duration::from_secs(2)).await;
+    let received_by_1 = read_next_binary(&mut read1, Duration::from_secs(2)).await;
+
+    assert!(received_by_2.is_some(), "Client 2 should receive update");
+    assert!(received_by_1.is_some(), "Client 1 should receive update");
+
+    if let Some(data) = received_by_2 {
+        if data.len() > 1 && data[0] == 0 {
+            if let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
+                let mut txn = doc2.transact_mut();
+                txn.apply_update(update).unwrap();
+            }
+        }
+    }
+
+    if let Some(data) = received_by_1 {
+        if data.len() > 1 && data[0] == 0 {
+            if let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
+                let mut txn = doc1.transact_mut();
+                txn.apply_update(update).unwrap();
+            }
+        }
+    }
+
+    let text1_final = text1.get_string(&doc1.transact());
+    let text2_final = text2.get_string(&doc2.transact());
+    assert_eq!(
+        text1_final, text2_final,
+        "Both clients should converge after delta sync"
+    );
+
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    let server_text = manager.crdt_manager().get_text(room_id).unwrap();
+    assert_eq!(
+        server_text, text1_final,
+        "Server should match converged client state"
+    );
+}

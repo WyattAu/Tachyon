@@ -69,6 +69,10 @@ pub use native_editor::NativeEditor;
 pub use onboarding::{OnboardingWizard, should_show_onboarding};
 #[allow(unused_imports)]
 pub use presence_indicators::{
+    CollaboratorInfo, CollaboratorList, CollaboratorStatus, PresenceIndicator,
+};
+#[allow(unused_imports)]
+pub use presence_indicators::{
     PresenceIndicators as CollabPresenceIndicators, PresenceUser as CollabPresenceUser,
 };
 pub use review_panel::ReviewPanel;
