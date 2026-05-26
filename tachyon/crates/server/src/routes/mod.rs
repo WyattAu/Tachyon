@@ -2,6 +2,7 @@
 // Defines all HTTP endpoints for the Tachyon server
 
 pub mod activity;
+pub mod ai_routes;
 pub mod billing;
 pub mod catalog;
 pub mod collaboration;
@@ -25,6 +26,8 @@ pub mod role;
 pub mod search;
 pub mod seo;
 pub mod session;
+pub mod siem;
+pub mod signup;
 pub mod space;
 pub mod ssg;
 pub mod tags;

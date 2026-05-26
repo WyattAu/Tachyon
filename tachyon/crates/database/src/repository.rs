@@ -793,6 +793,60 @@ impl DocumentRepository {
         Ok(count)
     }
 
+    /// Update the embedding vector for a document.
+    pub async fn update_embedding(
+        &self,
+        id: &str,
+        embedding: Vec<f32>,
+    ) -> Result<(), DatabaseError> {
+        let emb_str = format!(
+            "[{}]",
+            embedding
+                .iter()
+                .map(|f| f.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        let mut conn = self.pool.acquire().await?;
+        query("UPDATE documents SET embedding = $1::vector WHERE id = $2")
+            .bind(&emb_str)
+            .bind(id)
+            .execute(&mut *conn)
+            .await?;
+        Ok(())
+    }
+
+    /// Search documents by semantic similarity using cosine distance.
+    pub async fn search_semantic(
+        &self,
+        embedding: Vec<f32>,
+        limit: i64,
+        threshold: f32,
+    ) -> Result<Vec<DocumentMetadata>, DatabaseError> {
+        let emb_str = format!(
+            "[{}]",
+            embedding
+                .iter()
+                .map(|f| f.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        let mut conn = self.pool.acquire().await?;
+        let rows = query(&format!(
+            "SELECT {} FROM documents WHERE embedding IS NOT NULL AND 1 - (embedding <=> $1::vector) > $2 ORDER BY embedding <=> $1::vector LIMIT $3",
+            DOCUMENT_SUMMARY_SELECT_SQL
+        ))
+        .bind(&emb_str)
+        .bind(threshold)
+        .bind(limit)
+        .fetch_all(&mut *conn)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| row_to_document_metadata(r).ok())
+            .collect())
+    }
+
     /// Count documents by author
     ///
     /// # Arguments

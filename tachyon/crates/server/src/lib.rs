@@ -117,11 +117,13 @@
 //! - [API Documentation](../../docs/api/authentication.md)
 //! - [Architecture](../../docs/developer/architecture.md)
 
+pub mod ai;
 pub mod api_docs;
 pub mod audit;
 pub mod config;
 pub mod conflict;
 pub mod crdt;
+pub mod dlp;
 pub mod email;
 pub mod error;
 pub mod graph_extractor;
@@ -130,6 +132,7 @@ pub mod middleware;
 pub mod pagination;
 pub mod proofs;
 pub mod routes;
+pub mod sso;
 pub mod storage;
 pub mod sync;
 pub mod tantivy_search;
@@ -181,6 +184,7 @@ pub struct AppState {
     pub onboarding_state: crate::routes::onboarding::OnboardingState,
     pub connection_manager: crate::websocket::ConnectionManager,
     pub crdt_connection_manager: crate::websocket::CrdtConnectionManager,
+    pub ai_manager: Arc<crate::ai::AiManager>,
     pub pool: tachyon_database::DatabasePool,
     pub http_client: reqwest::Client,
     pub email: crate::email::EmailService,
@@ -357,6 +361,11 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
 
     let email = crate::email::EmailService::new(config);
 
+    let ai_manager = Arc::new(crate::ai::AiManager::from_env());
+    if ai_manager.is_available() {
+        tracing::info!("AI provider configured: {}", ai_manager.provider_name());
+    }
+
     Ok(AppState {
         start_time: std::time::Instant::now(),
         document_state,
@@ -381,6 +390,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         connection_manager,
         crdt_connection_manager,
         pool,
+        ai_manager,
         http_client,
         email,
         metrics: Arc::new(crate::middleware::metrics::RequestMetrics::new()),
@@ -431,6 +441,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let connection_manager = state.connection_manager;
     let crdt_connection_manager = state.crdt_connection_manager;
     let pool = state.pool;
+    let ai_manager = state.ai_manager;
     let http_client = state.http_client;
     let metrics = state.metrics;
     let audit_logger = state.audit_logger;
@@ -547,6 +558,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let files_router = create_files_router().with_state(files_state);
     let mfa_router = create_mfa_router().with_state(user_state.clone());
 
+    let ai_router = crate::routes::ai_routes::create_ai_router().with_state(ai_manager);
+
     let api_v1 = Router::new()
         .merge(document_router)
         .merge(user_router)
@@ -573,6 +586,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(password_reset_router)
         .merge(files_router)
         .merge(mfa_router)
+        .merge(ai_router)
         .layer(RequestBodyLimitLayer::new(1024 * 1024))
         .merge(ssg_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
         .merge(oauth2_router.layer(RequestBodyLimitLayer::new(1024 * 1024)));

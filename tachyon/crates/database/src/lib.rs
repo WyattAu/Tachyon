@@ -32,6 +32,7 @@ pub mod space;
 pub mod team;
 pub mod template;
 pub mod types;
+pub mod usage;
 pub mod user;
 pub mod user_preferences;
 pub mod webhook;
@@ -93,6 +94,7 @@ pub use template::{
 };
 pub use types::*;
 pub use types::{Component, Project, ProjectMember};
+pub use usage::{UsageRecord, UsageRepository, UsageSummary};
 pub use user::{UserRecord, UserRepository};
 pub use user_preferences::UserPreferencesRepository;
 pub use webhook::{CreateWebhook, Webhook, WebhookRepository};

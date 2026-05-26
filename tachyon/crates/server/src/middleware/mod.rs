@@ -5,6 +5,7 @@ pub mod cache_control;
 pub mod compression;
 pub mod cors;
 pub mod metrics;
+pub mod plan_enforcement;
 pub mod rate_limit;
 pub mod request_id;
 pub mod request_limit;
