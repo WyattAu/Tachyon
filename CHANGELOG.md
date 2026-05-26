@@ -5,6 +5,35 @@ All notable changes to the Tachyon project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.0.0] - 2026-05-26
+
+### Fixed
+
+- Fixed `clippy::await_holding_refcell_ref` in `sync_bridge.rs` using
+  take/put-back pattern to avoid holding RefCell borrows across await points.
+- Fixed CI integration test failures caused by missing `pgvector` extension:
+  switched PostgreSQL service images from `postgres:16` to
+  `pgvector/pgvector:pg16` in `ci.yml`, `e2e.yml`, and `release.yml`.
+- Removed unnecessary `mut` binding in `sync_bridge.rs` that triggered
+  `-D unused-mut` in clippy.
+- Pinned `cargo-mutant@27.0.0` in CI workflow to fix registry resolution
+  failures.
+- Rewrote `backup.yml` with conditional SSH-based pg_dump workflow
+  (activated via `BACKUP_ENABLED` repository variable).
+
+### Changed
+
+- Excluded `tachyon-cli` from pre-commit clippy and test gates to avoid
+  slow local compilation of wasmtime/tauri dependencies.
+- Updated `VERSION.md` to v20.0.0 with full CI audit results.
+
+### Added
+
+- Comprehensive production roadmap (`ROADMAP_PRODUCTION_v2.md`) covering
+  infrastructure provisioning, API validation, security hardening,
+  production launch, post-launch features (F1-F5), and long-term vision
+  (V1-V5).
+
 ## [12.0.0] - 2026-05-19
 
 ### Changed

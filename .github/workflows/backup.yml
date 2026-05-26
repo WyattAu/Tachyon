@@ -19,24 +19,39 @@ jobs:
   backup-database:
     name: Backup Database
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment || 'staging' }}
     steps:
-      - name: Placeholder - database backup requires real credentials
+      - name: Generate backup via SSH
+        if: vars.BACKUP_ENABLED == 'true'
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.BACKUP_HOST }}
+          username: ${{ secrets.BACKUP_SSH_USER }}
+          key: ${{ secrets.BACKUP_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+            BACKUP_DIR="/opt/tachyon/backups"
+            mkdir -p "$BACKUP_DIR"
+            pg_dump \
+              -Fc \
+              -f "${BACKUP_DIR}/tachyon-${TIMESTAMP}.dump" \
+              "${TACHYON_DATABASE_URL:-postgres://localhost/tachyon}"
+            # Retain last 30 backups
+            ls -t "${BACKUP_DIR}"/tachyon-*.dump | tail -n +31 | xargs -r rm --
+            echo "Backup completed: tachyon-${TIMESTAMP}.dump"
+            echo "Total backups: $(ls "${BACKUP_DIR}"/tachyon-*.dump | wc -l)"
+
+      - name: Backup skipped (not configured)
+        if: vars.BACKUP_ENABLED != 'true'
         run: |
           echo "::warning::Database backup is not configured."
-          echo "To back up a real database, this workflow needs the following secrets:"
-          echo "  - PGHOST: PostgreSQL host (or SSH into the production server first)"
-          echo "  - PGPORT: PostgreSQL port"
-          echo "  - PGPASSWORD: PostgreSQL password"
-          echo "  - PGDATABASE: Database name"
-          echo ""
-          echo "The typical approach is to SSH into the production server and run"
-          echo "pg_dump there, since the database is not publicly accessible."
-          echo ""
-          echo "Steps to enable:"
-          echo "  1. Add an SSH step using appleboy/ssh-action or similar"
-          echo "  2. SSH into the server and run: pg_dump -F c -f /tmp/backup.dump"
-          echo "  3. Copy the dump back or upload it as an artifact"
-          echo "  4. Remove this placeholder step and uncomment the real backup steps"
+          echo "To enable, set the following repository variables and secrets:"
+          echo "  Variables: BACKUP_ENABLED=true"
+          echo "  Secrets: BACKUP_HOST, BACKUP_SSH_USER, BACKUP_SSH_KEY"
+          echo "  The target server must have pg_dump installed and network"
+          echo "  access to the PostgreSQL instance."
 
   backup-configuration:
     name: Backup Configuration
