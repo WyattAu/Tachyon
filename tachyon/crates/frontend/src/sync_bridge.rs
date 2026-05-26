@@ -157,7 +157,7 @@ impl SyncQueueBridge {
             .into(),
         );
 
-        let mut store = store;
+        let store = store;
         for change in &changes {
             let edit_data = serde_json::json!({
                 "operation": change.operation,
