@@ -344,7 +344,7 @@ jobs:
           key: cargo-mutant-bin-v2
 
       - name: Install cargo-mutant
-        run: command -v cargo-mutant || cargo install cargo-mutant@27.0.0 --locked
+        run: command -v cargo-mutant || cargo install cargo-mutant --locked
 
       - name: Run mutation tests
         working-directory: tachyon
