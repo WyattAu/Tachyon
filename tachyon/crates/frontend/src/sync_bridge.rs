@@ -98,16 +98,14 @@ impl SyncQueueBridge {
 
             // Extract store from RefCell, drop borrow, then await
             let store = store_cell.borrow_mut().take();
-            if let Some(store) = store.as_ref() {
+            if let Some(store) = store {
                 if let Err(e) = store.enqueue_change(change).await {
                     web_sys::console::log_1(
                         &format!("[SyncQueueBridge] Failed to enqueue change: {}", e).into(),
                     );
                 }
-            }
-            // Put store back
-            if store.is_some() {
-                *store_cell.borrow_mut() = store;
+                // Put store back
+                *store_cell.borrow_mut() = Some(store);
             }
         });
 
@@ -197,17 +195,16 @@ impl SyncQueueBridge {
     pub async fn pending_count(&self) -> usize {
         // Take the store out temporarily to avoid holding RefCell across await
         let store_opt = self.offline_store.borrow_mut().take();
-        let count = match store_opt {
-            Some(store) => store
-                .get_pending_changes()
-                .await
-                .map(|c| c.len())
-                .unwrap_or(0),
-            None => 0,
-        };
-        if store_opt.is_some() {
-            *self.offline_store.borrow_mut() = store_opt;
+        if store_opt.is_none() {
+            return 0;
         }
+        let store = store_opt.unwrap();
+        let count = store
+            .get_pending_changes()
+            .await
+            .map(|c| c.len())
+            .unwrap_or(0);
+        *self.offline_store.borrow_mut() = Some(store);
         count
     }
 }
