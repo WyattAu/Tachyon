@@ -122,6 +122,12 @@ enum Commands {
         release: bool,
     },
 
+    /// Plugin development commands
+    Plugin {
+        #[command(subcommand)]
+        subcommand: PluginCommands,
+    },
+
     /// Build static site from database documents
     Build {
         /// Path to the content repository
@@ -163,6 +169,24 @@ enum Commands {
         /// Custom template directory
         #[arg(long, value_name = "PATH")]
         template: Option<std::path::PathBuf>,
+    },
+}
+
+/// Plugin subcommands
+#[derive(Subcommand)]
+enum PluginCommands {
+    /// Scaffold a new plugin from template
+    New {
+        /// Plugin name
+        #[arg(value_name = "NAME")]
+        name: String,
+    },
+
+    /// Build plugin for WASM target
+    Build {
+        /// Build in release mode
+        #[arg(long)]
+        release: bool,
     },
 }
 
@@ -287,6 +311,16 @@ fn main() {
             );
             cmd.execute()
         }
+
+        Commands::Plugin { subcommand } => match subcommand {
+            PluginCommands::New { name } => {
+                tachyon_cli::plugin_commands::new_plugin(&name).map_err(|e| CliError::generic(e))
+            }
+            PluginCommands::Build { release } => {
+                tachyon_cli::plugin_commands::build_plugin(release)
+                    .map_err(|e| CliError::generic(e))
+            }
+        },
     };
 
     // Handle result

@@ -4,6 +4,7 @@
 pub mod commands;
 pub mod config;
 pub mod error;
+pub mod plugin_commands;
 
 // Re-export commonly used types
 pub use error::{CliError, CliResult};

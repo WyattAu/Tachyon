@@ -131,6 +131,7 @@ pub mod graphql;
 pub mod middleware;
 pub mod pagination;
 pub mod proofs;
+pub mod push;
 pub mod routes;
 pub mod sso;
 pub mod storage;

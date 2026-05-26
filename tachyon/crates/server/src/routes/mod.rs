@@ -20,6 +20,7 @@ pub mod onboarding;
 pub mod organization;
 pub mod password_reset;
 pub mod plugin;
+pub mod push;
 pub mod repository;
 pub mod review;
 pub mod role;

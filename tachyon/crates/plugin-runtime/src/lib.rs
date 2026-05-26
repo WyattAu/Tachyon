@@ -8,7 +8,9 @@
 mod ai;
 mod error;
 mod marketplace;
+mod permissions;
 mod sandbox;
+mod signing;
 
 #[cfg(feature = "registry-client")]
 pub mod registry_client;
@@ -24,7 +26,9 @@ pub use marketplace::{
     MarketplaceError, MarketplaceResult, PluginCompatibility, PluginId, PluginInstallStatus,
     PluginManifest, PluginMarketplace, PluginVersion,
 };
+pub use permissions::{PermissionSet, PluginPermission};
 pub use sandbox::{PluginContext, PluginOutput, PluginSandbox, SandboxConfig};
+pub use signing::{PluginSignature, SigningKeyPair};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
