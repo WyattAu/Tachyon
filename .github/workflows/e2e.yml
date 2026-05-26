@@ -46,7 +46,7 @@ jobs:
             -e POSTGRES_PASSWORD=tachyon_test \
             -e POSTGRES_DB=tachyon_test \
             -p 5433:5432 \
-            postgres:16-alpine
+            pgvector/pgvector:pg16
           sleep 3
 
       - name: Build WASM frontend

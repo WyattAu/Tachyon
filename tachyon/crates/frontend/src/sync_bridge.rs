@@ -96,12 +96,18 @@ impl SyncQueueBridge {
                 retry_count: 0,
             };
 
-            if let Some(store) = store_cell.borrow().as_ref() {
+            // Extract store from RefCell, drop borrow, then await
+            let store = store_cell.borrow_mut().take();
+            if let Some(store) = store.as_ref() {
                 if let Err(e) = store.enqueue_change(change).await {
                     web_sys::console::log_1(
                         &format!("[SyncQueueBridge] Failed to enqueue change: {}", e).into(),
                     );
                 }
+            }
+            // Put store back
+            if store.is_some() {
+                *store_cell.borrow_mut() = store;
             }
         });
 
@@ -122,24 +128,26 @@ impl SyncQueueBridge {
     }
 
     async fn drain_queue(offline_store: &Rc<RefCell<Option<OfflineStore>>>, ws: &WebSocketClient) {
-        let changes = {
-            let store_ref = offline_store.borrow();
-            let store = match store_ref.as_ref() {
-                Some(s) => s,
-                None => return,
-            };
-            match store.get_pending_changes().await {
-                Ok(c) => c,
-                Err(e) => {
-                    web_sys::console::log_1(
-                        &format!("[SyncQueueBridge] Failed to get pending changes: {}", e).into(),
-                    );
-                    return;
-                }
+        // Take the store out, run async operations, then put it back
+        let store_opt = offline_store.borrow_mut().take();
+        let store = match store_opt {
+            Some(s) => s,
+            None => return,
+        };
+
+        let changes = match store.get_pending_changes().await {
+            Ok(c) => c,
+            Err(e) => {
+                web_sys::console::log_1(
+                    &format!("[SyncQueueBridge] Failed to get pending changes: {}", e).into(),
+                );
+                *offline_store.borrow_mut() = Some(store);
+                return;
             }
         };
 
         if changes.is_empty() {
+            *offline_store.borrow_mut() = Some(store);
             return;
         }
 
@@ -151,6 +159,7 @@ impl SyncQueueBridge {
             .into(),
         );
 
+        let mut store = store;
         for change in &changes {
             let edit_data = serde_json::json!({
                 "operation": change.operation,
@@ -160,14 +169,11 @@ impl SyncQueueBridge {
 
             match ws.send_edit(&change.document_id, "local", edit_data) {
                 Ok(()) => {
-                    let store_ref = offline_store.borrow();
-                    if let Some(store) = store_ref.as_ref() {
-                        if let Err(e) = store.remove_change(&change.id).await {
-                            web_sys::console::log_1(
-                                &format!("[SyncQueueBridge] Failed to remove synced change: {}", e)
-                                    .into(),
-                            );
-                        }
+                    if let Err(e) = store.remove_change(&change.id).await {
+                        web_sys::console::log_1(
+                            &format!("[SyncQueueBridge] Failed to remove synced change: {}", e)
+                                .into(),
+                        );
                     }
                 }
                 Err(_) => {
@@ -180,6 +186,8 @@ impl SyncQueueBridge {
                 }
             }
         }
+
+        *offline_store.borrow_mut() = Some(store);
     }
 
     pub fn get_state(&self) -> SyncQueueBridgeState {
@@ -187,13 +195,19 @@ impl SyncQueueBridge {
     }
 
     pub async fn pending_count(&self) -> usize {
-        match self.offline_store.borrow().as_ref() {
+        // Take the store out temporarily to avoid holding RefCell across await
+        let store_opt = self.offline_store.borrow_mut().take();
+        let count = match store_opt {
             Some(store) => store
                 .get_pending_changes()
                 .await
                 .map(|c| c.len())
                 .unwrap_or(0),
             None => 0,
+        };
+        if store_opt.is_some() {
+            *self.offline_store.borrow_mut() = store_opt;
         }
+        count
     }
 }

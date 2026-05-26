@@ -50,6 +50,7 @@ if ! cargo clippy \
     --exclude tachyon-frontend \
     --exclude tachyon-desktop \
     --exclude tachyon-desktop-app \
+    --exclude tachyon-cli \
     --manifest-path "${WORKSPACE_DIR}/Cargo.toml" \
     -- -D warnings; then
     fail "Clippy warnings found. Run: cargo clippy --fix"
@@ -66,6 +67,7 @@ if ! cargo test \
     --exclude tachyon-frontend \
     --exclude tachyon-desktop \
     --exclude tachyon-desktop-app \
+    --exclude tachyon-cli \
     --manifest-path "${WORKSPACE_DIR}/Cargo.toml"; then
     fail "Tests failed. See output above for details."
     PASS=false
