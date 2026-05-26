@@ -85,8 +85,26 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     let prev_next_html = render_prev_next(ctx.prev_link, ctx.next_link);
     let sidebar_html = render_sidebar(&ctx.site.menu_items, ctx.current_slug);
 
+    let pagefind_base = ctx
+        .site
+        .base_url
+        .trim_end_matches('/')
+        .trim_start_matches("https://")
+        .trim_start_matches("http://");
+    // Extract subpath from base_url (e.g. "wyattau.github.io/Tachyon" -> "/Tachyon")
+    let pagefind_prefix = match pagefind_base.find('/') {
+        Some(_) => {
+            let path = &pagefind_base[pagefind_base.find('/').unwrap()..];
+            path.trim_end_matches('/').to_string()
+        }
+        None => String::new(),
+    };
+
     let pagefind_css = if ctx.site.pagefind_enabled {
-        r#"<link href="/pagefind/pagefind-ui.css" rel="stylesheet">"#.to_string()
+        format!(
+            r#"<link href="{}/pagefind/pagefind-ui.css" rel="stylesheet">"#,
+            pagefind_prefix
+        )
     } else {
         String::new()
     };
@@ -98,10 +116,12 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     };
 
     let pagefind_js = if ctx.site.pagefind_enabled {
-        r##"<!-- Run: npx pagefind --site <output_dir> post-build to generate the search index -->
-<script src="/pagefind/pagefind-ui.js"></script>
-<script>window.addEventListener('DOMContentLoaded',function(){new PagefindUI({element:"#search",showSubResults:true})});</script>"##
-            .to_string()
+        format!(
+            r##"<!-- Run: npx pagefind --site <output_dir> post-build to generate the search index -->
+<script src="{}/pagefind/pagefind-ui.js"></script>
+<script>window.addEventListener('DOMContentLoaded',function(){{new PagefindUI({{element:"#search",showSubResults:true}})}});</script>"##,
+            pagefind_prefix
+        )
     } else {
         String::new()
     };
