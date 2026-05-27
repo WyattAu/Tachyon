@@ -213,7 +213,7 @@ where
     });
 
     view! {
-        <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
             // Skip navigation link for accessibility
             <a
                 href="#main-content"
@@ -239,7 +239,7 @@ where
                     let width = if collapsed { "w-16" } else { "w-64" };
                     let mobile_transform = if mobile_menu_open.get() { "translate-x-0" } else { "-translate-x-full" };
                     format!(
-                        "fixed inset-y-0 left-0 z-50 {} transform transition-transform duration-200 ease-in-out {} md:translate-x-0 transition-all duration-300 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700",
+                        "fixed inset-y-0 left-0 z-50 {} transform transition-transform duration-200 ease-in-out {} md:translate-x-0 transition-all duration-300 bg-white dark:bg-gray-950 border-r-2 border-gray-900 dark:border-gray-100",
                         width,
                         mobile_transform,
                     )
@@ -250,7 +250,7 @@ where
                     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
-                                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                                <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
                                     <span class="text-white font-bold text-lg">T</span>
                                 </div>
                                 <Show when={move || !sidebar_collapsed.get()}>
@@ -319,11 +319,11 @@ where
                 }
             }>
                 {/* Top bar */}
-                <header class="sticky top-0 z-20 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 no-print" role="banner">
+                <header class="sticky top-0 z-20 bg-white dark:bg-gray-950 border-b-2 border-gray-900 dark:border-gray-100 spatial-1 no-print" role="banner">
                     <div class="px-4 md:px-6 py-4 flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <button
-                                class="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                class="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                                 on:click=on_toggle_mobile_menu
                                 attr:aria-label="Open menu"
                             >
@@ -338,7 +338,7 @@ where
                         <div class="flex items-center space-x-4">
                             <button
                                 on:click=move |_| set_search_open.set(true)
-                                class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors"
+                                class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-200 dark:border-gray-600 transition-colors"
                                 attr:aria-label="Search documents"
                             >
                                 <svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -349,7 +349,7 @@ where
                             </button>
                             <button
                                 on:click=move |_| set_palette_open.set(true)
-                                class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors"
+                                class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-200 dark:border-gray-600 transition-colors"
                                 aria-label="Open search (Cmd+K)"
                             >
                                 <svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -371,7 +371,7 @@ where
                             <div class="relative">
                                 <button
                                     on:click={move |ev| on_toggle_notifications.run(ev)}
-                                    class="relative p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                    class="relative p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                                     attr:aria-haspopup="true"
                                     attr:aria-expanded=move || if show_notifications.get() { "true" } else { "false" }
                                     attr:aria-controls="notification-panel"
@@ -501,7 +501,7 @@ where
                                 <div class="relative">
                                     <button
                                         on:click={move |ev| on_toggle_menu.run(ev)}
-                                        class="flex items-center gap-2 p-2 min-h-[44px] rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                        class="flex items-center gap-2 p-2 min-h-[44px] rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                         attr:aria-haspopup="true"
                                         attr:aria-expanded=move || if show_user_menu.get() { "true" } else { "false" }
                                         attr:aria-controls="user-menu-panel"
@@ -570,7 +570,7 @@ pub fn NavLink(href: &'static str, label: &'static str, collapsed: bool) -> impl
     view! {
         <a
             href=href
-            class="flex items-center p-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+            class="flex items-center p-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring"
             title=label
             attr:aria-label=label
         >

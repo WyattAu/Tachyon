@@ -202,7 +202,7 @@ impl OfflineSyncQueue {
         }
 
         if self.updates.len() == 1 {
-            let update = self.updates.pop_front().unwrap();
+            let update = self.updates.pop_front()?;
             self.total_bytes = 0;
             return Some(update.data);
         }
@@ -239,8 +239,13 @@ impl OfflineSyncQueue {
             return;
         }
 
-        let first = self.updates.pop_front().unwrap();
-        let second = self.updates.pop_front().unwrap();
+        let Some(first) = self.updates.pop_front() else {
+            return;
+        };
+        let Some(second) = self.updates.pop_front() else {
+            self.updates.push_front(first);
+            return;
+        };
 
         // Decode both updates and apply to a temp doc
         let doc = Doc::new();
@@ -348,9 +353,13 @@ mod tests {
         let seq1 = queue.enqueue(make_update("first"), timestamp());
         let seq2 = queue.enqueue(make_update("second"), timestamp());
 
-        let first = queue.dequeue().unwrap();
+        let Some(first) = queue.dequeue() else {
+            panic!("expected first dequeue to return Some");
+        };
         assert_eq!(first.seq, seq1);
-        let second = queue.dequeue().unwrap();
+        let Some(second) = queue.dequeue() else {
+            panic!("expected second dequeue to return Some");
+        };
         assert_eq!(second.seq, seq2);
         assert!(queue.dequeue().is_none());
     }
@@ -383,11 +392,15 @@ mod tests {
         queue.enqueue(make_update("hello"), timestamp());
         queue.enqueue(make_update("world"), timestamp());
 
-        let _update = queue.dequeue().unwrap();
+        let Some(_update) = queue.dequeue() else {
+            panic!("expected first dequeue to return Some");
+        };
         queue.mark_synced(1);
         assert_eq!(queue.synced_count(), 1);
 
-        let update2 = queue.dequeue().unwrap();
+        let Some(update2) = queue.dequeue() else {
+            panic!("expected second dequeue to return Some");
+        };
         queue.mark_failed(update2);
         assert_eq!(queue.failed_count(), 1);
         assert_eq!(queue.len(), 1); // Re-enqueued
@@ -467,7 +480,9 @@ mod tests {
         assert!(queue.peek().is_none());
 
         let seq = queue.enqueue(make_update("hello"), timestamp());
-        let peeked = queue.peek().unwrap();
+        let Some(peeked) = queue.peek() else {
+            panic!("expected peek to return Some after enqueue");
+        };
         assert_eq!(peeked.seq, seq);
         assert_eq!(queue.len(), 1); // Not removed
     }

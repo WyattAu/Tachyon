@@ -30,8 +30,11 @@ mod tests {
         assert_eq!(response.errors, []);
         match &response.data {
             async_graphql::Value::Object(map) => {
-                let health = map.get("health").expect("health field missing");
-                assert_eq!(health, &async_graphql::Value::String("ok".to_string()));
+                if let Some(health) = map.get("health") {
+                    assert_eq!(health, &async_graphql::Value::String("ok".to_string()));
+                } else {
+                    panic!("expected 'health' field in response object");
+                }
             }
             _ => panic!("expected object response"),
         }

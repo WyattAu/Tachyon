@@ -81,6 +81,27 @@ pub fn GlobalStyles() -> impl IntoView {
                     --transition-fast: 150ms ease;
                     --transition-normal: 200ms ease;
                     --transition-slow: 300ms ease;
+
+                    /* Amoebic design tokens */
+                    --radius-amoebic: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                    --radius-amoebic-alt: 30% 70% 70% 30% / 30% 30% 70% 70%;
+                    --radius-brutalist: 0px;
+                    --radius-sharp: 2px;
+
+                    /* Spatial depth */
+                    --shadow-spatial-1: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+                    --shadow-spatial-2: 4px 4px 0px 0px rgba(0, 0, 0, 0.15);
+                    --shadow-spatial-3: 8px 8px 0px 0px rgba(0, 0, 0, 0.12);
+
+                    /* Spring animation */
+                    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+                    --ease-spatial: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                }}
+
+                .dark {{
+                    --shadow-spatial-1: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+                    --shadow-spatial-2: 4px 4px 0px 0px rgba(255, 255, 255, 0.08);
+                    --shadow-spatial-3: 8px 8px 0px 0px rgba(255, 255, 255, 0.06);
                 }}
 
                 /* Custom animations beyond Tailwind defaults */

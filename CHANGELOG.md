@@ -419,6 +419,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Collaboration WebSocket broadcast (presence/comments to WS)
 - Collaboration and ecosystem routes registered in production router
 
+## [1.1.0] - 2026-02-16
+
+### Added
+- REST API endpoints for documents (create, read, update, delete, list, search, render)
+- Database integration with DatabasePool initialization, migrations, and DocumentState
+- Structured error responses with error codes (VALIDATION_ERROR, INVALID_ID, NOT_FOUND)
+- Document lifecycle management (statuses: draft, published, archived, deleted; visibility: public, private, restricted)
+- Tailwind CSS v4 integration with @tailwindcss/postcss plugin
+
+### Changed
+- TypeScript implicit any type fixed in editor.ts theme event handler
+- Cargo.toml updated with tachyon-database and tachyon-renderer dependencies
+
+### Fixed
+- Tailwind CSS v4 build configuration
+- TypeScript compilation errors (0 errors)
+- Document routes returning proper responses instead of NOT_IMPLEMENTED
+- Database type compatibility in document listing
+
+### Security
+- Input validation for document creation and updates
+- Path traversal prevention in file operations
+- Tag name sanitization and title length validation (max 200 characters)
+
 ## [0.17.0] - 2026-04-11
 
 ### Added
@@ -524,30 +548,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial workspace structure and crate layout
 
-## [1.1.0] - 2026-02-16
-
-### Added
-- REST API endpoints for documents (create, read, update, delete, list, search, render)
-- Database integration with DatabasePool initialization, migrations, and DocumentState
-- Structured error responses with error codes (VALIDATION_ERROR, INVALID_ID, NOT_FOUND)
-- Document lifecycle management (statuses: draft, published, archived, deleted; visibility: public, private, restricted)
-- Tailwind CSS v4 integration with @tailwindcss/postcss plugin
-
-### Changed
-- TypeScript implicit any type fixed in editor.ts theme event handler
-- Cargo.toml updated with tachyon-database and tachyon-renderer dependencies
-
-### Fixed
-- Tailwind CSS v4 build configuration
-- TypeScript compilation errors (0 errors)
-- Document routes returning proper responses instead of NOT_IMPLEMENTED
-- Database type compatibility in document listing
-
-### Security
-- Input validation for document creation and updates
-- Path traversal prevention in file operations
-- Tag name sanitization and title length validation (max 200 characters)
-
 ## [0.1.0] - 2026-02-16
 
 ### Added
@@ -572,6 +572,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CSRF token support in HTMX requests
 - XSS prevention with HTML escaping in search results
 
+[20.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v20.0.0
+[12.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v12.0.0
+[11.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v11.0.0
+[10.1.1]: https://github.com/WyattAu/Tachyon/releases/tag/v10.1.1
 [10.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v10.0.0
 [5.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v5.0.0
 [4.1.0]: https://github.com/WyattAu/Tachyon/releases/tag/v4.1.0
