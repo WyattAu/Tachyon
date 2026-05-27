@@ -144,7 +144,7 @@ pub fn GlobalStyles() -> impl IntoView {
 
                 ::-webkit-scrollbar-thumb {
                     background: #d1d5db;
-                    border-radius: 4px;
+                    border-radius: 0;
                 }
 
                 ::-webkit-scrollbar-thumb:hover {
@@ -169,214 +169,11 @@ pub fn GlobalStyles() -> impl IntoView {
                     scrollbar-color: #4b5563 transparent;
                 }
 
-                /* Smooth focus transitions */
-                :focus-visible {
+                /* Smooth focus transitions - brutalist sharp outline */
+                :focus-visible {{
                     outline: 2px solid #2563eb;
                     outline-offset: 2px;
-                    border-radius: 4px;
-                }
-
-                /* Prose typography for rendered markdown */
-                .prose {
-                    color: #374151;
-                    line-height: 1.75;
-                    max-width: none;
-                }
-
-                .dark .prose {
-                    color: #d1d5db;
-                }
-
-                .prose h1, .prose h2, .prose h3,
-                .prose h4, .prose h5, .prose h6 {
-                    color: #111827;
-                    font-weight: 600;
-                    margin-top: 1.5em;
-                    margin-bottom: 0.5em;
-                }
-
-                .dark .prose h1, .dark .prose h2, .dark .prose h3,
-                .dark .prose h4, .dark .prose h5, .dark .prose h6 {
-                    color: #f9fafb;
-                }
-
-                .prose p {
-                    margin-top: 1.25em;
-                    margin-bottom: 1.25em;
-                }
-
-                .prose a {
-                    color: #2563eb;
-                    text-decoration: underline;
-                    text-underline-offset: 2px;
-                }
-
-                .prose a:hover {
-                    color: #1d4ed8;
-                }
-
-                .dark .prose a {
-                    color: #60a5fa;
-                }
-
-                .dark .prose a:hover {
-                    color: #93bbfd;
-                }
-
-                .prose code {
-                    color: #db2777;
-                    background-color: #fdf2f8;
-                    padding: 0.125rem 0.375rem;
-                    border-radius: 0.25rem;
-                    font-size: 0.875em;
-                }
-
-                .dark .prose code {
-                    color: #f472b6;
-                    background-color: #831843;
-                }
-
-                .prose pre {
-                    background-color: #f3f4f6;
-                    border-radius: 0.5rem;
-                    padding: 1rem;
-                    overflow-x: auto;
-                    margin-top: 1.5em;
-                    margin-bottom: 1.5em;
-                }
-
-                .dark .prose pre {
-                    background-color: #1f2937;
-                }
-
-                .prose pre code {
-                    background-color: transparent;
-                    padding: 0;
-                    color: inherit;
-                }
-
-                .prose blockquote {
-                    border-left: 4px solid #e5e7eb;
-                    padding-left: 1rem;
-                    color: #6b7280;
-                    font-style: italic;
-                    margin-top: 1.5em;
-                    margin-bottom: 1.5em;
-                }
-
-                .dark .prose blockquote {
-                    border-left-color: #374151;
-                    color: #9ca3af;
-                }
-
-                .prose table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 1.5em;
-                    margin-bottom: 1.5em;
-                }
-
-                .prose th, .prose td {
-                    border: 1px solid #e5e7eb;
-                    padding: 0.5rem 0.75rem;
-                    text-align: left;
-                }
-
-                .dark .prose th, .dark .prose td {
-                    border-color: #374151;
-                }
-
-                .prose th {
-                    background-color: #f9fafb;
-                    font-weight: 600;
-                }
-
-                .dark .prose th {
-                    background-color: #1f2937;
-                }
-
-                .prose ul, .prose ol {
-                    padding-left: 1.5rem;
-                    margin-top: 1.25em;
-                    margin-bottom: 1.25em;
-                }
-
-                .prose ul {
-                    list-style-type: disc;
-                }
-
-                .prose ol {
-                    list-style-type: decimal;
-                }
-
-                .prose li {
-                    margin-top: 0.5em;
-                    margin-bottom: 0.5em;
-                }
-
-                .prose hr {
-                    border: none;
-                    border-top: 1px solid #e5e7eb;
-                    margin-top: 2em;
-                    margin-bottom: 2em;
-                }
-
-                .dark .prose hr {
-                    border-top-color: #374151;
-                }
-
-                .prose img {
-                    border-radius: 0.5rem;
-                    margin-top: 1.5em;
-                    margin-bottom: 1.5em;
-                }
-
-                /* Diff viewer styles for version history */
-                .diff-added {
-                    background-color: #dcfce7;
-                    color: #166534;
-                }
-
-                .dark .diff-added {
-                    background-color: #14532d;
-                    color: #86efac;
-                }
-
-                .diff-removed {
-                    background-color: #fee2e2;
-                    color: #991b1b;
-                }
-
-                .dark .diff-removed {
-                    background-color: #7f1d1d;
-                    color: #fca5a5;
-                }
-
-                /* Selection styling */
-                ::selection {
-                    background-color: #bfdbfe;
-                    color: #1e3a8a;
-                }
-
-                .dark ::selection {
-                    background-color: #1e3a8a;
-                    color: #bfdbfe;
-                }
-
-                /* ====================================================================
-                   Native Editor Styles
-                   ==================================================================== */
-
-                .native-editor {{
-                    position: relative;
-                    overflow-y: auto;
-                    overflow-x: hidden;
-                    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
-                    font-size: 14px;
-                    line-height: 22px;
-                    color: #1f2937;
-                    background-color: #ffffff;
-                    tab-size: 2;
+                    border-radius: 0;
                 }}
 
                 .dark .native-editor {{
@@ -586,7 +383,7 @@ pub fn GlobalStyles() -> impl IntoView {
                     align-items: center;
                     gap: 2px;
                     padding: 4px 8px;
-                    border-bottom: 1px solid #e5e7eb;
+                    border-bottom: 2px solid #111827;
                     background: #f9fafb;
                     overflow-x: auto;
                     flex-shrink: 0;
@@ -594,7 +391,7 @@ pub fn GlobalStyles() -> impl IntoView {
                 }}
 
                 .dark .editor-toolbar {{
-                    border-bottom-color: #374151;
+                    border-bottom-color: #f9fafb;
                     background: #1f2937;
                 }}
 
@@ -605,13 +402,13 @@ pub fn GlobalStyles() -> impl IntoView {
                     min-width: 28px;
                     height: 28px;
                     padding: 2px 6px;
-                    border: none;
-                    border-radius: 4px;
+                    border: 2px solid transparent;
+                    border-radius: 0;
                     background: transparent;
                     color: #374151;
                     font-size: 12px;
                     cursor: pointer;
-                    transition: background-color 100ms ease;
+                    transition: all 150ms var(--ease-spring);
                     white-space: nowrap;
                 }}
 
@@ -626,7 +423,10 @@ pub fn GlobalStyles() -> impl IntoView {
                 }}
 
                 .editor-toolbar-btn:hover:not(:disabled) {{
-                    background: #e5e7eb;
+                    background: #f9fafb;
+                    border-color: #111827;
+                    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+                    transform: translate(-1px, -1px);
                 }}
 
                 .dark .editor-toolbar-btn {{
@@ -635,6 +435,9 @@ pub fn GlobalStyles() -> impl IntoView {
 
                 .dark .editor-toolbar-btn:hover:not(:disabled) {{
                     background: #374151;
+                    border-color: #f9fafb;
+                    box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+                    transform: translate(-1px, -1px);
                 }}
 
                 .editor-toolbar-btn:disabled {{
@@ -643,15 +446,15 @@ pub fn GlobalStyles() -> impl IntoView {
                 }}
 
                 .editor-toolbar-sep {{
-                    width: 1px;
+                    width: 2px;
                     height: 20px;
-                    background: #d1d5db;
+                    background: #111827;
                     margin: 0 4px;
                     flex-shrink: 0;
                 }}
 
                 .dark .editor-toolbar-sep {{
-                    background: #4b5563;
+                    background: #f9fafb;
                 }}
 
                 /* ====================================================================
@@ -663,39 +466,40 @@ pub fn GlobalStyles() -> impl IntoView {
                     top: 8px;
                     right: 8px;
                     background: white;
-                    border: 1px solid #d1d5db;
-                    border-radius: 8px;
+                    border: 2px solid #111827;
+                    border-radius: 0;
                     padding: 10px;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.15);
                     z-index: 50;
                     min-width: 340px;
                 }}
 
                 .dark .editor-search {{
                     background: #1f2937;
-                    border-color: #4b5563;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                    border-color: #f9fafb;
+                    box-shadow: 4px 4px 0px 0px rgba(255, 255, 255, 0.08);
                 }}
 
                 .editor-search-input {{
                     flex: 1;
                     padding: 4px 8px;
-                    border: 1px solid #d1d5db;
-                    border-radius: 4px;
+                    border: 2px solid #111827;
+                    border-radius: 0;
                     font-size: 13px;
                     outline: none;
                     min-width: 0;
+                    transition: box-shadow 150ms var(--ease-spring);
                 }}
 
                 .dark .editor-search-input {{
                     background: #111827;
-                    border-color: #4b5563;
+                    border-color: #f9fafb;
                     color: #e5e7eb;
                 }}
 
                 .editor-search-input:focus {{
-                    border-color: #2563eb;
-                    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+                    box-shadow: 2px 2px 0px 0px rgba(37, 99, 235, 0.4);
+                    transform: translate(-1px, -1px);
                 }}
 
                 .editor-search-count {{
@@ -716,25 +520,29 @@ pub fn GlobalStyles() -> impl IntoView {
                     justify-content: center;
                     width: 26px;
                     height: 26px;
-                    border: 1px solid #d1d5db;
-                    border-radius: 4px;
+                    border: 2px solid #111827;
+                    border-radius: 0;
                     background: transparent;
                     cursor: pointer;
                     font-size: 12px;
                     color: #374151;
+                    transition: all 150ms var(--ease-spring);
                 }}
 
                 .dark .editor-search-btn {{
-                    border-color: #4b5563;
+                    border-color: #f9fafb;
                     color: #d1d5db;
                 }}
 
                 .editor-search-btn:hover {{
-                    background: #f3f4f6;
+                    background: #f9fafb;
+                    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+                    transform: translate(-1px, -1px);
                 }}
 
                 .dark .editor-search-btn:hover {{
                     background: #374151;
+                    box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
                 }}
 
                 .editor-search-toggle {{
@@ -760,26 +568,30 @@ pub fn GlobalStyles() -> impl IntoView {
 
                 .editor-search-action-btn {{
                     padding: 4px 10px;
-                    border: 1px solid #d1d5db;
-                    border-radius: 4px;
+                    border: 2px solid #111827;
+                    border-radius: 0;
                     background: transparent;
                     cursor: pointer;
                     font-size: 12px;
                     color: #374151;
                     white-space: nowrap;
+                    transition: all 150ms var(--ease-spring);
                 }}
 
                 .dark .editor-search-action-btn {{
-                    border-color: #4b5563;
+                    border-color: #f9fafb;
                     color: #d1d5db;
                 }}
 
                 .editor-search-action-btn:hover {{
-                    background: #f3f4f6;
+                    background: #f9fafb;
+                    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+                    transform: translate(-1px, -1px);
                 }}
 
                 .dark .editor-search-action-btn:hover {{
                     background: #374151;
+                    box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
                 }}
 
                 /* ====================================================================
@@ -812,35 +624,39 @@ pub fn GlobalStyles() -> impl IntoView {
                     align-items: center;
                     gap: 2px;
                     padding: 4px 8px;
-                    border-bottom: 1px solid #e5e7eb;
+                    border-bottom: 2px solid #111827;
                     background: #f9fafb;
                 }}
 
                 .dark .editor-split-controls {{
-                    border-bottom-color: #374151;
+                    border-bottom-color: #f9fafb;
                     background: #1f2937;
                 }}
 
                 .editor-split-btn {{
                     padding: 4px 10px;
-                    border: 1px solid transparent;
-                    border-radius: 4px;
+                    border: 2px solid transparent;
+                    border-radius: 0;
                     background: transparent;
                     font-size: 12px;
                     color: #6b7280;
                     cursor: pointer;
-                    transition: all 100ms ease;
+                    transition: all 150ms var(--ease-spring);
                 }}
 
                 .editor-split-btn:hover {{
-                    background: #e5e7eb;
+                    background: #f9fafb;
                     color: #374151;
+                    border-color: #111827;
+                    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+                    transform: translate(-1px, -1px);
                 }}
 
                 .editor-split-btn.active {{
                     background: #dbeafe;
                     color: #1d4ed8;
-                    border-color: #93c5fd;
+                    border-color: #111827;
+                    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
                 }}
 
                 .dark .editor-split-btn {{
@@ -850,12 +666,15 @@ pub fn GlobalStyles() -> impl IntoView {
                 .dark .editor-split-btn:hover {{
                     background: #374151;
                     color: #d1d5db;
+                    border-color: #f9fafb;
+                    box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
                 }}
 
                 .dark .editor-split-btn.active {{
                     background: #1e3a8a;
                     color: #60a5fa;
-                    border-color: #2563eb;
+                    border-color: #f9fafb;
+                    box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
                 }}
 
                 .editor-split-content {{
@@ -878,13 +697,13 @@ pub fn GlobalStyles() -> impl IntoView {
                 }}
 
                 .editor-split-divider {{
-                    width: 1px;
-                    background: #e5e7eb;
+                    width: 2px;
+                    background: #111827;
                     flex-shrink: 0;
                 }}
 
                 .dark .editor-split-divider {{
-                    background: #374151;
+                    background: #f9fafb;
                 }}
 
                 .editor-pane {{

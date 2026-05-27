@@ -1,27 +1,32 @@
 # Tachyon Roadmap
 
-**Version:** 21.0.0 | **Date:** 2026-05-27 | **Status:** Production-Ready, Awaiting Infrastructure
+**Version:** 21.0.0 | **Date:** 2026-05-28 | **Status:** Production-Ready, Awaiting Infrastructure
 
 ---
 
 ## Current State Summary
 
-### Test Suite (1,327 tests, all passing)
+### Test Suite (1,722 tests, all passing)
 
 | Crate | Tests | Status |
 |-------|-------|--------|
 | tachyon-server | 486 | PASS |
 | tachyon-core | 145 | PASS |
 | tachyon-database | 139 | PASS |
-| tachyon-editor | 116 | PASS |
-| tachyon-renderer | 74 | PASS |
+| tachyon-editor | 295 | PASS |
+| tachyon-renderer | 122 | PASS |
+| tachyon-plugin-runtime | 74 | PASS |
 | tachyon-ssg | 66 | PASS |
-| tachyon-plugin-runtime | 45 | PASS |
 | tachyon-search | 45 | PASS |
 | tachyon-import-export | 43 | PASS |
-| tachyon-rbac | 37 | PASS |
-| tachyon-storage | 31 | PASS |
-| **Total** | **1,327** | **ALL PASS** |
+| tachyon-rbac | 45 | PASS |
+| tachyon-storage | 37 | PASS |
+| tachyon-auth | 42 | PASS |
+| tachyon-collaboration | 116 | PASS |
+| tachyon-cli | 34 | PASS |
+| tachyon-migration | 31 | PASS |
+| tachyon-config | 2 | PASS |
+| **Total** | **1,722** | **ALL PASS** |
 
 ### Code Quality
 
@@ -66,15 +71,16 @@
 
 ### Known Technical Debt
 
-| Item | Severity | Effort |
-|------|----------|--------|
-| ~40 `.unwrap()` in production code (mostly Regex::new on literals) | Low | 2h |
-| `.unwrap()` on queue operations in `sync_queue.rs` | Medium | 1h |
-| `.expect()` in `graphql/schema.rs:33` | Medium | 30m |
-| GUI does not match amoebic/brutalist/spatial-materialism aesthetic | Low | 40h |
-| Performance claims ("sub-100ms", "sub-15ms") lack reproducible benchmarks | Low | 4h |
-| CHANGELOG version ordering and missing release links | Low | 1h |
-| Tree-sitter language count inconsistency (README vs CHANGELOG) | Low | Fixed |
+| Item | Severity | Effort | Status |
+|------|----------|--------|--------|
+| ~40 `.unwrap()` in production code (mostly Regex::new on literals) | Low | 2h | Documented |
+| GUI does not match amoebic/brutalist/spatial-materialism aesthetic | Low | 40h | In Progress |
+| Performance claims ("sub-100ms", "sub-15ms") lack reproducible benchmark runs | Low | 4h | Benchmarks exist, not yet executed |
+| Tree-sitter language count inconsistency (README vs CHANGELOG) | Low | Fixed | Done |
+| CHANGELOG version ordering and missing release links | Low | Fixed | Done |
+| `.unwrap()` on queue operations in `sync_queue.rs` | Medium | 1h | Fixed |
+| `.expect()` in `graphql/schema.rs:33` | Medium | 30m | Fixed |
+| `unsafe from_utf8_unchecked` in SSG CLI | High | 30m | Fixed |
 
 ---
 
@@ -108,17 +114,22 @@
 
 ## Phase 2: API and Performance Validation (Week 2-3)
 
-**No infrastructure dependency. Can start in parallel with Phase 1.**
+**Status:** Partially complete. No infrastructure dependency -- can finish remaining items in parallel with Phase 1.
 
-**Actions:**
+**Completed:**
 
-1. OpenAPI 3.1 spec validation: verify utoipa annotations, publish Swagger UI
-2. Cursor-based pagination: verify all high-volume list endpoints use cursors
-3. Redis rate limiting: test distributed rate limiting with real Redis
-4. Query optimization: run EXPLAIN ANALYZE on hot paths, verify N+1 elimination
-5. WebSocket reliability: presence heartbeat cleanup, reconnection stress test
-6. Load testing with k6: target 1,000 concurrent users, P99 < 200ms
-7. pgvector validation: verify semantic search embedding pipeline at scale
+1. OpenAPI 3.1 spec published: Swagger UI at `GET /swagger-ui`, JSON at `GET /api/v1/openapi.json`
+2. k6 load tests: `api-smoke.js` (50 VUs, p95<500ms) and `api-stress.js` (1000 VUs, 80/20 read/write, p95<200ms)
+3. API latency benchmarks: 5 criterion groups (health, documents, listing, markdown, search) in `tachyon/crates/benchmarks/benches/api.rs`
+
+**Remaining:**
+
+4. Execute benchmarks and validate against performance claims
+5. Cursor-based pagination: verify all high-volume list endpoints use cursors
+6. Redis rate limiting: test distributed rate limiting with real Redis
+7. Query optimization: run EXPLAIN ANALYZE on hot paths, verify N+1 elimination
+8. WebSocket reliability: presence heartbeat cleanup, reconnection stress test
+9. pgvector validation: verify semantic search embedding pipeline at scale
 
 **Completion Criteria:**
 - API load test passes: P99 < 200ms at 1,000 concurrent users
@@ -177,26 +188,21 @@
 
 ## Phase 5: GUI Redesign (Week 5-8)
 
-**Depends on:** Phase 4 (post-launch)
+**Status:** In progress. Design system and most components done. Editor CSS classes remain.
 
-The current GUI uses Tailwind defaults with rounded corners and soft shadows. The target aesthetic is:
+**Completed:**
 
-**Amoebic UI:** Organic, non-rectilinear forms. Fluid blob-like containers using `clip-path: path()` and CSS `border-radius` with asymmetric values (e.g., `60% 40% 30% 70% / 60% 30% 70% 40%`). Animated SVG backgrounds with noise textures.
+1. Design system: CSS custom properties for amoebic, brutalist, spatial-materialism tokens
+2. Landing page: morphing amoebic blobs in hero, brutalist cards/tags/buttons/code blocks
+3. App shell: brutalist 2px borders, sharp 2px corners on buttons/logo, spring transitions
+4. Components: common.rs (sharp corners, brutalist card borders), empty_state.rs, command_palette.rs (spatial-3), client_search.rs (spatial-3), error_boundary.rs
 
-**Brutalism:** Raw structure exposed. Monospace typography throughout (not just code blocks). Sharp corners (`rounded-none`) for primary containers. Stark contrast. No gradients. System fonts or monospace. Visible grid/layout structure.
+**Remaining:**
 
-**Spatial Materialism:** Physical depth metaphor. Multi-layer z-stacking with parallax. Material textures (noise, grain via CSS filters). Shadow depth indicates hierarchy (not just decoration). Transitions feel physical (spring physics, not linear easing).
-
-**Actions:**
-
-1. Design system: define CSS custom properties for the three aesthetic pillars
-2. Typography: switch to monospace-first (JetBrains Mono or IBM Plex Mono)
-3. Containers: replace `rounded-lg` with asymmetric `border-radius` or `rounded-none`
-4. Shadows: replace soft shadows with hard, offset shadows (spatial depth)
-5. Backgrounds: add CSS noise/grain texture overlays
-6. Animations: implement spring-physics transitions (CSS or JS)
-7. Landing page: redesign with amoebic hero section
-8. Components: audit all 28 `border-radius` occurrences, apply new system
+5. Editor CSS classes: toolbar buttons, search panel, split view, preview pane -- apply brutalist treatment
+6. Audit all remaining `border-radius` occurrences across components
+7. Spring-physics transitions on all interactive elements
+8. Mobile responsiveness verification with new aesthetic
 
 **Completion Criteria:**
 - Design system documented with CSS custom properties
@@ -387,10 +393,10 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 | Phase | Duration | Dependencies | Status |
 |-------|----------|-------------|--------|
 | 1. Infrastructure | 2 weeks | Server provisioning | PENDING |
-| 2. API Validation | 2 weeks | None (code-only) | READY |
+| 2. API Validation | 2 weeks | None (code-only) | IN PROGRESS |
 | 3. Security | 2 weeks | Phase 2 | READY |
 | 4. Launch | 1 week | Phase 1, 3 | PENDING |
-| 5. GUI Redesign | 3 weeks | Phase 4 | PLANNED |
+| 5. GUI Redesign | 3 weeks | Phase 4 | IN PROGRESS |
 | 6. AI Integration | 2 weeks | Phase 4 | CODE COMPLETE |
 | 7. Multi-Tenant SaaS | 2 weeks | Phase 4 | CODE COMPLETE |
 | 8. Desktop/Mobile | 2 weeks | Phase 4 | CODE COMPLETE |
@@ -412,3 +418,9 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 | 2026-05-26 | Fix clippy::await_holding_refcell_ref | Take/put-back pattern avoids RefCell across await |
 | 2026-05-26 | Switch CI to pgvector/pgvector:pg16 | Migration requires CREATE EXTENSION vector |
 | 2026-05-26 | Exclude tachyon-cli from pre-commit | wasmtime+tauri deps too heavy for local hooks |
+| 2026-05-28 | Add Swagger UI endpoint (GET /swagger-ui) | API discoverability for developers |
+| 2026-05-28 | Add k6 load tests (smoke + stress) | Validate performance claims under concurrent load |
+| 2026-05-28 | Add criterion API benchmarks (5 groups) | Reproducible latency measurements |
+| 2026-05-28 | Begin GUI brutalist redesign (app shell, landing, components) | Amoebic + brutalism + spatial materialism aesthetic |
+| 2026-05-28 | Fix unsafe/unwrap/expect in SSG, sync_queue, graphql | Eliminate UB risk and panic paths in production code |
+| 2026-05-28 | Fix CHANGELOG version ordering + 4 missing release links | Factual correctness audit |
