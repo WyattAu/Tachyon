@@ -111,7 +111,7 @@ pub fn ClientSearch(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> impl
             style={move || if open.get() { "" } else { "display: none;" }}
         >
             <div
-                class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+                class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded border-2 border-gray-900 dark:border-gray-100 spatial-3 overflow-hidden"
                 on:click=on_modal_click
                 on:keydown=on_escape
             >

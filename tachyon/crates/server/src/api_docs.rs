@@ -8,7 +8,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 /// Compute the OpenAPI spec once and cache it. The utoipa derive macro
 /// expands to deeply nested types; `OnceLock` avoids recomputation.
-fn openapi_spec() -> &'static OpenApiSpec {
+pub(crate) fn openapi_spec() -> &'static OpenApiSpec {
     static SPEC: OnceLock<OpenApiSpec> = OnceLock::new();
     SPEC.get_or_init(ApiDoc::openapi)
 }

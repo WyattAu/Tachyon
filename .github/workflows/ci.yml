@@ -339,7 +339,7 @@ jobs:
 
       - name: Install cargo-mutant
         run: |
-          cargo install cargo-mutant@27.0.0 --locked --force
+          cargo install cargo-mutant@27.0.0 --force
 
       - name: Run mutation tests
         working-directory: tachyon

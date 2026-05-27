@@ -37,7 +37,7 @@ pub fn AppErrorBoundary(children: Children) -> impl IntoView {
                         </pre>
                         <div class="flex items-center justify-center gap-3">
                             <button
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-spring text-sm font-medium"
                                 on:click=reload
                             >
                                 "Retry"
@@ -46,7 +46,7 @@ pub fn AppErrorBoundary(children: Children) -> impl IntoView {
                                 href="https://github.com/WyattAu/Tachyon/issues/new"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium inline-block"
+                                class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-spring text-sm font-medium inline-block"
                             >
                                 "Report Bug"
                             </a>

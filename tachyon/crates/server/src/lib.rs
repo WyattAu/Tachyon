@@ -693,6 +693,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         );
 
     router = router.merge(swagger_ui);
+    router = router.merge(crate::routes::swagger::routes());
 
     // GraphQL endpoint (uses pool directly, AppState not available after destructure)
     let graphql_router = axum::Router::new()

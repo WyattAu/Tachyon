@@ -31,6 +31,7 @@ pub mod siem;
 pub mod signup;
 pub mod space;
 pub mod ssg;
+pub mod swagger;
 pub mod tags;
 pub mod team;
 pub mod user;
