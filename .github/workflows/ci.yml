@@ -337,14 +337,8 @@ jobs:
             tachyon/target
           key: mutation-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
 
-      - name: Cache cargo-mutant binary
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.cargo/bin/cargo-mutant
-          key: cargo-mutant-bin-v3
-
       - name: Install cargo-mutant
-        run: command -v cargo-mutant || cargo install cargo-mutant@27.0.0 --locked
+        run: cargo install cargo-mutant@27.0.0 --locked
 
       - name: Run mutation tests
         working-directory: tachyon
