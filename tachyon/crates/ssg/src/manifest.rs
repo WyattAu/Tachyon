@@ -160,6 +160,18 @@ pub struct ColorTheme {
     pub font_family: Option<String>,
     /// Font family for headings
     pub heading_font_family: Option<String>,
+    /// Dark mode primary color override
+    #[serde(default)]
+    pub dark_primary: Option<String>,
+    /// Dark mode secondary color override
+    #[serde(default)]
+    pub dark_secondary: Option<String>,
+    /// Dark mode accent color override
+    #[serde(default)]
+    pub dark_accent: Option<String>,
+    /// Dark mode code background color override
+    #[serde(default)]
+    pub dark_code_bg: Option<String>,
 }
 
 impl Default for ColorTheme {
@@ -171,6 +183,10 @@ impl Default for ColorTheme {
             code_bg: "#1f2937".to_string(),
             font_family: None,
             heading_font_family: None,
+            dark_primary: None,
+            dark_secondary: None,
+            dark_accent: None,
+            dark_code_bg: None,
         }
     }
 }
@@ -201,6 +217,9 @@ pub struct SsgDocument {
     /// Document language code (for i18n filtering)
     #[serde(default = "default_language")]
     pub language: String,
+    /// Hide breadcrumbs on this page
+    #[serde(default)]
+    pub hide_breadcrumbs: bool,
 }
 
 /// Result of a site build.

@@ -108,6 +108,112 @@ pub(crate) fn add_copy_buttons(html: &str) -> String {
     .to_string()
 }
 
+pub(crate) fn extract_code_titles(html: &str) -> String {
+    let re = regex::Regex::new(
+        r#"(<div class="code-block-wrapper">)<pre([^>]*)><code([^>]*)>([\s\S]*?)</code></pre>"#,
+    )
+    .unwrap();
+
+    re.replace_all(html, |caps: &regex::Captures| {
+        let wrapper = &caps[1];
+        let pre_attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        let code_attrs = caps.get(3).map(|m| m.as_str()).unwrap_or("");
+        let code = caps.get(4).map(|m| m.as_str()).unwrap_or("");
+
+        let title_re = regex::Regex::new(r#"^([\s]*)(?://|#|--|;)\s*title=(.+?)\s*$"#).unwrap();
+        if let Some(tc) = title_re.captures(code) {
+            let title = tc[2].trim();
+            let remaining_code = &code[tc[0].len()..];
+            format!(
+                r#"<div class="code-title">{}</div>{}<pre{}><code{}>{}</code></pre>"#,
+                escape_for_html(title),
+                wrapper,
+                pre_attrs,
+                code_attrs,
+                remaining_code
+            )
+        } else {
+            caps[0].to_string()
+        }
+    })
+    .to_string()
+}
+
+pub(crate) fn enhance_images(html: &str) -> String {
+    let re = regex::Regex::new(r#"<img([^>]*)>"#).unwrap();
+    re.replace_all(html, |caps: &regex::Captures| {
+        let attrs = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        if attrs.contains("loading=") {
+            return caps[0].to_string();
+        }
+        format!("<img loading=\"lazy\"{}>", attrs)
+    })
+    .to_string()
+}
+
+pub(crate) fn process_content_tabs(html: &str) -> String {
+    let tab_re = regex::Regex::new(r#"<!--\s*tab:(.+?)\s*-->([\s\S]*?)<!--\s*/tab\s*-->"#).unwrap();
+
+    let mut groups: Vec<(String, String, usize, usize)> = Vec::new();
+    for cap in tab_re.captures_iter(html) {
+        let name = cap[1].trim().to_string();
+        let content = cap[2].trim().to_string();
+        let start = cap.get(0).unwrap().start();
+        let end = cap.get(0).unwrap().end();
+        groups.push((name, content, start, end));
+    }
+
+    if groups.len() < 2 {
+        return html.to_string();
+    }
+
+    groups.sort_by_key(|g| g.2);
+
+    let first_start = groups[0].2;
+    let last_end = groups[groups.len() - 1].3;
+
+    let tabs: String = groups
+        .iter()
+        .enumerate()
+        .map(|(i, (name, _, _, _))| {
+            let active = if i == 0 { " active" } else { "" };
+            format!(
+                r#"<button class="content-tab{active}" data-tab="{name}" onclick="this.parentElement.querySelectorAll('.content-tab,.content-tab-panel').forEach(function(e){{e.classList.remove('active')}});this.classList.add('active');this.closest('.content-group').querySelectorAll('.content-tab-panel[data-tab=&quot;'+this.dataset.tab+'&quot;]').forEach(function(e){{e.classList.add('active')}})">{name}</button>"#,
+                active = active,
+                name = escape_for_html(name),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let panels: String = groups
+        .iter()
+        .enumerate()
+        .map(|(i, (_, content, _, _))| {
+            let active = if i == 0 { " active" } else { "" };
+            format!(
+                r#"<div class="content-tab-panel{active}" data-tab="{}">{}</div>"#,
+                escape_for_html(&groups[i].0),
+                content
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let replacement = format!(
+        r#"<div class="content-group"><div class="content-tabs">{}</div>{}</div>"#,
+        tabs, panels
+    );
+
+    let result = html.to_string();
+    format!(
+        "{}{}{}",
+        &result[..first_start],
+        replacement,
+        &result[last_end..]
+    )
+}
+
 pub(crate) struct PageContext<'a> {
     pub(crate) site: &'a SiteConfig,
     pub(crate) title: &'a str,
@@ -157,6 +263,21 @@ pub(crate) struct DocCard {
 }
 
 impl crate::build::SiteGenerator {
+    pub(crate) fn sidebar_ordered_slugs(&self) -> Vec<String> {
+        let mut slugs = Vec::new();
+        fn collect(items: &[crate::manifest::SidebarItem], slugs: &mut Vec<String>) {
+            for item in items {
+                let slug = item.href.trim_end_matches(".html").to_string();
+                if !slug.is_empty() && slug != "#" {
+                    slugs.push(slug);
+                }
+                collect(&item.children, slugs);
+            }
+        }
+        collect(&self.config.menu_items, &mut slugs);
+        slugs
+    }
+
     pub(crate) fn render_document_page(
         &self,
         doc: &SsgDocument,
@@ -194,33 +315,47 @@ impl crate::build::SiteGenerator {
             String::new()
         };
 
-        let breadcrumbs: Vec<(String, String)> = doc
-            .slug
-            .split('/')
-            .enumerate()
-            .map(|(i, part)| {
-                let href = if i == 0 {
-                    format!("{}index.html", root_prefix)
-                } else {
-                    format!("{}{}.html", root_prefix, part)
-                };
-                (part.to_string(), href)
-            })
-            .collect();
+        let breadcrumbs: Vec<(String, String)> = if doc.hide_breadcrumbs {
+            vec![]
+        } else {
+            doc.slug
+                .split('/')
+                .enumerate()
+                .map(|(i, part)| {
+                    let href = if i == 0 {
+                        format!("{}index.html", root_prefix)
+                    } else {
+                        format!("{}{}.html", root_prefix, part)
+                    };
+                    (part.to_string(), href)
+                })
+                .collect()
+        };
 
-        let current_idx = all_docs.iter().position(|d| d.slug == doc.slug);
-        let prev_link = current_idx.and_then(|idx| {
+        let sidebar_slugs = self.sidebar_ordered_slugs();
+        let sidebar_idx = sidebar_slugs.iter().position(|s| *s == doc.slug);
+        let prev_link = sidebar_idx.and_then(|idx| {
             if idx > 0 {
-                let prev = all_docs[idx - 1];
-                Some((prev.title.clone(), format!("{}.html", prev.slug)))
+                let prev_slug = &sidebar_slugs[idx - 1];
+                all_docs.iter().find(|d| d.slug == *prev_slug).map(|prev| {
+                    (
+                        prev.title.clone(),
+                        format!("{}{}.html", root_prefix, prev.slug),
+                    )
+                })
             } else {
                 None
             }
         });
-        let next_link = current_idx.and_then(|idx| {
-            if idx + 1 < all_docs.len() {
-                let next = all_docs[idx + 1];
-                Some((next.title.clone(), format!("{}.html", next.slug)))
+        let next_link = sidebar_idx.and_then(|idx| {
+            if idx + 1 < sidebar_slugs.len() {
+                let next_slug = &sidebar_slugs[idx + 1];
+                all_docs.iter().find(|d| d.slug == *next_slug).map(|next| {
+                    (
+                        next.title.clone(),
+                        format!("{}{}.html", root_prefix, next.slug),
+                    )
+                })
             } else {
                 None
             }
@@ -635,7 +770,10 @@ pub(crate) fn render_markdown(content: &str) -> String {
     let toc_html = render_inline_toc(&toc_entries);
     let result = replace_mermaid_placeholders(&result, &mermaid_blocks);
     let result = add_copy_buttons(&result);
+    let result = extract_code_titles(&result);
     let result = process_code_groups(&result);
+    let result = enhance_images(&result);
+    let result = process_content_tabs(&result);
 
     if toc_html.is_empty() {
         result
@@ -720,21 +858,26 @@ pub(crate) fn process_mermaid_blocks(html: &str) -> String {
 
 pub(crate) fn render_admonitions(html: &str) -> String {
     let re = regex::Regex::new(
-        r#"(?si)<blockquote>\s*<p>\s*\[!(NOTE|WARNING|TIP|DANGER|INFO|SUCCESS)\]\s*</p>\s*(.*?)</blockquote>"#,
+        r#"(?si)<blockquote>\s*<p>\s*\[!(NOTE|WARNING|TIP|DANGER|INFO|SUCCESS)([^\]]*)\]\s*</p>\s*(.*?)</blockquote>"#,
     )
     .unwrap();
 
     re.replace_all(html, |caps: &regex::Captures| {
         let admonition_type = &caps[1];
-        let title = capitalize_first(admonition_type);
-        let content = caps[2].trim();
+        let custom_title = caps[2].trim();
+        let title = if custom_title.is_empty() {
+            capitalize_first(admonition_type)
+        } else {
+            custom_title.to_string()
+        };
+        let content = caps[3].trim();
         format!(
             r#"<div class="admonition admonition-{type}">
 <p class="admonition-title">{title}</p>
 {content}
 </div>"#,
             type = admonition_type.to_lowercase(),
-            title = title,
+            title = escape_for_html(&title),
             content = content,
         )
     })

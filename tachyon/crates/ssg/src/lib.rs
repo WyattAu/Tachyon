@@ -66,6 +66,7 @@ mod tests {
                 updated_at: Utc::now(),
                 order: 0,
                 language: "en".to_string(),
+                hide_breadcrumbs: false,
             },
             SsgDocument {
                 slug: "configuration".to_string(),
@@ -78,6 +79,7 @@ mod tests {
                 updated_at: Utc::now(),
                 order: 1,
                 language: "en".to_string(),
+                hide_breadcrumbs: false,
             },
         ]
     }
@@ -246,6 +248,7 @@ mod tests {
                 updated_at: Utc::now(),
                 order: 0,
                 language: "en".to_string(),
+                hide_breadcrumbs: false,
             },
             SsgDocument {
                 slug: "getting-started".to_string(),
@@ -258,6 +261,7 @@ mod tests {
                 updated_at: Utc::now(),
                 order: 0,
                 language: "zh".to_string(),
+                hide_breadcrumbs: false,
             },
         ];
 
@@ -440,6 +444,7 @@ mod tests {
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-katex-test");
@@ -534,6 +539,7 @@ sudo certbot --nginx -d docs.example.com
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-adm-css-test");
@@ -702,6 +708,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-breadcrumb-test");
@@ -745,6 +752,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-pagefind-test");
@@ -760,7 +768,10 @@ Details.
             html.contains(r#"data-pagefind-ignore"#),
             "should have data-pagefind-ignore on nav/sidebar/footer"
         );
-        assert!(html.contains(r#"id="search""#), "should have search div");
+        assert!(
+            html.contains(r#"id="tachyon-search""#),
+            "should have search div"
+        );
         assert!(
             html.contains("pagefind-ui.css"),
             "should include pagefind CSS"
@@ -768,10 +779,6 @@ Details.
         assert!(
             html.contains("pagefind-ui.js"),
             "should include pagefind JS"
-        );
-        assert!(
-            html.contains("npx pagefind"),
-            "should have pagefind build comment"
         );
 
         let _ = std::fs::remove_dir_all(&tmp);
@@ -795,6 +802,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-no-pagefind-test");
@@ -892,6 +900,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-mermaid-test");
@@ -937,6 +946,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-no-mermaid-test");
@@ -1005,6 +1015,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-highlight-test");
@@ -1050,6 +1061,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-theme-test");
@@ -1087,6 +1099,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-no-highlight-test");
@@ -1195,6 +1208,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-robots-test");
@@ -1233,6 +1247,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-canonical-test");
@@ -1275,6 +1290,7 @@ Details.
                 updated_at: Utc::now(),
                 order: 0,
                 language: "en".to_string(),
+                hide_breadcrumbs: false,
             },
             SsgDocument {
                 slug: "hreflang-test".to_string(),
@@ -1287,6 +1303,7 @@ Details.
                 updated_at: Utc::now(),
                 order: 0,
                 language: "zh".to_string(),
+                hide_breadcrumbs: false,
             },
         ];
 

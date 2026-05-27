@@ -334,6 +334,7 @@ async fn fetch_documents_for_ssg(
             updated_at,
             order: order as i32,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         });
     }
 

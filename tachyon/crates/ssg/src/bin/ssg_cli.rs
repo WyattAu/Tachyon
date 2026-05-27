@@ -105,6 +105,8 @@ struct Frontmatter {
     order: i32,
     #[serde(default)]
     language: String,
+    #[serde(default)]
+    hide_breadcrumbs: bool,
 }
 
 /// YAML frontmatter parser using serde_yaml.
@@ -204,6 +206,7 @@ fn collect_documents(input_dir: &Path) -> Result<Vec<SsgDocument>> {
             } else {
                 fm.language
             },
+            hide_breadcrumbs: fm.hide_breadcrumbs,
         });
     }
 
@@ -303,6 +306,10 @@ fn cmd_build(
         code_bg: "#1f2937".to_string(),
         font_family: None,
         heading_font_family: None,
+        dark_primary: None,
+        dark_secondary: None,
+        dark_accent: None,
+        dark_code_bg: None,
     });
 
     // Collect documents

@@ -115,6 +115,7 @@ mod tests {
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            hide_breadcrumbs: false,
         }
     }
 

@@ -26,7 +26,7 @@ fn color_theme_css(theme: Option<&ColorTheme>) -> String {
         .unwrap_or("ui-sans-serif, system-ui, -apple-system, sans-serif");
     let font_heading = t.heading_font_family.as_deref().unwrap_or(font_body);
 
-    format!(
+    let mut css = format!(
         r#"
     :root {{
       --tachyon-primary: {primary};
@@ -42,7 +42,30 @@ fn color_theme_css(theme: Option<&ColorTheme>) -> String {
         code_bg = t.code_bg,
         font_body = font_body,
         font_heading = font_heading,
-    )
+    );
+
+    if t.dark_primary.is_some()
+        || t.dark_secondary.is_some()
+        || t.dark_accent.is_some()
+        || t.dark_code_bg.is_some()
+    {
+        css.push_str("\n    .dark {");
+        if let Some(ref dp) = t.dark_primary {
+            css.push_str(&format!(" --tachyon-primary: {};", dp));
+        }
+        if let Some(ref ds) = t.dark_secondary {
+            css.push_str(&format!(" --tachyon-secondary: {};", ds));
+        }
+        if let Some(ref da) = t.dark_accent {
+            css.push_str(&format!(" --tachyon-accent: {};", da));
+        }
+        if let Some(ref dcb) = t.dark_code_bg {
+            css.push_str(&format!(" --tachyon-code-bg: {};", dcb));
+        }
+        css.push_str(" }");
+    }
+
+    css
 }
 
 /// Render a document page.
@@ -52,12 +75,13 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         ctx.current_slug,
         ctx.language,
         ctx.language_switcher,
+        ctx.root_prefix,
     );
     let tags_html = render_tags(ctx.tags);
     let theme_class = match ctx.site.theme.as_str() {
         "dark" => "dark",
-        "light" => "",
-        _ => "", // auto handled by CSS media query
+        "light" => "light",
+        _ => "",
     };
     let dir = crate::i18n::text_direction(ctx.language);
 
@@ -83,7 +107,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     let breadcrumbs_html = render_breadcrumbs(ctx.breadcrumbs);
     let toc_html = render_toc_sidebar(ctx.toc);
     let prev_next_html = render_prev_next(ctx.prev_link, ctx.next_link);
-    let sidebar_html = render_sidebar(&ctx.site.menu_items, ctx.current_slug);
+    let sidebar_html = render_sidebar(&ctx.site.menu_items, ctx.current_slug, ctx.root_prefix);
 
     let pagefind_base = ctx
         .site
@@ -91,7 +115,6 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         .trim_end_matches('/')
         .trim_start_matches("https://")
         .trim_start_matches("http://");
-    // Extract subpath from base_url (e.g. "wyattau.github.io/Tachyon" -> "/Tachyon")
     let pagefind_prefix = match pagefind_base.find('/') {
         Some(_) => {
             let path = &pagefind_base[pagefind_base.find('/').unwrap()..];
@@ -102,25 +125,25 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
 
     let pagefind_css = if ctx.site.pagefind_enabled {
         format!(
-            r#"<link href="{}/pagefind/pagefind-ui.css" rel="stylesheet">"#,
-            pagefind_prefix
+            r#"<link href="{}pagefind/pagefind-ui.css" rel="stylesheet">"#,
+            ctx.root_prefix
         )
-    } else {
-        String::new()
-    };
-
-    let pagefind_search = if ctx.site.pagefind_enabled {
-        r#"<div id="search" class="max-w-4xl mx-auto px-4 py-2"></div>"#.to_string()
     } else {
         String::new()
     };
 
     let pagefind_js = if ctx.site.pagefind_enabled {
         format!(
-            r##"<!-- Run: npx pagefind --site <output_dir> post-build to generate the search index -->
-<script src="{}/pagefind/pagefind-ui.js"></script>
-<script>window.addEventListener('DOMContentLoaded',function(){{new PagefindUI({{element:"#search",showSubResults:true}})}});</script>"##,
-            pagefind_prefix
+            r##"<script src="{}pagefind/pagefind-ui.js"></script>
+<script>
+(function() {{
+  document.addEventListener('DOMContentLoaded', function() {{
+    new PagefindUI({{element:"#tachyon-search",showSubResults:true,baseUrl:"{base}"}});
+  }});
+}})();
+</script>"##,
+            ctx.root_prefix,
+            base = pagefind_prefix
         )
     } else {
         String::new()
@@ -145,8 +168,10 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         String::new()
     };
 
+    let footer_html = render_footer(ctx.site, ctx.root_prefix);
+
     format!(
-        r#"<!DOCTYPE html>
+        r##"<!DOCTYPE html>
 <html lang="{language}" dir="{dir}" class="{theme_class}">
 <head>
   <meta charset="UTF-8">
@@ -253,14 +278,35 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     nav.toc {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }}
     nav.toc ul {{ list-style: none; padding-left: 0; margin: 0; }}
     nav.toc li {{ margin-bottom: 0.25rem; }}
-    nav.toc li a {{ color: #4b5563; text-decoration: none; font-size: 0.875rem; line-height: 1.5; }}
-    nav.toc li a:hover {{ color: #2563eb; text-decoration: underline; }}
+    nav.toc li a {{ color: #4b5563; text-decoration: none; font-size: 0.875rem; line-height: 1.5; display: block; padding: 0.125rem 0; border-left: 2px solid transparent; }}
+    nav.toc li a:hover {{ color: #2563eb; }}
+    nav.toc li a.toc-active {{ color: #2563eb; border-left-color: #2563eb; font-weight: 500; }}
     nav.toc li.toc-h3 {{ padding-left: 1rem; }}
     .code-block-wrapper {{ position: relative; }}
     .code-block-wrapper pre {{ margin-bottom: 0; }}
     .code-copy-btn {{ position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(255,255,255,0.1); color: #9ca3af; border: 1px solid rgba(255,255,255,0.2); border-radius: 0.25rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; cursor: pointer; opacity: 0; transition: opacity 0.2s; }}
     .code-block-wrapper:hover .code-copy-btn {{ opacity: 1; }}
     .code-copy-btn:hover {{ background: rgba(255,255,255,0.2); color: #f9fafb; }}
+    .code-title {{ background: #f3f4f6; color: #374151; padding: 0.375rem 0.75rem; font-size: 0.75rem; font-weight: 500; border-bottom: 1px solid #e5e7eb; border-radius: 0.5rem 0.5rem 0 0; margin-bottom: 0; }}
+    .dark .code-title {{ background: #374151; color: #d1d5db; border-color: #4b5563; }}
+    .code-title + .code-block-wrapper {{ border-radius: 0 0 0.5rem 0.5rem; margin-top: 0; }}
+    .content-group {{ margin: 1rem 0; border-radius: 0.5rem; overflow: hidden; border: 1px solid #e5e7eb; }}
+    .content-tabs {{ display: flex; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; }}
+    .content-tab {{ padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; color: #6b7280; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; }}
+    .content-tab.active {{ color: #2563eb; border-bottom-color: #2563eb; background: #fff; }}
+    .content-tab:hover {{ color: #374151; }}
+    .content-tab-panel {{ display: none; padding: 1rem; }}
+    .content-tab-panel.active {{ display: block; }}
+    @media (prefers-color-scheme: dark) {{
+      html:not(.light) .content-group {{ border-color: #374151; }}
+      html:not(.light) .content-tabs {{ background: #1f2937; border-color: #374151; }}
+      html:not(.light) .content-tab {{ color: #9ca3af; }}
+      html:not(.light) .content-tab.active {{ color: #60a5fa; border-bottom-color: #60a5fa; background: #111827; }}
+    }}
+    .dark .content-group {{ border-color: #374151; }}
+    .dark .content-tabs {{ background: #1f2937; border-color: #374151; }}
+    .dark .content-tab {{ color: #9ca3af; }}
+    .dark .content-tab.active {{ color: #60a5fa; border-bottom-color: #60a5fa; background: #111827; }}
     .code-group {{ margin-bottom: 1rem; border-radius: 0.5rem; overflow: hidden; border: 1px solid #e5e7eb; }}
     .code-tabs {{ display: flex; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; }}
     .code-tabs .tab {{ padding: 0.375rem 0.75rem; font-size: 0.75rem; font-weight: 500; color: #6b7280; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; }}
@@ -282,11 +328,11 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     @media (prefers-color-scheme: dark) {{
       html:not(.light) nav.toc {{ background: #1f2937; border-color: #374151; }}
       html:not(.light) nav.toc li a {{ color: #9ca3af; }}
-      html:not(.light) nav.toc li a:hover {{ color: #60a5fa; }}
+      html:not(.light) nav.toc li a.toc-active {{ color: #60a5fa; border-left-color: #60a5fa; }}
     }}
     .dark nav.toc {{ background: #1f2937; border-color: #374151; }}
     .dark nav.toc li a {{ color: #9ca3af; }}
-    .dark nav.toc li a:hover {{ color: #60a5fa; }}
+    .dark nav.toc li a.toc-active {{ color: #60a5fa; border-left-color: #60a5fa; }}
     .breadcrumbs {{ list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; padding: 0; margin: 0; }}
     .breadcrumbs-item + .breadcrumbs-item::before {{ content: "/"; color: #9ca3af; margin-right: 0.25rem; }}
     .mermaid {{ margin: 1rem 0; text-align: center; }}
@@ -309,25 +355,53 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         box-shadow: 2px 0 8px rgba(0,0,0,0.15) !important;
         transition: transform 0.2s ease-out;
       }}
-      .sidebar-closed {{
-        display: none !important;
-      }}
-      .dark .sidebar-open {{
-        background: #111827 !important;
-        border-right-color: #374151 !important;
-      }}
+      .sidebar-closed {{ display: none !important; }}
+      .dark .sidebar-open {{ background: #111827 !important; border-right-color: #374151 !important; }}
     }}
     @media (min-width: 768px) {{
       .sidebar-closed {{ display: block; }}
+    }}
+    /* Search overlay */
+    .tachyon-search-overlay {{
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; padding-top: 10vh;
+    }}
+    .tachyon-search-overlay.open {{ display: flex; }}
+    .tachyon-search-box {{
+      background: white; border-radius: 0.5rem; width: 90%; max-width: 40rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden;
+    }}
+    .dark .tachyon-search-box {{ background: #1f2937; }}
+    .tachyon-search-box #tachyon-search {{
+      border: none; outline: none; width: 100%; padding: 1rem 1.5rem;
+      font-size: 1rem; background: transparent; color: #111827;
+    }}
+    .dark .tachyon-search-box #tachyon-search {{ color: #f9fafb; }}
+    .tachyon-search-kbd {{
+      position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+      font-size: 0.75rem; padding: 0.125rem 0.375rem; border: 1px solid #d1d5db;
+      border-radius: 0.25rem; color: #9ca3af; pointer-events: none;
+    }}
+    /* TOC sidebar close button */
+    .toc-close {{ display: none; }}
+    @media (max-width: 1023px) {{
+      .toc-close {{ display: block; }}
     }}
     {custom_css}
   </style>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
+  <a href="#doc-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded">Skip to content</a>
   {nav}
-  {pagefind_search}
-  <button id="tachyon-sidebar-toggle" class="md:hidden fixed bottom-4 right-4 z-50 bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors" aria-label="Toggle sidebar">&#9776;</button>
-  <main class="flex-1">
+  <!-- Search overlay -->
+  <div class="tachyon-search-overlay" id="tachyon-search-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="tachyon-search-box" style="position:relative;">
+      <div id="tachyon-search"></div>
+      <span class="tachyon-search-kbd">ESC</span>
+    </div>
+  </div>
+  <button id="tachyon-sidebar-toggle" class="md:hidden fixed bottom-4 right-4 z-50 bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors" aria-label="Toggle sidebar" aria-expanded="false">&#9776;</button>
+  <main class="flex-1" id="doc-content">
     {breadcrumbs_html}
     <div class="flex">
       {sidebar_html}
@@ -348,16 +422,62 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
        {toc_html}
      </div>
    </main>
-   <footer data-pagefind-ignore class="border-t border-gray-200 dark:border-gray-700 py-6 mt-12">
-     <div class="max-w-4xl mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
-       {footer}
-     </div>
-   </footer>
+   {footer_html}
     {pagefind_js}
     {highlight_script}
     {mermaid_script}
- </body>
- </html>"#,
+  <script>
+  // Dark/light theme toggle
+  (function() {{
+    var stored = localStorage.getItem('tachyon-theme');
+    if (stored === 'dark' || stored === 'light') document.documentElement.classList.add(stored);
+    else if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark');
+    document.getElementById('tachyon-theme-toggle').addEventListener('click', function() {{
+      var isDark = document.documentElement.classList.toggle('dark');
+      document.documentElement.classList.toggle('light', !isDark);
+      localStorage.setItem('tachyon-theme', isDark ? 'dark' : 'light');
+      this.innerHTML = isDark ? '&#9728;' : '&#9790;';
+    }});
+    // Init icon
+    var isDarkInit = document.documentElement.classList.contains('dark');
+    document.getElementById('tachyon-theme-toggle').innerHTML = isDarkInit ? '&#9728;' : '&#9790;';
+  }})();
+
+  // Search overlay (Ctrl+K / Cmd+K)
+  (function() {{
+    var overlay = document.getElementById('tachyon-search-overlay');
+    document.addEventListener('keydown', function(e) {{
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {{
+        e.preventDefault();
+        overlay.classList.toggle('open');
+        if (overlay.classList.contains('open')) {{
+          var input = overlay.querySelector('input');
+          if (input) setTimeout(function() {{ input.focus(); }}, 100);
+        }}
+      }}
+      if (e.key === 'Escape') overlay.classList.remove('open');
+    }});
+  }})();
+
+  // TOC scroll-spy
+  (function() {{
+    var headings = document.querySelectorAll('.doc-content h2[id], .doc-content h3[id]');
+    var tocLinks = document.querySelectorAll('.toc-sidebar a[href^="#"]');
+    if (!headings.length || !tocLinks.length) return;
+    var observer = new IntersectionObserver(function(entries) {{
+      entries.forEach(function(entry) {{
+        if (entry.isIntersecting) {{
+          tocLinks.forEach(function(l) {{ l.classList.remove('toc-active'); }});
+          var link = document.querySelector('.toc-sidebar a[href="#' + entry.target.id + '"]');
+          if (link) link.classList.add('toc-active');
+        }}
+      }});
+    }}, {{ rootMargin: '-10% 0px -80% 0px', threshold: 0 }});
+    headings.forEach(function(h) {{ observer.observe(h); }});
+  }})();
+  </script>
+</body>
+</html>"##,
         title = ctx.title,
         site_title = ctx.site.title,
         description = escape_html(ctx.description),
@@ -373,7 +493,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         author_html = author_html,
         updated_html = updated_html,
         body = ctx.body,
-        footer = escape_html(&ctx.site.footer),
+        footer_html = footer_html,
         custom_css = ctx.site.custom_css.as_deref().unwrap_or_default(),
         theme_class = theme_class,
         language = ctx.language,
@@ -385,7 +505,6 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         sidebar_html = sidebar_html,
         json_ld = &ctx.json_ld,
         pagefind_css = pagefind_css,
-        pagefind_search = pagefind_search,
         pagefind_js = pagefind_js,
         mermaid_script = mermaid_script,
         highlight_script = highlight_script,
@@ -409,7 +528,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
 
 /// Render the site index page.
 pub fn render_index_page(ctx: &IndexContext) -> String {
-    let nav_html = render_nav(ctx.site, None, ctx.language, ctx.language_switcher);
+    let nav_html = render_nav(ctx.site, None, ctx.language, ctx.language_switcher, "");
     let cards_html: String = ctx
         .documents
         .iter()
@@ -560,15 +679,17 @@ fn render_nav(
     _current: Option<&str>,
     _lang: &str,
     language_switcher: &str,
+    root_prefix: &str,
 ) -> String {
     let extra_links: String = site
         .nav_links
         .iter()
         .map(|link| {
             format!(
-                r#"<a href="{}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">{}</a>"#,
-                escape_html(&link.href),
-                escape_html(&link.label),
+                r#"<a href="{rp}{href}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">{label}</a>"#,
+                rp = root_prefix,
+                href = escape_html(&link.href),
+                label = escape_html(&link.label),
             )
         })
         .collect::<Vec<_>>()
@@ -580,7 +701,6 @@ fn render_nav(
         .map(|url| format!(r#"<img src="{}" alt="" class="h-6 w-auto mr-2">"#, url))
         .unwrap_or_default();
 
-    // Build language switcher if present
     let switcher_html = if language_switcher.is_empty() {
         String::new()
     } else {
@@ -597,16 +717,52 @@ fn render_nav(
         r#"<nav data-pagefind-ignore class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sticky top-0 z-50">
   <div class="max-w-6xl mx-auto flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <a href="index.html" class="flex items-center font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+      <a href="{rp}index.html" class="flex items-center font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
         {logo}{site_title}
       </a>
-      <div class="hidden md:flex items-center gap-4">
+      <div class="hidden md:flex items-center gap-4" id="tachyon-nav-links">
         {extra_links}
       </div>
       {switcher_html}
     </div>
+    <div class="flex items-center gap-2">
+      <button id="tachyon-nav-search-btn" class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded" aria-label="Search (Ctrl+K)" title="Search (Ctrl+K)">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      </button>
+      <button id="tachyon-theme-toggle" class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded" aria-label="Toggle theme">
+        &#9790;
+      </button>
+      <button id="tachyon-nav-hamburger" class="md:hidden p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded" aria-label="Menu">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+    </div>
   </div>
+  <!-- Mobile nav dropdown -->
+  <div id="tachyon-mobile-nav" class="hidden md:hidden border-t border-gray-200 dark:border-gray-700 px-4 py-3 space-y-2">
+    {extra_links}
+  </div>
+  <script>
+  (function() {{
+    var hamburger = document.getElementById('tachyon-nav-hamburger');
+    var mobileNav = document.getElementById('tachyon-mobile-nav');
+    if (hamburger && mobileNav) {{
+      hamburger.addEventListener('click', function() {{
+        mobileNav.classList.toggle('hidden');
+      }});
+    }}
+    var searchBtn = document.getElementById('tachyon-nav-search-btn');
+    var searchOverlay = document.getElementById('tachyon-search-overlay');
+    if (searchBtn && searchOverlay) {{
+      searchBtn.addEventListener('click', function() {{
+        searchOverlay.classList.add('open');
+        var input = searchOverlay.querySelector('input');
+        if (input) setTimeout(function() {{ input.focus(); }}, 100);
+      }});
+    }}
+  }})();
+  </script>
 </nav>"#,
+        rp = root_prefix,
         site_title = escape_html(&site.title),
         logo = logo,
         extra_links = extra_links,
@@ -730,8 +886,13 @@ fn render_toc_sidebar(toc: &[TocEntry]) -> String {
         .join("\n        ");
     format!(
         r#"<aside class="toc-sidebar hidden lg:block w-56 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 pl-6 ml-6 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto" data-pagefind-ignore>
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">On this page</h2>
+    <button class="toc-close text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5" onclick="this.closest('aside').style.display='none'" aria-label="Close table of contents">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+    </button>
+  </div>
   <nav class="toc" aria-label="Table of Contents">
-    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">On this page</h2>
     <ul class="space-y-1">
         {items}
     </ul>
@@ -741,24 +902,32 @@ fn render_toc_sidebar(toc: &[TocEntry]) -> String {
 }
 
 /// Render a collapsible sidebar from the site menu structure.
-fn render_sidebar(menu_items: &[SidebarItem], current_slug: Option<&str>) -> String {
-    render_sidebar_inner(menu_items, current_slug)
+fn render_sidebar(
+    menu_items: &[SidebarItem],
+    current_slug: Option<&str>,
+    root_prefix: &str,
+) -> String {
+    render_sidebar_inner(menu_items, current_slug, root_prefix)
 }
 
 pub(crate) fn render_sidebar_test(
     menu_items: &[SidebarItem],
     current_slug: Option<&str>,
 ) -> String {
-    render_sidebar_inner(menu_items, current_slug)
+    render_sidebar_inner(menu_items, current_slug, "")
 }
 
-fn render_sidebar_inner(menu_items: &[SidebarItem], current_slug: Option<&str>) -> String {
+fn render_sidebar_inner(
+    menu_items: &[SidebarItem],
+    current_slug: Option<&str>,
+    root_prefix: &str,
+) -> String {
     if menu_items.is_empty() {
         return String::new();
     }
     let items: String = menu_items
         .iter()
-        .map(|item| render_sidebar_item(item, current_slug, 0))
+        .map(|item| render_sidebar_item(item, current_slug, 0, root_prefix))
         .collect::<Vec<_>>()
         .join("\n");
     format!(
@@ -780,32 +949,35 @@ document.addEventListener('DOMContentLoaded', function() {{
     sidebar.classList.add('sidebar-open');
     overlay.classList.remove('hidden');
     toggle.innerHTML = '&times;';
+    toggle.setAttribute('aria-expanded', 'true');
   }}
   function closeSidebar() {{
     sidebar.classList.remove('sidebar-open');
     sidebar.classList.add('sidebar-closed');
     overlay.classList.add('hidden');
     toggle.innerHTML = '&#9776;';
+    toggle.setAttribute('aria-expanded', 'false');
   }}
   if (toggle && sidebar && overlay) {{
     toggle.addEventListener('click', function() {{
-      if (sidebar.classList.contains('sidebar-open')) {{
-        closeSidebar();
-      }} else {{
-        openSidebar();
-      }}
+      if (sidebar.classList.contains('sidebar-open')) {{ closeSidebar(); }} else {{ openSidebar(); }}
     }});
     overlay.addEventListener('click', closeSidebar);
     sidebar.querySelectorAll('a').forEach(function(link) {{
       link.addEventListener('click', closeSidebar);
     }});
   }}
-}});
+}})();
 </script>"#
     )
 }
 
-fn render_sidebar_item(item: &SidebarItem, current_slug: Option<&str>, depth: usize) -> String {
+fn render_sidebar_item(
+    item: &SidebarItem,
+    current_slug: Option<&str>,
+    depth: usize,
+    root_prefix: &str,
+) -> String {
     let is_active = current_slug
         .map(|slug| {
             let item_slug = item.href.trim_end_matches(".html");
@@ -818,9 +990,14 @@ fn render_sidebar_item(item: &SidebarItem, current_slug: Option<&str>, depth: us
         " text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
     };
     let indent_style = format!("padding-left: {}rem;", depth as f32 * 0.75);
+    let href = if item.href.starts_with("http") || item.href.starts_with('#') {
+        item.href.clone()
+    } else {
+        format!("{}{}", root_prefix, item.href)
+    };
     let link = format!(
         r#"<li><a href="{}" class="block text-sm rounded px-2 py-1.5{}" style="{}">{}</a></li>"#,
-        escape_html(&item.href),
+        escape_html(&href),
         active_class,
         indent_style,
         escape_html(&item.label),
@@ -831,17 +1008,17 @@ fn render_sidebar_item(item: &SidebarItem, current_slug: Option<&str>, depth: us
         let children_html: String = item
             .children
             .iter()
-            .map(|child| render_sidebar_item(child, current_slug, depth + 1))
+            .map(|child| render_sidebar_item(child, current_slug, depth + 1, root_prefix))
             .collect::<Vec<_>>()
             .join("\n");
         format!(
             r#"{link}
-<details class="ml-2">
-  <summary class="text-xs text-gray-500 dark:text-gray-400 cursor-pointer py-1 select-none">{label}</summary>
-  <ul class="space-y-1 mt-1">
+ <details class="ml-2">
+   <summary class="text-xs text-gray-500 dark:text-gray-400 cursor-pointer py-1 select-none">{label}</summary>
+   <ul class="space-y-1 mt-1">
 {children_html}
-  </ul>
-</details>"#,
+   </ul>
+ </details>"#,
             link = link,
             label = escape_html(&item.label),
             children_html = children_html,
@@ -877,6 +1054,17 @@ fn render_prev_next(prev: Option<&(String, String)>, next: Option<&(String, Stri
         return String::new();
     }
     format!(r#"<div class="flex gap-4 mt-8 mb-4">{prev_html}{next_html}</div>"#)
+}
+
+fn render_footer(site: &SiteConfig, _root_prefix: &str) -> String {
+    format!(
+        r#"<footer data-pagefind-ignore class="border-t border-gray-200 dark:border-gray-700 py-6 mt-12">
+  <div class="max-w-6xl mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
+    {footer}
+  </div>
+</footer>"#,
+        footer = escape_html(&site.footer),
+    )
 }
 
 fn capitalize_first(s: &str) -> String {
