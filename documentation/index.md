@@ -33,7 +33,7 @@ The server starts at `http://localhost:8080`.
 
 ## Architecture
 
-Tachyon is built as a Rust workspace with 16 crates:
+Tachyon is built as a Rust workspace with 17 crates:
 
 | Crate | Purpose |
 |-------|---------|
@@ -44,8 +44,8 @@ Tachyon is built as a Rust workspace with 16 crates:
 | `tachyon-database` | PostgreSQL via sqlx with migration support |
 | `tachyon-search` | Tantivy + PostgreSQL hybrid search |
 | `tachyon-renderer` | Markdown to HTML with syntax highlighting, KaTeX, sanitization |
-| `tachyon-rbac` | Casbin-based role-based access control |
-| `tachyon-storage` | Memory and PostgreSQL storage backends |
+| `tachyon-rbac` | Custom RBAC engine |
+| `tachyon-storage` | SQLite and in-memory storage backends |
 | `tachyon-ssg` | Static site generator with i18n, RSS, sitemap |
 | `tachyon-import-export` | Obsidian, Docusaurus, ZIP, JSON, HTML import/export |
 | `tachyon-plugin-runtime` | WASM sandbox via Wasmtime 44 |

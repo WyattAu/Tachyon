@@ -156,7 +156,7 @@ just dev            # Lint + test + build
 | Search | Tantivy (BM25) + PostgreSQL tsvector fallback |
 | Markdown | pulldown-cmark (SIMD) |
 | Math | KaTeX |
-| Syntax | tree-sitter (11 languages) + syntect |
+| Syntax | tree-sitter (12 languages) + syntect |
 | Auth | JWT (jsonwebtoken) |
 | CSS | Tailwind CSS (CDN) |
 | Fonts | Inter, JetBrains Mono |
