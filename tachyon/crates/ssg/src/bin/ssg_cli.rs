@@ -1292,7 +1292,7 @@ fn serve_directory(dir: &Path, port: u16) {
         let _ = write_response(
             &mut stream,
             200,
-            unsafe { std::str::from_utf8_unchecked(&content_type) },
+            std::str::from_utf8(&content_type).unwrap_or("application/octet-stream"),
             &body,
         );
     }
