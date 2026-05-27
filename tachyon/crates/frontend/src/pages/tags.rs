@@ -92,7 +92,7 @@ pub fn TagsPage() -> impl IntoView {
             </div>
 
             <Show when=move || error.get().is_some()>
-                <div class="mb-6 p-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded-lg">
+                <div class="mb-6 p-4 bg-red-100 dark:bg-red-900 border-2 border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded-none">
                     {move || error.get().unwrap_or_default()}
                 </div>
             </Show>
@@ -115,7 +115,7 @@ pub fn TagsPage() -> impl IntoView {
                             let val = event_target_value(&ev);
                             set_search_query.set(val);
                         }
-                        class="w-full max-w-md px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class="w-full max-w-md px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                 </div>
 
@@ -220,7 +220,7 @@ pub fn TagsPage() -> impl IntoView {
                                         view! {
                                             <a
                                                 href=format!("/documents/{}", doc_id)
-                                                class="block p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors no-underline text-inherit"
+                                                class="block p-4 bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 hover:border-blue-400 dark:hover:border-blue-500 transition-colors no-underline text-inherit"
                                             >
                                                 <div class="flex items-start justify-between">
                                                     <div class="min-w-0 flex-1">
@@ -263,25 +263,25 @@ pub fn TagsPage() -> impl IntoView {
                 <Show when=move || selected_tag.get().is_none() && !tags.get().is_empty()>
                     <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                            <div class="bg-white dark:bg-gray-800 rounded-none p-4 border-2 border-gray-900 dark:border-gray-100">
                                 <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
                                     {move || tags.get().len().to_string()}
                                 </div>
                                 <div class="text-sm text-gray-500 dark:text-gray-400">"Total Tags"</div>
                             </div>
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                            <div class="bg-white dark:bg-gray-800 rounded-none p-4 border-2 border-gray-900 dark:border-gray-100">
                                 <div class="text-2xl font-bold text-green-600 dark:text-green-400">
                                     {move || tags.get().iter().filter(|t| t.count > 5).count().to_string()}
                                 </div>
                                 <div class="text-sm text-gray-500 dark:text-gray-400">"Popular (5+)"</div>
                             </div>
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                            <div class="bg-white dark:bg-gray-800 rounded-none p-4 border-2 border-gray-900 dark:border-gray-100">
                                 <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">
                                     {move || tags.get().iter().map(|t| t.count).max().unwrap_or(0).to_string()}
                                 </div>
                                 <div class="text-sm text-gray-500 dark:text-gray-400">"Most Used"</div>
                             </div>
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                            <div class="bg-white dark:bg-gray-800 rounded-none p-4 border-2 border-gray-900 dark:border-gray-100">
                                 <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">
                                     {move || tags.get().iter().filter(|t| t.count == 1).count().to_string()}
                                 </div>

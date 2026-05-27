@@ -208,7 +208,7 @@ pub fn UsersPage() -> impl IntoView {
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">"User Management"</h1>
                 <button
                     on:click=move |_| set_show_create.set(true)
-                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none transition-colors text-sm font-medium"
                 >
                     "Create User"
                 </button>
@@ -221,7 +221,7 @@ pub fn UsersPage() -> impl IntoView {
                     view! { <div></div> }.into_any()
                 } else {
                     view! {
-                        <div class="mb-4 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+                        <div class="mb-4 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-none text-sm text-blue-700 dark:text-blue-300">
                             {msg}
                             <button
                                 on:click=move |_| set_message.set(String::new())
@@ -237,7 +237,7 @@ pub fn UsersPage() -> impl IntoView {
             // Filters
             <div class="flex items-center gap-4 mb-4">
                 <select
-                    class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                    class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
                     on:change=on_filter_change
                     prop:value=move || role_filter.get()
                 >
@@ -255,7 +255,7 @@ pub fn UsersPage() -> impl IntoView {
             // Loading skeleton
             {move || if loading.get() {
                 view! {
-                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 overflow-hidden">
                         <div class="divide-y divide-gray-200 dark:divide-gray-700">
                             {vec![0, 1, 2, 3, 4].into_iter().map(|_| {
                                 view! {
@@ -275,7 +275,7 @@ pub fn UsersPage() -> impl IntoView {
             } else {
                 view! {
                     // Users table
-                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead class="bg-gray-50 dark:bg-gray-900/50">
@@ -425,7 +425,7 @@ pub fn UsersPage() -> impl IntoView {
             {move || if show_create.get() {
                 view! {
                     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-md mx-4 p-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-none shadow-xl border-2 border-gray-900 dark:border-gray-100 w-full max-w-md mx-4 p-6">
                             <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Create User"</h2>
                             <div class="space-y-4">
                                 <div>
@@ -434,7 +434,7 @@ pub fn UsersPage() -> impl IntoView {
                                         type="text"
                                         prop:value=move || new_username.get()
                                         on:input=move |ev| set_new_username.set(event_target_value(&ev))
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                                         placeholder="johndoe"
                                     />
                                 </div>
@@ -444,7 +444,7 @@ pub fn UsersPage() -> impl IntoView {
                                         type="text"
                                         prop:value=move || new_display_name.get()
                                         on:input=move |ev| set_new_display_name.set(event_target_value(&ev))
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                                         placeholder="John Doe"
                                     />
                                 </div>
@@ -454,7 +454,7 @@ pub fn UsersPage() -> impl IntoView {
                                         type="email"
                                         prop:value=move || new_email.get()
                                         on:input=move |ev| set_new_email.set(event_target_value(&ev))
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                                         placeholder="john@example.com (optional)"
                                     />
                                 </div>
@@ -464,7 +464,7 @@ pub fn UsersPage() -> impl IntoView {
                                         type="password"
                                         prop:value=move || new_password.get()
                                         on:input=move |ev| set_new_password.set(event_target_value(&ev))
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                                         placeholder="Min 8 characters"
                                     />
                                 </div>
@@ -473,7 +473,7 @@ pub fn UsersPage() -> impl IntoView {
                                     <select
                                         prop:value=move || new_role.get()
                                         on:change=move |ev| set_new_role.set(event_target_value(&ev))
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                                     >
                                         <option value="reader">"Reader"</option>
                                         <option value="writer">"Writer"</option>
@@ -485,14 +485,14 @@ pub fn UsersPage() -> impl IntoView {
                             <div class="flex justify-end gap-3 mt-6">
                                 <button
                                     on:click=move |_| set_show_create.set(false)
-                                    class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                    class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none transition-colors"
                                 >
                                     "Cancel"
                                 </button>
                                 <button
                                     on:click=on_create_user
                                     disabled=move || creating.get()
-                                    class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
+                                    class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-none transition-colors"
                                 >
                                     {move || if creating.get() { "Creating..." } else { "Create" }}
                                 </button>

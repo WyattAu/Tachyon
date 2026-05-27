@@ -58,7 +58,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" attr:aria-modal="true" attr:aria-labelledby="onboarding-title">
             <FocusTrap active=trap_active.into()>
-                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
+                <div class="bg-white dark:bg-gray-900 rounded-none shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
                 // Progress bar
                 <div class="h-1 bg-gray-200 dark:bg-gray-700">
                     <div
@@ -81,7 +81,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                                 <p class="text-gray-600 dark:text-gray-400 mb-6">
                                     "A fast, offline-first knowledge management system. Let's get you set up in a few quick steps."
                                 </p>
-                                <div class="text-left bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
+                                <div class="text-left bg-gray-50 dark:bg-gray-800 rounded-none p-4 space-y-2">
                                     <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                                         <span class="text-green-500">"- "</span>
                                         <span>"Markdown-first editing with rich preview"</span>
@@ -118,7 +118,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                                                 let val = event_target_value(&ev);
                                                 set_display_name.set(val);
                                             }}
-                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         />
                                     </div>
                                 </div>
@@ -140,7 +140,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                                                 let val = event_target_value(&ev);
                                                 set_workspace_name.set(val);
                                             }}
-                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         />
                                     </div>
                                 </div>
@@ -160,13 +160,13 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                                 <div class="flex flex-col sm:flex-row gap-3 justify-center">
                                     <a
                                         href="/documents/new"
-                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none transition-colors text-sm font-medium"
                                     >
                                         "Create First Document"
                                     </a>
                                     <a
                                         href="/documents"
-                                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
+                                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-none transition-colors text-sm font-medium"
                                     >
                                         "Go to Documents"
                                     </a>
@@ -207,7 +207,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                                     view! {
                                         <button
                                             on:click=next_step
-                                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none transition-colors text-sm font-medium"
                                         >
                                             "Continue"
                                         </button>
@@ -216,7 +216,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
                                     view! {
                                         <button
                                             on:click=on_finish
-                                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-none transition-colors text-sm font-medium"
                                         >
                                             "Get Started"
                                         </button>

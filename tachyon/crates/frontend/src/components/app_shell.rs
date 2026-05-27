@@ -217,7 +217,7 @@ where
             // Skip navigation link for accessibility
             <a
                 href="#main-content"
-                class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm focus:font-medium"
+                class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-none focus:text-sm focus:font-medium"
             >
                 Skip to main content
             </a>
@@ -296,7 +296,7 @@ where
                     <div class="hidden md:block p-2 border-t border-gray-200 dark:border-gray-700 no-print">
                         <button
                             on:click=move |_| set_sidebar_collapsed.update(|c| *c = !*c)
-                            class="w-full p-3 min-h-[44px] text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center justify-center"
+                            class="w-full p-3 min-h-[44px] text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none flex items-center justify-center"
                             attr:aria-label="Toggle sidebar"
                         >
                             <svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -402,7 +402,7 @@ where
                                     role="menu"
                                     tabindex="-1"
                                     aria-live="assertive"
-                                    class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+                                    class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-none shadow-lg border-2 border-gray-900 dark:border-gray-100 z-50"
                                     style={move || if show_notifications.get() { "" } else { "display: none;" }}
                                 >
                                     <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -523,7 +523,7 @@ where
                                         id="user-menu-panel"
                                         role="menu"
                                         tabindex="-1"
-                                        class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
+                                        class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-none shadow-lg border-2 border-gray-900 dark:border-gray-100 py-1 z-50"
                                         style={move || if show_user_menu.get() { "" } else { "display: none;" }}
                                     >
                                         <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
@@ -570,7 +570,7 @@ pub fn NavLink(href: &'static str, label: &'static str, collapsed: bool) -> impl
     view! {
         <a
             href=href
-            class="flex items-center p-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring"
+            class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring"
             title=label
             attr:aria-label=label
         >

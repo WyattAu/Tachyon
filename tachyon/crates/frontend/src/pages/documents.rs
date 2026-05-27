@@ -229,7 +229,7 @@ pub fn DocumentsPage() -> impl IntoView {
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">"Documents"</h1>
                     {sync_badge}
                 </div>
-                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                <button class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors"
                     on:click=move |_| set_show_create_modal.set(true)>"+ New Document"</button>
             </div>
 
@@ -239,18 +239,18 @@ pub fn DocumentsPage() -> impl IntoView {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <input type="text" placeholder="Search documents..."
-                        class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         prop:value={move || search_text.get()}
                         on:input=move |ev| search_text.set(event_target_value(&ev)) />
                 </div>
-                <select class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                <select class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     on:change=move |ev| status_filter.set(event_target_value(&ev))>
                     <option value="">"All Status"</option>
                     <option value="draft">"Draft"</option>
                     <option value="published">"Published"</option>
                     <option value="archived">"Archived"</option>
                 </select>
-                <div class="flex border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                <div class="flex border border-gray-300 dark:border-gray-600 rounded-none overflow-hidden">
                     <button class={move || if view_mode.get() == ViewMode::Grid { "px-3 py-2 bg-blue-600 text-white" } else { "px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" }}
                         on:click=move |_| view_mode.set(ViewMode::Grid)
                         attr:aria-label="Grid view"
@@ -288,7 +288,7 @@ pub fn DocumentsPage() -> impl IntoView {
                                     }.into_any()
                                 } else {
                                     view! {
-                                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
+                                        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 divide-y divide-gray-200 dark:divide-gray-700">
                                             {docs.into_iter().map(|doc| view! { <DocumentRow document={doc} /> }).collect::<Vec<_>>()}
                                         </div>
                                     }.into_any()
@@ -300,11 +300,11 @@ pub fn DocumentsPage() -> impl IntoView {
             </Suspense>
 
             <div class="flex items-center justify-center gap-2 mt-6">
-                <button class="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                <button class="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
                     disabled={move || current_page.get() <= 1}
                     on:click=move |_| { let c = current_page.get(); if c > 1 { current_page.set(c - 1); } }>"Previous"</button>
                 <span class="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">{move || format!("Page {} of {}", current_page.get(), total_pages())}</span>
-                <button class="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                <button class="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
                     disabled={move || current_page.get() >= total_pages()}
                     on:click=move |_| { let c = current_page.get(); if c < total_pages() { current_page.set(c + 1); } }>"Next"</button>
             </div>
@@ -313,7 +313,7 @@ pub fn DocumentsPage() -> impl IntoView {
                 Some(view! {
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                         <FocusTrap active={show_create_modal.into()}>
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md" role="dialog" attr:aria-modal="true" attr:aria-labelledby="new-doc-title">
+                            <div class="bg-white dark:bg-gray-800 rounded-none p-6 w-full max-w-md" role="dialog" attr:aria-modal="true" attr:aria-labelledby="new-doc-title">
                                 <h2 id="new-doc-title" class="text-xl font-bold text-gray-900 dark:text-white mb-4">"New Document"</h2>
                                 {move || create_error.get().map(|e| view! {
                                     <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">{e}</div>
@@ -325,15 +325,15 @@ pub fn DocumentsPage() -> impl IntoView {
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Title"</label>
-                                        <input type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                        <input type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                             placeholder="Enter document title" prop:value={move || new_doc_title.get()}
                                             on:input=move |ev| set_new_doc_title.set(event_target_value(&ev)) />
                                     </div>
                                 </div>
                                 <div class="mt-6 flex justify-end gap-3">
-                                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none transition-colors"
                                         on:click=move |_| { set_show_create_modal.set(false); set_new_doc_title.set(String::new()); set_create_error.set(None); }>"Cancel"</button>
-                                    <button class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                    <button class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors disabled:opacity-50"
                                         disabled={move || creating.get()}
                                         on:click=move |ev| handle_create_document.get_value()(ev)>
                                         {move || if creating.get() { "Creating..." } else { "Create" }}
@@ -419,7 +419,7 @@ fn DocumentsGridSkeleton() -> impl IntoView {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {(0..6).map(|_| {
                     view! {
-                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
+                        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6 animate-pulse">
                             <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
                             <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mt-2"></div>
                             <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mt-4"></div>
@@ -497,7 +497,7 @@ fn DocumentCard(document: Document) -> impl IntoView {
 
     view! {
         <div
-            class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 hover:border-blue-500 transition-colors cursor-pointer"
+            class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6 hover:border-blue-500 transition-colors cursor-pointer"
             on:click={on_click}
         >
             <div class="flex items-start justify-between mb-2">
@@ -660,7 +660,7 @@ pub fn DocumentPage() -> impl IntoView {
                                 </div>
                                 <button
                                     on:click={move |ev| on_edit.run(ev)}
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors flex items-center gap-2"
                                 >
                                     <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -709,7 +709,7 @@ pub fn DocumentPage() -> impl IntoView {
                             }}
 
                             // Content
-                            <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+                            <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6">
                                 <div class="prose dark:prose-invert max-w-none">
                                     <pre class="whitespace-pre-wrap font-sans text-gray-900 dark:text-white bg-transparent p-0 m-0">{content}</pre>
                                 </div>

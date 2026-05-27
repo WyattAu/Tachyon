@@ -197,7 +197,7 @@ pub fn SearchPage() -> impl IntoView {
             {move || if show_saved.get() {
                 view! {
                     <div class="w-64 flex-shrink-0">
-                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
+                        <div class="bg-white dark:bg-gray-800 rounded-none shadow border border-gray-200 dark:border-gray-700 p-4">
                             <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">"Saved Searches"</h3>
                             <Suspense fallback={view! { <div class="animate-pulse">"Loading..."</div> }}>
                                 {move || {
@@ -211,7 +211,7 @@ pub fn SearchPage() -> impl IntoView {
                                                     let q = s.query.clone();
                                                     let f = s.filters.clone();
                                                     view! {
-                                                        <li><button class="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                                        <li><button class="w-full text-left px-3 py-2 text-sm rounded-none hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                                                             on:click=move |_| {
                                                                 query.set(q.clone());
                                                                 if let Some(ref fl) = f {
@@ -247,11 +247,11 @@ pub fn SearchPage() -> impl IntoView {
                     <div class="flex gap-2">
                         <div class="flex-1 relative">
                             <input type="text" placeholder="Search documents and projects..." autofocus=true
-                                class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 on:input=on_input prop:value={move || query.get()} />
                             <div class=move || {
                                 if show_suggestions.get() && !suggestions.get().is_empty() {
-                                    "absolute top-full left-0 right-0 z-50 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto"
+                                    "absolute top-full left-0 right-0 z-50 mt-1 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-100 rounded-none shadow-lg max-h-60 overflow-auto"
                                 } else { "hidden" }
                             } on:click=move |ev| ev.stop_propagation()>
                                 {move || {
@@ -266,14 +266,14 @@ pub fn SearchPage() -> impl IntoView {
                                 }}
                             </div>
                         </div>
-                        <button class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                        <button class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-none hover:bg-gray-300 dark:hover:bg-gray-600"
                             on:click=move |_| show_filters.update(|f| *f = !*f)>"Filters"</button>
                     </div>
                 </div>
 
                 {move || if show_filters.get() {
                     view! {
-                        <div class="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div class="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700">
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Status"</label>
@@ -319,7 +319,7 @@ pub fn SearchPage() -> impl IntoView {
                             let label = match cat { SearchCategory::All => "All", SearchCategory::Documents => "Docs", SearchCategory::Projects => "Projects" };
                             let c = cat;
                             view! {
-                                <button class=move || if category.get() == c { "px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm transition-colors" } else { "px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" }
+                                <button class=move || if category.get() == c { "px-3 py-1.5 bg-blue-600 text-white rounded-none text-sm transition-colors" } else { "px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-none text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" }
                                     on:click=move |_| category.set(c)>{label}</button>
                             }
                         }).collect::<Vec<_>>()}
@@ -341,7 +341,7 @@ pub fn SearchPage() -> impl IntoView {
                         let save_search_clone = save_search.clone();
                         if search_query.is_empty() {
                             view! {
-                                <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+                                <div class="bg-white dark:bg-gray-800 rounded-none shadow border border-gray-200 dark:border-gray-700 p-6">
                                     <p class="text-gray-500 dark:text-gray-400 text-center">"Enter a search query to find documents and projects"</p>
                                 </div>
                             }.into_any()
@@ -353,7 +353,7 @@ pub fn SearchPage() -> impl IntoView {
                                         let result = search_resource.get();
                                         match result {
                                             None | Some(None) => view! {
-                                                <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+                                                <div class="bg-white dark:bg-gray-800 rounded-none shadow border border-gray-200 dark:border-gray-700 p-6">
                                                     <p class="text-gray-500 dark:text-gray-400 text-center">"Searching..."</p>
                                                 </div>
                                             }.into_any(),
@@ -446,7 +446,7 @@ fn SearchResultCard(result: SearchResultItem) -> impl IntoView {
     let wc = result.word_count;
     let updated = result.updated_at;
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 hover:border-blue-500 transition-colors cursor-pointer">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border border-gray-200 dark:border-gray-700 p-4 hover:border-blue-500 transition-colors cursor-pointer">
             <div class="flex items-start justify-between">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
                 <div class="flex items-center gap-2">
@@ -481,7 +481,7 @@ fn ProjectResultCard(result: ProjectSearchResultItem) -> impl IntoView {
     let desc = result.description;
     let status = result.status;
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 hover:border-blue-500 transition-colors cursor-pointer">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border border-gray-200 dark:border-gray-700 p-4 hover:border-blue-500 transition-colors cursor-pointer">
             <div class="flex items-start justify-between">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{name}</h3>
                 <div class="flex items-center gap-2">
@@ -503,7 +503,7 @@ fn SearchResultsSkeleton() -> impl IntoView {
         <div class="space-y-4">
             {(0..3).map(|_| {
                 view! {
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
+                    <div class="bg-white dark:bg-gray-800 rounded-none shadow border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
                         <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
                         <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mt-3"></div>
                         <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mt-2"></div>

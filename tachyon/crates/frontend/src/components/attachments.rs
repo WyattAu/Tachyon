@@ -124,7 +124,7 @@ pub fn AttachmentManager(document_id: String) -> impl IntoView {
     };
 
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">"Attachments"</h3>
             </div>
@@ -133,9 +133,9 @@ pub fn AttachmentManager(document_id: String) -> impl IntoView {
                 <div
                     class={move || {
                         if is_dragging.get() {
-                            "border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 text-center transition-colors"
+                            "border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-none p-6 text-center transition-colors"
                         } else {
-                            "border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 text-center transition-colors hover:border-gray-400 dark:hover:border-gray-500"
+                            "border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 rounded-none p-6 text-center transition-colors hover:border-gray-400 dark:hover:border-gray-500"
                         }
                     }}
                     on:dragover=on_dragover

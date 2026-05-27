@@ -124,7 +124,7 @@ pub fn OnboardingPage() -> impl IntoView {
 
     view! {
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-2xl max-w-xl w-full overflow-hidden border border-gray-900 dark:border-gray-100">
                 <div class="h-1 bg-gray-200 dark:bg-gray-700">
                     <div
                         class="h-1 bg-blue-600 transition-all duration-300"
@@ -158,19 +158,19 @@ pub fn OnboardingPage() -> impl IntoView {
                                     "A fast, offline-first knowledge management system. Let's get you set up in a few quick steps."
                                 </p>
                                 <div class="grid grid-cols-2 gap-4 text-left">
-                                    <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-none">
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">"Markdown-first"</div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400">"Write in markdown with rich preview"</div>
                                     </div>
-                                    <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-none">
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">"Real-time collab"</div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400">"CRDT-based sync with your team"</div>
                                     </div>
-                                    <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-none">
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">"Works offline"</div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400">"Edit anywhere, sync when connected"</div>
                                     </div>
-                                    <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-none">
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">"Knowledge graph"</div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400">"Bidirectional links between docs"</div>
                                     </div>
@@ -197,7 +197,7 @@ pub fn OnboardingPage() -> impl IntoView {
                                         placeholder="Your name"
                                         prop:value={move || display_name.get()}
                                         on:input=move |ev| set_display_name.set(event_target_value(&ev))
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     />
                                 </div>
                             </div>
@@ -222,19 +222,19 @@ pub fn OnboardingPage() -> impl IntoView {
                                             type="text"
                                             prop:value={move || doc_title.get()}
                                             on:input=move |ev| set_doc_title.set(event_target_value(&ev))
-                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         />
                                     </div>
                                     <div class="flex gap-3">
                                         <a
                                             href="/documents/new"
-                                            class="flex-1 text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                            class="flex-1 text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none transition-colors text-sm font-medium"
                                         >
                                             "Create Document"
                                         </a>
                                         <a
                                             href="/documents"
-                                            class="flex-1 text-center px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
+                                            class="flex-1 text-center px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-none transition-colors text-sm font-medium"
                                         >
                                             "Or import"
                                         </a>
@@ -272,11 +272,11 @@ pub fn OnboardingPage() -> impl IntoView {
                                                     }
                                                 }
                                             }
-                                            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         />
                                         <button
                                             on:click=add_invite
-                                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none transition-colors text-sm font-medium"
                                         >
                                             "Add"
                                         </button>
@@ -293,7 +293,7 @@ pub fn OnboardingPage() -> impl IntoView {
                                                     {invs.into_iter().map(|email| {
                                                         let email_clone = email.clone();
                                                         view! {
-                                                            <div class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                                            <div class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-none">
                                                                 <span class="text-sm text-gray-700 dark:text-gray-300">{email}</span>
                                                                 <button on:click=move |_| remove_invite(email_clone.clone()) class="text-gray-400 hover:text-red-500 transition-colors">
                                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,7 +336,7 @@ pub fn OnboardingPage() -> impl IntoView {
                                                 on:click=move |_| set_selected_template.set(None)
                                                 class={
                                                     move || {
-                                                        let base = "text-left p-4 rounded-lg border-2 transition-colors";
+                                                        let base = "text-left p-4 rounded-none border-2 transition-colors";
                                                         if selected_template.get().is_none() {
                                                             format!("{} border-blue-500 bg-blue-50 dark:bg-blue-900/20", base)
                                                         } else {
@@ -357,9 +357,9 @@ pub fn OnboardingPage() -> impl IntoView {
                                                         on:click=move |_| set_selected_template.set(Some(name_clone.clone()))
                                                         class={
                                                             if is_selected {
-                                                                "text-left p-4 rounded-lg border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20 transition-colors"
+                                                                "text-left p-4 rounded-none border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20 transition-colors"
                                                             } else {
-                                                                "text-left p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                                                                "text-left p-4 rounded-none border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                                                             }
                                                         }
                                                     >
@@ -395,7 +395,7 @@ pub fn OnboardingPage() -> impl IntoView {
                                 </div>
                                 <button
                                     on:click=next_step
-                                    class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                    class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none transition-colors text-sm font-medium"
                                 >
                                     "Continue"
                                 </button>
@@ -409,7 +409,7 @@ pub fn OnboardingPage() -> impl IntoView {
                                 </button>
                                 <button
                                     on:click=on_finish
-                                    class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                    class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-none transition-colors text-sm font-medium"
                                 >
                                     "Get Started"
                                 </button>

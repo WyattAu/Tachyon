@@ -79,7 +79,7 @@ pub fn DropZone(
     view! {
         <div
             class=move || format!(
-                "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors {}",
+                "border-2 border-dashed rounded-none p-8 text-center cursor-pointer transition-colors {}",
                 border_class()
             )
             on:dragover=handle_drag_over

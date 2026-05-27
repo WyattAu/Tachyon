@@ -158,7 +158,7 @@ pub fn AuditPage() -> impl IntoView {
                     <p class="text-gray-600 dark:text-gray-400 mt-1">"Track all actions and changes across your organization."</p>
                 </div>
                 <button
-                    class="min-h-[44px] px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    class="min-h-[44px] px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     on:click=export_csv
                 >
                     "Export CSV"
@@ -166,13 +166,13 @@ pub fn AuditPage() -> impl IntoView {
             </div>
 
             // Filters
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4 mb-6">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-none p-4 mb-6 border border-gray-900 dark:border-gray-100">
                 <div class="flex flex-wrap items-end gap-4">
                     <div class="flex-1 min-w-[200px]">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Action"</label>
                         <input
                             type="text"
-                            class="w-full min-h-[44px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                            class="w-full min-h-[44px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
                             placeholder="e.g. document.create"
                             value={filter_action.get()}
                             on:input=move |ev| set_filter_action.set(event_target_value(&ev))
@@ -182,7 +182,7 @@ pub fn AuditPage() -> impl IntoView {
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Actor"</label>
                         <input
                             type="text"
-                            class="w-full min-h-[44px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                            class="w-full min-h-[44px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
                             placeholder="User ID"
                             value={filter_actor.get()}
                             on:input=move |ev| set_filter_actor.set(event_target_value(&ev))
@@ -190,13 +190,13 @@ pub fn AuditPage() -> impl IntoView {
                     </div>
                     <div class="flex gap-2">
                         <button
-                            class="min-h-[44px] px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                            class="min-h-[44px] px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors text-sm"
                             on:click=apply_filters
                         >
                             "Filter"
                         </button>
                         <button
-                            class="min-h-[44px] px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors text-sm"
+                            class="min-h-[44px] px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none transition-colors text-sm"
                             on:click=clear_filters
                         >
                             "Clear"
@@ -206,12 +206,12 @@ pub fn AuditPage() -> impl IntoView {
             </div>
 
             {move || error.get().map(|e| view! {
-                <div class="mb-4 p-4 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded-lg">
+                <div class="mb-4 p-4 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded-none">
                     {e}
                 </div>
             })}
 
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-none overflow-hidden border border-gray-900 dark:border-gray-100">
                 {move || if loading.get() {
                     Some(view! {
                         <div class="flex justify-center items-center py-12">
@@ -285,14 +285,14 @@ pub fn AuditPage() -> impl IntoView {
                                 </p>
                                 <div class="flex gap-2">
                                     <button
-                                        class="min-h-[44px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                                        class="min-h-[44px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
                                         disabled={page.get() <= 1}
                                         on:click=prev_page
                                     >
                                         "Previous"
                                     </button>
                                     <button
-                                        class="min-h-[44px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                                        class="min-h-[44px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
                                         disabled={page.get() >= total_pages()}
                                         on:click=next_page
                                     >

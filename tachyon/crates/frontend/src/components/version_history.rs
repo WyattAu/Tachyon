@@ -42,12 +42,12 @@ pub fn VersionHistory(document_id: String, on_rollback: Option<Callback<String>>
     let doc_id_for_diff = document_id.clone();
 
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">"Version History"</h3>
                 <button
                     type="button"
-                    class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors"
                     on:click=move |_| set_show_diff.update(|v| *v = !*v)
                 >
                     {move || if show_diff.get() { "Hide Diff" } else { "Compare Versions" }}

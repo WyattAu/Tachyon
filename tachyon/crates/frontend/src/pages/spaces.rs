@@ -97,7 +97,7 @@ pub fn SpacesPage() -> impl IntoView {
                                 <p class="text-gray-500 dark:text-gray-400 mb-4">
                                     "Create a space to organize your documents"
                                 </p>
-                                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                <button class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700"
                                     on:click={move |_| set_show_create_modal.set(true)}>
                                     "Create Space"
                                 </button>
@@ -112,7 +112,7 @@ pub fn SpacesPage() -> impl IntoView {
                                     <p class="text-sm text-gray-500 dark:text-gray-400">
                                         {move || format!("{} space{}", count, if count == 1 { "" } else { "s" })}
                                     </p>
-                                    <button class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                                    <button class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-none hover:bg-blue-700"
                                         on:click={move |_| set_show_create_modal.set(true)}>
                                         "+ New Space"
                                     </button>
@@ -233,7 +233,7 @@ fn SpaceItem(
     let default_badge = space_is_default;
 
     view! {
-        <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 group cursor-pointer">
+        <div class="flex items-center gap-2 px-3 py-2 rounded-none hover:bg-gray-50 dark:hover:bg-gray-800 group cursor-pointer">
             // Expand chevron
             <button class="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
                 on:click=move |_| on_toggle.run(())>
@@ -244,7 +244,7 @@ fn SpaceItem(
             </button>
 
             // Icon
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
+            <div class="w-8 h-8 rounded-none flex items-center justify-center text-sm flex-shrink-0"
                  style=format!("background-color: {}; color: white;", space_color)>
                 {space_icon}
             </div>
@@ -366,11 +366,11 @@ fn CreateSpaceModal(on_close: Callback<()>, on_created: Callback<()>) -> impl In
 
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-xl w-full max-w-md mx-4 p-6 border border-gray-900 dark:border-gray-100">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Create Space"</h2>
 
                 <Show when=move || error.get().is_some()>
-                    <div class="mb-3 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-lg">
+                    <div class="mb-3 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-none">
                         {move || error.get().unwrap_or_default()}
                     </div>
                 </Show>
@@ -378,7 +378,7 @@ fn CreateSpaceModal(on_close: Callback<()>, on_created: Callback<()>) -> impl In
                 <div class="mb-3">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Name"</label>
                     <input type="text"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         placeholder="e.g., Engineering Docs"
                         prop:value={move || name.get()}
                         on:input={move |ev| set_name.set(event_target_value(&ev))} />
@@ -387,7 +387,7 @@ fn CreateSpaceModal(on_close: Callback<()>, on_created: Callback<()>) -> impl In
                 <div class="mb-3">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Description"</label>
                     <input type="text"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         placeholder="Optional"
                         prop:value={move || desc.get()}
                         on:input={move |ev| set_desc.set(event_target_value(&ev))} />
@@ -431,7 +431,7 @@ fn CreateSpaceModal(on_close: Callback<()>, on_created: Callback<()>) -> impl In
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Visibility"</label>
-                    <select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    <select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         prop:value={move || visibility.get()}
                         on:change={move |ev| set_visibility.set(event_target_value(&ev))}>
                         <option value="private">"Private"</option>
@@ -441,9 +441,9 @@ fn CreateSpaceModal(on_close: Callback<()>, on_created: Callback<()>) -> impl In
                 </div>
 
                 <div class="flex justify-end gap-3">
-                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none"
                         on:click=do_close>"Cancel"</button>
-                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 disabled:opacity-50"
                         disabled={move || submitting.get()} on:click=do_submit>
                         {move || if submitting.get() { "Creating..." } else { "Create Space" }}
                     </button>
@@ -519,11 +519,11 @@ fn EditSpaceModal(space: Space, on_close: Callback<()>, on_saved: Callback<()>) 
 
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-xl w-full max-w-md mx-4 p-6 border border-gray-900 dark:border-gray-100">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Edit Space"</h2>
 
                 <Show when=move || error.get().is_some()>
-                    <div class="mb-3 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-lg">
+                    <div class="mb-3 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-none">
                         {move || error.get().unwrap_or_default()}
                     </div>
                 </Show>
@@ -531,7 +531,7 @@ fn EditSpaceModal(space: Space, on_close: Callback<()>, on_saved: Callback<()>) 
                 <div class="mb-3">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Name"</label>
                     <input type="text"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         prop:value={move || name.get()}
                         on:input={move |ev| set_name.set(event_target_value(&ev))} />
                 </div>
@@ -539,7 +539,7 @@ fn EditSpaceModal(space: Space, on_close: Callback<()>, on_saved: Callback<()>) 
                 <div class="mb-3">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Description"</label>
                     <input type="text"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         prop:value={move || desc.get()}
                         on:input={move |ev| set_desc.set(event_target_value(&ev))} />
                 </div>
@@ -582,7 +582,7 @@ fn EditSpaceModal(space: Space, on_close: Callback<()>, on_saved: Callback<()>) 
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Visibility"</label>
-                    <select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    <select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         prop:value={move || visibility.get()}
                         on:change={move |ev| set_visibility.set(event_target_value(&ev))}>
                         <option value="private">"Private"</option>
@@ -592,9 +592,9 @@ fn EditSpaceModal(space: Space, on_close: Callback<()>, on_saved: Callback<()>) 
                 </div>
 
                 <div class="flex justify-end gap-3">
-                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none"
                         on:click=do_close>"Cancel"</button>
-                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 disabled:opacity-50"
                         disabled={move || submitting.get()} on:click=do_submit>
                         {move || if submitting.get() { "Saving..." } else { "Save Changes" }}
                     </button>
@@ -695,29 +695,29 @@ fn MembersModal(space_id: String, on_close: Callback<()>) -> impl IntoView {
 
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-xl w-full max-w-lg mx-4 p-6 border border-gray-900 dark:border-gray-100">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Manage Members"</h2>
 
                 <Show when=move || error.get().is_some()>
-                    <div class="mb-3 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-lg">
+                    <div class="mb-3 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-none">
                         {move || error.get().unwrap_or_default()}
                     </div>
                 </Show>
 
                 <div class="flex gap-2 mb-4">
                     <input type="text"
-                        class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                         placeholder="User ID"
                         prop:value={move || new_uid.get()}
                         on:input={move |ev| set_new_uid.set(event_target_value(&ev))} />
-                    <select class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    <select class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                         prop:value={move || new_role.get()}
                         on:change={move |ev| set_new_role.set(event_target_value(&ev))}>
                         <option value="viewer">"Viewer"</option>
                         <option value="editor">"Editor"</option>
                         <option value="admin">"Admin"</option>
                     </select>
-                    <button class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                    <button class="px-3 py-2 bg-blue-600 text-white text-sm rounded-none hover:bg-blue-700"
                         on:click=add_member>"Add"</button>
                 </div>
 
@@ -741,7 +741,7 @@ fn MembersModal(space_id: String, on_close: Callback<()>) -> impl IntoView {
                                         .unwrap_or_else(|| member.user_id.chars().take(8).collect());
                                     let initial = display.chars().next().unwrap_or('?').to_uppercase().to_string();
                                     view! {
-                                        <div class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                        <div class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-none">
                                             <div class="flex items-center gap-3 min-w-0">
                                                 <div class="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-300">
                                                     {initial}
@@ -775,7 +775,7 @@ fn MembersModal(space_id: String, on_close: Callback<()>) -> impl IntoView {
                 }}
 
                 <div class="flex justify-end mt-4">
-                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none"
                         on:click=do_close>"Close"</button>
                 </div>
             </div>
@@ -797,13 +797,13 @@ fn ConfirmModal(
 ) -> impl IntoView {
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-xl w-full max-w-sm mx-4 p-6 border border-gray-900 dark:border-gray-100">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h2>
                 <p class="text-gray-500 dark:text-gray-400 mb-6">{message}</p>
                 <div class="flex justify-end gap-3">
-                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    <button class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none"
                         on:click={move |_| on_cancel.run(())}>"Cancel"</button>
-                    <button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    <button class="px-4 py-2 bg-red-600 text-white rounded-none hover:bg-red-700"
                         on:click={move |_| on_confirm.run(())}>{confirm_label}</button>
                 </div>
             </div>

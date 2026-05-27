@@ -59,11 +59,11 @@ pub fn AccessibleDialog(
     view! {
         <dialog
             node_ref=dialog_ref
-            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-lg shadow-xl p-6 max-w-lg w-full"
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-none shadow-xl p-6 max-w-lg w-full border border-gray-900 dark:border-gray-100"
             on:close=move |_| on_close.call(())
             aria-labelledby="dialog-title"
         >
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full">
+            <div class="bg-white dark:bg-gray-800 rounded-none p-6 w-full">
                 <header class="flex justify-between items-center mb-4">
                     <h2 id="dialog-title" class="text-lg font-semibold">{title}</h2>
                     <button

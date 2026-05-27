@@ -99,9 +99,9 @@ pub fn NotificationsPage() -> impl IntoView {
                         class={
                             move || {
                                 if show_unread_only.get() {
-                                    "px-3 py-1.5 text-sm rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium transition-colors"
+                                    "px-3 py-1.5 text-sm rounded-none bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium transition-colors"
                                 } else {
-                                    "px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    "px-3 py-1.5 text-sm rounded-none bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                                 }
                             }
                         }
@@ -110,7 +110,7 @@ pub fn NotificationsPage() -> impl IntoView {
                     </button>
                     <button
                         on:click=on_mark_all_read
-                        class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        class="px-3 py-1.5 text-sm rounded-none bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                         "Mark all read"
                     </button>
@@ -137,7 +137,7 @@ pub fn NotificationsPage() -> impl IntoView {
                     <div class="space-y-3">
                         {vec![0, 1, 2].into_iter().map(|_| {
                             view! {
-                                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
+                                <div class="bg-white dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
                                     <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
                                     <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
                                 </div>
@@ -152,7 +152,7 @@ pub fn NotificationsPage() -> impl IntoView {
                             let notifs = notifications.get();
                             if notifs.is_empty() {
                                 view! {
-                                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
+                                    <div class="bg-white dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700 p-12 text-center">
                                         <svg class="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                         </svg>
@@ -192,9 +192,9 @@ pub fn NotificationsPage() -> impl IntoView {
                                             <div
                                                 class={
                                                     if is_read {
-                                                        "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-colors"
+                                                        "bg-white dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700 p-4 transition-colors"
                                                     } else {
-                                                        "bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800 p-4 transition-colors"
+                                                        "bg-blue-50/50 dark:bg-blue-900/10 rounded-none border border-blue-200 dark:border-blue-800 p-4 transition-colors"
                                                     }
                                                 }
                                             >

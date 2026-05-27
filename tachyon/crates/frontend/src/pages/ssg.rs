@@ -66,7 +66,7 @@ pub fn SsgPage() -> impl IntoView {
         error.get().map(|e| {
             view! {
                 <div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 
-                            text-red-700 dark:text-red-300 text-sm rounded-lg">{e}</div>
+                            text-red-700 dark:text-red-300 text-sm rounded-none">{e}</div>
             }
         })
     };
@@ -75,7 +75,7 @@ pub fn SsgPage() -> impl IntoView {
         build_result.get().map(|r| {
             let size = size_str().unwrap_or_default();
             view! {
-                <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                <div class="mt-6 bg-white dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700 p-6">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                         "Build Successful"
                     </h3>
@@ -101,7 +101,7 @@ pub fn SsgPage() -> impl IntoView {
                         <span class="text-sm text-gray-500 dark:text-gray-400">{format!("Output size: {}", size)}</span>
                         <div class="flex gap-3">
                             <button
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors 
                                        flex items-center gap-2"
                                 on:click={handle_download}
                             >
@@ -127,7 +127,7 @@ pub fn SsgPage() -> impl IntoView {
     };
     let btn_class = move || {
         format!(
-            "px-6 py-3 text-white rounded-lg font-medium transition-colors flex items-center gap-2 {}",
+            "px-6 py-3 text-white rounded-none font-medium transition-colors flex items-center gap-2 {}",
             if building.get() {
                 "bg-blue-400 cursor-not-allowed"
             } else {
@@ -149,7 +149,7 @@ pub fn SsgPage() -> impl IntoView {
 
             {error_view}
 
-            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700 p-6">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Site Configuration"</h2>
 
                 <div class="space-y-4">
@@ -158,7 +158,7 @@ pub fn SsgPage() -> impl IntoView {
                             "Site Title"
                         </label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={title.get()}
@@ -170,7 +170,7 @@ pub fn SsgPage() -> impl IntoView {
                             "Description"
                         </label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={description.get()}
@@ -182,7 +182,7 @@ pub fn SsgPage() -> impl IntoView {
                             "Base URL"
                         </label>
                         <input type="url"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={base_url.get()}
@@ -194,7 +194,7 @@ pub fn SsgPage() -> impl IntoView {
                             "Theme"
                         </label>
                         <select
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={theme.get()}
@@ -227,7 +227,7 @@ pub fn SsgPage() -> impl IntoView {
                     </button>
                     <button
                         class="px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600
-                               rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+                               rounded-none hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
                         on:click={handle_download}
                     >
                         "Download Latest"

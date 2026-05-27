@@ -51,7 +51,7 @@ pub fn TemplatesPage() -> impl IntoView {
                     <li>
                         <button
                             class={move || format!(
-                                "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors {}",
+                                "w-full text-left px-3 py-2 rounded-none text-sm transition-colors {}",
                                 if selected_category.get().is_none() {
                                     "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium"
                                 } else {
@@ -71,7 +71,7 @@ pub fn TemplatesPage() -> impl IntoView {
                             <li>
                                 <button
                                     class={move || format!(
-                                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors {}",
+                                        "w-full text-left px-3 py-2 rounded-none text-sm transition-colors {}",
                                         if selected_category.get() == Some(cat_for_class.clone()) {
                                             "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium"
                                         } else {
@@ -108,7 +108,7 @@ pub fn TemplatesPage() -> impl IntoView {
                             "Create your first template to get started"
                         </p>
                         <button
-                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700"
                             on:click={move |_| set_show_create_modal.set(true)}
                         >
                             "Create Template"
@@ -248,7 +248,7 @@ pub fn TemplatesPage() -> impl IntoView {
                     </p>
                 </div>
                 <button
-                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
+                    class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors
                            flex items-center gap-2"
                     on:click={move |_| set_show_create_modal.set(true)}
                 >
@@ -263,7 +263,7 @@ pub fn TemplatesPage() -> impl IntoView {
             // Content: sidebar + grid
             <div class="flex gap-6">
                 <div class="w-52 flex-shrink-0">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                    <div class="bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 p-3">
                         <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 px-2">
                             "Categories"
                         </h3>
@@ -348,7 +348,7 @@ fn TemplateGridCard(
     };
 
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700
+        <div class="bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100
                     hover:shadow-md transition-shadow group">
             <div class="p-4">
                 {category_badge}
@@ -365,21 +365,21 @@ fn TemplateGridCard(
             <div class="px-4 pb-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                     class="flex-1 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400
-                           bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                           bg-blue-50 dark:bg-blue-900/30 rounded-none hover:bg-blue-100 dark:hover:bg-blue-900/50"
                     on:click={move |_| on_preview.run(())}
                 >
                     "Preview"
                 </button>
                 <button
                     class="flex-1 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400
-                           bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                           bg-gray-50 dark:bg-gray-700 rounded-none hover:bg-gray-100 dark:hover:bg-gray-600"
                     on:click={move |_| on_edit.run(())}
                 >
                     "Edit"
                 </button>
                 <button
                     class="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400
-                           bg-red-50 dark:bg-red-900/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50"
+                           bg-red-50 dark:bg-red-900/30 rounded-none hover:bg-red-100 dark:hover:bg-red-900/50"
                     on:click={move |_| on_delete.run(())}
                 >
                     "Delete"
@@ -505,7 +505,7 @@ fn CreateEditModal(
         error.get().map(|e| {
             view! {
                 <div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 
-                            text-red-700 dark:text-red-300 text-sm rounded-lg">
+                            text-red-700 dark:text-red-300 text-sm rounded-none">
                     {e}
                 </div>
             }
@@ -523,7 +523,7 @@ fn CreateEditModal(
     };
     let btn_class = move || {
         format!(
-            "px-4 py-2 text-sm text-white rounded-lg {}",
+            "px-4 py-2 text-sm text-white rounded-none {}",
             if submitting.get() {
                 "bg-blue-400 cursor-not-allowed"
             } else {
@@ -535,12 +535,12 @@ fn CreateEditModal(
     view! {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
              on:click={move |_| on_cancel.run(())}>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-gray-900 dark:border-gray-100"
                  on:click={move |ev| ev.stop_propagation()}>
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
                     <button
-                        class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg
+                        class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-none
                                hover:bg-gray-100 dark:hover:bg-gray-700"
                         on:click={move |_| on_cancel.run(())}
                     >
@@ -559,7 +559,7 @@ fn CreateEditModal(
                         </label>
                         <input
                             type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             placeholder="e.g. Meeting Notes"
@@ -574,7 +574,7 @@ fn CreateEditModal(
                         </label>
                         <input
                             type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             placeholder="Brief description of this template"
@@ -589,7 +589,7 @@ fn CreateEditModal(
                         </label>
                         <input
                             type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             placeholder="e.g. Engineering, Product, Research"
@@ -604,7 +604,7 @@ fn CreateEditModal(
                         </label>
                         <input
                             type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             placeholder="Comma-separated: sprint, retro, planning"
@@ -618,7 +618,7 @@ fn CreateEditModal(
                             "Template Content" <span class="text-red-500">"*"</span>
                         </label>
                         <textarea
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none 
                                    font-mono text-sm"
@@ -636,7 +636,7 @@ fn CreateEditModal(
                 <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                     <button
                         class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300
-                               dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                               dark:border-gray-600 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
                         on:click={move |_| on_cancel.run(())}
                     >
                         "Cancel"
@@ -694,7 +694,7 @@ fn PreviewModal(template: DocumentTemplate, on_close: Callback<()>) -> impl Into
     view! {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
              on:click={move |_| on_close.run(())}>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden"
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden border border-gray-900 dark:border-gray-100"
                  on:click={move |ev| ev.stop_propagation()}>
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <div>
@@ -709,7 +709,7 @@ fn PreviewModal(template: DocumentTemplate, on_close: Callback<()>) -> impl Into
                         </div>
                     </div>
                     <button
-                        class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg
+                        class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-none
                                hover:bg-gray-100 dark:hover:bg-gray-700"
                         on:click={move |_| on_close.run(())}
                     >
@@ -723,7 +723,7 @@ fn PreviewModal(template: DocumentTemplate, on_close: Callback<()>) -> impl Into
 
                 <div class="px-6 py-4 overflow-y-auto max-h-[55vh]">
                     <pre class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-mono bg-gray-50
-                                dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                dark:bg-gray-900/50 rounded-none p-4 border-2 border-gray-900 dark:border-gray-100">
                         {t_content}
                     </pre>
                 </div>
@@ -731,7 +731,7 @@ fn PreviewModal(template: DocumentTemplate, on_close: Callback<()>) -> impl Into
                 <div class="flex justify-end px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                     <button
                         class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300
-                               dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                               dark:border-gray-600 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
                         on:click={move |_| on_close.run(())}
                     >
                         "Close"
@@ -776,7 +776,7 @@ fn DeleteConfirmModal(
         error.get().map(|e| {
             view! {
                 <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200
-                            dark:border-red-800 text-red-700 dark:text-red-300 text-sm rounded-lg">
+                            dark:border-red-800 text-red-700 dark:text-red-300 text-sm rounded-none">
                     {e}
                 </div>
             }
@@ -792,7 +792,7 @@ fn DeleteConfirmModal(
     };
     let btn_class = move || {
         format!(
-            "px-4 py-2 text-sm text-white rounded-lg {}",
+            "px-4 py-2 text-sm text-white rounded-none {}",
             if submitting.get() {
                 "bg-red-400 cursor-not-allowed"
             } else {
@@ -804,7 +804,7 @@ fn DeleteConfirmModal(
     view! {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
              on:click={move |_| on_cancel.run(())}>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md"
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-2xl w-full max-w-md border border-gray-900 dark:border-gray-100"
                  on:click={move |ev| ev.stop_propagation()}>
                 <div class="p-6">
                     <div class="flex items-center gap-3 mb-4">
@@ -828,7 +828,7 @@ fn DeleteConfirmModal(
                     <div class="flex justify-end gap-3 mt-6">
                         <button
                             class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300
-                                   dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                                   dark:border-gray-600 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
                             on:click={move |_| on_cancel.run(())}
                         >
                             "Cancel"
@@ -854,7 +854,7 @@ fn DeleteConfirmModal(
 #[component]
 fn TemplateCardSkeleton() -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
+        <div class="bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 p-4 animate-pulse">
             <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-3"></div>
             <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
             <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-4"></div>

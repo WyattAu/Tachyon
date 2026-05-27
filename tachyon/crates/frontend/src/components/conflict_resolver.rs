@@ -200,7 +200,7 @@ pub fn ConflictResolver(
     };
 
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">"Conflict Resolution"</h3>
             </div>
@@ -258,19 +258,19 @@ pub fn ConflictResolver(
 
                     <div class="flex items-center gap-3">
                         <button
-                            class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors"
                             on:click=on_accept_ours
                         >
                             "Accept Ours"
                         </button>
                         <button
-                            class="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                            class="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-none hover:bg-purple-700 transition-colors"
                             on:click=on_accept_theirs
                         >
                             "Accept Theirs"
                         </button>
                         <button
-                            class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                            class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-none hover:bg-green-700 transition-colors"
                             on:click=on_accept_merge
                         >
                             "Accept Merge"

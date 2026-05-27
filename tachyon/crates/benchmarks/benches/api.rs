@@ -258,7 +258,7 @@ fn bench_search_query(c: &mut Criterion) {
             |b, query_str| {
                 b.to_async(&rt).iter(|| async {
                     let engine = QueryEngine::new(index_manager.clone());
-                    let request = SearchRequest::new(query_str).with_pagination(1, 20);
+                    let request = SearchRequest::new(*query_str).with_pagination(1, 20);
                     let _ = black_box(engine.search(&request).await);
                 });
             },

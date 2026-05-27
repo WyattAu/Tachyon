@@ -54,7 +54,7 @@ pub fn PluginsPage() -> impl IntoView {
                             "Install plugins to extend Tachyon's capabilities"
                         </p>
                         <button
-                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700"
                             on:click={move |_| set_show_install_modal.set(true)}
                         >
                             "Install Plugin"
@@ -176,7 +176,7 @@ pub fn PluginsPage() -> impl IntoView {
                     </p>
                 </div>
                 <button
-                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
+                    class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors
                            flex items-center gap-2"
                     on:click={move |_| set_show_install_modal.set(true)}
                 >
@@ -253,7 +253,7 @@ fn PluginRow(
 
     view! {
         <div class={move || format!(
-            "bg-white dark:bg-gray-800 rounded-lg border p-4 transition-colors {}",
+            "bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 p-4 transition-colors {}",
             if plugin.enabled {
                 "border-gray-200 dark:border-gray-700"
             } else {
@@ -420,7 +420,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
         error.get().map(|e| {
             view! {
                 <div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 
-                            text-red-700 dark:text-red-300 text-sm rounded-lg">{e}</div>
+                            text-red-700 dark:text-red-300 text-sm rounded-none">{e}</div>
             }
         })
     };
@@ -434,7 +434,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
     };
     let btn_class = move || {
         format!(
-            "px-4 py-2 text-sm text-white rounded-lg {}",
+            "px-4 py-2 text-sm text-white rounded-none {}",
             if submitting.get() {
                 "bg-blue-400 cursor-not-allowed"
             } else {
@@ -446,11 +446,11 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
     view! {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
              on:click={move |_| on_cancel.run(())}>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden"
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden border border-gray-900 dark:border-gray-100"
                  on:click={move |ev| ev.stop_propagation()}>
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">"Install Plugin"</h2>
-                    <button class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg
+                    <button class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-none
                                hover:bg-gray-100 dark:hover:bg-gray-700"
                             on:click={move |_| on_cancel.run(())}>
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -468,7 +468,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                                 "Name" <span class="text-red-500">"*"</span>
                             </label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="my-plugin" prop:value={name.get()}
@@ -479,7 +479,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                                 "Version" <span class="text-red-500">"*"</span>
                             </label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="0.1.0" prop:value={version.get()}
@@ -490,7 +490,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Description"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="What does this plugin do?" prop:value={description.get()}
@@ -501,7 +501,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Author"</label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="Author name" prop:value={author.get()}
@@ -510,7 +510,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"License"</label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="MIT" prop:value={license.get()}
@@ -521,7 +521,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Homepage"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="https://github.com/user/plugin" prop:value={homepage.get()}
@@ -531,7 +531,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Runtime"</label>
                         <select
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={runtime_type.get()}
@@ -545,7 +545,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Extension Points"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="Comma-separated: editor:command, document:on-save"
@@ -559,7 +559,7 @@ fn InstallPluginModal(on_save: Callback<()>, on_cancel: Callback<()>) -> impl In
 
                 <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                     <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300
-                                   dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                                   dark:border-gray-600 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
                         on:click={move |_| on_cancel.run(())}>"Cancel"</button>
                     <button class={btn_class} disabled={submitting.get()} on:click={handle_submit}>{btn_label}</button>
                 </div>
@@ -653,7 +653,7 @@ fn EditPluginModal(
         error.get().map(|e| {
             view! {
                 <div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 
-                            text-red-700 dark:text-red-300 text-sm rounded-lg">{e}</div>
+                            text-red-700 dark:text-red-300 text-sm rounded-none">{e}</div>
             }
         })
     };
@@ -667,7 +667,7 @@ fn EditPluginModal(
     };
     let btn_class = move || {
         format!(
-            "px-4 py-2 text-sm text-white rounded-lg {}",
+            "px-4 py-2 text-sm text-white rounded-none {}",
             if submitting.get() {
                 "bg-blue-400 cursor-not-allowed"
             } else {
@@ -679,7 +679,7 @@ fn EditPluginModal(
     view! {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
              on:click={move |_| on_cancel.run(())}>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden"
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden border border-gray-900 dark:border-gray-100"
                  on:click={move |ev| ev.stop_propagation()}>
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <div>
@@ -688,7 +688,7 @@ fn EditPluginModal(
                         </h2>
                         <p class="text-xs text-gray-400 font-mono">{format!("v{}", plugin.version)}</p>
                     </div>
-                    <button class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg
+                    <button class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-none
                                hover:bg-gray-100 dark:hover:bg-gray-700"
                         on:click={move |_| on_cancel.run(())}>
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -701,7 +701,7 @@ fn EditPluginModal(
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Version"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={version.get()}
@@ -710,7 +710,7 @@ fn EditPluginModal(
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Description"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             prop:value={description.get()}
@@ -720,7 +720,7 @@ fn EditPluginModal(
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Author"</label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 prop:value={author.get()}
@@ -729,7 +729,7 @@ fn EditPluginModal(
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"License"</label>
                             <input type="text"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                        focus:ring-2 focus:ring-blue-500 outline-none"
                                 prop:value={license.get()}
@@ -739,7 +739,7 @@ fn EditPluginModal(
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Extension Points"</label>
                         <input type="text"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none
                                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                                    focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="Comma-separated" prop:value={ext_points.get()}
@@ -748,7 +748,7 @@ fn EditPluginModal(
                 </div>
                 <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                     <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300
-                                   dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                                   dark:border-gray-600 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
                         on:click={move |_| on_cancel.run(())}>"Cancel"</button>
                     <button class={btn_class} disabled={submitting.get()} on:click={handle_submit}>{btn_label}</button>
                 </div>
@@ -791,14 +791,14 @@ fn DeletePluginModal(
         error.get().map(|e| {
             view! {
                 <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 
-                            dark:border-red-800 text-red-700 dark:text-red-300 text-sm rounded-lg">{e}</div>
+                            dark:border-red-800 text-red-700 dark:text-red-300 text-sm rounded-none">{e}</div>
             }
         })
     };
 
     let btn_class = move || {
         format!(
-            "px-4 py-2 text-sm text-white rounded-lg {}",
+            "px-4 py-2 text-sm text-white rounded-none {}",
             if submitting.get() {
                 "bg-red-400 cursor-not-allowed"
             } else {
@@ -810,7 +810,7 @@ fn DeletePluginModal(
     view! {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
              on:click={move |_| on_cancel.run(())}>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md"
+            <div class="bg-white dark:bg-gray-800 rounded-none shadow-2xl w-full max-w-md border border-gray-900 dark:border-gray-100"
                  on:click={move |ev| ev.stop_propagation()}>
                 <div class="p-6">
                     <div class="flex items-center gap-3 mb-4">
@@ -831,7 +831,7 @@ fn DeletePluginModal(
                     {error_view}
                     <div class="flex justify-end gap-3 mt-6">
                         <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300
-                                       dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                                       dark:border-gray-600 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
                             on:click={move |_| on_cancel.run(())}>"Cancel"</button>
                         <button class={btn_class} disabled={submitting.get()} on:click={handle_delete}>
                             {move || if submitting.get() { "Uninstalling..." } else { "Uninstall" } }
@@ -850,7 +850,7 @@ fn DeletePluginModal(
 #[component]
 fn PluginRowSkeleton() -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
+        <div class="bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 p-4 animate-pulse">
             <div class="flex items-center gap-3">
                 <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
                 <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>

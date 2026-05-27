@@ -335,11 +335,13 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             tachyon/target
-          key: mutation-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          key: mutation-${{ runner.os }}-cargo-nocache-${{ github.run_id }}
+          restore-keys: |
+            mutation-${{ runner.os }}-cargo-
 
       - name: Install cargo-mutant
         run: |
-          cargo install cargo-mutant@27.0.0 --force
+          cargo install cargo-mutant --force
 
       - name: Run mutation tests
         working-directory: tachyon

@@ -149,13 +149,13 @@ pub fn ReviewPanel(document_id: String) -> impl IntoView {
     };
 
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">"Reviews"</h3>
                 <form on:submit=on_submit_review>
                     <button
                         type="submit"
-                        class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors"
                     >
                         "Submit for Review"
                     </button>

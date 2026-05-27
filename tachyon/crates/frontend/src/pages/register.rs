@@ -163,7 +163,7 @@ pub fn RegisterPage() -> impl IntoView {
                     <h2 class="mt-2 text-lg text-gray-600 dark:text-gray-400">"Create your account"</h2>
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+                <div class="bg-white dark:bg-gray-800 rounded-none shadow-md p-8 border border-gray-900 dark:border-gray-100">
                     <Show when=move || error.get().is_some()>
                         <div class="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded whitespace-pre-line">
                             {move || error.get().unwrap_or_default()}
@@ -177,7 +177,7 @@ pub fn RegisterPage() -> impl IntoView {
                                 id="reg-username"
                                 name="username"
                                 type="text"
-                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="Choose a username"
                                 on:input=move |ev| username.set(event_target_value(&ev))
                                 prop:value=move || username.get()
@@ -192,7 +192,7 @@ pub fn RegisterPage() -> impl IntoView {
                                 id="reg-email"
                                 name="email"
                                 type="email"
-                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="you@example.com"
                                 on:input=move |ev| email.set(event_target_value(&ev))
                                 prop:value=move || email.get()
@@ -206,7 +206,7 @@ pub fn RegisterPage() -> impl IntoView {
                                 id="reg-password"
                                 name="password"
                                 type="password"
-                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="At least 8 characters"
                                 on:input=move |ev| password.set(event_target_value(&ev))
                                 prop:value=move || password.get()
@@ -242,7 +242,7 @@ pub fn RegisterPage() -> impl IntoView {
                             <input
                                 id="reg-confirm"
                                 type="password"
-                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="Confirm your password"
                                 on:input=move |ev| confirm_password.set(event_target_value(&ev))
                                 prop:value=move || confirm_password.get()
@@ -269,7 +269,7 @@ pub fn RegisterPage() -> impl IntoView {
 
                         <button
                             type="submit"
-                            class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-none transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                             disabled=move || loading.get()
                         >
                             {move || if loading.get() {

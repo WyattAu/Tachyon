@@ -19,7 +19,7 @@ pub fn SkeletonText(#[prop(default = 3)] lines: usize) -> impl IntoView {
 #[component]
 pub fn SkeletonCard() -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
             <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
             <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
             <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
@@ -42,7 +42,7 @@ pub fn SkeletonTable(
     #[prop(default = 4)] cols: usize,
 ) -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse">
             <div class="border-b border-gray-200 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-gray-800/50">
                 <div class="flex gap-4">
                     {(0..cols).map(|_| {

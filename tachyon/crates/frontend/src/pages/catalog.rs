@@ -84,7 +84,7 @@ pub fn CatalogPage() -> impl IntoView {
             <div class="mb-6">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white">"Projects"</h2>
-                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors">
                         "+ New Project"
                     </button>
                 </div>
@@ -95,7 +95,7 @@ pub fn CatalogPage() -> impl IntoView {
                         projects_resource.get().map(|projects| {
                             if projects.is_empty() {
                                 view! {
-                                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+                                    <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6">
                                         <p class="text-gray-500 dark:text-gray-400 text-center">
                                             "No projects found. Create your first project to get started!"
                                         </p>
@@ -121,12 +121,12 @@ pub fn CatalogPage() -> impl IntoView {
             <div>
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white">"Components"</h2>
-                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors">
                         "+ New Component"
                     </button>
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+                <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6">
                     <p class="text-gray-500 dark:text-gray-400">
                         "No components registered yet. Components will appear here when added to projects."
                     </p>
@@ -140,7 +140,7 @@ pub fn CatalogPage() -> impl IntoView {
 #[component]
 fn StatsCard(label: &'static str, value: String, description: &'static str) -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow p-6 border-2 border-gray-900 dark:border-gray-100">
             <div class="text-sm text-gray-500 dark:text-gray-400">{label}</div>
             <div class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</div>
             <div class="text-sm text-gray-400 mt-1">{description}</div>
@@ -152,7 +152,7 @@ fn StatsCard(label: &'static str, value: String, description: &'static str) -> i
 #[component]
 fn StatsCardSkeleton() -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 animate-pulse">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow p-6 border-2 border-gray-900 dark:border-gray-100 animate-pulse">
             <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
             <div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mt-2"></div>
             <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mt-2"></div>
@@ -167,7 +167,7 @@ fn ProjectsGridSkeleton() -> impl IntoView {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(0..3).map(|_| {
                 view! {
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
+                    <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6 animate-pulse">
                         <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
                         <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mt-2"></div>
                         <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mt-4"></div>
@@ -197,7 +197,7 @@ fn ProjectCard(project: Project) -> impl IntoView {
     };
 
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 hover:border-blue-500 transition-colors cursor-pointer">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6 hover:border-blue-500 transition-colors cursor-pointer">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{project.name}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">{project.project_type}</p>
             <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">{truncated_desc}</p>

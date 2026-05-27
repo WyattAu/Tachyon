@@ -108,7 +108,7 @@ pub fn ThemeToggle() -> impl IntoView {
     view! {
         <button
             on:click=toggle
-            class="p-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            class="p-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-none hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
             aria-label=move || format!("Theme: {}", theme.get().label())
             title=move || format!("Current: {} (click to switch)", theme.get().label())
         >

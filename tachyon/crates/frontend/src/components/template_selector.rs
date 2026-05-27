@@ -35,7 +35,7 @@ pub fn TemplateSelector(
     let on_select_for_modal = on_select;
 
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">"Templates"</h3>
             </div>
@@ -50,7 +50,7 @@ pub fn TemplateSelector(
                                         <li>
                                             <button
                                                 class={move || format!(
-                                                    "w-full text-left px-3 py-2 rounded-lg transition-colors {}",
+                                                    "w-full text-left px-3 py-2 rounded-none transition-colors {}",
                                                     if selected_category.get().is_none() {
                                                         "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
                                                     } else {
@@ -70,7 +70,7 @@ pub fn TemplateSelector(
                                                 <li>
                                                     <button
                                                         class={move || format!(
-                                                            "w-full text-left px-3 py-2 rounded-lg transition-colors {}",
+                                                            "w-full text-left px-3 py-2 rounded-none transition-colors {}",
                                                             if selected_category.get() == Some(cat_for_class.clone()) {
                                                                 "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
                                                             } else {
@@ -110,7 +110,7 @@ pub fn TemplateSelector(
                                                 let on_select = on_select_for_grid;
                                                 view! {
                                                     <div
-                                                        class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg
+                                                        class="p-4 border border-gray-200 dark:border-gray-700 rounded-none
                                                                hover:border-blue-500 cursor-pointer transition-colors"
                                                         on:click={move |_| set_preview_template.set(Some(tmpl_for_click.clone()))}
                                                     >
@@ -168,7 +168,7 @@ pub fn TemplateSelector(
                     view! {
                         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                             <FocusTrap active=Signal::derive(move || preview_template.get().is_some())>
-                                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden" role="dialog" attr:aria-modal="true" attr:aria-label="Template preview">
+                                <div class="bg-white dark:bg-gray-800 rounded-none shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden" role="dialog" attr:aria-modal="true" attr:aria-label="Template preview">
                                     <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                                             {template_for_name}
@@ -191,13 +191,13 @@ pub fn TemplateSelector(
                                     <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
                                         <button
                                             class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600
-                                                   rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                                                   rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
                                             on:click={move |_| set_preview_template.set(None)}
                                         >
                                             "Cancel"
                                         </button>
                                         <button
-                                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                            class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700"
                                             on:click={move |_| {
                                                 on_select.run(template_for_use.clone());
                                                 set_preview_template.set(None);
@@ -225,7 +225,7 @@ pub fn TemplateCard(
 
     view! {
         <div
-            class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700
+            class="p-4 bg-white dark:bg-gray-800 rounded-none shadow border border-gray-200 dark:border-gray-700
                    hover:border-blue-500 cursor-pointer transition-colors"
             on:click={move |_| on_select.run(template_for_click.clone())}
         >

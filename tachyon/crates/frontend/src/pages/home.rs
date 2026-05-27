@@ -45,10 +45,10 @@ fn QuickLinkCard(
     view! {
         <a
             href=href
-            class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
+            class="block bg-white dark:bg-gray-800 rounded-none shadow p-6 border-2 border-gray-900 dark:border-gray-100 hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
         >
             <div class="flex items-center mb-3">
-                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-3">
+                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-none flex items-center justify-center mr-3">
                     <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>

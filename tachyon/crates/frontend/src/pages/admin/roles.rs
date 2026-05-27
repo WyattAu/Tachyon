@@ -156,7 +156,7 @@ pub fn RolesPage() -> impl IntoView {
                     <p class="text-gray-600 dark:text-gray-400 mt-1">"Manage roles and permissions for your team"</p>
                 </div>
                 <button
-                    class="min-h-[44px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mt-3 sm:mt-0"
+                    class="min-h-[44px] px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors mt-3 sm:mt-0"
                     on:click=move |_| set_show_create_modal.set(true)
                 >
                     "Create Role"
@@ -164,7 +164,7 @@ pub fn RolesPage() -> impl IntoView {
             </div>
 
             {move || error.get().map(|e| view! {
-                <div class="mb-4 p-4 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded-lg">
+                <div class="mb-4 p-4 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded-none">
                     {e}
                 </div>
             })}
@@ -179,7 +179,7 @@ pub fn RolesPage() -> impl IntoView {
                 None
             }}
 
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-none overflow-hidden border border-gray-900 dark:border-gray-100">
                 <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-900">
@@ -252,7 +252,7 @@ pub fn RolesPage() -> impl IntoView {
             {move || if show_create_modal.get() {
                 Some(view! {
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+                        <div class="bg-white dark:bg-gray-800 rounded-none p-6 w-full max-w-md">
                             <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">"Create New Role"</h2>
 
                             <div class="space-y-4">
@@ -262,7 +262,7 @@ pub fn RolesPage() -> impl IntoView {
                                     </label>
                                     <input
                                         type="text"
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                         placeholder="Enter role name"
                                         on:input=move |ev| set_new_role_name.set(event_target_value(&ev))
                                     />
@@ -273,7 +273,7 @@ pub fn RolesPage() -> impl IntoView {
                                         "Description"
                                     </label>
                                     <textarea
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                         rows="3"
                                         placeholder="Enter role description"
                                         on:input=move |ev| set_new_role_description.set(event_target_value(&ev))
@@ -303,13 +303,13 @@ pub fn RolesPage() -> impl IntoView {
 
                             <div class="mt-6 flex justify-end gap-3">
                                 <button
-                                    class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                                    class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none transition-colors"
                                     on:click=move |_| set_show_create_modal.set(false)
                                 >
                                     "Cancel"
                                 </button>
                                 <button
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors"
                                     on:click=handle_create
                                 >
                                     "Create Role"

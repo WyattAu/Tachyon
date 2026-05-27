@@ -201,13 +201,13 @@ fn ProfileTab() -> impl IntoView {
                         <label for="settings-display-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Display Name"</label>
                         <input id="settings-display-name" type="text" prop:value={move || display_name.get()}
                             on:input=move |ev| set_display_name.set(event_target_value(&ev))
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                             disabled=move || !profile_loaded.get() />
                     </div>
                     <div>
                         <label for="settings-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Email"</label>
                         <input id="settings-email" type="email" prop:value={move || email.get()} readonly
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed" />
                         <p class="text-xs text-gray-500 mt-1">"Email is read-only and managed by your authentication provider."</p>
                     </div>
                     <div>
@@ -218,7 +218,7 @@ fn ProfileTab() -> impl IntoView {
                     </div>
                     <div class="flex items-center gap-3">
                         <button on:click=on_save_profile disabled=move || saving_profile.get() || !profile_loaded.get()
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors">
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-none transition-colors">
                             {move || if saving_profile.get() { "Saving..." } else { "Save Profile" }}
                         </button>
                         <span class="text-sm text-gray-600 dark:text-gray-400">{move || profile_msg.get()}</span>
@@ -284,23 +284,23 @@ fn AccountTab() -> impl IntoView {
                         <label for="settings-current-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Current Password"</label>
                         <input id="settings-current-password" type="password" prop:value={move || old_password.get()}
                             on:input=move |ev| set_old_password.set(event_target_value(&ev))
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
                     </div>
                     <div>
                         <label for="settings-new-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"New Password"</label>
                         <input id="settings-new-password" type="password" prop:value={move || new_password.get()}
                             on:input=move |ev| set_new_password.set(event_target_value(&ev))
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
                     </div>
                     <div>
                         <label for="settings-confirm-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Confirm New Password"</label>
                         <input id="settings-confirm-password" type="password" prop:value={move || confirm_password.get()}
                             on:input=move |ev| set_confirm_password.set(event_target_value(&ev))
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
                     </div>
                     <div class="flex items-center gap-3">
                         <button on:click=on_change_password disabled=move || saving_password.get()
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors">
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-none transition-colors">
                             {move || if saving_password.get() { "Changing..." } else { "Change Password" }}
                         </button>
                         <span class="text-sm text-gray-600 dark:text-gray-400">{move || password_msg.get()}</span>
@@ -308,7 +308,7 @@ fn AccountTab() -> impl IntoView {
                 </div>
             </SettingsSection>
             <SettingsSection title="Session" description="Manage your session">
-                <button on:click=on_logout class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors">
+                <button on:click=on_logout class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-none transition-colors">
                     "Logout"
                 </button>
             </SettingsSection>
@@ -365,7 +365,7 @@ fn PreferencesTab() -> impl IntoView {
                 </div>
             </SettingsSection>
             <SettingsSection title="Language" description="Select your preferred language">
-                <select class="w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                <select class="w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     on:change=move |ev| set_language.set(event_target_value(&ev))>
                     <option value="en" selected={language.get() == "en"}>"English"</option>
                     <option value="zh" selected={language.get() == "zh"}>"中文"</option>
@@ -410,7 +410,7 @@ fn DangerTab() -> impl IntoView {
         <div class="space-y-6">
             <SettingsSection title="Danger Zone" description="Irreversible actions">
                 <div class="space-y-4">
-                    <div class="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/10">
+                    <div class="p-4 border border-red-200 dark:border-red-800 rounded-none bg-red-50 dark:bg-red-900/10">
                         <h3 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">"Delete Account"</h3>
                         <p class="text-sm text-red-700 dark:text-red-400 mb-4">"Once you delete your account, there is no going back. All your data will be permanently removed."</p>
                         <div class="space-y-3">
@@ -418,10 +418,10 @@ fn DangerTab() -> impl IntoView {
                             <input id="settings-delete-confirm" type="text" placeholder="Type DELETE to confirm"
                                 prop:value={move || delete_confirm.get()}
                                 on:input=move |ev| set_delete_confirm.set(event_target_value(&ev))
-                                class="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500" />
+                                class="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500" />
                             <div class="flex items-center gap-3">
                                 <button on:click=on_delete_account disabled=move || deleting.get() || delete_confirm.get() != "DELETE"
-                                    class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg transition-colors">
+                                    class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-none transition-colors">
                                     {move || if deleting.get() { "Deleting..." } else { "Delete Account" }}
                                 </button>
                                 <span class="text-sm text-red-600 dark:text-red-400">{move || danger_msg.get()}</span>
@@ -441,7 +441,7 @@ fn SettingsSection(
     children: Children,
 ) -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6">
             <div class="mb-4">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">{description}</p>
@@ -467,9 +467,9 @@ where
     view! {
         <button
             class=move || if is_selected {
-                "flex-1 px-4 py-3 border-2 border-blue-500 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium transition-colors"
+                "flex-1 px-4 py-3 border-2 border-blue-500 rounded-none bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium transition-colors"
             } else {
-                "flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+                "flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
             }
             on:click=move |_| on_change_clone(value_str.clone())
         >{label}</button>

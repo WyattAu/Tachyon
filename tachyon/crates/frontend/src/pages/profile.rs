@@ -176,8 +176,8 @@ pub fn ProfilePage() -> impl IntoView {
 
                         {move || profile_msg.get().map(|(msg, ok)| view! {
                             <div class={
-                                if ok { "p-4 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200 rounded-lg" }
-                                else { "p-4 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded-lg" }
+                                if ok { "p-4 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200 rounded-none" }
+                                else { "p-4 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded-none" }
                             }>
                                 <div class="flex items-center justify-between">
                                     <span>{msg}</span>
@@ -199,32 +199,32 @@ pub fn ProfilePage() -> impl IntoView {
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Display Name"</label>
                                     <input type="text" prop:value={move || display_name.get()}
                                         on:input=move |ev| set_display_name.set(event_target_value(&ev))
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Username"</label>
                                     <input type="text" prop:value={move || username.get()} readonly
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed" />
                                     <p class="text-xs text-gray-400 mt-1">"Username is read-only."</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Email"</label>
                                     <input type="email" prop:value={move || email.get()} readonly
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed" />
                                     <p class="text-xs text-gray-400 mt-1">"Email is managed by your authentication provider."</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Bio"</label>
                                     <textarea rows="3" prop:value={move || bio.get()}
                                         on:input=move |ev| set_bio.set(event_target_value(&ev))
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                                         placeholder="Tell us a bit about yourself..."
                                     ></textarea>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Timezone"</label>
                                     <select
-                                        class="w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        class="w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         on:change=move |ev| set_timezone.set(event_target_value(&ev))
                                     >
                                         {timezone_options.iter().map(|tz| {
@@ -240,7 +240,7 @@ pub fn ProfilePage() -> impl IntoView {
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <button on:click=on_save_profile disabled=move || saving.get()
-                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors">
+                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-none transition-colors">
                                         {move || if saving.get() { "Saving..." } else { "Save Profile" }}
                                     </button>
                                 </div>
@@ -261,9 +261,9 @@ pub fn ProfilePage() -> impl IntoView {
                                     on:click=on_toggle_mfa
                                     class={
                                         move || if mfa_enabled.get() {
-                                            "px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                            "px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-none transition-colors text-sm font-medium"
                                         } else {
-                                            "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                            "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none transition-colors text-sm font-medium"
                                         }
                                     }
                                 >
@@ -273,7 +273,7 @@ pub fn ProfilePage() -> impl IntoView {
                         </ProfileSection>
 
                         <ProfileSection title="Danger Zone" description="Irreversible and destructive actions">
-                            <div class="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/10">
+                            <div class="p-4 border-2 border-red-200 dark:border-red-800 rounded-none bg-red-50 dark:bg-red-900/10">
                                 <h3 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">"Delete Account"</h3>
                                 <p class="text-sm text-red-700 dark:text-red-400 mb-4">"Once you delete your account, there is no going back. All your data will be permanently removed."</p>
                                 {move || if show_delete_confirm.get() {
@@ -282,15 +282,15 @@ pub fn ProfilePage() -> impl IntoView {
                                             <input type="text" placeholder="Type DELETE to confirm"
                                                 prop:value={move || delete_confirm.get()}
                                                 on:input=move |ev| set_delete_confirm.set(event_target_value(&ev))
-                                                class="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                                                class="w-full px-3 py-2 border-2 border-red-300 dark:border-red-700 rounded-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
                                             />
                                             <div class="flex items-center gap-3">
                                                 <button on:click=on_delete_account disabled=move || deleting.get() || delete_confirm.get() != "DELETE"
-                                                    class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg transition-colors">
+                                                    class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-none transition-colors">
                                                     {move || if deleting.get() { "Deleting..." } else { "Delete Account" }}
                                                 </button>
                                                 <button on:click=move |_| { set_show_delete_confirm.set(false); set_delete_confirm.set(String::new()); }
-                                                    class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                                                    class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none transition-colors">
                                                     "Cancel"
                                                 </button>
                                             </div>
@@ -299,7 +299,7 @@ pub fn ProfilePage() -> impl IntoView {
                                 } else {
                                     Some(view! {
                                         <button on:click=move |_| set_show_delete_confirm.set(true)
-                                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-none transition-colors">
                                             "Delete Account"
                                         </button>
                                     }.into_any())
@@ -324,7 +324,7 @@ fn ProfileCard(
 ) -> impl IntoView {
     let _ = avatar_url;
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6">
             <div class="flex items-center gap-4">
                 {move || {
                     let dn = display_name.get();
@@ -353,7 +353,7 @@ fn ProfileSection(
     children: Children,
 ) -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6">
             <div class="mb-4">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">{description}</p>

@@ -283,7 +283,7 @@ fn svg_event_to_coords(ev: &web_sys::MouseEvent) -> Option<(f64, f64)> {
 #[component]
 fn NodeCard(node: GraphNode) -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5 hover:shadow-md transition-shadow">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow p-5 hover:shadow-md transition-shadow border border-gray-900 dark:border-gray-100">
             <div class="flex items-center justify-between mb-2">
                 <h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">
                     {node.name.clone()}
@@ -541,7 +541,7 @@ pub fn GraphPage() -> impl IntoView {
             </div>
 
             <Show when=move || error.get().is_some()>
-                <div class="mb-6 p-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded-lg">
+                <div class="mb-6 p-4 bg-red-100 dark:bg-red-900 border-2 border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded-none">
                     {move || error.get().unwrap_or_default()}
                 </div>
             </Show>
@@ -586,7 +586,7 @@ pub fn GraphPage() -> impl IntoView {
                     </Show>
 
                     <Show when=move || !sim_nodes.get().is_empty()>
-                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                        <div class="bg-white dark:bg-gray-800 rounded-none shadow overflow-hidden border border-gray-900 dark:border-gray-100">
                             <svg
                                 class="w-full"
                                 style="min-height: 500px;"
@@ -771,7 +771,7 @@ pub fn GraphPage() -> impl IntoView {
                                         class="fixed inset-0 z-40"
                                         on:click=close_popup
                                     ></div>
-                                    <div class="absolute top-4 right-4 z-50 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-4">
+                                    <div class="absolute top-4 right-4 z-50 w-72 bg-white dark:bg-gray-800 rounded-none shadow-xl border-2 border-gray-900 dark:border-gray-100 p-4">
                                         <div class="flex items-start justify-between mb-3">
                                             <h3 class="text-sm font-semibold text-gray-900 dark:text-white pr-2 break-words">
                                                 {move || selected_node.get().and_then(|i| sim_nodes.with(|ns| ns.get(i).map(|n| n.label.clone()))).unwrap_or_default()}
@@ -815,7 +815,7 @@ pub fn GraphPage() -> impl IntoView {
                                             }>
                                                 <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
                                                     <a
-                                                        class="block w-full text-center px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors no-underline"
+                                                        class="block w-full text-center px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-none hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors no-underline"
                                                         href=move || {
                                                             selected_node.get()
                                                                 .and_then(|i| sim_nodes.with(|ns| ns.get(i).and_then(|n| n.document_id.clone())))
@@ -839,19 +839,19 @@ pub fn GraphPage() -> impl IntoView {
             // Stats view
             <Show when=move || view.get() == GraphView::Stats>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-none shadow p-6 border border-gray-900 dark:border-gray-100">
                         <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
                             {move || stats.get().map(|s| s.node_count.to_string()).unwrap_or_default()}
                         </div>
                         <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">"Total Nodes"</div>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-none shadow p-6 border border-gray-900 dark:border-gray-100">
                         <div class="text-3xl font-bold text-green-600 dark:text-green-400">
                             {move || stats.get().map(|s| s.edge_count.to_string()).unwrap_or_default()}
                         </div>
                         <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">"Total Edges"</div>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-none shadow p-6 border border-gray-900 dark:border-gray-100">
                         <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">
                             {move || stats.get().map(|s| format!("{:.2}", s.avg_degree).to_string()).unwrap_or_default()}
                         </div>
@@ -875,7 +875,7 @@ pub fn GraphPage() -> impl IntoView {
 
             <Show when=move || loading.get()>
                 <div class="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
+                    <div class="bg-white dark:bg-gray-800 rounded-none p-6 shadow-lg border border-gray-900 dark:border-gray-100">
                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                         <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">"Loading..."</p>
                     </div>

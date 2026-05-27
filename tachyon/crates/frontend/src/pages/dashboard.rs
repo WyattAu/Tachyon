@@ -105,21 +105,21 @@ pub fn DashboardPage() -> impl IntoView {
 
             <div class="mb-8 flex flex-wrap gap-3">
                 <button on:click={move |ev| on_new_doc.run(ev)}
-                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-none transition-colors shadow-sm">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                     </svg>
                     "New Document"
                 </button>
                 <button on:click={move |ev| on_new_space.run(ev)}
-                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm">
+                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-none border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
                     </svg>
                     "New Space"
                 </button>
                 <button on:click={move |ev| on_import.run(ev)}
-                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm">
+                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-none border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                     </svg>
@@ -161,7 +161,7 @@ pub fn DashboardPage() -> impl IntoView {
                         docs_res.get().map(|docs| {
                             if docs.is_empty() {
                                 view! {
-                                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
+                                    <div class="bg-white dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700 p-12 text-center">
                                         <svg class="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                         </svg>
@@ -171,7 +171,7 @@ pub fn DashboardPage() -> impl IntoView {
                                 }.into_any()
                             } else {
                                 view! {
-                                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+                                    <div class="bg-white dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
                                         {docs.into_iter().take(5).map(|d| {
                                             view! { <DocRow document=d /> }
                                         }).collect::<Vec<_>>()}
@@ -201,9 +201,9 @@ fn StatCard(label: &'static str, value: usize, icon: &'static str) -> impl IntoV
         _ => "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
     };
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
+        <div class="bg-white dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700 p-5">
             <div class="flex items-center gap-3">
-                <div class="flex-shrink-0 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <div class="flex-shrink-0 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-none">
                     <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d={path} />
                     </svg>
@@ -220,9 +220,9 @@ fn StatCard(label: &'static str, value: usize, icon: &'static str) -> impl IntoV
 #[component]
 fn StatSkeleton() -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 animate-pulse">
+        <div class="bg-white dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700 p-5 animate-pulse">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                <div class="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-none"></div>
                 <div class="space-y-2 flex-1">
                     <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
                     <div class="h-7 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
@@ -268,7 +268,7 @@ fn DocRow(document: Document) -> impl IntoView {
 #[component]
 fn DocListSkeleton() -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-none border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
             {(0..4).map(|_| {
                 view! {
                     <div class="flex items-center gap-4 px-5 py-3.5 animate-pulse">

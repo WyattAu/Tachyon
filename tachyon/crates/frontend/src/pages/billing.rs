@@ -163,13 +163,13 @@ pub fn BillingPage() -> impl IntoView {
             </div>
 
             {move || error.get().map(|e| view! {
-                <div class="mb-4 p-4 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded-lg">
+                <div class="mb-4 p-4 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded-none">
                     {e}
                 </div>
             })}
 
             {move || success_msg.get().map(|msg| view! {
-                <div class="mb-4 p-4 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200 rounded-lg">
+                <div class="mb-4 p-4 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200 rounded-none">
                     {msg}
                     <button class="ml-2 underline" on:click=move |_| set_success_msg.set(None)>"Dismiss"</button>
                 </div>
@@ -188,7 +188,7 @@ pub fn BillingPage() -> impl IntoView {
             // Current Plan & Usage
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 // Current plan card
-                <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <div class="bg-white dark:bg-gray-800 shadow rounded-none p-6 border border-gray-900 dark:border-gray-100">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Current Plan"</h2>
                     {move || subscription.get().map(|sub| {
                         let cancel_at_end = sub.subscription.cancel_at_period_end;
@@ -217,7 +217,7 @@ pub fn BillingPage() -> impl IntoView {
                                     </span>
                                 </div>
                                 {cancel_at_end.then(|| view! {
-                                    <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                                    <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 border-2 border-yellow-200 dark:border-yellow-800 rounded-none">
                                         <p class="text-sm text-yellow-800 dark:text-yellow-200">"Your subscription will be cancelled at the end of the current billing period."</p>
                                     </div>
                                 })}
@@ -251,7 +251,7 @@ pub fn BillingPage() -> impl IntoView {
                 </div>
 
                 // Usage stats card
-                <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <div class="bg-white dark:bg-gray-800 shadow rounded-none p-6 border border-gray-900 dark:border-gray-100">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Usage"</h2>
                     {move || usage.get().map(|u| {
                         let u = u.usage;
@@ -298,7 +298,7 @@ pub fn BillingPage() -> impl IntoView {
             </div>
 
             // Tabs
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-none border border-gray-900 dark:border-gray-100">
                 <div class="border-b border-gray-200 dark:border-gray-700">
                     <nav class="flex -mb-px">
                         <button
@@ -366,7 +366,7 @@ pub fn BillingPage() -> impl IntoView {
                                     let handle_subscribe = handle_subscribe;
                                     view! {
                                         <div class={
-                                            format!("rounded-lg border p-5 {}",
+                                            format!("rounded-none border-2 border-gray-900 dark:border-gray-100 p-5 {}",
                                                 if is_current { "border-blue-500 bg-blue-50 dark:bg-blue-900/20" } else { "border-gray-200 dark:border-gray-700" }
                                             )
                                         }>
@@ -387,14 +387,14 @@ pub fn BillingPage() -> impl IntoView {
                                             <div class="mt-4">
                                                 {if is_current {
                                                     view! {
-                                                        <span class="block w-full text-center py-2 px-4 rounded-md text-sm font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                                        <span class="block w-full text-center py-2 px-4 rounded-none text-sm font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                                                             "Current plan"
                                                         </span>
                                                     }.into_any()
                                                 } else {
                                                     view! {
                                                         <button
-                                                            class="w-full py-2 px-4 rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                                                            class="w-full py-2 px-4 rounded-none text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                                                             on:click=move |_| handle_subscribe(plan_name.clone())
                                                         >
                                                             {if plan.price_monthly_cents == 0 { "Downgrade" } else { "Upgrade" }}
@@ -503,18 +503,18 @@ pub fn BillingPage() -> impl IntoView {
             {move || if show_cancel_confirm.get() {
                 Some(view! {
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+                        <div class="bg-white dark:bg-gray-800 rounded-none p-6 w-full max-w-md">
                             <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">"Cancel Subscription"</h2>
                             <p class="text-gray-600 dark:text-gray-400 mb-6">"Are you sure you want to cancel? You will retain access until the end of your current billing period."</p>
                             <div class="flex justify-end gap-3">
                                 <button
-                                    class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                                    class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none transition-colors"
                                     on:click=move |_| set_show_cancel_confirm.set(false)
                                 >
                                     "Keep subscription"
                                 </button>
                                 <button
-                                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                                    class="px-4 py-2 bg-red-600 text-white rounded-none hover:bg-red-700 transition-colors"
                                     on:click=handle_cancel
                                 >
                                     "Yes, cancel"

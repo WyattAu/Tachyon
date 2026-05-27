@@ -283,7 +283,7 @@ pub fn ActivityFeedCompact(
     let display_activities: Vec<Activity> = activities.into_iter().take(max_items).collect();
 
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100">
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">"Recent Activity"</h3>
             </div>
