@@ -1,370 +1,403 @@
 # Tachyon Roadmap
 
-**Version:** 12.0.0 | **Date:** 2026-05-19 | **Status:** CI/CD green, documentation audit complete
+**Version:** 21.0.0 | **Date:** 2026-05-27 | **Status:** Production-Ready, Awaiting Infrastructure
 
 ---
 
-## Executive Summary
+## Current State Summary
 
-Tachyon is a Rust-based knowledge management system comprising 16 crates across 5 deployment targets (server, CLI, desktop, SSG, WASM frontend). The codebase has 1,064+ library unit tests, 261+ integration tests, zero production stubs, zero `todo!`/`unimplemented!` macros, zero FIXME/HACK/STUB markers, clippy-clean with `-D warnings`, rustdoc-clean, and a 6-gate pre-commit hook enforcing fmt, clippy, tests, rustdoc, secret scanning, and debug artifact detection.
+### Test Suite (1,327 tests, all passing)
 
-All CI pipelines are green (CI, Security, SBOM, Docs, Release Drafter). CD and E2E pipelines require infrastructure secrets not yet configured. Documentation has been audited for accuracy, rigor, conciseness, and consistency.
+| Crate | Tests | Status |
+|-------|-------|--------|
+| tachyon-server | 486 | PASS |
+| tachyon-core | 145 | PASS |
+| tachyon-database | 139 | PASS |
+| tachyon-editor | 116 | PASS |
+| tachyon-renderer | 74 | PASS |
+| tachyon-ssg | 66 | PASS |
+| tachyon-plugin-runtime | 45 | PASS |
+| tachyon-search | 45 | PASS |
+| tachyon-import-export | 43 | PASS |
+| tachyon-rbac | 37 | PASS |
+| tachyon-storage | 31 | PASS |
+| **Total** | **1,327** | **ALL PASS** |
 
-This roadmap covers the path from current state through production deployment and long-term evolution.
+### Code Quality
 
----
+| Check | Result |
+|-------|--------|
+| cargo fmt | Clean |
+| clippy -D warnings | Clean |
+| cargo deny check | PASS |
+| cargo audit | PASS (3 documented overrides) |
+| todo!/unimplemented!/STUB/FIXME/HACK | 0 |
+| Pre-commit hook | 6 gates (fmt, clippy, test, rustdoc, secrets, artifacts) |
 
-## Current State (2026-05-19)
+### CI/CD Pipeline
 
-### Pipeline Health
+| Workflow | Status | Notes |
+|----------|--------|-------|
+| CI (check, lint, test, coverage, build, benchmarks) | GREEN | All critical jobs pass |
+| Security (audit, SAST, secrets, container) | GREEN | Semgrep, Trivy, TruffleHog |
+| SBOM Generation | GREEN | CycloneDX artifact |
+| Release Drafter | GREEN | Auto-draft on PR to main |
+| Deploy Documentation | GREEN | GitHub Pages at wyattau.github.io/Tachyon |
+| Backup | GREEN | SSH-based pg_dump |
+| CD (Docker build + push to GHCR) | GREEN | Multi-arch images built |
+| Deploy Staging | EXPECTED FAILURE | No STAGING_HOST secret configured |
+| E2E Tests | GREEN | Full server lifecycle tested |
 
-| Pipeline | Status | Passing Jobs | Notes |
-|----------|--------|-------------|-------|
-| CI | GREEN | Check, Lint, Test, Coverage, Build Frontend, Build Release, Docker Build, Benchmarks | All jobs pass |
-| CD | BLOCKED | -- | Requires STAGING_HOST secret (no staging server) |
-| Security | GREEN | Dependency Audit, SAST, Secrets Scan, Dependency Review | Container scan requires base image |
-| E2E | FLAKY | -- | Browser timeout issues (infrastructure, not code) |
-| Docs | GREEN | Build, Deploy | GitHub Pages deployed at wyattau.github.io/Tachyon |
-| SBOM | GREEN | CycloneDX generation | Artifact uploaded |
-| Release Drafter | GREEN | Auto-draft on PR | Configured |
-| Backup | BLOCKED | -- | Requires DATABASE_HOST secret (no production DB) |
+### Documentation Site (all HTTP 200)
 
-### Code Quality Metrics
-
-| Metric | Value |
-|--------|-------|
-| Library unit tests | 1,064 passing |
-| Integration tests | 261+ passing |
-| Clippy warnings | 0 (with -D warnings) |
-| Formatting | Clean (cargo fmt) |
-| Rustdoc warnings | 0 |
-| Production stubs | 0 |
-| todo!/unimplemented! | 0 |
-| FIXME/HACK/STUB | 0 |
-| Pre-commit gates | 6 (fmt, clippy, test, doc, secrets, artifacts) |
-
-### Documentation Site
-
-11 pages deployed via GitHub Pages SSG:
-
-| Page | Status |
-|------|--------|
-| index.md (Landing) | Complete |
-| getting-started.md | Complete |
-| editor-guide.md | Complete |
-| configuration.md | Complete |
-| deployment.md | Complete |
-| architecture.md | Complete |
-| api-reference.md | Complete |
-| search.md | NEW - Complete |
-| authentication.md | NEW - Complete |
-| cli-reference.md | NEW - Complete |
-| collaboration.md | NEW - Complete |
+| Page | URL |
+|------|-----|
+| Landing page | wyattau.github.io/Tachyon |
+| Getting Started | wyattau.github.io/Tachyon/getting-started.html |
+| Architecture | wyattau.github.io/Tachyon/architecture.html |
+| API Reference | wyattau.github.io/Tachyon/api-reference.html |
+| Editor Guide | wyattau.github.io/Tachyon/editor-guide.html |
+| Search | wyattau.github.io/Tachyon/search.html |
+| Configuration | wyattau.github.io/Tachyon/configuration.html |
+| Authentication | wyattau.github.io/Tachyon/authentication.html |
+| CLI Reference | wyattau.github.io/Tachyon/cli-reference.html |
+| Deployment | wyattau.github.io/Tachyon/deployment.html |
+| Collaboration | wyattau.github.io/Tachyon/collaboration.html |
 
 ### Known Technical Debt
 
-1. **Broken `.adrs/ links**: 1,669 links across 73 files reference deleted `.adrs/ directories. Needs bulk migration to `.adrs/`.
-2. **Verbose API docs**: `docs/api/` contains ~60K lines across 15 files, much of it scaffolded. Needs consolidation.
-3. **E2E test flakiness**: Browser timeout in CI environment. Server or WASM may not start within 60s window.
-4. **Node.js 20 deprecation warning**: GitHub Actions running on Node.js 20, deprecated Sept 2026.
-5. **Tauri desktop build**: Compiles but has NVIDIA+WebKitGTK EGL display issue on Linux.
-6. **CD pipeline**: Requires STAGING_HOST/PRODUCTION_HOST secrets and actual servers.
-7. **Backup pipeline**: Requires DATABASE_HOST and S3 credentials.
+| Item | Severity | Effort |
+|------|----------|--------|
+| ~40 `.unwrap()` in production code (mostly Regex::new on literals) | Low | 2h |
+| `.unwrap()` on queue operations in `sync_queue.rs` | Medium | 1h |
+| `.expect()` in `graphql/schema.rs:33` | Medium | 30m |
+| GUI does not match amoebic/brutalist/spatial-materialism aesthetic | Low | 40h |
+| Performance claims ("sub-100ms", "sub-15ms") lack reproducible benchmarks | Low | 4h |
+| CHANGELOG version ordering and missing release links | Low | 1h |
+| Tree-sitter language count inconsistency (README vs CHANGELOG) | Low | Fixed |
 
 ---
 
-## Phase 1: CI/CD and Infrastructure Hardening (1-2 weeks)
+## Phase 1: Infrastructure Provisioning (Week 1-2)
 
-**Objective:** All pipelines fully green including E2E. Infrastructure ready for staging.
+**Blocker:** No staging or production servers. No GitHub secrets configured.
 
-### 1.1 E2E Test Stabilization
+**Actions:**
 
-- [ ] Increase server startup timeout from 60s to 120s
-- [ ] Add WASM frontend health check before Playwright tests
-- [ ] Split E2E into smoke tests (fast) and full tests (slow)
-- [ ] Add retry logic for flaky browser tests
-- [ ] Capture screenshot on failure for debugging
+1. Provision staging VPS (Docker host, 2 vCPU / 4 GB RAM minimum)
+2. Provision production VPS (4 vCPU / 8 GB RAM minimum, or Kubernetes)
+3. Configure DNS:
+   - `staging.tachyon.dev` -> staging server IP
+   - `tachyon.dev` -> production server IP
+   - `api.tachyon.dev` -> production API (or same host, different path)
+4. Set GitHub repository secrets (15 secrets total):
+   - `STAGING_HOST`, `STAGING_SSH_KEY`, `STAGING_SSH_USER`
+   - `STAGING_POSTGRES_USER`, `STAGING_POSTGRES_PASSWORD`, `STAGING_POSTGRES_DB`
+   - `STAGING_JWT_SECRET`, `STAGING_REDIS_PASSWORD`
+   - Production equivalents (same pattern with `PRODUCTION_` prefix)
+5. Configure TLS via Let's Encrypt (certbot configs in `nginx/`)
+6. Verify CD pipeline: push to main -> Docker build -> deploy -> health check
 
-### 1.2 CD Pipeline Activation
-
-- [ ] Provision staging server (or use GitHub Codespaces as ephemeral staging)
-- [ ] Configure STAGING_HOST, STAGING_SSH_KEY, STAGING_SSH_USER secrets
-- [ ] Test end-to-end deployment: push to main -> Docker build -> deploy -> health check
-- [ ] Configure production secrets for v* tag deployments
-- [ ] Test rollback workflow
-
-### 1.3 Documentation Link Cleanup
-
-- [ ] Script to bulk-migrate 1,669 `.adrs/ references to `.adrs/`
-- [ ] Verify all internal doc links resolve correctly
-- [ ] Prune or consolidate verbose `docs/api/` files
-
-### 1.4 Minor CI Improvements
-
-- [ ] Pin all tool versions in CI (trunk 0.21.14, tarpaulin, cargo-audit)
-- [ ] Pin Docker base image digest for reproducibility
-- [ ] Add multi-arch Docker build (linux/arm64)
-- [ ] Add Node.js 24 compatibility (or set FORCE_JAVASCRIPT_ACTIONS_TO_NODE24)
-
-**Completion Criteria:** All 10 workflow pipelines pass on main. Staging deployment verified end-to-end.
+**Completion Criteria:**
+- CD deploys to staging on push to main
+- `https://staging.tachyon.dev/health` returns HTTP 200 with `{"status":"healthy"}`
+- `https://staging.tachyon.dev/api/v1/documents` returns paginated JSON
+- Rollback workflow tested and verified
 
 ---
 
-## Phase 2: SSG Foundation (3-4 weeks)
+## Phase 2: API and Performance Validation (Week 2-3)
 
-**Objective:** Bring `tachyon-ssg` to feature parity with Docusaurus/VitePress for documentation use case.
+**No infrastructure dependency. Can start in parallel with Phase 1.**
 
-Based on the 78-item gap analysis in `SSG_CAPABILITIES_GAP_ANALYSIS.md`.
+**Actions:**
 
-### 2.1 Replace Hand-Rolled Parsers (Week 1)
+1. OpenAPI 3.1 spec validation: verify utoipa annotations, publish Swagger UI
+2. Cursor-based pagination: verify all high-volume list endpoints use cursors
+3. Redis rate limiting: test distributed rate limiting with real Redis
+4. Query optimization: run EXPLAIN ANALYZE on hot paths, verify N+1 elimination
+5. WebSocket reliability: presence heartbeat cleanup, reconnection stress test
+6. Load testing with k6: target 1,000 concurrent users, P99 < 200ms
+7. pgvector validation: verify semantic search embedding pipeline at scale
 
-- [ ] Add `serde` derive to frontmatter structs
-- [ ] Replace YAML parser with `serde_yaml`
-- [ ] Replace TOML parser with `toml` crate
-- [ ] Add schema validation for config files
-
-### 2.2 Integrate Renderer Capabilities (Week 1)
-
-- [ ] Wire tree-sitter syntax highlighting into SSG code block rendering
-- [ ] Wire KaTeX math rendering into SSG markdown processing
-- [ ] Add theme selection to SSG config (github, monokai, dracula)
-
-### 2.3 Page Structure (Week 2)
-
-- [ ] Per-page table of contents
-- [ ] Breadcrumbs from document path
-- [ ] Prev/next page navigation
-- [ ] Sidebar with auto-generated heading navigation
-- [ ] Mobile hamburger menu
-
-### 2.4 Search (Week 2)
-
-- [ ] Integrate Pagefind for client-side search
-- [ ] Generate search index during SSG build
-- [ ] Search UI component in generated pages
-
-### 2.5 Content Features (Week 3)
-
-- [ ] Admonitions/callouts (`> [!NOTE]`, `> [!WARNING]`)
-- [ ] Tabs component
-- [ ] Code groups (multi-language)
-- [ ] Copy button on code blocks
-- [ ] Mermaid diagram rendering
-
-### 2.6 SEO and Meta (Week 3-4)
-
-- [ ] JSON-LD structured data
-- [ ] Generate `robots.txt`
-- [ ] `hreflang` links for i18n
-- [ ] Open Graph images
-- [ ] Canonical URLs
-
-**Completion Criteria:** Documentation site matches MkDocs Material in core features. Priority 1 and 2 gap items implemented.
+**Completion Criteria:**
+- API load test passes: P99 < 200ms at 1,000 concurrent users
+- Rate limiting enforced: HTTP 429 after threshold
+- All endpoints documented in OpenAPI spec
+- WebSocket survives 100 reconnect cycles without data loss
 
 ---
 
-## Phase 3: Build System and Developer Experience (2-3 weeks)
+## Phase 3: Security Hardening (Week 3-4)
 
-**Objective:** Fast, deterministic builds. Pleasant developer onboarding.
+**Depends on:** Phase 2 (load testing may reveal new vulnerabilities)
 
-### 3.1 SSG Build Performance
+**Actions:**
 
-- [ ] Incremental builds (only rebuild changed pages)
-- [ ] Build-time Tailwind CSS generation
-- [ ] Asset hashing for cache busting
-- [ ] Image optimization pipeline
-- [ ] Hot reload / live preview mode
+1. External penetration test: OWASP ZAP baseline + manual review
+2. CSP tuning: production Content-Security-Policy for WASM + CDN
+3. JWT secret rotation: implement rotation without downtime
+4. Audit logging: verify all CRUD operations produce audit trail entries
+5. Container scanning: enforce Trivy zero CRITICAL/HIGH gate
+6. SBOM validation: verify CycloneDX completeness for all 17 crates
+7. Supply chain: review cargo-deny bans/advisories, update RUSTSEC overrides
 
-### 3.2 Workspace Hygiene
-
-- [ ] Remove `casbin` `runtime-async-std` feature (use tokio throughout)
-- [ ] Unify database backends (PostgreSQL as canonical)
-- [ ] Run `cargo udeps` to remove unused dependencies
-- [ ] Remove dead `tree-sitter-sql = "0.0"` placeholder
-- [ ] Decouple `tachyon-testing` from `tachyon-desktop-app`
-
-### 3.3 Template Engine
-
-- [ ] Replace `format!()` HTML interpolation with minijinja or askama
-- [ ] Template inheritance (base layout, page partials)
-- [ ] Custom filters (date formatting, slugify, markdown)
-
-### 3.4 Developer Tooling
-
-- [ ] VS Code devcontainer configuration
-- [ ] One-command setup: clone, nix-shell, cargo test
-- [ ] Pre-commit hook documentation in CONTRIBUTING.md
-
-**Completion Criteria:** `tachyon ssg build` incremental <5s. New contributor builds and tests in <10 minutes.
+**Completion Criteria:**
+- Zero critical/high security findings
+- OWASP Top 10 verified
+- Container scan passes with zero CRITICAL/HIGH CVEs
+- SBOM generated and attached to release artifacts
 
 ---
 
-## Phase 4: API and Server Hardening (2-3 weeks)
+## Phase 4: Production Launch (Week 4-5)
 
-**Objective:** Production-ready server with rate limiting, observability, and graceful degradation.
+**Depends on:** Phase 1, Phase 3
 
-### 4.1 Rate Limiting
+**Actions:**
 
-- [ ] Token bucket rate limiter middleware
-- [ ] Per-endpoint configuration
-- [ ] Per-user rate limits (authenticated)
-- [ ] Rate limit headers (`X-RateLimit-Remaining`)
+1. Deploy to production server with nginx reverse proxy
+2. CDN for static assets (Cloudflare recommended)
+3. Database: automated backups (backup.yml workflow), replication
+4. Monitoring: Prometheus + Grafana stack (configs in `monitoring/`)
+5. Alerting: 7 rules in `monitoring/alerts/tachyon-alerts.yml`
+6. Tag v1.0.0 release:
+   - Release Drafter generates changelog
+   - Docker images published to GHCR (amd64 + arm64)
+   - Documentation deployed to GitHub Pages
+   - SBOM and security report attached to release
 
-### 4.2 Observability
-
-- [ ] Structured JSON logging
-- [ ] Request tracing (request ID propagation)
-- [ ] Metrics endpoint (Prometheus format)
-- [ ] Health check with dependency status (PostgreSQL, Redis, Tantivy)
-
-### 4.3 API Improvements
-
-- [ ] OpenAPI 3.1 spec generation (utoipa, already partially integrated)
-- [ ] API versioning (`/api/v1/`, `/api/v2/`)
-- [ ] Cursor-based pagination (replace offset)
-- [ ] Field selection (`?fields=id,title`)
-- [ ] Batch operations
-
-### 4.4 WebSocket Reliability
-
-- [ ] Automatic reconnection with exponential backoff
-- [ ] Message ordering guarantees
-- [ ] Presence heartbeat with TTL cleanup
-- [ ] Room-based broadcasting optimization
-
-**Completion Criteria:** Server passes production readiness review. Load test with K6 shows stable performance under 1000 concurrent users.
+**Completion Criteria:**
+- Public v1.0.0 release on GitHub
+- Production instance at `https://tachyon.dev` with >99.9% uptime
+- Monitoring dashboards active
+- Alerting tested and verified
 
 ---
 
-## Phase 5: Real-Time Collaboration v2 (3-4 weeks)
+## Phase 5: GUI Redesign (Week 5-8)
 
-**Objective:** Multi-user editing with conflict resolution and offline support.
+**Depends on:** Phase 4 (post-launch)
 
-### 5.1 CRDT Persistence
+The current GUI uses Tailwind defaults with rounded corners and soft shadows. The target aesthetic is:
 
-- [ ] Persist CRDT state to PostgreSQL
-- [ ] CRDT document snapshots
-- [ ] Efficient CRDT delta encoding
+**Amoebic UI:** Organic, non-rectilinear forms. Fluid blob-like containers using `clip-path: path()` and CSS `border-radius` with asymmetric values (e.g., `60% 40% 30% 70% / 60% 30% 70% 40%`). Animated SVG backgrounds with noise textures.
 
-### 5.2 Collaboration Features
+**Brutalism:** Raw structure exposed. Monospace typography throughout (not just code blocks). Sharp corners (`rounded-none`) for primary containers. Stark contrast. No gradients. System fonts or monospace. Visible grid/layout structure.
 
-- [ ] Cursor and selection sharing
-- [ ] Presence indicators with avatars
-- [ ] Document history with diff view
-- [ ] Comment threads anchored to text ranges
+**Spatial Materialism:** Physical depth metaphor. Multi-layer z-stacking with parallax. Material textures (noise, grain via CSS filters). Shadow depth indicates hierarchy (not just decoration). Transitions feel physical (spring physics, not linear easing).
 
-### 5.3 Offline Support
+**Actions:**
 
-- [ ] Offline-first CRDT edits
-- [ ] Conflict resolution on reconnect
-- [ ] Sync queue with priority ordering
+1. Design system: define CSS custom properties for the three aesthetic pillars
+2. Typography: switch to monospace-first (JetBrains Mono or IBM Plex Mono)
+3. Containers: replace `rounded-lg` with asymmetric `border-radius` or `rounded-none`
+4. Shadows: replace soft shadows with hard, offset shadows (spatial depth)
+5. Backgrounds: add CSS noise/grain texture overlays
+6. Animations: implement spring-physics transitions (CSS or JS)
+7. Landing page: redesign with amoebic hero section
+8. Components: audit all 28 `border-radius` occurrences, apply new system
 
-**Completion Criteria:** Two users can simultaneously edit the same document with sub-100ms perceived latency. Offline edits sync correctly on reconnect.
-
----
-
-## Phase 6: Advanced Features (4-6 weeks)
-
-### 6.1 AI Integration
-
-- [ ] Plugin-based AI provider interface (OpenAI, Anthropic, local LLM)
-- [ ] Semantic search using embeddings (pgvector or Qdrant)
-- [ ] Auto-tagging and document classification
-- [ ] AI-assisted writing and summarization
-
-### 6.2 SSG Advanced
-
-- [ ] Plugin system for build pipeline
-- [ ] Custom page layouts
-- [ ] Versioned documentation (v1/v2 side-by-side)
-- [ ] Content collections with typed schemas
-
-### 6.3 Multi-Tenant SaaS
-
-- [ ] Per-tenant database isolation
-- [ ] Tenant-specific configuration
-- [ ] Usage metering and quota enforcement
-- [ ] Admin portal for tenant management
-
-### 6.4 Mobile Applications
-
-- [ ] React Native or Flutter mobile client
-- [ ] Offline-first sync with CRDT
-- [ ] Push notifications
-- [ ] Biometric authentication
-
-**Completion Criteria:** Platform supports AI-assisted knowledge management for single-tenant and multi-tenant deployments.
+**Completion Criteria:**
+- Design system documented with CSS custom properties
+- All primary containers use amoebic or brutalist forms
+- Typography is monospace-first
+- Animations use spring physics
+- Landing page reflects all three aesthetic pillars
 
 ---
 
-## Phase 7: Production Launch (1-2 weeks)
+## Phase 6: AI Integration (Week 6-10)
 
-**Objective:** Public release with production infrastructure.
+**Status:** Code complete. Needs production validation.
 
-### 7.1 Infrastructure
+**Already implemented:**
+- Plugin-based AI provider interface (OpenAI, Anthropic, Ollama)
+- Semantic search via pgvector embeddings
+- Auto-tagging and document classification
+- AI-assisted writing, summarization, RAG Q&A
+- Knowledge graph visualization
 
-- [ ] Production Kubernetes or Docker Swarm deployment
-- [ ] TLS certificates (Let's Encrypt or managed)
-- [ ] CDN for static assets (CloudFront or Cloudflare)
-- [ ] DNS configuration and health monitoring
-
-### 7.2 Security Hardening
-
-- [ ] Penetration testing (OWASP Top 10)
-- [ ] CSP headers tuned for production
-- [ ] Secret rotation policy
-- [ ] Incident response runbooks
-
-### 7.3 Monitoring
-
-- [ ] Grafana dashboards (API latency, error rates, resource usage)
-- [ ] Prometheus alerting rules
-- [ ] Log aggregation (Loki or ELK)
-- [ ] Uptime monitoring (UptimeRobot or equivalent)
-
-### 7.4 Release
-
-- [ ] Tag v1.0.0
-- [ ] Generate release notes automatically
-- [ ] Publish Docker images to GHCR
-- [ ] Publish documentation site
-- [ ] Announce on relevant channels
-
-**Completion Criteria:** Publicly accessible production instance with >99.9% uptime SLA.
+**Remaining:**
+- Validate AI provider rate limits under load
+- Test pgvector query performance at >100k documents
+- Configure AI provider API keys in production secrets
+- Benchmark embedding generation latency
 
 ---
 
-## Effort Summary
+## Phase 7: Multi-Tenant SaaS (Week 10-14)
 
-| Phase | Duration | Key Deliverable | Dependencies |
-|-------|----------|-----------------|--------------|
-| 1: CI/CD Hardening | 1-2 weeks | All pipelines green, staging deployed | Infrastructure provisioning |
-| 2: SSG Foundation | 3-4 weeks | Feature-parity docs site | Phase 1 |
-| 3: Build System & DX | 2-3 weeks | Fast builds, easy onboarding | Phase 1 |
-| 4: API & Server | 2-3 weeks | Production-ready API | Phase 1 |
-| 5: Real-Time Collab v2 | 3-4 weeks | Multi-user editing | Phase 4 |
-| 6: Advanced Features | 4-6 weeks | AI, mobile, SaaS | Phase 4, Phase 5 |
-| 7: Production Launch | 1-2 weeks | Public v1.0.0 | Phase 4, Phase 6 |
-| **Total** | **16-24 weeks** | **Full production platform** | |
+**Status:** Code complete. Needs production validation.
 
-Phases 2 and 3 can run in parallel. Phase 4 can start after Phase 1 completes.
+**Already implemented:**
+- Per-tenant database isolation (schema-level)
+- Tenant-specific configuration
+- Usage metering and quota enforcement
+- Admin portal for tenant management
+- Stripe billing integration
+
+**Remaining:**
+- Tenant onboarding flow testing
+- Stripe webhook endpoint configuration
+- Usage metering alerting thresholds
+- Billing edge case testing (downgrades, refunds)
 
 ---
 
-## Risk Register
+## Phase 8: Desktop and Mobile (Week 12-18)
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| E2E test flakiness | High | Medium | Split smoke/full, increase timeouts, retry logic |
-| CI infrastructure cost | Medium | Low | Cache aggressively, minimize Docker builds |
-| WASM toolchain breakage | Medium | Medium | Pin trunk/wasm-bindgen versions |
-| Docker base image CVEs | High | Medium | Automated `apt-get upgrade`, Trivy scanning |
-| SSG parser rewrite regressions | Medium | High | Byte-for-byte comparison tests before/after |
-| Tauri 2.x API instability | Medium | Medium | Pin tauri version, isolate desktop crate |
-| PostgreSQL extension conflicts | Medium | High | `IF NOT EXISTS`, advisory locks, serial tests |
-| Supply chain attack | Low | Critical | `cargo audit`, SBOM, pinned digests |
-| Performance regression | Medium | High | Criterion benchmarks in CI, K6 load tests |
-| Documentation drift | High | Low | Automated doc-code consistency checks |
+**Status:** Code complete. Known issue with Tauri on NVIDIA+WebKitGTK.
+
+**Already implemented:**
+- Mobile-responsive Leptos components
+- PWA support (service worker, offline cache)
+- Push notification infrastructure
+- Desktop client (Tauri 2.x)
+
+**Remaining:**
+- Fix Tauri NVIDIA+WebKitGTK EGL issue on Linux
+- Real device testing (iOS Safari, Android Chrome)
+- Push notification service worker registration
+- App store submission (optional)
+
+---
+
+## Phase 9: Plugin Ecosystem (Week 16-22)
+
+**Status:** Code complete. Needs infrastructure.
+
+**Already implemented:**
+- Plugin marketplace with registry
+- WASM sandboxing (Wasmtime)
+- Plugin CLI tools (scaffold, test, publish)
+- Plugin signing and permission system
+
+**Remaining:**
+- Remote plugin registry hosting
+- Community plugin review process
+- Plugin versioning and compatibility matrix
+- Plugin monetization framework (optional)
+
+---
+
+## Phase 10: Enterprise Features (Week 20-28)
+
+**Status:** Code complete. Needs integration testing.
+
+**Already implemented:**
+- SAML/SSO integration
+- Advanced audit logging with SIEM
+- Custom roles and permissions
+- White-label branding
+- Organization and space management
+
+**Remaining:**
+- SAML IdP testing (Okta, Azure AD)
+- LDAP directory sync
+- Data loss prevention policies
+- eDiscovery and compliance reporting
+- SOC 2 Type II audit preparation
+
+---
+
+## Long-Term Vision (6-18 Months)
+
+### Scalability
+- Horizontal scaling (stateless backend + Redis session store)
+- PostgreSQL read replicas for search/analytics
+- CDN edge caching for WASM bundles and static assets
+- PgBouncer connection pooling
+- Search index sharding for >1M documents
+
+### Platform
+- Public REST API with OAuth2 app registration
+- Webhook system for external integrations
+- CLI distribution (cargo install, brew, scoop, apt)
+- Plugin marketplace with community review
+
+### Collaboration
+- Real-time editing for >50 concurrent users per document
+- Branch-and-merge workflow for documents
+- Review workflow with approval gates
+- Template marketplace
+
+### Intelligence
+- Auto-generated knowledge graphs
+- Semantic clustering and topic modeling
+- Citation graph and impact metrics
+- AI-powered document quality scoring
+
+### Compliance
+- SOC 2 Type II certification
+- GDPR data portability automation
+- HIPAA compliance (healthcare KBs)
+- Data residency controls (region-specific deployment)
+
+---
+
+## Architecture Evolution
+
+### Current (v21.0.0)
+
+```
+Browser (Leptos WASM)  Desktop (Tauri)  CLI (Clap)
+         |                  |               |
+         +------------------+---------------+
+                            |
+                     HTTP / WebSocket
+                            |
+                   Axum 0.8 Server (:8080)
+                   +----------+-----------+
+                   | Tantivy   | Yrs/CRDT  | Wasmtime
+                   | Search    | Sync      | Plugins
+                   +----------+-----------+
+                            |
+                       SQLx (async)
+                            |
+                     PostgreSQL 16 + pgvector
+              Documents  Users  Permissions  Audit
+```
+
+### Target (Post-Launch)
+
+```
+CDN (Cloudflare) --> Nginx --> Load Balancer
+                              |
+                   +----------+----------+
+                   |                     |
+             Axum Instance 1       Axum Instance 2
+                   |                     |
+                   +----------+----------+
+                              |
+                    Redis (sessions, rate limit, cache)
+                              |
+                   +----------+----------+
+                   |                     |
+             PostgreSQL Primary    PostgreSQL Replica
+             (read/write)          (read-only, search)
+                   |
+              pgvector (embeddings)
+```
+
+---
+
+## Effort Estimate
+
+| Phase | Duration | Dependencies | Status |
+|-------|----------|-------------|--------|
+| 1. Infrastructure | 2 weeks | Server provisioning | PENDING |
+| 2. API Validation | 2 weeks | None (code-only) | READY |
+| 3. Security | 2 weeks | Phase 2 | READY |
+| 4. Launch | 1 week | Phase 1, 3 | PENDING |
+| 5. GUI Redesign | 3 weeks | Phase 4 | PLANNED |
+| 6. AI Integration | 2 weeks | Phase 4 | CODE COMPLETE |
+| 7. Multi-Tenant SaaS | 2 weeks | Phase 4 | CODE COMPLETE |
+| 8. Desktop/Mobile | 2 weeks | Phase 4 | CODE COMPLETE |
+| 9. Plugin Ecosystem | 2 weeks | Phase 4 | CODE COMPLETE |
+| 10. Enterprise | 4 weeks | Phase 7 | CODE COMPLETE |
+| **Total to Launch** | **~5 weeks** | | |
+| **Total with all phases** | **~22 weeks** | | |
 
 ---
 
@@ -372,27 +405,10 @@ Phases 2 and 3 can run in parallel. Phase 4 can start after Phase 1 completes.
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
-| 2026-05-19 | Delete DEPLOYMENT_SUMMARY.md | Self-documented as severely outdated, SQLite refs wrong |
-| 2026-05-19 | Fix VERSION.md to 12.0.0 | Align with ROADMAP.md version |
-| 2026-05-19 | Fix README.md commands | `just db-reset` and `just dev` did not exist in justfile |
-| 2026-05-19 | Fix architecture overview | SQLite -> PostgreSQL in storage layer diagram |
-| 2026-05-19 | Fix docs.yml cache path | `target` -> `tachyon/target` for workspace-correct caching |
-| 2026-05-19 | Add 4 documentation pages | search, authentication, cli-reference, collaboration |
-| 2026-05-19 | Expand site.toml navigation | 6 -> 10 menu items for complete doc site |
-| 2026-05-18 | Disable wasm-opt in trunk build | Auto-downloaded binaryen incompatible with bulk-memory WASM |
-| 2026-05-18 | Exclude desktop crates via sed in Docker | Can't build GTK headless in CI |
-| 2026-05-18 | Ignore RUSTSEC-2023-0071 | rsa via sqlx-mysql, no fix available, MySQL not used |
-| 2026-05-18 | Serial integration tests | PostgreSQL `CREATE EXTENSION` race condition |
-| 2026-05-13 | Use `ammonia` for HTML sanitization | OWASP-recommended |
-| 2026-02-11 | Nix flake for dev environment | Reproducible builds |
-
----
-
-## Superseded Documents
-
-This document supersedes:
-- `ROADMAP.md` (v11.0.0) -- Phases A-F marked complete
-- `ROADMAP_FORWARD.md` -- Items folded into Phases 1-7 above
-- `AUDIT_AND_ROADMAP.md` -- Audit findings addressed; remaining items in Phase 1
-- `SSG_CAPABILITIES_GAP_ANALYSIS.md` -- Detailed gap list; implementation in Phase 2
-- `DEPLOYMENT_SUMMARY.md` -- Deleted (severely outdated, incorrect database references)
+| 2026-05-27 | Replace unsafe from_utf8_unchecked in SSG | Eliminate UB risk; safe API equally performant on ASCII |
+| 2026-05-27 | Fix doc inaccuracies (RBAC, storage, tree-sitter, crate count) | Factual correctness audit |
+| 2026-05-27 | Harden CI workflows (permissions, timeouts, pin semgrep/ZAP) | Least privilege, reliability |
+| 2026-05-27 | Force reinstall cargo-mutant in CI | Stale cached binary caused install failure |
+| 2026-05-26 | Fix clippy::await_holding_refcell_ref | Take/put-back pattern avoids RefCell across await |
+| 2026-05-26 | Switch CI to pgvector/pgvector:pg16 | Migration requires CREATE EXTENSION vector |
+| 2026-05-26 | Exclude tachyon-cli from pre-commit | wasmtime+tauri deps too heavy for local hooks |
