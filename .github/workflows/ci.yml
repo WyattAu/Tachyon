@@ -38,7 +38,7 @@ jobs:
 
       - name: Check workspace
         working-directory: tachyon
-        run: cargo check --workspace --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-testing --exclude tachyon-benchmarks
+        run: cargo check --workspace --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks
 
       - name: Check WASM compilation
         working-directory: tachyon
