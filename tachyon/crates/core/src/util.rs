@@ -4,6 +4,12 @@
 use chrono::{DateTime, Utc};
 use regex::Regex;
 use std::path::Path;
+use std::sync::LazyLock;
+
+static HYPHEN_COLLAPSE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"-+").unwrap());
+static HTML_TAG_STRIP_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<[^>]*>|&[a-zA-Z]+;").unwrap());
+static TAG_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap());
 
 // ============================================================================
 // Time Utilities
@@ -186,8 +192,7 @@ pub fn slugify(input: &str) -> String {
         .collect::<String>();
 
     // Collapse multiple hyphens
-    let re = Regex::new(r"-+").unwrap();
-    let collapsed = re.replace_all(&slug, "-");
+    let collapsed = HYPHEN_COLLAPSE_REGEX.replace_all(&slug, "-");
 
     // Trim leading/trailing hyphens
     collapsed.trim_matches('-').to_string()
@@ -202,8 +207,7 @@ pub fn slugify(input: &str) -> String {
 /// # Returns
 /// Sanitized string
 pub fn sanitize_string(input: &str) -> String {
-    let re = Regex::new(r"<[^>]*>|&[a-zA-Z]+;").unwrap();
-    let without_tags = re.replace_all(input, "");
+    let without_tags = HTML_TAG_STRIP_REGEX.replace_all(input, "");
 
     without_tags.to_string()
 }
@@ -225,8 +229,7 @@ pub fn validate_tag_name(name: &str) -> Result<(), String> {
     }
 
     // Check for valid characters
-    let valid_regex = Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap();
-    if !valid_regex.is_match(name) {
+    if !TAG_NAME_REGEX.is_match(name) {
         return Err("Tag name contains invalid characters".to_string());
     }
 

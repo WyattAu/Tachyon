@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
 use chrono::Utc;
 use regex::Regex;
@@ -7,6 +8,8 @@ use tachyon_core::{compute_content_hash, generate_document_id, FileChangeEvent, 
 use tachyon_database::{DatabasePool, DocumentMetadata, DocumentRepository};
 use tachyon_renderer::{RenderConfig, Renderer};
 use tracing::{debug, info, warn};
+
+static HYPHEN_COLLAPSE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"-+").unwrap());
 
 #[derive(Debug)]
 pub enum SyncResult {
@@ -370,8 +373,7 @@ impl FileSyncService {
             .filter(|c| *c != '\0')
             .collect();
 
-        let re = Regex::new(r"-+").unwrap();
-        let collapsed = re.replace_all(&slug, "-");
+        let collapsed = HYPHEN_COLLAPSE_REGEX.replace_all(&slug, "-");
         let trimmed = collapsed.trim_matches('-').to_string();
 
         if trimmed.len() > 200 {

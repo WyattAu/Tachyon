@@ -25,6 +25,11 @@ static UUID_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 static CONTROL_CHARS_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]").unwrap());
 
+static WHITESPACE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
+
+static SLUG_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-z0-9]+(?:-[a-z0-9]+)*$").unwrap());
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationError {
     Required,
@@ -95,8 +100,7 @@ pub fn contains_control_chars(input: &str) -> bool {
 }
 
 pub fn normalize_whitespace(input: &str) -> String {
-    let re = regex::Regex::new(r"\s+").unwrap();
-    re.replace_all(input.trim(), " ").to_string()
+    WHITESPACE_REGEX.replace_all(input.trim(), " ").to_string()
 }
 
 pub fn validate_required<T: AsRef<str>>(value: &Option<T>) -> ValidationResult<()> {
@@ -238,8 +242,7 @@ pub fn validate_slug(value: &str) -> ValidationResult<()> {
         return Err(ValidationError::Required);
     }
 
-    let slug_regex = regex::Regex::new(r"^[a-z0-9]+(?:-[a-z0-9]+)*$").unwrap();
-    if !slug_regex.is_match(value) {
+    if !SLUG_REGEX.is_match(value) {
         return Err(ValidationError::InvalidFormat {
             message: "Slug must contain only lowercase letters, numbers, and hyphens".to_string(),
         });

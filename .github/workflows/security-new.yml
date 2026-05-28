@@ -112,16 +112,25 @@ jobs:
     name: Container Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      matrix:
+        include:
+          - dockerfile: Dockerfile
+            tag: tachyon/server:scan
+          - dockerfile: Dockerfile.server
+            tag: tachyon/server-exact:scan
+          - dockerfile: Dockerfile.frontend
+            tag: tachyon/frontend:scan
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       
-      - name: Build backend image
-        run: docker build -f Dockerfile -t tachyon/server:scan .
+      - name: Build image (${{ matrix.dockerfile }})
+        run: docker build -f ${{ matrix.dockerfile }} -t ${{ matrix.tag }} .
       
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: 'tachyon/server:scan'
+          image-ref: '${{ matrix.tag }}'
           format: 'table'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
