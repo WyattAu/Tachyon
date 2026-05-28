@@ -285,7 +285,8 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
 
     let http_client = reqwest::Client::new();
 
-    let audit_logger = crate::audit::AuditLogger::new(10_000);
+    let audit_logger =
+        crate::audit::AuditLogger::new(10_000).with_database(pool.inner().clone());
 
     let ai_manager = Arc::new(crate::ai::AiManager::from_env());
     if ai_manager.is_available() {

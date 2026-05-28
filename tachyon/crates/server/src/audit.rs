@@ -3,6 +3,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -307,6 +308,7 @@ pub struct AuditLogger {
     max_events: usize,
     enabled: bool,
     log_to_console: bool,
+    pool: Option<PgPool>,
 }
 
 impl AuditLogger {
@@ -316,6 +318,7 @@ impl AuditLogger {
             max_events,
             enabled: true,
             log_to_console: true,
+            pool: None,
         }
     }
 
@@ -325,7 +328,15 @@ impl AuditLogger {
             max_events: 0,
             enabled: false,
             log_to_console: false,
+            pool: None,
         }
+    }
+
+    /// Attach a database pool for persistent audit storage.
+    /// Events are written to both in-memory store and database asynchronously.
+    pub fn with_database(mut self, pool: PgPool) -> Self {
+        self.pool = Some(pool);
+        self
     }
 
     pub fn with_console_logging(mut self, enabled: bool) -> Self {
@@ -372,6 +383,17 @@ impl AuditLogger {
                     );
                 }
             }
+        }
+
+        // Persist to database if pool is available (fire-and-forget)
+        if let Some(pool) = &self.pool {
+            let pool = pool.clone();
+            let event = event.clone();
+            tokio::spawn(async move {
+                if let Err(e) = persist_audit_event(&pool, &event).await {
+                    tracing::warn!(target: "audit", error = %e, "Failed to persist audit event to database");
+                }
+            });
         }
 
         let mut store = self.store.write().await;
@@ -984,6 +1006,68 @@ pub fn configuration_changed(
     .with_metadata("old_value", serde_json::json!(old_value))
     .with_metadata("new_value", serde_json::json!(new_value))
     .with_outcome(AuditOutcome::Success)
+}
+
+// ---------------------------------------------------------------------------
+// Database persistence
+// ---------------------------------------------------------------------------
+
+/// Persist a single audit event to the `audit_events` table.
+/// Fire-and-forget: errors are logged but not propagated to the caller.
+/// Helper to convert an enum with `#[serde(rename_all = "snake_case")]` to its string representation.
+fn enum_to_string<T: Serialize + std::fmt::Debug>(value: &T) -> String {
+    serde_json::to_value(value)
+        .and_then(serde_json::from_value::<String>)
+        .unwrap_or_else(|_| format!("{:?}", value))
+}
+
+async fn persist_audit_event(pool: &PgPool, event: &AuditEvent) -> Result<(), sqlx::Error> {
+    let metadata =
+        serde_json::to_value(&event.metadata).unwrap_or(serde_json::json!({}));
+
+    sqlx::query(
+        r#"
+        INSERT INTO audit_events (
+            id, event_type, severity, timestamp,
+            actor_id, actor_type, actor_username,
+            target_id, target_type,
+            action, description,
+            ip_address, user_agent, request_id, session_id, device_id, geo_location,
+            metadata, outcome, correlation_id
+        ) VALUES (
+            $1, $2, $3, $4,
+            $5, $6, $7,
+            $8, $9,
+            $10, $11,
+            $12, $13, $14, $15, $16, $17,
+            $18, $19, $20
+        )
+        "#,
+    )
+    .bind(&event.id)
+    .bind(enum_to_string(&event.event_type))
+    .bind(enum_to_string(&event.severity))
+    .bind(event.timestamp)
+    .bind(&event.actor_id)
+    .bind(&event.actor_type)
+    .bind(&event.actor_username)
+    .bind(&event.target_id)
+    .bind(&event.target_type)
+    .bind(&event.action)
+    .bind(&event.description)
+    .bind(event.context.ip_address.as_deref())
+    .bind(event.context.user_agent.as_deref())
+    .bind(event.context.request_id.as_deref())
+    .bind(event.context.session_id.as_deref())
+    .bind(event.context.device_id.as_deref())
+    .bind(event.context.geo_location.as_deref())
+    .bind(&metadata)
+    .bind(enum_to_string(&event.outcome))
+    .bind(&event.correlation_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
 }
 
 #[cfg(test)]
