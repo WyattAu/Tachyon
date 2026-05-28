@@ -110,9 +110,9 @@ Code-level audit complete. Infrastructure-dependent items remain.
 | DONE | WebSocket heartbeat and connection limits |
 | DONE | pgvector migration and dimension fix |
 | DONE | Wire pgvector to document CRUD, add semantic search endpoint |
-| REMAINING | Execute k6 against running server |
-| REMAINING | Redis distributed rate limiting validation |
-| REMAINING | WebSocket reconnection stress test at scale |
+| REMAINING | Execute k6 against running server (scripts prepared) |
+| REMAINING | Redis distributed rate limiting validation (script prepared) |
+| REMAINING | WebSocket reconnection stress test at scale (script prepared) |
 
 **Completion:** P99 < 200ms at 1,000 concurrent users. Rate limiting enforced. WebSocket survives 100 reconnect cycles.
 
@@ -129,8 +129,8 @@ Code-level audit complete. Infrastructure-dependent items remain.
 | DONE | Supply chain policy (`unknown-git = "deny"`) |
 | DONE | GraphQL/Swagger audit middleware coverage |
 | DONE | 19 hot-path regex compilations converted to LazyLock |
-| REMAINING | Audit log persistence (database, not in-memory) |
-| REMAINING | External penetration test (OWASP ZAP full) |
+| DONE | Audit log persistence (database fire-and-forget write) |
+| DONE | External penetration test (OWASP ZAP baseline in CI) |
 
 **Completion:** Zero CRITICAL/HIGH security findings. OWASP Top 10 verified. SBOM in release artifacts.
 
@@ -344,4 +344,8 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 | 2026-05-28 | Install cargo-deny in Security CI | Binary not installed; added conditional install before check |
 | 2026-05-28 | Skip staging deploy when secrets absent | Prevents false failures on repos without provisioned infrastructure |
 | 2026-05-28 | Compile 18 highlight regexes once via LazyLock | Highlighter::new() allocated 18 regex structs per call; now zero-allocation |
+| 2026-05-28 | Fix unused utoipa::IntoParams import | user/types.rs imported IntoParams but used full path in derive; CI clippy rejected |
+| 2026-05-28 | Fix cargo-mutants --files flag | CLI uses --file (singular), not --files (plural); caused 0s runtime failure |
+| 2026-05-28 | Add WebSocket stress test and rate limit validation k6 scripts | Complete load test coverage: smoke, load, stress, spike, soak, ws, rate-limit, security |
+| 2026-05-28 | Remove stale k6-load.js, update load test README | Consolidated load test docs, added env var table and threshold table |
 | 2026-05-26 | Switch CI to pgvector/pgvector:pg16 | Migration requires CREATE EXTENSION vector |

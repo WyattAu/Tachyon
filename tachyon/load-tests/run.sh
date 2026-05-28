@@ -121,7 +121,9 @@ print_usage() {
   echo "  stress   - Stress test (200 VUs, 6.5 min)"
   echo "  soak     - Soak test (10 VUs, 30 min)"
   echo "  spike    - Spike test (10-200-10 VUs, 6 min)"
-  echo "  all      - Run smoke + load"
+  echo "  ws       - WebSocket reconnection stress test (20 VUs, 2 min)"
+  echo "  rate-limit - Rate limiting validation (burst + multi-IP)"
+  echo "  all      - Run smoke + load + rate-limit"
   echo "  help     - Show this message"
   echo ""
   echo "Environment variables:"
@@ -162,12 +164,20 @@ main() {
     spike)
       run_test "spike" "${K6_DIR}/SpikeTest.js"
       ;;
+    ws)
+      run_test "websocket-stress" "${K6_DIR}/WebSocketStress.js" \
+        "--execution-fragment 'scenarios: { ws: { executor: \"constant-vus\", vus: 20, duration: \"2m\" } }'"
+      ;;
+    rate-limit)
+      run_test "rate-limit" "${K6_DIR}/RateLimitTest.js"
+      ;;
     all)
       echo "=== Running all tests ==="
       run_test "smoke" "${K6_DIR}/smoke.js" || {
         echo "WARNING: Smoke test failed. Continuing..."
       }
       run_test "load" "${K6_DIR}/LoadTest.js"
+      run_test "rate-limit" "${K6_DIR}/RateLimitTest.js"
       ;;
     *)
       echo "ERROR: Unknown test type '${test_type}'"
