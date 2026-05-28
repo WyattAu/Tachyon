@@ -215,6 +215,35 @@ pub async fn create_document(
         })
         .await;
 
+    // Generate and persist embedding asynchronously (non-blocking)
+    if let Some(ref ai) = state.ai_manager {
+        if ai.is_available() {
+            let ai = ai.clone();
+            let repo = state.repository.clone();
+            let doc_id = doc.id.to_string();
+            let embed_text = format!(
+                "{} {}",
+                doc.metadata.title,
+                doc.content.as_text().unwrap_or("")
+            );
+            tokio::spawn(async move {
+                match ai.embed(&embed_text).await {
+                    Ok(embedding) => {
+                        if let Err(e) = repo.update_embedding(&doc_id, embedding).await {
+                            warn!("Failed to persist embedding for document {}: {}", doc_id, e);
+                        }
+                    }
+                    Err(e) => {
+                        warn!(
+                            "Failed to generate embedding for document {}: {}",
+                            doc_id, e
+                        );
+                    }
+                }
+            });
+        }
+    }
+
     if let Err(e) = ActivityRepository::create(
         &state.pool,
         CreateActivityEvent {
@@ -371,7 +400,9 @@ pub async fn update_document(
             .map_err(|e| ServerError::bad_request(format!("Invalid title: {}", e)))?;
         metadata.title = validated_title.as_str().to_string();
     }
+    let mut content_changed = false;
     if let Some(content) = req.content {
+        content_changed = true;
         if let Some(ref current_content) = metadata.content {
             if current_content != &content {
                 let version_repo = DocumentVersionRepository::new(state.pool.clone());
@@ -475,6 +506,37 @@ pub async fn update_document(
             custom_fields: BTreeMap::new(),
         })
         .await;
+
+    // Re-generate and persist embedding asynchronously when content changes
+    if content_changed {
+        if let Some(ref ai) = state.ai_manager {
+            if ai.is_available() {
+                let ai = ai.clone();
+                let repo = state.repository.clone();
+                let doc_id = document_id.clone();
+                let embed_text = format!(
+                    "{} {}",
+                    metadata.title,
+                    metadata.content.as_deref().unwrap_or("")
+                );
+                tokio::spawn(async move {
+                    match ai.embed(&embed_text).await {
+                        Ok(embedding) => {
+                            if let Err(e) = repo.update_embedding(&doc_id, embedding).await {
+                                warn!("Failed to persist embedding for document {}: {}", doc_id, e);
+                            }
+                        }
+                        Err(e) => {
+                            warn!(
+                                "Failed to generate embedding for document {}: {}",
+                                doc_id, e
+                            );
+                        }
+                    }
+                });
+            }
+        }
+    }
 
     if let Err(e) = ActivityRepository::create(
         &state.pool,

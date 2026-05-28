@@ -287,9 +287,15 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
 
     let audit_logger = crate::audit::AuditLogger::new(10_000);
 
+    let ai_manager = Arc::new(crate::ai::AiManager::from_env());
+    if ai_manager.is_available() {
+        tracing::info!("AI provider configured: {}", ai_manager.provider_name());
+    }
+
     let document_state =
         DocumentState::with_guest_config(pool.clone(), config.guest.clone(), http_client.clone())
-            .with_audit_logger(audit_logger.clone());
+            .with_audit_logger(audit_logger.clone())
+            .with_ai_manager(ai_manager.clone());
     let user_state = UserState::with_guest_config(
         pool.clone(),
         config.jwt.secrets.clone(),
@@ -361,11 +367,6 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     }
 
     let email = crate::email::EmailService::new(config);
-
-    let ai_manager = Arc::new(crate::ai::AiManager::from_env());
-    if ai_manager.is_available() {
-        tracing::info!("AI provider configured: {}", ai_manager.provider_name());
-    }
 
     Ok(AppState {
         start_time: std::time::Instant::now(),
@@ -692,15 +693,23 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
                 }),
         );
 
-    router = router.merge(swagger_ui);
-    router = router.merge(crate::routes::swagger::routes());
-
-    // GraphQL endpoint (uses pool directly, AppState not available after destructure)
+    // GraphQL and Swagger routes are merged after the main middleware layer,
+    // so we wrap them with audit + request-id middleware explicitly to ensure
+    // all requests are audit-logged.
     let graphql_router = axum::Router::new()
         .route("/graphql", axum::routing::post(graphql_handler))
         .route("/graphql/playground", get(graphql_playground))
-        .with_state(pool.clone());
+        .with_state(pool.clone())
+        .layer(axum::middleware::from_fn(audit_middleware))
+        .layer(axum::middleware::from_fn(request_id_middleware));
+
+    let swagger_routes = crate::routes::swagger::routes()
+        .layer(axum::middleware::from_fn(audit_middleware))
+        .layer(axum::middleware::from_fn(request_id_middleware));
+
     router = router.merge(graphql_router);
+    router = router.merge(swagger_ui);
+    router = router.merge(swagger_routes);
 
     let auth_state = crate::middleware::AuthState::new(config.clone(), pool.clone());
     let auth_layer =

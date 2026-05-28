@@ -1,4 +1,5 @@
 use axum::{response::Html, routing::get, Json, Router};
+use tracing::error;
 
 pub fn routes() -> Router {
     Router::new()
@@ -12,7 +13,13 @@ async fn swagger_ui_html() -> Html<&'static str> {
 
 async fn openapi_json() -> Json<serde_json::Value> {
     let spec = crate::api_docs::openapi_spec();
-    Json(serde_json::to_value(spec).expect("failed to serialize OpenAPI spec"))
+    match serde_json::to_value(spec) {
+        Ok(value) => Json(value),
+        Err(e) => {
+            error!("Failed to serialize OpenAPI spec: {}", e);
+            Json(serde_json::json!({"error": "failed to serialize OpenAPI spec"}))
+        }
+    }
 }
 
 const SWAGGER_HTML: &str = r##"<!DOCTYPE html>

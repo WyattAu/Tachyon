@@ -9,6 +9,106 @@ use tracing::{debug, warn};
 
 use super::{DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState};
 
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+pub struct SemanticSearchParams {
+    /// The query text to embed and search with.
+    pub q: String,
+    /// Maximum number of results (1-100, default 20).
+    pub limit: Option<i64>,
+    /// Minimum cosine similarity threshold (0.0-1.0, default 0.5).
+    pub threshold: Option<f32>,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SemanticSearchResponse {
+    pub results: Vec<DocumentResponse>,
+    pub query: String,
+    pub limit: i64,
+    pub threshold: f32,
+}
+
+/// Search documents by semantic similarity using pgvector.
+///
+/// `GET /api/v1/documents/semantic-search`
+///
+/// Embeds the query using the configured AI provider and searches the
+/// `embedding` column via cosine distance. Requires AI to be configured
+/// and the `pgvector` extension to be installed.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/semantic-search",
+    params(SemanticSearchParams),
+    responses(
+        (status = 200, description = "Semantic search results", body = SemanticSearchResponse),
+        (status = 400, description = "Missing or empty query"),
+        (status = 503, description = "AI not configured"),
+    ),
+    tag = "documents",
+)]
+pub async fn semantic_search(
+    Query(params): Query<SemanticSearchParams>,
+    State(state): State<DocumentState>,
+) -> Result<Json<SemanticSearchResponse>, ServerError> {
+    let query = params.q.trim();
+    if query.is_empty() {
+        return Err(ServerError::bad_request("Query parameter 'q' is required"));
+    }
+
+    let ai = state
+        .ai_manager
+        .as_ref()
+        .ok_or_else(|| ServerError::internal("AI provider not configured"))?;
+
+    if !ai.is_available() {
+        return Err(ServerError::internal("AI provider not available"));
+    }
+
+    let limit = params.limit.unwrap_or(20).clamp(1, 100);
+    let threshold = params.threshold.unwrap_or(0.5).clamp(0.0, 1.0);
+
+    let embedding = ai
+        .embed(query)
+        .await
+        .map_err(|e| ServerError::internal(format!("Embedding generation failed: {}", e)))?;
+
+    let documents = state
+        .repository
+        .search_semantic(embedding, limit, threshold)
+        .await
+        .map_err(|e| ServerError::database(format!("Semantic search failed: {}", e)))?;
+
+    let results: Vec<DocumentResponse> = documents
+        .into_iter()
+        .map(|metadata| {
+            let tags = metadata.parse_tags().unwrap_or_default();
+            DocumentResponse {
+                id: metadata.id,
+                title: metadata.title,
+                slug: metadata.slug,
+                html: None,
+                content: String::new(),
+                status: metadata.status,
+                visibility: metadata.visibility,
+                tags,
+                author_id: metadata.author_id,
+                repository_id: metadata.project_id,
+                word_count: metadata.word_count as usize,
+                character_count: metadata.character_count as usize,
+                created_at: metadata.created_at.to_rfc3339(),
+                updated_at: metadata.updated_at.to_rfc3339(),
+                published_at: metadata.published_at.map(|t| t.to_rfc3339()),
+            }
+        })
+        .collect();
+
+    Ok(Json(SemanticSearchResponse {
+        query: query.to_string(),
+        limit,
+        threshold,
+        results,
+    }))
+}
+
 /// Search documents by full-text query.
 ///
 /// `GET /api/v1/documents/search`

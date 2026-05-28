@@ -599,7 +599,8 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
                 .unwrap_or_default()
                 .as_secs();
             let ping = HeartbeatMessage::Ping { timestamp: ts };
-            let json = serde_json::to_string(&ping).unwrap();
+            let json = serde_json::to_string(&ping)
+                .unwrap_or_else(|_| r#"{"type":"ping","timestamp":0}"#.to_string());
             if outgoing_tx.send(json).await.is_err() {
                 break;
             }
@@ -781,7 +782,8 @@ pub async fn run_heartbeat_loop(
             .unwrap_or_default()
             .as_secs();
         let ping = HeartbeatMessage::Ping { timestamp: ts };
-        let json = serde_json::to_string(&ping).unwrap();
+        let json = serde_json::to_string(&ping)
+            .unwrap_or_else(|_| r#"{"type":"ping","timestamp":0}"#.to_string());
         if outgoing.send(json).await.is_err() {
             return false;
         }

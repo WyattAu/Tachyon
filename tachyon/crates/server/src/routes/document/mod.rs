@@ -26,6 +26,7 @@ pub struct DocumentState {
     pub http_client: reqwest::Client,
     pub api_cache: crate::middleware::api_cache::ApiCache,
     pub audit_logger: AuditLogger,
+    pub ai_manager: Option<Arc<crate::ai::AiManager>>,
 }
 
 impl DocumentState {
@@ -41,6 +42,7 @@ impl DocumentState {
                 60,
             )),
             audit_logger: AuditLogger::disabled(),
+            ai_manager: None,
         }
     }
 
@@ -60,6 +62,7 @@ impl DocumentState {
                 60,
             )),
             audit_logger: AuditLogger::disabled(),
+            ai_manager: None,
         }
     }
 
@@ -70,6 +73,11 @@ impl DocumentState {
 
     pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
         self.audit_logger = logger;
+        self
+    }
+
+    pub fn with_ai_manager(mut self, ai_manager: Arc<crate::ai::AiManager>) -> Self {
+        self.ai_manager = Some(ai_manager);
         self
     }
 
@@ -211,7 +219,10 @@ pub use document_crud::{
     list_documents_cursor, render_markdown, update_document, CreateDocumentRequest,
     UpdateDocumentRequest,
 };
-pub use document_search::{get_backlinks, search_documents, BacklinkItem, BacklinksResponse};
+pub use document_search::{
+    get_backlinks, search_documents, semantic_search, BacklinkItem, BacklinksResponse,
+    SemanticSearchParams, SemanticSearchResponse,
+};
 pub use document_templates::{
     create_template, delete_template, get_template, list_templates, update_template,
     CreateTemplateBody, TemplateQuery, TemplateResponse, UpdateTemplateBody,
@@ -230,6 +241,7 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
         .route("/documents", post(create_document))
         .route("/documents/batch", post(document_batch::batch_operations))
         .route("/documents/search", get(search_documents))
+        .route("/documents/semantic-search", get(semantic_search))
         .route("/documents/{document_id}", get(get_document))
         .route("/documents/{document_id}", put(update_document))
         .route("/documents/{document_id}", delete(delete_document))
