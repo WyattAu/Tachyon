@@ -322,9 +322,21 @@ jobs:
       contents: read
       statuses: write
     steps:
+      - name: Check prerequisites
+        id: check
+        run: |
+          if [ -z "${{ secrets.STAGING_HOST }}" ]; then
+            echo "STAGING_HOST secret not configured - skipping deployment"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        if: steps.check.outputs.skip != 'true'
 
       - name: Log in to Container Registry
+        if: steps.check.outputs.skip != 'true'
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -332,6 +344,7 @@ jobs:
           password: ${{ secrets.DOCKER_REGISTRY_PASS || secrets.GITHUB_TOKEN }}
 
       - name: Set deployment variables
+        if: steps.check.outputs.skip != 'true'
         id: deploy-vars
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
@@ -342,6 +355,7 @@ jobs:
           echo "Deploying version $VERSION to staging"
 
       - name: Deploy via SSH
+        if: steps.check.outputs.skip != 'true'
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.STAGING_HOST }}
@@ -378,6 +392,7 @@ jobs:
             sleep 15
 
       - name: Smoke tests (health check)
+        if: steps.check.outputs.skip != 'true'
         run: |
           STAGING_HOST="${{ secrets.STAGING_HOST }}"
           MAX_RETRIES=30
@@ -400,6 +415,7 @@ jobs:
           curl -sf "https://${STAGING_HOST}/ready" | jq . || echo "Readiness check returned non-JSON (may not be implemented)"
 
       - name: Smoke tests (basic API call)
+        if: steps.check.outputs.skip != 'true'
         run: |
           STAGING_HOST="${{ secrets.STAGING_HOST }}"
           curl -sf "https://${STAGING_HOST}/api/v1/health" | jq . || echo "API health endpoint returned non-JSON"
@@ -411,7 +427,7 @@ jobs:
           fi
 
       - name: Set commit status
-        if: always()
+        if: steps.check.outputs.skip != 'true'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
@@ -426,7 +442,7 @@ jobs:
             });
 
       - name: Notify deployment status
-        if: always()
+        if: steps.check.outputs.skip != 'true'
         run: |
           if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
             STATUS="${{ job.status }}"

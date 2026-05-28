@@ -71,9 +71,21 @@ jobs:
     environment:
       name: staging
     steps:
+      - name: Check prerequisites
+        id: check
+        run: |
+          if [ -z "${{ secrets.STAGING_HOST }}" ]; then
+            echo "STAGING_HOST secret not configured - skipping deployment"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        if: steps.check.outputs.skip != 'true'
 
       - name: Log in to Container Registry
+        if: steps.check.outputs.skip != 'true'
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -81,18 +93,21 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set deployment version
+        if: steps.check.outputs.skip != 'true'
         id: deploy-vars
         run: |
           echo "version=${{ needs.build-and-push.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
           echo "prev_version=staging-previous" >> "$GITHUB_OUTPUT"
 
       - name: Tag previous image for rollback
+        if: steps.check.outputs.skip != 'true'
         run: |
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging || true
           docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-previous || true
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-previous || true
 
       - name: Deploy via SSH
+        if: steps.check.outputs.skip != 'true'
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.STAGING_HOST }}
@@ -111,7 +126,7 @@ jobs:
     name: Health Check
     runs-on: ubuntu-latest
     needs: deploy
-    if: always()
+    if: needs.deploy.result == 'success'
     steps:
       - name: Check /health endpoint
         run: |
@@ -132,7 +147,7 @@ jobs:
     name: Rollback
     runs-on: ubuntu-latest
     needs: [deploy, health-check]
-    if: failure() && needs.deploy.result == 'success'
+    if: failure() && needs.deploy.result == 'success' && needs.health-check.result == 'failure'
     environment:
       name: staging
     steps:

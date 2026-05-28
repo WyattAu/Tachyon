@@ -341,13 +341,13 @@ jobs:
           restore-keys: |
             mutation-${{ runner.os }}-cargo-
 
-      - name: Install cargo-mutant
+      - name: Install cargo-mutants
         run: |
-          cargo install cargo-mutant --force
+          cargo install cargo-mutants --locked
 
       - name: Run mutation tests
         working-directory: tachyon
-        run: cargo mutant --no-times --files crates/core/src/ crates/database/src/ crates/search/src/
+        run: cargo mutants --no-times --files crates/core/src/ crates/database/src/ crates/search/src/
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
