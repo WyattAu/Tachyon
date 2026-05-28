@@ -1147,7 +1147,7 @@ fn render_sidebar_item(
     let href = if item.href.starts_with("http") || item.href.starts_with('#') {
         item.href.clone()
     } else {
-        format!("{}{}", root_prefix, item.href)
+        format!("{}{}", root_prefix, item.href.trim_start_matches('/'))
     };
     let link = format!(
         r#"<li><a href="{}" class="block text-sm rounded px-2 py-1.5{}" style="{}">{}</a></li>"#,
