@@ -1022,8 +1022,7 @@ fn enum_to_string<T: Serialize + std::fmt::Debug>(value: &T) -> String {
 }
 
 async fn persist_audit_event(pool: &PgPool, event: &AuditEvent) -> Result<(), sqlx::Error> {
-    let metadata =
-        serde_json::to_value(&event.metadata).unwrap_or(serde_json::json!({}));
+    let metadata = serde_json::to_value(&event.metadata).unwrap_or(serde_json::json!({}));
 
     sqlx::query(
         r#"

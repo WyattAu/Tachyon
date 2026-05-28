@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -44,52 +45,42 @@ pub struct HighlightSpan {
     pub end_col: usize,
 }
 
-pub struct Highlighter {
-    heading_re: Regex,
-    bold_italic_re: Regex,
-    bold_re: Regex,
-    italic_re: Regex,
-    code_inline_re: Regex,
-    code_block_start_re: Regex,
-    code_block_end_re: Regex,
-    link_re: Regex,
-    wiki_link_re: Regex,
-    blockquote_re: Regex,
-    list_item_re: Regex,
-    horizontal_rule_re: Regex,
-    task_marker_re: Regex,
-    tag_re: Regex,
-    table_re: Regex,
-    strikethrough_re: Regex,
-    frontmatter_delimiter_re: Regex,
+macro_rules! static_re {
+    ($name:ident, $pattern:expr) => {
+        static $name: Lazy<Regex> = Lazy::new(|| Regex::new($pattern).unwrap());
+    };
 }
+
+static_re!(HEADING_RE, r"^(#{1,6})\s");
+static_re!(BOLD_ITALIC_RE, r"\*\*\*[^*]+\*\*\*|___[^_]+___");
+static_re!(BOLD_RE, r"\*\*[^*]+\*\*|__[^_]+__");
+static_re!(
+    ITALIC_RE,
+    r"(?:^|\s)\*[^*\n]+\*|\*[^*\n]+\*(?:\s|$)|^_[^_\n]+_|_[^_\n]+_$"
+);
+static_re!(CODE_INLINE_RE, r"`([^`]+)`");
+static_re!(CODE_BLOCK_START_RE, r"^(`{3,}).*");
+static_re!(CODE_BLOCK_END_RE, r"^(`{3,})\s*$");
+static_re!(LINK_RE, r"\[([^\]]+)\]\(([^)]+)\)");
+static_re!(WIKI_LINK_RE, r"\[\[([^\]]+)\]\]");
+static_re!(BLOCKQUOTE_RE, r"^(\s*>\s?)");
+static_re!(LIST_ITEM_RE, r"^(\s*[-*+])\s");
+static_re!(HORIZONTAL_RULE_RE, r"^(\s*([-*_])\s*){3,}\s*$");
+static_re!(TASK_MARKER_RE, r"^(\s*[-*+])\s\[[ xX]\]");
+static_re!(TAG_RE, r"(?:^|\s)#[a-zA-Z0-9_\-/]+");
+static_re!(TABLE_RE, r"^\|?[\s\-:|]+\|?$");
+static_re!(STRIKETHROUGH_RE, r"(~~)(.+?)~~");
+static_re!(FRONTMATTER_DELIMITER_RE, r"^---\s*$");
+
+pub struct Highlighter;
 
 impl Highlighter {
     pub fn new() -> Self {
-        Self {
-            heading_re: Regex::new(r"^(#{1,6})\s").unwrap(),
-            bold_italic_re: Regex::new(r"\*\*\*[^*]+\*\*\*|___[^_]+___").unwrap(),
-            bold_re: Regex::new(r"\*\*[^*]+\*\*|__[^_]+__").unwrap(),
-            italic_re: Regex::new(r"(?:^|\s)\*[^*\n]+\*|\*[^*\n]+\*(?:\s|$)|^_[^_\n]+_|_[^_\n]+_$")
-                .unwrap(),
-            code_inline_re: Regex::new(r"`([^`]+)`").unwrap(),
-            code_block_start_re: Regex::new(r"^(`{3,}).*").unwrap(),
-            code_block_end_re: Regex::new(r"^(`{3,})\s*$").unwrap(),
-            link_re: Regex::new(r"\[([^\]]+)\]\(([^)]+)\)").unwrap(),
-            wiki_link_re: Regex::new(r"\[\[([^\]]+)\]\]").unwrap(),
-            blockquote_re: Regex::new(r"^(\s*>\s?)").unwrap(),
-            list_item_re: Regex::new(r"^(\s*[-*+])\s").unwrap(),
-            horizontal_rule_re: Regex::new(r"^(\s*([-*_])\s*){3,}\s*$").unwrap(),
-            task_marker_re: Regex::new(r"^(\s*[-*+])\s\[[ xX]\]").unwrap(),
-            tag_re: Regex::new(r"(?:^|\s)#[a-zA-Z0-9_\-/]+").unwrap(),
-            table_re: Regex::new(r"^\|?[\s\-:|]+\|?$").unwrap(),
-            strikethrough_re: Regex::new(r"(~~)(.+?)~~").unwrap(),
-            frontmatter_delimiter_re: Regex::new(r"^---\s*$").unwrap(),
-        }
+        Self
     }
 
     pub fn highlight_line(&self, line: &str, in_code_block: &mut bool) -> Vec<HighlightSpan> {
-        if self.code_block_start_re.is_match(line) && !*in_code_block {
+        if CODE_BLOCK_START_RE.is_match(line) && !*in_code_block {
             *in_code_block = true;
             return vec![HighlightSpan {
                 token: HighlightToken::CodeBlock,
@@ -98,7 +89,7 @@ impl Highlighter {
             }];
         }
 
-        if self.code_block_end_re.is_match(line) && *in_code_block {
+        if CODE_BLOCK_END_RE.is_match(line) && *in_code_block {
             *in_code_block = false;
             return vec![HighlightSpan {
                 token: HighlightToken::CodeBlock,
@@ -115,7 +106,7 @@ impl Highlighter {
             }];
         }
 
-        if self.frontmatter_delimiter_re.is_match(line) {
+        if FRONTMATTER_DELIMITER_RE.is_match(line) {
             return vec![HighlightSpan {
                 token: HighlightToken::Frontmatter,
                 start_col: 0,
@@ -125,7 +116,7 @@ impl Highlighter {
 
         let mut spans: Vec<(usize, usize, HighlightToken)> = Vec::new();
 
-        if let Some(m) = self.heading_re.find(line) {
+        if let Some(m) = HEADING_RE.find(line) {
             let level = m.as_str().chars().take_while(|&c| c == '#').count();
             let token = match level {
                 1 => HighlightToken::Heading1,
@@ -138,17 +129,17 @@ impl Highlighter {
             spans.push((m.start(), m.end(), token));
         }
 
-        if let Some(m) = self.blockquote_re.find(line) {
+        if let Some(m) = BLOCKQUOTE_RE.find(line) {
             spans.push((m.start(), m.end(), HighlightToken::Blockquote));
         }
 
-        if let Some(m) = self.task_marker_re.find(line) {
+        if let Some(m) = TASK_MARKER_RE.find(line) {
             spans.push((m.start(), m.end(), HighlightToken::TaskMarker));
-        } else if let Some(m) = self.list_item_re.find(line) {
+        } else if let Some(m) = LIST_ITEM_RE.find(line) {
             spans.push((m.start(), m.end(), HighlightToken::ListMarker));
         }
 
-        if self.horizontal_rule_re.is_match(line) {
+        if HORIZONTAL_RULE_RE.is_match(line) {
             return vec![HighlightSpan {
                 token: HighlightToken::HorizontalRule,
                 start_col: 0,
@@ -156,7 +147,7 @@ impl Highlighter {
             }];
         }
 
-        if self.table_re.is_match(line) {
+        if TABLE_RE.is_match(line) {
             return vec![HighlightSpan {
                 token: HighlightToken::TableBorder,
                 start_col: 0,
@@ -164,13 +155,13 @@ impl Highlighter {
             }];
         }
 
-        for m in self.wiki_link_re.find_iter(line) {
+        for m in WIKI_LINK_RE.find_iter(line) {
             spans.push((m.start(), m.end(), HighlightToken::WikiLink));
         }
 
-        for m in self.link_re.find_iter(line) {
+        for m in LINK_RE.find_iter(line) {
             spans.push((m.start(), m.end(), HighlightToken::Link));
-            for caps in self.link_re.captures_iter(m.as_str()) {
+            for caps in LINK_RE.captures_iter(m.as_str()) {
                 if let Some(text_m) = caps.get(1) {
                     let abs_start = m.start() + text_m.start();
                     let abs_end = m.start() + text_m.end();
@@ -184,27 +175,27 @@ impl Highlighter {
             }
         }
 
-        for m in self.strikethrough_re.find_iter(line) {
+        for m in STRIKETHROUGH_RE.find_iter(line) {
             spans.push((m.start(), m.end(), HighlightToken::Strikethrough));
         }
 
-        for m in self.bold_italic_re.find_iter(line) {
+        for m in BOLD_ITALIC_RE.find_iter(line) {
             spans.push((m.start(), m.end(), HighlightToken::BoldItalic));
         }
 
-        for m in self.bold_re.find_iter(line) {
+        for m in BOLD_RE.find_iter(line) {
             spans.push((m.start(), m.end(), HighlightToken::Bold));
         }
 
-        for m in self.italic_re.find_iter(line) {
+        for m in ITALIC_RE.find_iter(line) {
             spans.push((m.start(), m.end(), HighlightToken::Italic));
         }
 
-        for m in self.code_inline_re.find_iter(line) {
+        for m in CODE_INLINE_RE.find_iter(line) {
             spans.push((m.start(), m.end(), HighlightToken::CodeInline));
         }
 
-        for m in self.tag_re.find_iter(line) {
+        for m in TAG_RE.find_iter(line) {
             spans.push((m.start(), m.end(), HighlightToken::Tag));
         }
 

@@ -121,8 +121,8 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         .trim_start_matches("https://")
         .trim_start_matches("http://");
     let pagefind_prefix = match pagefind_base.find('/') {
-        Some(_) => {
-            let path = &pagefind_base[pagefind_base.find('/').unwrap()..];
+        Some(idx) => {
+            let path = &pagefind_base[idx..];
             path.trim_end_matches('/').to_string()
         }
         None => String::new(),
