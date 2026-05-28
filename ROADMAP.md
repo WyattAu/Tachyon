@@ -135,22 +135,32 @@ Note: These are unit-level benchmarks (no network, no DB). API-level latency wil
 
 ## Phase 2: API and Performance Validation (Week 2-3)
 
-**Status:** Partially complete. No infrastructure dependency -- can finish remaining items in parallel with Phase 1.
+**Status:** Audited. Code-level items verified, infrastructure-dependent items remain.
 
 **Completed:**
 
 1. OpenAPI 3.1 spec published: Swagger UI at `GET /swagger-ui`, JSON at `GET /api/v1/openapi.json`
 2. k6 load tests: `api-smoke.js` (50 VUs, p95<500ms) and `api-stress.js` (1000 VUs, 80/20 read/write, p95<200ms)
 3. API latency benchmarks: 5 criterion groups (health, documents, listing, markdown, search) in `tachyon/crates/benchmarks/benches/api.rs`
+4. Cursor-based pagination: 3 endpoints use cursors (notifications/cursor, activity/cursor, documents/cursor)
+5. N+1 elimination: zero HIGH-severity N+1 patterns found; batch loaders and JOINs used correctly
+6. WebSocket heartbeat: connection limit enforced, cleanup timer runs every 60s, OT handler has explicit heartbeat timeout
+7. pgvector pipeline: migration exists, repository functions defined, AI providers support embedding generation
 
-**Remaining:**
+**Findings (documented, not yet fixed):**
 
-4. Execute benchmarks and validate against performance claims
-5. Cursor-based pagination: verify all high-volume list endpoints use cursors
-6. Redis rate limiting: test distributed rate limiting with real Redis
-7. Query optimization: run EXPLAIN ANALYZE on hot paths, verify N+1 elimination
-8. WebSocket reliability: presence heartbeat cleanup, reconnection stress test
-9. pgvector validation: verify semantic search embedding pipeline at scale
+- **13 endpoints** still use offset-based pagination (need migration to cursors)
+- **3 CRITICAL**: pgvector `update_embedding()` and `search_semantic()` are dead code -- never called
+- **1 HIGH**: pgvector dimension mismatch fixed (1536->768 for Ollama default)
+- **2 MEDIUM**: WebSocket CRDT handler missing app-level heartbeat timeout; OT handler `remove_client` didn't clean presence (fixed)
+- **1 MEDIUM**: WebSocket CRDT handler doesn't clean document state on empty room
+
+**Remaining (need infrastructure):**
+
+- Execute k6 tests against running server
+- Redis rate limiting: test distributed rate limiting with real Redis
+- pgvector: wire document CRUD to embedding generation, add semantic search endpoint
+- WebSocket: reconnection stress test at scale
 
 **Completion Criteria:**
 - API load test passes: P99 < 200ms at 1,000 concurrent users
@@ -162,17 +172,36 @@ Note: These are unit-level benchmarks (no network, no DB). API-level latency wil
 
 ## Phase 3: Security Hardening (Week 3-4)
 
-**Depends on:** Phase 2 (load testing may reveal new vulnerabilities)
+**Status:** Audited. High-severity code fixes applied, infrastructure items remain.
 
-**Actions:**
+**Completed:**
 
-1. External penetration test: OWASP ZAP baseline + manual review
-2. CSP tuning: production Content-Security-Policy for WASM + CDN
-3. JWT secret rotation: implement rotation without downtime
-4. Audit logging: verify all CRUD operations produce audit trail entries
-5. Container scanning: enforce Trivy zero CRITICAL/HIGH gate
-6. SBOM validation: verify CycloneDX completeness for all 17 crates
-7. Supply chain: review cargo-deny bans/advisories, update RUSTSEC overrides
+1. CSP: production-ready with WASM support, nonce-based inline scripts, separate dev/prod configs
+2. JWT secret rotation: fully implemented (multiple active secrets, key ID, usage tracker, CSV env var)
+3. Audit logging: framework exists, middleware captures requests, structured event types
+4. cargo-deny: synced RUSTSEC ignores, added to security CI workflow, tightened git source policy
+5. SBOM: CycloneDX + SPDX generation, pinned cargo-cyclonedx to v0.5.0
+6. Trivy: container scanning with CRITICAL/HIGH gate, SHA-pinned action
+7. Supply chain: `unknown-git = "deny"` in deny.toml
+
+**Code fixes applied:**
+
+- WebSocket OT handler: `remove_client` now cleans up presence tracking (was stale on normal disconnect)
+- Audit middleware: auth failures now logged instead of silently skipped
+- pgvector: dimension mismatch fixed (1536->768 for Ollama default)
+
+**Findings (documented, not yet fixed):**
+
+- **3 HIGH**: Audit logging in-memory only (lost on restart), auth middleware doesn't call AuditLogger, audit middleware skipped login/register paths (fixed)
+- **2 MEDIUM**: GraphQL/Swagger routes bypass audit middleware, RBAC authorization decisions not logged
+- **2 MEDIUM**: Trivy only scans root Dockerfile (not server/frontend variants), no .trivyignore
+- **1 MEDIUM**: SBOM not attached to releases (only SPDX from release.yml), no Docker image SBOM
+
+**Remaining (need infrastructure):**
+
+- Audit log persistence (database storage)
+- External penetration test (OWASP ZAP full scan)
+- WebSocket reconnection stress test at scale
 
 **Completion Criteria:**
 - Zero critical/high security findings
@@ -410,8 +439,8 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 | Phase | Duration | Dependencies | Status |
 |-------|----------|-------------|--------|
 | 1. Infrastructure | 2 weeks | Server provisioning | PENDING |
-| 2. API Validation | 2 weeks | None (code-only) | IN PROGRESS |
-| 3. Security | 2 weeks | Phase 2 | READY |
+| 2. API Validation | 2 weeks | None (code-only) | AUDITED |
+| 3. Security | 2 weeks | Phase 2 | AUDITED |
 | 4. Launch | 1 week | Phase 1, 3 | PENDING |
 | 5. GUI Redesign | 3 weeks | Phase 4 | COMPLETE |
 | 6. AI Integration | 2 weeks | Phase 4 | CODE COMPLETE |
