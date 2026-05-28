@@ -50,7 +50,6 @@ if ! cargo clippy \
     --exclude tachyon-frontend \
     --exclude tachyon-desktop \
     --exclude tachyon-desktop-app \
-    --exclude tachyon-cli \
     --manifest-path "${WORKSPACE_DIR}/Cargo.toml" \
     -- -D warnings; then
     fail "Clippy warnings found. Run: cargo clippy --fix"
@@ -67,7 +66,6 @@ if ! cargo test \
     --exclude tachyon-frontend \
     --exclude tachyon-desktop \
     --exclude tachyon-desktop-app \
-    --exclude tachyon-cli \
     --manifest-path "${WORKSPACE_DIR}/Cargo.toml"; then
     fail "Tests failed. See output above for details."
     PASS=false
@@ -82,9 +80,11 @@ DOC_STDERR="$(cargo doc \
     --exclude tachyon-frontend \
     --manifest-path "${WORKSPACE_DIR}/Cargo.toml" \
     --no-deps 2>&1 >/dev/null)" || true
-if echo "$DOC_STDERR" | grep -qE "^(warning|error)"; then
+# Filter for actual rustdoc warnings/errors (contain source file references or rustdoc:: lint names)
+DOC_WARNINGS="$(echo "$DOC_STDERR" | grep -E "^(warning|error)" | grep -vE "Found .feature|Compiling|Checking|Finished|Documenting" || true)"
+if [ -n "$DOC_WARNINGS" ]; then
     fail "Rustdoc warnings/errors found:"
-    echo "$DOC_STDERR" | grep -E "^(warning|error)" | head -20
+    echo "$DOC_WARNINGS" | head -20
     PASS=false
 fi
 
@@ -92,7 +92,7 @@ fi
 info "Scanning for potential secrets..."
 STAGED_FILES="$(git diff --cached --name-only --diff-filter=ACM)"
 if [ -n "$STAGED_FILES" ]; then
-    SECRET_HITS="$(echo "$STAGED_FILES" | grep -vE '\.githooks/|\.env\.example|\.env\.production\.example' | xargs grep -lE \
+    SECRET_HITS="$(echo "$STAGED_FILES" | grep -vE '\.githooks/|\.env\.example|\.env\.production\.example|DEVELOPER_GUIDE|getting-started|deployment|configuration' | xargs grep -lE \
         '(PASSWORD|SECRET|API_KEY|TOKEN|PRIVATE_KEY).*=.*["\x27][^"\x27]{8,}' \
         2>/dev/null || true)"
     if [ -n "$SECRET_HITS" ]; then

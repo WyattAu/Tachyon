@@ -74,7 +74,7 @@ pub struct SiteConfig {
     #[serde(default = "default_true")]
     pub syntax_highlighting_enabled: bool,
     /// Code syntax highlighting theme (e.g., "github-dark", "monokai", "dracula", "one-dark-pro")
-    /// See: https://highlightjs.org/static/demo/
+    /// See: <https://highlightjs.org/static/demo/>
     #[serde(default = "default_code_theme")]
     pub code_theme: String,
     /// Generate robots.txt in output

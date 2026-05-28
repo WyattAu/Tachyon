@@ -314,11 +314,10 @@ fn main() {
 
         Commands::Plugin { subcommand } => match subcommand {
             PluginCommands::New { name } => {
-                tachyon_cli::plugin_commands::new_plugin(&name).map_err(|e| CliError::generic(e))
+                tachyon_cli::plugin_commands::new_plugin(&name).map_err(CliError::generic)
             }
             PluginCommands::Build { release } => {
-                tachyon_cli::plugin_commands::build_plugin(release)
-                    .map_err(|e| CliError::generic(e))
+                tachyon_cli::plugin_commands::build_plugin(release).map_err(CliError::generic)
             }
         },
     };

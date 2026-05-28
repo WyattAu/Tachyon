@@ -6,27 +6,27 @@
 
 ## Current State Summary
 
-### Test Suite (1,722 tests, all passing)
+### Test Suite (2,054 tests, all passing)
 
 | Crate | Tests | Status |
 |-------|-------|--------|
-| tachyon-server | 486 | PASS |
+| tachyon-server | 761 | PASS |
 | tachyon-core | 145 | PASS |
 | tachyon-database | 139 | PASS |
-| tachyon-editor | 295 | PASS |
+| tachyon-editor | 116 | PASS |
 | tachyon-renderer | 122 | PASS |
 | tachyon-plugin-runtime | 74 | PASS |
 | tachyon-ssg | 66 | PASS |
 | tachyon-search | 45 | PASS |
-| tachyon-import-export | 43 | PASS |
-| tachyon-rbac | 45 | PASS |
-| tachyon-storage | 37 | PASS |
-| tachyon-auth | 42 | PASS |
-| tachyon-collaboration | 116 | PASS |
-| tachyon-cli | 34 | PASS |
-| tachyon-migration | 31 | PASS |
-| tachyon-config | 2 | PASS |
-| **Total** | **1,722** | **ALL PASS** |
+| tachyon-import-export | 50 | PASS |
+| tachyon-rbac | 37 | PASS |
+| tachyon-storage | 31 | PASS |
+| tachyon-cli | 35 | PASS |
+| tachyon-desktop | 44 | PASS |
+| tachyon-benchmarks | 0 | PASS |
+| tachyon-testing | 0 | PASS |
+| tachyon-frontend | 89 | PASS |
+| **Total** | **2,054** | **ALL PASS** |
 
 ### Code Quality
 

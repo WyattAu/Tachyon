@@ -23,7 +23,7 @@ Tachyon is a knowledge management system built with Rust. It provides a collabor
 **Tech stack:**
 
 - **Frontend:** Leptos 0.8 (WASM, CSR mode), Tailwind CSS, gloo-net (HTTP/WebSocket)
-- **Backend:** Axum 0.7, SQLx (PostgreSQL), Redis, Tantivy (search)
+- **Backend:** Axum 0.8, SQLx (PostgreSQL), Redis (optional), Tantivy (search)
 - **Build:** Trunk (WASM), Cargo (workspace)
 - **Desktop (optional):** Tauri 2.0 beta
 - **Testing:** cargo test, Playwright (E2E), testcontainers
@@ -42,16 +42,22 @@ Tachyon is a Cargo workspace with the following crates:
 | `tachyon-frontend` | `crates/frontend` | Leptos 0.8 WASM frontend (CSR) |
 | `tachyon-rbac` | `crates/rbac` | Role-based access control engine |
 | `tachyon-search` | `crates/search` | Tantivy full-text search with faceted filtering |
-| `tachyon-renderer` | `crates/renderer` | Markdown/HTML rendering pipeline |
-| `tachyon-cli` | `crates/cli` | CLI tool for administrative tasks |
+| `tachyon-renderer` | `crates/renderer` | Markdown/HTML rendering pipeline (KaTeX, syntax highlight, tree-sitter) |
+| `tachyon-editor` | `crates/editor` | Ropey + Yrs CRDT text editor engine |
+| `tachyon-storage` | `crates/storage` | Pluggable storage backends (SQLite, in-memory) |
+| `tachyon-import-export` | `crates/import-export` | Import/export (Docusaurus, Obsidian, Markdown, JSON, HTML) |
+| `tachyon-ssg` | `crates/ssg` | Static site generator (multi-language, RSS, sitemap) |
+| `tachyon-plugin-runtime` | `crates/plugin-runtime` | WASI sandboxed plugin execution via Wasmtime |
+| `tachyon-cli` | `crates/cli` | CLI tool for init, serve, build, gui commands |
 | `tachyon-desktop` | `crates/desktop` | Tauri desktop application wrapper |
-| `tachyon-testing` | `crates/testing` | Shared test utilities, fixtures, mocks |
+| `tachyon-benchmarks` | `crates/benchmarks` | Criterion benchmark suite |
+| `tachyon-testing` | `crates/testing` | Shared test utilities, fixtures, fuzzing harnesses |
 
 **Frontend module layout** (`crates/frontend/src/`):
 
 ```
 lib.rs          -- App entry point, Router, theme management
-api.rs          -- ApiClient (gloo-net HTTP), all REST endpoints
+api/            -- ApiClient (gloo-net HTTP), all REST endpoints
 websocket.rs    -- WebSocketClient for real-time collaboration
 types.rs        -- Shared types mirroring backend API responses
 components/     -- Reusable UI components
@@ -75,12 +81,11 @@ Browser (WASM) --WebSocket--> Axum Server
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| Rust | nightly (1.75+) | `rustup default nightly` |
-| Trunk | latest | `cargo install trunk` |
-| wasm-pack | latest | `cargo install wasm-pack` |
+| Rust | stable 1.85+ | Edition 2024; `rustup default stable` |
+| Trunk | 0.21.14 | `cargo install trunk --version 0.21.14` |
 | PostgreSQL | 16+ | Local or via Docker |
-| Redis | 7+ | Local or via Docker |
-| Node.js | 18+ | Required for Playwright E2E tests |
+| Redis | 7+ (optional) | Local or via Docker; not required for core functionality |
+| Node.js | 20+ | Required for Playwright E2E tests |
 | Playwright | latest | `npx playwright install` (after adding E2E) |
 
 ---
@@ -310,7 +315,7 @@ Effect::new(move || {
 
 ## API Client Usage
 
-The `ApiClient` (in `crates/frontend/src/api.rs`) wraps all HTTP communication with the backend using `gloo-net`.
+The `ApiClient` (in `crates/frontend/src/api/`) wraps all HTTP communication with the backend using `gloo-net`.
 
 ### Creating a client
 
@@ -511,9 +516,9 @@ docker compose up --build
 ```
 
 - Frontend: `http://localhost:8080`
-- Backend API: `http://localhost:3000/api/v1`
+- Backend API: `http://localhost:8080/api/v1`
 - PostgreSQL: `localhost:5432` (user/pass/db: `tachyon`)
-- Redis: `localhost:6379`
+- Redis: `localhost:6379` (optional)
 
 ### Production (`docker-compose.prod.yml`)
 
