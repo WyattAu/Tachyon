@@ -60,7 +60,7 @@ jobs:
             -p 8080:8080 \
             -e DATABASE_URL=postgres://tachyon:tachyon@172.17.0.1:5432/tachyon \
             -e JWT_SECRET=zap-scan-test-secret-change-me \
-            -e TACHYON_JWT_SECRETS=zap-scan-test-secret-change-me \
+            -e TACHYON_JWT_SECRETS=zap-scan-test-secret-key-at-least-32ch \
             -e TACHYON_JWT_ISSUER=tachyon \
             -e TACHYON_JWT_AUDIENCE=tachyon-api \
             -e TACHYON_RATE_LIMIT_ENABLED=false \

@@ -61,7 +61,7 @@ jobs:
           node-version: '20'
 
       - name: Run Pagefind (generate search index)
-        run: npx -y pagefind --site ./site --output-subdir ./site
+        run: npx -y pagefind --site ./site --output-subdir pagefind
 
       - name: Setup Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5

@@ -544,6 +544,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
       if (dd) dd.classList.add('hidden');
     }}
   }});
+  }})();
 
   // Search overlay (Ctrl+K / Cmd+K)
   (function() {{

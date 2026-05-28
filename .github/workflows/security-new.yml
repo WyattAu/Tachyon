@@ -57,7 +57,9 @@ jobs:
 
       - name: Run cargo-deny
         working-directory: tachyon
-        run: cargo deny check
+        run: |
+          command -v cargo-deny || cargo install cargo-deny --locked
+          cargo deny check
 
   dependency-review:
     name: Dependency Review

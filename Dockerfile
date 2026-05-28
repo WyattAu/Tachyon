@@ -55,5 +55,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 ENV RUST_LOG=info
 ENV DATABASE_URL=postgres://tachyon:tachyon@db:5432/tachyon
-ENV JWT_SECRET=change-me-in-production
+ENV TACHYON_JWT_SECRET=override-this-jwt-secret-before-production
 ENTRYPOINT ["/app/tachyon-server"]
