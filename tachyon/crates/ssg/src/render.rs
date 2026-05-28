@@ -1,5 +1,72 @@
 use crate::error::SsgResult;
 use crate::manifest::{SiteConfig, SsgDocument};
+use std::sync::LazyLock;
+
+static TOC_HEADING_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r#"<h([1-6])[^>]*id="([^"]*)"[^>]*>(.*?)</h[1-6]>"#).unwrap()
+});
+
+static HTML_STRIP_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"<[^>]+>").unwrap());
+
+static HEADING_ID_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"<(h[23])(\s[^>]*)?>([\s\S]*?)</h[23]>"#).unwrap());
+
+static INLINE_TOC_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"<h([23])[^>]*id="([^"]*)"[^>]*>(.*?)</h[23]>"#).unwrap());
+
+static CODE_BLOCK_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r#"<pre([^>]*)>\s*<code([^>]*)>([\s\S]*?)</code>\s*</pre>"#).unwrap()
+});
+
+static CODE_TITLE_WRAPPER_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(
+        r#"(<div class="code-block-wrapper">)<pre([^>]*)><code([^>]*)>([\s\S]*?)</code></pre>"#,
+    )
+    .unwrap()
+});
+
+static CODE_TITLE_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"^([\s]*)(?://|#|--|;)\s*title=(.+?)\s*$"#).unwrap());
+
+static IMG_TAG_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"<img([^>]*)>"#).unwrap());
+
+static CONTENT_TAB_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r#"<!--\s*tab:(.+?)\s*-->([\s\S]*?)<!--\s*/tab\s*-->"#).unwrap()
+});
+
+static MERMAID_BLOCK_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"```mermaid\s*\n([\s\S]*?)```"#).unwrap());
+
+static ADMONITION_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"^>\s*\[!([\w-]+)\]\s*(.*)$"#).unwrap());
+
+static CODE_GROUP_WRAPPER_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(
+        r#"<div class="code-block-wrapper"><pre[^>]*><code class="language-([^"]*)"[^>]*>([\s\S]*?)</code></pre><button[^>]*>Copy</button></div>"#,
+    )
+    .unwrap()
+});
+
+static CODE_GROUP_BARE_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r#"<pre[^>]*><code class="language-([^"]*)"[^>]*>([\s\S]*?)</code></pre>"#)
+        .unwrap()
+});
+
+static MERMAID_CODE_BLOCK_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(
+        r#"<pre[^>]*>\s*<code[^>]*class="language-mermaid"[^>]*>([\s\S]*?)</code>\s*</pre>"#,
+    )
+    .unwrap()
+});
+
+static ADMONITION_BLOCKQUOTE_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(
+        r#"(?si)<blockquote>\s*<p>\s*\[!(NOTE|WARNING|TIP|DANGER|INFO|SUCCESS)([^\]]*)\]\s*</p>\s*(.*?)</blockquote>"#,
+    )
+    .unwrap()
+});
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TocEntry {
@@ -9,8 +76,8 @@ pub struct TocEntry {
 }
 
 pub fn extract_toc(html: &str) -> Vec<TocEntry> {
-    let re = regex::Regex::new(r#"<h([1-6])[^>]*id="([^"]*)"[^>]*>(.*?)</h[1-6]>"#).unwrap();
-    re.captures_iter(html)
+    TOC_HEADING_REGEX
+        .captures_iter(html)
         .map(|cap| TocEntry {
             level: cap[1].parse().unwrap_or(2),
             id: cap[2].to_string(),
@@ -20,41 +87,40 @@ pub fn extract_toc(html: &str) -> Vec<TocEntry> {
 }
 
 fn strip_html_tags(html: &str) -> String {
-    let re = regex::Regex::new(r"<[^>]+>").unwrap();
-    re.replace_all(html, "").to_string()
+    HTML_STRIP_REGEX.replace_all(html, "").to_string()
 }
 
 pub(crate) fn add_heading_ids(html: &str) -> String {
-    let re = regex::Regex::new(r#"<(h[23])(\s[^>]*)?>([\s\S]*?)</h[23]>"#).unwrap();
     let mut id_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
 
-    re.replace_all(html, |caps: &regex::Captures| {
-        let tag = &caps[1];
-        let attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
-        let content = &caps[3];
+    HEADING_ID_REGEX
+        .replace_all(html, |caps: &regex::Captures| {
+            let tag = &caps[1];
+            let attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+            let content = &caps[3];
 
-        if attrs.contains(r#"id=""#) {
-            return caps[0].to_string();
-        }
+            if attrs.contains(r#"id=""#) {
+                return caps[0].to_string();
+            }
 
-        let text = strip_html_tags(content);
-        let base_id = crate::slug::slugify(&text);
-        let count = id_counts.entry(base_id.clone()).or_insert(0);
-        *count += 1;
-        let id = if *count == 1 {
-            base_id
-        } else {
-            format!("{}-{}", base_id, count)
-        };
+            let text = strip_html_tags(content);
+            let base_id = crate::slug::slugify(&text);
+            let count = id_counts.entry(base_id.clone()).or_insert(0);
+            *count += 1;
+            let id = if *count == 1 {
+                base_id
+            } else {
+                format!("{}-{}", base_id, count)
+            };
 
-        format!(r#"<{} id="{}"{}>{}</{}>"#, tag, id, attrs, content, tag)
-    })
-    .to_string()
+            format!(r#"<{} id="{}"{}>{}</{}>"#, tag, id, attrs, content, tag)
+        })
+        .to_string()
 }
 
 pub(crate) fn extract_inline_toc(html: &str) -> Vec<TocEntry> {
-    let re = regex::Regex::new(r#"<h([23])[^>]*id="([^"]*)"[^>]*>(.*?)</h[23]>"#).unwrap();
-    re.captures_iter(html)
+    INLINE_TOC_REGEX
+        .captures_iter(html)
         .map(|cap| TocEntry {
             level: cap[1].parse().unwrap_or(2),
             id: cap[2].to_string(),
@@ -92,10 +158,7 @@ fn escape_for_html(s: &str) -> String {
 }
 
 pub(crate) fn add_copy_buttons(html: &str) -> String {
-    let re =
-        regex::Regex::new(r#"<pre([^>]*)>\s*<code([^>]*)>([\s\S]*?)</code>\s*</pre>"#).unwrap();
-
-    re.replace_all(html, |caps: &regex::Captures| {
+    CODE_BLOCK_REGEX.replace_all(html, |caps: &regex::Captures| {
         let pre_attrs = caps.get(1).map(|m| m.as_str()).unwrap_or("");
         let code_attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
         let code_content = &caps[3];
@@ -109,53 +172,46 @@ pub(crate) fn add_copy_buttons(html: &str) -> String {
 }
 
 pub(crate) fn extract_code_titles(html: &str) -> String {
-    let re = regex::Regex::new(
-        r#"(<div class="code-block-wrapper">)<pre([^>]*)><code([^>]*)>([\s\S]*?)</code></pre>"#,
-    )
-    .unwrap();
+    CODE_TITLE_WRAPPER_REGEX
+        .replace_all(html, |caps: &regex::Captures| {
+            let wrapper = &caps[1];
+            let pre_attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+            let code_attrs = caps.get(3).map(|m| m.as_str()).unwrap_or("");
+            let code = caps.get(4).map(|m| m.as_str()).unwrap_or("");
 
-    re.replace_all(html, |caps: &regex::Captures| {
-        let wrapper = &caps[1];
-        let pre_attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
-        let code_attrs = caps.get(3).map(|m| m.as_str()).unwrap_or("");
-        let code = caps.get(4).map(|m| m.as_str()).unwrap_or("");
-
-        let title_re = regex::Regex::new(r#"^([\s]*)(?://|#|--|;)\s*title=(.+?)\s*$"#).unwrap();
-        if let Some(tc) = title_re.captures(code) {
-            let title = tc[2].trim();
-            let remaining_code = &code[tc[0].len()..];
-            format!(
-                r#"<div class="code-title">{}</div>{}<pre{}><code{}>{}</code></pre>"#,
-                escape_for_html(title),
-                wrapper,
-                pre_attrs,
-                code_attrs,
-                remaining_code
-            )
-        } else {
-            caps[0].to_string()
-        }
-    })
-    .to_string()
+            if let Some(tc) = CODE_TITLE_REGEX.captures(code) {
+                let title = tc[2].trim();
+                let remaining_code = &code[tc[0].len()..];
+                format!(
+                    r#"<div class="code-title">{}</div>{}<pre{}><code{}>{}</code></pre>"#,
+                    escape_for_html(title),
+                    wrapper,
+                    pre_attrs,
+                    code_attrs,
+                    remaining_code
+                )
+            } else {
+                caps[0].to_string()
+            }
+        })
+        .to_string()
 }
 
 pub(crate) fn enhance_images(html: &str) -> String {
-    let re = regex::Regex::new(r#"<img([^>]*)>"#).unwrap();
-    re.replace_all(html, |caps: &regex::Captures| {
-        let attrs = caps.get(1).map(|m| m.as_str()).unwrap_or("");
-        if attrs.contains("loading=") {
-            return caps[0].to_string();
-        }
-        format!("<img loading=\"lazy\"{}>", attrs)
-    })
-    .to_string()
+    IMG_TAG_REGEX
+        .replace_all(html, |caps: &regex::Captures| {
+            let attrs = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+            if attrs.contains("loading=") {
+                return caps[0].to_string();
+            }
+            format!("<img loading=\"lazy\"{}>", attrs)
+        })
+        .to_string()
 }
 
 pub(crate) fn process_content_tabs(html: &str) -> String {
-    let tab_re = regex::Regex::new(r#"<!--\s*tab:(.+?)\s*-->([\s\S]*?)<!--\s*/tab\s*-->"#).unwrap();
-
     let mut groups: Vec<(String, String, usize, usize)> = Vec::new();
-    for cap in tab_re.captures_iter(html) {
+    for cap in CONTENT_TAB_REGEX.captures_iter(html) {
         let name = cap[1].trim().to_string();
         let content = cap[2].trim().to_string();
         let start = cap.get(0).unwrap().start();
@@ -237,6 +293,7 @@ pub(crate) struct PageContext<'a> {
     pub(crate) json_ld: String,
     pub(crate) hreflang_tags: String,
     pub(crate) og_image: Option<&'a str>,
+    pub(crate) sidebar_auto_items: &'a [(String, String)],
 }
 
 pub(crate) struct IndexContext<'a> {
@@ -263,11 +320,15 @@ pub(crate) struct DocCard {
 }
 
 impl crate::build::SiteGenerator {
-    pub(crate) fn sidebar_ordered_slugs(&self) -> Vec<String> {
+    pub(crate) fn sidebar_ordered_slugs(&self, all_docs: &[&SsgDocument]) -> Vec<String> {
         let mut slugs = Vec::new();
         fn collect(items: &[crate::manifest::SidebarItem], slugs: &mut Vec<String>) {
             for item in items {
-                let slug = item.href.trim_end_matches(".html").to_string();
+                let slug = item
+                    .href
+                    .trim_start_matches('/')
+                    .trim_end_matches(".html")
+                    .to_string();
                 if !slug.is_empty() && slug != "#" {
                     slugs.push(slug);
                 }
@@ -275,6 +336,14 @@ impl crate::build::SiteGenerator {
             }
         }
         collect(&self.config.menu_items, &mut slugs);
+        // Auto-generate sidebar from documents when menu_items is empty
+        if slugs.is_empty() {
+            slugs = all_docs
+                .iter()
+                .map(|d| d.slug.clone())
+                .filter(|s| !s.is_empty())
+                .collect();
+        }
         slugs
     }
 
@@ -332,7 +401,21 @@ impl crate::build::SiteGenerator {
                 .collect()
         };
 
-        let sidebar_slugs = self.sidebar_ordered_slugs();
+        let sidebar_slugs = self.sidebar_ordered_slugs(all_docs);
+        // Build auto sidebar items (slug, title) when menu_items is empty
+        let sidebar_auto_items: Vec<(String, String)> = if self.config.menu_items.is_empty() {
+            sidebar_slugs
+                .iter()
+                .filter_map(|slug| {
+                    all_docs
+                        .iter()
+                        .find(|d| d.slug == *slug)
+                        .map(|d| (d.slug.clone(), d.title.clone()))
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
         let sidebar_idx = sidebar_slugs.iter().position(|s| *s == doc.slug);
         let prev_link = sidebar_idx.and_then(|idx| {
             if idx > 0 {
@@ -397,6 +480,7 @@ impl crate::build::SiteGenerator {
             json_ld,
             hreflang_tags,
             og_image: self.config.og_image.as_deref(),
+            sidebar_auto_items: &sidebar_auto_items,
         };
 
         Ok(crate::templates::render_doc_page(&ctx))
@@ -572,16 +656,6 @@ fn html_escape_content(s: &str) -> String {
 }
 
 pub fn process_code_groups(html: &str) -> String {
-    let wrapper_re = regex::Regex::new(
-        r#"<div class="code-block-wrapper"><pre[^>]*><code class="language-([^"]*)"[^>]*>([\s\S]*?)</code></pre><button[^>]*>Copy</button></div>"#,
-    )
-    .unwrap();
-
-    let bare_re = regex::Regex::new(
-        r#"<pre[^>]*><code class="language-([^"]*)"[^>]*>([\s\S]*?)</code></pre>"#,
-    )
-    .unwrap();
-
     struct CodeBlock {
         lang: String,
         code: String,
@@ -591,7 +665,7 @@ pub fn process_code_groups(html: &str) -> String {
 
     let mut all_blocks: Vec<CodeBlock> = Vec::new();
 
-    for cap in wrapper_re.captures_iter(html) {
+    for cap in CODE_GROUP_WRAPPER_REGEX.captures_iter(html) {
         let m = cap.get(0).unwrap();
         all_blocks.push(CodeBlock {
             lang: cap[1].to_string(),
@@ -601,7 +675,7 @@ pub fn process_code_groups(html: &str) -> String {
         });
     }
 
-    for cap in bare_re.captures_iter(html) {
+    for cap in CODE_GROUP_BARE_REGEX.captures_iter(html) {
         let m = cap.get(0).unwrap();
         let overlaps = all_blocks
             .iter()
@@ -838,50 +912,42 @@ pub(crate) fn replace_mermaid_placeholders(html: &str, blocks: &[String]) -> Str
 }
 
 pub(crate) fn process_mermaid_blocks(html: &str) -> String {
-    let re = regex::Regex::new(
-        r#"<pre[^>]*>\s*<code[^>]*class="language-mermaid"[^>]*>([\s\S]*?)</code>\s*</pre>"#,
-    )
-    .unwrap();
-
-    re.replace_all(html, |caps: &regex::Captures| {
-        let content = &caps[1];
-        let unescaped = content
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&amp;", "&")
-            .replace("&quot;", "\"")
-            .replace("&#39;", "'");
-        format!(r#"<div class="mermaid">{}</div>"#, unescaped.trim())
-    })
-    .to_string()
+    MERMAID_CODE_BLOCK_REGEX
+        .replace_all(html, |caps: &regex::Captures| {
+            let content = &caps[1];
+            let unescaped = content
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&amp;", "&")
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'");
+            format!(r#"<div class="mermaid">{}</div>"#, unescaped.trim())
+        })
+        .to_string()
 }
 
 pub(crate) fn render_admonitions(html: &str) -> String {
-    let re = regex::Regex::new(
-        r#"(?si)<blockquote>\s*<p>\s*\[!(NOTE|WARNING|TIP|DANGER|INFO|SUCCESS)([^\]]*)\]\s*</p>\s*(.*?)</blockquote>"#,
-    )
-    .unwrap();
-
-    re.replace_all(html, |caps: &regex::Captures| {
-        let admonition_type = &caps[1];
-        let custom_title = caps[2].trim();
-        let title = if custom_title.is_empty() {
-            capitalize_first(admonition_type)
-        } else {
-            custom_title.to_string()
-        };
-        let content = caps[3].trim();
-        format!(
-            r#"<div class="admonition admonition-{type}">
+    ADMONITION_BLOCKQUOTE_REGEX
+        .replace_all(html, |caps: &regex::Captures| {
+            let admonition_type = &caps[1];
+            let custom_title = caps[2].trim();
+            let title = if custom_title.is_empty() {
+                capitalize_first(admonition_type)
+            } else {
+                custom_title.to_string()
+            };
+            let content = caps[3].trim();
+            format!(
+                r#"<div class="admonition admonition-{type}">
 <p class="admonition-title">{title}</p>
 {content}
 </div>"#,
-            type = admonition_type.to_lowercase(),
-            title = escape_for_html(&title),
-            content = content,
-        )
-    })
-    .to_string()
+                type = admonition_type.to_lowercase(),
+                title = escape_for_html(&title),
+                content = content,
+            )
+        })
+        .to_string()
 }
 
 fn capitalize_first(s: &str) -> String {

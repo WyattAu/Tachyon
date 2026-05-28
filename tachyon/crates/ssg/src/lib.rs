@@ -388,14 +388,17 @@ mod tests {
             SidebarItem {
                 label: "Getting Started".to_string(),
                 href: "getting-started.html".to_string(),
+                weight: None,
                 children: vec![],
             },
             SidebarItem {
                 label: "Guides".to_string(),
                 href: "#".to_string(),
+                weight: None,
                 children: vec![SidebarItem {
                     label: "Configuration".to_string(),
                     href: "configuration.html".to_string(),
+                    weight: None,
                     children: vec![],
                 }],
             },

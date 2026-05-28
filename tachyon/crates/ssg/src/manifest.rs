@@ -61,7 +61,11 @@ pub struct SiteConfig {
     /// Custom color theme
     #[serde(default)]
     pub color_theme: Option<ColorTheme>,
-    /// Sidebar menu items (used to generate collapsible sidebar navigation)
+    /// Optional `[menu]` section in site.toml (supports `[[menu.main]]` entries)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub menu: Option<MenuConfig>,
+    /// Sidebar menu items (used to generate collapsible sidebar navigation).
+    /// Populated from `[[menu_items]]` or `[[menu.main]]` in site.toml.
     #[serde(default)]
     pub menu_items: Vec<SidebarItem>,
     /// Enable Pagefind client-side search integration
@@ -87,6 +91,24 @@ pub struct SiteConfig {
     pub image_optimization_enabled: bool,
 }
 
+impl SiteConfig {
+    /// Merge `[menu]` section into `menu_items` if `menu_items` is empty.
+    ///
+    /// This allows site.toml to use either `[[menu_items]]` directly or the
+    /// more structured `[[menu.main]]` syntax. When both are present,
+    /// `menu_items` takes priority.
+    pub fn resolve_menu(&mut self) {
+        if self.menu_items.is_empty() {
+            if let Some(ref menu) = self.menu {
+                let mut items = menu.main.clone();
+                // Sort by weight (ascending), stable sort preserves TOML order for ties
+                items.sort_by_key(|i| i.weight.unwrap_or(0));
+                self.menu_items = items;
+            }
+        }
+    }
+}
+
 impl Default for SiteConfig {
     fn default() -> Self {
         Self {
@@ -106,6 +128,7 @@ impl Default for SiteConfig {
             language: "en".to_string(),
             translations: vec![],
             color_theme: None,
+            menu: None,
             menu_items: vec![],
             pagefind_enabled: true,
             mermaid_enabled: true,
@@ -128,10 +151,23 @@ pub struct NavLink {
 /// A sidebar menu item, supporting one level of nesting.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SidebarItem {
+    #[serde(alias = "name")]
     pub label: String,
+    #[serde(alias = "url")]
     pub href: String,
+    /// Sort weight (lower = earlier; only used during deserialization)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weight: Option<i32>,
     #[serde(default)]
     pub children: Vec<SidebarItem>,
+}
+
+/// Optional `[menu]` section in `site.toml` for structured navigation.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MenuConfig {
+    /// Primary sidebar entries (`[[menu.main]]` in TOML)
+    #[serde(default)]
+    pub main: Vec<SidebarItem>,
 }
 
 /// Configuration for a translated version of the site.

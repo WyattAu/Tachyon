@@ -107,7 +107,12 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     let breadcrumbs_html = render_breadcrumbs(ctx.breadcrumbs);
     let toc_html = render_toc_sidebar(ctx.toc);
     let prev_next_html = render_prev_next(ctx.prev_link, ctx.next_link);
-    let sidebar_html = render_sidebar(&ctx.site.menu_items, ctx.current_slug, ctx.root_prefix);
+    let sidebar_html = render_sidebar(
+        &ctx.site.menu_items,
+        ctx.current_slug,
+        ctx.root_prefix,
+        ctx.sidebar_auto_items,
+    );
 
     let pagefind_base = ctx
         .site
@@ -209,7 +214,6 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
 {theme_vars}
     body {{ font-family: var(--tachyon-font-body); }}
     h1, h2, h3, h4, h5, h6 {{ font-family: var(--tachyon-font-heading); }}
-    {{ prosemirror-styles }}
     .doc-content {{ max-width: 48rem; margin: 0 auto; padding: 2rem 1rem; }}
     .doc-content h1 {{ font-size: 2.25rem; font-weight: 700; margin-bottom: 1rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; color: #111827; }}
     .doc-content h2 {{ font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem; color: #1f2937; }}
@@ -337,6 +341,35 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     .breadcrumbs-item + .breadcrumbs-item::before {{ content: "/"; color: #9ca3af; margin-right: 0.25rem; }}
     .mermaid {{ margin: 1rem 0; text-align: center; }}
     .dark .breadcrumbs-item + .breadcrumbs-item::before {{ color: #4b5563; }}
+    /* Explicit light theme overrides (when user toggles to light mode) */
+    .light {{ background: #ffffff; color: #111827; }}
+    .light .doc-content h1 {{ color: #111827; border-color: #e5e7eb; }}
+    .light .doc-content h2 {{ color: #1f2937; }}
+    .light .doc-content h3 {{ color: #374151; }}
+    .light .doc-content p, .light .doc-content li {{ color: #4b5563; }}
+    .light .doc-content code {{ background: #f3f4f6; color: #dc2626; }}
+    .light .doc-content blockquote {{ border-color: #2563eb; color: #6b7280; }}
+    .light .doc-content a {{ color: #2563eb; }}
+    .light .doc-content th {{ background: #f9fafb; }}
+    .light .doc-content th, .light .doc-content td {{ border-color: #e5e7eb; }}
+    .light .admonition-note {{ background: #eff6ff; }}
+    .light .admonition-warning {{ background: #fffbeb; }}
+    .light .admonition-tip {{ background: #ecfdf5; }}
+    .light .admonition-danger {{ background: #fef2f2; }}
+    .light .admonition-info {{ background: #ecfeff; }}
+    .light .admonition-success {{ background: #f0fdf4; }}
+    .light nav.toc {{ background: #f9fafb; border-color: #e5e7eb; }}
+    .light nav.toc li a {{ color: #4b5563; }}
+    .light nav.toc li a.toc-active {{ color: #2563eb; border-left-color: #2563eb; }}
+    .light .code-title {{ background: #f3f4f6; color: #374151; border-color: #e5e7eb; }}
+    .light .content-tabs {{ background: #f3f4f6; border-color: #e5e7eb; }}
+    .light .content-tab {{ color: #4b5563; border-color: #e5e7eb; background: #f3f4f6; }}
+    .light .content-tab.active {{ color: #2563eb; border-color: #2563eb; background: #fff; }}
+    .light .content-tab-panel {{ border-color: #e5e7eb; }}
+    .light .code-group .tab {{ background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }}
+    .light .code-group .tab.active {{ background: #fff; color: #2563eb; border-color: #2563eb; }}
+    .light .code-group .tab-content {{ border-color: #e5e7eb; }}
+    .light .breadcrumbs-item + .breadcrumbs-item::before {{ color: #9ca3af; }}
     /* Mobile sidebar overlay panel */
     @media (max-width: 767px) {{
       .sidebar-open {{
@@ -387,10 +420,26 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     @media (max-width: 1023px) {{
       .toc-close {{ display: block; }}
     }}
+    /* Theme dropdown */
+    #tachyon-theme-dropdown button.tachyon-theme-mode-active {{ font-weight: 600; background: #eff6ff; }}
+    .dark #tachyon-theme-dropdown button.tachyon-theme-mode-active {{ background: #1e3a5f; }}
+    #tachyon-theme-dropdown button.tachyon-theme-color-active {{ font-weight: 600; background: #f0f9ff; }}
+    .dark #tachyon-theme-dropdown button.tachyon-theme-color-active {{ background: #1e293b; }}
+    /* Color theme presets */
+    [data-active-color="ocean"] {{ --tachyon-primary: #0ea5e9; --tachyon-secondary: #0284c7; --tachyon-accent: #06b6d4; }}
+    [data-active-color="ocean"] .dark, .dark[data-active-color="ocean"] {{ --tachyon-primary: #38bdf8; --tachyon-secondary: #0ea5e9; --tachyon-accent: #22d3ee; }}
+    [data-active-color="forest"] {{ --tachyon-primary: #059669; --tachyon-secondary: #065f46; --tachyon-accent: #16a34a; }}
+    [data-active-color="forest"] .dark, .dark[data-active-color="forest"] {{ --tachyon-primary: #34d399; --tachyon-secondary: #059669; --tachyon-accent: #4ade80; }}
+    [data-active-color="sunset"] {{ --tachyon-primary: #ea580c; --tachyon-secondary: #b45309; --tachyon-accent: #f59e0b; }}
+    [data-active-color="sunset"] .dark, .dark[data-active-color="sunset"] {{ --tachyon-primary: #fb923c; --tachyon-secondary: #ea580c; --tachyon-accent: #fbbf24; }}
+    [data-active-color="rose"] {{ --tachyon-primary: #e11d48; --tachyon-secondary: #be123c; --tachyon-accent: #f472b6; }}
+    [data-active-color="rose"] .dark, .dark[data-active-color="rose"] {{ --tachyon-primary: #fb7185; --tachyon-secondary: #e11d48; --tachyon-accent: #f9a8d4; }}
+    [data-active-color="slate"] {{ --tachyon-primary: #475569; --tachyon-secondary: #1e293b; --tachyon-accent: #94a3b8; }}
+    [data-active-color="slate"] .dark, .dark[data-active-color="slate"] {{ --tachyon-primary: #94a3b8; --tachyon-secondary: #64748b; --tachyon-accent: #cbd5e1; }}
     {custom_css}
   </style>
 </head>
-<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
+  <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
   <a href="#doc-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded">Skip to content</a>
   {nav}
   <!-- Search overlay -->
@@ -427,21 +476,74 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     {highlight_script}
     {mermaid_script}
   <script>
-  // Dark/light theme toggle
+  // Dark/light theme toggle + color themes
   (function() {{
     var stored = localStorage.getItem('tachyon-theme');
+    var storedColor = localStorage.getItem('tachyon-color') || 'default';
     if (stored === 'dark' || stored === 'light') document.documentElement.classList.add(stored);
     else if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark');
-    document.getElementById('tachyon-theme-toggle').addEventListener('click', function() {{
-      var isDark = document.documentElement.classList.toggle('dark');
-      document.documentElement.classList.toggle('light', !isDark);
-      localStorage.setItem('tachyon-theme', isDark ? 'dark' : 'light');
-      this.innerHTML = isDark ? '&#9728;' : '&#9790;';
-    }});
-    // Init icon
+    if (storedColor !== 'default') document.documentElement.setAttribute('data-active-color', storedColor);
+
+    // Init toggle icon
     var isDarkInit = document.documentElement.classList.contains('dark');
-    document.getElementById('tachyon-theme-toggle').innerHTML = isDarkInit ? '&#9728;' : '&#9790;';
-  }})();
+    var toggleBtn = document.getElementById('tachyon-theme-toggle');
+    var dropdown = document.getElementById('tachyon-theme-dropdown');
+    if (toggleBtn) toggleBtn.innerHTML = isDarkInit ? '&#9728;' : '&#9790;';
+
+    // Highlight active mode
+    var activeMode = stored === 'dark' ? 'dark' : (stored === 'light' ? 'light' : 'auto');
+    document.querySelectorAll('[data-theme-mode]').forEach(function(btn) {{
+      if (btn.dataset.themeMode === activeMode) btn.classList.add('tachyon-theme-mode-active');
+    }});
+    // Highlight active color
+    document.querySelectorAll('[data-theme-color]').forEach(function(btn) {{
+      if (btn.dataset.themeColor === storedColor) btn.classList.add('tachyon-theme-color-active');
+    }});
+
+    // Toggle button click -> show dropdown
+    toggleBtn.addEventListener('click', function(e) {{
+      e.stopPropagation();
+      dropdown.classList.toggle('hidden');
+    }});
+
+    // Mode buttons
+    document.querySelectorAll('[data-theme-mode]').forEach(function(btn) {{
+      btn.addEventListener('click', function() {{
+        var mode = this.dataset.themeMode;
+        var html = document.documentElement;
+        html.classList.remove('dark', 'light');
+        if (mode === 'dark' || mode === 'light') html.classList.add(mode);
+        localStorage.setItem('tachyon-theme', mode);
+        var isDark = html.classList.contains('dark');
+        toggleBtn.innerHTML = isDark ? '&#9728;' : '&#9790;';
+        dropdown.classList.add('hidden');
+        // Update active highlighting
+        document.querySelectorAll('[data-theme-mode]').forEach(function(b) {{ b.classList.remove('tachyon-theme-mode-active'); }});
+        this.classList.add('tachyon-theme-mode-active');
+      }});
+    }});
+
+    // Color buttons
+    document.querySelectorAll('[data-theme-color]').forEach(function(btn) {{
+      btn.addEventListener('click', function() {{
+        var color = this.dataset.themeColor;
+        document.documentElement.setAttribute('data-active-color', color);
+        localStorage.setItem('tachyon-color', color);
+        dropdown.classList.add('hidden');
+        // Update active highlighting
+        document.querySelectorAll('[data-theme-color]').forEach(function(b) {{ b.classList.remove('tachyon-color-active'); }});
+        this.classList.add('tachyon-color-active');
+      }});
+    }});
+
+  // Close dropdown on outside click
+  document.addEventListener('click', function(e) {{
+    var sel = document.getElementById('tachyon-theme-selector');
+    if (sel && !sel.contains(e.target)) {{
+      var dd = document.getElementById('tachyon-theme-dropdown');
+      if (dd) dd.classList.add('hidden');
+    }}
+  }});
 
   // Search overlay (Ctrl+K / Cmd+K)
   (function() {{
@@ -729,9 +831,40 @@ fn render_nav(
       <button id="tachyon-nav-search-btn" class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded" aria-label="Search (Ctrl+K)" title="Search (Ctrl+K)">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
       </button>
-      <button id="tachyon-theme-toggle" class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded" aria-label="Toggle theme">
-        &#9790;
-      </button>
+      <div class="relative" id="tachyon-theme-selector">
+        <button id="tachyon-theme-toggle" class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded" aria-label="Toggle theme" title="Theme">
+          &#9790;
+        </button>
+        <div id="tachyon-theme-dropdown" class="hidden absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[200] overflow-hidden">
+          <div class="p-2 border-b border-gray-200 dark:border-gray-600">
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 px-2">Mode</span>
+          </div>
+          <button data-theme-mode="auto" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b transition-colors tachyon-theme-mode-active">&#9790; Auto</button>
+          <button data-theme-mode="light" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b transition-colors">&#9788; Light</button>
+          <button data-theme-mode="dark" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b transition-colors">&#9728; Dark</button>
+          <div class="p-2 border-t border-gray-200 dark:border-gray-600 mt-1">
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 px-2">Color Theme</span>
+          </div>
+          <button data-theme-color="default" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b transition-colors tachyon-theme-color-active flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full border border-gray-300" style="background:linear-gradient(135deg,#2563eb,#7c3aed)"></span> Default
+          </button>
+          <button data-theme-color="ocean" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b transition-colors flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full border border-gray-300" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)"></span> Ocean
+          </button>
+          <button data-theme-color="forest" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b transition-colors flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full border border-gray-300" style="background:linear-gradient(135deg,#059669,#065f46)"></span> Forest
+          </button>
+          <button data-theme-color="sunset" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b transition-colors flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full border border-gray-300" style="background:linear-gradient(135deg,#ea580c,#b45309)"></span> Sunset
+          </button>
+          <button data-theme-color="rose" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b transition-colors flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full border border-gray-300" style="background:linear-gradient(135deg,#e11d48,#be123c)"></span> Rose
+          </button>
+          <button data-theme-color="slate" class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b transition-colors flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full border border-gray-300" style="background:linear-gradient(135deg,#475569,#1e293b)"></span> Slate
+          </button>
+        </div>
+      </div>
       <button id="tachyon-nav-hamburger" class="md:hidden p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded" aria-label="Menu">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
       </button>
@@ -894,10 +1027,11 @@ fn render_toc_sidebar(toc: &[TocEntry]) -> String {
   </div>
   <nav class="toc" aria-label="Table of Contents">
     <ul class="space-y-1">
-        {items}
+{items}
     </ul>
   </nav>
-</aside>"#
+</aside>"#,
+        items = items
     )
 }
 
@@ -906,35 +1040,54 @@ fn render_sidebar(
     menu_items: &[SidebarItem],
     current_slug: Option<&str>,
     root_prefix: &str,
+    auto_items: &[(String, String)],
 ) -> String {
-    render_sidebar_inner(menu_items, current_slug, root_prefix)
+    render_sidebar_inner(menu_items, current_slug, root_prefix, auto_items)
 }
 
 pub(crate) fn render_sidebar_test(
     menu_items: &[SidebarItem],
     current_slug: Option<&str>,
 ) -> String {
-    render_sidebar_inner(menu_items, current_slug, "")
+    render_sidebar_inner(menu_items, current_slug, "", &[])
 }
 
 fn render_sidebar_inner(
     menu_items: &[SidebarItem],
     current_slug: Option<&str>,
     root_prefix: &str,
+    auto_items: &[(String, String)],
 ) -> String {
-    if menu_items.is_empty() {
+    let items_html = if !menu_items.is_empty() {
+        menu_items
+            .iter()
+            .map(|item| render_sidebar_item(item, current_slug, 0, root_prefix))
+            .collect::<Vec<_>>()
+            .join("\n")
+    } else if !auto_items.is_empty() {
+        auto_items
+            .iter()
+            .map(|(slug, title)| {
+                let is_active = current_slug.map(|s| s == slug.as_str()).unwrap_or(false);
+                let active_class = if is_active {
+                    " bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium"
+                } else {
+                    " text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                };
+                format!(
+                    r#"<li><a href="{root_prefix}{slug}.html" class="block px-3 py-1.5 rounded text-sm transition-colors{active_class}">{title}</a></li>"#
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    } else {
         return String::new();
-    }
-    let items: String = menu_items
-        .iter()
-        .map(|item| render_sidebar_item(item, current_slug, 0, root_prefix))
-        .collect::<Vec<_>>()
-        .join("\n");
+    };
     format!(
         r#"<aside id="tachyon-sidebar" data-pagefind-ignore class="sidebar-closed md:block w-60 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 mr-4 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
   <nav class="sidebar" aria-label="Site navigation">
     <ul class="space-y-1">
-{items}
+{items_html}
     </ul>
   </nav>
 </aside>
@@ -968,7 +1121,8 @@ document.addEventListener('DOMContentLoaded', function() {{
     }});
   }}
 }})();
-</script>"#
+</script>"#,
+        items_html = items_html
     )
 }
 
@@ -980,7 +1134,7 @@ fn render_sidebar_item(
 ) -> String {
     let is_active = current_slug
         .map(|slug| {
-            let item_slug = item.href.trim_end_matches(".html");
+            let item_slug = item.href.trim_start_matches('/').trim_end_matches(".html");
             slug == item_slug
         })
         .unwrap_or(false);

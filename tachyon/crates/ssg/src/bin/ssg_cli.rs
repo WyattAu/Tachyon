@@ -143,8 +143,9 @@ fn title_from_content(content: &str, filename: &str) -> String {
 fn read_config(path: &Path) -> Result<SiteConfig> {
     let content = fs::read_to_string(path)
         .with_context(|| format!("Failed to read config file: {}", path.display()))?;
-    let config: SiteConfig = toml::from_str(&content)
+    let mut config: SiteConfig = toml::from_str(&content)
         .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
+    config.resolve_menu();
     Ok(config)
 }
 
