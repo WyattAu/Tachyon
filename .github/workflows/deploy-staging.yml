@@ -128,7 +128,18 @@ jobs:
     needs: deploy
     if: needs.deploy.result == 'success'
     steps:
+      - name: Check prerequisites
+        id: check
+        run: |
+          if [ -z "${{ secrets.STAGING_HOST }}" ]; then
+            echo "STAGING_HOST secret not configured - skipping health check"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check /health endpoint
+        if: steps.check.outputs.skip != 'true'
         run: |
           MAX_RETRIES=10
           RETRY_INTERVAL=5
