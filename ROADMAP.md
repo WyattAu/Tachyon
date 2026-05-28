@@ -38,7 +38,7 @@ This is the single authoritative roadmap. All prior roadmap variants have been c
 | cargo audit | PASS (3 documented RUSTSEC overrides) |
 | todo!/unimplemented!/STUB/FIXME/HACK | 0 |
 | Pre-commit hook | 6 gates (fmt, clippy, test, rustdoc, secrets, artifacts) |
-| Mutation testing | cargo-mutant on core/database/search (CI, main only) |
+| Mutation testing | cargo-mutants on core/database/search (CI, main only) |
 
 ### CI/CD Pipeline (11 workflows)
 
@@ -51,7 +51,7 @@ This is the single authoritative roadmap. All prior roadmap variants have been c
 | Deploy Documentation | GREEN | GitHub Pages at wyattau.github.io/Tachyon |
 | Backup | GREEN | SSH-based pg_dump every 6h |
 | CD (Docker build + push to GHCR) | GREEN | Multi-arch (amd64+arm64) |
-| Deploy Staging | EXPECTED FAILURE | No STAGING_HOST secret configured (intentional, needs infra) |
+| Deploy Staging | GREEN | Skips deploy/health-check when STAGING_HOST not configured |
 | E2E Tests | GREEN | Playwright smoke + full suite |
 | OWASP ZAP Scan | GREEN | API baseline scan, HIGH/CRITICAL gate |
 | Release | MANUAL | Multi-arch Docker + GitHub Release + SBOM |
@@ -308,7 +308,8 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 | 3 `.unwrap()` in production (heartbeat serde, all with fallback) | Low | Fixed (v22) |
 | 6 offset-only endpoints (backward compat preserved, cursor endpoints added) | Low | Mitigated (v22) |
 | pgvector `update_embedding()` / `search_semantic()` dead code | Medium | Fixed (v22) |
-| Audit logging in-memory only (lost on restart) | High | Documented |
+| Audit logging in-memory only (lost on restart) | High | Fixed (v22) |
+| 18 highlight regexes compiled per Highlighter::new() | Low | Fixed (v22) |
 | Trivy scans only root Dockerfile | Medium | Fixed (v22) |
 | SBOM not attached to releases | Medium | Fixed (v22) |
 | tachyon/CHANGELOG.md stale (missing v12-v20) | Low | Fixed (v22) |
@@ -335,4 +336,12 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 | 2026-05-28 | Fix DEVELOPER_GUIDE.md (Axum 0.8, Rust 1.85+, port 8080, 16 crates) | Correct stale references |
 | 2026-05-28 | Replace unsafe from_utf8_unchecked in SSG | Eliminate UB risk |
 | 2026-05-28 | Harden CI workflows (permissions, timeouts, pin actions) | Least privilege |
+| 2026-05-28 | Persist audit events to database | Fire-and-forget async DB write alongside in-memory store; new audit_events table + permission_audit_log migration |
+| 2026-05-28 | Fix theme switching IIFE | Missing }})(); prevented event listener binding; Pagefind output path was double-nested |
+| 2026-05-28 | Fix Pagefind output directory | --output-subdir ./site created site/site/pagefind/ (404); fixed to pagefind |
+| 2026-05-28 | Fix ZAP scan JWT secret length | 30 chars < 32 minimum; also pgvector/pgvector:pg16 image for vector extension |
+| 2026-05-28 | Fix cargo-mutants crate name | crates.io name is cargo-mutants (with s), not cargo-mutant |
+| 2026-05-28 | Install cargo-deny in Security CI | Binary not installed; added conditional install before check |
+| 2026-05-28 | Skip staging deploy when secrets absent | Prevents false failures on repos without provisioned infrastructure |
+| 2026-05-28 | Compile 18 highlight regexes once via LazyLock | Highlighter::new() allocated 18 regex structs per call; now zero-allocation |
 | 2026-05-26 | Switch CI to pgvector/pgvector:pg16 | Migration requires CREATE EXTENSION vector |
