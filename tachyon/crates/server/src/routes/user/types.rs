@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tachyon_core::{User, UserRole};
 use tachyon_database::{DatabasePool, RefreshTokenRepository, UserRepository};
-use utoipa::IntoParams;
 
 // ============================================================================
 // JWT Claims
