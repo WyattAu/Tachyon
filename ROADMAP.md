@@ -8,7 +8,7 @@ This is the single authoritative roadmap. All prior roadmap variants have been c
 
 ## Current State Summary
 
-### Test Suite (2,054 tests, all passing)
+### Test Suite (1,555 tests, all passing)
 
 | Crate | Tests | Status |
 |-------|-------|--------|
@@ -26,7 +26,7 @@ This is the single authoritative roadmap. All prior roadmap variants have been c
 | tachyon-storage | 31 | PASS |
 | tachyon-desktop | 44 | PASS |
 | tachyon-cli | 35 | PASS |
-| **Total** | **2,054** | **ALL PASS** |
+| **Total** | **1,555** | **ALL PASS** |
 
 ### Code Quality
 
@@ -105,13 +105,13 @@ Code-level audit complete. Infrastructure-dependent items remain.
 | DONE | OpenAPI 3.1 spec (Swagger UI at `/swagger-ui`) |
 | DONE | k6 load tests (smoke: 50 VUs; stress: 1000 VUs) |
 | DONE | Criterion benchmarks (14 benchmarks, 5 groups) |
-| DONE | Cursor-based pagination (3 endpoints) |
+| DONE | Cursor-based pagination (10 endpoints: 3 original + 7 new) |
 | DONE | N+1 analysis (zero HIGH findings) |
 | DONE | WebSocket heartbeat and connection limits |
 | DONE | pgvector migration and dimension fix |
+| DONE | Wire pgvector to document CRUD, add semantic search endpoint |
 | REMAINING | Execute k6 against running server |
 | REMAINING | Redis distributed rate limiting validation |
-| REMAINING | Wire pgvector to document CRUD, add semantic search endpoint |
 | REMAINING | WebSocket reconnection stress test at scale |
 
 **Completion:** P99 < 200ms at 1,000 concurrent users. Rate limiting enforced. WebSocket survives 100 reconnect cycles.
@@ -125,11 +125,12 @@ Code-level audit complete. Infrastructure-dependent items remain.
 | DONE | Audit logging framework |
 | DONE | cargo-deny + cargo-audit in CI |
 | DONE | SBOM (CycloneDX + SPDX) |
-| DONE | Trivy container scanning (CRITICAL/HIGH gate) |
+| DONE | Trivy container scanning (CRITICAL/HIGH gate, all Dockerfile variants) |
 | DONE | Supply chain policy (`unknown-git = "deny"`) |
+| DONE | GraphQL/Swagger audit middleware coverage |
+| DONE | 19 hot-path regex compilations converted to LazyLock |
 | REMAINING | Audit log persistence (database, not in-memory) |
 | REMAINING | External penetration test (OWASP ZAP full) |
-| REMAINING | Scan all Dockerfile variants with Trivy |
 
 **Completion:** Zero CRITICAL/HIGH security findings. OWASP Top 10 verified. SBOM in release artifacts.
 
@@ -304,15 +305,14 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 
 | Item | Severity | Status |
 |------|----------|--------|
-| ~40 `.unwrap()` in production (mostly Regex::new on literals) | Low | Documented |
-| 13 endpoints use offset-based pagination (should use cursors) | Medium | Documented |
-| pgvector `update_embedding()` / `search_semantic()` dead code | Medium | Documented |
+| 3 `.unwrap()` in production (heartbeat serde, all with fallback) | Low | Fixed (v22) |
+| 6 offset-only endpoints (backward compat preserved, cursor endpoints added) | Low | Mitigated (v22) |
+| pgvector `update_embedding()` / `search_semantic()` dead code | Medium | Fixed (v22) |
 | Audit logging in-memory only (lost on restart) | High | Documented |
-| GraphQL/Swagger routes bypass audit middleware | Medium | Documented |
-| Trivy scans only root Dockerfile | Medium | Documented |
-| SBOM not attached to releases | Medium | Documented |
-| tachyon/CHANGELOG.md stale (missing v12-v20) | Low | Known |
-| 6 stale roadmap files in root (consolidated here) | Low | Pending cleanup |
+| Trivy scans only root Dockerfile | Medium | Fixed (v22) |
+| SBOM not attached to releases | Medium | Fixed (v22) |
+| tachyon/CHANGELOG.md stale (missing v12-v20) | Low | Fixed (v22) |
+| 6 stale roadmap files in root (consolidated here) | Low | Fixed (v22) |
 
 ---
 
@@ -320,6 +320,12 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-05-28 | Wire pgvector embeddings into document CRUD | Connect dead code (update_embedding, search_semantic) to AI provider; async spawned to avoid blocking response |
+| 2026-05-28 | Add semantic search endpoint | Embed query via AI, search pgvector HNSW index; requires AI configured |
+| 2026-05-28 | Wrap GraphQL/Swagger with audit middleware | Routes merged after layer application in Axum bypass middleware; wrap individually |
+| 2026-05-28 | Convert 19 regex to LazyLock | Hot-path regex compilation on every call; LazyLock compiles once |
+| 2026-05-28 | Add cursor endpoints alongside offset endpoints | Backward compat; new /cursor routes use CursorParams/CursorPage format |
+| 2026-05-28 | Trivy matrix scan (3 Dockerfiles) | Root Dockerfile alone insufficient; frontend and server variants have different dependencies |
 | 2026-05-28 | Include tachyon-cli in pre-commit clippy/test | Catch lint errors locally; GTK available via Nix |
 | 2026-05-28 | Keep tachyon-cli excluded from CI | tachyon-cli depends on tachyon-desktop (GTK), not available in CI runners |
 | 2026-05-28 | Fix rustdoc bare URL in ssg/manifest.rs | Eliminate rustdoc warning |

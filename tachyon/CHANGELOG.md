@@ -2,6 +2,50 @@
 
 All notable changes to Tachyon are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [22.0.0] - 2026-05-28
+
+### Added
+
+**Semantic Search (pgvector)**
+- Document embedding generation on create and update (async, non-blocking)
+- `GET /api/v1/documents/semantic-search?q=...&limit=20&threshold=0.5` endpoint
+- AiManager wired into DocumentState for embedding generation
+
+**Cursor Pagination (7 new endpoints)**
+- `GET /spaces/cursor`, `GET /plugins/cursor`, `GET /organizations/cursor`
+- `GET /nodes/cursor`, `GET /users/cursor`, `GET /projects/cursor`, `GET /search/cursor`
+- All return CursorPage format with after/before/limit params
+
+### Changed
+
+**Security**
+- GraphQL and Swagger routes now pass through audit middleware (previously bypassed)
+- WebSocket heartbeat serialization uses fallback instead of panic
+- Swagger OpenAPI serialization uses error logging instead of panic
+
+**Performance**
+- 19 hot-path regex compilations converted to LazyLock statics across 4 crates
+
+**CI/CD**
+- Trivy container scan now covers Dockerfile, Dockerfile.server, and Dockerfile.frontend
+
+### Fixed
+
+- Fixed clippy redundant_closure in CLI main.rs
+- Fixed rustdoc bare URL warning in ssg/manifest.rs
+
+## [20.0.0] - 2026-05-27
+
+### Changed
+
+**CI/CD**
+- tachyon-cli excluded from CI Check job (GTK transitive dependency)
+- Pre-commit hook: tachyon-cli included locally, rustdoc gate filters Cargo.toml warnings
+
+**Documentation**
+- DEVELOPER_GUIDE.md: Axum 0.8, Rust 1.85+, port 8080, 16 crates
+- 6 stale roadmap files consolidated into single ROADMAP.md v22.0.0
+
 ## [10.0.0] - 2026-05-07
 
 ### Added

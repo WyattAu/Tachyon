@@ -1,27 +1,62 @@
 # Tachyon Version Information
 
 ## Current Status
-- **Version:** 19.0.0
-- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,213+ unit tests, CI/CD pipeline, staging server live
+- **Version:** 22.0.0
+- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,555+ unit tests, CI/CD pipeline, staging server live
 - **Status:** Active development — all core infrastructure complete, 0 compilation errors, 0 clippy warnings
-- **Last Updated:** 2026-05-25
+- **Last Updated:** 2026-05-28
 - **Codebase:** 279+ Rust files, ~97K lines, 25 DB migrations, 29 route modules, 32 DB modules
 - **Staging:** Live at http://192.168.1.3:8080 (TrueNAS Docker, PostgreSQL 16)
 
+## What Changed (v22.0.0 — Security, Semantic Search, Cursor Pagination)
+
+### Security
+- **GraphQL audit middleware**: Wrapped `/graphql` and `/graphql/playground` with audit + request-id middleware (previously bypassed)
+- **Swagger audit middleware**: Wrapped `/swagger-ui` and `/api/v1/openapi.json` with audit + request-id middleware
+- **Heartbeat serde safety**: Replaced 2 `serde_json::to_string().unwrap()` in WebSocket heartbeat with `unwrap_or_else` fallback
+- **Swagger serialization safety**: Replaced `expect("failed to serialize")` with error logging + JSON error response
+- **Trivy multi-Dockerfile**: Container scan now scans Dockerfile, Dockerfile.server, and Dockerfile.frontend via matrix strategy
+
+### Semantic Search (pgvector)
+- **Document embedding on create**: Async spawned task embeds title+content via AI provider and persists to pgvector
+- **Document embedding on update**: Re-embeds when content changes, skips for metadata-only updates
+- **Semantic search endpoint**: `GET /api/v1/documents/semantic-search?q=...&limit=20&threshold=0.5` — embeds query, searches HNSW index via cosine distance
+- **AiManager in DocumentState**: New `with_ai_manager()` builder method, wired in `init_app_state()`
+
+### Cursor Pagination (7 new endpoints)
+- **Spaces**: `GET /spaces/cursor` with CursorParams (after/before/limit)
+- **Plugins**: `GET /plugins/cursor`
+- **Organizations**: `GET /organizations/cursor`
+- **Nodes**: `GET /nodes/cursor`
+- **Users**: `GET /users/cursor`
+- **Catalog/Projects**: `GET /projects/cursor`
+- **Search**: `GET /search/cursor`
+- All return CursorPage format: data, has_next, has_prev, next_cursor, prev_cursor, total_count
+- Existing offset-based endpoints preserved for backward compatibility
+
+### Performance
+- **19 regex compilations converted to LazyLock**: Eliminated per-call regex compilation in hot paths
+  - server/validation/common.rs: whitespace normalization, slug validation
+  - core/util.rs: slugify, sanitize_string, validate_tag_name
+  - server/sync.rs: slug collapse
+  - ssg/render.rs: 15 statics for TOC, code blocks, tabs, mermaid, admonitions, images
+
+### SBOM
+- **SBOM attached to releases**: Confirmed release.yml uploads tachyon-sbom.spdx.json to GitHub Releases (was already working)
+
+## What Changed (v20.0.0 — CI Hardening, Developer Guide)
+
+### CI/CD
+- **tachyon-cli excluded from CI Check job**: GTK transitive dependency (tachyon-desktop) not available in CI runners
+- **Pre-commit hook**: tachyon-cli included locally (Nix provides GTK), excluded from CI
+- **Rustdoc gate**: Filter out Cargo.toml feature warnings from rustdoc check
+- **Secret detection**: Broadened exclusions for doc files with placeholder values
+
+### Documentation
+- **DEVELOPER_GUIDE.md**: Updated Axum 0.7->0.8, Rust nightly->stable 1.85+, port 3000->8080, added 7 missing crates, fixed api.rs->api/ path, marked Redis optional
+- **ROADMAP.md**: Consolidated 6 stale roadmap files into single v22.0.0 document
+
 ## What Changed (v19.0.0 — Offline Sync Queue)
-
-### Editor Offline Sync
-- **`OfflineSyncQueue`**: Buffers CRDT updates when editor has no server connection
-- **`SyncStatus`**: Offline/Syncing/Online state machine with automatic transitions
-- **Update merging**: Opportunistic merge when >64 pending, forced merge at >512 capacity
-- **Batch drain**: `drain_batch(max)` for efficient batch sync, `merge_all()` for flush-all
-- **Failure recovery**: `mark_failed()` re-enqueues at front for retry
-- **13 unit tests**: enqueue/dequeue ordering, batch drain, merge all, byte tracking, summary
-- **8 integration tests**: offline→online flow, edit queuing, convergence, failure recovery
-- **Editor API**: `go_offline()`, `go_online()`, `commit_local_update()`, `flush_pending()`, `notify_synced()`, `notify_sync_failed()`
-
-### Staging CI
-- **deploy-staging.yml**: Now triggers on `main` branch (in addition to `develop`)
 
 ## What Changed (v18.0.0 — Delta Sync, Sync Priority, Staging)
 
