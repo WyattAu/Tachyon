@@ -147,15 +147,42 @@ impl ConnectionManager {
             clients.remove(client_id)
         };
         if let Some(client) = client {
-            let mut rooms = self.rooms.write().await;
-            for room_id in client.rooms {
-                if let Some(members) = rooms.get_mut(&room_id) {
-                    members.retain(|id| id != client_id);
-                    if members.is_empty() {
-                        rooms.remove(&room_id);
+            let client_rooms = client.rooms.clone();
+            {
+                let mut rooms = self.rooms.write().await;
+                for room_id in &client_rooms {
+                    if let Some(members) = rooms.get_mut(room_id) {
+                        members.retain(|id| id != client_id);
+                        if members.is_empty() {
+                            rooms.remove(room_id);
+                        }
                     }
                 }
             }
+
+            for room_id in &client_rooms {
+                if let Some(doc_id) = room_id.strip_prefix("doc:") {
+                    let should_remove = {
+                        let mut presence = self.document_presence.write().await;
+                        if let Some(list) = presence.get_mut(doc_id) {
+                            list.retain(|p| p.client_id != client_id);
+                            list.is_empty()
+                        } else {
+                            false
+                        }
+                    };
+                    if should_remove {
+                        self.document_presence.write().await.remove(doc_id);
+                    }
+
+                    if let Some(ref uid) = client.user_id {
+                        let leave_msg = WebSocketMessage::leave(doc_id.to_string(), uid.clone());
+                        self.broadcast_to_room(&format!("doc:{}", doc_id), leave_msg)
+                            .await;
+                    }
+                }
+            }
+
             info!("Client disconnected");
         }
     }

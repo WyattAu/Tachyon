@@ -8,17 +8,12 @@ pub async fn audit_middleware(request: Request, next: Next) -> Response {
     let path = request.uri().path().to_string();
     let method = request.method().to_string();
 
-    let skip_paths = [
-        "/health",
-        "/metrics",
-        "/metrics/prometheus",
-        "/api/v1/auth/login",
-        "/api/v1/auth/register",
-        "/api/v1/auth/guest",
-        "/api/v1/auth/oauth2",
-    ];
+    let skip_paths = ["/health", "/ready", "/metrics", "/metrics/prometheus"];
 
-    if skip_paths.iter().any(|p| path.starts_with(p)) {
+    if skip_paths.iter().any(|p| path == *p || path.starts_with(p))
+        || path.starts_with("/static/")
+        || path.starts_with("/assets/")
+    {
         return next.run(request).await;
     }
 
@@ -45,6 +40,26 @@ pub async fn audit_middleware(request: Request, next: Next) -> Response {
             status = status,
             request_id = ?request_id,
             "Authenticated request"
+        );
+    } else if status == 401 || status == 403 {
+        tracing::warn!(
+            target: "audit",
+            action = %action,
+            resource_type = %resource_type,
+            ip_address = %ip_address,
+            status = status,
+            request_id = ?request_id,
+            "Unauthenticated request - auth failure"
+        );
+    } else {
+        tracing::info!(
+            target: "audit",
+            action = %action,
+            resource_type = %resource_type,
+            ip_address = %ip_address,
+            status = status,
+            request_id = ?request_id,
+            "Unauthenticated request"
         );
     }
 
