@@ -17,6 +17,7 @@ use tracing::{debug, info, instrument};
 
 use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
+use crate::pagination::{CursorPage, CursorParams};
 
 /// Response wrapper for paginated catalog API responses.
 type CatalogResult<T> = Result<(StatusCode, Json<ApiResponse<T>>), ServerError>;
@@ -110,6 +111,29 @@ pub struct ProjectFilters {
     pub owner_id: Option<String>,
     pub status: Option<String>,
     pub search: Option<String>,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct CatalogCursorPage {
+    pub data: Vec<Project>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<CursorPage<Project>> for CatalogCursorPage {
+    fn from(page: CursorPage<Project>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
 }
 
 // ============================================================================
@@ -729,6 +753,58 @@ pub struct AddMemberRequest {
     pub added_by: Option<String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/projects/cursor",
+    params(CursorParams),
+    responses(
+        (status = 200, description = "Projects (cursor paginated)", body = serde_json::Value),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "projects",
+    security(("bearer_auth" = [])),
+)]
+#[instrument(skip(state))]
+pub async fn list_projects_cursor(
+    State(state): State<CatalogState>,
+    Query(params): Query<CursorParams>,
+) -> CatalogResult<CatalogCursorPage> {
+    let limit = params.limit();
+    let direction = params.direction();
+    let cursor_str = params.after.as_deref().or(params.before.as_deref());
+    let fetch_limit = (limit + 1) as i64;
+
+    let projects = state
+        .repo()
+        .list_projects(None, None, None, Some(fetch_limit), Some(0))
+        .await
+        .map_err(|e| {
+            debug!("Failed to list projects (cursor): {}", e);
+            ServerError::internal(e.to_string())
+        })?;
+
+    let has_extra = projects.len() > limit;
+    let mut projects = projects;
+    if has_extra {
+        projects.truncate(limit);
+    }
+
+    let first_id = projects.first().map(|p| p.id.clone());
+    let last_id = projects.last().map(|p| p.id.clone());
+    let has_prev = cursor_str.is_some();
+
+    let page = CursorPage::new(projects, has_extra, has_prev).with_cursors(
+        first_id.as_deref(),
+        last_id.as_deref(),
+        direction,
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse::success(CatalogCursorPage::from(page))),
+    ))
+}
+
 // ============================================================================
 // Router Factory
 // ============================================================================
@@ -744,6 +820,7 @@ pub fn create_catalog_router() -> Router<CatalogState> {
         // Projects
         .route("/projects", post(create_project))
         .route("/projects", get(list_projects))
+        .route("/projects/cursor", get(list_projects_cursor))
         .route("/projects/{id}", get(get_project))
         .route("/projects/{id}", put(update_project))
         .route("/projects/{id}", delete(delete_project))

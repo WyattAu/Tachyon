@@ -9,6 +9,7 @@ use tracing::{debug, info};
 
 use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
+use crate::pagination::{CursorPage, CursorParams};
 
 #[derive(Clone)]
 pub struct NodeState {
@@ -121,6 +122,29 @@ pub struct NodeListResponse {
 pub struct EdgeListResponse {
     pub edges: Vec<GraphEdge>,
     pub total: usize,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct NodeCursorPage {
+    pub data: Vec<GraphNode>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<CursorPage<GraphNode>> for NodeCursorPage {
+    fn from(page: CursorPage<GraphNode>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
 }
 
 #[derive(Debug, serde::Serialize, utoipa::ToSchema)]
@@ -688,6 +712,49 @@ pub async fn get_graph_diff(
     ))
 }
 
+#[utoipa::path(
+    get,
+    path = "/nodes/cursor",
+    params(
+        CursorParams,
+    ),
+    responses(
+        (status = 200, description = "Nodes (cursor paginated)", body = NodeCursorPage),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn list_nodes_cursor(
+    Query(params): Query<CursorParams>,
+    State(state): State<NodeState>,
+) -> Result<Json<NodeCursorPage>, ServerError> {
+    let limit = params.limit();
+    let direction = params.direction();
+    let cursor_str = params.after.as_deref().or(params.before.as_deref());
+    let fetch_limit = limit + 1;
+
+    let (nodes, total) = state
+        .repo()
+        .list_nodes(None, None, None, 1, fetch_limit)
+        .await?;
+
+    let has_extra = nodes.len() > limit;
+    let mut nodes = nodes;
+    if has_extra {
+        nodes.truncate(limit);
+    }
+
+    let first_id = nodes.first().map(|n| n.id.clone());
+    let last_id = nodes.last().map(|n| n.id.clone());
+    let has_prev = cursor_str.is_some();
+
+    let page = CursorPage::new(nodes, has_extra, has_prev)
+        .with_cursors(first_id.as_deref(), last_id.as_deref(), direction)
+        .with_total_count(total);
+
+    Ok(Json(NodeCursorPage::from(page)))
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -698,6 +765,7 @@ pub fn create_node_router() -> axum::Router<NodeState> {
     axum::Router::new()
         .route("/nodes", post(create_node))
         .route("/nodes", get(list_nodes))
+        .route("/nodes/cursor", get(list_nodes_cursor))
         .route("/nodes/{node_id}", get(get_node))
         .route("/nodes/{node_id}", put(update_node))
         .route("/nodes/{node_id}", delete(delete_node))

@@ -4,6 +4,7 @@
 use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
 use crate::middleware::AuthContext;
+use crate::pagination::{CursorPage, CursorParams};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -558,6 +559,117 @@ pub async fn remove_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct OrganizationCursorPage {
+    pub data: Vec<OrganizationResponse>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<CursorPage<OrganizationResponse>> for OrganizationCursorPage {
+    fn from(page: CursorPage<OrganizationResponse>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/organizations/cursor",
+    params(CursorParams),
+    responses(
+        (status = 200, description = "Cursor-paginated organizations", body = OrganizationCursorPage),
+        (status = 400, description = "Invalid cursor"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "organizations",
+    security(("bearer_auth" = [])),
+)]
+pub async fn list_organizations_cursor(
+    Extension(auth): Extension<AuthContext>,
+    Query(params): Query<CursorParams>,
+    State(state): State<OrganizationState>,
+) -> Result<Json<OrganizationCursorPage>, ServerError> {
+    let user_id = &auth.user_id;
+    let limit = params.limit();
+    let direction = params.direction();
+    let fetch_limit = (limit + 1) as i64;
+    let cursor_str = params.after.as_deref().or(params.before.as_deref());
+
+    let repo = OrganizationRepository::new(state.pool.clone());
+
+    let offset = if let Some(c) = cursor_str {
+        if let Some((id, _dir)) = crate::pagination::Cursor(c.to_string()).decode() {
+            let all = repo
+                .list_for_user(user_id, true, None, None)
+                .await
+                .unwrap_or_default();
+            all.iter()
+                .position(|o| o.id == id)
+                .map(|pos| pos as i64)
+                .unwrap_or(0)
+        } else {
+            0
+        }
+    } else {
+        0
+    };
+
+    let orgs = repo
+        .list_for_user(user_id, true, Some(fetch_limit), Some(offset))
+        .await
+        .map_err(|e| ServerError::internal(format!("Failed to list organizations: {}", e)))?;
+
+    let member_counts = repo
+        .count_members_batch(&orgs.iter().map(|o| o.id.clone()).collect::<Vec<_>>())
+        .await
+        .unwrap_or_default();
+
+    let mut items: Vec<OrganizationResponse> = orgs
+        .into_iter()
+        .map(|org| {
+            let member_count = member_counts.get(&org.id).copied().unwrap_or(0);
+            OrganizationResponse::from_org(org, member_count)
+        })
+        .collect();
+
+    let has_extra = items.len() > limit;
+    if has_extra {
+        items.truncate(limit);
+    }
+
+    let has_next = if direction == "asc" {
+        has_extra
+    } else {
+        cursor_str.is_some()
+    };
+    let has_prev = if direction == "asc" {
+        cursor_str.is_some()
+    } else {
+        has_extra
+    };
+
+    let first_id = items.first().map(|i| i.id.clone());
+    let last_id = items.last().map(|i| i.id.clone());
+
+    let page = CursorPage::new(items, has_next, has_prev).with_cursors(
+        first_id.as_deref(),
+        last_id.as_deref(),
+        direction,
+    );
+
+    Ok(Json(OrganizationCursorPage::from(page)))
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -570,6 +682,7 @@ pub fn create_organization_router() -> axum::Router<OrganizationState> {
             "/organizations",
             get(list_organizations).post(create_organization),
         )
+        .route("/organizations/cursor", get(list_organizations_cursor))
         .route(
             "/organizations/{id}",
             get(get_organization)

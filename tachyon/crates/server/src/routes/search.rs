@@ -3,6 +3,7 @@
 
 use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
+use crate::pagination::CursorPage;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -903,11 +904,193 @@ pub async fn suggest(
     }))
 }
 
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SearchCursorPage {
+    pub data: Vec<SearchResultItem>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<CursorPage<SearchResultItem>> for SearchCursorPage {
+    fn from(page: CursorPage<SearchResultItem>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/search/cursor",
+    params(SearchQuery),
+    responses(
+        (status = 200, description = "Search results (cursor paginated)", body = SearchCursorPage),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
+pub async fn search_cursor(
+    Query(query): Query<SearchQuery>,
+    State(state): State<SearchState>,
+) -> Result<Json<SearchCursorPage>, ServerError> {
+    info!(
+        "Search cursor request: q='{}', page_size={}",
+        query.q, query.page_size
+    );
+
+    let filters = SearchFilters {
+        content_type: query.content_type.clone(),
+        status: query.status.clone(),
+        visibility: query.visibility.clone(),
+        project_id: query.project_id.clone(),
+        author_id: query.author_id.clone(),
+        tags: query
+            .tags
+            .as_ref()
+            .map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+        date_from: query.date_from.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
+        date_to: query.date_to.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
+    };
+
+    let limit = query.page_size.clamp(1, 100) as usize;
+    let fetch_limit = (limit + 1) as i64;
+
+    match state
+        .search_repo
+        .search(&query.q, &filters, 1, fetch_limit)
+        .await
+    {
+        Ok(pg_response) => {
+            let total = pg_response.total;
+            let pg_results = pg_response.results;
+
+            let tantivy_items = search_tantivy(&state, &query.q, 1, fetch_limit as usize)
+                .await
+                .unwrap_or_default();
+
+            let aggregator = ResultAggregator::default();
+            let fused = aggregator.fuse_results(vec![
+                pg_results
+                    .iter()
+                    .map(|r| SearchResponseItem {
+                        document_id: DocumentId::parse_str(&r.document.id).unwrap_or_default(),
+                        title: r.document.title.clone(),
+                        snippet: r.headline.clone().unwrap_or_default(),
+                        score: r.rank as f32,
+                        highlights: Vec::new(),
+                        author_id: UserId::parse_str(&r.document.author_id).unwrap_or_default(),
+                        repository_id: r
+                            .document
+                            .project_id
+                            .as_ref()
+                            .and_then(|id| RepositoryId::parse_str(id).ok()),
+                        tags: r.document.parse_tags().unwrap_or_default(),
+                        created_at: r.document.created_at,
+                    })
+                    .collect(),
+                tantivy_items,
+            ]);
+
+            let pg_metadata_map: HashMap<String, &_> = pg_results
+                .iter()
+                .map(|r| (r.document.id.clone(), r))
+                .collect();
+
+            let results: Vec<SearchResultItem> = fused
+                .into_iter()
+                .map(|item| {
+                    let id_str = item.document_id.to_string();
+                    if let Some(pg_r) = pg_metadata_map.get(&id_str) {
+                        let tags = pg_r.document.parse_tags().unwrap_or_default();
+                        SearchResultItem {
+                            id: pg_r.document.id.clone(),
+                            title: pg_r.document.title.clone(),
+                            slug: pg_r.document.slug.clone(),
+                            description: pg_r.document.description.clone(),
+                            status: pg_r.document.status.clone(),
+                            visibility: pg_r.document.visibility.clone(),
+                            tags,
+                            author_id: pg_r.document.author_id.clone(),
+                            project_id: pg_r.document.project_id.clone(),
+                            word_count: pg_r.document.word_count,
+                            rank: item.score as f64,
+                            headline: pg_r.headline.clone(),
+                            created_at: pg_r.document.created_at.to_rfc3339(),
+                            updated_at: pg_r.document.updated_at.to_rfc3339(),
+                        }
+                    } else {
+                        SearchResultItem {
+                            id: id_str,
+                            title: item.title,
+                            slug: None,
+                            description: if item.snippet.is_empty() {
+                                None
+                            } else {
+                                Some(item.snippet)
+                            },
+                            status: "draft".to_string(),
+                            visibility: "private".to_string(),
+                            tags: item.tags,
+                            author_id: item.author_id.to_string(),
+                            project_id: item.repository_id.map(|id| id.to_string()),
+                            word_count: 0,
+                            rank: item.score as f64,
+                            headline: if item.highlights.is_empty() {
+                                None
+                            } else {
+                                Some(item.highlights.join(" "))
+                            },
+                            created_at: item.created_at.to_rfc3339(),
+                            updated_at: item.created_at.to_rfc3339(),
+                        }
+                    }
+                })
+                .collect();
+
+            let has_extra = results.len() > limit;
+            let mut results = results;
+            if has_extra {
+                results.truncate(limit);
+            }
+
+            let first_id = results.first().map(|r| r.id.clone());
+            let last_id = results.last().map(|r| r.id.clone());
+
+            let page = CursorPage::new(results, has_extra, false)
+                .with_cursors(first_id.as_deref(), last_id.as_deref(), "asc")
+                .with_total_count(total);
+
+            Ok(Json(SearchCursorPage::from(page)))
+        }
+        Err(e) => {
+            warn!("Search cursor failed: {}", e);
+            Err(ServerError::internal(format!("Search failed: {}", e)))
+        }
+    }
+}
+
 pub fn create_search_router() -> axum::Router<SearchState> {
     use axum::routing::{delete, get, post, put};
 
     axum::Router::new()
         .route("/search", get(search))
+        .route("/search/cursor", get(search_cursor))
         .route("/search/global", get(global_search))
         .route("/search/suggest", get(suggest))
         .route("/search/reindex", post(reindex_tantivy))

@@ -362,6 +362,29 @@ pub struct UserQuery {
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct UserCursorPage {
+    pub data: Vec<UserResponse>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<crate::pagination::CursorPage<UserResponse>> for UserCursorPage {
+    fn from(page: crate::pagination::CursorPage<UserResponse>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct UserErrorResponse {
     pub code: String,
     pub message: String,

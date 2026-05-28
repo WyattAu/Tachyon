@@ -3,6 +3,7 @@
 
 use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
+use crate::pagination::{CursorPage, CursorParams};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -404,6 +405,101 @@ pub async fn invoke_hook(
     }))
 }
 
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct PluginCursorPage {
+    pub data: Vec<PluginResponse>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<CursorPage<PluginResponse>> for PluginCursorPage {
+    fn from(page: CursorPage<PluginResponse>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/plugins/cursor",
+    params(CursorParams),
+    responses(
+        (status = 200, description = "Cursor-paginated plugins", body = PluginCursorPage),
+        (status = 400, description = "Invalid cursor"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "plugins",
+    security(("bearer_auth" = [])),
+)]
+pub async fn list_plugins_cursor(
+    Query(params): Query<CursorParams>,
+    State(state): State<PluginState>,
+) -> Result<Json<PluginCursorPage>, ServerError> {
+    let limit = params.limit();
+    let direction = params.direction();
+    let fetch_limit = (limit + 1) as i64;
+    let cursor_str = params.after.as_deref().or(params.before.as_deref());
+
+    let repo = PluginRepository::new(state.pool.clone());
+
+    let offset = if let Some(c) = cursor_str {
+        if let Some((id, _dir)) = crate::pagination::Cursor(c.to_string()).decode() {
+            let all = repo.list(None, None, None, None).await.unwrap_or_default();
+            all.iter()
+                .position(|p| p.id == id)
+                .map(|pos| pos as i64)
+                .unwrap_or(0)
+        } else {
+            0
+        }
+    } else {
+        0
+    };
+
+    let plugins = repo
+        .list(None, None, Some(fetch_limit), Some(offset))
+        .await
+        .map_err(|e| ServerError::internal(format!("Failed to list plugins: {}", e)))?;
+
+    let mut items: Vec<PluginResponse> = plugins.into_iter().map(PluginResponse::from).collect();
+
+    let has_extra = items.len() > limit;
+    if has_extra {
+        items.truncate(limit);
+    }
+
+    let has_next = if direction == "asc" {
+        has_extra
+    } else {
+        cursor_str.is_some()
+    };
+    let has_prev = if direction == "asc" {
+        cursor_str.is_some()
+    } else {
+        has_extra
+    };
+
+    let first_id = items.first().map(|i| i.id.clone());
+    let last_id = items.last().map(|i| i.id.clone());
+
+    let page = CursorPage::new(items, has_next, has_prev).with_cursors(
+        first_id.as_deref(),
+        last_id.as_deref(),
+        direction,
+    );
+
+    Ok(Json(PluginCursorPage::from(page)))
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -411,6 +507,7 @@ pub async fn invoke_hook(
 pub fn create_plugin_router_with_state(state: PluginState) -> axum::Router {
     axum::Router::new()
         .route("/plugins", axum::routing::get(list_plugins))
+        .route("/plugins/cursor", axum::routing::get(list_plugins_cursor))
         .route("/plugins", axum::routing::post(create_plugin))
         .route("/plugins/invoke", axum::routing::post(invoke_hook))
         .route("/plugins/{plugin_id}", axum::routing::get(get_plugin))

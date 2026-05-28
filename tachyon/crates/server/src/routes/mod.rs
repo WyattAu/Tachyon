@@ -291,13 +291,14 @@ pub use webhook::{
 // Plugin exports
 pub use plugin::{
     create_plugin, create_plugin_router_with_state, delete_plugin, get_plugin, list_plugins,
-    update_plugin, CreatePluginBody, PluginResponse, PluginState, UpdatePluginBody,
+    list_plugins_cursor, update_plugin, CreatePluginBody, PluginCursorPage, PluginResponse,
+    PluginState, UpdatePluginBody,
 };
 
 // Space exports
 pub use space::{
-    create_space_router, AddMemberBody, CreateSpaceBody, SpaceMemberResponse, SpaceQuery,
-    SpaceResponse, SpaceState, UpdateMemberBody, UpdateSpaceBody,
+    create_space_router, list_spaces_cursor, AddMemberBody, CreateSpaceBody, SpaceCursorPage,
+    SpaceMemberResponse, SpaceQuery, SpaceResponse, SpaceState, UpdateMemberBody, UpdateSpaceBody,
 };
 
 // Billing exports
@@ -310,10 +311,10 @@ pub use billing::{
 // Organization exports
 pub use organization::{
     add_member, create_organization, create_organization_router, delete_organization,
-    get_organization, list_members, list_organizations, remove_member, update_member,
-    update_organization, AddMemberBody as OrgAddMemberBody, CreateOrganizationBody,
-    OrganizationMemberResponse, OrganizationQuery, OrganizationResponse, OrganizationState,
-    UpdateMemberBody as OrgUpdateMemberBody, UpdateOrganizationBody,
+    get_organization, list_members, list_organizations, list_organizations_cursor, remove_member,
+    update_member, update_organization, AddMemberBody as OrgAddMemberBody, CreateOrganizationBody,
+    OrganizationCursorPage, OrganizationMemberResponse, OrganizationQuery, OrganizationResponse,
+    OrganizationState, UpdateMemberBody as OrgUpdateMemberBody, UpdateOrganizationBody,
 };
 
 // Password reset exports

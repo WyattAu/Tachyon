@@ -3,6 +3,7 @@
 
 use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
+use crate::pagination::{CursorPage, CursorParams};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -532,6 +533,115 @@ pub async fn move_document(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SpaceCursorPage {
+    pub data: Vec<SpaceResponse>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<CursorPage<SpaceResponse>> for SpaceCursorPage {
+    fn from(page: CursorPage<SpaceResponse>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/spaces/cursor",
+    params(CursorParams),
+    responses(
+        (status = 200, description = "Cursor-paginated spaces", body = SpaceCursorPage),
+        (status = 400, description = "Invalid cursor"),
+        (status = 500, description = "Internal server error"),
+    ),
+    tag = "spaces",
+    security(("bearer_auth" = [])),
+)]
+pub async fn list_spaces_cursor(
+    Query(params): Query<CursorParams>,
+    State(state): State<SpaceState>,
+) -> Result<Json<SpaceCursorPage>, ServerError> {
+    let limit = params.limit();
+    let direction = params.direction();
+    let fetch_limit = (limit + 1) as i64;
+    let cursor_str = params.after.as_deref().or(params.before.as_deref());
+
+    let repo = SpaceRepository::new(state.pool.clone());
+
+    let offset = if let Some(c) = cursor_str {
+        if let Some((id, _dir)) = crate::pagination::Cursor(c.to_string()).decode() {
+            let all = repo
+                .list(None, None, None, None, None, None)
+                .await
+                .unwrap_or_default();
+            all.iter()
+                .position(|s| s.id == id)
+                .map(|pos| pos as i64)
+                .unwrap_or(0)
+        } else {
+            0
+        }
+    } else {
+        0
+    };
+
+    let spaces = repo
+        .list(None, None, None, None, Some(fetch_limit), Some(offset))
+        .await
+        .map_err(|e| ServerError::internal(format!("Failed to list spaces: {}", e)))?;
+
+    let doc_counts = repo
+        .count_documents_batch(&spaces.iter().map(|s| s.id.clone()).collect::<Vec<_>>())
+        .await
+        .unwrap_or_default();
+
+    let mut items: Vec<SpaceResponse> = spaces
+        .into_iter()
+        .map(|space| {
+            let doc_count = doc_counts.get(&space.id).copied().unwrap_or(0);
+            SpaceResponse::from_space(space, doc_count)
+        })
+        .collect();
+
+    let has_extra = items.len() > limit;
+    if has_extra {
+        items.truncate(limit);
+    }
+
+    let has_next = if direction == "asc" {
+        has_extra
+    } else {
+        cursor_str.is_some()
+    };
+    let has_prev = if direction == "asc" {
+        cursor_str.is_some()
+    } else {
+        has_extra
+    };
+
+    let first_id = items.first().map(|i| i.id.clone());
+    let last_id = items.last().map(|i| i.id.clone());
+
+    let page = CursorPage::new(items, has_next, has_prev).with_cursors(
+        first_id.as_deref(),
+        last_id.as_deref(),
+        direction,
+    );
+
+    Ok(Json(SpaceCursorPage::from(page)))
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -540,6 +650,7 @@ pub fn create_space_router() -> axum::Router<SpaceState> {
     axum::Router::new()
         // Space CRUD
         .route("/spaces", axum::routing::get(list_spaces))
+        .route("/spaces/cursor", axum::routing::get(list_spaces_cursor))
         .route("/spaces/root", axum::routing::get(list_root_spaces))
         .route(
             "/spaces/{space_id}/children",

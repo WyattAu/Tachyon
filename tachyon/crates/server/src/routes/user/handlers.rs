@@ -3,10 +3,11 @@
 use super::types::{
     hash_refresh_token, AuthenticateRequest, AuthenticateResponse, CreateUserRequest,
     LogoutRequest, RefreshRequest, RegisterRequest, UpdateProfileRequest, UpdateUserRequest,
-    UserErrorResponse, UserListResponse, UserQuery, UserResponse, UserState,
+    UserCursorPage, UserErrorResponse, UserListResponse, UserQuery, UserResponse, UserState,
     REFRESH_TOKEN_EXPIRATION_SECS,
 };
 use crate::audit::{AuditEvent, AuditEventType, AuditSeverity};
+use crate::pagination::{CursorPage, CursorParams};
 use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
@@ -1206,6 +1207,60 @@ pub async fn guest_status(
     })))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/cursor",
+    params(CursorParams),
+    responses(
+        (status = 200, description = "Users (cursor paginated)", body = UserCursorPage),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "users",
+)]
+pub async fn list_users_cursor(
+    Query(params): Query<CursorParams>,
+    State(state): State<UserState>,
+) -> Result<Json<UserCursorPage>, (StatusCode, Json<UserErrorResponse>)> {
+    let limit = params.limit();
+    let direction = params.direction();
+    let cursor_str = params.after.as_deref().or(params.before.as_deref());
+    let fetch_limit = limit + 1;
+
+    let repo = state.user_repo();
+    match repo.list(1, fetch_limit, None).await {
+        Ok((users, total)) => {
+            let user_responses: Vec<UserResponse> =
+                users.into_iter().map(UserResponse::from).collect();
+
+            let has_extra = user_responses.len() > limit;
+            let mut user_responses = user_responses;
+            if has_extra {
+                user_responses.truncate(limit);
+            }
+
+            let first_id = user_responses.first().map(|u| u.id.clone());
+            let last_id = user_responses.last().map(|u| u.id.clone());
+            let has_prev = cursor_str.is_some();
+
+            let page = CursorPage::new(user_responses, has_extra, has_prev)
+                .with_cursors(first_id.as_deref(), last_id.as_deref(), direction)
+                .with_total_count(total);
+
+            Ok(Json(UserCursorPage::from(page)))
+        }
+        Err(e) => {
+            warn!("Failed to list users (cursor): {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UserErrorResponse {
+                    code: "INTERNAL_ERROR".into(),
+                    message: "Failed to list users".into(),
+                }),
+            ))
+        }
+    }
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -1243,6 +1298,7 @@ pub fn create_user_router() -> axum::Router<UserState> {
         .route("/auth/me", put(update_me))
         // User management routes
         .route("/users", get(list_users))
+        .route("/users/cursor", get(list_users_cursor))
         .route("/users", post(create_user))
         .route("/users/me", get(get_me))
         .route("/users/{user_id}", get(get_user))
