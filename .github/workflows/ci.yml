@@ -69,9 +69,11 @@ jobs:
         working-directory: tachyon
         run: cargo fmt --all -- --check
 
+      # Note: tachyon-cli depends on tachyon-desktop (Tauri/GTK), which requires
+      # system libraries not available in CI. These are checked locally via pre-commit hook.
       - name: Run clippy
         working-directory: tachyon
-        run: cargo clippy --workspace --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-testing --exclude tachyon-benchmarks --all-targets -- -D warnings
+        run: cargo clippy --workspace --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --all-targets -- -D warnings
 
   test:
     name: Test
@@ -108,14 +110,14 @@ jobs:
 
       - name: Run unit tests
         working-directory: tachyon
-        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-benchmarks --lib
+        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-benchmarks --lib
 
       - name: Run integration tests
         working-directory: tachyon
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
           TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-benchmarks --test integration -- --test-threads=1
+        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-benchmarks --test integration -- --test-threads=1
 
   build:
     name: Build Release
