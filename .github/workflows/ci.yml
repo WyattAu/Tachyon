@@ -347,7 +347,7 @@ jobs:
 
       - name: Run mutation tests
         working-directory: tachyon
-        run: cargo mutants --no-times --files crates/core/src/ crates/database/src/ crates/search/src/
+        run: cargo mutants --no-times --file crates/core/src/ --file crates/database/src/ --file crates/search/src/ -- --test-threads=1
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
