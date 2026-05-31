@@ -354,7 +354,10 @@ static FR_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
     m.insert("common.loading", "Chargement...");
     m.insert("common.error", "Une erreur est survenue");
     m.insert("common.no_results", "Aucun resultat");
-    m.insert("common.confirm_delete", "Etes-vous sur de vouloir supprimer ceci ?");
+    m.insert(
+        "common.confirm_delete",
+        "Etes-vous sur de vouloir supprimer ceci ?",
+    );
     m.insert("docs.new", "Nouveau document");
     m.insert("docs.empty", "Aucun document pour le moment");
     m.insert("docs.not_found", "Document introuvable");
@@ -480,7 +483,10 @@ static PT_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
     m.insert("common.loading", "Carregando...");
     m.insert("common.error", "Algo deu errado");
     m.insert("common.no_results", "Nenhum resultado encontrado");
-    m.insert("common.confirm_delete", "Tem certeza que deseja excluir isso?");
+    m.insert(
+        "common.confirm_delete",
+        "Tem certeza que deseja excluir isso?",
+    );
     m.insert("docs.new", "Novo documento");
     m.insert("docs.empty", "Nenhum documento ainda");
     m.insert("docs.not_found", "Documento nao encontrado");

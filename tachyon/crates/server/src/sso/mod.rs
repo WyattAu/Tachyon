@@ -8,6 +8,12 @@ pub mod oidc_runtime;
 pub mod saml;
 pub mod saml_runtime;
 
+pub use ldap::LdapConfig;
+pub use ldap_runtime::create_ldap_router;
 pub use ldap_runtime::LdapState;
+pub use oidc::OidcConfig;
+pub use oidc_runtime::create_oidc_router;
 pub use oidc_runtime::OidcState;
+pub use saml::SamlConfig;
+pub use saml_runtime::create_saml_router;
 pub use saml_runtime::SamlState;

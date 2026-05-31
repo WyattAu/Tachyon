@@ -153,7 +153,7 @@ pub use config::*;
 #[doc(hidden)]
 pub use middleware::*;
 
-use axum::extract::State;
+use axum::extract::{Extension, State};
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
@@ -183,6 +183,7 @@ pub struct AppState {
     pub space_state: crate::routes::space::SpaceState,
     pub conflict_state: crate::routes::conflict::ConflictState,
     pub onboarding_state: crate::routes::onboarding::OnboardingState,
+    pub comment_state: crate::routes::comments::CommentState,
     pub connection_manager: crate::websocket::ConnectionManager,
     pub crdt_connection_manager: crate::websocket::CrdtConnectionManager,
     pub ai_manager: Arc<crate::ai::AiManager>,
@@ -192,6 +193,9 @@ pub struct AppState {
     pub metrics: Arc<crate::middleware::metrics::RequestMetrics>,
     pub api_cache: crate::middleware::api_cache::ApiCache,
     pub audit_logger: crate::audit::AuditLogger,
+    pub oidc_state: Option<crate::sso::OidcState>,
+    pub saml_state: Option<crate::sso::SamlState>,
+    pub ldap_state: Option<crate::sso::LdapState>,
 }
 
 /// Initialize application state from a [`ServerConfig`].
@@ -342,8 +346,32 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     };
     let conflict_state = ConflictState { pool: pool.clone() };
     let onboarding_state = OnboardingState { pool: pool.clone() };
+    let comment_state = crate::routes::comments::CommentState::new(pool.clone());
     let connection_manager = ConnectionManager::new();
     let crdt_connection_manager = CrdtConnectionManager::new();
+
+    let oidc_state = if !config.sso_oidc.is_empty() {
+        Some(crate::sso::OidcState {
+            configs: config.sso_oidc.clone(),
+            pool: pool.clone(),
+            jwt_secret: config.jwt.signing_secret().to_string(),
+            http_client: reqwest::Client::new(),
+        })
+    } else {
+        None
+    };
+
+    let saml_state = config.sso_saml.as_ref().map(|cfg| crate::sso::SamlState {
+        config: cfg.clone(),
+        pool: pool.clone(),
+        jwt_secret: config.jwt.signing_secret().to_string(),
+    });
+
+    let ldap_state = config.sso_ldap.as_ref().map(|cfg| crate::sso::LdapState {
+        config: cfg.clone(),
+        pool: pool.clone(),
+        jwt_secret: config.jwt.signing_secret().to_string(),
+    });
 
     {
         let cleanup_cm = connection_manager.clone();
@@ -389,6 +417,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         space_state,
         conflict_state,
         onboarding_state,
+        comment_state,
         connection_manager,
         crdt_connection_manager,
         pool,
@@ -398,15 +427,21 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         metrics: Arc::new(crate::middleware::metrics::RequestMetrics::new()),
         api_cache: crate::middleware::api_cache::ApiCache::new(std::time::Duration::from_secs(60)),
         audit_logger,
+        oidc_state,
+        saml_state,
+        ldap_state,
     })
 }
 
 async fn graphql_handler(
     State(pool): State<tachyon_database::DatabasePool>,
+    Extension(auth_context): Extension<crate::middleware::AuthContext>,
     request: async_graphql_axum::GraphQLRequest,
 ) -> async_graphql_axum::GraphQLResponse {
+    let gql_auth = graphql::GraphqlAuthContext::from(auth_context);
     let schema = graphql::build_schema_with_data(pool);
-    schema.execute(request.into_inner()).await.into()
+    let request = request.into_inner().data(gql_auth);
+    schema.execute(request).await.into()
 }
 
 async fn graphql_playground() -> impl axum::response::IntoResponse {
@@ -447,6 +482,9 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let http_client = state.http_client;
     let metrics = state.metrics;
     let audit_logger = state.audit_logger;
+    let oidc_state = state.oidc_state;
+    let saml_state = state.saml_state;
+    let ldap_state = state.ldap_state;
     use crate::routes::activity::create_activity_router;
     use crate::routes::billing::{create_billing_router, BillingState};
     use crate::routes::catalog::create_catalog_router;
@@ -562,7 +600,10 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let ai_router = crate::routes::ai_routes::create_ai_router().with_state(ai_manager);
 
-    let api_v1 = Router::new()
+    let comment_router =
+        crate::routes::comments::create_comment_router().with_state(state.comment_state);
+
+    let mut api_v1 = Router::new()
         .merge(document_router)
         .merge(user_router)
         .merge(session_router)
@@ -591,7 +632,27 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(ai_router)
         .layer(RequestBodyLimitLayer::new(1024 * 1024))
         .merge(ssg_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
-        .merge(oauth2_router.layer(RequestBodyLimitLayer::new(1024 * 1024)));
+        .merge(oauth2_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
+        .merge(comment_router);
+
+    if let Some(oidc_state) = oidc_state {
+        let router = crate::sso::create_oidc_router()
+            .with_state(oidc_state)
+            .layer(RequestBodyLimitLayer::new(1024 * 1024));
+        api_v1 = api_v1.merge(router);
+    }
+    if let Some(saml_state) = saml_state {
+        let router = crate::sso::create_saml_router()
+            .with_state(saml_state)
+            .layer(RequestBodyLimitLayer::new(1024 * 1024));
+        api_v1 = api_v1.merge(router);
+    }
+    if let Some(ldap_state) = ldap_state {
+        let router = crate::sso::create_ldap_router()
+            .with_state(ldap_state)
+            .layer(RequestBodyLimitLayer::new(1024 * 1024));
+        api_v1 = api_v1.merge(router);
+    }
 
     let api_v2 = crate::routes::v2::v2_routes();
 

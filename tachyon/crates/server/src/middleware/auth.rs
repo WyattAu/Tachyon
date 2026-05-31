@@ -414,7 +414,11 @@ pub async fn auth_middleware(
         || path == "/"
         // WebSocket upgrade paths — the WS handlers extract and validate
         // tokens from query parameters during the upgrade handshake.
-        || path.starts_with("/ws");
+        || path.starts_with("/ws")
+        // SSO paths — OIDC authorize/callback, SAML metadata/ACS, LDAP login/sync
+        || path.starts_with("/api/v1/oidc/")
+        || path.starts_with("/api/v1/saml/")
+        || path.starts_with("/api/v1/ldap/");
 
     if is_public {
         return Ok(next.run(request).await);

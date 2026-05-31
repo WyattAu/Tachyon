@@ -142,7 +142,10 @@ pub async fn list_comments(
     let limit = params.limit.unwrap_or(50).min(100) as i64;
     let offset = params.offset.unwrap_or(0) as i64;
 
-    let mut conn = state.pool.acquire().await
+    let mut conn = state
+        .pool
+        .acquire()
+        .await
         .map_err(|e| ServerError::database(e.to_string()))?;
 
     let rows: Vec<CommentRow> = if params.parent_id.is_some() {
@@ -229,7 +232,10 @@ pub async fn create_comment(
         RETURNING id, document_id, parent_id, author_id, content, anchor_type, anchor_value, depth, is_resolved, resolved_by, created_at, updated_at
     "#;
 
-    let mut conn = state.pool.acquire().await
+    let mut conn = state
+        .pool
+        .acquire()
+        .await
         .map_err(|e| ServerError::database(e.to_string()))?;
 
     let row: CommentRow = sqlx::query_as(sql)
@@ -241,10 +247,7 @@ pub async fn create_comment(
         .await
         .map_err(|e| ServerError::database(e.to_string()))?;
 
-    Ok((
-        axum::http::StatusCode::CREATED,
-        Json(row_to_response(row)),
-    ))
+    Ok((axum::http::StatusCode::CREATED, Json(row_to_response(row))))
 }
 
 /// Update a comment (content or resolution status).
@@ -279,7 +282,10 @@ pub async fn update_comment(
         RETURNING id, document_id, parent_id, author_id, content, anchor_type, anchor_value, depth, is_resolved, resolved_by, created_at, updated_at
     "#;
 
-    let mut conn = state.pool.acquire().await
+    let mut conn = state
+        .pool
+        .acquire()
+        .await
         .map_err(|e| ServerError::database(e.to_string()))?;
 
     let row: CommentRow = sqlx::query_as(sql)
@@ -314,15 +320,19 @@ pub async fn delete_comment(
 ) -> Result<axum::http::StatusCode, ServerError> {
     info!("Deleting comment: {}", comment_id);
 
-    let mut conn = state.pool.acquire().await
+    let mut conn = state
+        .pool
+        .acquire()
+        .await
         .map_err(|e| ServerError::database(e.to_string()))?;
 
-    let result =
-        sqlx::query("UPDATE document_comments SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL")
-            .bind(&comment_id)
-            .execute(&mut *conn)
-            .await
-            .map_err(|e| ServerError::database(e.to_string()))?;
+    let result = sqlx::query(
+        "UPDATE document_comments SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
+    )
+    .bind(&comment_id)
+    .execute(&mut *conn)
+    .await
+    .map_err(|e| ServerError::database(e.to_string()))?;
 
     if result.rows_affected() == 0 {
         return Err(ServerError::not_found("Comment", &comment_id));
@@ -339,6 +349,12 @@ pub fn create_comment_router() -> axum::Router<CommentState> {
     use axum::routing::{delete, get, post, put};
 
     axum::Router::new()
-        .route("/documents/{document_id}/comments", get(list_comments).post(create_comment))
-        .route("/comments/{comment_id}", put(update_comment).delete(delete_comment))
+        .route(
+            "/documents/{document_id}/comments",
+            get(list_comments).post(create_comment),
+        )
+        .route(
+            "/comments/{comment_id}",
+            put(update_comment).delete(delete_comment),
+        )
 }

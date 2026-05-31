@@ -339,3 +339,6 @@ pub use onboarding::{
     create_onboarding_router, CompleteStepRequest, CompleteStepResponse, OnboardingState,
     OnboardingStatusResponse, SampleContentResponse, SuggestionsResponse, TemplateSuggestion,
 };
+
+// Comment exports
+pub use comments::{create_comment_router, CommentState};

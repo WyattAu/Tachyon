@@ -6,6 +6,25 @@ use super::types::{MutationRoot, QueryRoot};
 
 pub type TachyonSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
+#[derive(Debug, Clone)]
+pub struct GraphqlAuthContext {
+    pub user_id: String,
+    pub role: String,
+    pub permissions: Vec<String>,
+    pub team_id: Option<String>,
+}
+
+impl From<crate::middleware::AuthContext> for GraphqlAuthContext {
+    fn from(ctx: crate::middleware::AuthContext) -> Self {
+        Self {
+            user_id: ctx.user_id,
+            role: format!("{:?}", ctx.role),
+            permissions: ctx.permissions,
+            team_id: ctx.team_id,
+        }
+    }
+}
+
 #[cfg(test)]
 pub fn build_schema() -> TachyonSchema {
     Schema::build(QueryRoot, MutationRoot, EmptySubscription).finish()

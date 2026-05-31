@@ -4,10 +4,7 @@
 //! 1. `POST /auth/sso/ldap/login` -- Bind + search to authenticate a user
 //! 2. `POST /auth/sso/ldap/sync` -- Synchronize LDAP users into the database
 
-use axum::{
-    extract::State,
-    response::Json,
-};
+use axum::{extract::State, response::Json};
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 

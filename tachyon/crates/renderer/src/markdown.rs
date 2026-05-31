@@ -47,6 +47,20 @@ pub struct EmbedBlock {
     pub id: String,
 }
 
+/// A block reference (transclusion) parsed from markdown.
+/// Syntax: `![[doc-id]]` or `![[doc-id#heading]]` or `![[doc-id#^block-id]]`
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct BlockReference {
+    /// The target document slug or ID.
+    pub target: String,
+    /// Optional heading to transclude within the target document.
+    pub heading: Option<String>,
+    /// Optional block-level reference (e.g., `^block-id`).
+    pub block_id: Option<String>,
+    /// Whether this is a "reference only" (`![[doc-id#^block-id]]`) vs. full embed.
+    pub reference_only: bool,
+}
+
 // ============================================================================
 // MarkdownParser
 // ============================================================================
@@ -217,6 +231,79 @@ impl MarkdownParser {
 
         result.pop();
         result
+    }
+
+    /// Extract block references (transclusions) from markdown content.
+    ///
+    /// Parses `![[target]]`, `![[target#heading]]`, `![[target#^block-id]]` syntax.
+    /// Skips references inside code blocks and inline code.
+    ///
+    /// Returns the block references found and their positions.
+    pub fn extract_block_references(&self, content: &str) -> Vec<(usize, BlockReference)> {
+        let mut references = Vec::new();
+        let mut in_code_block = false;
+        let mut code_fence_marker = String::new();
+
+        for (line_idx, line) in content.lines().enumerate() {
+            if line.trim().starts_with("```") || line.trim().starts_with("~~~") {
+                if !in_code_block {
+                    in_code_block = true;
+                    code_fence_marker = line.trim().chars().take(3).collect();
+                } else if line.trim().starts_with(&code_fence_marker) {
+                    in_code_block = false;
+                    code_fence_marker.clear();
+                }
+                continue;
+            }
+
+            if in_code_block {
+                continue;
+            }
+
+            let mut search_start = 0;
+            let chars: Vec<char> = line.chars().collect();
+
+            while search_start < chars.len() {
+                if chars.get(search_start) == Some(&'`') {
+                    let tick_count = count_consecutive(&chars[search_start..], '`');
+                    let close_pos =
+                        find_closing_backtick(&chars, search_start + tick_count, tick_count);
+                    if let Some(pos) = close_pos {
+                        search_start = pos + tick_count;
+                    } else {
+                        search_start = chars.len();
+                    }
+                    continue;
+                }
+
+                if search_start + 2 < chars.len()
+                    && chars[search_start] == '!'
+                    && chars[search_start + 1] == '['
+                    && chars[search_start + 2] == '['
+                {
+                    let close = find_closing_brackets(&chars, search_start + 3, '[', ']');
+                    if let Some(end_pos) = close {
+                        let inner: String = chars[search_start + 3..end_pos].iter().collect();
+                        if let Some(reference) = parse_block_reference(&inner) {
+                            let offset = content[..]
+                                .lines()
+                                .take(line_idx)
+                                .map(|l| l.len() + 1)
+                                .sum::<usize>()
+                                + search_start;
+                            references.push((offset, reference));
+                        }
+                        search_start = end_pos + 2;
+                    } else {
+                        search_start += 1;
+                    }
+                } else {
+                    search_start += 1;
+                }
+            }
+        }
+
+        references
     }
 
     /// Extract all wikilink targets from content (without converting)
@@ -446,6 +533,83 @@ impl Default for MarkdownParser {
     fn default() -> Self {
         Self::with_options(MarkdownOptions::default())
     }
+}
+
+/// Parse the inner content of a block reference `[[target]]`, `[[target#heading]]`, `[[target#^block-id]]`.
+fn parse_block_reference(inner: &str) -> Option<BlockReference> {
+    let inner = inner.trim();
+    if inner.is_empty() {
+        return None;
+    }
+
+    let (inner, reference_only) = if inner.starts_with('!') {
+        (&inner[1..], true)
+    } else {
+        (inner, false)
+    };
+
+    let target;
+    let mut heading = None;
+    let mut block_id = None;
+
+    if let Some(hash_pos) = inner.find('#') {
+        target = inner[..hash_pos].trim().to_string();
+        let fragment = &inner[hash_pos + 1..];
+
+        if fragment.starts_with('^') {
+            block_id = Some(fragment[1..].trim().to_string());
+        } else {
+            heading = Some(fragment.trim().to_string());
+        }
+    } else {
+        target = inner.trim().to_string();
+    }
+
+    if target.is_empty() {
+        return None;
+    }
+
+    Some(BlockReference {
+        target,
+        heading,
+        block_id,
+        reference_only,
+    })
+}
+
+/// Count consecutive occurrences of a character at the start of a slice.
+fn count_consecutive(chars: &[char], target: char) -> usize {
+    chars.iter().take_while(|c| **c == target).count()
+}
+
+/// Find the closing backtick matching the opening tick count.
+fn find_closing_backtick(chars: &[char], start: usize, tick_count: usize) -> Option<usize> {
+    let mut pos = start;
+    while pos + tick_count <= chars.len() {
+        if chars[pos] == '`' && count_consecutive(&chars[pos..], '`') >= tick_count {
+            return Some(pos);
+        }
+        pos += 1;
+    }
+    None
+}
+
+/// Find closing `]]` bracket pair.
+fn find_closing_brackets(chars: &[char], start: usize, open: char, close: char) -> Option<usize> {
+    let mut depth = 1i32;
+    let mut pos = start;
+    while pos < chars.len() {
+        if chars[pos] == open {
+            depth += 1;
+        } else if chars[pos] == close {
+            depth -= 1;
+            if depth == 0 {
+                return Some(pos);
+            }
+        }
+        pos += 1;
+    }
+    None
 }
 
 #[cfg(test)]
@@ -684,5 +848,96 @@ Some more text.
                 .contains("src=\"https://example.com/image.png\""),
             "Expected img to preserve src attribute"
         );
+    }
+
+    // ── Block Reference Tests ───────────────────────────────────────────
+
+    #[test]
+    fn test_extract_block_references_basic() {
+        let parser = MarkdownParser::new();
+        let content = "See ![[design-specs]] for details.";
+        let refs = parser.extract_block_references(content);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].1.target, "design-specs");
+        assert_eq!(refs[0].1.heading, None);
+        assert_eq!(refs[0].1.block_id, None);
+        assert!(!refs[0].1.reference_only);
+    }
+
+    #[test]
+    fn test_extract_block_references_with_heading() {
+        let parser = MarkdownParser::new();
+        let content = "Embed ![[api-docs#authentication]] here.";
+        let refs = parser.extract_block_references(content);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].1.target, "api-docs");
+        assert_eq!(refs[0].1.heading, Some("authentication".to_string()));
+        assert_eq!(refs[0].1.block_id, None);
+    }
+
+    #[test]
+    fn test_extract_block_references_with_block_id() {
+        let parser = MarkdownParser::new();
+        let content = "Reference ![[notes#^important-quote]] inline.";
+        let refs = parser.extract_block_references(content);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].1.target, "notes");
+        assert_eq!(refs[0].1.heading, None);
+        assert_eq!(refs[0].1.block_id, Some("important-quote".to_string()));
+    }
+
+    #[test]
+    fn test_extract_block_references_reference_only() {
+        let parser = MarkdownParser::new();
+        let content = "See ![[!design-specs]] for the original.";
+        let refs = parser.extract_block_references(content);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].1.target, "design-specs");
+        assert!(refs[0].1.reference_only);
+    }
+
+    #[test]
+    fn test_extract_block_references_skips_code_blocks() {
+        let parser = MarkdownParser::new();
+        let content = "Before.\n```\n![[should-not-parse]]\n```\nAfter ![[real-ref]].";
+        let refs = parser.extract_block_references(content);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].1.target, "real-ref");
+    }
+
+    #[test]
+    fn test_extract_block_references_skips_inline_code() {
+        let parser = MarkdownParser::new();
+        let content = "Use `![[not-a-ref]]` literally, but ![[actual-ref]] embeds.";
+        let refs = parser.extract_block_references(content);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].1.target, "actual-ref");
+    }
+
+    #[test]
+    fn test_extract_block_references_multiple() {
+        let parser = MarkdownParser::new();
+        let content = "![[doc-a]] and ![[doc-b#intro]] and ![[doc-c#^key]]";
+        let refs = parser.extract_block_references(content);
+        assert_eq!(refs.len(), 3);
+        assert_eq!(refs[0].1.target, "doc-a");
+        assert_eq!(refs[1].1.target, "doc-b");
+        assert_eq!(refs[1].1.heading, Some("intro".to_string()));
+        assert_eq!(refs[2].1.target, "doc-c");
+        assert_eq!(refs[2].1.block_id, Some("key".to_string()));
+    }
+
+    #[test]
+    fn test_extract_block_references_empty() {
+        let parser = MarkdownParser::new();
+        let content = "No references here.";
+        let refs = parser.extract_block_references(content);
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn test_parse_block_reference_invalid() {
+        assert!(parse_block_reference("").is_none());
+        assert!(parse_block_reference("#").is_none());
     }
 }

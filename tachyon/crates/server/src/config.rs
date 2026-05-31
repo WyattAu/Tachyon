@@ -2,7 +2,7 @@
 // Manages server configuration for HTTP/2, TLS, and authentication
 
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 
 /// Server configuration
@@ -47,6 +47,15 @@ pub struct ServerConfig {
     pub log: LogConfig,
     /// OAuth2 configuration
     pub oauth2: OAuth2Config,
+    /// OIDC SSO provider configurations (keyed by provider name)
+    #[serde(default)]
+    pub sso_oidc: HashMap<String, crate::sso::OidcConfig>,
+    /// SAML 2.0 SSO configuration
+    #[serde(default)]
+    pub sso_saml: Option<crate::sso::SamlConfig>,
+    /// LDAP SSO configuration
+    #[serde(default)]
+    pub sso_ldap: Option<crate::sso::LdapConfig>,
     /// TrueLayer payment configuration
     pub truelayer: TrueLayerConfig,
     /// SMTP URL for email delivery (optional)
@@ -404,6 +413,9 @@ impl Default for ServerConfig {
             site: SiteConfig::default(),
             log: LogConfig::default(),
             oauth2: OAuth2Config::default(),
+            sso_oidc: HashMap::new(),
+            sso_saml: None,
+            sso_ldap: None,
             truelayer: TrueLayerConfig::default(),
             smtp_url: None,
             smtp_from: None,

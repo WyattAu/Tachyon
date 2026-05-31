@@ -7,6 +7,8 @@ use tachyon_database::{
     TeamRepository, UserRepository,
 };
 
+use crate::graphql::schema::GraphqlAuthContext;
+
 #[derive(Debug, Clone, SimpleObject)]
 pub struct Document {
     pub id: ID,
@@ -167,8 +169,23 @@ impl QueryRoot {
         }
     }
 
-    async fn me(&self, _ctx: &Context<'_>) -> Result<Option<User>> {
-        Ok(None)
+    async fn me(&self, ctx: &Context<'_>) -> Result<Option<User>> {
+        let auth = ctx.data::<GraphqlAuthContext>();
+        let pool = ctx.data::<DatabasePool>()?;
+
+        match auth {
+            Ok(auth_ctx) => {
+                let repo = UserRepository::new(pool.clone());
+                let user_id = tachyon_core::id::UserId::parse_str(&auth_ctx.user_id)
+                    .map_err(|e| async_graphql::Error::new(format!("Invalid user ID: {}", e)))?;
+                match repo.get_by_id(&user_id).await {
+                    Ok(u) => Ok(Some(map_user_to_gql(u))),
+                    Err(tachyon_database::DatabaseError::NotFound { .. }) => Ok(None),
+                    Err(e) => Err(async_graphql::Error::new(e.to_string())),
+                }
+            }
+            Err(_) => Ok(None),
+        }
     }
 
     async fn search(
@@ -276,7 +293,16 @@ impl MutationRoot {
         let repo = DocumentRepository::new(pool.clone());
 
         let doc_id = tachyon_core::generate_document_id();
-        let author_id = tachyon_core::generate_user_id();
+        let auth: GraphqlAuthContext = ctx
+            .data::<GraphqlAuthContext>()
+            .map(|a| a.clone())
+            .unwrap_or(GraphqlAuthContext {
+                user_id: tachyon_core::generate_user_id().to_string(),
+                role: "guest".to_string(),
+                permissions: vec![],
+                team_id: None,
+            });
+        let author_id = auth.user_id;
         let now = chrono::Utc::now();
         let tags_json =
             serde_json::to_string(&tags.unwrap_or_default()).unwrap_or_else(|_| "[]".to_string());
@@ -382,7 +408,16 @@ impl MutationRoot {
         let pool = ctx.data::<DatabasePool>()?;
         let repo = SpaceRepository::new(pool.clone());
 
-        let owner_id = "00000000-0000-0000-0000-000000000000".to_string();
+        let auth: GraphqlAuthContext = ctx
+            .data::<GraphqlAuthContext>()
+            .map(|a| a.clone())
+            .unwrap_or(GraphqlAuthContext {
+                user_id: "00000000-0000-0000-0000-000000000000".to_string(),
+                role: "guest".to_string(),
+                permissions: vec![],
+                team_id: None,
+            });
+        let owner_id = auth.user_id;
         let req = tachyon_database::CreateSpaceRequest {
             name,
             description,

@@ -4,16 +4,11 @@
 //! 1. `GET /auth/sso/saml/metadata` -- SP metadata XML for IdP configuration
 //! 2. `POST /auth/sso/saml/acs` -- Assertion Consumer Service (ACS) endpoint
 
-use axum::{
-    extract::State,
-    response::Json,
-};
+use axum::{extract::State, response::Json};
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use super::saml::{
-    SamlAttribute, SamlConfig, SamlConditions, SamlResponse,
-};
+use super::saml::{SamlAttribute, SamlConditions, SamlConfig, SamlResponse};
 use crate::error::ServerError;
 
 // ============================================================================
