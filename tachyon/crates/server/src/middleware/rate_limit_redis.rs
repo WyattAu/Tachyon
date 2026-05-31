@@ -37,10 +37,7 @@ impl RedisRateLimitStore {
         let mut conn = self.pool.get().await.map_err(|_| ())?;
 
         let count: i64 = conn.incr(&redis_key, 1).await.map_err(|_| ())?;
-
-        if count == 1 {
-            let _: () = conn.expire(&redis_key, ttl).await.map_err(|_| ())?;
-        }
+        let _: () = conn.expire(&redis_key, ttl).await.map_err(|_| ())?;
 
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -77,9 +74,17 @@ impl RateLimitStore for RedisRateLimitStore {
     }
 
     async fn increment(&self, key: &str) {
-        let redis_key = format!("ratelimit:{}", key);
+        let window_secs: u64 = 60;
+        let window_start = (SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            / window_secs)
+            * window_secs;
+        let redis_key = format!("ratelimit:{}:{}", key, window_start);
         if let Ok(mut conn) = self.pool.get().await {
             let _: Result<i64, _> = conn.incr(&redis_key, 1).await;
+            let _: Result<(), _> = conn.expire(&redis_key, window_secs as i64).await;
         }
     }
 

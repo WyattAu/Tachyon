@@ -102,11 +102,13 @@ pub struct CrdtConnectionManager {
     seq_counter: Arc<std::sync::atomic::AtomicU64>,
     max_connections: usize,
     heartbeat_interval_secs: u64,
+    /// Maximum binary message size in bytes (reject larger messages).
+    max_message_size: usize,
 }
 
 impl CrdtConnectionManager {
     pub fn new() -> Self {
-        let (broadcast_tx, _) = broadcast::channel(256);
+        let (broadcast_tx, _) = broadcast::channel(1024);
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),
             room_clients: Arc::new(RwLock::new(HashMap::new())),
@@ -116,11 +118,12 @@ impl CrdtConnectionManager {
             seq_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             max_connections: 1000,
             heartbeat_interval_secs: 30,
+            max_message_size: 10 * 1024 * 1024, // 10 MiB
         }
     }
 
     pub fn with_config(max_connections: usize, heartbeat_interval_secs: u64) -> Self {
-        let (broadcast_tx, _) = broadcast::channel(256);
+        let (broadcast_tx, _) = broadcast::channel(1024);
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),
             room_clients: Arc::new(RwLock::new(HashMap::new())),
@@ -130,6 +133,7 @@ impl CrdtConnectionManager {
             seq_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             max_connections,
             heartbeat_interval_secs,
+            max_message_size: 10 * 1024 * 1024, // 10 MiB
         }
     }
 
@@ -486,6 +490,7 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     let broadcast_tx = manager.broadcast_tx.clone();
     let crdt_manager = manager.crdt_manager().clone();
     let manager_for_recv = manager.clone();
+    let max_message_size = manager.max_message_size;
     let recv_task = async move {
         while let Some(msg) = ws_receiver.next().await {
             match msg {
@@ -494,6 +499,16 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                     let data_vec: Vec<u8> = data.to_vec();
 
                     if data_vec.is_empty() {
+                        continue;
+                    }
+
+                    if data_vec.len() > max_message_size {
+                        warn!(
+                            client_id = %client_id_for_recv,
+                            len = data_vec.len(),
+                            max = max_message_size,
+                            "Binary message exceeds size limit, dropping"
+                        );
                         continue;
                     }
 

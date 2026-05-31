@@ -1,18 +1,9 @@
 groups:
   - name: tachyon
     rules:
-      - alert: HighErrorRate
-        expr: |
-          rate(http_requests_total{status=~"5.."}[1m]) / rate(http_requests_total[1m]) * 100 > 1
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "High error rate detected"
-          description: >
-            The error rate is {{ $value | humanize }}% (threshold: 1%).
-            This has been ongoing for more than 5 minutes.
-            Instance: {{ $labels.instance }}, Job: {{ $labels.job }}.
+      # NOTE: HighErrorRate, DatabasePoolExhaustion, LowCacheHitRate, and
+      # InstanceDown are managed in grafana/provisioning/alerts.yml to avoid
+      # duplicate alert names. The rules below cover metrics not present there.
 
       - alert: HighLatency
         expr: |
@@ -26,20 +17,6 @@ groups:
             The P99 latency is {{ $value | humanize }}ms (threshold: 200ms).
             This has been ongoing for more than 5 minutes.
             Instance: {{ $labels.instance }}, Job: {{ $labels.job }}.
-
-      - alert: DatabasePoolExhaustion
-        expr: |
-          db_pool_connections_active / db_pool_connections_max * 100 > 80
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Database connection pool near exhaustion"
-          description: >
-            Database pool utilization is {{ $value | humanize }}% (threshold: 80%).
-            This has been ongoing for more than 5 minutes.
-            Active connections: {{ $labels.db_pool_connections_active }},
-            Max connections: {{ $labels.db_pool_connections_max }}.
 
       - alert: DiskSpaceLow
         expr: |
@@ -66,27 +43,3 @@ groups:
             WebSocket active connections dropped by more than 50% over the last 5 minutes.
             Current connections: {{ $value }}.
             Instance: {{ $labels.instance }}.
-
-      - alert: CacheHitRateLow
-        expr: |
-          rate(cache_hits_total[1m]) / rate(cache_requests_total[1m]) * 100 < 50
-        for: 10m
-        labels:
-          severity: info
-        annotations:
-          summary: "Cache hit rate is low"
-          description: >
-            Cache hit rate is {{ $value | humanize }}% (threshold: 50%).
-            This has been ongoing for more than 10 minutes.
-            Instance: {{ $labels.instance }}.
-
-      - alert: InstanceDown
-        expr: up == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Instance {{ $labels.instance }} is down"
-          description: >
-            Instance {{ $labels.instance }} (job: {{ $labels.job }}) has been
-            unreachable for more than 1 minute.
