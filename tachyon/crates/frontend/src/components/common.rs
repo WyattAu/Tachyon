@@ -23,7 +23,7 @@ pub fn Button(
 
     view! {
         <button
-            class=format!("min-h-[44px] px-4 py-3 rounded font-medium transition-spring {}", variant_class)
+            class=format!("min-h-[44px] px-4 py-3 rounded-none font-medium transition-spring border-2 border-current {}", variant_class)
         >
             {text}
         </button>
@@ -39,9 +39,9 @@ pub fn Card(
     children: Children,
 ) -> impl IntoView {
     view! {
-        <div class="bg-white rounded border-2 border-gray-900 dark:border-gray-100 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">{title}</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 overflow-hidden">
+            <div class="px-4 py-3 border-b-2 border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
             </div>
             <div class="p-4">
                 {children()}
@@ -137,8 +137,8 @@ pub fn PageHeader(
     title: String,
 ) -> impl IntoView {
     view! {
-        <div class="mb-6">
-            <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{title}</h1>
+        <div class="mb-6 pb-4 border-b-2 border-gray-900 dark:border-gray-100">
+            <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-gray-900 dark:text-white">{title}</h1>
         </div>
     }
 }
