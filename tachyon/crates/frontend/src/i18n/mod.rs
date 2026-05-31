@@ -280,14 +280,229 @@ static JA_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
     m
 });
 
+/// German translations.
+#[allow(clippy::incompatible_msrv)]
+static DE_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
+    let mut m = HashMap::new();
+    m.insert("nav.home", "Startseite");
+    m.insert("nav.dashboard", "Dashboard");
+    m.insert("nav.documents", "Dokumente");
+    m.insert("nav.search", "Suche");
+    m.insert("nav.settings", "Einstellungen");
+    m.insert("nav.catalog", "Katalog");
+    m.insert("nav.teams", "Teams");
+    m.insert("nav.plugins", "Plugins");
+    m.insert("nav.spaces", "Bereiche");
+    m.insert("nav.graph", "Wissensgraph");
+    m.insert("nav.tags", "Tags");
+    m.insert("nav.billing", "Abrechnung");
+    m.insert("nav.ssg", "Statische Website");
+    m.insert("nav.admin", "Verwaltung");
+    m.insert("nav.audit", "Audit-Log");
+    m.insert("nav.templates", "Vorlagen");
+    m.insert("action.save", "Speichern");
+    m.insert("action.cancel", "Abbrechen");
+    m.insert("action.delete", "Loschen");
+    m.insert("action.create", "Erstellen");
+    m.insert("action.edit", "Bearbeiten");
+    m.insert("action.search", "Suchen");
+    m.insert("action.sign_in", "Anmelden");
+    m.insert("action.sign_out", "Abmelden");
+    m.insert("action.register", "Registrieren");
+    m.insert("common.loading", "Laden...");
+    m.insert("common.error", "Etwas ist schiefgelaufen");
+    m.insert("common.no_results", "Keine Ergebnisse gefunden");
+    m.insert("common.confirm_delete", "Mochten Sie das wirklich loschen?");
+    m.insert("docs.new", "Neues Dokument");
+    m.insert("docs.empty", "Noch keine Dokumente");
+    m.insert("docs.not_found", "Dokument nicht gefunden");
+    m.insert("docs.draft", "Entwurf");
+    m.insert("docs.published", "Veroffentlicht");
+    m.insert("docs.archived", "Archiviert");
+    m
+});
+
+/// French translations.
+#[allow(clippy::incompatible_msrv)]
+static FR_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
+    let mut m = HashMap::new();
+    m.insert("nav.home", "Accueil");
+    m.insert("nav.dashboard", "Tableau de bord");
+    m.insert("nav.documents", "Documents");
+    m.insert("nav.search", "Recherche");
+    m.insert("nav.settings", "Parametres");
+    m.insert("nav.catalog", "Catalogue");
+    m.insert("nav.teams", "Equipes");
+    m.insert("nav.plugins", "Plugins");
+    m.insert("nav.spaces", "Espaces");
+    m.insert("nav.graph", "Graphe de connaissances");
+    m.insert("nav.tags", "Tags");
+    m.insert("nav.billing", "Facturation");
+    m.insert("nav.ssg", "Site statique");
+    m.insert("nav.admin", "Administration");
+    m.insert("nav.audit", "Journal d'audit");
+    m.insert("nav.templates", "Modeles");
+    m.insert("action.save", "Enregistrer");
+    m.insert("action.cancel", "Annuler");
+    m.insert("action.delete", "Supprimer");
+    m.insert("action.create", "Creer");
+    m.insert("action.edit", "Modifier");
+    m.insert("action.search", "Rechercher");
+    m.insert("action.sign_in", "Se connecter");
+    m.insert("action.sign_out", "Se deconnecter");
+    m.insert("action.register", "S'inscrire");
+    m.insert("common.loading", "Chargement...");
+    m.insert("common.error", "Une erreur est survenue");
+    m.insert("common.no_results", "Aucun resultat");
+    m.insert("common.confirm_delete", "Etes-vous sur de vouloir supprimer ceci ?");
+    m.insert("docs.new", "Nouveau document");
+    m.insert("docs.empty", "Aucun document pour le moment");
+    m.insert("docs.not_found", "Document introuvable");
+    m.insert("docs.draft", "Brouillon");
+    m.insert("docs.published", "Publie");
+    m.insert("docs.archived", "Archive");
+    m
+});
+
+/// Spanish translations.
+#[allow(clippy::incompatible_msrv)]
+static ES_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
+    let mut m = HashMap::new();
+    m.insert("nav.home", "Inicio");
+    m.insert("nav.dashboard", "Panel");
+    m.insert("nav.documents", "Documentos");
+    m.insert("nav.search", "Buscar");
+    m.insert("nav.settings", "Configuracion");
+    m.insert("nav.catalog", "Catalogo");
+    m.insert("nav.teams", "Equipos");
+    m.insert("nav.plugins", "Plugins");
+    m.insert("nav.spaces", "Espacios");
+    m.insert("nav.graph", "Grafo de conocimientos");
+    m.insert("nav.tags", "Etiquetas");
+    m.insert("nav.billing", "Facturacion");
+    m.insert("nav.ssg", "Sitio estatico");
+    m.insert("nav.admin", "Administracion");
+    m.insert("nav.audit", "Registro de auditoria");
+    m.insert("nav.templates", "Plantillas");
+    m.insert("action.save", "Guardar");
+    m.insert("action.cancel", "Cancelar");
+    m.insert("action.delete", "Eliminar");
+    m.insert("action.create", "Crear");
+    m.insert("action.edit", "Editar");
+    m.insert("action.search", "Buscar");
+    m.insert("action.sign_in", "Iniciar sesion");
+    m.insert("action.sign_out", "Cerrar sesion");
+    m.insert("action.register", "Registrarse");
+    m.insert("common.loading", "Cargando...");
+    m.insert("common.error", "Algo salio mal");
+    m.insert("common.no_results", "Sin resultados");
+    m.insert("common.confirm_delete", "Seguro que desea eliminar esto?");
+    m.insert("docs.new", "Nuevo documento");
+    m.insert("docs.empty", "Sin documentos aun");
+    m.insert("docs.not_found", "Documento no encontrado");
+    m.insert("docs.draft", "Borrador");
+    m.insert("docs.published", "Publicado");
+    m.insert("docs.archived", "Archivado");
+    m
+});
+
+/// Korean translations.
+#[allow(clippy::incompatible_msrv)]
+static KO_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
+    let mut m = HashMap::new();
+    m.insert("nav.home", "홈");
+    m.insert("nav.dashboard", "대시보드");
+    m.insert("nav.documents", "문서");
+    m.insert("nav.search", "검색");
+    m.insert("nav.settings", "설정");
+    m.insert("nav.catalog", "카탈로그");
+    m.insert("nav.teams", "팀");
+    m.insert("nav.plugins", "플러그인");
+    m.insert("nav.spaces", "스페이스");
+    m.insert("nav.graph", "지식 그래프");
+    m.insert("nav.tags", "태그");
+    m.insert("nav.billing", "결제");
+    m.insert("nav.ssg", "정적 사이트");
+    m.insert("nav.admin", "관리");
+    m.insert("nav.audit", "감사 로그");
+    m.insert("nav.templates", "템플릿");
+    m.insert("action.save", "저장");
+    m.insert("action.cancel", "취소");
+    m.insert("action.delete", "삭제");
+    m.insert("action.create", "만들기");
+    m.insert("action.edit", "편집");
+    m.insert("action.search", "검색");
+    m.insert("action.sign_in", "로그인");
+    m.insert("action.sign_out", "로그아웃");
+    m.insert("action.register", "가입");
+    m.insert("common.loading", "로딩 중...");
+    m.insert("common.error", "오류가 발생했습니다");
+    m.insert("common.no_results", "검색 결과가 없습니다");
+    m.insert("common.confirm_delete", "정말 삭제하시겠습니까?");
+    m.insert("docs.new", "새 문서");
+    m.insert("docs.empty", "문서가 아직 없습니다");
+    m.insert("docs.not_found", "문서를 찾을 수 없습니다");
+    m.insert("docs.draft", "초안");
+    m.insert("docs.published", "게시됨");
+    m.insert("docs.archived", "보관 처리됨");
+    m
+});
+
+/// Portuguese translations.
+#[allow(clippy::incompatible_msrv)]
+static PT_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
+    let mut m = HashMap::new();
+    m.insert("nav.home", "Inicio");
+    m.insert("nav.dashboard", "Painel");
+    m.insert("nav.documents", "Documentos");
+    m.insert("nav.search", "Pesquisa");
+    m.insert("nav.settings", "Configuracoes");
+    m.insert("nav.catalog", "Catalogo");
+    m.insert("nav.teams", "Equipes");
+    m.insert("nav.plugins", "Plugins");
+    m.insert("nav.spaces", "Espacos");
+    m.insert("nav.graph", "Grafo de conhecimento");
+    m.insert("nav.tags", "Tags");
+    m.insert("nav.billing", "Faturamento");
+    m.insert("nav.ssg", "Site estatico");
+    m.insert("nav.admin", "Administracao");
+    m.insert("nav.audit", "Registro de auditoria");
+    m.insert("nav.templates", "Modelos");
+    m.insert("action.save", "Salvar");
+    m.insert("action.cancel", "Cancelar");
+    m.insert("action.delete", "Excluir");
+    m.insert("action.create", "Criar");
+    m.insert("action.edit", "Editar");
+    m.insert("action.search", "Pesquisar");
+    m.insert("action.sign_in", "Entrar");
+    m.insert("action.sign_out", "Sair");
+    m.insert("action.register", "Registrar");
+    m.insert("common.loading", "Carregando...");
+    m.insert("common.error", "Algo deu errado");
+    m.insert("common.no_results", "Nenhum resultado encontrado");
+    m.insert("common.confirm_delete", "Tem certeza que deseja excluir isso?");
+    m.insert("docs.new", "Novo documento");
+    m.insert("docs.empty", "Nenhum documento ainda");
+    m.insert("docs.not_found", "Documento nao encontrado");
+    m.insert("docs.draft", "Rascunho");
+    m.insert("docs.published", "Publicado");
+    m.insert("docs.archived", "Arquivado");
+    m
+});
+
 /// Get translations for a locale (falls back to English).
 ///
 /// Reserved for future use: i18n translation lookup.
 fn translations_for(locale: Locale) -> &'static HashMap<&'static str, &'static str> {
     match locale {
+        Locale::En => &EN_TRANSLATIONS,
         Locale::Zh => &ZH_TRANSLATIONS,
         Locale::Ja => &JA_TRANSLATIONS,
-        _ => &EN_TRANSLATIONS, // English + all other locales fall back
+        Locale::De => &DE_TRANSLATIONS,
+        Locale::Fr => &FR_TRANSLATIONS,
+        Locale::Es => &ES_TRANSLATIONS,
+        Locale::Ko => &KO_TRANSLATIONS,
+        Locale::Pt => &PT_TRANSLATIONS,
     }
 }
 

@@ -6,6 +6,7 @@ pub mod ai_routes;
 pub mod billing;
 pub mod catalog;
 pub mod collaboration;
+pub mod comments;
 pub mod conflict;
 pub mod document;
 pub mod ecosystem;

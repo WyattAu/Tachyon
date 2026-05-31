@@ -21,7 +21,7 @@ pub struct SamlResponse {
     pub authn_instant: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct SamlAttribute {
     pub name: String,
     pub friendly_name: Option<String>,
