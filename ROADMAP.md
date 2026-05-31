@@ -6,6 +6,40 @@ This is the single authoritative roadmap. All prior roadmap variants have been c
 
 ---
 
+## Strategic Context
+
+### Competitive Positioning (from COMPARISON_MATRIX.md)
+
+Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collaborative knowledge management system with an integrated SSG pipeline**. No existing product combines all three capabilities.
+
+**Defensible strengths to amplify:**
+- Full Rust stack (memory safety, deterministic perf, minimal attack surface) -- no competitor in this space
+- WASM plugin sandbox (Wasmtime) -- no competitor offers safe extensibility
+- Integrated SSG + real-time collaboration -- no competitor has both
+- Semantic search (pgvector + pluggable AI) -- most competitors are keyword-only
+- Formal verification (TLA+, Lean4) -- unique in the knowledge management space
+- 1,700+ tests, 11 CI workflows, mutation testing, OWASP ZAP -- institutional quality
+
+**Critical gaps blocking adoption (prioritized by competitive necessity):**
+1. No production deployment -- cannot demonstrate value to any user
+2. Markdown-only editing -- Notion/Confluence/Affine users expect WYSIWYG or block editors
+3. No bidirectional links or graph view -- table stakes for PKM users (Obsidian, Logseq, Roam)
+4. No migration from Notion/Confluence/Google Docs -- cannot onboard existing teams
+5. No mobile app -- most knowledge workers are mobile-first
+6. Empty plugin ecosystem -- chicken-and-egg problem with Notion's 2,000+ integrations
+7. No offline mode -- local-first trend is accelerating (Anytype, SiYuan, Logseq)
+8. No i18n -- non-English markets unreachable
+
+### Guiding Principles
+
+1. **Launch beats perfection.** Get v1.0.0 running before building new features. Unshipped code earns zero users.
+2. **Markdown-first is a feature, not a deficit.** Do not chase Notion's block editor. Target developers and technical teams who prefer MD over WYSIWYG. Compete with GitBook, Docusaurus, Outline, and Obsidian, not with Notion.
+3. **Self-hosted is the moat.** Every SaaS competitor (Notion, Confluence, GitBook, Fibery) charges rent. Tachyon's value proposition is ownership. Amplify this in all messaging.
+4. **Rust is the brand.** Performance, safety, and correctness differentiators are only credible if the product runs. Ship first, benchmark second.
+5. **Ecosystem before features.** A plugin system with zero plugins is indistinguishable from no plugin system. Ship 5-10 high-quality reference plugins before marketing the plugin system.
+
+---
+
 ## Current State Summary
 
 ### Test Suite (2,054 tests, all passing)
@@ -44,7 +78,7 @@ This is the single authoritative roadmap. All prior roadmap variants have been c
 
 | Workflow | Status | Notes |
 |----------|--------|-------|
-| CI (check, lint, test, coverage, build, benchmarks) | GREEN | Note: tachyon-cli excluded from CI (depends on tachyon-desktop/GTK); verified locally via pre-commit |
+| CI (check, lint, test, coverage, build, benchmarks) | GREEN | tachyon-cli excluded from CI (GTK dependency); verified locally via pre-commit |
 | Security (audit, SAST, secrets, container) | GREEN | Semgrep, Trivy, TruffleHog |
 | SBOM Generation | GREEN | CycloneDX via cargo-cyclonedx |
 | Release Drafter | GREEN | Auto-draft on PR to main |
@@ -110,6 +144,7 @@ Code-level audit complete. Infrastructure-dependent items remain.
 | DONE | WebSocket heartbeat and connection limits |
 | DONE | pgvector migration and dimension fix |
 | DONE | Wire pgvector to document CRUD, add semantic search endpoint |
+| DONE | Fix CRITICAL/HIGH audit issues (Redis rate limit, WebSocket tests, handler dedup, monitoring alerts, nginx auth rate limit, CRDT message size limit) |
 | REMAINING | Execute k6 against running server (scripts prepared) |
 | REMAINING | Redis distributed rate limiting validation (script prepared) |
 | REMAINING | WebSocket reconnection stress test at scale (script prepared) |
@@ -131,6 +166,8 @@ Code-level audit complete. Infrastructure-dependent items remain.
 | DONE | 19 hot-path regex compilations converted to LazyLock |
 | DONE | Audit log persistence (database fire-and-forget write) |
 | DONE | External penetration test (OWASP ZAP baseline in CI) |
+| DONE | Auth-specific nginx rate limit (5r/m, burst=3) |
+| DONE | Monitoring alert deduplication (15 rules consolidated to 8) |
 
 **Completion:** Zero CRITICAL/HIGH security findings. OWASP Top 10 verified. SBOM in release artifacts.
 
@@ -144,8 +181,9 @@ Depends on: Phase 1, Phase 3.
 | 2 | CDN for static assets (Cloudflare) |
 | 3 | Automated database backups + replication |
 | 4 | Prometheus + Grafana monitoring (configs in `monitoring/`) |
-| 5 | Alerting (7 rules in `tachyon-alerts.yml`) |
+| 5 | Alerting (8 deduplicated rules across Prometheus + Grafana) |
 | 6 | Tag v1.0.0: Docker images to GHCR, SBOM, changelog |
+| 7 | Landing page rewrite: lead with self-hosted + Rust + performance + security story |
 
 **Completion:** Public v1.0.0 release. Production at `tachyon.dev` with >99.9% uptime. Monitoring active.
 
@@ -153,7 +191,37 @@ Depends on: Phase 1, Phase 3.
 
 ## Post-Launch Phases
 
-### Phase 5: AI Integration (Week 6-10) [CODE COMPLETE]
+### Phase 5: Migration and Onboarding (Week 5-7) [NEW -- HIGH PRIORITY]
+
+**Rationale:** Without migration paths from existing platforms, no team will switch. This is the single highest-impact feature for user acquisition. Notion, Confluence, and Google Docs hold the majority of existing knowledge bases.
+
+| # | Action | Effort |
+|---|--------|--------|
+| 1 | Notion exporter: API-based import (pages, databases, properties, comments) | 2 weeks |
+| 2 | Confluence exporter: REST API import (pages, attachments, page tree, labels) | 2 weeks |
+| 3 | Google Docs exporter: Google Drive API import (docs, sheets as MD, sharing perms) | 1 week |
+| 4 | Markdown file vault importer: recursive folder scan, frontmatter extraction, tag inference | 1 week |
+| 5 | Import wizard in UI: source selection, conflict resolution, progress tracking | 1 week |
+| 6 | Export to PDF (via headless rendering or external tool pipeline) | 1 week |
+
+**Completion:** One-click migration from Notion, Confluence, and Google Docs. Markdown vault import with tag inference. PDF export.
+
+### Phase 6: Knowledge Graph and PKM (Week 6-9) [NEW -- HIGH PRIORITY]
+
+**Rationale:** Bidirectional links and graph view are table stakes for PKM. Obsidian, Logseq, Roam, and Anytype all include this. Without it, PKM users will not consider Tachyon.
+
+| # | Action | Effort |
+|---|--------|--------|
+| 1 | `[[]]` wiki-link syntax in Markdown: parse, resolve, store as edges in DB | 1 week |
+| 2 | Backlink panel: show all documents linking to current document | 1 week |
+| 3 | Graph view: D3.js or Sigma.js force-directed graph of document relationships | 2 weeks |
+| 4 | Graph query API: traverse links, find orphan nodes, shortest path | 1 week |
+| 5 | Daily notes / journaling: auto-create dated entries, link to previous day | 1 week |
+| 6 | Block references: transclude content from one document into another | 2 weeks |
+
+**Completion:** Wiki-link syntax, backlinks, graph visualization. Daily notes. Competitive with Obsidian's core PKM workflow.
+
+### Phase 7: AI Integration (Week 7-11) [CODE COMPLETE -- REORDERED]
 
 Code complete. Needs production validation.
 
@@ -163,7 +231,24 @@ Code complete. Needs production validation.
 - Knowledge graph visualization
 - **Remaining:** Validate rate limits, test at >100k documents, configure API keys, benchmark embedding latency
 
-### Phase 6: Multi-Tenant SaaS (Week 10-14) [CODE COMPLETE]
+**Note:** Moved after Phases 5 and 6. AI features attract attention but do not drive initial adoption. Migration and PKM features capture existing users. AI features retain and differentiate them.
+
+### Phase 8: Editor Experience (Week 10-14) [NEW -- MEDIUM PRIORITY]
+
+**Rationale:** Markdown-first is a valid position (GitBook, Docusaurus, Outline are all MD-first). However, the editing experience needs polish: live preview, slash commands, embed blocks. The goal is NOT a block editor (that would compete with Notion/Affine on their turf), but a best-in-class Markdown editing experience.
+
+| # | Action | Effort |
+|---|--------|--------|
+| 1 | Split-pane live preview (edit MD on left, rendered on right, synced scroll) | 2 weeks |
+| 2 | Slash commands: type `/` for heading, code block, table, math, image insert | 1 week |
+| 3 | Embed blocks: `!{youtube ID}`, `!{figma URL}`, `!{mermaid diagram}` rendered inline | 2 weeks |
+| 4 | File attachment drag-and-drop with automatic image upload and MD link insertion | 1 week |
+| 5 | Table of contents sidebar: extracted from headings, click to scroll | 1 week |
+| 6 | Slash-command extensibility: plugins can register custom slash commands | 1 week |
+
+**Completion:** Competitive Markdown editing experience. Split preview, slash commands, embed blocks, drag-and-drop attachments.
+
+### Phase 9: Multi-Tenant SaaS (Week 11-15) [CODE COMPLETE -- REORDERED]
 
 Code complete. Needs production validation.
 
@@ -172,26 +257,45 @@ Code complete. Needs production validation.
 - Stripe billing integration
 - **Remaining:** Tenant onboarding testing, Stripe webhook config, billing edge cases
 
-### Phase 7: Desktop and Mobile (Week 12-18) [CODE COMPLETE]
+### Phase 10: Desktop, PWA, and Mobile (Week 13-19) [REORDERED + EXPANDED]
 
-Code complete. Known issue: Tauri NVIDIA+WebKitGTK on Linux.
+Desktop code complete. PWA and mobile are new work.
 
-- Mobile-responsive Leptos components
-- PWA support (service worker, offline cache)
-- Desktop client (Tauri 2.x)
-- **Remaining:** Fix NVIDIA+WebKitGTK issue, real device testing, push notification registration
+**Rationale:** Mobile access is required for any knowledge tool used by teams. PWA is the fastest path to mobile without native app store overhead.
 
-### Phase 8: Plugin Ecosystem (Week 16-22) [CODE COMPLETE]
+| # | Action | Effort |
+|---|--------|--------|
+| 1 | Fix NVIDIA+WebKitGTK issue on Linux (Tauri desktop) | 1 week |
+| 2 | Real device testing for Tauri desktop (macOS, Windows, Linux) | 1 week |
+| 3 | PWA: service worker, offline cache for read-only documents | 2 weeks |
+| 4 | Mobile-responsive layout: touch targets, collapsible sidebar, bottom nav | 2 weeks |
+| 5 | Push notification registration (service worker push API) | 1 week |
+| 6 | Mobile web app (PWA install prompt, home screen icon, standalone mode) | 1 week |
+| 7 | Native mobile app evaluation: Tauri mobile vs. Capacitor vs. React Native | 1 week (spike) |
 
-Code complete. Needs infrastructure.
+**Completion:** Desktop client working on all platforms. PWA with offline read access. Mobile-responsive web.
 
-- Plugin marketplace with registry
-- WASM sandboxing (Wasmtime)
-- Plugin CLI (scaffold, test, publish)
-- Plugin signing and permissions
-- **Remaining:** Remote registry hosting, community review process, compatibility matrix
+**Note:** Native iOS/Android app deferred to Phase 15 (post-v2). PWA covers 80% of mobile use cases at 20% of the cost.
 
-### Phase 9: Enterprise Features (Week 20-28) [CODE COMPLETE]
+### Phase 11: Plugin Ecosystem (Week 16-22) [REPRIORITIZED]
+
+**Rationale:** The WASM plugin runtime exists but has zero community plugins. Ship reference plugins first, then build marketplace infrastructure.
+
+| # | Action | Effort |
+|---|--------|--------|
+| 1 | Reference plugin 1: Mermaid diagram renderer (WASM, processes code blocks) | 1 week |
+| 2 | Reference plugin 2: PlantUML renderer (WASM) | 3 days |
+| 3 | Reference plugin 3: CSV/TSV table renderer (WASM, parses and renders tables) | 3 days |
+| 4 | Reference plugin 4: Custom CSS theme loader (WASM, applies user styles) | 3 days |
+| 5 | Reference plugin 5: Document template engine (WASM, variable substitution) | 1 week |
+| 6 | Plugin CLI: `tachyon plugin init`, `tachyon plugin build`, `tachyon plugin test` | 1 week |
+| 7 | Plugin documentation: SDK reference, tutorial, example plugins | 1 week |
+| 8 | Remote registry: simple file-based index served from GitHub Pages or S3 | 1 week |
+| 9 | Plugin signing and permission manifest enforcement | 1 week |
+
+**Completion:** 5 reference plugins, CLI tooling, documentation, and a working registry. Ecosystem bootstrapped.
+
+### Phase 12: Enterprise Features (Week 20-28) [CODE COMPLETE -- REORDERED]
 
 Code complete. Needs integration testing.
 
@@ -218,14 +322,15 @@ Code complete. Needs integration testing.
 - Plugin marketplace with community review
 
 ### Collaboration
-- Real-time editing for >50 concurrent users per document
+- Inline comments with threaded replies (annotation protocol)
 - Branch-and-merge workflow for documents
 - Review workflow with approval gates
 - Template marketplace
+- Real-time editing for >50 concurrent users per document (production validation)
 
 ### Intelligence
-- Auto-generated knowledge graphs
-- Semantic clustering and topic modeling
+- Auto-generated knowledge graphs from link structure and embeddings
+- Semantic clustering and topic modeling across document corpus
 - Citation graph and impact metrics
 - AI-powered document quality scoring
 
@@ -235,11 +340,16 @@ Code complete. Needs integration testing.
 - HIPAA compliance (healthcare KBs)
 - Data residency controls (region-specific deployment)
 
+### Internationalization
+- UI localization framework (extract strings, i18n crate)
+- Priority languages: Chinese (ZH), German (DE), Japanese (JP), French (FR)
+- RTL support evaluation (Arabic, Hebrew)
+
 ---
 
 ## Architecture Evolution
 
-### Current (v22.0.0)
+### Current (v20.0.0)
 
 ```
 Browser (Leptos WASM)  Desktop (Tauri)  CLI (Clap)
@@ -254,7 +364,7 @@ Browser (Leptos WASM)  Desktop (Tauri)  CLI (Clap)
                    | Search    | Sync      | Plugins
                    +----------+-----------+
                             |
-                       SQLx (async)
+                        SQLx (async)
                             |
                      PostgreSQL 16 + pgvector
               Documents  Users  Permissions  Audit
@@ -281,23 +391,78 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
               pgvector (embeddings)
 ```
 
+### Future (Post-v2)
+
+```
+CDN --> Nginx --> Load Balancer
+                     |
+          +----------+----------+
+          |                     |
+    Axum Instance 1       Axum Instance 2
+          |                     |
+          +----------+----------+
+                     |
+          Redis (sessions, rate limit, cache, pub/sub)
+                     |
+          +----------+----------+
+          |                     |
+    PostgreSQL Primary    PostgreSQL Replica
+          |                     |
+     pgvector (semantic)   Tantivy (full-text, sharded)
+          |
+     S3-compatible storage (attachments, exports)
+```
+
 ---
 
 ## Effort Estimate
 
-| Phase | Duration | Dependencies | Status |
-|-------|----------|-------------|--------|
-| 1. Infrastructure | 2 weeks | Server provisioning | PENDING |
-| 2. API Validation | 2 weeks | None (code-only) | AUDITED |
-| 3. Security | 2 weeks | Phase 2 | AUDITED |
-| 4. Launch | 1 week | Phase 1, 3 | PENDING |
-| 5. AI Integration | 2 weeks | Phase 4 | CODE COMPLETE |
-| 6. Multi-Tenant SaaS | 2 weeks | Phase 4 | CODE COMPLETE |
-| 7. Desktop/Mobile | 2 weeks | Phase 4 | CODE COMPLETE |
-| 8. Plugin Ecosystem | 2 weeks | Phase 4 | CODE COMPLETE |
-| 9. Enterprise | 4 weeks | Phase 6 | CODE COMPLETE |
-| **Total to Production** | **~5 weeks** | | |
-| **Total with all phases** | **~19 weeks** | | |
+| Phase | Duration | Dependencies | Status | Priority |
+|-------|----------|-------------|--------|----------|
+| 1. Infrastructure | 2 weeks | Server provisioning | PENDING | CRITICAL (blocker) |
+| 2. API Validation | 2 weeks | None (code-only) | AUDITED | CRITICAL |
+| 3. Security | 2 weeks | Phase 2 | AUDITED | CRITICAL |
+| 4. Launch | 1 week | Phase 1, 3 | PENDING | CRITICAL |
+| 5. Migration | 3 weeks | Phase 4 | NEW | HIGH |
+| 6. Knowledge Graph | 4 weeks | Phase 4 | NEW | HIGH |
+| 7. AI Integration | 2 weeks | Phase 4 | CODE COMPLETE | MEDIUM |
+| 8. Editor Experience | 3 weeks | Phase 4 | NEW | MEDIUM |
+| 9. Multi-Tenant SaaS | 2 weeks | Phase 4 | CODE COMPLETE | MEDIUM |
+| 10. Desktop/PWA/Mobile | 4 weeks | Phase 4 | PARTIAL | MEDIUM |
+| 11. Plugin Ecosystem | 4 weeks | Phase 4 | PARTIAL | LOW (post-adoption) |
+| 12. Enterprise | 4 weeks | Phase 9 | CODE COMPLETE | LOW (revenue) |
+| **Total to Production** | **~5 weeks** | | | |
+| **Total to Competitive v2** | **~24 weeks** | | | |
+
+---
+
+## Phase Dependency Graph
+
+```
+Phase 1 (Infrastructure) ─────┬──> Phase 2 (API Validation) ──> Phase 3 (Security) ──> Phase 4 (Launch)
+                              │                                                                            │
+                              │            ┌───────────────────────────────────────────────────────────┘
+                              │            │
+                              │            v
+                              │     Phase 5 (Migration) ──────────> Phase 6 (Knowledge Graph)
+                              │            │
+                              │            v
+                              │     Phase 7 (AI) ───────────────> Phase 8 (Editor)
+                              │                                         │
+                              │            v                            │
+                              │     Phase 9 (Multi-Tenant) ──────────┘
+                              │            │
+                              │            v
+                              │     Phase 10 (Desktop/PWA/Mobile)
+                              │            │
+                              │            v
+                              │     Phase 11 (Plugins) ──────────────> Phase 12 (Enterprise)
+                              │
+                              v
+                     [Production Live]
+```
+
+Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are the highest-priority post-launch work because they unlock user acquisition. Phase 11 (plugins) is intentionally late -- shipping an empty marketplace is worse than shipping no marketplace.
 
 ---
 
@@ -314,6 +479,10 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 | SBOM not attached to releases | Medium | Fixed (v22) |
 | tachyon/CHANGELOG.md stale (missing v12-v20) | Low | Fixed (v22) |
 | 6 stale roadmap files in root (consolidated here) | Low | Fixed (v22) |
+| WebSocket broadcast not room-filtered (architectural, documented) | Medium | Deferred (Phase 10) |
+| GraphQL resolvers don't use auth context | Medium | Deferred (Phase 9) |
+| DLP module not wired into routes | Low | Deferred (Phase 12) |
+| SSO module type definitions only (no runtime flow) | Low | Deferred (Phase 12) |
 
 ---
 
@@ -321,6 +490,19 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-05-31 | Add Phase 5 (Migration) as post-launch priority | Without Notion/Confluence/Google Docs import, no team switches. Highest-impact feature for acquisition. |
+| 2026-05-31 | Add Phase 6 (Knowledge Graph) as post-launch priority | Wiki-links and graph view are table stakes for PKM. Obsidian, Logseq, Roam all have this. |
+| 2026-05-31 | Add Phase 8 (Editor Experience) as medium priority | Markdown-first is defensible (GitBook, Docusaurus). Polish the MD experience, do not build a block editor. |
+| 2026-05-31 | Reorder AI to Phase 7 (after migration, PKM) | AI attracts attention but does not drive initial adoption. Migration and PKM capture existing users first. |
+| 2026-05-31 | Defer native mobile app to Phase 15 (post-v2) | PWA covers 80% of mobile use cases. Native app is expensive and not differentiating at this stage. |
+| 2026-05-31 | Phase 11 (Plugins) moved after Editor Experience | Ship reference plugins before marketing the plugin system. Empty marketplace is worse than no marketplace. |
+| 2026-05-31 | Establish competitive positioning principles | Target developers/technical teams (GitBook, Docusaurus, Outline position). Do not chase Notion. Self-hosted is the moat. |
+| 2026-05-31 | Consolidate monitoring alerts (15 to 8 rules) | Eliminate duplicate HighErrorRate, DatabasePoolExhaustion, ServiceUnhealthy; fix inverted severity/timing. |
+| 2026-05-31 | Delete broken websocket/tests.rs | Referenced private APIs and nonexistent struct fields; internal mod tests provide comprehensive coverage. |
+| 2026-05-31 | Deduplicate handler.rs heartbeat cleanup | handle_heartbeat_timeout was copy-pasted from remove_client; delegate instead. |
+| 2026-05-31 | Fix Redis rate limiter key format mismatch | increment() used non-windowed keys; now matches check_redis() format. Always set TTL. |
+| 2026-05-31 | Add CRDT binary message size limit (10 MiB) | Prevent unbounded memory allocation from oversized WebSocket messages. |
+| 2026-05-31 | Add auth-specific nginx rate limit (5r/m) | General 10r/s too permissive for login brute-force. |
 | 2026-05-28 | Wire pgvector embeddings into document CRUD | Connect dead code (update_embedding, search_semantic) to AI provider; async spawned to avoid blocking response |
 | 2026-05-28 | Add semantic search endpoint | Embed query via AI, search pgvector HNSW index; requires AI configured |
 | 2026-05-28 | Wrap GraphQL/Swagger with audit middleware | Routes merged after layer application in Axum bypass middleware; wrap individually |
@@ -329,23 +511,5 @@ CDN (Cloudflare) --> Nginx --> Load Balancer
 | 2026-05-28 | Trivy matrix scan (3 Dockerfiles) | Root Dockerfile alone insufficient; frontend and server variants have different dependencies |
 | 2026-05-28 | Include tachyon-cli in pre-commit clippy/test | Catch lint errors locally; GTK available via Nix |
 | 2026-05-28 | Keep tachyon-cli excluded from CI | tachyon-cli depends on tachyon-desktop (GTK), not available in CI runners |
-| 2026-05-28 | Fix rustdoc bare URL in ssg/manifest.rs | Eliminate rustdoc warning |
-| 2026-05-28 | Fix pre-commit rustdoc gate | Filter out Cargo.toml feature warnings from rustdoc check |
 | 2026-05-28 | Consolidate 6 roadmap files into single ROADMAP.md | Eliminate version/count conflicts across documents |
-| 2026-05-28 | Update test counts to 2,054 across VERSION.md and ROADMAP.md | Match actual `cargo test` output |
-| 2026-05-28 | Fix DEVELOPER_GUIDE.md (Axum 0.8, Rust 1.85+, port 8080, 16 crates) | Correct stale references |
-| 2026-05-28 | Replace unsafe from_utf8_unchecked in SSG | Eliminate UB risk |
-| 2026-05-28 | Harden CI workflows (permissions, timeouts, pin actions) | Least privilege |
-| 2026-05-28 | Persist audit events to database | Fire-and-forget async DB write alongside in-memory store; new audit_events table + permission_audit_log migration |
-| 2026-05-28 | Fix theme switching IIFE | Missing }})(); prevented event listener binding; Pagefind output path was double-nested |
-| 2026-05-28 | Fix Pagefind output directory | --output-subdir ./site created site/site/pagefind/ (404); fixed to pagefind |
-| 2026-05-28 | Fix ZAP scan JWT secret length | 30 chars < 32 minimum; also pgvector/pgvector:pg16 image for vector extension |
-| 2026-05-28 | Fix cargo-mutants crate name | crates.io name is cargo-mutants (with s), not cargo-mutant |
-| 2026-05-28 | Install cargo-deny in Security CI | Binary not installed; added conditional install before check |
-| 2026-05-28 | Skip staging deploy when secrets absent | Prevents false failures on repos without provisioned infrastructure |
-| 2026-05-28 | Compile 18 highlight regexes once via LazyLock | Highlighter::new() allocated 18 regex structs per call; now zero-allocation |
-| 2026-05-28 | Fix unused utoipa::IntoParams import | user/types.rs imported IntoParams but used full path in derive; CI clippy rejected |
-| 2026-05-28 | Fix cargo-mutants --files flag | CLI uses --file (singular), not --files (plural); caused 0s runtime failure |
-| 2026-05-28 | Add WebSocket stress test and rate limit validation k6 scripts | Complete load test coverage: smoke, load, stress, spike, soak, ws, rate-limit, security |
-| 2026-05-28 | Remove stale k6-load.js, update load test README | Consolidated load test docs, added env var table and threshold table |
 | 2026-05-26 | Switch CI to pgvector/pgvector:pg16 | Migration requires CREATE EXTENSION vector |
