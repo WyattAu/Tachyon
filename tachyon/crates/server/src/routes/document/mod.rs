@@ -1,5 +1,6 @@
 pub mod document_attachments;
 pub mod document_batch;
+pub mod document_branch;
 pub mod document_crud;
 pub mod document_export;
 pub mod document_search;
@@ -330,6 +331,18 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
         .route("/templates/{template_id}", put(update_template))
         .route("/templates/{template_id}", delete(delete_template))
         .route("/render/markdown", post(render_markdown))
+        .route(
+            "/documents/{document_id}/branches",
+            get(document_branch::list_branches).post(document_branch::create_branch),
+        )
+        .route(
+            "/documents/{document_id}/branches/{branch_id}",
+            put(document_branch::update_branch).delete(document_branch::delete_branch),
+        )
+        .route(
+            "/documents/{document_id}/branches/{branch_id}/merge",
+            post(document_branch::merge_branch),
+        )
 }
 
 #[cfg(test)]

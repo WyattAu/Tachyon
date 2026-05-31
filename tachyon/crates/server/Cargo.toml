@@ -93,6 +93,9 @@ deadpool-redis = "0.18"
 # Async trait support
 async-trait = "0.1"
 
+# LDAP
+ldap3 = { version = "0.7", default-features = false, features = ["tls-rustls", "sync"] }
+
 # CRDT
 yrs = { workspace = true }
 dashmap = { workspace = true }
