@@ -39,6 +39,7 @@ tachyon-rbac = { path = "../rbac" }
 tachyon-search = { path = "../search" }
 tachyon-database = { path = "../database" }
 tachyon-renderer = { path = "../renderer" }
+tachyon-desktop-app = { path = "../desktop/src-tauri", optional = true }
 
 # Async Runtime
 tokio = { workspace = true }
@@ -91,6 +92,3 @@ integration-tests = []
 fuzz-tests = []
 benchmark-tests = []
 desktop-tests = ["dep:tachyon-desktop-app"]
-
-[target.'cfg(feature = "desktop-tests")'.dependencies]
-tachyon-desktop-app = { path = "../desktop/src-tauri", optional = true }

@@ -289,10 +289,10 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Check for broken .specs/ references
         run: |
-          COUNT=$(rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ .knowledge_graph/ ROADMAP.md ROADMAP_DETAILED.md --type md --files-with-matches 2>/dev/null | wc -l)
+          COUNT=$(rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ .knowledge_graph/ ROADMAP.md --type md --files-with-matches 2>/dev/null | wc -l)
           if [ "$COUNT" -gt 0 ]; then
             echo "::warning::Found $COUNT files with .specs/ references"
-            rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ .knowledge_graph/ ROADMAP.md ROADMAP_DETAILED.md --type md --files-with-matches
+            rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ .knowledge_graph/ ROADMAP.md --type md --files-with-matches
           fi
           echo "Link check complete"
 
@@ -343,7 +343,7 @@ jobs:
 
       - name: Install cargo-mutants
         run: |
-          cargo install cargo-mutants --locked
+          cargo install cargo-mutants@27.0.0 --locked
 
       - name: Run mutation tests
         working-directory: tachyon
