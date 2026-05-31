@@ -1,6 +1,6 @@
 # Tachyon Roadmap
 
-**Version:** 20.0.0 | **Date:** 2026-05-28 | **Status:** Production-Ready, Awaiting Infrastructure
+**Version:** 20.0.0 | **Date:** 2026-05-31 | **Status:** Production-Ready, Awaiting Infrastructure
 
 This is the single authoritative roadmap. All prior roadmap variants have been consolidated into this document. Stale versions are archived in `docs.archived/`.
 
@@ -8,11 +8,11 @@ This is the single authoritative roadmap. All prior roadmap variants have been c
 
 ## Current State Summary
 
-### Test Suite (1,555 tests, all passing)
+### Test Suite (2,054 tests, all passing)
 
 | Crate | Tests | Status |
 |-------|-------|--------|
-| tachyon-server | 761 | PASS |
+| tachyon-server | 1,211 | PASS |
 | tachyon-core | 145 | PASS |
 | tachyon-database | 139 | PASS |
 | tachyon-renderer | 122 | PASS |
@@ -26,7 +26,7 @@ This is the single authoritative roadmap. All prior roadmap variants have been c
 | tachyon-storage | 31 | PASS |
 | tachyon-desktop | 44 | PASS |
 | tachyon-cli | 35 | PASS |
-| **Total** | **1,555** | **ALL PASS** |
+| **Total** | **2,054** | **ALL PASS** |
 
 ### Code Quality
 
@@ -38,7 +38,7 @@ This is the single authoritative roadmap. All prior roadmap variants have been c
 | cargo audit | PASS (3 documented RUSTSEC overrides) |
 | todo!/unimplemented!/STUB/FIXME/HACK | 0 |
 | Pre-commit hook | 6 gates (fmt, clippy, test, rustdoc, secrets, artifacts) |
-| Mutation testing | cargo-mutants on core/database/search (CI, main only) |
+| Mutation testing | cargo-mutants@27.0.0 on core/database/search (CI, main only) |
 
 ### CI/CD Pipeline (11 workflows)
 
