@@ -1,6 +1,7 @@
 pub mod document_attachments;
 pub mod document_batch;
 pub mod document_crud;
+pub mod document_export;
 pub mod document_search;
 pub mod document_templates;
 pub mod document_versions;
@@ -264,6 +265,7 @@ pub use document_crud::{
     list_documents_cursor, render_markdown, update_document, CreateDocumentRequest,
     UpdateDocumentRequest,
 };
+pub use document_export::export_document;
 pub use document_search::{
     get_backlinks, search_documents, semantic_search, BacklinkItem, BacklinksResponse,
     SemanticSearchParams, SemanticSearchResponse,
@@ -321,6 +323,7 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
             delete(delete_attachment),
         )
         .route("/documents/{document_id}/backlinks", get(get_backlinks))
+        .route("/documents/{document_id}/export", get(export_document))
         .route("/templates", get(list_templates))
         .route("/templates", post(create_template))
         .route("/templates/{template_id}", get(get_template))

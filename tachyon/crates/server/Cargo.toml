@@ -19,6 +19,7 @@ tachyon-search = { path = "../search" }
 tachyon-import-export = { path = "../import-export" }
 tachyon-plugin-runtime = { path = "../plugin-runtime" }
 tachyon-ssg = { path = "../ssg" }
+printpdf = { version = "0.3", optional = true }
 
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "json"] }
@@ -101,6 +102,7 @@ thiserror = { workspace = true }
 
 [features]
 staging = []
+pdf-export = ["tachyon-import-export/pdf-export", "dep:printpdf"]
 
 [dev-dependencies]
 tokio-test = { workspace = true }

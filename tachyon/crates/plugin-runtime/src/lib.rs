@@ -11,6 +11,7 @@ mod marketplace;
 mod permissions;
 mod sandbox;
 mod signing;
+pub mod slash_command;
 
 #[cfg(feature = "registry-client")]
 pub mod registry_client;
@@ -29,6 +30,7 @@ pub use marketplace::{
 pub use permissions::{PermissionSet, PluginPermission};
 pub use sandbox::{PluginContext, PluginOutput, PluginSandbox, SandboxConfig};
 pub use signing::{PluginSignature, SigningKeyPair};
+pub use slash_command::{CommandCategory, CommandRegistry, SlashCommand};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -64,6 +66,7 @@ pub struct PluginRuntime {
     plugins: HashMap<String, LoadedPlugin>,
     sandbox_config: SandboxConfig,
     plugins_dir: PathBuf,
+    command_registry: CommandRegistry,
 }
 
 impl PluginRuntime {
@@ -74,6 +77,7 @@ impl PluginRuntime {
             plugins: HashMap::new(),
             sandbox_config: SandboxConfig::default(),
             plugins_dir,
+            command_registry: CommandRegistry::new(),
         }
     }
 
@@ -87,6 +91,20 @@ impl PluginRuntime {
 
         let key = format!("{}:{}", plugin.name, plugin.version);
         tracing::info!("Loaded plugin: {}:{}", plugin.name, plugin.version);
+
+        for ep in &plugin.extension_points {
+            if let Some(cmd_name) = ep.strip_prefix("slash_command:") {
+                self.command_registry.register(SlashCommand {
+                    name: cmd_name.to_string(),
+                    description: format!("Command from {}", plugin.name),
+                    plugin_name: plugin.name.clone(),
+                    usage: None,
+                    requires_document: false,
+                    category: CommandCategory::Custom,
+                });
+            }
+        }
+
         self.plugins.insert(key, plugin);
         Ok(())
     }
@@ -200,6 +218,38 @@ impl PluginRuntime {
 
     pub fn plugins_dir(&self) -> &Path {
         &self.plugins_dir
+    }
+
+    /// Sign a loaded plugin's WASM binary.
+    pub fn sign_plugin(
+        &self,
+        plugin_name: &str,
+        plugin_version: &str,
+        keypair: &crate::signing::SigningKeyPair,
+    ) -> PluginRuntimeResult<crate::signing::PluginSignature> {
+        let key = format!("{}:{}", plugin_name, plugin_version);
+        let plugin = self
+            .plugins
+            .get(&key)
+            .ok_or_else(|| PluginRuntimeError::NotFound(format!("Plugin '{}' not loaded", key)))?;
+
+        let wasm_bytes = std::fs::read(&plugin.wasm_path).map_err(|e| {
+            PluginRuntimeError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+
+        let signature = keypair.sign(&wasm_bytes);
+        Ok(signature)
+    }
+
+    pub fn command_registry(&self) -> &CommandRegistry {
+        &self.command_registry
+    }
+
+    pub fn command_registry_mut(&mut self) -> &mut CommandRegistry {
+        &mut self.command_registry
     }
 }
 

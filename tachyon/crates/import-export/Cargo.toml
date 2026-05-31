@@ -39,5 +39,12 @@ tracing = "0.1"
 regex = "1"
 uuid = { version = "1", features = ["v4", "v7"] }
 
+# PDF generation (optional)
+genpdf = { version = "0.2", features = ["images"], optional = true }
+printpdf = { version = "0.3", optional = true }
+
+[features]
+pdf-export = ["dep:genpdf", "dep:printpdf"]
+
 [dev-dependencies]
 tempfile = "3"

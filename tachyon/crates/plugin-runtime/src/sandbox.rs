@@ -1,6 +1,7 @@
 //! WASM Sandbox for plugin execution.
 
 use crate::error::PluginRuntimeError;
+use crate::permissions::PermissionSet;
 use crate::PluginRuntimeResult;
 use serde_json::Value;
 use std::path::Path;
@@ -14,6 +15,7 @@ pub struct SandboxConfig {
     pub max_fuel: u64,
     pub memory_limit: usize,
     pub enable_wasi: bool,
+    pub permissions: PermissionSet,
 }
 
 impl Default for SandboxConfig {
@@ -22,6 +24,7 @@ impl Default for SandboxConfig {
             max_fuel: 10_000_000,
             memory_limit: 64 * 1024 * 1024,
             enable_wasi: true,
+            permissions: PermissionSet::none(),
         }
     }
 }
@@ -60,6 +63,12 @@ impl PluginSandbox {
     }
 
     pub fn execute(&self, ctx: &PluginContext) -> PluginRuntimeResult<Value> {
+        tracing::debug!(
+            permissions = ?self.config.permissions.allowed,
+            denied = ?self.config.permissions.denied,
+            "Executing plugin with permission set"
+        );
+
         let mut engine_config = Config::new();
         engine_config.consume_fuel(true);
         engine_config.wasm_component_model(true);
@@ -157,6 +166,7 @@ mod tests {
             max_fuel: 1_000_000,
             memory_limit: 16 * 1024 * 1024,
             enable_wasi: false,
+            permissions: PermissionSet::none(),
         }
     }
 

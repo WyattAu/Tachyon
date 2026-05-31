@@ -501,6 +501,44 @@ pub async fn list_plugins_cursor(
 }
 
 // ============================================================================
+// Slash Commands
+// ============================================================================
+
+/// List available slash commands registered by plugins.
+///
+/// `GET /api/v1/plugins/slash-commands`
+#[utoipa::path(
+    get,
+    path = "/plugins/slash-commands",
+    responses(
+        (status = 200, description = "List of slash commands"),
+    ),
+    tag = "plugins",
+)]
+pub async fn list_slash_commands(State(state): State<PluginState>) -> Json<serde_json::Value> {
+    let commands = state.runtime.command_registry().list();
+
+    let result: Vec<serde_json::Value> = commands
+        .iter()
+        .map(|cmd| {
+            serde_json::json!({
+                "name": cmd.name,
+                "description": cmd.description,
+                "plugin_name": cmd.plugin_name,
+                "usage": cmd.usage,
+                "requires_document": cmd.requires_document,
+                "category": format!("{:?}", cmd.category).to_lowercase(),
+            })
+        })
+        .collect();
+
+    Json(serde_json::json!({
+        "commands": result,
+        "total": result.len(),
+    }))
+}
+
+// ============================================================================
 // Router
 // ============================================================================
 
@@ -510,6 +548,10 @@ pub fn create_plugin_router_with_state(state: PluginState) -> axum::Router {
         .route("/plugins/cursor", axum::routing::get(list_plugins_cursor))
         .route("/plugins", axum::routing::post(create_plugin))
         .route("/plugins/invoke", axum::routing::post(invoke_hook))
+        .route(
+            "/plugins/slash-commands",
+            axum::routing::get(list_slash_commands),
+        )
         .route("/plugins/{plugin_id}", axum::routing::get(get_plugin))
         .route("/plugins/{plugin_id}", axum::routing::put(update_plugin))
         .route("/plugins/{plugin_id}", axum::routing::delete(delete_plugin))

@@ -26,6 +26,9 @@ pub struct WebSocketMessage {
     /// Monotonically increasing sequence number for message ordering.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seq: Option<u64>,
+    /// Target room for room-filtered delivery. None means global broadcast.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub room_id: Option<String>,
 }
 
 impl WebSocketMessage {
@@ -37,11 +40,17 @@ impl WebSocketMessage {
             data: None,
             timestamp: Utc::now(),
             seq: None,
+            room_id: None,
         }
     }
 
     pub fn with_seq(mut self, seq: u64) -> Self {
         self.seq = Some(seq);
+        self
+    }
+
+    pub fn with_room(mut self, room_id: String) -> Self {
+        self.room_id = Some(room_id);
         self
     }
 

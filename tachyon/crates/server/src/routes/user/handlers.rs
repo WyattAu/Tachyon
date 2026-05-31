@@ -7,11 +7,12 @@ use super::types::{
     REFRESH_TOKEN_EXPIRATION_SECS,
 };
 use crate::audit::{AuditEvent, AuditEventType, AuditSeverity};
+use crate::error::ServerError;
 use crate::pagination::{CursorPage, CursorParams};
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     http::{HeaderMap, StatusCode},
-    response::Json,
+    response::{IntoResponse, Json},
 };
 use sqlx::Row;
 use tachyon_core::{User, UserId, UserRole};
@@ -1265,6 +1266,174 @@ pub async fn list_users_cursor(
 // Router
 // ============================================================================
 
+/// Export all user data (GDPR Article 20: Right to data portability).
+pub async fn export_my_data(
+    Extension(auth_context): Extension<crate::middleware::AuthContext>,
+    State(state): State<UserState>,
+) -> Result<impl IntoResponse, ServerError> {
+    let user_id = auth_context.user_id.clone();
+    info!(user_id = %user_id, "Exporting user data for GDPR compliance");
+
+    let mut conn = state
+        .pool
+        .acquire()
+        .await
+        .map_err(|e| ServerError::database(e.to_string()))?;
+
+    let profile_row: Option<(
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        String,
+        Option<chrono::DateTime<chrono::Utc>>,
+        Option<chrono::DateTime<chrono::Utc>>,
+    )> = sqlx::query_as(
+        "SELECT id, username, display_name, email, role, created_at, updated_at FROM users WHERE id = $1",
+    )
+    .bind(&user_id)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(|e| ServerError::database(e.to_string()))?;
+
+    let mut builder = tachyon_import_export::GdprExportBuilder::new(user_id.clone());
+
+    if let Some((id, username, display_name, email, role, created_at, updated_at)) = profile_row {
+        builder = builder.profile(tachyon_import_export::UserProfile {
+            id,
+            username,
+            display_name,
+            email,
+            role,
+            created_at: created_at.map(|d| d.to_rfc3339()),
+            updated_at: updated_at.map(|d| d.to_rfc3339()),
+        });
+    }
+
+    let doc_rows: Vec<(
+        String,
+        String,
+        String,
+        String,
+        Option<chrono::DateTime<chrono::Utc>>,
+        Option<chrono::DateTime<chrono::Utc>>,
+    )> = sqlx::query_as(
+        "SELECT id, title, content, slug, created_at, updated_at
+         FROM documents WHERE author_id = $1 AND deleted_at IS NULL
+         ORDER BY created_at DESC",
+    )
+    .bind(&user_id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(|e| ServerError::database(e.to_string()))?;
+
+    let docs: Vec<tachyon_import_export::UserDocument> = doc_rows
+        .into_iter()
+        .map(|(id, title, content, slug, created_at, updated_at)| {
+            tachyon_import_export::UserDocument {
+                id,
+                title,
+                content,
+                slug,
+                tags: vec![],
+                created_at: created_at.map(|d| d.to_rfc3339()),
+                updated_at: updated_at.map(|d| d.to_rfc3339()),
+            }
+        })
+        .collect();
+
+    builder = builder.documents(docs);
+
+    let comment_rows: Vec<(
+        String,
+        String,
+        String,
+        Option<chrono::DateTime<chrono::Utc>>,
+        bool,
+    )> = sqlx::query_as(
+        "SELECT id, document_id, content, created_at, COALESCE(is_resolved, false)
+         FROM document_comments WHERE author_id = $1 AND deleted_at IS NULL
+         ORDER BY created_at DESC",
+    )
+    .bind(&user_id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(|e| ServerError::database(e.to_string()))?;
+
+    let comments: Vec<tachyon_import_export::UserComment> = comment_rows
+        .into_iter()
+        .map(|(id, document_id, content, created_at, is_resolved)| {
+            tachyon_import_export::UserComment {
+                id,
+                document_id,
+                content,
+                created_at: created_at.map(|d| d.to_rfc3339()),
+                is_resolved,
+            }
+        })
+        .collect();
+
+    builder = builder.comments(comments);
+
+    let activity_rows: Vec<(
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<chrono::DateTime<chrono::Utc>>,
+    )> = sqlx::query_as(
+        "SELECT id, event_type, target_type, target_id, description, created_at
+         FROM activity_events WHERE actor_id = $1
+         ORDER BY created_at DESC LIMIT 1000",
+    )
+    .bind(&user_id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(|e| ServerError::database(e.to_string()))?;
+
+    let activities: Vec<tachyon_import_export::UserActivity> = activity_rows
+        .into_iter()
+        .map(
+            |(id, event_type, target_type, target_id, description, created_at)| {
+                tachyon_import_export::UserActivity {
+                    id,
+                    event_type,
+                    target_type,
+                    target_id,
+                    description,
+                    created_at: created_at.map(|d| d.to_rfc3339()),
+                }
+            },
+        )
+        .collect();
+
+    builder = builder.activities(activities);
+
+    let bytes = builder
+        .build()
+        .map_err(|e| ServerError::internal(e.to_string()))?;
+
+    let headers = HeaderMap::from_iter([
+        (
+            axum::http::header::CONTENT_TYPE,
+            "application/json".parse().unwrap(),
+        ),
+        (
+            axum::http::header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"tachyon-export-{}.json\"", user_id)
+                .parse()
+                .unwrap(),
+        ),
+    ]);
+
+    Ok((headers, bytes))
+}
+
+// ============================================================================
+// Router
+// ============================================================================
+
 /// Create the user router.
 ///
 /// Routes:
@@ -1296,6 +1465,7 @@ pub fn create_user_router() -> axum::Router<UserState> {
         .route("/auth/guest-status", get(guest_status))
         .route("/auth/me", get(get_me))
         .route("/auth/me", put(update_me))
+        .route("/auth/me/export", get(export_my_data))
         // User management routes
         .route("/users", get(list_users))
         .route("/users/cursor", get(list_users_cursor))

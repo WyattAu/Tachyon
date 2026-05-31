@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use utoipa::ToSchema;
 
+use crate::signing::PluginSignature;
+
 /// Unique plugin identifier (e.g., "org.example/my-plugin").
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash)]
 pub struct PluginId(pub String);
@@ -100,6 +102,9 @@ pub struct PluginManifest {
     pub featured: bool,
     /// Total download count.
     pub download_count: u64,
+    /// Optional Ed25519 signature of the WASM binary.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<PluginSignature>,
 }
 
 /// Installation status of a plugin.
@@ -294,6 +299,7 @@ mod tests {
             wasm_size_bytes: 1024,
             featured: false,
             download_count: 42,
+            signature: None,
         }
     }
 

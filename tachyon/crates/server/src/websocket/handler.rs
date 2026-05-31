@@ -276,6 +276,14 @@ impl ConnectionManager {
         self.broadcast_tx.subscribe()
     }
 
+    pub async fn is_client_in_room(&self, client_id: &str, room_id: &str) -> bool {
+        let clients = self.clients.read().await;
+        clients
+            .get(client_id)
+            .map(|c| c.rooms.iter().any(|r| r == room_id))
+            .unwrap_or(false)
+    }
+
     pub async fn broadcast(&self, message: WebSocketMessage) {
         let seq = self.next_seq();
         let msg = message.with_seq(seq);
@@ -286,7 +294,7 @@ impl ConnectionManager {
         let rooms = self.rooms.read().await;
         if let Some(members) = rooms.get(room_id) {
             let seq = self.next_seq();
-            let msg = message.with_seq(seq);
+            let msg = message.with_seq(seq).with_room(room_id.to_string());
             let _ = self.broadcast_tx.send(msg);
             debug!(room_id = %room_id, member_count = members.len(), "Broadcasting to room");
         }
@@ -501,21 +509,32 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
         }
     };
 
+    let manager_for_send = manager.clone();
+    let client_id_for_send = client_id.clone();
     let send_task = async move {
         loop {
             tokio::select! {
                 msg = broadcast_rx.recv() => {
                     match msg {
                         Ok(msg) => {
-                            let json = match serde_json::to_string(&msg) {
-                                Ok(j) => j,
-                                Err(e) => {
-                                    error!(error = %e, "Failed to serialize message");
-                                    continue;
+                            let should_deliver = match &msg.room_id {
+                                None => true,
+                                Some(room) => {
+                                    manager_for_send.is_client_in_room(&client_id_for_send, room).await
                                 }
                             };
-                            if sender.send(Message::Text(json.into())).await.is_err() {
-                                break;
+
+                            if should_deliver {
+                                let json = match serde_json::to_string(&msg) {
+                                    Ok(j) => j,
+                                    Err(e) => {
+                                        error!(error = %e, "Failed to serialize message");
+                                        continue;
+                                    }
+                                };
+                                if sender.send(Message::Text(json.into())).await.is_err() {
+                                    break;
+                                }
                             }
                         }
                         Err(broadcast::error::RecvError::Lagged(n)) => {
