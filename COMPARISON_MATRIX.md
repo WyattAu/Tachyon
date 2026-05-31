@@ -2,6 +2,7 @@
 
 **Last updated:** 2026-05-31
 **Scope:** Collaborative knowledge management, real-time editing, SSG, and adjacent categories.
+**Verified:** Cross-referenced against codebase implementation (27 features checked).
 
 ---
 
@@ -15,27 +16,28 @@ These are Tachyon's primary competitors -- platforms that combine document editi
 | **Core Language** | Rust | TypeScript/Node.js | Java (server), React (UI) | TypeScript/Node.js | TypeScript/Node.js | TypeScript/Electron |
 | **Real-Time Collab** | CRDT (Yrs/lib0), WebSocket | OT (custom), WebSocket | OT (custom), WebSocket | CRDT (Yjs), WebSocket | OT (custom), WebSocket | LiveSync (CRDT, Yjs) via plugin |
 | **Conflict Resolution** | CRDT (server + client) | OT (server-authoritative) | OT (server-authoritative) | CRDT (Yjs, decentralized) | OT (server-authoritative) | CRDT (Yjs, P2P or self-hosted) |
-| **Markdown** | CommonMark + GFM, KaTeX, tree-sitter (12 langs) | Mixed (block-based, partial MD) | Atlassian Markup (not MD) | CommonMark + GFM | CommonMark + GFM, MDX | CommonMark + GFM, LaTeX, Dataview |
-| **Syntax Highlighting** | tree-sitter (12), syntect | Limited code blocks | Limited | Shiki/highlight.js | Prism, code blocks | CodeMirror |
+| **Markdown** | CommonMark + GFM, KaTeX, tree-sitter (9 active, 12 defined) | Mixed (block-based, partial MD) | Atlassian Markup (not MD) | CommonMark + GFM | CommonMark + GFM, MDX | CommonMark + GFM, LaTeX, Dataview |
+| **Syntax Highlighting** | tree-sitter (9 active), syntect | Limited code blocks | Limited | Shiki/highlight.js | Prism, code blocks | CodeMirror |
 | **Math Rendering** | KaTeX | Inline LaTeX (limited) | No native KaTeX | KaTeX (plugin) | KaTeX | KaTeX, MathJax |
 | **Full-Text Search** | Tantivy (BM25) + PostgreSQL tsvector | ElasticSearch (managed) | Confluence search (Lucene) | PostgreSQL tsvector | Algolia DocSearch (managed) | Full-text (SQLite FTS5), Omnisearch |
 | **Semantic Search** | pgvector + AI provider integration | Notion AI (proprietary) | No | No | No | No (community plugins) |
-| **RBAC / Permissions** | Fine-grained RBAC, teams, roles, audit | Workspace-level roles, page-level sharing | Space/page restrictions, fine-grained | Groups, collections, members | Team roles, API keys | No built-in (local-first) |
+| **RBAC / Permissions** | Fine-grained RBAC, custom roles, teams, audit | Workspace-level roles, page-level sharing | Space/page restrictions, fine-grained | Groups, collections, members | Team roles, API keys | No built-in (local-first) |
 | **Audit Logging** | Database-persisted audit events | Page history, audit log (Enterprise) | Page history, audit log | No | Page history, audit log (Enterprise) | File system history (git) |
+| **DLP / Content Scanning** | Regex-based DLP (CC, SSN, API keys), wired into create/update | No | No | No | No | No |
 | **SSG** | Built-in (tachyon-ssg) | Public pages (limited) | No native SSG | No | GitBook Pages (hosted) | Obsidian Publish (paid) |
-| **Plugin System** | WASM sandbox (Wasmtime) | Integrations (REST) | Atlassian Marketplace | No | Custom integrations | Community plugins (JS) |
+| **Plugin System** | WASM sandbox (Wasmtime), marketplace client | Integrations (REST) | Atlassian Marketplace | No | Custom integrations | Community plugins (JS) |
 | **API** | REST + Swagger, WebSocket | REST, GraphQL (partial) | REST | REST + GraphQL | REST | No public API |
 | **Desktop Client** | Tauri 2 (native) | Electron (wrapper) | No native client | No | No | Electron (native) |
 | **CLI** | Native (tachyon-cli) | Notion CLI (unofficial) | Confluence CLI (unofficial) | No | GitBook CLI (unofficial) | CLI (community) |
-| **Import/Export** | Docusaurus, Obsidian, MD, JSON, HTML | MD, CSV, HTML, PDF | MD, Word, PDF | MD, JSON | MD, PDF, OpenAPI | MD, HTML, PDF, Pandoc |
-| **Database** | PostgreSQL 16+ | Private (distributed store) | PostgreSQL / H2 | PostgreSQL | Private | SQLite (local) |
-| **Multi-Tenant** | Schema-level isolation (planned) | Workspace-based | Confluence Data Center | No | GitBook Organizations | No |
+| **Import/Export** | Docusaurus, Obsidian, generic vault, MD ZIP, JSON, HTML | MD, CSV, HTML, PDF | MD, Word, PDF | MD, JSON | MD, PDF, OpenAPI | MD, HTML, PDF, Pandoc |
+| **Database** | PostgreSQL (pgvector, tsvector, JSONB) | Private (distributed store) | PostgreSQL / H2 | PostgreSQL | Private | SQLite (local) |
+| **Multi-Tenant** | Organization-level row isolation, plan enforcement | Workspace-based | Confluence Data Center | No | GitBook Organizations | No |
 | **Self-Hosted** | Yes (Docker/Nix) | No (On-Premise Enterprise only) | Yes (Data Center/Server) | Yes (Docker) | No | No |
-| **Offline Support** | No (planned PWA) | Desktop partial | No | No | No | Yes (local-first) |
-| **Versioning** | Document versions API | Page history (restore points) | Page history (diff view) | No | Page history | Git-based versioning |
-| **Guest Access** | JWT guest login | Share links (public/invite) | No (anonymous access possible) | No | Share links | No (local-only) |
+| **Offline Support** | Yes (PWA service worker, offline.html fallback) | Desktop partial | No | No | No | Yes (local-first) |
+| **Versioning** | Document versions API (diff, restore) | Page history (restore points) | Page history (diff view) | No | Page history | Git-based versioning |
+| **Guest Access** | JWT guest login (rate-limited) | Share links (public/invite) | No (anonymous access possible) | No | Share links | No (local-only) |
 | **White-Label** | Planned (Enterprise) | No | Limited | No | Custom domain | No |
-| **SAML/SSO** | Planned (Enterprise) | SAML, SCIM (Enterprise) | SAML, Crowd (Enterprise) | OIDC (planned) | SAML (Enterprise) | No |
+| **SAML/SSO** | OIDC (runtime), SAML/LDAP (types only) | SAML, SCIM (Enterprise) | SAML, Crowd (Enterprise) | OIDC (planned) | SAML (Enterprise) | No |
 
 ### Category A Notes
 
@@ -125,12 +127,12 @@ Platforms that focus on knowledge graphs, bidirectional links, and structured kn
 
 | Feature | Tachyon | Obsidian | Logseq | Anytype | Fibery | Athens | Roam Research | Foam (VS Code) |
 |---------|---------|----------|--------|---------|--------|--------|---------------|----------------|
-| **Knowledge Graph** | Planned (pgvector embeddings) | Graph view (community plugin) | Graph view | Native graph | Relations, views | Native graph | Native graph | No (backlinks only) |
-| **Bidirectional Links** | No (planned) | Yes (native) | Yes (native) | Yes (native) | Bidirectional refs | Yes (native) | Yes (native) | Yes (via plugin) |
+| **Knowledge Graph** | Yes (nodes/edges CRUD, BFS shortest path, connected components, temporal queries, graph diff, stats) | Graph view (community plugin) | Graph view | Native graph | Relations, views | Native graph | Native graph | No (backlinks only) |
+| **Bidirectional Links** | Yes ([[target]] parser, outgoing_links JSONB + GIN index, backlinks API) | Yes (native) | Yes (native) | Yes (native) | Bidirectional refs | Yes (native) | Yes (native) | Yes (via plugin) |
 | **Block-Based** | No (document-based) | No (document-based) | Yes (outliner) | Yes (object-based) | No (entity-based) | No (document-based) | Yes (outliner) | No (document-based) |
-| **Daily Notes** | No | Yes (core feature) | Yes (core feature) | Yes | No | Yes | Yes | Yes |
-| **Graph Query** | Semantic (pgvector + AI) | Dataview plugin (JS) | Advanced queries | Relation queries | Fibery query language | No | Datalog queries | No |
-| **Offline** | No | Yes | Yes | Yes (local-first, CRDT) | No (cloud) | Yes (local-first) | No (cloud) | Yes (local) |
+| **Daily Notes** | Yes (auto-create dated note nodes via API) | Yes (core feature) | Yes (core feature) | Yes | No | Yes | Yes | Yes |
+| **Graph Query** | Structural (shortest path, neighbors) + semantic (pgvector + AI) | Dataview plugin (JS) | Advanced queries | Relation queries | Fibery query language | No | Datalog queries | No |
+| **Offline** | Partial (PWA asset cache, offline.html) | Yes | Yes | Yes (local-first, CRDT) | No (cloud) | Yes (local-first) | No (cloud) | Yes (local) |
 | **Collab** | Yes (CRDT, WebSocket) | No (third-party sync) | No | Yes (CRDT, P2P) | Yes (real-time) | No | No | No |
 | **Self-Hosted** | Yes | No | Yes (self-hosted Docker) | Yes (local, self-hosted sync) | No | Yes | No | Yes (local) |
 | **License** | Apache 2.0 | Proprietary | AGPLv3 | MPL-2.0 (local), AGPLv3 (self-hosted) | Proprietary | AGPLv3 | Proprietary | MIT |
@@ -143,6 +145,7 @@ Platforms that focus on knowledge graphs, bidirectional links, and structured kn
 - **Logseq** is an open-source outliner with graph view. AGPLv3. Focus on daily notes and outliner workflows.
 - **Anytype** is local-first with P2P sync (CRDT-based). Object-oriented rather than document-oriented.
 - **Fibery** is a workspace platform with relations, views, and automation. Cloud-only, not self-hosted.
+- **Tachyon** combines server-side knowledge graph (structural queries: shortest path, connected components, temporal diff) with bidirectional links and semantic search. Graph visualization frontend is not yet implemented.
 
 ---
 
@@ -205,7 +208,7 @@ Platforms that provide APIs for document/knowledge management, similar to Tachyo
 | Feature | Tachyon | Appwrite | Supabase | PocketBase | Directus | Strapi | Nhost |
 |---------|---------|----------|----------|------------|----------|--------|-------|
 | **API** | REST + Swagger, WebSocket | REST, GraphQL, WebSocket | REST, GraphQL, Realtime (WebSocket) | REST, Admin API | REST, GraphQL, WebSocket | REST, GraphQL | REST, GraphQL, WebSocket |
-| **Auth** | JWT (multi-key rotation) | JWT, OAuth2, Magic URL, Phone | JWT, OAuth2, Magic URL, Phone | JWT, OAuth2 | JWT, OAuth2, LDAP, SAML | JWT, OAuth2 | JWT, OAuth2, Magic URL |
+| **Auth** | JWT (multi-key rotation), OAuth2, MFA (TOTP), SSO (OIDC), guest access | JWT, OAuth2, Magic URL, Phone | JWT, OAuth2, Magic URL, Phone | JWT, OAuth2 | JWT, OAuth2, LDAP, SAML | JWT, OAuth2 | JWT, OAuth2, Magic URL |
 | **RBAC** | Fine-grained RBAC | Roles + teams | RLS (PostgreSQL) | Admin, Auth rules | Roles + permissions | Roles + permissions | Hasura RLS |
 | **Real-Time** | WebSocket (CRDT relay) | WebSocket (subscriptions) | Realtime (Postgres changes) | WebSocket (subscriptions) | WebSocket (subscriptions) | No native | Hasura Realtime |
 | **CRDT** | Yrs (server-side state) | No | No | No | No | No | No |
@@ -237,6 +240,7 @@ Platforms' ability to migrate content in and out.
 | **HTML** | Yes (import + export) | Export (HTML) | Export (HTML/PDF) | No | Export (plugin) | No | No |
 | **Docusaurus** | Yes (import) | No | No | No | No | No | No |
 | **Obsidian** | Yes (import) | No | Import (plugin) | No | Native | No | No |
+| **Generic Markdown Vault** | Yes (import: recursive dir scan, ZIP, frontmatter, #tags) | No | No | No | Native | No | No |
 | **JSON** | Yes (import + export) | Import (CSV/JSON) | Import (plugin) | Export (API) | No | Import (API) | Import (API) |
 | **Confluence** | No (planned) | Import | Native | Import (plugin) | Import (plugin) | No | Import |
 | **Notion** | No (planned) | Native | Import (plugin) | No | Import (plugin) | No | Import |
@@ -253,38 +257,45 @@ Platforms' ability to migrate content in and out.
 1. **Full Rust stack** -- Only Tachyon and a handful of SSG tools (Hugo, Zola, MdBook) are built entirely in Rust. No other collaborative knowledge base is Rust-native. This delivers: memory safety without GC, deterministic performance, and minimal attack surface.
 2. **Integrated SSG + collaboration** -- No competitor combines real-time CRDT editing with a built-in static site generator. Tachyon can serve both as a live collaborative editor and as a documentation publishing pipeline.
 3. **WASM plugin sandbox** -- Wasmtime-based plugin runtime provides safe extensibility. No other knowledge base offers WASM sandboxing (most use npm/Docker plugins with full filesystem access).
-4. **Semantic search + pgvector** -- Built-in vector similarity search with AI provider integration. Most competitors rely on keyword-only search (tsvector/ElasticSearch) or require third-party AI services.
-5. **Formal verification** -- TLA+ specs and Lean4 proofs in `.specs/`. No competitor publishes formal correctness proofs for their core algorithms.
-6. **Monorepo with 16 crates** -- Clean separation of concerns (core, server, database, search, renderer, RBAC, SSG, editor, import/export, plugin-runtime, desktop, frontend, CLI, storage, testing, benchmarks). Each crate is independently testable.
-7. **Comprehensive CI/CD** -- 11 GitHub Actions workflows including security scanning (Semgrep, Trivy, TruffleHog), SBOM generation, mutation testing (cargo-mutants), OWASP ZAP penetration testing, and Playwright E2E tests.
+4. **Semantic + structural knowledge graph** -- Server-side graph with BFS shortest path, connected components, temporal diff, bidirectional wiki-links, backlinks API, orphan node detection, and pgvector semantic similarity. No other self-hosted platform offers this combination.
+5. **DLP content scanning** -- Built-in data loss prevention (credit cards, SSN, API keys) wired into document create/update flow. Most competitors offer this only at Enterprise tier or not at all.
+6. **Comprehensive auth** -- JWT with multi-key rotation, OAuth2 (Google/GitHub), MFA (TOTP), SSO (OIDC with discovery/code exchange), guest access, session management, password reset -- all self-hosted. Most competitors require SaaS for SSO.
+7. **Formal verification** -- TLA+ specs and Lean4 proofs in `.specs/`. No competitor publishes formal correctness proofs for their core algorithms.
+8. **Monorepo with 16 crates** -- Clean separation of concerns (core, server, database, search, renderer, RBAC, SSG, editor, import/export, plugin-runtime, desktop, frontend, CLI, storage, testing, benchmarks). Each crate is independently testable.
+9. **Comprehensive CI/CD** -- 11 GitHub Actions workflows including security scanning (Semgrep, Trivy, TruffleHog), SBOM generation, mutation testing (cargo-mutants), OWASP ZAP penetration testing, and Playwright E2E tests.
+10. **PWA with offline fallback** -- Service worker with TTL-based cache invalidation, stale-while-revalidate for static assets, offline.html fallback, network-first for API calls.
 
 ### Weaknesses (Compared to Market Leaders)
 
 1. **No production deployment** -- Tachyon has no running production instance. Notion, Confluence, and Obsidian have millions of active users.
-2. **No mobile app** -- No native iOS/Android client. Competitors like Notion, Obsidian, and Logseq have mature mobile apps.
-3. **No offline mode** -- Local-first competitors (Obsidian, Anytype, Logseq) work without network. Tachyon requires server connectivity.
+2. **No native mobile app** -- No native iOS/Android client. PWA covers offline asset caching but not native features (push notifications, camera, biometrics). Competitors like Notion, Obsidian, and Logseq have mature mobile apps.
+3. **No local-first / offline sync** -- PWA caches static assets but documents require server connectivity. Local-first competitors (Obsidian, Anytype, Logseq) work without network with full document sync.
 4. **No WYSIWYG editor** -- Markdown-first editing. Users who prefer block-based or rich-text editors (Notion, Confluence, Affine) face a learning curve.
-5. **No bidirectional links / graph view** -- PKM-focused competitors (Obsidian, Logseq, Roam) offer native knowledge graph visualization and backlink navigation.
+5. **No graph visualization UI** -- Knowledge graph data model and API exist (nodes, edges, shortest path, backlinks), but no frontend graph view. PKM-focused competitors (Obsidian, Logseq, Roam) offer native graph visualization.
 6. **Plugin ecosystem is empty** -- WASM plugin runtime exists but has zero community plugins. Obsidian has 2,000+ community plugins; Confluence has the Atlassian Marketplace.
-7. **No i18n / localization** -- English-only UI. Most competitors support 10+ languages.
-8. **No comments or embeds** -- No inline commenting, no iframe embedding. Notion and Confluence both support these natively.
-9. **Limited migration support** -- Can import from Docusaurus, Obsidian, Markdown, JSON, HTML. Cannot import from Notion, Confluence, or Google Docs.
+7. **No i18n UI localization** -- 8-locale i18n framework exists in frontend code but no translations are populated. Most competitors support 10+ localized languages.
+8. **No inline comments or embeds** -- No inline commenting on document sections. Embed block parser exists (`!{youtube}`, `!{mermaid}`) but no frontend rendering. Notion and Confluence both support inline comments and embeds natively.
+9. **Limited external migration** -- Can import from Docusaurus, Obsidian, generic markdown vaults, ZIP archives, JSON, HTML. Cannot import from Notion, Confluence, or Google Docs (requires their proprietary APIs).
+10. **SAML/LDAP types only** -- OIDC runtime (authorize/callback) is implemented. SAML and LDAP have type definitions but no runtime handlers.
 
 ### Differentiation Summary
 
 | Dimension | Tachyon's Position |
 |-----------|-------------------|
 | **Performance** | Top-tier (Rust, SIMD markdown, sub-15ms render) |
-| **Security** | Top-tier (WASM sandbox, formal verification, TLA+/Lean4, OWASP ZAP, mutation testing) |
+| **Security** | Top-tier (WASM sandbox, formal verification, TLA+/Lean4, DLP, OWASP ZAP, mutation testing) |
 | **Self-Hosting** | Top-tier (Docker, Nix, single binary, Apache 2.0) |
 | **Real-Time Collab** | Competitive (CRDT via Yrs, WebSocket relay, presence) |
 | **Search** | Competitive (BM25 + semantic/pgvector) |
+| **Knowledge Graph** | Competitive (structural queries + semantic, bidirectional links, backlinks) |
+| **Auth / SSO** | Competitive (JWT, OAuth2, MFA, SSO OIDC, guest access -- all self-hosted) |
 | **SSG** | Unique (only platform combining SSG + collaboration) |
 | **Plugin System** | Unique architecture (WASM sandbox vs. npm/Docker) |
+| **Offline** | Partial (PWA asset cache, no local-first sync) |
 | **UX / Editor** | Weak (Markdown-only, no WYSIWYG, no blocks) |
 | **Ecosystem** | Weak (new project, zero community plugins) |
-| **Mobile** | Missing (no native mobile apps) |
-| **PKM / Knowledge Graph** | Weak (no backlinks, no graph view) |
+| **Mobile** | Weak (PWA only, no native mobile apps) |
+| **Graph UI** | Weak (API exists, no frontend visualization) |
 | **Maturity** | Weak (pre-production, no users) |
 
 ---
