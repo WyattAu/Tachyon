@@ -9,8 +9,8 @@ A deterministic, high-performance knowledge management system built with Rust.
 
 ## Features
 
-- **Markdown rendering** -- CommonMark + GFM, syntax highlighting for 11 languages (tree-sitter), KaTeX math, HTML sanitization
-- **Real-time collaboration** -- WebSocket with operational transform, live cursors, presence detection
+- **Markdown rendering** -- CommonMark + GFM, syntax highlighting for 12 languages (tree-sitter), KaTeX math, HTML sanitization
+- **Real-time collaboration** -- WebSocket with CRDT (Yrs/lib0) conflict resolution, live cursors, presence detection
 - **Full-text search** -- PostgreSQL tsvector with trigram fuzzy matching, tag filtering, field-level queries
 - **RBAC** -- Role-based access control with fine-grained permissions, audit logging
 - **SEO** -- Client-side rendering (CSR) via Leptos WASM, JSON-LD, Open Graph, robots.txt, sitemap.xml
@@ -25,8 +25,8 @@ A deterministic, high-performance knowledge management system built with Rust.
 │              Browser (WASM)              │
 │         Leptos 0.8 + Tailwind           │
 └──────────────────┬──────────────────────┘
-                   │ HTTP / WebSocket
-┌──────────────────-──────────────────────┐
+                    │ HTTP / WebSocket
+┌──────────────────┬──────────────────────┐
 │           Axum 0.8 Server              │
 │  ┌──────────┐ ┌────────┐ ┌──────────┐   │
 │  │  API v1   │ │  SEO  │ │   WS     │   │
@@ -35,8 +35,8 @@ A deterministic, high-performance knowledge management system built with Rust.
 │  │  Cache   │ │  RBAC Enforcer    │   │
 │  └──────────┘ └─────────────────────┘   │
 └──────────────────┬──────────────────────┘
-                   │ sqlx
-┌──────────────────-──────────────────────┐
+                    │ sqlx
+┌──────────────────┴──────────────────────┐
 │          PostgreSQL 16+                │
 │    documents, users, teams, roles,       │
 │    search_index, audit_log             │

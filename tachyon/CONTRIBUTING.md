@@ -1,6 +1,6 @@
 # Contributing to Tachyon
 
-Thank you for your interest in contributing! This guide covers everything you need to set up the development environment, understand the codebase, and submit changes.
+This guide covers development environment setup, codebase structure, and the change submission process.
 
 For a deeper dive into the architecture and Leptos patterns, see [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md).
 
@@ -28,7 +28,7 @@ For a deeper dive into the architecture and Leptos patterns, see [docs/DEVELOPER
 | Rust (stable) | 1.85+ | `rustup default stable` |
 | Trunk | latest | `cargo install trunk` (for WASM builds) |
 | PostgreSQL | 16+ | Local or Docker |
-| Node.js | 18+ | Required for Trunk and Playwright |
+| Node.js | 20+ | Required for Trunk and Playwright |
 | Docker | latest | Optional — for infrastructure services |
 | Nix | latest | Optional but recommended — see below |
 
@@ -108,7 +108,7 @@ CREATE DATABASE tachyon OWNER tachyon;
 cp .env.example .env
 # Edit .env — set at minimum:
 #   DATABASE_URL=postgres://tachyon:tachyon@localhost:5432/tachyon
-#   JWT_SECRET=change-me-to-a-random-64-char-string
+#   TACHYON_JWT_SECRET=change-me-to-a-random-64-char-string
 ```
 
 See [.env.example](.env.example) for all available variables and their defaults.

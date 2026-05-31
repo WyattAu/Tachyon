@@ -6,14 +6,14 @@ A deterministic, high-performance knowledge management platform for teams and in
 
 - **Sub-15ms Rendering** — Just-in-time Markdown rendering with SIMD-accelerated pulldown-cmark
 - **Full-Text Search** — Sub-100ms search powered by Tantivy
-- **Real-Time Collaboration** — WebSocket-based live editing with conflict detection
+- **Real-Time Collaboration** -- WebSocket-based live editing with CRDT (Yrs/lib0) conflict resolution
 - **Role-Based Access Control** — Fine-grained RBAC with teams, projects, and permissions
 - **REST API** — Comprehensive REST API with OpenAPI/Swagger docs
 - **Desktop App** — Native desktop client via Tauri
 - **WASM Frontend** — WebAssembly-based web UI
 - **CLI** — Command-line interface for scripting and automation
 - **PostgreSQL Backend** — Persistent storage with migrations
-- **Formal Verification** — TLA+ specs and Lean4 proofs in `.adrs/
+- **Formal Verification** -- TLA+ specs and Lean4 proofs in `.specs/`
 
 ## Quick Start
 
@@ -33,11 +33,10 @@ docker compose up
 ### Cargo
 
 ```bash
-cd tachyon
 cargo run --release -p tachyon-server
 ```
 
-The server starts at `http://localhost:8080`. API docs are available at `/api/docs`.
+The server starts at `http://localhost:8080`. API docs are available at `/swagger-ui/`.
 
 ## Development
 
@@ -128,10 +127,10 @@ This forces WebKitGTK to use software rendering. Performance will be reduced but
 
 ## Formal Verification
 
-The `.adrs/ directory contains formal specifications:
+The `.specs/` directory contains formal specifications:
 
-- **TLA+** (`.adrs/ — Temporal logic models for concurrency, state machines, and distributed consensus
-- **Lean4** (`.adrs/ — Proof-carrying code for correctness properties
+- **TLA+** -- Temporal logic models for concurrency, state machines, and distributed consensus
+- **Lean4** -- Proof-carrying code for correctness properties
 
 ## License
 

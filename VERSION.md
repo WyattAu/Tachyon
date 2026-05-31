@@ -2,7 +2,7 @@
 
 **Document ID:** TACHYON-VER-V4.0
 **Date:** 2026-05-28
-**Status:** PRODUCTION READY - v22.0.0 CI GREEN
+**Status:** PRODUCTION READY - v20.0.0 CI GREEN
 
 ---
 

@@ -69,7 +69,7 @@ trunk serve --packages tachyon-frontend       # Frontend dev on :8080
 
 ## What's Next
 
-- [**Editor Guide**](editor-guide.html) — Keyboard shortcuts and editor features
-- [**API Reference**](api-reference.html) — REST API documentation
-- [**Configuration**](configuration.html) — Advanced configuration options
-- [**Deployment**](deployment.html) — Production deployment guide
+- [**Editor Guide**](editor-guide.md) -- Keyboard shortcuts and editor features
+- [**API Reference**](api-reference.md) -- REST API documentation
+- [**Configuration**](configuration.md) -- Advanced configuration options
+- [**Deployment**](deployment.md) -- Production deployment guide

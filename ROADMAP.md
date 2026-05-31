@@ -1,6 +1,6 @@
 # Tachyon Roadmap
 
-**Version:** 22.0.0 | **Date:** 2026-05-28 | **Status:** Production-Ready, Awaiting Infrastructure
+**Version:** 20.0.0 | **Date:** 2026-05-28 | **Status:** Production-Ready, Awaiting Infrastructure
 
 This is the single authoritative roadmap. All prior roadmap variants have been consolidated into this document. Stale versions are archived in `docs.archived/`.
 

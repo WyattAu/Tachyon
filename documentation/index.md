@@ -33,7 +33,7 @@ The server starts at `http://localhost:8080`.
 
 ## Architecture
 
-Tachyon is built as a Rust workspace with 17 crates:
+Tachyon is built as a Rust workspace with 16 crates:
 
 | Crate | Purpose |
 |-------|---------|
@@ -50,6 +50,6 @@ Tachyon is built as a Rust workspace with 17 crates:
 | `tachyon-import-export` | Obsidian, Docusaurus, ZIP, JSON, HTML import/export |
 | `tachyon-plugin-runtime` | WASM sandbox via Wasmtime 44 |
 | `tachyon-cli` | Command-line interface |
-| `tachyon-desktop` | Desktop client library |
-| `tachyon-desktop-app` | Tauri 2.x desktop application |
+| `tachyon-desktop` | Desktop client library (Tauri 2.x application in `src-tauri/`) |
+| `tachyon-benchmarks` | Criterion benchmark suite |
 | `tachyon-testing` | Shared test utilities, fixtures, fuzzing, benchmarks |

@@ -17,7 +17,7 @@ docker build -t tachyon .
 docker run -d \
   -p 8080:8080 \
   -e DATABASE_URL=postgres://user:pass@db:5432/tachyon \
-  -e JWT_SECRET=your-secret \
+  -e TACHYON_JWT_SECRET=your-secret \
   tachyon
 ```
 
@@ -40,7 +40,7 @@ services:
       - "8080:8080"
     environment:
       DATABASE_URL: postgres://tachyon:password@db:5432/tachyon
-      JWT_SECRET: your-secret
+      TACHYON_JWT_SECRET: your-secret
     depends_on:
       - db
 
