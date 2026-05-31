@@ -23,6 +23,34 @@ use std::cell::Cell;
 use std::time::Instant;
 use tracing::{debug, instrument};
 
+// ============================================================================
+// TOC & Embed Types
+// ============================================================================
+
+/// A single entry in the table of contents.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct TocEntry {
+    /// Heading level (1-6).
+    pub level: usize,
+    /// Slugified heading ID for anchor links.
+    pub slug: String,
+    /// Heading text.
+    pub text: String,
+}
+
+/// An embed block extracted from content.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct EmbedBlock {
+    /// Embed type (youtube, vimeo, figma, mermaid, plantuml, codepen, github).
+    pub kind: String,
+    /// Embed identifier (video ID, file hash, diagram code, etc).
+    pub id: String,
+}
+
+// ============================================================================
+// MarkdownParser
+// ============================================================================
+
 /// Markdown parser for parsing and rendering markdown documents
 pub struct MarkdownParser {
     /// Parsing options
@@ -83,6 +111,76 @@ impl MarkdownParser {
         }
 
         options
+    }
+
+    /// Extract table of contents headings from markdown content.
+    ///
+    /// Returns heading level (1-6), slug, and text for each heading found
+    /// outside of code blocks.
+    pub fn extract_toc(content: &str) -> Vec<TocEntry> {
+        let mut entries = Vec::new();
+        let mut in_code_block = false;
+
+        for line in content.lines() {
+            if line.trim_start().starts_with("```") {
+                in_code_block = !in_code_block;
+                continue;
+            }
+            if in_code_block {
+                continue;
+            }
+            let trimmed = line.trim_start();
+            if let Some(rest) = trimmed.strip_prefix('#') {
+                let level = rest.len().min(6);
+                if level > 0 && !rest.starts_with(' ') {
+                    continue;
+                }
+                let text = rest.trim().to_string();
+                if text.is_empty() {
+                    continue;
+                }
+                let slug = text
+                    .to_lowercase()
+                    .chars()
+                    .map(|c| {
+                        if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                            c
+                        } else {
+                            '-'
+                        }
+                    })
+                    .collect::<String>();
+                entries.push(TocEntry { level, slug, text });
+            }
+        }
+        entries
+    }
+
+    /// Extract embed blocks `!{type id}` from content.
+    ///
+    /// Recognized types: youtube, vimeo, figma, mermaid, plantuml, codepen, github.
+    /// Skips content inside code blocks.
+    pub fn extract_embeds(content: &str) -> Vec<EmbedBlock> {
+        let mut embeds = Vec::new();
+        let re = Regex::new(r"!\{(\w+):\s*([^}]+)\}").unwrap();
+        let mut in_code_block = false;
+
+        for line in content.lines() {
+            if line.trim_start().starts_with("```") {
+                in_code_block = !in_code_block;
+                continue;
+            }
+            if !in_code_block {
+                for caps in re.captures_iter(line) {
+                    let kind = caps[1].to_lowercase();
+                    let id = caps[2].trim().to_string();
+                    if !id.is_empty() {
+                        embeds.push(EmbedBlock { kind, id });
+                    }
+                }
+            }
+        }
+        embeds
     }
 
     /// Pre-process wikilinks [[target]] and [[target|display]] into markdown links

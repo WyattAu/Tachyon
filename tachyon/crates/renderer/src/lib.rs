@@ -25,7 +25,7 @@ pub mod types;
 pub use cache::RenderCache;
 pub use error::{RendererError, RendererResult};
 pub use latex::{LatexDocumentRenderer, LatexRenderer};
-pub use markdown::MarkdownParser;
+pub use markdown::{EmbedBlock, MarkdownParser, TocEntry};
 pub use page::SiteConfig;
 pub use sanitize::sanitize_html;
 pub use syntax::SyntaxHighlighter;

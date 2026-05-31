@@ -1205,6 +1205,30 @@ impl GraphRepository {
             to_timestamp: to,
         })
     }
+
+    /// Get orphan nodes: active nodes with zero active edges (neither source nor target).
+    pub async fn get_orphan_nodes(&self) -> DatabaseResult<Vec<GraphNode>> {
+        let sql = r#"
+            SELECT id, node_type, name, slug, description, content, visibility, weight, properties,
+                   project_id, document_id, created_by, is_active, created_at, updated_at, deactivated_at
+            FROM knowledge_graph_nodes
+            WHERE is_active = true
+              AND NOT EXISTS (
+                  SELECT 1 FROM knowledge_graph_edges e
+                  WHERE e.is_active = true AND (e.source_id = knowledge_graph_nodes.id OR e.target_id = knowledge_graph_nodes.id)
+              )
+            ORDER BY created_at DESC
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let nodes = query_as::<_, GraphNode>(sql)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        info!("Found {} orphan nodes", nodes.len());
+        Ok(nodes)
+    }
 }
 
 /// Result of a graph diff between two timestamps.

@@ -755,6 +755,101 @@ pub async fn list_nodes_cursor(
     Ok(Json(NodeCursorPage::from(page)))
 }
 
+/// Get orphan nodes (nodes with zero incoming and outgoing edges).
+///
+/// `GET /nodes/orphans`
+#[utoipa::path(
+    get,
+    path = "/nodes/orphans",
+    responses(
+        (status = 200, description = "Orphan nodes", body = NodeListResponse),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn get_orphan_nodes(
+    State(state): State<NodeState>,
+) -> Result<Json<NodeListResponse>, ServerError> {
+    debug!("Finding orphan nodes");
+
+    let orphans = state.repo().get_orphan_nodes().await?;
+    let total = orphans.len() as i64;
+
+    Ok(Json(NodeListResponse {
+        nodes: orphans,
+        total,
+        page: 1,
+        page_size: total as usize,
+    }))
+}
+
+/// Create a daily note document for today's date.
+///
+/// `POST /nodes/daily/{date}`
+///
+/// The date parameter should be in ISO 8601 format (e.g., 2026-05-31).
+/// If a daily note node already exists for the given date, returns it unchanged.
+#[utoipa::path(
+    post,
+    path = "/nodes/daily/{date}",
+    params(
+        ("date" = String, Path, description = "Date in ISO 8601 format (e.g., 2026-05-31)"),
+    ),
+    responses(
+        (status = 200, description = "Daily note created or existing", body = tachyon_database::GraphNode),
+        (status = 400, description = "Invalid date format"),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn create_daily_note(
+    Path(date_str): Path<String>,
+    State(state): State<NodeState>,
+) -> Result<Json<GraphNode>, ServerError> {
+    info!("Creating daily note for: {}", date_str);
+
+    let date = chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d").map_err(|e| {
+        ServerError::bad_request(format!("Invalid date format '{}': {}", date_str, e))
+    })?;
+
+    let title = format!("Daily Note — {}", date.format("%A, %B %d, %Y"));
+    let slug = format!("daily-{}", date_str);
+
+    let existing = state.repo().get_node_by_slug(&slug).await;
+
+    if let Ok(existing) = existing {
+        return Ok(Json(existing));
+    }
+
+    let node = GraphNode {
+        id: uuid::Uuid::new_v4().to_string(),
+        node_type: "daily_note".to_string(),
+        name: title,
+        slug: Some(slug),
+        description: Some(format!("Auto-created daily note for {}", date_str)),
+        content: None,
+        visibility: "private".to_string(),
+        weight: 1.0,
+        properties: serde_json::json!({
+            "date": date_str,
+            "year": date.format("%Y").to_string(),
+            "month": date.format("%m").to_string(),
+            "day": date.format("%d").to_string(),
+            "weekday": date.format("%A").to_string(),
+        }),
+        project_id: None,
+        document_id: None,
+        created_by: None,
+        is_active: true,
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+        deactivated_at: None,
+    };
+
+    let created = state.repo().create_node(&node).await?;
+    Ok(Json(created))
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -766,6 +861,8 @@ pub fn create_node_router() -> axum::Router<NodeState> {
         .route("/nodes", post(create_node))
         .route("/nodes", get(list_nodes))
         .route("/nodes/cursor", get(list_nodes_cursor))
+        .route("/nodes/orphans", get(get_orphan_nodes))
+        .route("/nodes/daily/{date}", post(create_daily_note))
         .route("/nodes/{node_id}", get(get_node))
         .route("/nodes/{node_id}", put(update_node))
         .route("/nodes/{node_id}", delete(delete_node))
