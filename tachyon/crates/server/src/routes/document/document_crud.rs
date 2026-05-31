@@ -121,6 +121,9 @@ pub async fn create_document(
         return Err(ServerError::bad_request(e.to_string()));
     }
 
+    // DLP scan before persistence
+    state.scan_content_dlp(&req.content)?;
+
     let status_str = match doc.status {
         DocumentStatus::Draft => "draft",
         DocumentStatus::Published => "published",
@@ -403,6 +406,10 @@ pub async fn update_document(
     let mut content_changed = false;
     if let Some(content) = req.content {
         content_changed = true;
+
+        // DLP scan before content update
+        state.scan_content_dlp(&content)?;
+
         if let Some(ref current_content) = metadata.content {
             if current_content != &content {
                 let version_repo = DocumentVersionRepository::new(state.pool.clone());

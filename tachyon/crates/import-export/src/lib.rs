@@ -3,8 +3,10 @@
 //! Provides import and export functionality for the Tachyon knowledge
 //! management system, supporting:
 //!
+//! - Markdown vault import (generic recursive folder scan with frontmatter/tags)
 //! - Markdown ZIP import/export (with YAML frontmatter)
 //! - Obsidian vault import (frontmatter, wikilinks, tags, callouts)
+//! - Docusaurus import (MDX, frontmatter, sidebar data)
 //! - HTML export (rendered pages suitable for Confluence or static hosting)
 //! - JSON export (structured document data)
 
@@ -15,6 +17,7 @@ pub mod html_export;
 pub mod json_export;
 pub mod markdown_zip;
 pub mod obsidian;
+pub mod vault_importer;
 
 // Re-export commonly used types
 pub use docusaurus::DocusaurusImporter;
@@ -24,6 +27,7 @@ pub use html_export::{HtmlExportConfig, HtmlExportDocument, HtmlExporter};
 pub use json_export::{ExportableDocument, JsonExporter};
 pub use markdown_zip::{ExportDocument, MarkdownZipExporter, MarkdownZipImporter};
 pub use obsidian::ObsidianImporter;
+pub use vault_importer::MarkdownVaultImporter;
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

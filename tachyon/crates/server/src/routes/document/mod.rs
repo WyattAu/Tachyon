@@ -16,6 +16,7 @@ use tracing::warn;
 
 use crate::audit::AuditLogger;
 use crate::config::GuestConfig;
+use crate::dlp::DlpEngine;
 
 #[derive(Clone)]
 pub struct DocumentState {
@@ -27,6 +28,7 @@ pub struct DocumentState {
     pub api_cache: crate::middleware::api_cache::ApiCache,
     pub audit_logger: AuditLogger,
     pub ai_manager: Option<Arc<crate::ai::AiManager>>,
+    pub dlp_engine: Option<Arc<DlpEngine>>,
 }
 
 impl DocumentState {
@@ -43,6 +45,7 @@ impl DocumentState {
             )),
             audit_logger: AuditLogger::disabled(),
             ai_manager: None,
+            dlp_engine: None,
         }
     }
 
@@ -63,6 +66,7 @@ impl DocumentState {
             )),
             audit_logger: AuditLogger::disabled(),
             ai_manager: None,
+            dlp_engine: None,
         }
     }
 
@@ -79,6 +83,47 @@ impl DocumentState {
     pub fn with_ai_manager(mut self, ai_manager: Arc<crate::ai::AiManager>) -> Self {
         self.ai_manager = Some(ai_manager);
         self
+    }
+
+    pub fn with_dlp_engine(mut self, engine: Arc<DlpEngine>) -> Self {
+        self.dlp_engine = Some(engine);
+        self
+    }
+
+    /// Scan content against DLP rules. Returns Ok(()) if content is allowed,
+    /// or Err with violation descriptions if blocked.
+    pub(crate) fn scan_content_dlp(&self, content: &str) -> Result<(), crate::error::ServerError> {
+        if let Some(ref engine) = self.dlp_engine {
+            let result = engine.scan(content);
+            if result.is_blocked {
+                let violations: Vec<String> = result
+                    .violations
+                    .iter()
+                    .map(|v| {
+                        format!(
+                            "{}: matched '{}' ({}])",
+                            v.rule_name, v.matched_text, v.rule_id
+                        )
+                    })
+                    .collect();
+                return Err(crate::error::ServerError::bad_request(format!(
+                    "Content blocked by DLP policy: {}",
+                    violations.join("; ")
+                )));
+            }
+            if !result.violations.is_empty() {
+                tracing::warn!(
+                    "DLP warnings for document: {}",
+                    result
+                        .violations
+                        .iter()
+                        .map(|v| v.rule_name.clone())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            }
+        }
+        Ok(())
     }
 
     pub fn is_public_access_enabled(&self) -> bool {

@@ -39,7 +39,7 @@ pub struct OidcTokenResponse {
     pub id_token: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OidcUserInfo {
     pub sub: String,
     pub email: Option<String>,
