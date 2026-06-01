@@ -174,7 +174,7 @@ pub fn UpdateBanner() -> impl IntoView {
                 if is_downloading {
                     view! {
                         <div class="bg-blue-600 text-white px-4 py-2 text-center text-sm flex items-center justify-center gap-3">
-                            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                             </svg>
@@ -187,8 +187,7 @@ pub fn UpdateBanner() -> impl IntoView {
                     view! {
                         <div class="bg-blue-600 text-white px-4 py-2 flex items-center justify-between text-sm">
                             <div class="flex items-center gap-2">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 </svg>
                                 <span>"Update available: v"</span>
                                 <span class="font-medium">{latest}</span>
@@ -221,7 +220,7 @@ pub fn UpdateBanner() -> impl IntoView {
                                     class="text-blue-200 hover:text-white transition-colors"
                                     attr:aria-label="Dismiss update notification"
                                 >
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>

@@ -110,7 +110,7 @@ pub fn WikilinkAutocomplete(
                 class="wikilink-autocomplete"
                 style=move || format!(
                     "position: absolute; z-index: 50; left: {}px; top: {}px; \
-                     background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; \
+                     background: white; border: 1px solid #e5e7eb; border-radius: 0; \
                      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); max-height: 256px; \
                      overflow-y: auto; min-width: 240px;",
                     position.get().0,

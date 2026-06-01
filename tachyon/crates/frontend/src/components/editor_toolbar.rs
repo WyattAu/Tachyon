@@ -187,6 +187,7 @@ fn ToolbarBtn(
             class="editor-toolbar-btn"
             on:click={on_click}
             title={title}
+            aria-label={title}
             disabled={disabled}
         >
             {child_views}

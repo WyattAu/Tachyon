@@ -62,20 +62,20 @@ pub fn ImagePreview(
 
                 <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                     <button
-                        class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded text-sm"
+                        class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-none text-sm"
                         on:click=zoom_out
                         aria-label="Zoom out"
                     >
                         "-"
                     </button>
                     <button
-                        class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded text-sm"
+                        class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-none text-sm"
                         on:click=zoom_reset
                     >
                         {move || format!("{:.0}%", zoom_level.get() * 100.0)}
                     </button>
                     <button
-                        class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded text-sm"
+                        class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-none text-sm"
                         on:click=zoom_in
                         aria-label="Zoom in"
                     >
@@ -92,7 +92,7 @@ pub fn Thumbnail(
     src: String,
     alt: String,
     #[prop(default = 48)] size: u32,
-    #[prop(default = "rounded".to_string())] class: String,
+    #[prop(default = "rounded-none".to_string())] class: String,
 ) -> impl IntoView {
     let size_style = format!("width: {}px; height: {}px;", size, size);
     let container_class = format!("overflow-hidden {} bg-gray-100 dark:bg-gray-700", class);

@@ -206,7 +206,7 @@ pub fn GlobalStyles() -> impl IntoView {
                     min-width: 50px;
                     text-align: right;
                     padding-right: 12px;
-                    color: #9ca3af;
+                    color: #6b7280;
                     user-select: none;
                     flex-shrink: 0;
                 }}

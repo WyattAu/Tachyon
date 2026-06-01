@@ -420,19 +420,19 @@ fn ReviewItem(
                 // Action buttons (always rendered; handlers are no-ops when not applicable)
                 <div class="flex items-center gap-2 ml-4">
                     <button
-                        class="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
+                        class="px-2 py-1 text-xs rounded-none bg-green-600 text-white hover:bg-green-700 transition-colors"
                         on:click=on_approve
                     >
                         "Approve"
                     </button>
                     <button
-                        class="px-2 py-1 text-xs rounded bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                        class="px-2 py-1 text-xs rounded-none bg-orange-500 text-white hover:bg-orange-600 transition-colors"
                         on:click=on_request_changes
                     >
                         "Request Changes"
                     </button>
                     <button
-                        class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700 transition-colors"
+                        class="px-2 py-1 text-xs rounded-none bg-red-600 text-white hover:bg-red-700 transition-colors"
                         on:click=on_reject
                     >
                         "Reject"

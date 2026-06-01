@@ -99,7 +99,7 @@ pub fn RoleBadge(role: UserRole, #[prop(optional)] size: Option<String>) -> impl
     let color_class = role.badge_color();
 
     view! {
-        <span class=format!("inline-flex items-center font-medium rounded-full {} {}", size_class, color_class)>
+        <span class=format!("inline-flex items-center font-medium rounded-none {} {}", size_class, color_class)>
             {role.name.clone()}
         </span>
     }
@@ -131,7 +131,7 @@ pub fn PermissionBadge(permission: Permission) -> impl IntoView {
     };
 
     view! {
-        <span class=format!("inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5 {}", color)>
+        <span class=format!("inline-flex items-center gap-1 text-xs font-medium rounded-none px-2 py-0.5 {}", color)>
             <span>{icon}</span>
             {permission.as_str().to_string()}
         </span>

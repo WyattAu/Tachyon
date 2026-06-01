@@ -138,7 +138,7 @@ pub fn TemplateSelector(
                                                             }).collect::<Vec<_>>()}
                                                         </div>
                                                         <button
-                                                            class="mt-3 px-3 py-1 text-sm bg-blue-600 text-white rounded
+                                                            class="mt-3 px-3 py-1 text-sm bg-blue-600 text-white rounded-none
                                                                    hover:bg-blue-700 transition-colors"
                                                             on:click={move |ev| {
                                                                 ev.stop_propagation();

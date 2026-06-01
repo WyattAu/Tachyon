@@ -267,11 +267,13 @@ pub fn NativeEditor(
         <div
             class={format!("{} {}", container_class, class_name)}
             tabindex="0"
+            role="textbox"
+            aria-label="Document editor"
+            aria-multiline="true"
             on:keydown={handle_keydown}
             on:scroll={handle_scroll}
             on:mousedown={handle_mousedown}
             style:font-size={font_size.clone()}
-            style:outline={move || "none"}
             style:cursor="text"
             prop:contenteditable="false"
         >

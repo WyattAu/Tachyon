@@ -79,7 +79,7 @@ pub fn StatusBadge(
     };
 
     view! {
-        <span class=format!("px-2 py-1 text-xs font-medium rounded-full {}", color_class)>
+        <span class=format!("px-2 py-1 text-xs font-medium rounded-none {}", color_class)>
             {status}
         </span>
     }

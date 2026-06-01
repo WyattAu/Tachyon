@@ -279,7 +279,7 @@ pub fn LoginPage() -> impl IntoView {
                                 <input
                                     id="remember"
                                     type="checkbox"
-                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded-none"
                                     on:change=move |ev| remember_me.set(event_target_checked(&ev))
                                     prop:checked=move || remember_me.get()
                                 />

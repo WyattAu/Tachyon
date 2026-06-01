@@ -214,9 +214,9 @@ fn FilterButton(
     let _ = value;
     let class_str = move || {
         if active() {
-            "px-2 py-1 text-xs rounded bg-blue-600 text-white".to_string()
+            "px-2 py-1 text-xs rounded-none bg-blue-600 text-white".to_string()
         } else {
-            "px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600".to_string()
+            "px-2 py-1 text-xs rounded-none bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600".to_string()
         }
     };
 
