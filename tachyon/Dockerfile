@@ -14,6 +14,9 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --de
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CC_x86_64_unknown_linux_musl=musl-gcc
 
+# Pre-create passwd file for scratch runtime (no shell available there)
+RUN echo "tachyon:x:65532:65532:tachyon:/app:/sbin/nologin" > /etc/passwd.tachyon
+
 WORKDIR /app
 
 # Dependency cache layer: copy all workspace manifests + create dummy sources
@@ -62,7 +65,8 @@ WORKDIR /app
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/tachyon-server /usr/local/bin/tachyon-server
 COPY crates/database/migrations /app/migrations
 
-RUN mkdir -p /etc && echo "tachyon:x:65532:65532:tachyon:/app:/sbin/nologin" > /etc/passwd
+# /etc/passwd for USER directive (file created in builder)
+COPY --from=builder /etc/passwd.tachyon /etc/passwd
 
 HEALTHCHECK NONE
 

@@ -13,10 +13,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates pkg-config musl-tools make perl patch gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
-    /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
+    /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl wasm32-unknown-unknown
 ENV PATH="/root/.cargo/bin:${PATH}"
 # musl-gcc only for the musl target's C compilation (libgit2/openssl vendoring)
 ENV CC_x86_64_unknown_linux_musl=musl-gcc
+
+# Pre-create passwd file for scratch runtime (no shell available there)
+RUN echo "tachyon:x:65532:65532:tachyon:/app:/sbin/nologin" > /etc/passwd.tachyon
 
 # Download trunk with checksum verification
 ARG TRUNK_VERSION=0.21.14
@@ -35,12 +38,11 @@ RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "
     cargo build --release --target x86_64-unknown-linux-musl 2>/dev/null || true && \
     rm -rf crates
 
-# Stage 2: Build frontend
+# Stage 2: Build frontend (WASM via trunk)
 FROM builder AS frontend
 COPY tachyon/ .
 RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml && \
-    mkdir -p crates/frontend/dist && \
-    trunk build --release
+    cd crates/frontend && trunk build --release
 
 # Stage 3: Build server (static musl)
 FROM builder AS app-builder
@@ -66,8 +68,8 @@ COPY --from=app-builder /app/target/x86_64-unknown-linux-musl/release/tachyon-se
 COPY --from=app-builder /app/crates/database/migrations /app/migrations
 COPY --from=frontend /app/crates/frontend/dist /app/dist
 
-# Non-root user via /etc/passwd (no chown needed -- static binary, data dirs mounted at runtime)
-RUN mkdir -p /etc && echo "tachyon:x:65532:65532:tachyon:/app:/sbin/nologin" > /etc/passwd
+# /etc/passwd for USER directive (file created in builder)
+COPY --from=builder /etc/passwd.tachyon /etc/passwd
 
 HEALTHCHECK NONE
 
