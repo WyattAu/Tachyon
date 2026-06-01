@@ -38,7 +38,7 @@ Users acting outside intended permissions — accessing other users' data, escal
 ## A02:2021 – Cryptographic Failures
 
 ### Risk
-Exposure of sensitive data through weak cryptography, improper key management, or传输明文.
+Exposure of sensitive data through weak cryptography, improper key management, or transmission of plaintext data.
 
 ### What Tachyon Already Does
 - **JWT with HMAC-SHA256** (`middleware/auth.rs`): Uses `jsonwebtoken` crate with `Algorithm::HS256`.
