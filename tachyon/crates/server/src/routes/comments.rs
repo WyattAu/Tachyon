@@ -346,7 +346,7 @@ pub async fn delete_comment(
 // ============================================================================
 
 pub fn create_comment_router() -> axum::Router<CommentState> {
-    use axum::routing::{delete, get, post, put};
+    use axum::routing::{get, put};
 
     axum::Router::new()
         .route(

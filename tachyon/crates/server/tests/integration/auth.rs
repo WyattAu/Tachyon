@@ -14,7 +14,7 @@ async fn create_test_app() -> axum::Router {
     create_router().await
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn create_test_jwt(user_id: &str, secret: &str) -> String {
     use jsonwebtoken::{encode, EncodingKey, Header};
     let claims = json!({

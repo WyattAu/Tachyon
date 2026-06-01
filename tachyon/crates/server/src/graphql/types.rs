@@ -293,15 +293,15 @@ impl MutationRoot {
         let repo = DocumentRepository::new(pool.clone());
 
         let doc_id = tachyon_core::generate_document_id();
-        let auth: GraphqlAuthContext = ctx
-            .data::<GraphqlAuthContext>()
-            .map(|a| a.clone())
-            .unwrap_or(GraphqlAuthContext {
-                user_id: tachyon_core::generate_user_id().to_string(),
-                role: "guest".to_string(),
-                permissions: vec![],
-                team_id: None,
-            });
+        let auth: GraphqlAuthContext =
+            ctx.data::<GraphqlAuthContext>()
+                .cloned()
+                .unwrap_or(GraphqlAuthContext {
+                    user_id: tachyon_core::generate_user_id().to_string(),
+                    role: "guest".to_string(),
+                    permissions: vec![],
+                    team_id: None,
+                });
         let author_id = auth.user_id;
         let now = chrono::Utc::now();
         let tags_json =
@@ -408,15 +408,15 @@ impl MutationRoot {
         let pool = ctx.data::<DatabasePool>()?;
         let repo = SpaceRepository::new(pool.clone());
 
-        let auth: GraphqlAuthContext = ctx
-            .data::<GraphqlAuthContext>()
-            .map(|a| a.clone())
-            .unwrap_or(GraphqlAuthContext {
-                user_id: "00000000-0000-0000-0000-000000000000".to_string(),
-                role: "guest".to_string(),
-                permissions: vec![],
-                team_id: None,
-            });
+        let auth: GraphqlAuthContext =
+            ctx.data::<GraphqlAuthContext>()
+                .cloned()
+                .unwrap_or(GraphqlAuthContext {
+                    user_id: "00000000-0000-0000-0000-000000000000".to_string(),
+                    role: "guest".to_string(),
+                    permissions: vec![],
+                    team_id: None,
+                });
         let owner_id = auth.user_id;
         let req = tachyon_database::CreateSpaceRequest {
             name,

@@ -99,7 +99,7 @@ pub async fn oidc_authorize(
 
     // Build authorization URL
     let state_token = uuid::Uuid::new_v4().to_string();
-    let mut auth_url = format!(
+    let auth_url = format!(
         "{}?response_type=code&client_id={}&redirect_uri={}&scope={}&state={}",
         discovery.authorization_endpoint,
         config.client_id,
@@ -171,7 +171,7 @@ pub async fn oidc_callback(
     let token_response = exchange_code(
         &state.http_client,
         &discovery.token_endpoint,
-        &config,
+        config,
         &params.code,
     )
     .await?;

@@ -233,12 +233,8 @@ impl PluginRuntime {
             .get(&key)
             .ok_or_else(|| PluginRuntimeError::NotFound(format!("Plugin '{}' not loaded", key)))?;
 
-        let wasm_bytes = std::fs::read(&plugin.wasm_path).map_err(|e| {
-            PluginRuntimeError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let wasm_bytes = std::fs::read(&plugin.wasm_path)
+            .map_err(|e| PluginRuntimeError::Io(std::io::Error::other(e.to_string())))?;
 
         let signature = keypair.sign(&wasm_bytes);
         Ok(signature)

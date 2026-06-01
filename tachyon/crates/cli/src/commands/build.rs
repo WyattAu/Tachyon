@@ -795,6 +795,21 @@ mod tests {
 
     #[test]
     fn test_resolve_database_url_sqlite_fallback() {
+        // Ensure DATABASE_URL is not set so the fallback path is exercised.
+        // Use a Drop guard to restore the original value after the test,
+        // preventing cross-test interference when running in parallel.
+        struct RestoreEnv(Option<String>);
+        impl Drop for RestoreEnv {
+            fn drop(&mut self) {
+                match &self.0 {
+                    Some(v) => std::env::set_var("DATABASE_URL", v),
+                    None => std::env::remove_var("DATABASE_URL"),
+                }
+            }
+        }
+        let _guard = RestoreEnv(std::env::var("DATABASE_URL").ok());
+        std::env::remove_var("DATABASE_URL");
+
         let dir = tempdir().unwrap();
         let cmd = BuildCommand::from_args(
             Some(dir.path().to_path_buf()),

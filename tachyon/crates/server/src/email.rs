@@ -183,7 +183,7 @@ impl EmailService {
     pub async fn send_notification(
         &self,
         to: &str,
-        #[allow(unused_variables)] notification_type: &str,
+        _notification_type: &str,
         title: &str,
         body: &str,
         action_url: Option<&str>,

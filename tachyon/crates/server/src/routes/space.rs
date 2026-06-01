@@ -15,7 +15,7 @@ use tachyon_database::{
     UpdateSpaceMemberRequest, UpdateSpaceRequest,
 };
 use tracing::info;
-#[allow(unused_imports)]
+#[allow(unused_imports)] // used in derive macros below
 use utoipa::IntoParams;
 
 #[derive(Clone)]

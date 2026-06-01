@@ -132,17 +132,10 @@ pub fn should_skip_path(path: &str) -> bool {
 ///
 /// Supports importing from a local directory or a ZIP archive. Extracts
 /// frontmatter, inline tags, and derives titles from filenames or headings.
+#[derive(Default)]
 pub struct MarkdownVaultImporter {
     /// Whether to derive tags from directory path components.
     pub path_as_tags: bool,
-}
-
-impl Default for MarkdownVaultImporter {
-    fn default() -> Self {
-        Self {
-            path_as_tags: false,
-        }
-    }
 }
 
 impl MarkdownVaultImporter {
@@ -185,7 +178,7 @@ impl MarkdownVaultImporter {
         let mut skipped = 0usize;
         let mut failed = 0usize;
         let mut all_tags = HashSet::new();
-        let mut warnings = Vec::new();
+        let warnings = Vec::new();
 
         for entry in WalkDir::new(dir).follow_links(true).into_iter() {
             let entry = match entry {
@@ -296,7 +289,7 @@ impl MarkdownVaultImporter {
         let mut skipped = 0usize;
         let mut failed = 0usize;
         let mut all_tags = HashSet::new();
-        let mut warnings = Vec::new();
+        let warnings = Vec::new();
 
         for i in 0..archive.len() {
             let mut entry = match archive.by_index(i) {

@@ -69,6 +69,7 @@ pub async fn list_branches(
         .await
         .map_err(|e| ServerError::database(e.to_string()))?;
 
+    #[allow(clippy::type_complexity)]
     let rows: Vec<(
         String,
         String,
@@ -282,9 +283,7 @@ pub async fn merge_branch(
 
     let current_hash = hex::encode(Sha256::digest(current_content.as_bytes()));
 
-    let (merged_content, conflicts) = if current_hash == branch_hash {
-        (merge_content.to_string(), None)
-    } else if strategy == "force" {
+    let (merged_content, conflicts) = if current_hash == branch_hash || strategy == "force" {
         (merge_content.to_string(), None)
     } else {
         let merge_result = simple_three_way_merge(&branch_content, &current_content, merge_content);
@@ -321,7 +320,7 @@ pub async fn merge_branch(
     .await
     .map_err(|e| ServerError::database(e.to_string()))?;
 
-    let has_conflicts = conflicts.as_ref().map_or(false, |c| !c.is_empty());
+    let has_conflicts = conflicts.as_ref().is_some_and(|c| !c.is_empty());
 
     info!(
         document_id = %document_id,

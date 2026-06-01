@@ -22,7 +22,7 @@ use tachyon_search::{
 };
 use tokio::sync::Mutex;
 use tracing::{info, warn};
-#[allow(unused_imports)]
+#[allow(unused_imports)] // used in derive macros below
 use utoipa::IntoParams;
 
 #[derive(Clone)]

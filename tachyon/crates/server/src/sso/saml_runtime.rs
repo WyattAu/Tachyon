@@ -8,7 +8,7 @@ use axum::{extract::State, response::Json};
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use super::saml::{SamlAttribute, SamlConditions, SamlConfig, SamlResponse};
+use super::saml::{SamlAttribute, SamlConfig};
 use crate::error::ServerError;
 
 // ============================================================================

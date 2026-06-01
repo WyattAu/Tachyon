@@ -1280,6 +1280,7 @@ pub async fn export_my_data(
         .await
         .map_err(|e| ServerError::database(e.to_string()))?;
 
+    #[allow(clippy::type_complexity)]
     let profile_row: Option<(
         String,
         String,
@@ -1310,6 +1311,7 @@ pub async fn export_my_data(
         });
     }
 
+    #[allow(clippy::type_complexity)]
     let doc_rows: Vec<(
         String,
         String,
@@ -1344,6 +1346,7 @@ pub async fn export_my_data(
 
     builder = builder.documents(docs);
 
+    #[allow(clippy::type_complexity)]
     let comment_rows: Vec<(
         String,
         String,
@@ -1375,6 +1378,7 @@ pub async fn export_my_data(
 
     builder = builder.comments(comments);
 
+    #[allow(clippy::type_complexity)]
     let activity_rows: Vec<(
         String,
         String,

@@ -542,8 +542,8 @@ fn parse_block_reference(inner: &str) -> Option<BlockReference> {
         return None;
     }
 
-    let (inner, reference_only) = if inner.starts_with('!') {
-        (&inner[1..], true)
+    let (inner, reference_only) = if let Some(stripped) = inner.strip_prefix('!') {
+        (stripped, true)
     } else {
         (inner, false)
     };
@@ -556,8 +556,8 @@ fn parse_block_reference(inner: &str) -> Option<BlockReference> {
         target = inner[..hash_pos].trim().to_string();
         let fragment = &inner[hash_pos + 1..];
 
-        if fragment.starts_with('^') {
-            block_id = Some(fragment[1..].trim().to_string());
+        if let Some(stripped) = fragment.strip_prefix('^') {
+            block_id = Some(stripped.trim().to_string());
         } else {
             heading = Some(fragment.trim().to_string());
         }
