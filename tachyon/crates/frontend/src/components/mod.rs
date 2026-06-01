@@ -47,45 +47,17 @@ pub use breadcrumbs::{BreadcrumbItem, Breadcrumbs};
 pub use client_search::ClientSearch;
 pub use command_palette::CommandPalette;
 pub use conflict_resolver::ConflictResolver;
-#[allow(unused_imports)]
-pub use drop_zone::DropZone;
-#[allow(unused_imports)]
-pub use drop_zone::DroppedFile;
 pub use editor_preview::EditorPreview;
 pub use editor_search::EditorSearch;
-#[allow(unused_imports)]
-pub use editor_settings::{EditorSettings, EditorSettingsData};
-#[allow(unused_imports)]
-pub use editor_split::{EditorSplit, SplitMode};
 pub use editor_toolbar::EditorToolbar;
 pub use empty_state::{EmptyDocuments, EmptySearch};
 pub use error_boundary::AppErrorBoundary;
 pub use keyboard::FocusTrap;
 pub use loading::ButtonSpinner;
 pub use markdown_preview::MarkdownPreview;
-#[allow(unused_imports)]
-pub use mobile_nav::MobileNav;
 pub use native_editor::NativeEditor;
 pub use onboarding::{OnboardingWizard, should_show_onboarding};
-#[allow(unused_imports)]
-pub use presence_indicators::{
-    CollaboratorInfo, CollaboratorList, CollaboratorStatus, PresenceIndicator,
-};
-#[allow(unused_imports)]
-pub use presence_indicators::{
-    PresenceIndicators as CollabPresenceIndicators, PresenceUser as CollabPresenceUser,
-};
 pub use review_panel::ReviewPanel;
 pub use table_of_contents::TableOfContents;
 pub use template_selector::TemplateSelector;
-#[allow(unused_imports)]
-pub use theme_toggle::{
-    Theme, ThemeInitializer, ThemeToggle, get_current_theme, get_current_theme_label,
-};
-#[allow(unused_imports)]
-pub use upload_progress::{UploadItem, UploadProgress, UploadStatus};
-#[allow(unused_imports)]
-pub use user_avatar::UserAvatar;
 pub use version_history::VersionHistory;
-#[allow(unused_imports)]
-pub use wikilink_autocomplete::{WikilinkAutocomplete, WikilinkCompletion};

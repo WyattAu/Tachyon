@@ -21,7 +21,7 @@ pub fn AttachmentManager(document_id: String) -> impl IntoView {
         let document_id = document_id.clone();
         move || {
             let _ = refresh_counter.get();
-            let client = api_client.lock().unwrap().clone();
+            let client = api_client.lock().unwrap_or_else(|e| e.into_inner()).clone();
             let doc_id = document_id.clone();
             async move { client.list_attachments(&doc_id).await.unwrap_or_default() }
         }
@@ -32,7 +32,7 @@ pub fn AttachmentManager(document_id: String) -> impl IntoView {
         let document_id = document_id.clone();
         move |file: web_sys::File| {
             let doc_id = document_id.clone();
-            let client = api_client.lock().unwrap().clone();
+            let client = api_client.lock().unwrap_or_else(|e| e.into_inner()).clone();
 
             set_uploading.set(true);
             set_error_msg.set(None);
@@ -114,7 +114,7 @@ pub fn AttachmentManager(document_id: String) -> impl IntoView {
         let api_client = api_client.clone();
         let document_id = document_id.clone();
         move |attachment_id: String| {
-            let client = api_client.lock().unwrap().clone();
+            let client = api_client.lock().unwrap_or_else(|e| e.into_inner()).clone();
             let doc_id = document_id.clone();
             spawn_local(async move {
                 let _ = client.delete_attachment(&doc_id, &attachment_id).await;
