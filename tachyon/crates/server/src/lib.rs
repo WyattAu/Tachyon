@@ -751,6 +751,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .route("/ready", get(crate::routes::health::readiness_check))
         .route("/metrics", get(metrics_handler))
         .route("/metrics/prometheus", get(prometheus_metrics_handler))
+        .route("/", get(crate::routes::landing::landing_page))
         .with_state(HealthState {
             pool: pool.clone(),
             start_time,

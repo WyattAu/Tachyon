@@ -17,6 +17,7 @@ pub mod files;
 pub mod gdpr;
 pub mod health;
 pub mod hipaa;
+pub mod landing;
 pub mod magic_link;
 pub mod metrics;
 pub mod mfa;

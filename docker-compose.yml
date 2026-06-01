@@ -1,31 +1,21 @@
-version: "3.8"
-services:
-  app:
-    build: .
-    ports:
-      - "3000:8080"
-    environment:
-      DATABASE_URL: postgres://tachyon:tachyon@db:5432/tachyon
-      JWT_SECRET: dev-secret-change-in-production
-      RUST_LOG: info
-      REDIS_URL: redis://redis:6379
-      SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 8080
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
+# Tachyon -- one-command deploy
+#
+#   cp .env.example .env   # edit .env as needed
+#   docker compose up -d
+#
+# The server binary serves the WASM frontend from /dist (SPA fallback built
+# into axum) so no separate frontend container is required.
 
-  db:
+services:
+  postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: tachyon
       POSTGRES_PASSWORD: tachyon
       POSTGRES_DB: tachyon
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -33,9 +23,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - tachyon
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
     ports:
       - "6379:6379"
     healthcheck:
@@ -43,6 +43,49 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - tachyon
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  server:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://tachyon:tachyon@postgres:5432/tachyon
+    ports:
+      - "3000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    networks:
+      - tachyon
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
 volumes:
-  pgdata:
+  postgres_data:
+  redis_data:
+
+networks:
+  tachyon:
