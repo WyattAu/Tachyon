@@ -29,6 +29,7 @@ pub mod saved_search;
 pub mod schema;
 pub mod search;
 pub mod session;
+pub mod sms_otp;
 pub mod space;
 pub mod team;
 pub mod template;
@@ -86,6 +87,7 @@ pub use search::{
     SearchHighlight, SearchRepository, SearchResponse, SearchResult,
 };
 pub use session::SessionRepository;
+pub use sms_otp::{SmsOtpRepository, SmsOtpToken};
 pub use space::{
     AddSpaceMemberRequest, CreateSpaceRequest, Space, SpaceMember, SpaceRepository,
     UpdateSpaceMemberRequest, UpdateSpaceRequest,

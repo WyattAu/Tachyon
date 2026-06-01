@@ -60,6 +60,8 @@ pub struct ServerConfig {
     pub truelayer: TrueLayerConfig,
     /// Magic link (passwordless) authentication configuration
     pub magic_link: MagicLinkConfig,
+    /// SMS OTP authentication configuration
+    pub sms_otp: SmsOtpConfig,
     /// SMTP URL for email delivery (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub smtp_url: Option<String>,
@@ -394,6 +396,42 @@ impl Default for MagicLinkConfig {
     }
 }
 
+/// SMS OTP authentication configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SmsOtpConfig {
+    pub enabled: bool,
+    pub ttl_secs: u64,
+    pub provider: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twilio_account_sid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twilio_auth_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twilio_from_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sms_api_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sms_api_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sms_from_number: Option<String>,
+}
+
+impl Default for SmsOtpConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            ttl_secs: 300,
+            provider: "twilio".to_string(),
+            twilio_account_sid: None,
+            twilio_auth_token: None,
+            twilio_from_number: None,
+            sms_api_url: None,
+            sms_api_key: None,
+            sms_from_number: None,
+        }
+    }
+}
+
 /// OAuth2 provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OAuth2Config {
@@ -442,6 +480,7 @@ impl Default for ServerConfig {
             sso_ldap: None,
             truelayer: TrueLayerConfig::default(),
             magic_link: MagicLinkConfig::default(),
+            sms_otp: SmsOtpConfig::default(),
             smtp_url: None,
             smtp_from: None,
             smtp_username: None,
@@ -578,6 +617,20 @@ impl Default for RateLimitConfig {
         );
         endpoint_limits.insert(
             "/api/v1/auth/magic-link/verify".to_string(),
+            EndpointRateLimit {
+                max_requests: 10,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/sms-otp/request".to_string(),
+            EndpointRateLimit {
+                max_requests: 3,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/sms-otp/verify".to_string(),
             EndpointRateLimit {
                 max_requests: 10,
                 window_secs: 60,
@@ -1107,6 +1160,37 @@ impl ServerConfig {
             if let Ok(v) = val.parse::<u64>() {
                 config.db_idle_timeout_secs = v;
             }
+        }
+
+        // SMS OTP configuration
+        if let Ok(val) = std::env::var("TACHYON_SMS_OTP_ENABLED") {
+            config.sms_otp.enabled = val == "1" || val == "true";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMS_OTP_TTL_SECS") {
+            if let Ok(v) = val.parse::<u64>() {
+                config.sms_otp.ttl_secs = v;
+            }
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMS_PROVIDER") {
+            config.sms_otp.provider = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_TWILIO_ACCOUNT_SID") {
+            config.sms_otp.twilio_account_sid = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_TWILIO_AUTH_TOKEN") {
+            config.sms_otp.twilio_auth_token = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_TWILIO_FROM_NUMBER") {
+            config.sms_otp.twilio_from_number = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMS_API_URL") {
+            config.sms_otp.sms_api_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMS_API_KEY") {
+            config.sms_otp.sms_api_key = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMS_FROM_NUMBER") {
+            config.sms_otp.sms_from_number = Some(val);
         }
 
         config

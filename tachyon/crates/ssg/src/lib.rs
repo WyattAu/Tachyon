@@ -19,9 +19,12 @@ mod templates;
 
 pub use build::SiteGenerator;
 pub use error::{SsgError, SsgResult};
-pub use i18n::{language_display_name, text_direction};
+pub use i18n::{
+    default_translations, language_display_name, load_translations, text_direction, translate,
+};
 pub use manifest::{
     BuildResult, ColorTheme, NavLink, SidebarItem, SiteConfig, SsgDocument, TranslationConfig,
+    Translations, VersionConfig,
 };
 pub use templates::{DEFAULT_BASE_TEMPLATE, DEFAULT_DOC_TEMPLATE, DEFAULT_INDEX_TEMPLATE};
 
@@ -66,6 +69,7 @@ mod tests {
                 updated_at: Utc::now(),
                 order: 0,
                 language: "en".to_string(),
+                version: "main".to_string(),
                 hide_breadcrumbs: false,
             },
             SsgDocument {
@@ -79,6 +83,7 @@ mod tests {
                 updated_at: Utc::now(),
                 order: 1,
                 language: "en".to_string(),
+                version: "main".to_string(),
                 hide_breadcrumbs: false,
             },
         ]
@@ -248,6 +253,7 @@ mod tests {
                 updated_at: Utc::now(),
                 order: 0,
                 language: "en".to_string(),
+                version: "main".to_string(),
                 hide_breadcrumbs: false,
             },
             SsgDocument {
@@ -261,6 +267,7 @@ mod tests {
                 updated_at: Utc::now(),
                 order: 0,
                 language: "zh".to_string(),
+                version: "main".to_string(),
                 hide_breadcrumbs: false,
             },
         ];
@@ -447,6 +454,7 @@ mod tests {
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -542,6 +550,7 @@ sudo certbot --nginx -d docs.example.com
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -711,6 +720,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -755,6 +765,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -805,6 +816,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -903,6 +915,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -949,6 +962,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -1018,6 +1032,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -1064,6 +1079,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -1102,6 +1118,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -1211,6 +1228,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -1250,6 +1268,7 @@ Details.
             updated_at: Utc::now(),
             order: 0,
             language: "en".to_string(),
+            version: "main".to_string(),
             hide_breadcrumbs: false,
         }];
 
@@ -1293,6 +1312,7 @@ Details.
                 updated_at: Utc::now(),
                 order: 0,
                 language: "en".to_string(),
+                version: "main".to_string(),
                 hide_breadcrumbs: false,
             },
             SsgDocument {
@@ -1306,6 +1326,7 @@ Details.
                 updated_at: Utc::now(),
                 order: 0,
                 language: "zh".to_string(),
+                version: "main".to_string(),
                 hide_breadcrumbs: false,
             },
         ];
@@ -1330,6 +1351,188 @@ Details.
         assert!(
             en_html.contains(r#"https://docs.example.com/zh/hreflang-test.html"#),
             "should contain zh alternate URL"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_version_config_default() {
+        let config = SiteConfig::default();
+        assert_eq!(config.default_version, "main");
+        assert!(config.versions.is_empty());
+        assert_eq!(config.versions.len(), 0);
+    }
+
+    #[test]
+    fn test_ssg_versioned_build() {
+        let config = SiteConfig {
+            default_version: "2.0".to_string(),
+            versions: vec![
+                VersionConfig {
+                    version: "1.0".to_string(),
+                    title: "v1.0".to_string(),
+                    base_url: None,
+                    is_latest: false,
+                },
+                VersionConfig {
+                    version: "2.0".to_string(),
+                    title: "v2.0".to_string(),
+                    base_url: None,
+                    is_latest: true,
+                },
+            ],
+            ..Default::default()
+        };
+        let generator = SiteGenerator::new(config);
+
+        let docs = vec![
+            SsgDocument {
+                slug: "getting-started".to_string(),
+                title: "Getting Started".to_string(),
+                content: "# Getting Started v1\n\nWelcome v1!".to_string(),
+                description: None,
+                author: None,
+                tags: vec![],
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+                order: 0,
+                language: "en".to_string(),
+                version: "1.0".to_string(),
+                hide_breadcrumbs: false,
+            },
+            SsgDocument {
+                slug: "getting-started".to_string(),
+                title: "Getting Started".to_string(),
+                content: "# Getting Started v2\n\nWelcome v2!".to_string(),
+                description: None,
+                author: None,
+                tags: vec![],
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+                order: 0,
+                language: "en".to_string(),
+                version: "2.0".to_string(),
+                hide_breadcrumbs: false,
+            },
+        ];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-version-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+
+        let result = generator.build_to_dir(&docs, &tmp).unwrap();
+
+        assert_eq!(result.versions_built, 2);
+        assert!(result.pages >= 2);
+
+        assert!(tmp.join("index.html").exists(), "root index should exist");
+        assert!(
+            tmp.join("latest").join("index.html").exists(),
+            "latest/index.html should exist"
+        );
+
+        assert!(
+            tmp.join("1.0").join("getting-started.html").exists(),
+            "1.0/getting-started.html should exist"
+        );
+        assert!(
+            tmp.join("2.0").join("getting-started.html").exists(),
+            "2.0/getting-started.html should exist"
+        );
+
+        assert!(
+            tmp.join("1.0").join("sitemap.xml").exists(),
+            "1.0 sitemap should exist"
+        );
+        assert!(
+            tmp.join("2.0").join("sitemap.xml").exists(),
+            "2.0 sitemap should exist"
+        );
+
+        let v2_html =
+            std::fs::read_to_string(tmp.join("2.0").join("getting-started.html")).unwrap();
+        assert!(
+            v2_html.contains("Welcome v2!"),
+            "v2.0 page should contain v2 content"
+        );
+        assert!(
+            v2_html.contains(r#"id="version-select""#),
+            "version selector should be in nav"
+        );
+        assert!(
+            v2_html.contains("v1.0"),
+            "version selector should list v1.0"
+        );
+        assert!(
+            v2_html.contains("v2.0 (Latest)"),
+            "version selector should show v2.0 as Latest"
+        );
+
+        let root_index = std::fs::read_to_string(tmp.join("index.html")).unwrap();
+        assert!(
+            root_index.contains("2.0"),
+            "root index should redirect to default version"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_version_selector_in_nav() {
+        let config = SiteConfig {
+            versions: vec![
+                VersionConfig {
+                    version: "1.0".to_string(),
+                    title: "v1.0".to_string(),
+                    base_url: None,
+                    is_latest: false,
+                },
+                VersionConfig {
+                    version: "main".to_string(),
+                    title: "Latest".to_string(),
+                    base_url: None,
+                    is_latest: true,
+                },
+            ],
+            default_version: "main".to_string(),
+            ..Default::default()
+        };
+        let generator = SiteGenerator::new(config);
+        let docs = vec![SsgDocument {
+            slug: "test-version-nav".to_string(),
+            title: "Version Nav Test".to_string(),
+            content: "# Test\n\nContent.".to_string(),
+            description: None,
+            author: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            order: 0,
+            language: "en".to_string(),
+            version: "main".to_string(),
+            hide_breadcrumbs: false,
+        }];
+
+        let tmp = std::env::temp_dir().join("tachyon-ssg-version-nav-test");
+        let _ = std::fs::remove_dir_all(&tmp);
+        generator.build_to_dir(&docs, &tmp).unwrap();
+
+        let html = std::fs::read_to_string(tmp.join("main").join("test-version-nav.html")).unwrap();
+        assert!(
+            html.contains(r#"<select id="version-select""#),
+            "should contain version select element"
+        );
+        assert!(
+            html.contains(r#"<option value="#),
+            "should contain version options"
+        );
+        assert!(
+            html.contains("v1.0"),
+            "should list v1.0 in version selector"
+        );
+        assert!(
+            html.contains("Latest"),
+            "should list Latest in version selector"
         );
 
         let _ = std::fs::remove_dir_all(&tmp);

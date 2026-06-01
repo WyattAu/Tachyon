@@ -23,7 +23,7 @@ use clap::Parser;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tachyon_ssg::{ColorTheme, NavLink, SiteConfig, SiteGenerator, SsgDocument};
+use tachyon_ssg::{ColorTheme, NavLink, SiteConfig, SiteGenerator, SsgDocument, Translations};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -208,6 +208,7 @@ fn collect_documents(input_dir: &Path) -> Result<Vec<SsgDocument>> {
                 fm.language
             },
             hide_breadcrumbs: fm.hide_breadcrumbs,
+            version: "main".to_string(),
         });
     }
 
@@ -321,6 +322,35 @@ fn cmd_build(
     if docs.is_empty() {
         anyhow::bail!("No markdown files found in {}", input.display());
     }
+
+    // Collect languages for translation loading
+    let mut languages: std::collections::HashSet<String> = std::collections::HashSet::new();
+    languages.insert(site_config.language.clone());
+    for t in &site_config.translations {
+        languages.insert(t.language.clone());
+    }
+    for doc in &docs {
+        languages.insert(doc.language.clone());
+    }
+
+    // Load translations from _i18n/ directory
+    let translations_dir = site_config.translations_dir.as_deref().unwrap_or("_i18n");
+    let i18n_path = input.join(translations_dir);
+    let _translations = if i18n_path.is_dir() {
+        match tachyon_ssg::load_translations(&i18n_path, &languages.into_iter().collect::<Vec<_>>())
+        {
+            Ok(t) => {
+                println!("   Loaded translations from {}", i18n_path.display());
+                t
+            }
+            Err(e) => {
+                println!("   Warning: failed to load translations: {}", e);
+                Translations::default()
+            }
+        }
+    } else {
+        Translations::default()
+    };
 
     for doc in &docs {
         println!("   - {} ({})", doc.title, doc.slug);
@@ -1145,6 +1175,24 @@ fn rebuild_site(
         println!("   No markdown files found, skipping build");
         return Ok(site_config);
     }
+
+    let mut languages: std::collections::HashSet<String> = std::collections::HashSet::new();
+    languages.insert(site_config.language.clone());
+    for t in &site_config.translations {
+        languages.insert(t.language.clone());
+    }
+    for doc in &docs {
+        languages.insert(doc.language.clone());
+    }
+
+    let translations_dir = site_config.translations_dir.as_deref().unwrap_or("_i18n");
+    let i18n_path = input.join(translations_dir);
+    let _translations = if i18n_path.is_dir() {
+        tachyon_ssg::load_translations(&i18n_path, &languages.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default()
+    } else {
+        Translations::default()
+    };
 
     let generator = SiteGenerator::new(site_config.clone());
     let result = generator.build_to_dir(&docs, output)?;

@@ -43,8 +43,12 @@ uuid = { version = "1", features = ["v4", "v7"] }
 genpdf = { version = "0.2", features = ["images"], optional = true }
 printpdf = { version = "0.3", optional = true }
 
+# DOCX import/export (optional)
+quick-xml = { version = "0.37", features = ["serialize"], optional = true }
+
 [features]
 pdf-export = ["dep:genpdf", "dep:printpdf"]
+docx = ["dep:quick-xml"]
 
 [dev-dependencies]
 tempfile = "3"

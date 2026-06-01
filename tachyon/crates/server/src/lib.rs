@@ -134,6 +134,7 @@ pub mod pagination;
 pub mod proofs;
 pub mod push;
 pub mod routes;
+pub mod sms;
 pub mod sso;
 pub mod storage;
 pub mod sync;
@@ -519,6 +520,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     use crate::routes::search::create_search_router;
     use crate::routes::seo::create_seo_router;
     use crate::routes::session::create_session_router;
+    use crate::routes::sms_otp::create_sms_otp_router;
     use crate::routes::space::create_space_router;
     use crate::routes::ssg::{create_ssg_router, SsgState};
     use crate::routes::tags::create_tags_router;
@@ -610,6 +612,24 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let files_router = create_files_router().with_state(files_state);
     let mfa_router = create_mfa_router().with_state(user_state.clone());
 
+    let sms_provider = crate::sms::build_sms_provider(&config.sms_otp, http_client.clone());
+    let sms_otp_state = crate::routes::sms_otp::SmsOtpRouteState {
+        pool: pool.clone(),
+        client: http_client.clone(),
+        audit_logger: audit_logger.clone(),
+        jwt_secrets: config.jwt.secrets.clone(),
+        token_expiration_secs: config.jwt.expiration_secs,
+        jwt_issuer: config.jwt.issuer.clone(),
+        jwt_audience: config.jwt.audience.clone(),
+        ttl_secs: config.sms_otp.ttl_secs as i64,
+        sms_provider: sms_provider.map(std::sync::Arc::from),
+    };
+    let sms_otp_router = if config.sms_otp.enabled {
+        Some(create_sms_otp_router().with_state(sms_otp_state))
+    } else {
+        None
+    };
+
     let ai_router = crate::routes::ai_routes::create_ai_router().with_state(ai_manager);
 
     let comment_router =
@@ -646,6 +666,10 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(ssg_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
         .merge(oauth2_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
         .merge(comment_router);
+
+    if let Some(sms_otp_router) = sms_otp_router {
+        api_v1 = api_v1.merge(sms_otp_router);
+    }
 
     if let Some(oidc_state) = oidc_state {
         let router = crate::sso::create_oidc_router()

@@ -8,7 +8,8 @@
 //! - Customizable via ColorTheme CSS custom properties
 //! - Accessible (semantic HTML, ARIA labels)
 
-use crate::manifest::{ColorTheme, SidebarItem, SiteConfig};
+use crate::i18n::translate;
+use crate::manifest::{ColorTheme, SidebarItem, SiteConfig, Translations};
 use crate::render::{CategoryContext, DocCard, IndexContext, PageContext, TocEntry};
 
 /// Generate CSS custom properties from a ColorTheme.
@@ -75,6 +76,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         ctx.current_slug,
         ctx.language,
         ctx.language_switcher,
+        ctx.version_switcher,
         ctx.root_prefix,
     );
     let tags_html = render_tags(ctx.tags);
@@ -105,8 +107,9 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     let theme_vars = color_theme_css(ctx.site.color_theme.as_ref());
 
     let breadcrumbs_html = render_breadcrumbs(ctx.breadcrumbs);
-    let toc_html = render_toc_sidebar(ctx.toc);
-    let prev_next_html = render_prev_next(ctx.prev_link, ctx.next_link);
+    let toc_html = render_toc_sidebar(ctx.toc, ctx.translations, ctx.language);
+    let prev_next_html =
+        render_prev_next(ctx.prev_link, ctx.next_link, ctx.translations, ctx.language);
     let sidebar_html = render_sidebar(
         &ctx.site.menu_items,
         ctx.current_slug,
@@ -631,7 +634,14 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
 
 /// Render the site index page.
 pub fn render_index_page(ctx: &IndexContext) -> String {
-    let nav_html = render_nav(ctx.site, None, ctx.language, ctx.language_switcher, "");
+    let nav_html = render_nav(
+        ctx.site,
+        None,
+        ctx.language,
+        ctx.language_switcher,
+        ctx.version_switcher,
+        "",
+    );
     let cards_html: String = ctx
         .documents
         .iter()
@@ -716,6 +726,16 @@ pub fn render_category_page(ctx: &CategoryContext) -> String {
     let theme_vars = color_theme_css(ctx.site.color_theme.as_ref());
     let dir = super::text_direction(ctx.language);
 
+    let tag_label = translate(ctx.translations, "tag", ctx.language);
+    let back_label = translate(ctx.translations, "back_to_docs", ctx.language);
+    let doc_word = translate(ctx.translations, "document", ctx.language);
+    let docs_word = translate(ctx.translations, "documents", ctx.language);
+    let doc_label = if ctx.documents.len() == 1 {
+        doc_word
+    } else {
+        docs_word
+    };
+
     format!(
         r#"<!DOCTYPE html>
 <html lang="{language}" dir="{dir}" class="{theme_class}">
@@ -742,12 +762,12 @@ pub fn render_category_page(ctx: &CategoryContext) -> String {
   <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
     <div class="max-w-4xl mx-auto flex items-center gap-6">
       <a href="index.html" class="font-semibold text-gray-900 dark:text-white">{site_title}</a>
-      <a href="index.html" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">← Back to all docs</a>
+      <a href="index.html" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">← {back_label}</a>
     </div>
   </nav>
   <main class="max-w-4xl mx-auto px-4 py-12">
-    <h1 class="text-3xl font-bold mb-2">Tag: {category}</h1>
-    <p class="text-gray-600 dark:text-gray-400 mb-8">{count} document{plural}</p>
+    <h1 class="text-3xl font-bold mb-2">{tag_label}: {category}</h1>
+    <p class="text-gray-600 dark:text-gray-400 mb-8">{count} {doc_label}</p>
     <div class="grid gap-6">
       {cards_html}
     </div>
@@ -762,7 +782,7 @@ pub fn render_category_page(ctx: &CategoryContext) -> String {
         category = escape_html(ctx.category_name),
         site_title = escape_html(&ctx.site.title),
         count = ctx.documents.len(),
-        plural = if ctx.documents.len() == 1 { "" } else { "s" },
+        doc_label = escape_html(&doc_label),
         cards_html = cards_html,
         footer = escape_html(&ctx.site.footer),
         language = ctx.language,
@@ -782,6 +802,7 @@ fn render_nav(
     _current: Option<&str>,
     _lang: &str,
     language_switcher: &str,
+    version_switcher: &str,
     root_prefix: &str,
 ) -> String {
     let extra_links: String = site
@@ -816,6 +837,18 @@ fn render_nav(
         )
     };
 
+    let version_switcher_html = if version_switcher.is_empty() {
+        String::new()
+    } else {
+        format!(
+            r#"
+      <div class="hidden md:flex items-center gap-3 border-l border-gray-200 dark:border-gray-600 pl-4 ml-4">
+        {version_switcher}
+      </div>"#,
+            version_switcher = version_switcher,
+        )
+    };
+
     format!(
         r#"<nav data-pagefind-ignore class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sticky top-0 z-50">
   <div class="max-w-6xl mx-auto flex items-center justify-between">
@@ -827,6 +860,7 @@ fn render_nav(
         {extra_links}
       </div>
       {switcher_html}
+      {version_switcher_html}
     </div>
     <div class="flex items-center gap-2">
       <button id="tachyon-nav-search-btn" class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded" aria-label="Search (Ctrl+K)" title="Search (Ctrl+K)">
@@ -901,6 +935,7 @@ fn render_nav(
         logo = logo,
         extra_links = extra_links,
         switcher_html = switcher_html,
+        version_switcher_html = version_switcher_html,
     )
 }
 
@@ -995,7 +1030,7 @@ fn render_breadcrumbs(breadcrumbs: &[(String, String)]) -> String {
 }
 
 /// Render a TOC sidebar from extracted heading entries.
-fn render_toc_sidebar(toc: &[TocEntry]) -> String {
+fn render_toc_sidebar(toc: &[TocEntry], translations: &Translations, language: &str) -> String {
     if toc.is_empty() {
         return String::new();
     }
@@ -1018,15 +1053,18 @@ fn render_toc_sidebar(toc: &[TocEntry]) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n        ");
+    let on_this_page = translate(translations, "on_this_page", language);
+    let toc_label = translate(translations, "table_of_contents", language);
+    let close = translate(translations, "close", language);
     format!(
         r#"<aside class="toc-sidebar hidden lg:block w-56 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 pl-6 ml-6 sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto" data-pagefind-ignore>
   <div class="flex items-center justify-between mb-3">
-    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">On this page</h2>
-    <button class="toc-close text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5" onclick="this.closest('aside').style.display='none'" aria-label="Close table of contents">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{on_this_page}</h2>
+    <button class="toc-close text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5" onclick="this.closest('aside').style.display='none'" aria-label="{close} {toc_label}">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
     </button>
   </div>
-  <nav class="toc" aria-label="Table of Contents">
+  <nav class="toc" aria-label="{toc_label}">
     <ul class="space-y-1">
 {items}
     </ul>
@@ -1182,11 +1220,18 @@ fn render_sidebar_item(
 }
 
 /// Render prev/next page navigation links.
-fn render_prev_next(prev: Option<&(String, String)>, next: Option<&(String, String)>) -> String {
+fn render_prev_next(
+    prev: Option<&(String, String)>,
+    next: Option<&(String, String)>,
+    translations: &Translations,
+    language: &str,
+) -> String {
+    let prev_label = translate(translations, "previous", language);
+    let next_label = translate(translations, "next", language);
     let prev_html = match prev {
         Some((title, href)) => format!(
             r#"<a href="{}" class="flex-1 text-left px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all">
-  <span class="text-xs text-gray-500 dark:text-gray-400 block">Previous</span>
+  <span class="text-xs text-gray-500 dark:text-gray-400 block">{prev_label}</span>
   <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{}</span>
 </a>"#,
             href,
@@ -1197,7 +1242,7 @@ fn render_prev_next(prev: Option<&(String, String)>, next: Option<&(String, Stri
     let next_html = match next {
         Some((title, href)) => format!(
             r#"<a href="{}" class="flex-1 text-right px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all">
-  <span class="text-xs text-gray-500 dark:text-gray-400 block">Next</span>
+  <span class="text-xs text-gray-500 dark:text-gray-400 block">{next_label}</span>
   <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{}</span>
 </a>"#,
             href,

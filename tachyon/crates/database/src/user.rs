@@ -216,6 +216,20 @@ impl UserRepository {
         Ok(User::from(record))
     }
 
+    /// Get a user by phone number.
+    #[instrument(skip(self), fields(phone = %phone))]
+    pub async fn get_by_phone(&self, phone: &str) -> DatabaseResult<User> {
+        let sql = "SELECT * FROM users WHERE phone = $1";
+        let mut conn = self.pool.acquire().await?;
+        let record = query_as::<_, UserRecord>(sql)
+            .bind(phone)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?
+            .ok_or_else(|| DatabaseError::not_found("user", phone))?;
+        Ok(User::from(record))
+    }
+
     // ── Update ──────────────────────────────────────────────────────
 
     /// Update a user's profile fields. Password is updated separately via `update_password`.

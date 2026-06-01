@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 fn default_theme() -> String {
     "auto".to_string()
@@ -12,6 +13,9 @@ fn default_footer() -> String {
 }
 fn default_language() -> String {
     "en".to_string()
+}
+fn default_version() -> String {
+    "main".to_string()
 }
 fn default_code_theme() -> String {
     "github-dark".to_string()
@@ -71,6 +75,12 @@ pub struct SiteConfig {
     /// Enable Pagefind client-side search integration
     #[serde(default = "default_true")]
     pub pagefind_enabled: bool,
+    /// Available documentation versions
+    #[serde(default)]
+    pub versions: Vec<VersionConfig>,
+    /// Default version identifier (defaults to "main")
+    #[serde(default = "default_version")]
+    pub default_version: String,
     /// Enable Mermaid diagram rendering
     #[serde(default = "default_true")]
     pub mermaid_enabled: bool,
@@ -89,6 +99,9 @@ pub struct SiteConfig {
     /// Enable image optimization (compress and convert images in input dir)
     #[serde(default)]
     pub image_optimization_enabled: bool,
+    /// Directory name containing translation YAML files (relative to input dir)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub translations_dir: Option<String>,
 }
 
 impl SiteConfig {
@@ -131,12 +144,15 @@ impl Default for SiteConfig {
             menu: None,
             menu_items: vec![],
             pagefind_enabled: true,
+            versions: vec![],
+            default_version: "main".to_string(),
             mermaid_enabled: true,
             syntax_highlighting_enabled: true,
             code_theme: default_code_theme(),
             robots_txt: true,
             og_image: None,
             image_optimization_enabled: false,
+            translations_dir: None,
         }
     }
 }
@@ -179,6 +195,30 @@ pub struct TranslationConfig {
     pub name: String,
     /// Base URL for this language version
     pub base_url: String,
+}
+
+/// Configuration for a documentation version.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionConfig {
+    /// Version identifier (e.g., "1.0", "2.0", "main")
+    pub version: String,
+    /// Display title (e.g., "v1.0", "v2.0", "Latest")
+    pub title: String,
+    /// Per-version base URL override
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+    /// Whether this is the latest released version
+    #[serde(default)]
+    pub is_latest: bool,
+}
+
+/// Key-value map of translatable UI strings.
+///
+/// Structure: `key -> language -> translated_string`.
+/// e.g., `"on_this_page" -> { "en": "On this page", "zh": "在此页上" }`
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Translations {
+    pub strings: HashMap<String, HashMap<String, String>>,
 }
 
 /// Predefined color themes for the generated site.
@@ -253,6 +293,9 @@ pub struct SsgDocument {
     /// Document language code (for i18n filtering)
     #[serde(default = "default_language")]
     pub language: String,
+    /// Document version identifier (defaults to "main")
+    #[serde(default = "default_version")]
+    pub version: String,
     /// Hide breadcrumbs on this page
     #[serde(default)]
     pub hide_breadcrumbs: bool,
@@ -275,4 +318,6 @@ pub struct BuildResult {
     pub generated_pages: Vec<String>,
     /// Number of languages generated
     pub languages: usize,
+    /// Number of versions generated
+    pub versions_built: usize,
 }

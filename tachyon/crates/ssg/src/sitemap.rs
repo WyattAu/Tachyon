@@ -10,13 +10,41 @@ impl crate::build::SiteGenerator {
         lang: &str,
         lang_prefix: Option<&str>,
     ) -> SsgResult<String> {
+        self.render_sitemap_inner(docs, lang, lang_prefix, None)
+    }
+
+    pub(crate) fn render_versioned_sitemap(
+        &self,
+        docs: &[&SsgDocument],
+        lang: &str,
+        lang_prefix: Option<&str>,
+        version_prefix: &str,
+    ) -> SsgResult<String> {
+        self.render_sitemap_inner(docs, lang, lang_prefix, Some(version_prefix))
+    }
+
+    fn render_sitemap_inner(
+        &self,
+        docs: &[&SsgDocument],
+        lang: &str,
+        lang_prefix: Option<&str>,
+        version_prefix: Option<&str>,
+    ) -> SsgResult<String> {
         let base = self.config.base_url.trim_end_matches('/');
         let now = Utc::now().to_rfc3339();
 
-        let index_loc = if let Some(prefix) = lang_prefix {
-            format!("{}/{}index.html", base, prefix)
-        } else {
+        let mut url_base = String::new();
+        if let Some(prefix) = version_prefix {
+            url_base.push_str(prefix);
+        }
+        if let Some(prefix) = lang_prefix {
+            url_base.push_str(prefix);
+        }
+
+        let index_loc = if url_base.is_empty() {
             format!("{}/index.html", base)
+        } else {
+            format!("{}/{}/index.html", base, url_base.trim_end_matches('/'))
         };
 
         let mut urls = format!(
@@ -32,10 +60,15 @@ impl crate::build::SiteGenerator {
         );
 
         for doc in docs {
-            let doc_loc = if let Some(prefix) = lang_prefix {
-                format!("{}/{}{}.html", base, prefix, doc.slug)
-            } else {
+            let doc_loc = if url_base.is_empty() {
                 format!("{}/{}.html", base, doc.slug)
+            } else {
+                format!(
+                    "{}/{}/{}.html",
+                    base,
+                    url_base.trim_end_matches('/'),
+                    doc.slug
+                )
             };
             urls.push_str(&format!(
                 r#"

@@ -31,6 +31,7 @@ pub mod seo;
 pub mod session;
 pub mod siem;
 pub mod signup;
+pub mod sms_otp;
 pub mod space;
 pub mod ssg;
 pub mod swagger;
@@ -349,3 +350,8 @@ pub use onboarding::{
 
 // Comment exports
 pub use comments::{create_comment_router, CommentState};
+
+// SMS OTP exports
+pub use sms_otp::{
+    create_sms_otp_router, SmsOtpMessageResponse, SmsOtpRequest, SmsOtpRouteState, SmsOtpVerify,
+};

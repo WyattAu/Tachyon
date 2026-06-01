@@ -18,6 +18,10 @@ pub mod html_export;
 pub mod json_export;
 pub mod markdown_zip;
 
+#[cfg(feature = "docx")]
+pub mod docx_export;
+#[cfg(feature = "docx")]
+pub mod docx_import;
 pub mod obsidian;
 #[cfg(feature = "pdf-export")]
 pub mod pdf_export;
@@ -25,6 +29,10 @@ pub mod vault_importer;
 
 // Re-export commonly used types
 pub use docusaurus::DocusaurusImporter;
+#[cfg(feature = "docx")]
+pub use docx_export::{DocxExportOptions, DocxExporter, PageSize};
+#[cfg(feature = "docx")]
+pub use docx_import::{DocxImportOptions, DocxImporter};
 pub use error::{ImportExportError, ImportExportResult};
 pub use frontmatter::Frontmatter;
 pub use gdpr_export::{

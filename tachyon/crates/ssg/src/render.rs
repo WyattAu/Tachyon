@@ -1,5 +1,5 @@
 use crate::error::SsgResult;
-use crate::manifest::{SiteConfig, SsgDocument};
+use crate::manifest::{SiteConfig, SsgDocument, Translations};
 use std::sync::LazyLock;
 
 static TOC_HEADING_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
@@ -270,8 +270,17 @@ pub(crate) fn process_content_tabs(html: &str) -> String {
     )
 }
 
+pub(crate) struct RenderContext<'a> {
+    pub(crate) lang: &'a str,
+    pub(crate) lang_prefix: Option<&'a str>,
+    pub(crate) all_languages: &'a [String],
+    pub(crate) current_version: &'a str,
+    pub(crate) version_prefix: Option<&'a str>,
+}
+
 pub(crate) struct PageContext<'a> {
     pub(crate) site: &'a SiteConfig,
+    pub(crate) translations: &'a Translations,
     pub(crate) title: &'a str,
     pub(crate) description: &'a str,
     pub(crate) body: &'a str,
@@ -283,6 +292,8 @@ pub(crate) struct PageContext<'a> {
     pub(crate) current_slug: Option<&'a str>,
     pub(crate) language: &'a str,
     pub(crate) language_switcher: &'a str,
+    pub(crate) version_switcher: &'a str,
+    pub(crate) current_version: &'a str,
     pub(crate) toc: &'a [TocEntry],
     pub(crate) breadcrumbs: &'a [(String, String)],
     pub(crate) prev_link: Option<&'a (String, String)>,
@@ -298,17 +309,23 @@ pub(crate) struct PageContext<'a> {
 
 pub(crate) struct IndexContext<'a> {
     pub(crate) site: &'a SiteConfig,
+    pub(crate) translations: &'a Translations,
     pub(crate) documents: &'a [DocCard],
     pub(crate) language: &'a str,
     pub(crate) language_switcher: &'a str,
+    pub(crate) version_switcher: &'a str,
+    pub(crate) current_version: &'a str,
 }
 
 pub(crate) struct CategoryContext<'a> {
     pub(crate) site: &'a SiteConfig,
+    pub(crate) translations: &'a Translations,
     pub(crate) category_name: &'a str,
     pub(crate) documents: &'a [DocCard],
     pub(crate) language: &'a str,
     pub(crate) language_switcher: &'a str,
+    pub(crate) version_switcher: &'a str,
+    pub(crate) current_version: &'a str,
 }
 
 pub(crate) struct DocCard {
@@ -351,10 +368,16 @@ impl crate::build::SiteGenerator {
         &self,
         doc: &SsgDocument,
         all_docs: &[&SsgDocument],
-        lang: &str,
-        lang_prefix: Option<&str>,
-        all_languages: &[String],
+        ctx: &RenderContext<'_>,
     ) -> SsgResult<String> {
+        let RenderContext {
+            lang,
+            lang_prefix,
+            all_languages,
+            current_version,
+            version_prefix,
+        } = *ctx;
+
         let body_html = render_markdown(&doc.content);
         let toc = extract_toc(&body_html);
 
@@ -371,6 +394,10 @@ impl crate::build::SiteGenerator {
         };
 
         let language_switcher = self.build_language_switcher(all_languages, &doc.slug, lang_prefix);
+
+        let current_page = format!("{}.html", doc.slug);
+        let version_switcher =
+            self.build_version_switcher(current_version, &current_page, version_prefix);
 
         // Compute relative path prefix to site root from the page's directory.
         // e.g., slug "docs_university/computing/algo" → depth 2 → "../../"
@@ -459,6 +486,7 @@ impl crate::build::SiteGenerator {
 
         let ctx = PageContext {
             site: &self.config,
+            translations: &Translations::default(),
             title: &doc.title,
             description: &description,
             body: &body_html,
@@ -470,6 +498,8 @@ impl crate::build::SiteGenerator {
             current_slug: Some(&doc.slug),
             language: lang,
             language_switcher: &language_switcher,
+            version_switcher: &version_switcher,
+            current_version,
             toc: &toc,
             breadcrumbs: &breadcrumbs,
             prev_link: prev_link.as_ref(),
@@ -489,10 +519,15 @@ impl crate::build::SiteGenerator {
     pub(crate) fn render_index_page(
         &self,
         docs: &[&SsgDocument],
-        lang: &str,
-        lang_prefix: Option<&str>,
-        all_languages: &[String],
+        ctx: &RenderContext<'_>,
     ) -> SsgResult<String> {
+        let RenderContext {
+            lang,
+            lang_prefix,
+            all_languages,
+            current_version,
+            version_prefix,
+        } = *ctx;
         let doc_cards: Vec<DocCard> = docs
             .iter()
             .map(|d| {
@@ -512,11 +547,17 @@ impl crate::build::SiteGenerator {
 
         let language_switcher = self.build_language_switcher(all_languages, "index", lang_prefix);
 
+        let version_switcher =
+            self.build_version_switcher(current_version, "index.html", version_prefix);
+
         let ctx = IndexContext {
             site: &self.config,
+            translations: &Translations::default(),
             documents: &doc_cards,
             language: lang,
             language_switcher: &language_switcher,
+            version_switcher: &version_switcher,
+            current_version,
         };
 
         Ok(crate::templates::render_index_page(&ctx))
@@ -526,10 +567,15 @@ impl crate::build::SiteGenerator {
         &self,
         tag: &str,
         docs: &[&SsgDocument],
-        lang: &str,
-        lang_prefix: Option<&str>,
-        all_languages: &[String],
+        ctx: &RenderContext<'_>,
     ) -> SsgResult<String> {
+        let RenderContext {
+            lang,
+            lang_prefix,
+            all_languages,
+            current_version,
+            version_prefix,
+        } = *ctx;
         let doc_cards: Vec<DocCard> = docs
             .iter()
             .map(|d| {
@@ -549,12 +595,18 @@ impl crate::build::SiteGenerator {
 
         let language_switcher = self.build_language_switcher(all_languages, "index", lang_prefix);
 
+        let version_switcher =
+            self.build_version_switcher(current_version, "index.html", version_prefix);
+
         let ctx = CategoryContext {
             site: &self.config,
+            translations: &Translations::default(),
             category_name: tag,
             documents: &doc_cards,
             language: lang,
             language_switcher: &language_switcher,
+            version_switcher: &version_switcher,
+            current_version,
         };
 
         Ok(crate::templates::render_category_page(&ctx))
@@ -599,6 +651,52 @@ impl crate::build::SiteGenerator {
             })
             .collect::<Vec<_>>()
             .join("\n          ")
+    }
+
+    pub(crate) fn build_version_switcher(
+        &self,
+        current_version: &str,
+        current_page: &str,
+        version_prefix: Option<&str>,
+    ) -> String {
+        if self.config.versions.len() <= 1 {
+            return String::new();
+        }
+
+        let options: Vec<String> = self
+            .config
+            .versions
+            .iter()
+            .map(|vc| {
+                let href = match version_prefix {
+                    Some(_) => format!("../../{}/{}", vc.version, current_page),
+                    None => format!("../{}/{}", vc.version, current_page),
+                };
+                let selected = if vc.version == current_version {
+                    r#" selected"#
+                } else {
+                    ""
+                };
+                let label = if vc.is_latest {
+                    format!("{} (Latest)", vc.title)
+                } else {
+                    vc.title.clone()
+                };
+                format!(
+                    r#"<option value="{href}"{selected}>{label}</option>"#,
+                    href = href,
+                    selected = selected,
+                    label = label,
+                )
+            })
+            .collect();
+
+        format!(
+            r#"<select id="version-select" class="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+  {}
+</select>"#,
+            options.join("\n  ")
+        )
     }
 }
 
