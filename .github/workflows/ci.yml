@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, develop]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -35,6 +39,7 @@ jobs:
             ~/.cargo/git
             tachyon/target
           key: check-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: check-${{ runner.os }}-cargo-
 
       - name: Check workspace
         working-directory: tachyon
@@ -64,6 +69,7 @@ jobs:
             ~/.cargo/git
             tachyon/target
           key: lint-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: lint-${{ runner.os }}-cargo-
 
       - name: Check formatting
         working-directory: tachyon
@@ -107,6 +113,7 @@ jobs:
             ~/.cargo/git
             tachyon/target
           key: test-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: test-${{ runner.os }}-cargo-
 
       - name: Run unit tests
         working-directory: tachyon
@@ -138,6 +145,7 @@ jobs:
             ~/.cargo/git
             tachyon/target
           key: build-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: build-${{ runner.os }}-cargo-
 
       - name: Build backend
         working-directory: tachyon
@@ -170,6 +178,7 @@ jobs:
             ~/.cargo/git
             tachyon/target
           key: wasm-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: wasm-${{ runner.os }}-cargo-
 
       - name: Install trunk
         run: TMPDIR=/tmp cargo install trunk --version 0.21.14
@@ -187,6 +196,7 @@ jobs:
   benchmark:
     name: Benchmarks
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 30
     needs: [build]
     steps:
@@ -203,6 +213,7 @@ jobs:
             ~/.cargo/git
             tachyon/target
           key: build-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: build-${{ runner.os }}-cargo-
 
       - name: Run benchmarks
         working-directory: tachyon
@@ -246,7 +257,7 @@ jobs:
           key: cargo-tarpaulin-bin-v1
 
       - name: Install tarpaulin
-        run: command -v cargo-tarpaulin || cargo install cargo-tarpaulin
+        run: command -v cargo-tarpaulin || cargo install cargo-tarpaulin --version 0.31.0
 
       - name: Cache cargo
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -256,6 +267,7 @@ jobs:
             ~/.cargo/git
             tachyon/target
           key: cov-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: cov-${{ runner.os }}-cargo-
 
       - name: Generate coverage
         working-directory: tachyon
@@ -309,7 +321,7 @@ jobs:
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Build Docker image
-        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: Dockerfile
@@ -375,6 +387,7 @@ jobs:
             ~/.cargo/git
             tachyon/target
           key: bench-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: bench-${{ runner.os }}-cargo-
 
       - name: Restore criterion baseline
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4

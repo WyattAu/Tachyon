@@ -13,6 +13,10 @@ on:
     - cron: '0 3 * * 1'
   workflow_dispatch:
 
+concurrency:
+  group: owasp-scan-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   zap-baseline:
     name: ZAP Baseline Scan
@@ -93,7 +97,7 @@ jobs:
             -v $(pwd)/zap-report:/zap/wrk:rw \
             zaproxy/zap-stable:2.15.0 \
             zap-api-scan.py \
-            -t http://host.docker.internal:8080/api/v1 \
+            -t http://localhost:8080/api/v1 \
             -f openapi \
             -d \
             -r zap-baseline-report.html \
