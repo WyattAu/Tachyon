@@ -13,6 +13,7 @@ pub mod document_review;
 pub mod document_version;
 pub mod error;
 pub mod graph;
+pub mod magic_link;
 pub mod migrations;
 pub mod notification;
 pub mod onboarding;
@@ -58,6 +59,7 @@ pub use document_review::{
 pub use document_version::{CreateVersionRequest, DocumentVersion, DocumentVersionRepository};
 pub use error::{DatabaseError, DatabaseResult};
 pub use graph::{GraphDiff, GraphRepository};
+pub use magic_link::{MagicLinkRepository, MagicLinkToken};
 pub use notification::{CreateNotification, Notification, NotificationRepository};
 pub use onboarding::{OnboardingRepository, OnboardingStatus, OnboardingStep};
 pub use organization::{

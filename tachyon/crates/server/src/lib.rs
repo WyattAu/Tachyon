@@ -129,6 +129,7 @@ pub mod error;
 pub mod graph_extractor;
 pub mod graphql;
 pub mod middleware;
+pub mod notification_dispatch;
 pub mod pagination;
 pub mod proofs;
 pub mod push;
@@ -177,6 +178,7 @@ pub struct AppState {
     pub review_state: crate::routes::review::ReviewState,
     pub activity_state: crate::routes::activity::ActivityState,
     pub notification_state: crate::routes::notification::NotificationState,
+    pub notification_dispatcher: crate::notification_dispatch::NotificationDispatcher,
     pub tags_state: crate::routes::tags::TagsState,
     pub webhook_state: crate::routes::webhook::WebhookState,
     pub plugin_state: crate::routes::plugin::PluginState,
@@ -322,10 +324,17 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         pool: pool.clone(),
         site_config: config.site.clone(),
     };
-    let review_state =
-        ReviewState::new(pool.clone(), http_client.clone()).with_audit_logger(audit_logger.clone());
     let activity_state = ActivityState::new(pool.clone());
     let notification_state = NotificationState::new(pool.clone());
+    let connection_manager = ConnectionManager::new();
+    let notification_dispatcher = crate::notification_dispatch::NotificationDispatcher::new(
+        pool.clone(),
+        Arc::new(connection_manager.clone()),
+        notification_state.sse_tx.clone(),
+    );
+    let review_state = ReviewState::new(pool.clone(), http_client.clone())
+        .with_audit_logger(audit_logger.clone())
+        .with_notification_dispatcher(notification_dispatcher.clone());
     let tags_state = TagsState { pool: pool.clone() };
     let webhook_state = WebhookState {
         pool: pool.clone(),
@@ -411,6 +420,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         review_state,
         activity_state,
         notification_state,
+        notification_dispatcher,
         tags_state,
         webhook_state,
         plugin_state,
@@ -469,6 +479,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let review_state = state.review_state;
     let activity_state = state.activity_state;
     let notification_state = state.notification_state;
+    let notification_dispatcher = state.notification_dispatcher;
+    let _notification_dispatcher = notification_dispatcher;
     let tags_state = state.tags_state;
     let webhook_state = state.webhook_state;
     let plugin_state = state.plugin_state;

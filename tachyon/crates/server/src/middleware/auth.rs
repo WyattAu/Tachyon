@@ -405,6 +405,8 @@ pub async fn auth_middleware(
         || path == "/api/v1/auth/mfa/authenticate"
         || path.starts_with("/api/v1/auth/password-reset/request")
         || path.starts_with("/api/v1/auth/email-verification/request")
+        || path.starts_with("/api/v1/auth/magic-link/request")
+        || path.starts_with("/api/v1/auth/magic-link/verify")
         || path == "/api/v1/billing/webhook"
         || path == "/api/health"
         || path == "/api/docs"

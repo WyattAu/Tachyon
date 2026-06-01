@@ -3,6 +3,7 @@
 
 use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
+use crate::notification_dispatch::NotificationDispatcher;
 use axum::{
     extract::{Path, State},
     response::Json,
@@ -24,6 +25,7 @@ pub struct ReviewState {
     pub pool: DatabasePool,
     pub http_client: reqwest::Client,
     pub audit_logger: AuditLogger,
+    pub notification_dispatcher: Option<NotificationDispatcher>,
 }
 
 impl ReviewState {
@@ -32,11 +34,17 @@ impl ReviewState {
             pool,
             http_client,
             audit_logger: AuditLogger::disabled(),
+            notification_dispatcher: None,
         }
     }
 
     pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
         self.audit_logger = logger;
+        self
+    }
+
+    pub fn with_notification_dispatcher(mut self, dispatcher: NotificationDispatcher) -> Self {
+        self.notification_dispatcher = Some(dispatcher);
         self
     }
 }
@@ -190,6 +198,7 @@ pub async fn create_review(
 
     {
         let pool = state.pool.clone();
+        let dispatcher = state.notification_dispatcher.clone();
         let reviewer_id = review.reviewer_id.clone();
         let document_id = document_id.clone();
         let review_id = review.id.clone();
@@ -209,6 +218,22 @@ pub async fn create_review(
                 },
             )
             .await;
+
+            if let Some(ref dispatcher) = dispatcher {
+                let _ = dispatcher
+                    .dispatch(
+                        reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
+                        "review_requested",
+                        &format!("Review requested on {}", document_id),
+                        None,
+                        Some(&format!("/documents/{}/reviews/{}", document_id, review_id)),
+                        serde_json::json!({
+                            "document_id": document_id,
+                            "review_id": review_id,
+                        }),
+                    )
+                    .await;
+            }
         });
     }
 
@@ -342,18 +367,20 @@ pub async fn update_review(
 
     {
         let pool = state.pool.clone();
+        let dispatcher = state.notification_dispatcher.clone();
         let reviewer_id = review.reviewer_id.clone();
         let notification_type = notification_type.to_string();
         let review_status = body.status.clone();
         let review_id = review_id.clone();
         tokio::spawn(async move {
+            let summary_ref = summary.as_deref();
             let _ = NotificationRepository::create(
                 &pool,
                 CreateNotification {
                     user_id: reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
-                    notification_type,
+                    notification_type: notification_type.clone(),
                     title: format!("Review {} for document", review_status),
-                    body: summary,
+                    body: summary.clone(),
                     link: Some(format!("/reviews/{}", review_id)),
                     metadata: Some(serde_json::json!({
                         "review_id": review_id,
@@ -362,6 +389,22 @@ pub async fn update_review(
                 },
             )
             .await;
+
+            if let Some(ref dispatcher) = dispatcher {
+                let _ = dispatcher
+                    .dispatch(
+                        reviewer_id.parse().unwrap_or(uuid::Uuid::nil()),
+                        &notification_type,
+                        &format!("Review {} for document", review_status),
+                        summary_ref,
+                        Some(&format!("/reviews/{}", review_id)),
+                        serde_json::json!({
+                            "review_id": review_id,
+                            "status": review_status,
+                        }),
+                    )
+                    .await;
+            }
         });
     }
 

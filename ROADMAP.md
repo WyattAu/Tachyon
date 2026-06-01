@@ -304,6 +304,105 @@ Code complete. Needs integration testing.
 - White-label branding, org management
 - **Remaining:** SAML IdP testing (Okta, Azure AD), LDAP sync, DLP, eDiscovery, SOC 2 prep
 
+### Phase 13: Competitive Gap Closure (Week 24-48) [NEW]
+
+**Rationale:** Systematic comparison against 8 competitive categories (A-H) identified 35 features present in competitors but absent from Tachyon and unplanned in Phases 1-12. This phase closes those gaps, ordered by ROI.
+
+**Reference:** `COMPARISON_MATRIX.md` validated 2026-06-01, 32 features checked.
+
+#### 13.1: Storage and Auth Quick Wins (Week 24-26)
+
+| # | ID | Feature | Who Has It | Effort | Priority |
+|---|-----|---------|-----------|--------|----------|
+| 1 | U16 | S3-compatible object storage (attachments, exports) | Appwrite, Supabase, PocketBase, Directus, Strapi, Nhost | 3w | HIGH |
+| 2 | U23 | Magic URL passwordless login (email link) | Appwrite, Supabase, PocketBase, Nhost | 1w | HIGH |
+| 3 | U24 | SMS OTP phone authentication | Appwrite, Supabase, Nhost | 2w | HIGH |
+| 4 | U22 | SCIM 2.0 user provisioning (auto-create/deactivate) | Confluence (Crowd), Notion (SCIM) | 4w | MEDIUM |
+
+**Completion:** Multi-backend storage, three auth methods beyond OAuth2/JWT, SCIM for enterprise IdP sync.
+
+#### 13.2: Notifications and Integrations (Week 26-28)
+
+| # | ID | Feature | Who Has It | Effort | Priority |
+|---|-----|---------|-----------|--------|----------|
+| 5 | U28 | In-app notification system (bell icon, WebSocket push) | Notion, Confluence, HackMD | 2w | HIGH |
+| 6 | U29 | Slack/Discord webhook integration (document events) | Notion, Confluence | 2w | MEDIUM |
+| 7 | U30 | Email digest subscriptions (daily/weekly document updates) | Confluence, GitBook | 1w | LOW |
+
+**Completion:** Real-time notification bell, webhook relay to chat platforms, email digests.
+
+#### 13.3: Import/Export Expansion (Week 28-30)
+
+| # | ID | Feature | Who Has It | Effort | Priority |
+|---|-----|---------|-----------|--------|----------|
+| 8 | U31 | Word/DOCX import (via docx-rs or pandoc) | Confluence, BookStack, Notion | 2w | MEDIUM |
+| 9 | U32 | DOCX export | Confluence, Notion | 2w | MEDIUM |
+| 10 | U33 | CSV import (table data migration) | Notion, Wiki.js, XWiki | 1w | LOW |
+| 11 | U35 | Single HTML export (portable document bundle) | TiddlyWiki | 1w | LOW |
+
+**Completion:** Full Office format support (DOCX in/out, CSV in), portable HTML export.
+
+#### 13.4: SSG Enhancements (Week 30-34)
+
+| # | ID | Feature | Who Has It | Effort | Priority |
+|---|-----|---------|-----------|--------|----------|
+| 12 | U11 | SSG i18n (multi-language documentation sites) | Hugo, Astro, Docusaurus, VitePress | 3w | MEDIUM |
+| 13 | U13 | SSG multi-site (independent doc sites from one instance) | Hugo, Docusaurus, VitePress, MkDocs | 3w | MEDIUM |
+| 14 | U14 | Versioned documentation (per-version SSG builds) | Docusaurus, VitePress, MkDocs | 2w | MEDIUM |
+| 15 | U15 | Headless CMS integration (Decap/Sanity via API) | Astro, Hugo, Docusaurus | 2w | LOW |
+| 16 | U12 | SSR for hybrid dynamic/SSG pages | Astro, SvelteKit, Gatsby, Next.js | 6w | LOW |
+
+**Completion:** SSG competitive with Docusaurus/VitePress on i18n, versioning, multi-site.
+
+#### 13.5: Platform and Infrastructure (Week 34-38)
+
+| # | ID | Feature | Who Has It | Effort | Priority |
+|---|-----|---------|-----------|--------|----------|
+| 17 | U18 | Horizontal scaling (stateless + Redis pub/sub) | Supabase, Confluence Data Center | 3w | MEDIUM |
+| 18 | U20 | PostgreSQL read replicas for search/analytics | Supabase | 1w | LOW |
+| 19 | U21 | PgBouncer connection pooling | Supabase, production Postgres | 1w | LOW |
+| 20 | U19 | CDN edge caching for WASM bundles and static assets | Phase 4 (Cloudflare) | 1w | LOW |
+| 21 | U17 | Multi-database support (MySQL, SQLite) | Wiki.js, XWiki, Directus, Strapi | 8w | LOW |
+
+**Completion:** Horizontal scale to 10k+ concurrent, read replicas, connection pooling.
+
+#### 13.6: Editor and Collaboration (Week 38-44)
+
+| # | ID | Feature | Who Has It | Effort | Priority |
+|---|-----|---------|-----------|--------|----------|
+| 22 | U2 | Local-first offline sync (CRDT merge on reconnect) | Obsidian, Anytype, Logseq, CryptPad | 10w | HIGH |
+| 23 | U10 | 50+ concurrent users production validation | Google Docs (~100) | 1w | MEDIUM |
+| 24 | U6 | Document branching and merge workflow | Notion, GitBook | 4w | MEDIUM |
+| 25 | U7 | Review/approval workflow (draft -> review -> published) | Confluence | 3w | MEDIUM |
+| 26 | U5 | Block-based editor (Notion-like) | Notion, Affine, SiYuan, Logseq | 12w | LOW |
+| 27 | U1 | WYSIWYG/Rich Text editor mode | Wiki.js, BookStack, XWiki, Affine | 10w | LOW |
+| 28 | U4 | Block references and transclusion | Logseq, Roam, Notion | 2w | LOW |
+| 29 | U8 | Template marketplace | Notion, Confluence | 3w | LOW |
+| 30 | U9 | Document template engine | Confluence, Notion | 1w | LOW |
+
+**Completion:** Offline sync, branching/merge, review workflows. Block/WYSIWYG deferred to post-v3.
+
+#### 13.7: Security and Compliance (Week 44-48)
+
+| # | ID | Feature | Who Has It | Effort | Priority |
+|---|-----|---------|-----------|--------|----------|
+| 31 | U3 | E2E encryption (document-level) | CryptPad | 6w | LOW |
+| 32 | U25 | SOC 2 Type II certification | Confluence, Notion | 12w | LOW |
+| 33 | U26 | GDPR automated data portability | Supabase, Confluence | 3w | LOW |
+| 34 | U27 | HIPAA compliance (healthcare KBs) | Confluence | 8w | LOW |
+
+**Completion:** SOC 2 readiness, GDPR automation. E2E and HIPAA deferred to regulated customers.
+
+#### Phase 13 Effort Summary
+
+| Priority | Items | Total Effort | Timeline |
+|----------|-------|-------------|----------|
+| HIGH (U16,U23,U24,U28,U2,U10) | 6 | 29w | Week 24-44 |
+| MEDIUM (U22,U29,U31,U32,U11,U13,U14,U18,U6,U7) | 10 | 32w | Week 24-38 |
+| LOW (U30,U33,U35,U15,U12,U17,U20,U21,U19,U5,U1,U4,U8,U9,U3,U25,U26,U27) | 19 | 58w | Week 30-48+ |
+
+**Total Phase 13:** ~24 weeks for HIGH+MEDIUM items (competitive parity), ~48 weeks for all items.
+
 ---
 
 ## Long-Term Vision (6-18 Months Post-Launch)
@@ -431,8 +530,10 @@ CDN --> Nginx --> Load Balancer
 | 10. Desktop/PWA/Mobile | 4 weeks | Phase 4 | PARTIAL | MEDIUM |
 | 11. Plugin Ecosystem | 4 weeks | Phase 4 | PARTIAL | LOW (post-adoption) |
 | 12. Enterprise | 4 weeks | Phase 9 | CODE COMPLETE | LOW (revenue) |
+| Phase 13. Gap Closure | 24w (HIGH+MED), 48w (all) | Phase 4 | NEW | HIGH (post-v2 parity) |
 | **Total to Production** | **~5 weeks** | | | |
 | **Total to Competitive v2** | **~24 weeks** | | | |
+| **Total to Feature Parity** | **~72 weeks** | | | |
 
 ---
 
@@ -456,13 +557,20 @@ Phase 1 (Infrastructure) ─────┬──> Phase 2 (API Validation) ─�
                               │     Phase 10 (Desktop/PWA/Mobile)
                               │            │
                               │            v
-                              │     Phase 11 (Plugins) ──────────────> Phase 12 (Enterprise)
-                              │
-                              v
-                     [Production Live]
+                               │     Phase 11 (Plugins) ──────────────> Phase 12 (Enterprise)
+                               │            │
+                               │            v
+                               │     Phase 13 (Gap Closure: 35 items)
+                               │     HIGH: U16,U23,U24,U28,U2,U10
+                               │     MED:  U22,U29,U31,U32,U11,U13,U14,U18,U6,U7
+                               │
+                               v
+                      [Production Live]
+
+Phase 13 (Feature Parity)────> [Feature Complete]
 ```
 
-Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are the highest-priority post-launch work because they unlock user acquisition. Phase 11 (plugins) is intentionally late -- shipping an empty marketplace is worse than shipping no marketplace.
+Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are the highest-priority post-launch work because they unlock user acquisition. Phase 11 (plugins) is intentionally late -- shipping an empty marketplace is worse than shipping no marketplace. Phase 13 (gap closure) runs parallel to 11-12, prioritizing HIGH-ROI items first (storage, auth, notifications, import/export, SSG i18n).
 
 ---
 

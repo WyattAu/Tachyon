@@ -13,6 +13,7 @@ pub enum MessageType {
     Presence,
     Join,
     Leave,
+    Notification,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,6 +101,12 @@ impl WebSocketMessage {
         Self::new(MessageType::Presence)
             .with_document(document_id)
             .with_data(serde_json::to_value(users).unwrap_or(Value::Null))
+    }
+
+    pub fn notification(room_id: String, data: Value) -> Self {
+        Self::new(MessageType::Notification)
+            .with_room(room_id)
+            .with_data(data)
     }
 }
 

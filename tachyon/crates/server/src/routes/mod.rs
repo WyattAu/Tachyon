@@ -12,6 +12,7 @@ pub mod document;
 pub mod ecosystem;
 pub mod files;
 pub mod health;
+pub mod magic_link;
 pub mod metrics;
 pub mod mfa;
 pub mod node;
@@ -323,6 +324,12 @@ pub use password_reset::{
     create_password_reset_router, EmailVerifyConfirm, EmailVerifyRequest,
     MessageResponse as PasswordResetMessageResponse, PasswordResetConfirm, PasswordResetRequest,
     PasswordResetState,
+};
+
+// Magic link exports
+pub use magic_link::{
+    create_magic_link_router, MagicLinkMessageResponse, MagicLinkRequest, MagicLinkState,
+    MagicLinkVerify,
 };
 
 // Files exports

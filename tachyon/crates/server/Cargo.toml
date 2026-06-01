@@ -103,8 +103,13 @@ dashmap = { workspace = true }
 # Error types
 thiserror = { workspace = true }
 
+# S3 Storage (optional)
+aws-sdk-s3 = { version = "1", optional = true }
+aws-config = { version = "1", optional = true }
+
 [features]
 staging = []
+s3-storage = ["dep:aws-sdk-s3", "dep:aws-config"]
 pdf-export = ["tachyon-import-export/pdf-export", "dep:printpdf"]
 
 [dev-dependencies]

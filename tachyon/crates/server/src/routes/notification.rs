@@ -1,22 +1,35 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    response::Json,
+    response::{sse::Event as SseEvent, Json, Sse},
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tachyon_database::{DatabasePool, Notification, NotificationRepository};
+use tokio::sync::broadcast;
 
 use crate::pagination::{CursorPage, CursorParams};
 
 #[derive(Clone)]
 pub struct NotificationState {
     pub pool: DatabasePool,
+    pub sse_tx: Arc<broadcast::Sender<String>>,
 }
 
 impl NotificationState {
     pub fn new(pool: DatabasePool) -> Self {
-        Self { pool }
+        let (sse_tx, _) = broadcast::channel(256);
+        Self {
+            pool,
+            sse_tx: Arc::new(sse_tx),
+        }
+    }
+
+    pub fn broadcast_sse(&self, data: &serde_json::Value) {
+        let _ = self
+            .sse_tx
+            .send(serde_json::to_string(data).unwrap_or_default());
     }
 
     pub fn create_notification_email(
@@ -274,6 +287,47 @@ pub async fn list_notifications_cursor(
     Ok(Json(page))
 }
 
+/// Server-Sent Events stream for notifications.
+///
+/// `GET /api/v1/notifications/stream`
+///
+/// Fallback for clients that cannot use WebSocket. Sends `data: {json}\n\n` for each
+/// new notification event published to the internal broadcast channel.
+type NotificationSseStream =
+    std::pin::Pin<Box<dyn futures_util::Stream<Item = Result<SseEvent, axum::Error>> + Send>>;
+
+fn sse_receiver_stream(rx: broadcast::Receiver<String>) -> NotificationSseStream {
+    Box::pin(futures_util::stream::unfold(rx, |mut rx| async move {
+        match rx.recv().await {
+            Ok(json) => Some((Ok(SseEvent::default().data(json)), rx)),
+            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                match rx.recv().await {
+                    Ok(json) => Some((Ok(SseEvent::default().data(json)), rx)),
+                    Err(_) => None,
+                }
+            }
+            Err(tokio::sync::broadcast::error::RecvError::Closed) => None,
+        }
+    }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/notifications/stream",
+    responses(
+        (status = 200, description = "SSE stream of notifications"),
+    ),
+    tag = "notifications",
+    security(("bearer_auth" = [])),
+)]
+pub async fn notification_stream(
+    State(state): State<NotificationState>,
+) -> Sse<NotificationSseStream> {
+    let rx = state.sse_tx.subscribe();
+    Sse::new(sse_receiver_stream(rx))
+}
+
 pub fn create_notification_router() -> axum::Router<NotificationState> {
     axum::Router::new()
         .route("/notifications", get(list_notifications))
@@ -281,6 +335,7 @@ pub fn create_notification_router() -> axum::Router<NotificationState> {
         .route("/notifications/unread-count", get(unread_count))
         .route("/notifications/read-all", post(mark_all_read))
         .route("/notifications/{id}/read", post(mark_notification_read))
+        .route("/notifications/stream", get(notification_stream))
 }
 
 #[cfg(test)]

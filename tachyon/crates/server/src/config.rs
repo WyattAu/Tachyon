@@ -58,6 +58,8 @@ pub struct ServerConfig {
     pub sso_ldap: Option<crate::sso::LdapConfig>,
     /// TrueLayer payment configuration
     pub truelayer: TrueLayerConfig,
+    /// Magic link (passwordless) authentication configuration
+    pub magic_link: MagicLinkConfig,
     /// SMTP URL for email delivery (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub smtp_url: Option<String>,
@@ -370,6 +372,28 @@ impl Default for TrueLayerConfig {
     }
 }
 
+/// Magic link (passwordless) authentication configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MagicLinkConfig {
+    /// Enable magic link authentication
+    pub enabled: bool,
+    /// Token time-to-live in seconds (default: 900 = 15 minutes)
+    pub ttl_secs: u64,
+    /// Base URL for magic link callbacks (default: uses site.base_url)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+}
+
+impl Default for MagicLinkConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            ttl_secs: 900,
+            base_url: None,
+        }
+    }
+}
+
 /// OAuth2 provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OAuth2Config {
@@ -417,6 +441,7 @@ impl Default for ServerConfig {
             sso_saml: None,
             sso_ldap: None,
             truelayer: TrueLayerConfig::default(),
+            magic_link: MagicLinkConfig::default(),
             smtp_url: None,
             smtp_from: None,
             smtp_username: None,
@@ -541,6 +566,20 @@ impl Default for RateLimitConfig {
             "/api/v1/auth/password-reset".to_string(),
             EndpointRateLimit {
                 max_requests: 3,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/magic-link/request".to_string(),
+            EndpointRateLimit {
+                max_requests: 3,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/magic-link/verify".to_string(),
+            EndpointRateLimit {
+                max_requests: 10,
                 window_secs: 60,
             },
         );

@@ -237,6 +237,8 @@ pub(crate) fn openapi_spec() -> &'static OpenApiSpec {
         crate::routes::password_reset::confirm_password_reset,
         crate::routes::password_reset::request_email_verification,
         crate::routes::password_reset::confirm_email_verification,
+        crate::routes::magic_link::request_magic_link,
+        crate::routes::magic_link::verify_magic_link,
         crate::routes::files::list_directory,
         crate::routes::files::read_file,
         crate::routes::files::search_files,

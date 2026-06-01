@@ -504,6 +504,17 @@ pub async fn add_team_member(
     Ok(Json(TeamMemberResponse::from(created)))
 }
 
+// TODO: Wire NotificationDispatcher to notify added user of team membership.
+// Pattern:
+//   dispatcher.dispatch(
+//       req.user_id.parse()?,
+//       "team_member_added",
+//       &format!("You were added to team {}", team_id),
+//       None,
+//       Some(&format!("/teams/{}", team_id)),
+//       json!({"team_id": team_id, "role": req.role_name}),
+//   ).await;
+
 /// Update a team member's role.
 ///
 /// `PUT /api/v1/teams/{team_id}/members/{user_id}`

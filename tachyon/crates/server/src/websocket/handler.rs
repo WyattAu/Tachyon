@@ -148,6 +148,11 @@ impl ConnectionManager {
         };
         if let Some(client) = client {
             let client_rooms = client.rooms.clone();
+
+            if let Some(ref uid) = &client.user_id {
+                self.leave_user_room(client_id, uid).await;
+            }
+
             {
                 let mut rooms = self.rooms.write().await;
                 for room_id in &client_rooms {
@@ -206,6 +211,16 @@ impl ConnectionManager {
             }
         }
         debug!(client_id = %client_id, room_id = %room_id, "Client joined room");
+    }
+
+    pub async fn join_user_room(&self, client_id: &str, user_id: &str) {
+        self.join_room(client_id, &format!("user:{}", user_id))
+            .await;
+    }
+
+    pub async fn leave_user_room(&self, client_id: &str, user_id: &str) {
+        self.leave_room(client_id, &format!("user:{}", user_id))
+            .await;
     }
 
     pub async fn join_document(
@@ -634,6 +649,7 @@ async fn handle_client_message(
                 manager
                     .join_document(client_id, doc_id, user_id, &user_name)
                     .await;
+                manager.join_user_room(client_id, user_id).await;
 
                 let join_msg = WebSocketMessage::join(doc_id.clone(), user_id.clone(), user_name);
                 manager
@@ -735,6 +751,7 @@ async fn handle_client_message(
                     .await;
             }
         }
+        MessageType::Notification => {}
     }
 }
 
