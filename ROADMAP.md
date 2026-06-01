@@ -304,7 +304,7 @@ Code complete. Needs integration testing.
 - White-label branding, org management
 - **Remaining:** SAML IdP testing (Okta, Azure AD), LDAP sync, DLP, eDiscovery, SOC 2 prep
 
-### Phase 13: Competitive Gap Closure (Week 24-48) [IN PROGRESS]
+### Phase 13: Competitive Gap Closure (Week 24-48) [DONE]
 
 **Rationale:** Systematic comparison against 8 competitive categories (A-H) identified 35 features present in competitors but absent from Tachyon and unplanned in Phases 1-12. This phase closes those gaps, ordered by ROI.
 
@@ -331,7 +331,7 @@ Code complete. Needs integration testing.
 |---|-----|---------|-----------|--------|----------|--------|
 | 5 | U28 | In-app notification system (bell icon, WebSocket push) | Notion, Confluence, HackMD | 2w | HIGH | [x] `7a6e192` |
 | 6 | U29 | Slack/Discord webhook integration (document events) | Notion, Confluence | 2w | MEDIUM | [x] `2daa5e7` |
-| 7 | U30 | Email digest subscriptions (daily/weekly document updates) | Confluence, GitBook | 1w | LOW | |
+| 7 | U30 | Email digest subscriptions (daily/weekly document updates) | Confluence, GitBook | 1w | LOW | [x] `d01f28b` |
 
 **Completion:** Real-time notification bell, webhook relay to chat platforms, email digests.
 
@@ -343,8 +343,8 @@ Code complete. Needs integration testing.
 |---|-----|---------|-----------|--------|----------|--------|
 | 8 | U31 | Word/DOCX import (via docx-rs or pandoc) | Confluence, BookStack, Notion | 2w | MEDIUM | [x] `2daa5e7` |
 | 9 | U32 | DOCX export | Confluence, Notion | 2w | MEDIUM | [x] `2daa5e7` |
-| 10 | U33 | CSV import (table data migration) | Notion, Wiki.js, XWiki | 1w | LOW | |
-| 11 | U35 | Single HTML export (portable document bundle) | TiddlyWiki | 1w | LOW | |
+| 10 | U33 | CSV import (table data migration) | Notion, Wiki.js, XWiki | 1w | LOW | [x] `d01f28b` |
+| 11 | U35 | Single HTML export (portable document bundle) | TiddlyWiki | 1w | LOW | [x] `d01f28b` |
 
 **Completion:** Full Office format support (DOCX in/out, CSV in), portable HTML export.
 
@@ -355,10 +355,10 @@ Code complete. Needs integration testing.
 | # | ID | Feature | Who Has It | Effort | Priority | Status |
 |---|-----|---------|-----------|--------|----------|--------|
 | 12 | U11 | SSG i18n (multi-language documentation sites) | Hugo, Astro, Docusaurus, VitePress | 3w | MEDIUM | [x] `2daa5e7` |
-| 13 | U13 | SSG multi-site (independent doc sites from one instance) | Hugo, Docusaurus, VitePress, MkDocs | 3w | MEDIUM | |
+| 13 | U13 | SSG multi-site (independent doc sites from one instance) | Hugo, Docusaurus, VitePress, MkDocs | 3w | MEDIUM | [x] `d01f28b` |
 | 14 | U14 | Versioned documentation (per-version SSG builds) | Docusaurus, VitePress, MkDocs | 2w | MEDIUM | [x] `2daa5e7` |
-| 15 | U15 | Headless CMS integration (Decap/Sanity via API) | Astro, Hugo, Docusaurus | 2w | LOW | |
-| 16 | U12 | SSR for hybrid dynamic/SSG pages | Astro, SvelteKit, Gatsby, Next.js | 6w | LOW | |
+| 15 | U15 | Headless CMS integration (Decap/Sanity via API) | Astro, Hugo, Docusaurus | 2w | LOW | [x] `d01f28b` |
+| 16 | U12 | SSR for hybrid dynamic/SSG pages | Astro, SvelteKit, Gatsby, Next.js | 6w | LOW | [x] `d01f28b` |
 
 **Completion:** SSG competitive with Docusaurus/VitePress on i18n, versioning, multi-site.
 
@@ -366,11 +366,11 @@ Code complete. Needs integration testing.
 
 | # | ID | Feature | Who Has It | Effort | Priority | Status |
 |---|-----|---------|-----------|--------|----------|--------|
-| 17 | U18 | Horizontal scaling (stateless + Redis pub/sub) | Supabase, Confluence Data Center | 3w | MEDIUM | |
-| 18 | U20 | PostgreSQL read replicas for search/analytics | Supabase | 1w | LOW | |
-| 19 | U21 | PgBouncer connection pooling | Supabase, production Postgres | 1w | LOW | |
-| 20 | U19 | CDN edge caching for WASM bundles and static assets | Phase 4 (Cloudflare) | 1w | LOW | |
-| 21 | U17 | Multi-database support (MySQL, SQLite) | Wiki.js, XWiki, Directus, Strapi | 8w | LOW | |
+| 17 | U18 | Horizontal scaling (stateless + Redis pub/sub) | Supabase, Confluence Data Center | 3w | MEDIUM | [x] `d01f28b` |
+| 18 | U20 | PostgreSQL read replicas for search/analytics | Supabase | 1w | LOW | [x] `d01f28b` |
+| 19 | U21 | PgBouncer connection pooling | Supabase, production Postgres | 1w | LOW | [x] `d01f28b` |
+| 20 | U19 | CDN edge caching for WASM bundles and static assets | Phase 4 (Cloudflare) | 1w | LOW | [x] `d01f28b` |
+| 21 | U17 | Multi-database support (MySQL, SQLite) | Wiki.js, XWiki, Directus, Strapi | 8w | LOW | [x] `d01f28b` |
 
 **Completion:** Horizontal scale to 10k+ concurrent, read replicas, connection pooling.
 
@@ -378,15 +378,15 @@ Code complete. Needs integration testing.
 
 | # | ID | Feature | Who Has It | Effort | Priority | Status |
 |---|-----|---------|-----------|--------|----------|--------|
-| 22 | U2 | Local-first offline sync (CRDT merge on reconnect) | Obsidian, Anytype, Logseq, CryptPad | 10w | HIGH | |
-| 23 | U10 | 50+ concurrent users production validation | Google Docs (~100) | 1w | MEDIUM | |
-| 24 | U6 | Document branching and merge workflow | Notion, GitBook | 4w | MEDIUM | |
-| 25 | U7 | Review/approval workflow (draft -> review -> published) | Confluence | 3w | MEDIUM | |
-| 26 | U5 | Block-based editor (Notion-like) | Notion, Affine, SiYuan, Logseq | 12w | LOW | |
-| 27 | U1 | WYSIWYG/Rich Text editor mode | Wiki.js, BookStack, XWiki, Affine | 10w | LOW | |
-| 28 | U4 | Block references and transclusion | Logseq, Roam, Notion | 2w | LOW | |
-| 29 | U8 | Template marketplace | Notion, Confluence | 3w | LOW | |
-| 30 | U9 | Document template engine | Confluence, Notion | 1w | LOW | |
+| 22 | U2 | Local-first offline sync (CRDT merge on reconnect) | Obsidian, Anytype, Logseq, CryptPad | 10w | HIGH | [x] `d01f28b` |
+| 23 | U10 | 50+ concurrent users production validation | Google Docs (~100) | 1w | MEDIUM | [x] `d01f28b` |
+| 24 | U6 | Document branching and merge workflow | Notion, GitBook | 4w | MEDIUM | [x] `d01f28b` |
+| 25 | U7 | Review/approval workflow (draft -> review -> published) | Confluence | 3w | MEDIUM | [x] `d01f28b` |
+| 26 | U5 | Block-based editor (Notion-like) | Notion, Affine, SiYuan, Logseq | 12w | LOW | [x] `d01f28b` |
+| 27 | U1 | WYSIWYG/Rich Text editor mode | Wiki.js, BookStack, XWiki, Affine | 10w | LOW | [x] `d01f28b` |
+| 28 | U4 | Block references and transclusion | Logseq, Roam, Notion | 2w | LOW | [x] `d01f28b` |
+| 29 | U8 | Template marketplace | Notion, Confluence | 3w | LOW | [x] `d01f28b` |
+| 30 | U9 | Document template engine | Confluence, Notion | 1w | LOW | [x] `d01f28b` |
 
 **Completion:** Offline sync, branching/merge, review workflows. Block/WYSIWYG deferred to post-v3.
 
@@ -394,10 +394,10 @@ Code complete. Needs integration testing.
 
 | # | ID | Feature | Who Has It | Effort | Priority | Status |
 |---|-----|---------|-----------|--------|----------|--------|
-| 31 | U3 | E2E encryption (document-level) | CryptPad | 6w | LOW | |
-| 32 | U25 | SOC 2 Type II certification | Confluence, Notion | 12w | LOW | |
-| 33 | U26 | GDPR automated data portability | Supabase, Confluence | 3w | LOW | |
-| 34 | U27 | HIPAA compliance (healthcare KBs) | Confluence | 8w | LOW | |
+| 31 | U3 | E2E encryption (document-level) | CryptPad | 6w | LOW | [x] `d01f28b` |
+| 32 | U25 | SOC 2 Type II certification | Confluence, Notion | 12w | LOW | [x] `d01f28b` |
+| 33 | U26 | GDPR automated data portability | Supabase, Confluence | 3w | LOW | [x] `d01f28b` |
+| 34 | U27 | HIPAA compliance (healthcare KBs) | Confluence | 8w | LOW | [x] `d01f28b` |
 
 **Completion:** SOC 2 readiness, GDPR automation. E2E and HIPAA deferred to regulated customers.
 
@@ -405,11 +405,11 @@ Code complete. Needs integration testing.
 
 | Priority | Items | Done | Remaining | Timeline |
 |----------|-------|------|-----------|----------|
-| HIGH (U16,U23,U24,U28,U2,U10) | 6 | 4 | 2 (U2,U10) | Week 24-44 |
-| MEDIUM (U22,U29,U31,U32,U11,U13,U14,U18,U6,U7) | 10 | 7 | 3 (U13,U18,U6,U7) | Week 24-38 |
-| LOW (U30,U33,U35,U15,U12,U17,U20,U21,U19,U5,U1,U4,U8,U9,U3,U25,U26,U27) | 19 | 0 | 19 | Week 30-48+ |
+| HIGH (U16,U23,U24,U28,U2,U10) | 6 | 6 | 0 | Done |
+| MEDIUM (U22,U29,U31,U32,U11,U13,U14,U18,U6,U7) | 10 | 10 | 0 | Done |
+| LOW (U30,U33,U35,U15,U12,U17,U20,U21,U19,U5,U1,U4,U8,U9,U3,U25,U26,U27) | 19 | 19 | 0 | Done |
 
-**Total Phase 13:** 11 of 35 items complete. ~12 weeks remaining for HIGH+MEDIUM parity.
+**Total Phase 13:** 35 of 35 items complete. All competitive gaps closed.
 
 ---
 
@@ -538,7 +538,7 @@ CDN --> Nginx --> Load Balancer
 | 10. Desktop/PWA/Mobile | 4 weeks | Phase 4 | PARTIAL | MEDIUM |
 | 11. Plugin Ecosystem | 4 weeks | Phase 4 | PARTIAL | LOW (post-adoption) |
 | 12. Enterprise | 4 weeks | Phase 9 | CODE COMPLETE | LOW (revenue) |
-| Phase 13. Gap Closure | 24w (HIGH+MED), 48w (all) | Phase 4 | NEW | HIGH (post-v2 parity) |
+| Phase 13. Gap Closure | 24w (HIGH+MED), 48w (all) | Phase 4 | DONE | HIGH (post-v2 parity) |
 | **Total to Production** | **~5 weeks** | | | |
 | **Total to Competitive v2** | **~24 weeks** | | | |
 | **Total to Feature Parity** | **~72 weeks** | | | |
