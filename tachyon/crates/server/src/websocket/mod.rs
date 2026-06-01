@@ -4,6 +4,7 @@
 pub mod crdt_handler;
 pub mod handler;
 pub mod operational_transform;
+pub mod redis_relay;
 pub mod types;
 
 pub use crdt_handler::{handle_crdt_websocket_upgrade, CrdtConnectionManager};

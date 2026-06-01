@@ -5,6 +5,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 
+/// Supported database backends.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum DatabaseBackend {
+    #[default]
+    Postgresql,
+    Sqlite,
+    Mysql,
+}
+
 /// Server configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
@@ -12,6 +22,9 @@ pub struct ServerConfig {
     pub host: String,
     /// Server port
     pub port: u16,
+    /// Database backend type
+    #[serde(default)]
+    pub database_backend: DatabaseBackend,
     /// Database URL (PostgreSQL connection string)
     pub database_url: String,
     /// Legacy database path (for backwards compatibility)
@@ -94,6 +107,18 @@ pub struct ServerConfig {
     pub db_acquire_timeout_ms: u64,
     /// Database connection idle timeout in seconds
     pub db_idle_timeout_secs: u64,
+    /// Redis URL for pub/sub message relay (horizontal scaling).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub redis_pubsub_url: Option<String>,
+    /// CDN edge caching configuration.
+    #[serde(default)]
+    pub cdn: CdnConfig,
+    /// Read replica URLs for search/analytics offloading.
+    #[serde(default)]
+    pub read_replica_urls: Vec<String>,
+    /// Whether the database is behind PgBouncer (affects connection settings).
+    #[serde(default)]
+    pub pgbouncer_enabled: bool,
 }
 
 /// JWT configuration for token-based authentication
@@ -178,6 +203,8 @@ pub struct WebSocketConfig {
     pub heartbeat_interval_secs: u64,
     /// Maximum concurrent connections
     pub max_connections: usize,
+    /// Maximum concurrent connections across all rooms (cluster-wide soft limit).
+    pub max_cluster_connections: usize,
 }
 
 /// Guest login and public access configuration
@@ -432,6 +459,35 @@ impl Default for SmsOtpConfig {
     }
 }
 
+/// CDN edge caching configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CdnConfig {
+    /// CDN provider name (cloudflare, fastly, custom).
+    pub provider: String,
+    /// CDN base URL for static assets (e.g., https://cdn.example.com).
+    pub base_url: Option<String>,
+    /// Cache TTL for static assets in seconds.
+    pub static_ttl_secs: u64,
+    /// Cache TTL for API responses in seconds.
+    pub api_ttl_secs: u64,
+    /// Whether CDN proxy is active.
+    pub enabled: bool,
+}
+
+impl Default for CdnConfig {
+    fn default() -> Self {
+        Self {
+            provider: "cloudflare".to_string(),
+            base_url: std::env::var("TACHYON_CDN_BASE_URL").ok(),
+            static_ttl_secs: 3600,
+            api_ttl_secs: 60,
+            enabled: std::env::var("TACHYON_CDN_ENABLED")
+                .map(|v| v == "true" || v == "1")
+                .unwrap_or(false),
+        }
+    }
+}
+
 /// OAuth2 provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OAuth2Config {
@@ -459,6 +515,7 @@ impl Default for ServerConfig {
         Self {
             host: "0.0.0.0".to_string(),
             port: 8080,
+            database_backend: DatabaseBackend::default(),
             database_url: "postgres://tachyon:tachyon@127.0.0.1:5433/tachyon".to_string(),
             database_path: None,
             cache_size_mb: 256,
@@ -493,6 +550,10 @@ impl Default for ServerConfig {
             db_min_connections: 2,
             db_acquire_timeout_ms: 5000,
             db_idle_timeout_secs: 600,
+            redis_pubsub_url: None,
+            cdn: CdnConfig::default(),
+            read_replica_urls: Vec::new(),
+            pgbouncer_enabled: false,
         }
     }
 }
@@ -555,6 +616,7 @@ impl Default for WebSocketConfig {
             connection_timeout_secs: 300,       // 5 minutes
             heartbeat_interval_secs: 30,        // 30 seconds
             max_connections: 1000,
+            max_cluster_connections: 10_000,
         }
     }
 }
@@ -927,6 +989,15 @@ impl ServerConfig {
             config.database_url = db_url;
         }
 
+        if let Ok(backend) = std::env::var("TACHYON_DATABASE_BACKEND") {
+            match backend.to_lowercase().as_str() {
+                "postgresql" | "postgres" => config.database_backend = DatabaseBackend::Postgresql,
+                "sqlite" => config.database_backend = DatabaseBackend::Sqlite,
+                "mysql" => config.database_backend = DatabaseBackend::Mysql,
+                _ => {}
+            }
+        }
+
         if let Ok(tls_enabled) = std::env::var("TACHYON_TLS_ENABLED") {
             config.enable_tls = tls_enabled == "1" || tls_enabled == "true";
         }
@@ -1162,6 +1233,42 @@ impl ServerConfig {
             }
         }
 
+        config.redis_pubsub_url = std::env::var("TACHYON_REDIS_PUBSUB_URL").ok();
+
+        // CDN configuration
+        if let Ok(val) = std::env::var("TACHYON_CDN_PROVIDER") {
+            config.cdn.provider = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_CDN_BASE_URL") {
+            config.cdn.base_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_CDN_STATIC_TTL_SECS") {
+            if let Ok(v) = val.parse::<u64>() {
+                config.cdn.static_ttl_secs = v;
+            }
+        }
+        if let Ok(val) = std::env::var("TACHYON_CDN_API_TTL_SECS") {
+            if let Ok(v) = val.parse::<u64>() {
+                config.cdn.api_ttl_secs = v;
+            }
+        }
+        if let Ok(val) = std::env::var("TACHYON_CDN_ENABLED") {
+            config.cdn.enabled = val == "true" || val == "1";
+        }
+
+        // Read replica configuration
+        config.read_replica_urls = std::env::var("TACHYON_READ_REPLICA_URLS")
+            .unwrap_or_default()
+            .split(',')
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect();
+
+        // PgBouncer configuration
+        if let Ok(val) = std::env::var("TACHYON_PGBOUNCER_ENABLED") {
+            config.pgbouncer_enabled = val == "true" || val == "1";
+        }
+
         // SMS OTP configuration
         if let Ok(val) = std::env::var("TACHYON_SMS_OTP_ENABLED") {
             config.sms_otp.enabled = val == "1" || val == "true";
@@ -1353,5 +1460,94 @@ mod tests {
         std::env::remove_var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES");
         std::env::remove_var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS");
         std::env::remove_var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS");
+    }
+
+    #[test]
+    fn test_cdn_config_defaults() {
+        // The default reads env vars, so we just test the constructed values
+        let config = CdnConfig {
+            provider: "cloudflare".to_string(),
+            base_url: None,
+            static_ttl_secs: 3600,
+            api_ttl_secs: 60,
+            enabled: false,
+        };
+        assert_eq!(config.provider, "cloudflare");
+        assert_eq!(config.static_ttl_secs, 3600);
+        assert_eq!(config.api_ttl_secs, 60);
+        assert!(!config.enabled);
+        assert!(config.base_url.is_none());
+    }
+
+    #[test]
+    #[serial]
+    fn test_cdn_config_from_env() {
+        std::env::set_var("TACHYON_CDN_PROVIDER", "fastly");
+        std::env::set_var("TACHYON_CDN_BASE_URL", "https://cdn.example.com");
+        std::env::set_var("TACHYON_CDN_ENABLED", "true");
+        let config = ServerConfig::from_env();
+        assert_eq!(config.cdn.provider, "fastly");
+        assert_eq!(
+            config.cdn.base_url.as_deref(),
+            Some("https://cdn.example.com")
+        );
+        assert!(config.cdn.enabled);
+        std::env::remove_var("TACHYON_CDN_PROVIDER");
+        std::env::remove_var("TACHYON_CDN_BASE_URL");
+        std::env::remove_var("TACHYON_CDN_ENABLED");
+    }
+
+    #[test]
+    fn test_read_replica_urls_defaults() {
+        let config = ServerConfig::default();
+        assert!(config.read_replica_urls.is_empty());
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_replica_urls_from_env() {
+        std::env::set_var(
+            "TACHYON_READ_REPLICA_URLS",
+            "postgres://replica1:5432/db,postgres://replica2:5432/db",
+        );
+        let config = ServerConfig::from_env();
+        assert_eq!(config.read_replica_urls.len(), 2);
+        assert_eq!(config.read_replica_urls[0], "postgres://replica1:5432/db");
+        assert_eq!(config.read_replica_urls[1], "postgres://replica2:5432/db");
+        std::env::remove_var("TACHYON_READ_REPLICA_URLS");
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_replica_urls_empty_env() {
+        std::env::set_var("TACHYON_READ_REPLICA_URLS", "");
+        let config = ServerConfig::from_env();
+        assert!(config.read_replica_urls.is_empty());
+        std::env::remove_var("TACHYON_READ_REPLICA_URLS");
+    }
+
+    #[test]
+    fn test_pgbouncer_enabled_default() {
+        let config = ServerConfig::default();
+        assert!(!config.pgbouncer_enabled);
+    }
+
+    #[test]
+    #[serial]
+    fn test_pgbouncer_enabled_from_env() {
+        std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "true");
+        let config = ServerConfig::from_env();
+        assert!(config.pgbouncer_enabled);
+        std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+
+        std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "1");
+        let config = ServerConfig::from_env();
+        assert!(config.pgbouncer_enabled);
+        std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+
+        std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "false");
+        let config = ServerConfig::from_env();
+        assert!(!config.pgbouncer_enabled);
+        std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
     }
 }

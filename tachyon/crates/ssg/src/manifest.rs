@@ -21,6 +21,10 @@ fn default_code_theme() -> String {
     "github-dark".to_string()
 }
 
+fn default_site_id() -> String {
+    "default".to_string()
+}
+
 /// Site-wide configuration for static site generation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SiteConfig {
@@ -102,6 +106,12 @@ pub struct SiteConfig {
     /// Directory name containing translation YAML files (relative to input dir)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub translations_dir: Option<String>,
+    /// Site identifier for multi-site deployments.
+    #[serde(default = "default_site_id")]
+    pub site_id: String,
+    /// Slug used in output directory names for multi-site builds.
+    #[serde(default)]
+    pub site_slug: String,
 }
 
 impl SiteConfig {
@@ -153,6 +163,8 @@ impl Default for SiteConfig {
             og_image: None,
             image_optimization_enabled: false,
             translations_dir: None,
+            site_id: default_site_id(),
+            site_slug: String::new(),
         }
     }
 }
@@ -268,7 +280,7 @@ impl Default for ColorTheme {
 }
 
 /// A document to be included in the static site.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SsgDocument {
     /// URL slug (used as filename: `{slug}.html`)
     pub slug: String,
@@ -299,6 +311,10 @@ pub struct SsgDocument {
     /// Hide breadcrumbs on this page
     #[serde(default)]
     pub hide_breadcrumbs: bool,
+    /// Optional site identifier for multi-site builds. Documents without a site_id
+    /// belong to the default site.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub site_id: Option<String>,
 }
 
 /// Result of a site build.

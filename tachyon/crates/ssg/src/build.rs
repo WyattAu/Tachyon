@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 use std::path::Path;
 
@@ -31,6 +31,39 @@ impl SiteGenerator {
 
         std::fs::create_dir_all(output_dir).map_err(|e| SsgError::Io(e.to_string()))?;
 
+        // Partition documents by site_id for multi-site support
+        let mut site_partitions: HashMap<String, Vec<&SsgDocument>> = HashMap::new();
+        for doc in documents {
+            let key = doc.site_id.as_deref().unwrap_or("default");
+            site_partitions
+                .entry(key.to_string())
+                .or_default()
+                .push(doc);
+        }
+
+        let has_multiple_sites = site_partitions.len() > 1
+            || site_partitions
+                .keys()
+                .any(|k| k != "default" && !self.config.site_slug.is_empty());
+
+        let effective_output = if has_multiple_sites && !self.config.site_slug.is_empty() {
+            let site_output = output_dir.join(&self.config.site_slug);
+            std::fs::create_dir_all(&site_output).map_err(|e| SsgError::Io(e.to_string()))?;
+            site_output
+        } else {
+            output_dir.to_path_buf()
+        };
+
+        self.build_to_dir_inner(documents, &effective_output, start, output_dir)
+    }
+
+    fn build_to_dir_inner(
+        &self,
+        documents: &[SsgDocument],
+        output_dir: &Path,
+        start: std::time::Instant,
+        root_output_dir: &Path,
+    ) -> SsgResult<BuildResult> {
         let mut total_files = 0usize;
         let mut total_pages = 0usize;
         let mut total_categories = 0usize;
@@ -175,7 +208,8 @@ impl SiteGenerator {
             all_generated_pages.extend(generated);
         }
 
-        let output_size_bytes = dir_size(output_dir).map_err(|e| SsgError::Io(e.to_string()))?;
+        let output_size_bytes =
+            dir_size(root_output_dir).map_err(|e| SsgError::Io(e.to_string()))?;
         let build_time_ms = start.elapsed().as_millis() as u64;
 
         cache.save(&cache_path);

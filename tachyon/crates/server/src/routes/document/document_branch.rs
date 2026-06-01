@@ -403,6 +403,66 @@ fn simple_three_way_merge(base: &str, current: &str, branch: &str) -> ThreeWayMe
     }
 }
 
+#[derive(Debug, Serialize)]
+pub struct BranchDiffResponse {
+    pub branch_content: String,
+    pub document_content: String,
+    pub added_lines: Vec<String>,
+    pub removed_lines: Vec<String>,
+}
+
+pub async fn diff_branch(
+    Path((document_id, branch_id)): Path<(String, String)>,
+    State(state): State<DocumentState>,
+) -> Result<Json<BranchDiffResponse>, ServerError> {
+    let mut conn = state
+        .pool
+        .acquire()
+        .await
+        .map_err(|e| ServerError::database(e.to_string()))?;
+
+    let branch: Option<(String, String)> = sqlx::query_as(
+        "SELECT id, source_content FROM document_branches WHERE id = $1 AND document_id = $2 AND status = 'open'",
+    )
+    .bind(&branch_id)
+    .bind(&document_id)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(|e| ServerError::database(e.to_string()))?;
+
+    let (_bid, branch_content) =
+        branch.ok_or_else(|| ServerError::not_found("Branch", &branch_id))?;
+
+    let doc: Option<(String,)> =
+        sqlx::query_as("SELECT content FROM documents WHERE id = $1 AND deleted_at IS NULL")
+            .bind(&document_id)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| ServerError::database(e.to_string()))?;
+
+    let (doc_row,) = doc.ok_or_else(|| ServerError::not_found("Document", &document_id))?;
+    let document_content = doc_row;
+
+    let branch_lines: std::collections::HashSet<&str> = branch_content.lines().collect();
+    let doc_lines: std::collections::HashSet<&str> = document_content.lines().collect();
+
+    let added_lines: Vec<String> = branch_lines
+        .difference(&doc_lines)
+        .map(|s| s.to_string())
+        .collect();
+    let removed_lines: Vec<String> = doc_lines
+        .difference(&branch_lines)
+        .map(|s| s.to_string())
+        .collect();
+
+    Ok(Json(BranchDiffResponse {
+        branch_content,
+        document_content,
+        added_lines,
+        removed_lines,
+    }))
+}
+
 pub async fn delete_branch(
     Extension(_auth): Extension<crate::middleware::AuthContext>,
     Path((document_id, branch_id)): Path<(String, String)>,

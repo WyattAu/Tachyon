@@ -16,6 +16,14 @@ pub struct BuildCache {
 }
 
 impl BuildCache {
+    /// Generate a cache key that incorporates site_id for multi-site builds.
+    pub fn cache_key(slug: &str, site_id: Option<&str>) -> String {
+        match site_id {
+            Some(id) if id != "default" => format!("{}:{}", id, slug),
+            _ => slug.to_string(),
+        }
+    }
+
     /// Load cache from a JSON file. Returns empty cache if file doesn't exist or is invalid.
     pub fn load(path: &Path) -> Self {
         if let Ok(data) = std::fs::read_to_string(path) {
@@ -117,6 +125,7 @@ mod tests {
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            site_id: None,
         }
     }
 
@@ -199,5 +208,16 @@ mod tests {
         assert_eq!(loaded.entries, cache.entries);
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_cache_key_default_site() {
+        assert_eq!(BuildCache::cache_key("page-a", None), "page-a");
+        assert_eq!(BuildCache::cache_key("page-a", Some("default")), "page-a");
+    }
+
+    #[test]
+    fn test_cache_key_non_default_site() {
+        assert_eq!(BuildCache::cache_key("page-a", Some("blog")), "blog:page-a");
     }
 }

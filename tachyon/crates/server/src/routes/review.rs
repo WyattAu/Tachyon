@@ -87,6 +87,10 @@ pub struct CommentResponse {
     pub author_id: String,
     pub content: String,
     pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line_number: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub section: Option<String>,
 }
 
 impl From<tachyon_database::ReviewComment> for CommentResponse {
@@ -97,6 +101,8 @@ impl From<tachyon_database::ReviewComment> for CommentResponse {
             author_id: c.author_id,
             content: c.content,
             created_at: c.created_at.to_rfc3339(),
+            line_number: c.line_number,
+            section: c.section,
         }
     }
 }
@@ -118,12 +124,17 @@ pub struct UpdateReviewBody {
 pub struct CreateCommentBody {
     pub author_id: String,
     pub content: String,
+    pub line_number: Option<i32>,
+    pub section: Option<String>,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ReviewStatusResponse {
     pub pending_count: i64,
     pub latest_status: Option<String>,
+    pub approval_threshold: Option<i32>,
+    pub approved_count: Option<i64>,
+    pub is_fully_approved: Option<bool>,
 }
 
 // ============================================================================
@@ -444,6 +455,8 @@ pub async fn create_comment(
             review_id: review_id.clone(),
             author_id: body.author_id,
             content: body.content,
+            line_number: body.line_number,
+            section: body.section,
         })
         .await
         .map_err(|e| ServerError::database(format!("Failed to create comment: {}", e)))?;
@@ -552,9 +565,23 @@ pub async fn get_review_status(
         .await
         .map_err(|e| ServerError::database(format!("Failed to get latest review status: {}", e)))?;
 
+    let approved_count = repo
+        .count_approved_reviews(&document_id)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to count approved reviews: {}", e)))?;
+
+    let approval_threshold = 2i32;
+    let is_fully_approved = repo
+        .is_fully_approved(&document_id, approval_threshold)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to check full approval: {}", e)))?;
+
     Ok(Json(ReviewStatusResponse {
         pending_count,
         latest_status,
+        approval_threshold: Some(approval_threshold),
+        approved_count: Some(approved_count),
+        is_fully_approved: Some(is_fully_approved),
     }))
 }
 
@@ -619,7 +646,50 @@ mod tests {
         let body = CreateCommentBody {
             author_id: "user-456".to_string(),
             content: "Nit: fix typo on line 3".to_string(),
+            line_number: Some(3),
+            section: None,
         };
         assert_eq!(body.content, "Nit: fix typo on line 3");
+        assert_eq!(body.line_number, Some(3));
+    }
+
+    #[test]
+    fn test_create_comment_body_with_section() {
+        let body = CreateCommentBody {
+            author_id: "user-456".to_string(),
+            content: "Section comment".to_string(),
+            line_number: Some(10),
+            section: Some("Methods".to_string()),
+        };
+        assert_eq!(body.section.as_deref(), Some("Methods"));
+    }
+
+    #[test]
+    fn test_review_status_response_with_approval() {
+        let resp = ReviewStatusResponse {
+            pending_count: 1,
+            latest_status: Some("approved".to_string()),
+            approval_threshold: Some(2),
+            approved_count: Some(1),
+            is_fully_approved: Some(false),
+        };
+        assert_eq!(resp.approval_threshold, Some(2));
+        assert_eq!(resp.approved_count, Some(1));
+        assert_eq!(resp.is_fully_approved, Some(false));
+    }
+
+    #[test]
+    fn test_comment_response_with_position() {
+        let resp = CommentResponse {
+            id: "c1".to_string(),
+            review_id: "r1".to_string(),
+            author_id: "u1".to_string(),
+            content: "Fix here".to_string(),
+            created_at: "2026-01-01T00:00:00+00:00".to_string(),
+            line_number: Some(42),
+            section: Some("Intro".to_string()),
+        };
+        assert_eq!(resp.line_number, Some(42));
+        assert_eq!(resp.section.as_deref(), Some("Intro"));
     }
 }

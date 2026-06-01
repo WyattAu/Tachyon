@@ -9,6 +9,7 @@ pub mod billing;
 pub mod catalog;
 pub mod comment;
 pub mod crdt;
+pub mod document_branch;
 pub mod document_review;
 pub mod document_version;
 pub mod error;
@@ -52,6 +53,9 @@ pub use catalog::{CatalogStats, CreateComponentRequest, CreateProjectRequest};
 pub use comment::{
     Comment, CommentRepository, CreateCommentRequest as CreateDocumentCommentRequest,
     UpdateCommentRequest as UpdateDocumentCommentRequest,
+};
+pub use document_branch::{
+    CreateBranchRow, DocumentBranchRepository, DocumentBranchRow, UpdateBranchRow,
 };
 pub use document_review::{
     CreateCommentRequest, CreateReviewRequest, DocumentReview, DocumentReviewRepository,
@@ -108,6 +112,25 @@ pub use tachyon_core::id::*;
 
 /// Database library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Get the configured database backend type.
+pub fn database_backend() -> &'static str {
+    #[cfg(feature = "sqlite")]
+    {
+        "sqlite"
+    }
+    #[cfg(not(feature = "sqlite"))]
+    {
+        "postgresql"
+    }
+}
+
+#[cfg(feature = "sqlite")]
+pub mod sqlite {
+    //! SQLite backend support (experimental).
+    pub type Pool = sqlx::SqlitePool;
+    pub type QueryResult = sqlx::sqlite::SqliteQueryResult;
+}
 
 /// Initialize the database with the given connection URL
 ///

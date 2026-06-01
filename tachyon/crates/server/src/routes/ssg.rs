@@ -336,6 +336,7 @@ async fn fetch_documents_for_ssg(
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         });
     }
 

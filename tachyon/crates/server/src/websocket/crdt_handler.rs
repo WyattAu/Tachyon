@@ -137,6 +137,21 @@ impl CrdtConnectionManager {
         }
     }
 
+    pub fn with_pool(pool: sqlx::PgPool) -> Self {
+        let (broadcast_tx, _) = broadcast::channel(1024);
+        Self {
+            clients: Arc::new(RwLock::new(HashMap::new())),
+            room_clients: Arc::new(RwLock::new(HashMap::new())),
+            documents: Arc::new(RwLock::new(HashMap::new())),
+            broadcast_tx,
+            crdt_manager: Arc::new(CrdtDocumentManager::with_pool(pool)),
+            seq_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            max_connections: 1000,
+            heartbeat_interval_secs: 30,
+            max_message_size: 10 * 1024 * 1024,
+        }
+    }
+
     fn next_seq(&self) -> u64 {
         self.seq_counter
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
@@ -366,6 +381,9 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
 
     // Subscribe to relay events.
     let mut relay_rx = manager.subscribe();
+
+    // Pre-load document from database if available.
+    manager.crdt_manager().get_or_load(&room).await;
 
     // Send the current document state to the newly connected client.
     // This is the Yrs-encoded state vector + updates, which the client
@@ -868,5 +886,45 @@ mod tests {
         assert_eq!(msg[0], 0);
         assert_eq!(msg[1], 2);
         assert_eq!(&msg[2..], &diff[..]);
+    }
+}
+
+#[cfg(test)]
+mod concurrent_tests {
+    use super::*;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_concurrent_room_join() {
+        let manager = Arc::new(CrdtConnectionManager::new());
+        let handles: Vec<_> = (0..50)
+            .map(|i| {
+                let mgr = manager.clone();
+                tokio::spawn(async move {
+                    mgr.join_room(&format!("client-{}", i), "test-room").await;
+                })
+            })
+            .collect();
+        for h in handles {
+            h.await.unwrap();
+        }
+        let info = manager.get_collaboration_info("test-room").await.unwrap();
+        assert_eq!(info.connection_count, 50);
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_document_access() {
+        let manager = Arc::new(CrdtDocumentManager::new());
+        let handles: Vec<_> = (0..50)
+            .map(|_i| {
+                let mgr = manager.clone();
+                tokio::spawn(async move {
+                    let _doc = mgr.get_or_create("shared-doc");
+                })
+            })
+            .collect();
+        for h in handles {
+            h.await.unwrap();
+        }
     }
 }

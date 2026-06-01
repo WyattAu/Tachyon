@@ -12,9 +12,11 @@ pub(crate) struct CrdtDocument {
     text: TextRef,
 }
 
+#[derive(Clone)]
 pub struct CrdtDocumentManager {
     documents: DashMap<String, Arc<CrdtDocument>>,
     last_accessed: DashMap<String, Instant>,
+    dirty: DashMap<String, bool>,
     max_documents: usize,
     pool: Option<sqlx::PgPool>,
 }
@@ -28,6 +30,7 @@ impl CrdtDocumentManager {
         Self {
             documents: DashMap::new(),
             last_accessed: DashMap::new(),
+            dirty: DashMap::new(),
             max_documents,
             pool: None,
         }
@@ -38,6 +41,7 @@ impl CrdtDocumentManager {
         Self {
             documents: DashMap::new(),
             last_accessed: DashMap::new(),
+            dirty: DashMap::new(),
             max_documents: Self::default_max_documents(),
             pool: Some(pool),
         }
@@ -256,6 +260,57 @@ impl CrdtDocumentManager {
     pub fn clear(&self) {
         self.documents.clear();
         self.last_accessed.clear();
+        self.dirty.clear();
+    }
+
+    pub fn mark_dirty(&self, document_id: &str) {
+        self.dirty.insert(document_id.to_string(), true);
+    }
+
+    pub fn is_dirty(&self, document_id: &str) -> bool {
+        self.dirty.get(document_id).map(|v| *v).unwrap_or(false)
+    }
+
+    /// Flush all dirty documents to the database and reset dirty flags.
+    pub async fn flush_dirty(&self) {
+        if self.pool.is_none() {
+            self.dirty.clear();
+            return;
+        }
+
+        let dirty_ids: Vec<String> = self
+            .dirty
+            .iter()
+            .filter(|entry| *entry.value())
+            .map(|entry| entry.key().clone())
+            .collect();
+
+        if dirty_ids.is_empty() {
+            return;
+        }
+
+        let mut flushed = 0usize;
+        for doc_id in &dirty_ids {
+            if let Err(e) = self.flush_document(doc_id).await {
+                tracing::warn!(
+                    document_id = %doc_id,
+                    error = %e,
+                    "Failed to flush dirty CRDT document"
+                );
+            } else {
+                flushed += 1;
+            }
+        }
+
+        if flushed > 0 {
+            tracing::info!("Flushed {} dirty CRDT documents to database", flushed);
+        }
+
+        for doc_id in &dirty_ids {
+            if let Some(mut entry) = self.dirty.get_mut(doc_id) {
+                *entry = false;
+            }
+        }
     }
 
     pub fn apply_update(&self, document_id: &str, update: &[u8]) -> Result<Vec<u8>, String> {
@@ -266,6 +321,7 @@ impl CrdtDocumentManager {
         txn.apply_update(update)
             .map_err(|e| format!("Failed to apply update: {}", e))?;
         drop(txn);
+        self.mark_dirty(document_id);
         self.encode_state(document_id)
     }
 
@@ -287,6 +343,8 @@ impl CrdtDocumentManager {
             doc_ref.text.remove_range(&mut txn, 0, len);
         }
         doc_ref.text.insert(&mut txn, 0, text);
+        drop(txn);
+        self.mark_dirty(document_id);
         Ok(())
     }
 
@@ -826,5 +884,30 @@ mod tests {
         // Should be decodable as a state vector
         let sv = yrs::StateVector::decode_v1(&sv_bytes);
         assert!(sv.is_ok());
+    }
+
+    #[test]
+    fn test_dirty_tracking_on_apply() {
+        let mgr = CrdtDocumentManager::new();
+        let _doc = mgr.get_or_create("test-doc");
+        assert!(!mgr.is_dirty("test-doc"));
+        // set_text always succeeds and marks dirty via the internal apply
+        mgr.set_text("test-doc", "hello world").unwrap();
+        assert!(mgr.is_dirty("test-doc"));
+    }
+
+    #[test]
+    fn test_flush_clears_dirty_flag() {
+        // Without pool, flush should be a no-op but still clear flags
+        let mgr = CrdtDocumentManager::new();
+        mgr.get_or_create("test-doc");
+        mgr.mark_dirty("test-doc");
+        assert!(mgr.is_dirty("test-doc"));
+        // flush_dirty without pool should still clear dirty flags
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            mgr.flush_dirty().await;
+        });
+        assert!(!mgr.is_dirty("test-doc"));
     }
 }

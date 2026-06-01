@@ -209,6 +209,7 @@ fn collect_documents(input_dir: &Path) -> Result<Vec<SsgDocument>> {
             },
             hide_breadcrumbs: fm.hide_breadcrumbs,
             version: "main".to_string(),
+            ..Default::default()
         });
     }
 

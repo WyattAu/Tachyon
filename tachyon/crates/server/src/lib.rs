@@ -128,6 +128,7 @@ pub mod email;
 pub mod error;
 pub mod graph_extractor;
 pub mod graphql;
+pub mod integrations;
 pub mod middleware;
 pub mod notification_dispatch;
 pub mod pagination;
@@ -187,6 +188,7 @@ pub struct AppState {
     pub conflict_state: crate::routes::conflict::ConflictState,
     pub onboarding_state: crate::routes::onboarding::OnboardingState,
     pub comment_state: crate::routes::comments::CommentState,
+    pub digest_state: crate::routes::digest::DigestState,
     pub connection_manager: crate::websocket::ConnectionManager,
     pub crdt_connection_manager: crate::websocket::CrdtConnectionManager,
     pub ai_manager: Arc<crate::ai::AiManager>,
@@ -357,8 +359,9 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     let conflict_state = ConflictState { pool: pool.clone() };
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let comment_state = crate::routes::comments::CommentState::new(pool.clone());
+    let digest_state = crate::routes::digest::DigestState { pool: pool.clone() };
     let connection_manager = ConnectionManager::new();
-    let crdt_connection_manager = CrdtConnectionManager::new();
+    let crdt_connection_manager = CrdtConnectionManager::with_pool(pool.inner().clone());
 
     let oidc_state = if !config.sso_oidc.is_empty() {
         Some(crate::sso::OidcState {
@@ -403,6 +406,16 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
             }
         });
     }
+    {
+        let crdt_mgr = crdt_connection_manager.crdt_manager().clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+            loop {
+                interval.tick().await;
+                crdt_mgr.flush_dirty().await;
+            }
+        });
+    }
 
     let email = crate::email::EmailService::new(config);
 
@@ -429,6 +442,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         conflict_state,
         onboarding_state,
         comment_state,
+        digest_state,
         connection_manager,
         crdt_connection_manager,
         pool,
@@ -503,6 +517,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     use crate::routes::catalog::create_catalog_router;
     use crate::routes::collaboration::{create_collaboration_router, CollaborationState};
     use crate::routes::conflict::create_conflict_router;
+    use crate::routes::digest::create_digest_router;
     use crate::routes::document::create_document_router;
     use crate::routes::ecosystem::{create_ecosystem_router, EcosystemState};
     use crate::routes::files::{create_files_router, FilesState};
@@ -635,6 +650,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let comment_router =
         crate::routes::comments::create_comment_router().with_state(state.comment_state);
 
+    let digest_router = create_digest_router().with_state(state.digest_state);
+
     let mut api_v1 = Router::new()
         .merge(document_router)
         .merge(user_router)
@@ -665,7 +682,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .layer(RequestBodyLimitLayer::new(1024 * 1024))
         .merge(ssg_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
         .merge(oauth2_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
-        .merge(comment_router);
+        .merge(comment_router)
+        .merge(digest_router);
 
     if let Some(sms_otp_router) = sms_otp_router {
         api_v1 = api_v1.merge(sms_otp_router);

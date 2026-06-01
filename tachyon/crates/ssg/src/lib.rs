@@ -14,7 +14,9 @@ pub mod i18n;
 mod manifest;
 mod render;
 mod rss;
+pub mod single_page_export;
 mod sitemap;
+pub mod ssr;
 mod templates;
 
 pub use build::SiteGenerator;
@@ -71,6 +73,7 @@ mod tests {
                 language: "en".to_string(),
                 version: "main".to_string(),
                 hide_breadcrumbs: false,
+                ..Default::default()
             },
             SsgDocument {
                 slug: "configuration".to_string(),
@@ -85,6 +88,7 @@ mod tests {
                 language: "en".to_string(),
                 version: "main".to_string(),
                 hide_breadcrumbs: false,
+                ..Default::default()
             },
         ]
     }
@@ -255,6 +259,7 @@ mod tests {
                 language: "en".to_string(),
                 version: "main".to_string(),
                 hide_breadcrumbs: false,
+                ..Default::default()
             },
             SsgDocument {
                 slug: "getting-started".to_string(),
@@ -269,6 +274,7 @@ mod tests {
                 language: "zh".to_string(),
                 version: "main".to_string(),
                 hide_breadcrumbs: false,
+                ..Default::default()
             },
         ];
 
@@ -456,6 +462,7 @@ mod tests {
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-katex-test");
@@ -552,6 +559,7 @@ sudo certbot --nginx -d docs.example.com
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-adm-css-test");
@@ -722,6 +730,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-breadcrumb-test");
@@ -767,6 +776,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-pagefind-test");
@@ -818,6 +828,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-no-pagefind-test");
@@ -917,6 +928,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-mermaid-test");
@@ -964,6 +976,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-no-mermaid-test");
@@ -1034,6 +1047,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-highlight-test");
@@ -1081,6 +1095,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-theme-test");
@@ -1120,6 +1135,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-no-highlight-test");
@@ -1230,6 +1246,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-robots-test");
@@ -1270,6 +1287,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-canonical-test");
@@ -1314,6 +1332,7 @@ Details.
                 language: "en".to_string(),
                 version: "main".to_string(),
                 hide_breadcrumbs: false,
+                ..Default::default()
             },
             SsgDocument {
                 slug: "hreflang-test".to_string(),
@@ -1328,6 +1347,7 @@ Details.
                 language: "zh".to_string(),
                 version: "main".to_string(),
                 hide_breadcrumbs: false,
+                ..Default::default()
             },
         ];
 
@@ -1400,6 +1420,7 @@ Details.
                 language: "en".to_string(),
                 version: "1.0".to_string(),
                 hide_breadcrumbs: false,
+                ..Default::default()
             },
             SsgDocument {
                 slug: "getting-started".to_string(),
@@ -1414,6 +1435,7 @@ Details.
                 language: "en".to_string(),
                 version: "2.0".to_string(),
                 hide_breadcrumbs: false,
+                ..Default::default()
             },
         ];
 
@@ -1511,6 +1533,7 @@ Details.
             language: "en".to_string(),
             version: "main".to_string(),
             hide_breadcrumbs: false,
+            ..Default::default()
         }];
 
         let tmp = std::env::temp_dir().join("tachyon-ssg-version-nav-test");
@@ -1536,5 +1559,19 @@ Details.
         );
 
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_ssr_render_document() {
+        use super::ssr::render_document;
+        let doc = SsgDocument {
+            slug: "test".to_string(),
+            title: "SSR Test".to_string(),
+            content: "# Hello\n\nWorld".to_string(),
+            description: Some("A test".to_string()),
+            ..Default::default()
+        };
+        let html = render_document(&doc);
+        assert!(html.contains("Hello"));
     }
 }

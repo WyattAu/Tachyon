@@ -105,7 +105,9 @@ const COMMENT_SELECT_SQL: &str = r#"
         review_id::text as review_id,
         author_id::text as author_id,
         content,
-        created_at
+        created_at,
+        line_number,
+        section
     FROM review_comments
 "#;
 
@@ -116,6 +118,10 @@ pub struct ReviewComment {
     pub author_id: String,
     pub content: String,
     pub created_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line_number: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub section: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,6 +129,8 @@ pub struct CreateCommentRequest {
     pub review_id: String,
     pub author_id: String,
     pub content: String,
+    pub line_number: Option<i32>,
+    pub section: Option<String>,
 }
 
 // ============================================================================
@@ -345,6 +353,46 @@ impl DocumentReviewRepository {
         Ok(row.get("count"))
     }
 
+    /// Count approved reviews for a document.
+    ///
+    /// # Arguments
+    /// * `document_id` - UUID of the document
+    ///
+    /// # Returns
+    /// The number of reviews currently in "approved" status.
+    #[instrument(skip(self))]
+    pub async fn count_approved_reviews(&self, document_id: &str) -> DatabaseResult<i64> {
+        let mut conn = self.pool.acquire().await?;
+        let row = query(
+            "SELECT COUNT(*) as count FROM document_reviews WHERE document_id = $1::uuid AND status = 'approved'"
+        )
+        .bind(document_id)
+        .fetch_one(&mut *conn)
+        .await
+        .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        Ok(row.get("count"))
+    }
+
+    /// Count pending reviews for a document (alias for `get_pending_count`).
+    #[instrument(skip(self))]
+    pub async fn count_pending_reviews(&self, document_id: &str) -> DatabaseResult<i64> {
+        self.get_pending_count(document_id).await
+    }
+
+    /// Check whether a document has enough approved reviews to meet the threshold.
+    ///
+    /// Returns `true` when the count of approved reviews >= `threshold`.
+    #[instrument(skip(self))]
+    pub async fn is_fully_approved(
+        &self,
+        document_id: &str,
+        threshold: i32,
+    ) -> DatabaseResult<bool> {
+        let approved = self.count_approved_reviews(document_id).await?;
+        Ok(approved >= threshold as i64)
+    }
+
     #[instrument(skip(self))]
     pub async fn get_latest_status(&self, document_id: &str) -> DatabaseResult<Option<String>> {
         let sql = format!(
@@ -376,10 +424,10 @@ impl DocumentReviewRepository {
 
         let comment: ReviewComment = query_as(
             r#"
-            INSERT INTO review_comments (id, review_id, author_id, content, created_at)
-            VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5)
+            INSERT INTO review_comments (id, review_id, author_id, content, created_at, line_number, section)
+            VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7)
             RETURNING id::text as id, review_id::text as review_id,
-                      author_id::text as author_id, content, created_at
+                      author_id::text as author_id, content, created_at, line_number, section
             "#,
         )
         .bind(&id)
@@ -387,6 +435,8 @@ impl DocumentReviewRepository {
         .bind(&req.author_id)
         .bind(&req.content)
         .bind(now)
+        .bind(req.line_number)
+        .bind(&req.section)
         .fetch_one(&mut *conn)
         .await
         .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
@@ -460,5 +510,31 @@ mod tests {
             serde_json::from_str::<ReviewStatus>("\"approved\"").unwrap(),
             ReviewStatus::Approved
         );
+    }
+
+    #[test]
+    fn test_create_comment_request_with_position() {
+        let req = CreateCommentRequest {
+            review_id: "review-1".to_string(),
+            author_id: "user-1".to_string(),
+            content: "Fix this line".to_string(),
+            line_number: Some(42),
+            section: Some("Introduction".to_string()),
+        };
+        assert_eq!(req.line_number, Some(42));
+        assert_eq!(req.section.as_deref(), Some("Introduction"));
+    }
+
+    #[test]
+    fn test_create_comment_request_without_position() {
+        let req = CreateCommentRequest {
+            review_id: "review-1".to_string(),
+            author_id: "user-1".to_string(),
+            content: "General comment".to_string(),
+            line_number: None,
+            section: None,
+        };
+        assert!(req.line_number.is_none());
+        assert!(req.section.is_none());
     }
 }

@@ -86,29 +86,22 @@ impl ChatPlatformDispatcher {
         &self.config
     }
 
-    pub async fn send_notification(
-        &self,
-        notification: &NotificationData,
-    ) -> Vec<DeliveryResult> {
+    pub async fn send_notification(&self, notification: &NotificationData) -> Vec<DeliveryResult> {
         let mut results = Vec::new();
 
         if self.config.slack_enabled() {
             let payload = build_slack_payload(notification, &self.config);
-            let result = self
-                .send_to_slack(&payload)
-                .await;
+            let result = self.send_to_slack(&payload).await;
             results.push(result);
         }
 
-        if results.len() > 0 {
+        if !results.is_empty() {
             tokio::time::sleep(RATE_LIMIT_INTERVAL).await;
         }
 
         if self.config.discord_enabled() {
             let payload = build_discord_payload(notification, &self.config);
-            let result = self
-                .send_to_discord(&payload)
-                .await;
+            let result = self.send_to_discord(&payload).await;
             results.push(result);
         }
 
@@ -279,10 +272,7 @@ fn build_slack_payload(
     notification: &NotificationData,
     config: &ChatPlatformConfig,
 ) -> serde_json::Value {
-    let channel = config
-        .slack_channel
-        .as_deref()
-        .unwrap_or("#general");
+    let channel = config.slack_channel.as_deref().unwrap_or("#general");
     let color = notification_color_hex(&notification.notification_type);
 
     let mut fields = serde_json::json!([]);
@@ -333,10 +323,7 @@ fn build_discord_payload(
     notification: &NotificationData,
     config: &ChatPlatformConfig,
 ) -> serde_json::Value {
-    let username = config
-        .discord_username
-        .as_deref()
-        .unwrap_or("Tachyon");
+    let username = config.discord_username.as_deref().unwrap_or("Tachyon");
     let color = notification_color_decimal(&notification.notification_type);
 
     let mut fields = serde_json::json!([]);
@@ -420,7 +407,10 @@ mod tests {
 
         let att = &attachments[0];
         assert_eq!(att["title"], "Document Updated");
-        assert_eq!(att["title_link"], "https://tachyon.dev/docs/getting-started");
+        assert_eq!(
+            att["title_link"],
+            "https://tachyon.dev/docs/getting-started"
+        );
         assert_eq!(att["color"], "#3F51B5");
         assert_eq!(att["footer"], "Tachyon");
 
@@ -500,7 +490,8 @@ mod tests {
         assert_eq!(embed["title"], "Document Updated");
         assert_eq!(embed["url"], "https://tachyon.dev/docs/getting-started");
         assert_eq!(embed["description"], "Getting Started guide was updated");
-        assert_eq!(embed["color"], 4181379);
+        // 0x3F51B5 = 4149685
+        assert_eq!(embed["color"], 4149685);
         assert_eq!(embed["footer"]["text"], "Tachyon");
         assert_eq!(embed["timestamp"], "2026-06-01T12:00:00Z");
 
@@ -557,24 +548,27 @@ mod tests {
     fn test_color_mapping_review_requested() {
         let hex = notification_color_hex("review_requested");
         assert_eq!(hex, "#7B68EE");
+        // 0x7B68EE = 8087790
         let dec = notification_color_decimal("review_requested");
-        assert_eq!(dec, 8068750);
+        assert_eq!(dec, 8087790);
     }
 
     #[test]
     fn test_color_mapping_approved() {
         let hex = notification_color_hex("review_approved");
         assert_eq!(hex, "#36a64f");
+        // 0x36a64f = 3581519
         let dec = notification_color_decimal("approved");
-        assert_eq!(dec, 3608239);
+        assert_eq!(dec, 3581519);
     }
 
     #[test]
     fn test_color_mapping_rejected() {
         let hex = notification_color_hex("review_rejected");
         assert_eq!(hex, "#e01e5a");
+        // 0xe01e5a = 14687834
         let dec = notification_color_decimal("rejected");
-        assert_eq!(dec, 14691578);
+        assert_eq!(dec, 14687834);
     }
 
     #[test]
@@ -680,10 +674,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_notification_no_platforms_enabled() {
-        let dispatcher = ChatPlatformDispatcher::new(
-            reqwest::Client::new(),
-            ChatPlatformConfig::default(),
-        );
+        let dispatcher =
+            ChatPlatformDispatcher::new(reqwest::Client::new(), ChatPlatformConfig::default());
         let notification = sample_notification();
         let results = dispatcher.send_notification(&notification).await;
         assert!(results.is_empty());
@@ -691,10 +683,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_test_no_platforms_enabled() {
-        let dispatcher = ChatPlatformDispatcher::new(
-            reqwest::Client::new(),
-            ChatPlatformConfig::default(),
-        );
+        let dispatcher =
+            ChatPlatformDispatcher::new(reqwest::Client::new(), ChatPlatformConfig::default());
         let results = dispatcher.send_test().await;
         assert!(results.is_empty());
     }

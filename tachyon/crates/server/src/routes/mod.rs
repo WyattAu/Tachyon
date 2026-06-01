@@ -7,11 +7,16 @@ pub mod billing;
 pub mod catalog;
 pub mod collaboration;
 pub mod comments;
+pub mod compliance;
 pub mod conflict;
+pub mod digest;
 pub mod document;
+pub mod e2e_encryption;
 pub mod ecosystem;
 pub mod files;
+pub mod gdpr;
 pub mod health;
+pub mod hipaa;
 pub mod magic_link;
 pub mod metrics;
 pub mod mfa;
@@ -37,6 +42,7 @@ pub mod ssg;
 pub mod swagger;
 pub mod tags;
 pub mod team;
+pub mod template_marketplace;
 pub mod user;
 pub mod v2;
 pub mod webhook;
@@ -50,6 +56,7 @@ pub async fn create_router() -> Router {
     use crate::routes::billing::{create_billing_router, BillingState};
     use crate::routes::catalog::{create_catalog_router, CatalogState};
     use crate::routes::conflict::{create_conflict_router, ConflictState};
+    use crate::routes::digest::{create_digest_router, DigestState};
     use crate::routes::document::{create_document_router, DocumentState};
     use crate::routes::node::{create_node_router, NodeState};
     use crate::routes::notification::{create_notification_router, NotificationState};
@@ -138,6 +145,7 @@ pub async fn create_router() -> Router {
         pool: pool.clone(),
         site_config: crate::config::SiteConfig::default(),
     };
+    let digest_state = DigestState { pool: pool.clone() };
     let _connection_manager = ConnectionManager::new();
 
     let document_router = create_document_router().with_state(document_state);
@@ -162,6 +170,7 @@ pub async fn create_router() -> Router {
     let onboarding_router = create_onboarding_router().with_state(onboarding_state);
     let conflict_router = create_conflict_router().with_state(conflict_state);
     let seo_router = create_seo_router().with_state(seo_state);
+    let digest_router = create_digest_router().with_state(digest_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -185,7 +194,8 @@ pub async fn create_router() -> Router {
         .merge(ssg_router)
         .merge(onboarding_router)
         .merge(conflict_router)
-        .merge(seo_router);
+        .merge(seo_router)
+        .merge(digest_router);
 
     Router::new().nest("/api/v1", api_v1)
 }
@@ -355,3 +365,20 @@ pub use comments::{create_comment_router, CommentState};
 pub use sms_otp::{
     create_sms_otp_router, SmsOtpMessageResponse, SmsOtpRequest, SmsOtpRouteState, SmsOtpVerify,
 };
+
+// E2E Encryption exports
+pub use e2e_encryption::{
+    register_encryption_key, E2eState, EncryptionKeyMeta, EncryptionStatus, RegisterKeyRequest,
+};
+
+// Compliance (SOC 2) exports
+pub use compliance::{generate_soc2_checklist, ComplianceChecklist, ComplianceItem, Soc2Category};
+
+// GDPR exports
+pub use gdpr::{
+    generate_data_export, generate_deletion_confirmation, GdprActivityEntry, GdprDataExport,
+    GdprDeletionResult, GdprDocumentsSummary, GdprPersonalData,
+};
+
+// HIPAA exports
+pub use hipaa::{hipaa_compliance_status, HipaaAuditEntry, HipaaComplianceStatus};

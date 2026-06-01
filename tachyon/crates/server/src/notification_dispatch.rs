@@ -4,6 +4,7 @@ use tokio::sync::broadcast;
 use tracing::debug;
 use uuid::Uuid;
 
+use crate::websocket::redis_relay::RedisRelay;
 use crate::websocket::types::WebSocketMessage;
 use crate::websocket::ConnectionManager;
 
@@ -12,6 +13,7 @@ pub struct NotificationDispatcher {
     pool: DatabasePool,
     connection_manager: Arc<ConnectionManager>,
     sse_tx: Arc<broadcast::Sender<String>>,
+    redis_relay: Option<Arc<RedisRelay>>,
 }
 
 impl NotificationDispatcher {
@@ -24,7 +26,13 @@ impl NotificationDispatcher {
             pool,
             connection_manager,
             sse_tx,
+            redis_relay: None,
         }
+    }
+
+    pub fn with_redis_relay(mut self, relay: Arc<RedisRelay>) -> Self {
+        self.redis_relay = Some(relay);
+        self
     }
 
     pub async fn dispatch(
@@ -72,6 +80,13 @@ impl NotificationDispatcher {
         self.connection_manager
             .broadcast_to_room(&format!("user:{}", recipient_user_id), msg)
             .await;
+
+        if let Some(ref relay) = self.redis_relay {
+            let room_id = format!("user:{}", recipient_user_id);
+            if let Ok(payload) = serde_json::to_vec(&data) {
+                let _ = relay.publish(&room_id, &payload).await;
+            }
+        }
 
         let _ = self
             .sse_tx

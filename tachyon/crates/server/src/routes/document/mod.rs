@@ -340,6 +340,10 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
             put(document_branch::update_branch).delete(document_branch::delete_branch),
         )
         .route(
+            "/documents/{document_id}/branches/{branch_id}/diff",
+            get(document_branch::diff_branch),
+        )
+        .route(
             "/documents/{document_id}/branches/{branch_id}/merge",
             post(document_branch::merge_branch),
         )

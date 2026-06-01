@@ -10,6 +10,7 @@
 //! - HTML export (rendered pages suitable for Confluence or static hosting)
 //! - JSON export (structured document data)
 
+pub mod csv_import;
 pub mod docusaurus;
 pub mod error;
 pub mod frontmatter;
