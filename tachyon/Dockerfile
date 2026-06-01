@@ -7,7 +7,7 @@
 
 FROM debian:bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates pkg-config musl-tools make perl gcc libc6-dev \
+    curl ca-certificates pkg-config musl-tools make perl patch gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
     /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl

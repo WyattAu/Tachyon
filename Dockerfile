@@ -10,7 +10,7 @@
 # Stage 1: Build dependencies (cache layer)
 FROM debian:bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates pkg-config musl-tools make perl gcc libc6-dev \
+    curl ca-certificates pkg-config musl-tools make perl patch gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
     /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
@@ -22,7 +22,7 @@ ENV CC_x86_64_unknown_linux_musl=musl-gcc
 ARG TRUNK_VERSION=0.21.14
 RUN mkdir -p /usr/local/bin && touch /usr/local/bin/trunk || true && \
     curl -fsSL -o /tmp/trunk.tar.gz "https://github.com/trunk-rs/trunk/releases/download/v${TRUNK_VERSION}/trunk-x86_64-unknown-linux-gnu.tar.gz" && \
-    echo "PLACEHOLDER_SHA  /tmp/trunk.tar.gz" | sha256sum -c || true && \
+    echo "f2b4680cd239693a646a2795e4633c625328d7b2a044fbe749fa3a2fe9e7036b  /tmp/trunk.tar.gz" | sha256sum -c && \
     tar xzf /tmp/trunk.tar.gz -C /usr/local/bin && rm -f /tmp/trunk.tar.gz
 
 WORKDIR /app
