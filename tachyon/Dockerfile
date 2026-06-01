@@ -1,14 +1,18 @@
 # Tachyon: inner workspace build
 # Builder uses debian:bookworm (permitted for build stages)
 # Runtime uses scratch (static musl binary, zero runtime deps)
+#
+# musl-tools + CC target override for vendored C deps (libgit2/openssl).
+# gcc + libc6-dev required for host build script linking (proc-macro crt files).
 
 FROM debian:bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates pkg-config libssl-dev \
+    curl ca-certificates pkg-config musl-tools make perl gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
     /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
 ENV PATH="/root/.cargo/bin:${PATH}"
+ENV CC_x86_64_unknown_linux_musl=musl-gcc
 
 WORKDIR /app
 

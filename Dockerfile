@@ -1,15 +1,22 @@
 # Tachyon: monorepo build (server + frontend)
 # Builder uses debian:bookworm (permitted for build stages, discarded in final)
 # Runtime uses scratch (static musl binary, zero runtime deps)
+#
+# musl cross-compilation: musl-tools provides musl-gcc for C deps (libgit2, openssl).
+# CC_x86_64_unknown_linux_musl=musl-gcc tells the cc crate to use musl-gcc only for
+# the musl target, keeping the host gnu linker intact for build scripts.
+# gcc + libc6-dev are required for host build scripts (proc-macro crates need gnu crt files).
 
 # Stage 1: Build dependencies (cache layer)
 FROM debian:bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates pkg-config libssl-dev \
+    curl ca-certificates pkg-config musl-tools make perl gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
     /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
 ENV PATH="/root/.cargo/bin:${PATH}"
+# musl-gcc only for the musl target's C compilation (libgit2/openssl vendoring)
+ENV CC_x86_64_unknown_linux_musl=musl-gcc
 
 # Download trunk with checksum verification
 ARG TRUNK_VERSION=0.21.14
