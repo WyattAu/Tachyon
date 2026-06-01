@@ -60,4 +60,5 @@ pub use onboarding::{OnboardingWizard, should_show_onboarding};
 pub use review_panel::ReviewPanel;
 pub use table_of_contents::TableOfContents;
 pub use template_selector::TemplateSelector;
+pub use theme_toggle::{Theme, ThemeInitializer, ThemeToggle};
 pub use version_history::VersionHistory;
