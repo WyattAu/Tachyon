@@ -1,8 +1,8 @@
 # Competitive Comparison Matrix
 
-**Last updated:** 2026-05-31
+**Last updated:** 2026-06-01
 **Scope:** Collaborative knowledge management, real-time editing, SSG, and adjacent categories.
-**Verified:** Cross-referenced against codebase implementation (27 features checked).
+**Verified:** Cross-referenced against codebase implementation (32 features checked).
 
 ---
 
@@ -26,7 +26,7 @@ These are Tachyon's primary competitors -- platforms that combine document editi
 | **DLP / Content Scanning** | Regex-based DLP (CC, SSN, API keys), wired into create/update | No | No | No | No | No |
 | **SSG** | Built-in (tachyon-ssg) | Public pages (limited) | No native SSG | No | GitBook Pages (hosted) | Obsidian Publish (paid) |
 | **Plugin System** | WASM sandbox (Wasmtime), marketplace client | Integrations (REST) | Atlassian Marketplace | No | Custom integrations | Community plugins (JS) |
-| **API** | REST + Swagger, WebSocket | REST, GraphQL (partial) | REST | REST + GraphQL | REST | No public API |
+| **API** | REST + Swagger, WebSocket, GraphQL | REST, GraphQL (partial) | REST | REST + GraphQL | REST | No public API |
 | **Desktop Client** | Tauri 2 (native) | Electron (wrapper) | No native client | No | No | Electron (native) |
 | **CLI** | Native (tachyon-cli) | Notion CLI (unofficial) | Confluence CLI (unofficial) | No | GitBook CLI (unofficial) | CLI (community) |
 | **Import/Export** | Docusaurus, Obsidian, generic vault, MD ZIP, JSON, HTML | MD, CSV, HTML, PDF | MD, Word, PDF | MD, JSON | MD, PDF, OpenAPI | MD, HTML, PDF, Pandoc |
@@ -37,7 +37,10 @@ These are Tachyon's primary competitors -- platforms that combine document editi
 | **Versioning** | Document versions API (diff, restore) | Page history (restore points) | Page history (diff view) | No | Page history | Git-based versioning |
 | **Guest Access** | JWT guest login (rate-limited) | Share links (public/invite) | No (anonymous access possible) | No | Share links | No (local-only) |
 | **White-Label** | Planned (Enterprise) | No | Limited | No | Custom domain | No |
-| **SAML/SSO** | OIDC (runtime), SAML/LDAP (types only) | SAML, SCIM (Enterprise) | SAML, Crowd (Enterprise) | OIDC (planned) | SAML (Enterprise) | No |
+| **SAML/SSO** | OIDC (runtime), SAML (partial runtime, no XML-DSig), LDAP (runtime: bind/search/sync) | SAML, SCIM (Enterprise) | SAML, Crowd (Enterprise) | OIDC (planned) | SAML (Enterprise) | No |
+| **MFA** | TOTP (native, server-side) | No | Yes (Enterprise) | No | No | No |
+| **Notifications** | Web Push, Email (lettre SMTP), Webhooks | In-app only | In-app, email | In-app | In-app | No |
+| **Audit Logging** | Database-persisted audit events (70+ event types) | Page history, audit log (Enterprise) | Page history, audit log | No | Page history, audit log (Enterprise) | File system history (git) |
 
 ### Category A Notes
 
@@ -58,7 +61,7 @@ Tachyon includes a built-in SSG (tachyon-ssg) that generates documentation sites
 | **Language** | Rust | TypeScript/Node.js | Go | TypeScript/React/Node.js | Ruby | JavaScript/Node.js | Rust | Python | Rust/Svelte | JavaScript/React | TypeScript/React/Node.js | TypeScript/Vue/Node.js | Python/Node.js | Rust |
 | **Build Speed** | Fast (Rust native) | Fast (no JS by default) | Very fast (Go compiled) | Moderate (JS bundling) | Slow (Ruby) | Fast (minimal JS) | Very fast (Rust) | Moderate (Python) | Fast (Rust) | Slow (JS bundling) | Moderate (JS bundling) | Fast (Vite) | Fast (Python/JS) | Very fast (Rust) |
 | **Markdown** | CommonMark + GFM, KaTeX, tree-sitter | MDX, frontmatter | CommonMark + GFM, shortcodes | MDX v3 (CommonMark) | CommonMark + GFM, Kramdown | Markdown (it/markdown-it) | CommonMark + GFM, shortcodes | reST, Markdown | MD, MDX (via plugin) | MDX | MDX (via remark) | Markdown (markdown-it) | Markdown + extensions | CommonMark + GFM |
-| **Syntax Highlighting** | tree-sitter (12 langs) | Shiki | Chroma, Pygments | Prism | Rouge | Prism, highlight.js | Sublime Highlight, syntect | Pygments | Shiki (via plugin) | Prism | Shiki (via plugin) | Shiki (markdown-it) | Pygments | syntect |
+| **Syntax Highlighting** | tree-sitter (9 active, 12 defined) | Shiki | Chroma, Pygments | Prism | Rouge | Prism, highlight.js | Sublime Highlight, syntect | Pygments | Shiki (via plugin) | Prism | Shiki (via plugin) | Shiki (markdown-it) | Pygments | syntect |
 | **Math** | KaTeX | KaTeX, MathJax (plugin) | KaTeX (shortcode) | KaTeX (remark-math) | KaTeX (plugin) | MathJax, KaTeX (plugin) | KaTeX (shortcode) | MathJax (Pelican plugins) | KaTeX (via plugin) | KaTeX (via plugin) | KaTeX (remark-math) | MathJax (via plugin) | KaTeX |
 | **i18n** | No (planned) | Built-in (content collections) | Built-in (multilingual) | Built-in (i18n plugin) | No (plugin) | No (plugin) | Built-in | No (plugin) | Built-in (svelte-i18n) | No (plugin) | Built-in (next-i18n) | Built-in | No (plugin) | No |
 | **Theming** | CSS (Tailwind) | Astro components, CSS frameworks | Hugo themes (Go templates) | React components, swizzling | Liquid templates | Nunjucks, Liquid, Handlebars | Tera (Jinja2-like) | Jinja2 templates | Svelte components | React components, Gatsby themes | React components | Vue components | Material, mkdocs-material | Rust/HBS templates |
@@ -137,7 +140,7 @@ Platforms that focus on knowledge graphs, bidirectional links, and structured kn
 | **Self-Hosted** | Yes | No | Yes (self-hosted Docker) | Yes (local, self-hosted sync) | No | Yes | No | Yes (local) |
 | **License** | Apache 2.0 | Proprietary | AGPLv3 | MPL-2.0 (local), AGPLv3 (self-hosted) | Proprietary | AGPLv3 | Proprietary | MIT |
 | **AI Integration** | Plugin-based (OpenAI, Anthropic, Ollama) | Copilot (plugin) | AI chat (plugin) | Anytype AI (beta) | Fibery AI | No | AI (third-party) | No |
-| **API** | REST + WebSocket | No public API | No public API | REST API | REST API | GraphQL | REST API | No |
+| **API** | REST + GraphQL + WebSocket | No public API | No public API | REST API | REST API | GraphQL | REST API | No |
 
 ### Category D Notes
 
@@ -183,7 +186,7 @@ Traditional self-hosted wiki and CMS platforms that overlap with Tachyon's knowl
 | **RBAC** | Fine-grained RBAC | Groups, permissions | Roles, permissions | Fine-grained rights | Plugins (limited) | Spaces, members | Spaces (planned) | No (local-first) |
 | **Plugin System** | WASM (Wasmtime) | npm modules | No | Java extensions | Plugins (TiddlyWiki plugins) | No | Yes (JavaScript) | Yes (JavaScript) |
 | **SSG** | Built-in | No | No | No | Single HTML file export | No | No | No |
-| **API** | REST + Swagger | REST + GraphQL | REST | REST (XWiki REST) | No | REST + WebSocket | REST | REST + WebSocket |
+| **API** | REST + Swagger + GraphQL | REST + GraphQL | REST | REST (XWiki REST) | No | REST + WebSocket | REST | REST + WebSocket |
 | **Multi-Language Content** | No (planned) | Yes (locale per page) | Yes (locale per chapter) | Yes | Yes (plugin) | Yes (planned) | No (planned) | Yes |
 | **Attachments** | Upload API | Yes (storage) | Yes (chapters, pages) | Yes (attachments) | Yes (embedded) | Yes (planned) | Yes | Yes |
 | **Database** | PostgreSQL | PostgreSQL, MySQL, MariaDB, SQLite, MongoDB | MySQL, PostgreSQL, SQLite | MySQL, PostgreSQL, HSQLDB | HTML file (IndexedDB) | PostgreSQL | SQLite (local) | SQLite (local) |
@@ -259,11 +262,13 @@ Platforms' ability to migrate content in and out.
 3. **WASM plugin sandbox** -- Wasmtime-based plugin runtime provides safe extensibility. No other knowledge base offers WASM sandboxing (most use npm/Docker plugins with full filesystem access).
 4. **Semantic + structural knowledge graph** -- Server-side graph with BFS shortest path, connected components, temporal diff, bidirectional wiki-links, backlinks API, orphan node detection, and pgvector semantic similarity. No other self-hosted platform offers this combination.
 5. **DLP content scanning** -- Built-in data loss prevention (credit cards, SSN, API keys) wired into document create/update flow. Most competitors offer this only at Enterprise tier or not at all.
-6. **Comprehensive auth** -- JWT with multi-key rotation, OAuth2 (Google/GitHub), MFA (TOTP), SSO (OIDC with discovery/code exchange), guest access, session management, password reset -- all self-hosted. Most competitors require SaaS for SSO.
+6. **Comprehensive auth** -- JWT with multi-key rotation, OAuth2 (Google/GitHub), MFA (TOTP), SSO (OIDC with discovery/code exchange, SAML partial, LDAP bind/search/sync), guest access, session management, password reset -- all self-hosted. Most competitors require SaaS for SSO.
 7. **Formal verification** -- TLA+ specs and Lean4 proofs in `.specs/`. No competitor publishes formal correctness proofs for their core algorithms.
 8. **Monorepo with 16 crates** -- Clean separation of concerns (core, server, database, search, renderer, RBAC, SSG, editor, import/export, plugin-runtime, desktop, frontend, CLI, storage, testing, benchmarks). Each crate is independently testable.
 9. **Comprehensive CI/CD** -- 11 GitHub Actions workflows including security scanning (Semgrep, Trivy, TruffleHog), SBOM generation, mutation testing (cargo-mutants), OWASP ZAP penetration testing, and Playwright E2E tests.
 10. **PWA with offline fallback** -- Service worker with TTL-based cache invalidation, stale-while-revalidate for static assets, offline.html fallback, network-first for API calls.
+11. **GraphQL + REST dual API** -- Both REST (with auto-generated Swagger UI via utoipa) and GraphQL (via async-graphql) endpoints. Most competitors offer only one or the other.
+12. **Notification pipeline** -- Web Push (VAPID), Email (lettre SMTP), and Webhook delivery (with retry logic). Self-hosted platforms rarely offer all three.
 
 ### Weaknesses (Compared to Market Leaders)
 
@@ -276,7 +281,7 @@ Platforms' ability to migrate content in and out.
 7. **No i18n UI localization** -- 8-locale i18n framework exists in frontend code but no translations are populated. Most competitors support 10+ localized languages.
 8. **No inline comments or embeds** -- No inline commenting on document sections. Embed block parser exists (`!{youtube}`, `!{mermaid}`) but no frontend rendering. Notion and Confluence both support inline comments and embeds natively.
 9. **Limited external migration** -- Can import from Docusaurus, Obsidian, generic markdown vaults, ZIP archives, JSON, HTML. Cannot import from Notion, Confluence, or Google Docs (requires their proprietary APIs).
-10. **SAML/LDAP types only** -- OIDC runtime (authorize/callback) is implemented. SAML and LDAP have type definitions but no runtime handlers.
+10. **SAML partial, LDAP runtime** -- OIDC runtime (authorize/callback) is implemented. SAML has runtime handlers (SP metadata endpoint, ACS endpoint) but no XML signature validation. LDAP has full runtime handlers with bind authentication, user search, and directory sync via ldap3.
 
 ### Differentiation Summary
 
@@ -288,7 +293,7 @@ Platforms' ability to migrate content in and out.
 | **Real-Time Collab** | Competitive (CRDT via Yrs, WebSocket relay, presence) |
 | **Search** | Competitive (BM25 + semantic/pgvector) |
 | **Knowledge Graph** | Competitive (structural queries + semantic, bidirectional links, backlinks) |
-| **Auth / SSO** | Competitive (JWT, OAuth2, MFA, SSO OIDC, guest access -- all self-hosted) |
+| **Auth / SSO** | Top-tier (JWT, OAuth2, TOTP MFA, SSO OIDC/SAML/LDAP, guest access -- all self-hosted) |
 | **SSG** | Unique (only platform combining SSG + collaboration) |
 | **Plugin System** | Unique architecture (WASM sandbox vs. npm/Docker) |
 | **Offline** | Partial (PWA asset cache, no local-first sync) |
