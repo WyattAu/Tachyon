@@ -1,42 +1,52 @@
-# Server-only Docker image (no frontend build)
-# Frontend is built separately and served via nginx or CDN
-FROM rust:bookworm AS builder
+# Tachyon: server-only build (no frontend; served via nginx or CDN)
+# Builder uses debian:bookworm (permitted for build stages)
+# Runtime uses scratch (static musl binary, zero runtime deps)
+
+FROM debian:bookworm AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
+    /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 WORKDIR /app
 
-# Copy manifests first for dependency caching
+# Dependency cache layer
 COPY tachyon/Cargo.toml tachyon/Cargo.lock ./
-# Remove desktop/testing/cli/benchmarks from workspace members
-RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml
-RUN mkdir -p crates && \
+RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml && \
+    mkdir -p crates && \
     for crate in core database editor import_export plugin-runtime rbac renderer search server ssg storage; do \
         mkdir -p crates/$crate/src && echo "" > crates/$crate/src/lib.rs; \
     done && \
-    cargo build --release --bin tachyon-server 2>/dev/null || true && \
+    cargo build --release --bin tachyon-server --target x86_64-unknown-linux-musl 2>/dev/null || true && \
     rm -rf crates
 
+# Full build
 COPY tachyon/ .
-# Re-apply workspace member removal (COPY overwrites Cargo.toml)
-RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml
-RUN cargo build --release --bin tachyon-server
+RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml && \
+    cargo build --release --bin tachyon-server --target x86_64-unknown-linux-musl
 
-FROM ubuntu:24.04 AS runtime
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates libssl3 \
-    && rm -rf /var/lib/apt/lists/*
+FROM scratch
+
+LABEL org.opencontainers.image.source="https://github.com/WyattAu/Tachyon" \
+      org.opencontainers.image.description="Tachyon server (headless, no frontend)" \
+      org.opencontainers.image.title="tachyon-server" \
+      org.opencontainers.image.vendor="WyattAu"
+
+EXPOSE 8080
+
 WORKDIR /app
 
-COPY --from=builder /app/target/release/tachyon-server /app/tachyon-server
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/tachyon-server /app/tachyon-server
 COPY tachyon/crates/database/migrations /app/migrations
 
-RUN groupadd -r tachyon && useradd -r -g tachyon -d /app tachyon && \
-    chown -R tachyon:tachyon /app
+RUN mkdir -p /etc && echo "tachyon:x:65532:65532:tachyon:/app:/sbin/nologin" > /etc/passwd
 
-USER tachyon
-EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD ["/app/tachyon-server", "health"] || exit 1
+HEALTHCHECK NONE
 
-ENV RUST_LOG=info
-ENV DATABASE_URL=postgres://tachyon:tachyon@db:5432/tachyon
-ENV JWT_SECRET=change-me-in-production
+USER 65532:65532
+
 ENTRYPOINT ["/app/tachyon-server"]
+
+STOPSIGNAL SIGTERM

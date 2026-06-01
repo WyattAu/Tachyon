@@ -24,7 +24,7 @@ tracing-subscriber = "0.3"
 thiserror = "1"
 
 # Core Logic
-git2 = "0.20"
+git2 = { version = "0.20", features = ["vendored-openssl", "vendored-libgit2"] }
 uuid = { version = "1", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 

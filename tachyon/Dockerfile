@@ -1,26 +1,18 @@
-# Multi-stage build for Tachyon Backend Server
-# Optimized for small image size and fast builds
+# Tachyon: inner workspace build
+# Builder uses debian:bookworm (permitted for build stages)
+# Runtime uses scratch (static musl binary, zero runtime deps)
 
-# Build stage
-FROM rust:alpine AS builder
-
-# Install build dependencies
-RUN apk add --no-cache \
-    musl-dev \
-    g++ \
-    pkgconfig \
-    openssl-dev \
-    postgresql-dev \
-    git \
-    patch \
-    perl \
-    make \
-    cmake \
-    curl
+FROM debian:bookworm AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
+    /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app
 
-# Copy workspace manifests first for dependency caching
+# Dependency cache layer: copy all workspace manifests + create dummy sources
 COPY Cargo.toml Cargo.lock ./
 COPY crates/core/Cargo.toml ./crates/core/
 COPY crates/server/Cargo.toml ./crates/server/
@@ -28,110 +20,50 @@ COPY crates/database/Cargo.toml ./crates/database/
 COPY crates/renderer/Cargo.toml ./crates/renderer/
 COPY crates/rbac/Cargo.toml ./crates/rbac/
 COPY crates/search/Cargo.toml ./crates/search/
-COPY crates/desktop/Cargo.toml ./crates/desktop/
-COPY crates/desktop/src-tauri/Cargo.toml ./crates/desktop/src-tauri/
-COPY crates/testing/Cargo.toml ./crates/testing/
-COPY crates/cli/Cargo.toml ./crates/cli/
-COPY crates/frontend/Cargo.toml ./crates/frontend/
 COPY crates/storage/Cargo.toml ./crates/storage/
 COPY crates/import-export/Cargo.toml ./crates/import-export/
 COPY crates/ssg/Cargo.toml ./crates/ssg/
 COPY crates/plugin-runtime/Cargo.toml ./crates/plugin-runtime/
 COPY crates/editor/Cargo.toml ./crates/editor/
+COPY crates/frontend/Cargo.toml ./crates/frontend/
 
-# Create dummy source files for ALL workspace members
-# Must match the module structure expected by each crate's Cargo.toml
-RUN mkdir -p crates/server/src && \
-    echo "pub fn dummy() {}" > crates/server/src/lib.rs && \
+# Remove non-server workspace members (desktop/testing/cli/benchmarks require GTK/tauri)
+RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml && \
+    mkdir -p crates/server/src && echo "pub fn dummy() {}" > crates/server/src/lib.rs && \
     echo "fn main() {}" > crates/server/src/main.rs && \
-    mkdir -p crates/core/src && \
-    echo "pub fn dummy() {}" > crates/core/src/lib.rs && \
-    mkdir -p crates/database/src && \
-    echo "pub fn dummy() {}" > crates/database/src/lib.rs && \
-    mkdir -p crates/database/migrations && \
-    echo "" > crates/database/migrations/.gitkeep && \
-    mkdir -p crates/renderer/src && \
-    echo "pub fn dummy() {}" > crates/renderer/src/lib.rs && \
-    mkdir -p crates/rbac/src && \
-    echo "pub fn dummy() {}" > crates/rbac/src/lib.rs && \
-    mkdir -p crates/search/src && \
-    echo "pub fn dummy() {}" > crates/search/src/lib.rs && \
-    mkdir -p crates/storage/src && \
-    echo "pub fn dummy() {}" > crates/storage/src/lib.rs && \
-    mkdir -p crates/import-export/src && \
-    echo "pub fn dummy() {}" > crates/import-export/src/lib.rs && \
-    mkdir -p crates/ssg/src && \
-    echo "pub fn dummy() {}" > crates/ssg/src/lib.rs && \
-    mkdir -p crates/plugin-runtime/src && \
-    echo "pub fn dummy() {}" > crates/plugin-runtime/src/lib.rs && \
-    mkdir -p crates/editor/src && \
-    echo "pub fn dummy() {}" > crates/editor/src/lib.rs && \
-    mkdir -p crates/desktop/src && \
-    echo "pub fn dummy() {}" > crates/desktop/src/lib.rs && \
-    mkdir -p crates/desktop/src-tauri/src && \
-    echo "pub fn dummy() {}" > crates/desktop/src-tauri/src/lib.rs && \
-    echo "fn main() {}" > crates/desktop/src-tauri/src/main.rs && \
-    mkdir -p crates/desktop/src-tauri/icons && \
-    mkdir -p crates/desktop/src-tauri/capabilities && \
-    echo "" > crates/desktop/src-tauri/tauri.conf.json && \
-    mkdir -p crates/testing/src && \
-    echo "pub fn dummy() {}" > crates/testing/src/lib.rs && \
-    mkdir -p crates/testing/src/fuzz && \
-    echo "fn main() {}" > crates/testing/src/fuzz/harness.rs && \
-    mkdir -p crates/testing/benches && \
-    echo "fn main() {}" > crates/testing/benches/repository_bench.rs && \
-    echo "fn main() {}" > crates/testing/benches/search_bench.rs && \
-    echo "fn main() {}" > crates/testing/benches/rbac_bench.rs && \
-    echo "fn main() {}" > crates/testing/benches/database_bench.rs && \
-    mkdir -p crates/cli/src && \
-    echo "pub fn dummy() {}" > crates/cli/src/lib.rs && \
+    for crate in core database renderer rbac search storage import-export ssg plugin-runtime editor frontend; do \
+        mkdir -p crates/$crate/src && echo "pub fn dummy() {}" > crates/$crate/src/lib.rs; \
+    done && \
+    mkdir -p crates/database/migrations && echo "" > crates/database/migrations/.gitkeep && \
     mkdir -p crates/frontend/src && \
-    echo "pub fn dummy() {}" > crates/frontend/src/lib.rs
+    cargo build --release --target x86_64-unknown-linux-musl -p tachyon-server --lib 2>/dev/null || true && \
+    rm -rf crates
 
-# Build dependencies only (this layer is cached until Cargo.toml/lock changes)
-# Use --lib to skip binary targets and avoid module resolution issues
-RUN cargo build --release -p tachyon-server --lib
-
-# Copy actual source code (invalidates cache only when source changes)
+# Full build
 COPY crates ./crates
+RUN find target/x86_64-unknown-linux-musl/release/.fingerprint -name 'tachyon-*' -type d -exec rm -rf {} + 2>/dev/null || true
+RUN cargo build --release --target x86_64-unknown-linux-musl -p tachyon-server
 
-# Remove incremental compilation fingerprints for workspace crates
-# so Cargo detects the source file changes
-RUN find target/release/.fingerprint -name 'tachyon-*' -type d -exec rm -rf {} + 2>/dev/null || true
+FROM scratch
 
-# Build the actual binary with real source code
-RUN cargo build --release -p tachyon-server
+LABEL org.opencontainers.image.source="https://github.com/WyattAu/Tachyon" \
+      org.opencontainers.image.description="Tachyon server (inner workspace build)" \
+      org.opencontainers.image.title="tachyon-server" \
+      org.opencontainers.image.vendor="WyattAu"
 
-# Runtime stage
-FROM alpine:3.19
-
-# Install runtime dependencies
-RUN apk add --no-cache \
-    ca-certificates \
-    libgcc \
-    postgresql-libs \
-    && addgroup -g 1000 tachyon \
-    && adduser -D -u 1000 -G tachyon tachyon
+EXPOSE 8080
 
 WORKDIR /app
 
-# Copy the binary from builder
-COPY --from=builder /app/target/release/tachyon-server /usr/local/bin/tachyon-server
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/tachyon-server /usr/local/bin/tachyon-server
+COPY crates/database/migrations /app/migrations
 
-# Copy migration files
-COPY --chown=tachyon:tachyon crates/database/migrations /app/migrations
+RUN mkdir -p /etc && echo "tachyon:x:65532:65532:tachyon:/app:/sbin/nologin" > /etc/passwd
 
-# Create data directory
-RUN mkdir -p /app/data && chown tachyon:tachyon /app/data
+HEALTHCHECK NONE
 
-USER tachyon
+USER 65532:65532
 
-# Expose port
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/health || exit 1
-
-# Run the binary
 ENTRYPOINT ["tachyon-server"]
+
+STOPSIGNAL SIGTERM
