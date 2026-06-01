@@ -512,4 +512,12 @@ Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are t
 | 2026-05-28 | Include tachyon-cli in pre-commit clippy/test | Catch lint errors locally; GTK available via Nix |
 | 2026-05-28 | Keep tachyon-cli excluded from CI | tachyon-cli depends on tachyon-desktop (GTK), not available in CI runners |
 | 2026-05-28 | Consolidate 6 roadmap files into single ROADMAP.md | Eliminate version/count conflicts across documents |
+| 2026-06-01 | Post-audit: resolve 15 clippy warnings across 6 crates | manual_strip, derivable_impls, map_clone, if_same_then_else, io_other_error, type_complexity |
+| 2026-06-01 | Post-audit: remove dead code (11 unused re-exports, 833-line un-gated test file) | graph_invariants.rs was compiled into production binary without #[cfg(test)] |
+| 2026-06-01 | Post-audit: fix Mutex poisoned-lock panic in attachments.rs | unwrap_or_else replaces unwrap for browser WASM stability |
+| 2026-06-01 | Post-audit: enforce brutalist design across 12 frontend components | All rounded corners replaced with rounded-none per design spec |
+| 2026-06-01 | Post-audit: improve WCAG compliance (aria-label, role, contrast) | Editor toolbar buttons, search dialog, line-number color fixed |
+| 2026-06-01 | Post-audit: optimize CI/CD (cache restore-keys, concurrency groups) | 8 cache steps, 7 workflows get concurrency groups |
+| 2026-06-01 | Post-audit: fix ZAP scan networking (host.docker.internal) | Linux runners do not resolve host.docker.internal; use localhost |
+| 2026-06-01 | Post-audit: fix CLI test env var isolation | DATABASE_URL leaked between parallel tests via missing cleanup |
 | 2026-05-26 | Switch CI to pgvector/pgvector:pg16 | Migration requires CREATE EXTENSION vector |
