@@ -7,8 +7,8 @@
 //! with YAML frontmatter.
 
 use crate::{
-    error::ImportExportResult, frontmatter::Frontmatter, slugify, ExportSummary, ImportExportError,
-    ImportSummary, ImportedDocument,
+    ExportSummary, ImportExportError, ImportSummary, ImportedDocument, error::ImportExportResult,
+    frontmatter::Frontmatter, slugify,
 };
 use std::collections::HashSet;
 use std::io::{Cursor, Read, Write};

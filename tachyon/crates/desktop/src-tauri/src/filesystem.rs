@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use tauri::AppHandle;
 use tokio::sync::RwLock;
 

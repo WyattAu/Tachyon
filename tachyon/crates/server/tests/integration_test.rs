@@ -1,7 +1,7 @@
 use axum::{
-    body::Body,
-    http::{header, Request, StatusCode},
     Router,
+    body::Body,
+    http::{Request, StatusCode, header},
 };
 use serde_json::json;
 use tower::ServiceExt;
@@ -208,11 +208,13 @@ async fn test_content_type_json() {
 
     let content_type = response.headers().get("content-type");
     assert!(content_type.is_some());
-    assert!(content_type
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .contains("application/json"));
+    assert!(
+        content_type
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .contains("application/json")
+    );
 }
 
 #[tokio::test]

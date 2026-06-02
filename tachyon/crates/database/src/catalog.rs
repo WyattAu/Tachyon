@@ -6,7 +6,7 @@ use crate::schema::DatabasePool;
 use crate::types::*;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::{query, Row};
+use sqlx::{Row, query};
 use tracing::{debug, info, instrument};
 
 /// Project catalog repository
@@ -189,7 +189,7 @@ impl CatalogRepository {
             "SELECT id::text, name, slug, description, project_type, owner_id::text, \
              organization_id::text, lifecycle, repository_url, docs_url, api_url, \
              tags::text as tags_text, metadata::text as metadata_text, language, framework, visibility, status, created_at, updated_at \
-             FROM projects WHERE 1=1"
+             FROM projects WHERE 1=1",
         );
         let mut param_count = 0;
 
@@ -616,8 +616,7 @@ impl CatalogRepository {
         project_id: &str,
     ) -> DatabaseResult<Vec<ProjectMember>> {
         // Cast UUID columns to TEXT for compatibility
-        let select_sql =
-            "SELECT id, project_id::text, user_id::text, role, added_by::text, added_at \
+        let select_sql = "SELECT id, project_id::text, user_id::text, role, added_by::text, added_at \
              FROM project_members WHERE project_id = $1::uuid ORDER BY added_at";
 
         let mut conn = self.pool.acquire().await?;

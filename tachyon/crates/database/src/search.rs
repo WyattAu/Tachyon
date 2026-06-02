@@ -6,7 +6,7 @@ use crate::schema::DatabasePool;
 use crate::types::DocumentMetadata;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, Row};
+use sqlx::{Row, query};
 use tracing::{debug, info, instrument};
 
 fn row_to_document_metadata(row: sqlx::postgres::PgRow) -> DatabaseResult<DocumentMetadata> {

@@ -2,7 +2,7 @@
 name = "tachyon-editor"
 version = "0.1.0"
 license = { workspace = true }
-edition = "2021"
+edition.workspace = true
 description = "Native Rust text editor engine for Tachyon"
 
 [dependencies]

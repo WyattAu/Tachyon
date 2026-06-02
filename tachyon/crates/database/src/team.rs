@@ -5,7 +5,7 @@ use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, FromRow};
+use sqlx::{FromRow, query, query_as};
 
 /// Database row model for the `teams` table.
 #[derive(Debug, Clone, FromRow)]

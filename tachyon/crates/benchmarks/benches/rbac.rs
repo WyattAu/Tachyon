@@ -1,7 +1,7 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use tachyon_core::id::{SessionId, UserId};
-use tachyon_rbac::types::{AccessRequest, Action, AuthContext, Resource, Subject};
 use tachyon_rbac::Enforcer;
+use tachyon_rbac::types::{AccessRequest, Action, AuthContext, Resource, Subject};
 
 fn bench_authorize(c: &mut Criterion) {
     let mut group = c.benchmark_group("rbac_authorize");

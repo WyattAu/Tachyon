@@ -179,7 +179,9 @@ async fn test_node_unauthorized() {
         .expect("Request failed");
 
     assert!(
-        response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
+        response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
         "Expected UNAUTHORIZED, OK, or INTERNAL_SERVER_ERROR (no auth middleware in test router), got {}",
         response.status()
     );

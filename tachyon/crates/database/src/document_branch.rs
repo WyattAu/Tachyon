@@ -5,7 +5,7 @@ use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query_as, FromRow};
+use sqlx::{FromRow, query_as};
 use tracing::{debug, info, instrument};
 use uuid::Uuid;
 

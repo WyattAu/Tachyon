@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 use tachyon_search::{IndexConfig, IndexManager};
 use tachyon_server::config::ServerConfig;
 use tracing::{error, info, warn};
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
+use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Global panic information storage for debugging
 static PANIC_INFO: OnceLock<String> = OnceLock::new();

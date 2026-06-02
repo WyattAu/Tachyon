@@ -1,6 +1,6 @@
 //! GraphQL type definitions and resolvers for Tachyon.
 
-use async_graphql::{Context, Object, Result, SimpleObject, ID};
+use async_graphql::{Context, ID, Object, Result, SimpleObject};
 use chrono::{DateTime, Utc};
 use tachyon_database::{
     DatabasePool, DocumentRepository, SearchFilters, SearchRepository, SpaceRepository,

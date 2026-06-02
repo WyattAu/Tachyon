@@ -1,17 +1,17 @@
 // SEO routes: robots.txt, sitemap.xml, and server-side rendered document pages
 
 use axum::{
-    extract::{Path, State},
-    http::{header, StatusCode},
-    response::{Html, IntoResponse},
     Extension,
+    extract::{Path, State},
+    http::{StatusCode, header},
+    response::{Html, IntoResponse},
 };
 use tachyon_core::DocumentId;
 use tachyon_database::{DatabasePool, DocumentRepository};
 use tachyon_renderer::{
-    context::{AuthorInfo, RenderContext, RenderMetadata},
-    page::{render_full_page, SiteConfig as RendererSiteConfig},
     RenderConfig, Renderer,
+    context::{AuthorInfo, RenderContext, RenderMetadata},
+    page::{SiteConfig as RendererSiteConfig, render_full_page},
 };
 
 /// Shared state for SEO routes

@@ -89,12 +89,13 @@ fn test_docusaurus_import_frontmatter_parsing() {
         .unwrap();
     assert_eq!(bash.title, "Bash Scripting");
     assert_eq!(bash.slug.as_deref(), Some("bash-scripting"));
-    assert!(bash
-        .frontmatter
-        .description
-        .as_ref()
-        .unwrap()
-        .contains("Bash"));
+    assert!(
+        bash.frontmatter
+            .description
+            .as_ref()
+            .unwrap()
+            .contains("Bash")
+    );
     assert!(!bash.content.contains("---"));
     assert!(bash.content.contains("## Conditional Expressions"));
 }

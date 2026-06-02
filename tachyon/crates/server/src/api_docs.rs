@@ -2,8 +2,8 @@
 // Provides OpenAPI specification generation and Swagger UI
 
 use std::sync::OnceLock;
-use utoipa::openapi::OpenApi as OpenApiSpec;
 use utoipa::OpenApi;
+use utoipa::openapi::OpenApi as OpenApiSpec;
 use utoipa_swagger_ui::SwaggerUi;
 
 /// Compute the OpenAPI spec once and cache it. The utoipa derive macro

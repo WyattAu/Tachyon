@@ -5,7 +5,7 @@ use crate::audit::{AuditEvent, AuditEventType, AuditSeverity};
 use crate::error::ServerError;
 use axum::{
     extract::{Multipart, Query, State},
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     response::{IntoResponse, Json, Response},
 };
 use std::path::{Path, PathBuf};

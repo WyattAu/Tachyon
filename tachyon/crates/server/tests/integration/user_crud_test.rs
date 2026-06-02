@@ -1,13 +1,10 @@
 use tachyon_core::types::user::UserRole;
 use tachyon_database::UserRepository;
 
+use super::common::skip_without_db;
 use crate::common::setup::{
     create_test_pool, create_test_user, setup_database, teardown_test_user,
 };
-
-fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
-}
 
 #[tokio::test]
 async fn test_create_user() {
@@ -223,16 +220,19 @@ async fn test_user_exists() {
     let user = create_test_user(&pool).await;
     let repo = UserRepository::new(pool.clone());
 
-    assert!(repo
-        .exists(&user.id)
-        .await
-        .expect("Failed to check existence"));
+    assert!(
+        repo.exists(&user.id)
+            .await
+            .expect("Failed to check existence")
+    );
 
     let fake_id = tachyon_core::generate_user_id();
-    assert!(!repo
-        .exists(&fake_id)
-        .await
-        .expect("Failed to check existence"));
+    assert!(
+        !repo
+            .exists(&fake_id)
+            .await
+            .expect("Failed to check existence")
+    );
 
     teardown_test_user(&pool, &user.username).await;
 }

@@ -2,8 +2,8 @@
 name = "tachyon-storage"
 version = "0.1.0"
 license = { workspace = true }
+edition.workspace = true
 description = "Pluggable storage backends for Tachyon — SQLite, Memory"
-edition = "2021"
 
 [lib]
 name = "tachyon_storage"

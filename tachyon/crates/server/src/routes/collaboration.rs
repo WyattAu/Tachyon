@@ -12,12 +12,12 @@ use tracing::info;
 
 use crate::error::ServerError;
 use crate::websocket::ConnectionManager;
-use tachyon_database::error::DatabaseError;
 use tachyon_database::CommentRepository;
 use tachyon_database::CreateDocumentCommentRequest as DbCreateCommentRequest;
 use tachyon_database::PresenceRepository;
 use tachyon_database::UpdateDocumentCommentRequest as DbUpdateCommentRequest;
 use tachyon_database::UpsertPresenceRequest as DbUpsertPresenceRequest;
+use tachyon_database::error::DatabaseError;
 
 /// Collaboration state
 #[derive(Clone)]

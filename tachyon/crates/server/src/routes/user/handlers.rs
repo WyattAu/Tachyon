@@ -1,10 +1,10 @@
 // Route handler functions for user endpoints
 
 use super::types::{
-    hash_refresh_token, AuthenticateRequest, AuthenticateResponse, CreateUserRequest,
-    LogoutRequest, RefreshRequest, RegisterRequest, UpdateProfileRequest, UpdateUserRequest,
-    UserCursorPage, UserErrorResponse, UserListResponse, UserQuery, UserResponse, UserState,
-    REFRESH_TOKEN_EXPIRATION_SECS,
+    AuthenticateRequest, AuthenticateResponse, CreateUserRequest, LogoutRequest,
+    REFRESH_TOKEN_EXPIRATION_SECS, RefreshRequest, RegisterRequest, UpdateProfileRequest,
+    UpdateUserRequest, UserCursorPage, UserErrorResponse, UserListResponse, UserQuery,
+    UserResponse, UserState, hash_refresh_token,
 };
 use crate::audit::{AuditEvent, AuditEventType, AuditSeverity};
 use crate::error::ServerError;
@@ -78,8 +78,8 @@ pub async fn register(
         ));
     }
 
-    if let Some(ref email) = req.email {
-        if !email.contains('@') || !email.contains('.') {
+    if let Some(ref email) = req.email
+        && (!email.contains('@') || !email.contains('.')) {
             return Err((
                 StatusCode::BAD_REQUEST,
                 Json(UserErrorResponse {
@@ -88,7 +88,6 @@ pub async fn register(
                 }),
             ));
         }
-    }
 
     // Build user with hashed password
     let user_id = tachyon_core::generate_user_id();
@@ -958,15 +957,14 @@ pub async fn logout(
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<UserErrorResponse>)> {
     info!("User logout");
 
-    if let Some(Json(req)) = body {
-        if let Some(ref token) = req.refresh_token {
+    if let Some(Json(req)) = body
+        && let Some(ref token) = req.refresh_token {
             let hash = hash_refresh_token(token);
             let repo = state.refresh_token_repo();
             if let Err(e) = repo.revoke(&hash).await {
                 warn!("Failed to revoke refresh token: {}", e);
             }
         }
-    }
 
     Ok(Json(serde_json::json!({
         "success": true,

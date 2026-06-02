@@ -513,21 +513,21 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let saml_state = state.saml_state;
     let ldap_state = state.ldap_state;
     use crate::routes::activity::create_activity_router;
-    use crate::routes::billing::{create_billing_router, BillingState};
+    use crate::routes::billing::{BillingState, create_billing_router};
     use crate::routes::catalog::create_catalog_router;
-    use crate::routes::collaboration::{create_collaboration_router, CollaborationState};
+    use crate::routes::collaboration::{CollaborationState, create_collaboration_router};
     use crate::routes::conflict::create_conflict_router;
     use crate::routes::digest::create_digest_router;
     use crate::routes::document::create_document_router;
-    use crate::routes::ecosystem::{create_ecosystem_router, EcosystemState};
-    use crate::routes::files::{create_files_router, FilesState};
+    use crate::routes::ecosystem::{EcosystemState, create_ecosystem_router};
+    use crate::routes::files::{FilesState, create_files_router};
     use crate::routes::mfa::create_mfa_router;
     use crate::routes::node::create_node_router;
     use crate::routes::notification::create_notification_router;
-    use crate::routes::oauth2::{create_oauth2_router, OAuth2State};
+    use crate::routes::oauth2::{OAuth2State, create_oauth2_router};
     use crate::routes::onboarding::create_onboarding_router;
-    use crate::routes::organization::{create_organization_router, OrganizationState};
-    use crate::routes::password_reset::{create_password_reset_router, PasswordResetState};
+    use crate::routes::organization::{OrganizationState, create_organization_router};
+    use crate::routes::password_reset::{PasswordResetState, create_password_reset_router};
     use crate::routes::plugin::create_plugin_router_with_state;
     use crate::routes::repository::create_repository_router;
     use crate::routes::review::create_review_router;
@@ -537,14 +537,14 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     use crate::routes::session::create_session_router;
     use crate::routes::sms_otp::create_sms_otp_router;
     use crate::routes::space::create_space_router;
-    use crate::routes::ssg::{create_ssg_router, SsgState};
+    use crate::routes::ssg::{SsgState, create_ssg_router};
     use crate::routes::tags::create_tags_router;
     use crate::routes::team::create_team_router;
     use crate::routes::user::create_user_router;
     use crate::routes::webhook::create_webhook_router;
     use crate::websocket::handle_crdt_websocket_upgrade;
     use crate::websocket::handle_websocket_upgrade;
-    use axum::{routing::get, Router};
+    use axum::{Router, routing::get};
     use tower::ServiceBuilder;
     use tower_http::{
         compression::CompressionLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,

@@ -18,9 +18,13 @@ pub fn test_db_url() -> String {
 }
 
 pub async fn create_test_pool() -> DatabasePool {
-    DatabasePool::new(&test_db_url()).await.expect(
-        "Failed to connect to integration test database. Is PostgreSQL running on port 5433?",
-    )
+    let url = test_db_url();
+    DatabasePool::new(&url).await.unwrap_or_else(|e| {
+        panic!(
+            "Failed to connect to integration test database ({}). Is PostgreSQL running?",
+            e
+        )
+    })
 }
 
 pub async fn setup_database(_pool: &DatabasePool) {

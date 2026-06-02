@@ -1,14 +1,14 @@
 use axum::{
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
         State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     response::{IntoResponse, Response},
 };
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::sync::{RwLock, broadcast, mpsc};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
@@ -149,7 +149,7 @@ impl ConnectionManager {
         if let Some(client) = client {
             let client_rooms = client.rooms.clone();
 
-            if let Some(ref uid) = &client.user_id {
+            if let Some(uid) = &client.user_id {
                 self.leave_user_room(client_id, uid).await;
             }
 
@@ -205,11 +205,10 @@ impl ConnectionManager {
                 .or_default()
                 .push(client_id.to_string());
         }
-        if let Some(client) = self.clients.write().await.get_mut(client_id) {
-            if !client.rooms.contains(&room_id.to_string()) {
+        if let Some(client) = self.clients.write().await.get_mut(client_id)
+            && !client.rooms.contains(&room_id.to_string()) {
                 client.rooms.push(room_id.to_string());
             }
-        }
         debug!(client_id = %client_id, room_id = %room_id, "Client joined room");
     }
 
@@ -369,11 +368,10 @@ impl ConnectionManager {
     }
 
     pub async fn update_cursor(&self, client_id: &str, document_id: &str, cursor_position: usize) {
-        if let Some(presence_list) = self.document_presence.write().await.get_mut(document_id) {
-            if let Some(presence) = presence_list.iter_mut().find(|p| p.client_id == client_id) {
+        if let Some(presence_list) = self.document_presence.write().await.get_mut(document_id)
+            && let Some(presence) = presence_list.iter_mut().find(|p| p.client_id == client_id) {
                 presence.cursor_position = cursor_position;
             }
-        }
     }
 
     pub async fn touch_client(&self, client_id: &str) {
@@ -413,14 +411,13 @@ impl ConnectionManager {
                     }
                 }
 
-                if let Some(doc_id) = room_id.strip_prefix("doc:") {
-                    if let Some(list) = presence.get_mut(doc_id) {
+                if let Some(doc_id) = room_id.strip_prefix("doc:")
+                    && let Some(list) = presence.get_mut(doc_id) {
                         list.retain(|p| p.client_id != *client_id);
                         if list.is_empty() {
                             presence.remove(doc_id);
                         }
                     }
-                }
             }
 
             info!(client_id = %client_id, "Cleaned up stale client");
@@ -500,11 +497,10 @@ async fn handle_socket(socket: WebSocket, manager: ConnectionManager) {
                     }
                 }
                 Ok(Message::Binary(data)) => {
-                    if let Ok(text) = String::from_utf8(data.to_vec()) {
-                        if let Ok(msg) = serde_json::from_str::<WebSocketMessage>(&text) {
+                    if let Ok(text) = String::from_utf8(data.to_vec())
+                        && let Ok(msg) = serde_json::from_str::<WebSocketMessage>(&text) {
                             handle_client_message(&manager_clone, &client_id_recv, msg).await;
                         }
-                    }
                 }
                 Ok(Message::Close(_)) => {
                     info!(client_id = %client_id_recv, "Client sent close frame");
@@ -686,9 +682,9 @@ async fn handle_client_message(
             }
         }
         MessageType::Edit => {
-            if let Some(doc_id) = &msg.document_id {
-                if let Some(data) = &msg.data {
-                    if let Ok(edit) = serde_json::from_value::<DocumentEdit>(data.clone()) {
+            if let Some(doc_id) = &msg.document_id
+                && let Some(data) = &msg.data
+                    && let Ok(edit) = serde_json::from_value::<DocumentEdit>(data.clone()) {
                         let operations = match edit.operation {
                             EditOperation::Insert { position, text } => {
                                 vec![Operation::insert(position, text)]
@@ -727,22 +723,19 @@ async fn handle_client_message(
 
                             if let Some(new_version) = new_version {
                                 let mut response_msg = msg.clone();
-                                if let Some(ref mut data) = response_msg.data {
-                                    if let Some(obj) = data.as_object_mut() {
+                                if let Some(ref mut data) = response_msg.data
+                                    && let Some(obj) = data.as_object_mut() {
                                         obj.insert(
                                             "version".to_string(),
                                             serde_json::json!(new_version),
                                         );
                                     }
-                                }
                                 manager
                                     .broadcast_to_room(&format!("doc:{}", doc_id), response_msg)
                                     .await;
                             }
                         }
                     }
-                }
-            }
         }
         MessageType::Activity | MessageType::Presence => {
             if let Some(doc_id) = &msg.document_id {

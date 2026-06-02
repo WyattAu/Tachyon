@@ -1,4 +1,4 @@
-use axum::{response::Html, routing::get, Json, Router};
+use axum::{Json, Router, response::Html, routing::get};
 use tracing::error;
 
 pub fn routes() -> Router {

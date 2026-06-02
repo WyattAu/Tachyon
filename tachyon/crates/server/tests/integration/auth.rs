@@ -1,38 +1,10 @@
+use super::common::{create_test_app, skip_without_db};
 use axum::body::Body;
-use axum::http::{header, Request, StatusCode};
+use axum::http::{Request, StatusCode, header};
 #[allow(unused_imports)]
 use http_body_util::BodyExt;
 use serde_json::json;
-use tachyon_server::routes::create_router;
 use tower::ServiceExt;
-
-fn skip_without_db() -> bool {
-    std::env::var("TEST_DATABASE_URL").is_err()
-}
-
-async fn create_test_app() -> axum::Router {
-    create_router().await
-}
-
-#[cfg(test)]
-fn create_test_jwt(user_id: &str, secret: &str) -> String {
-    use jsonwebtoken::{encode, EncodingKey, Header};
-    let claims = json!({
-        "sub": user_id,
-        "iss": "tachyon",
-        "aud": "tachyon",
-        "exp": (chrono::Utc::now() + chrono::Duration::hours(1)).timestamp(),
-        "iat": chrono::Utc::now().timestamp(),
-        "role": "user"
-    });
-
-    encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(secret.as_bytes()),
-    )
-    .unwrap()
-}
 
 #[tokio::test]
 async fn test_login_missing_credentials() {

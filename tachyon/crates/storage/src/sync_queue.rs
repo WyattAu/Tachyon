@@ -11,7 +11,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{sqlite::SqliteConnectOptions, Row};
+use sqlx::{Row, sqlite::SqliteConnectOptions};
 use std::path::Path;
 use std::str::FromStr;
 use tachyon_core::types::storage::StorageError;

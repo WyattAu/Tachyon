@@ -110,8 +110,7 @@ impl SmsOtpRepository {
 
     #[instrument(skip(self))]
     pub async fn invalidate_user_tokens(&self, user_id: &str) -> DatabaseResult<()> {
-        let sql =
-            "UPDATE sms_otp_tokens SET consumed_at = NOW() WHERE user_id = $1::uuid AND consumed_at IS NULL";
+        let sql = "UPDATE sms_otp_tokens SET consumed_at = NOW() WHERE user_id = $1::uuid AND consumed_at IS NULL";
 
         sqlx::query(sql)
             .bind(user_id)

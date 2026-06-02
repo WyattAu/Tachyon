@@ -1,11 +1,8 @@
+use super::common::skip_without_db;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use tachyon_server::routes::create_router;
 use tower::ServiceExt;
-
-fn skip_without_db() -> bool {
-    std::env::var("TEST_DATABASE_URL").is_err()
-}
 
 #[tokio::test]
 async fn test_health_endpoint() {

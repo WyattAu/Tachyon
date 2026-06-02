@@ -1,4 +1,4 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{Json, extract::State, http::StatusCode};
 use serde::Serialize;
 use std::time::Instant;
 use tachyon_search::IndexManager;
@@ -412,17 +412,25 @@ mod tests {
 
     #[test]
     fn test_smtp_readiness_valid_url() {
-        std::env::set_var("SMTP_URL", "smtps://smtp.example.com:465");
-        std::env::set_var("SMTP_HOST", "smtp.example.com");
+        unsafe {
+            std::env::set_var("SMTP_URL", "smtps://smtp.example.com:465");
+            std::env::set_var("SMTP_HOST", "smtp.example.com");
+        }
         assert_eq!(check_smtp_readiness(true), "ok");
-        std::env::remove_var("SMTP_URL");
-        std::env::remove_var("SMTP_HOST");
+        unsafe {
+            std::env::remove_var("SMTP_URL");
+            std::env::remove_var("SMTP_HOST");
+        }
     }
 
     #[test]
     fn test_smtp_readiness_invalid_url() {
-        std::env::set_var("SMTP_URL", "not-a-valid-url");
-        std::env::remove_var("SMTP_HOST");
+        unsafe {
+            std::env::set_var("SMTP_URL", "not-a-valid-url");
+        }
+        unsafe {
+            std::env::remove_var("SMTP_HOST");
+        }
         let result = check_smtp_readiness(true);
         // Relaxed assertion: parallel env var mutation may change the outcome.
         // The function must return either an error or not_configured (never panic).
@@ -430,7 +438,9 @@ mod tests {
             result.starts_with("error:") || result == "not_configured" || result == "ok",
             "Unexpected SMTP readiness result: {result}"
         );
-        std::env::remove_var("SMTP_URL");
+        unsafe {
+            std::env::remove_var("SMTP_URL");
+        }
     }
 
     #[test]

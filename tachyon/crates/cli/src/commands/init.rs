@@ -1,7 +1,7 @@
 // Init command for Tachyon CLI
 
 use crate::commands::Command;
-use crate::config::{TachyonConfig, DEFAULT_REPO_DIR};
+use crate::config::{DEFAULT_REPO_DIR, TachyonConfig};
 use crate::error::{CliError, CliResult};
 use git2::{Repository, RepositoryInitOptions};
 use std::fs;

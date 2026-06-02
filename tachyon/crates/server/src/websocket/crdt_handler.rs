@@ -19,15 +19,15 @@
 
 use axum::{
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
         Path, State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     response::{IntoResponse, Response},
 };
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use tracing::{debug, info, warn};
 
 use crate::crdt::CrdtDocumentManager;
@@ -388,14 +388,13 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // Send the current document state to the newly connected client.
     // This is the Yrs-encoded state vector + updates, which the client
     // uses to sync its local document.
-    if let Ok(state) = manager.crdt_manager().get_state(&room) {
-        if !state.is_empty() {
+    if let Ok(state) = manager.crdt_manager().get_state(&room)
+        && !state.is_empty() {
             let sync_msg = encode_sync_step1(&state);
             if let Err(e) = ws_sender.send(Message::Binary(sync_msg.into())).await {
                 warn!(client_id = %client_id, error = %e, "Failed to send initial document state");
             }
         }
-    }
 
     // Forward relay events to this client's WebSocket.
     let room_for_send = room.clone();
@@ -415,12 +414,11 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             data,
                             seq: _,
                         }) => {
-                            if event_room == room_for_send && sender != client_id_for_send {
-                                if let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
+                            if event_room == room_for_send && sender != client_id_for_send
+                                && let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
                                     warn!(client_id = %client_id_for_send, error = %e, "Failed to send binary message");
                                     break;
                                 }
-                            }
                         }
                         Ok(RelayEvent::Selection {
                             room: event_room,
@@ -428,12 +426,11 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             data,
                             seq: _,
                         }) => {
-                            if event_room == room_for_send && sender != client_id_for_send {
-                                if let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
+                            if event_room == room_for_send && sender != client_id_for_send
+                                && let Err(e) = ws_sender.send(Message::Binary(data.into())).await {
                                     warn!(client_id = %client_id_for_send, error = %e, "Failed to send selection message");
                                     break;
                                 }
-                            }
                         }
                         Ok(RelayEvent::Joined {
                             room: event_room, ..
@@ -460,15 +457,14 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             room: event_room,
                             users,
                         }) => {
-                            if event_room == room_for_send {
-                                if let Ok(json) = serde_json::to_string(&users) {
+                            if event_room == room_for_send
+                                && let Ok(json) = serde_json::to_string(&users) {
                                     let msg = format!("3{}", json);
                                     if let Err(e) = ws_sender.send(Message::Text(msg.into())).await {
                                         warn!(client_id = %client_id_for_send, error = %e, "Failed to send presence message");
                                         break;
                                     }
                                 }
-                            }
                         }
                         Ok(RelayEvent::DeltaSync {
                             target_client,
@@ -533,8 +529,8 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                     let msg_type = data_vec[0];
                     match msg_type {
                         0 => {
-                            if data_vec.len() > 1 {
-                                if let Err(e) =
+                            if data_vec.len() > 1
+                                && let Err(e) =
                                     crdt_manager.apply_update(&room_for_recv, &data_vec[1..])
                                 {
                                     warn!(
@@ -544,7 +540,6 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                                         "Failed to apply CRDT update"
                                     );
                                 }
-                            }
                             let seq = manager_for_recv.next_seq();
                             let _ = broadcast_tx.send(RelayEvent::Binary {
                                 room: room_for_recv.clone(),

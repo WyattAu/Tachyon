@@ -17,7 +17,7 @@
 
 use crate::error::{RendererError, RendererResult};
 use crate::types::{MarkdownOptions, OutputFormat, RenderMetadata, RenderResult, RenderStats};
-use pulldown_cmark::{html, Event, HeadingLevel, Options, Parser, Tag};
+use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, html};
 use regex::Regex;
 use std::cell::Cell;
 use std::time::Instant;

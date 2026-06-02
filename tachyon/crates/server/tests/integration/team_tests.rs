@@ -3,7 +3,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tower::ServiceExt;
 
 use crate::common;
@@ -260,7 +260,9 @@ async fn test_unauthorized_team_access() {
         .expect("Request failed");
 
     assert!(
-        response.status() == StatusCode::UNAUTHORIZED || response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
+        response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR,
         "Expected UNAUTHORIZED, OK, or INTERNAL_SERVER_ERROR (no auth middleware in test router), got {}",
         response.status()
     );

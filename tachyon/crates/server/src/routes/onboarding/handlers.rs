@@ -119,7 +119,7 @@ pub async fn create_sample_content(
                 return Err(ServerError::internal(format!(
                     "Failed to create sample document: {}",
                     e
-                )))
+                )));
             }
         }
     }
@@ -722,27 +722,35 @@ mod tests {
     fn test_sample_documents_have_valid_content() {
         let docs = build_sample_documents();
         assert_eq!(docs.len(), 5);
-        assert!(docs[0]
-            .content
-            .as_ref()
-            .unwrap()
-            .contains("Welcome to Tachyon"));
-        assert!(docs[1]
-            .content
-            .as_ref()
-            .unwrap()
-            .contains("Getting Started"));
+        assert!(
+            docs[0]
+                .content
+                .as_ref()
+                .unwrap()
+                .contains("Welcome to Tachyon")
+        );
+        assert!(
+            docs[1]
+                .content
+                .as_ref()
+                .unwrap()
+                .contains("Getting Started")
+        );
         assert!(docs[2].content.as_ref().unwrap().contains("Markdown Guide"));
-        assert!(docs[3]
-            .content
-            .as_ref()
-            .unwrap()
-            .contains("Knowledge Graph"));
-        assert!(docs[4]
-            .content
-            .as_ref()
-            .unwrap()
-            .contains("Keyboard Shortcuts"));
+        assert!(
+            docs[3]
+                .content
+                .as_ref()
+                .unwrap()
+                .contains("Knowledge Graph")
+        );
+        assert!(
+            docs[4]
+                .content
+                .as_ref()
+                .unwrap()
+                .contains("Keyboard Shortcuts")
+        );
     }
 
     #[test]

@@ -67,18 +67,15 @@ pub async fn audit_middleware(request: Request, next: Next) -> Response {
 }
 
 fn extract_client_ip(headers: &axum::http::HeaderMap) -> String {
-    if let Some(forwarded) = headers.get("x-forwarded-for") {
-        if let Ok(forwarded_str) = forwarded.to_str() {
-            if let Some(first_ip) = forwarded_str.split(',').next() {
+    if let Some(forwarded) = headers.get("x-forwarded-for")
+        && let Ok(forwarded_str) = forwarded.to_str()
+            && let Some(first_ip) = forwarded_str.split(',').next() {
                 return first_ip.trim().to_string();
             }
-        }
-    }
-    if let Some(real_ip) = headers.get("x-real-ip") {
-        if let Ok(ip_str) = real_ip.to_str() {
+    if let Some(real_ip) = headers.get("x-real-ip")
+        && let Ok(ip_str) = real_ip.to_str() {
             return ip_str.to_string();
         }
-    }
     "unknown".to_string()
 }
 

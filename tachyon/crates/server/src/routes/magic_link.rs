@@ -1,16 +1,15 @@
 use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditOutcome, AuditSeverity};
 use crate::error::ServerError;
-use axum::{extract::State, response::Json, routing::post, Router};
+use axum::{Router, extract::State, response::Json, routing::post};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tachyon_database::{DatabasePool, MagicLinkRepository, RefreshTokenRepository, UserRepository};
 use tracing::{info, warn};
 
-use crate::routes::user::types::{
-    hash_refresh_token, AuthenticateResponse, UserResponse, REFRESH_TOKEN_EXPIRATION_SECS,
-};
 use crate::routes::user::UserState;
-use rand::Rng;
+use crate::routes::user::types::{
+    AuthenticateResponse, REFRESH_TOKEN_EXPIRATION_SECS, UserResponse, hash_refresh_token,
+};
 
 // ============================================================================
 // State
@@ -231,7 +230,7 @@ pub async fn verify_magic_link(
 
     let refresh_repo = RefreshTokenRepository::new(state.pool.clone());
     let raw_refresh = {
-        let bytes: [u8; 32] = rand::thread_rng().gen();
+        let bytes: [u8; 32] = rand::random();
         hex::encode(bytes)
     };
     let refresh_hash = hash_refresh_token(&raw_refresh);

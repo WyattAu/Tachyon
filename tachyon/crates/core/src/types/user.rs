@@ -4,8 +4,8 @@
 use crate::id::UserId;
 use crate::types::error::TachyonError;
 use argon2::{
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Algorithm, Argon2, Params, Version,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -136,18 +136,16 @@ impl UserPermissions {
     /// Check if the user can perform a specific action
     pub fn can_perform(&self, action: UserAction) -> bool {
         // Check explicit denials first
-        if let Some(ref denied) = self.denied_permissions {
-            if denied.contains(&action) {
+        if let Some(ref denied) = self.denied_permissions
+            && denied.contains(&action) {
                 return false;
             }
-        }
 
         // Check explicit grants
-        if let Some(ref granted) = self.granted_permissions {
-            if granted.contains(&action) {
+        if let Some(ref granted) = self.granted_permissions
+            && granted.contains(&action) {
                 return true;
             }
-        }
 
         // Default to role-based permissions
         self.role.can_perform(action)
@@ -412,14 +410,13 @@ impl User {
             ));
         }
 
-        if let Some(ref email) = self.email {
-            if !email.contains('@') {
+        if let Some(ref email) = self.email
+            && !email.contains('@') {
                 return Err(TachyonError::field_validation(
                     "email",
                     "Invalid email format",
                 ));
             }
-        }
 
         Ok(())
     }

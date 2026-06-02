@@ -10,10 +10,10 @@
 pub mod schema;
 pub mod types;
 
+pub use schema::GraphqlAuthContext;
+pub use schema::TachyonSchema;
 #[cfg(test)]
 pub use schema::build_schema;
 pub use schema::build_schema_with_data;
-pub use schema::GraphqlAuthContext;
-pub use schema::TachyonSchema;
 pub use types::MutationRoot;
 pub use types::QueryRoot;

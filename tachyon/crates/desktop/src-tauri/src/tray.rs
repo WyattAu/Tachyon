@@ -5,9 +5,9 @@ use crate::events::EventEmitter;
 use crate::events::NotificationLevel;
 use crate::state::DesktopStateManager;
 use tauri::{
+    AppHandle, Emitter, Manager,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager,
 };
 
 /// Build and install the system tray icon and menu.

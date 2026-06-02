@@ -3,10 +3,10 @@
 use crate::error::ServerError;
 use crate::push::web_push::{PushPayload, PushSubscription};
 use axum::{
+    Router,
     extract::State,
     response::Json,
     routing::{delete, post},
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use tachyon_database::DatabasePool;

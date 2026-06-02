@@ -4,7 +4,7 @@
 //! Requires the `pdf-export` feature flag.
 
 #[cfg(feature = "pdf-export")]
-use genpdf::{elements, fonts, Document, Margins, Mm, SimplePageDecorator};
+use genpdf::{Document, Margins, Mm, SimplePageDecorator, elements, fonts};
 #[cfg(feature = "pdf-export")]
 use printpdf;
 

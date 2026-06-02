@@ -6,12 +6,12 @@ use std::sync::{Arc, Mutex};
 use tachyon_core::{DocumentStore, TachyonError};
 use tauri::{AppHandle, State};
 
+use crate::EmbeddedServerState;
 use crate::events::EventEmitter;
 use crate::file_dialog::{FileContent, FileDialogManager, FileDialogOptions, FileWriteResult};
 use crate::filesystem;
 use crate::state::{ConnectionStatus, DesktopAppState, DesktopState, DesktopStateManager};
 use crate::sync::{AutoSyncManager, SyncResult};
-use crate::EmbeddedServerState;
 
 /// Authentication request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -904,7 +904,7 @@ pub async fn get_local_db_stats(
                 total_word_count: 0,
                 total_tags: 0,
                 database_path: None,
-            })
+            });
         }
     };
 

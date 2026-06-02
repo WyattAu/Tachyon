@@ -12,7 +12,6 @@ use std::sync::LazyLock;
 
 /// Supported locale codes (ISO 639-1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[allow(clippy::incompatible_msrv)]
 pub enum Locale {
     En,
     Zh,
@@ -148,7 +147,6 @@ impl TranslationKey {
 }
 
 /// English translations (source of truth).
-#[allow(clippy::incompatible_msrv)]
 static EN_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     // Navigation
@@ -197,7 +195,6 @@ static EN_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// Chinese translations.
-#[allow(clippy::incompatible_msrv)]
 static ZH_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     m.insert("nav.home", "首页");
@@ -239,7 +236,6 @@ static ZH_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// Japanese translations.
-#[allow(clippy::incompatible_msrv)]
 static JA_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     m.insert("nav.home", "ホーム");
@@ -281,7 +277,6 @@ static JA_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// German translations.
-#[allow(clippy::incompatible_msrv)]
 static DE_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     m.insert("nav.home", "Startseite");
@@ -323,7 +318,6 @@ static DE_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// French translations.
-#[allow(clippy::incompatible_msrv)]
 static FR_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     m.insert("nav.home", "Accueil");
@@ -368,7 +362,6 @@ static FR_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// Spanish translations.
-#[allow(clippy::incompatible_msrv)]
 static ES_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     m.insert("nav.home", "Inicio");
@@ -410,7 +403,6 @@ static ES_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// Korean translations.
-#[allow(clippy::incompatible_msrv)]
 static KO_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     m.insert("nav.home", "홈");
@@ -452,7 +444,6 @@ static KO_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
 });
 
 /// Portuguese translations.
-#[allow(clippy::incompatible_msrv)]
 static PT_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     m.insert("nav.home", "Inicio");

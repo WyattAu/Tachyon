@@ -2,8 +2,7 @@
 
 use crate::audit::AuditLogger;
 use crate::config::GuestConfig;
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
-use rand::Rng;
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tachyon_core::{User, UserRole};
@@ -104,7 +103,7 @@ impl UserState {
     }
 
     pub(crate) fn generate_refresh_token(&self) -> String {
-        let bytes: [u8; 32] = rand::thread_rng().gen();
+        let bytes: [u8; 32] = rand::random();
         hex::encode(bytes)
     }
 

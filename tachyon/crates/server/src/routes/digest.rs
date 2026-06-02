@@ -1,10 +1,10 @@
 //! Email digest subscriptions — daily/weekly document updates.
 
 use axum::{
+    Router,
     extract::State,
     response::Json,
     routing::{get, post},
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use tachyon_database::DatabasePool;
@@ -125,13 +125,12 @@ async fn update_subscription(
     axum::extract::Path(id): axum::extract::Path<Uuid>,
     axum::Json(req): axum::Json<UpdateSubscriptionRequest>,
 ) -> Result<Json<SubscriptionResponse>, crate::error::ServerError> {
-    if let Some(ref f) = req.frequency {
-        if !matches!(f.as_str(), "daily" | "weekly") {
+    if let Some(ref f) = req.frequency
+        && !matches!(f.as_str(), "daily" | "weekly") {
             return Err(crate::error::ServerError::bad_request(
                 "frequency must be 'daily' or 'weekly'",
             ));
         }
-    }
     let row = sqlx::query_as::<_, DigestSubscription>(
         r#"UPDATE digest_subscriptions SET
            frequency = COALESCE($2, frequency),

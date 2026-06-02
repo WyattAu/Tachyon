@@ -5,7 +5,7 @@ use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, FromRow, Row};
+use sqlx::{FromRow, Row, query, query_as};
 use std::collections::HashMap;
 use tracing::{debug, info, instrument};
 
@@ -301,46 +301,86 @@ impl SpaceRepository {
 
         let (select_sql, _, _, _) = match (owner_id, parent_id, visibility) {
             (Some(_), Some(_), Some(_)) => (
-                format!("{} WHERE (owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $2::uuid)) \
+                format!(
+                    "{} WHERE (owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $2::uuid)) \
                          AND parent_id $3::uuid AND visibility = $4 \
-                         ORDER BY sort_order ASC, name ASC LIMIT $5 OFFSET $6", SPACE_SELECT_SQL),
-                true, true, true,
+                         ORDER BY sort_order ASC, name ASC LIMIT $5 OFFSET $6",
+                    SPACE_SELECT_SQL
+                ),
+                true,
+                true,
+                true,
             ),
             (Some(_), Some(_), None) => (
-                format!("{} WHERE (owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $2::uuid)) \
+                format!(
+                    "{} WHERE (owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $2::uuid)) \
                          AND parent_id $3::uuid \
-                         ORDER BY sort_order ASC, name ASC LIMIT $4 OFFSET $5", SPACE_SELECT_SQL),
-                true, true, false,
+                         ORDER BY sort_order ASC, name ASC LIMIT $4 OFFSET $5",
+                    SPACE_SELECT_SQL
+                ),
+                true,
+                true,
+                false,
             ),
             (Some(_), None, Some(_)) => (
-                format!("{} WHERE (owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $2::uuid)) \
+                format!(
+                    "{} WHERE (owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $2::uuid)) \
                          AND visibility = $3 \
-                         ORDER BY sort_order ASC, name ASC LIMIT $4 OFFSET $5", SPACE_SELECT_SQL),
-                true, false, true,
+                         ORDER BY sort_order ASC, name ASC LIMIT $4 OFFSET $5",
+                    SPACE_SELECT_SQL
+                ),
+                true,
+                false,
+                true,
             ),
             (Some(_), None, None) => (
-                format!("{} WHERE (owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $2::uuid)) \
-                         ORDER BY sort_order ASC, name ASC LIMIT $3 OFFSET $4", SPACE_SELECT_SQL),
-                true, false, false,
+                format!(
+                    "{} WHERE (owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $2::uuid)) \
+                         ORDER BY sort_order ASC, name ASC LIMIT $3 OFFSET $4",
+                    SPACE_SELECT_SQL
+                ),
+                true,
+                false,
+                false,
             ),
             (None, Some(_), Some(_)) => (
-                format!("{} WHERE parent_id $1::uuid AND visibility = $2 \
-                         ORDER BY sort_order ASC, name ASC LIMIT $3 OFFSET $4", SPACE_SELECT_SQL),
-                false, true, true,
+                format!(
+                    "{} WHERE parent_id $1::uuid AND visibility = $2 \
+                         ORDER BY sort_order ASC, name ASC LIMIT $3 OFFSET $4",
+                    SPACE_SELECT_SQL
+                ),
+                false,
+                true,
+                true,
             ),
             (None, Some(_), None) => (
-                format!("{} WHERE parent_id $1::uuid \
-                         ORDER BY sort_order ASC, name ASC LIMIT $2 OFFSET $3", SPACE_SELECT_SQL),
-                false, true, false,
+                format!(
+                    "{} WHERE parent_id $1::uuid \
+                         ORDER BY sort_order ASC, name ASC LIMIT $2 OFFSET $3",
+                    SPACE_SELECT_SQL
+                ),
+                false,
+                true,
+                false,
             ),
             (None, None, Some(_)) => (
-                format!("{} WHERE visibility = $1 \
-                         ORDER BY sort_order ASC, name ASC LIMIT $2 OFFSET $3", SPACE_SELECT_SQL),
-                false, false, true,
+                format!(
+                    "{} WHERE visibility = $1 \
+                         ORDER BY sort_order ASC, name ASC LIMIT $2 OFFSET $3",
+                    SPACE_SELECT_SQL
+                ),
+                false,
+                false,
+                true,
             ),
             (None, None, None) => (
-                format!("{} ORDER BY sort_order ASC, name ASC LIMIT $1 OFFSET $2", SPACE_SELECT_SQL),
-                false, false, false,
+                format!(
+                    "{} ORDER BY sort_order ASC, name ASC LIMIT $1 OFFSET $2",
+                    SPACE_SELECT_SQL
+                ),
+                false,
+                false,
+                false,
             ),
         };
 
@@ -593,7 +633,9 @@ impl SpaceRepository {
     #[instrument(skip(self))]
     pub async fn count(&self, owner_id: Option<&str>) -> DatabaseResult<i64> {
         let count_sql = match owner_id {
-            Some(_) => "SELECT COUNT(*) as count FROM spaces WHERE owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $1::uuid)",
+            Some(_) => {
+                "SELECT COUNT(*) as count FROM spaces WHERE owner_id = $1::uuid OR id IN (SELECT space_id FROM space_members WHERE user_id = $1::uuid)"
+            }
             None => "SELECT COUNT(*) as count FROM spaces",
         };
 

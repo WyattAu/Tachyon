@@ -1,4 +1,4 @@
-use base32::{encode, Alphabet};
+use base32::{Alphabet, encode};
 use hmac::{Hmac, Mac};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -8,8 +8,7 @@ use std::time::{Duration, SystemTime};
 type HmacSha1 = Hmac<Sha1>;
 
 pub fn generate_secret() -> String {
-    let mut rng = rand::thread_rng();
-    let secret: Vec<u8> = (0..20).map(|_| rng.gen()).collect();
+    let secret: Vec<u8> = (0..20).map(|_| rand::random::<u8>()).collect();
     encode(Alphabet::Rfc4648 { padding: false }, &secret)
 }
 
@@ -119,9 +118,11 @@ mod tests {
     fn test_generate_secret() {
         let secret = generate_secret();
         assert!(secret.len() >= 20);
-        assert!(secret
-            .chars()
-            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
+        assert!(
+            secret
+                .chars()
+                .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+        );
     }
 
     #[test]
@@ -141,9 +142,11 @@ mod tests {
     fn test_generate_backup_codes() {
         let codes = generate_backup_codes(10);
         assert_eq!(codes.len(), 10);
-        assert!(codes
-            .iter()
-            .all(|c| c.len() == 8 && c.parse::<u32>().is_ok()));
+        assert!(
+            codes
+                .iter()
+                .all(|c| c.len() == 8 && c.parse::<u32>().is_ok())
+        );
     }
 
     #[test]

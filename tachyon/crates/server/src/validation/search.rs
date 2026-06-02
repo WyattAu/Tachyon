@@ -1,8 +1,8 @@
 // Search query validation
 // Validates search queries, filters, and pagination parameters
 
-use super::common::*;
 use super::ValidationResult;
+use super::common::*;
 
 pub const MAX_QUERY_LENGTH: usize = 500;
 pub const MAX_PAGE_SIZE: usize = 100;

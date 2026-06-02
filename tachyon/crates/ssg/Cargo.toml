@@ -2,8 +2,8 @@
 name = "tachyon-ssg"
 version = "0.1.0"
 license = { workspace = true }
+edition.workspace = true
 description = "Static site generator for Tachyon knowledge base"
-edition = "2021"
 
 [[bin]]
 name = "tachyon-ssg-cli"

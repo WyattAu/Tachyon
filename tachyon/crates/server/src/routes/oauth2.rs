@@ -19,10 +19,10 @@
 // value; otherwise the request is rejected. Expired states are cleaned periodically.
 
 use axum::{
+    Router,
     extract::{Query, State},
     response::{IntoResponse, Redirect, Response},
     routing::get,
-    Router,
 };
 use chrono::Utc;
 use dashmap::DashMap;
@@ -186,7 +186,7 @@ async fn google_authorize(State(state): State<OAuth2State>) -> Response {
                 "error": "Google OAuth2 is not configured",
                 "message": "Set TACHYON_GOOGLE_CLIENT_ID and TACHYON_GOOGLE_CLIENT_SECRET"
             }))
-            .into_response()
+            .into_response();
         }
     };
 
@@ -264,14 +264,14 @@ async fn google_callback(
         Some(id) => id.clone(),
         None => {
             return axum::Json(serde_json::json!({"error": "Google OAuth2 not configured"}))
-                .into_response()
+                .into_response();
         }
     };
     let client_secret = match &state.config.google_client_secret {
         Some(s) => s.clone(),
         None => {
             return axum::Json(serde_json::json!({"error": "Google OAuth2 not configured"}))
-                .into_response()
+                .into_response();
         }
     };
 
@@ -402,7 +402,7 @@ async fn github_authorize(State(state): State<OAuth2State>) -> Response {
                 "error": "GitHub OAuth2 is not configured",
                 "message": "Set TACHYON_GITHUB_CLIENT_ID and TACHYON_GITHUB_CLIENT_SECRET"
             }))
-            .into_response()
+            .into_response();
         }
     };
 
@@ -480,14 +480,14 @@ async fn github_callback(
         Some(id) => id.clone(),
         None => {
             return axum::Json(serde_json::json!({"error": "GitHub OAuth2 not configured"}))
-                .into_response()
+                .into_response();
         }
     };
     let client_secret = match &state.config.github_client_secret {
         Some(s) => s.clone(),
         None => {
             return axum::Json(serde_json::json!({"error": "GitHub OAuth2 not configured"}))
-                .into_response()
+                .into_response();
         }
     };
 

@@ -1,15 +1,15 @@
 use axum::{
+    Router,
     body::Body,
     http::{HeaderMap, HeaderValue, Method, StatusCode},
     middleware::from_fn,
     routing::get,
-    Router,
 };
 use tower::ServiceBuilder;
 use tower::ServiceExt;
 
 use tachyon_server::middleware::security_headers::{
-    add_security_headers_with_config, SecurityHeadersConfig,
+    SecurityHeadersConfig, add_security_headers_with_config,
 };
 use tachyon_server::middleware::{
     add_security_headers_from_config, audit_middleware, cache_control_middleware,

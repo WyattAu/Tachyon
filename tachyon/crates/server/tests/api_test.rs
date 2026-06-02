@@ -1,7 +1,7 @@
 use axum::{
+    Router,
     body::Body,
     http::{Request, StatusCode},
-    Router,
 };
 use serde_json::json;
 use tachyon_server::routes::create_router;

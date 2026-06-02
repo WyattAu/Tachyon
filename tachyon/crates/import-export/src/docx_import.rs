@@ -5,9 +5,9 @@
 //! to markdown producing a list of `ImportedDocument` values.
 
 use crate::{
+    ImportSummary, ImportedDocument,
     error::{ImportExportError, ImportExportResult},
     frontmatter::Frontmatter,
-    ImportSummary, ImportedDocument,
 };
 use quick_xml::events::Event;
 use std::collections::HashSet;
@@ -720,10 +720,12 @@ mod tests {
 
         let result = DocxImporter::import_from_bytes(&bytes);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("word/document.xml not found"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("word/document.xml not found")
+        );
     }
 
     #[test]

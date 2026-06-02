@@ -75,7 +75,7 @@ pub use password_reset::{EmailVerificationToken, PasswordResetRepository, Passwo
 pub use permissions::{DefaultRoles, Permission, ResourcePermission, Role};
 pub use plugin::{CreatePluginRequest, Plugin, PluginRepository, UpdatePluginRequest};
 pub use presence::{
-    Presence, PresenceRepository, UpdatePresenceRequest, UpsertPresenceRequest, PRESENCE_TTL_SECS,
+    PRESENCE_TTL_SECS, Presence, PresenceRepository, UpdatePresenceRequest, UpsertPresenceRequest,
 };
 pub use rbac::{
     AuditLogRepository, PolicyRepository, RolePermissionRepository, UserRoleRepository,

@@ -5,8 +5,8 @@
 //! OOXML markup.
 
 use crate::{
-    error::{ImportExportError, ImportExportResult},
     ExportSummary,
+    error::{ImportExportError, ImportExportResult},
 };
 use std::io::{Cursor, Write};
 use zip::write::SimpleFileOptions;

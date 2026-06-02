@@ -51,11 +51,7 @@ impl CursorParams {
     }
 
     pub fn direction(&self) -> &str {
-        if self.before.is_some() {
-            "desc"
-        } else {
-            "asc"
-        }
+        if self.before.is_some() { "desc" } else { "asc" }
     }
 }
 

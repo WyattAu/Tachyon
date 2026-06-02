@@ -9,8 +9,8 @@
 //! - Resumable import via content hash tracking
 
 use crate::{
-    error::ImportExportResult, frontmatter::Frontmatter, ImportExportError, ImportSummary,
-    ImportedDocument,
+    ImportExportError, ImportSummary, ImportedDocument, error::ImportExportResult,
+    frontmatter::Frontmatter,
 };
 use std::collections::{BTreeMap, HashSet};
 use std::io::{Cursor, Read};

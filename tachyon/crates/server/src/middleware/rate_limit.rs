@@ -2,18 +2,18 @@
 // Supports per-IP and per-user rate limiting with Redis backend for distributed systems
 
 use axum::{
+    Json,
     extract::{Request, State},
     http::{HeaderMap, StatusCode, Uri},
     middleware::Next,
     response::{IntoResponse, Response},
-    Json,
 };
 use dashmap::DashMap;
-use deadpool_redis::{redis::AsyncCommands, Pool as RedisPool, Runtime};
+use deadpool_redis::{Pool as RedisPool, Runtime, redis::AsyncCommands};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tracing::warn;
 
@@ -136,19 +136,16 @@ impl RateLimitKey {
 }
 
 fn extract_client_ip(headers: &HeaderMap) -> String {
-    if let Some(forwarded) = headers.get("x-forwarded-for") {
-        if let Ok(forwarded_str) = forwarded.to_str() {
-            if let Some(first_ip) = forwarded_str.split(',').next() {
+    if let Some(forwarded) = headers.get("x-forwarded-for")
+        && let Ok(forwarded_str) = forwarded.to_str()
+            && let Some(first_ip) = forwarded_str.split(',').next() {
                 return first_ip.trim().to_string();
             }
-        }
-    }
 
-    if let Some(real_ip) = headers.get("x-real-ip") {
-        if let Ok(ip_str) = real_ip.to_str() {
+    if let Some(real_ip) = headers.get("x-real-ip")
+        && let Ok(ip_str) = real_ip.to_str() {
             return ip_str.to_string();
         }
-    }
 
     "unknown".to_string()
 }
@@ -668,13 +665,12 @@ impl UserRateLimiter {
         overrides.insert("/health".to_string(), RateLimit::new(1000, 60));
         overrides.insert("/ready".to_string(), RateLimit::new(1000, 60));
 
-        if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS") {
-            if let Ok(parsed) = serde_json::from_str::<EndpointRateLimitsJson>(&json_str) {
+        if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS")
+            && let Ok(parsed) = serde_json::from_str::<EndpointRateLimitsJson>(&json_str) {
                 for (path, cfg) in parsed {
                     overrides.insert(path, RateLimit::new(cfg.max, cfg.window));
                 }
             }
-        }
 
         overrides
     }
@@ -873,15 +869,14 @@ impl EndpointRateLimits {
 
     pub fn from_env() -> Self {
         let mut limits = Self::with_defaults();
-        if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS") {
-            if let Ok(parsed) = serde_json::from_str::<EndpointRateLimitsJson>(&json_str) {
+        if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS")
+            && let Ok(parsed) = serde_json::from_str::<EndpointRateLimitsJson>(&json_str) {
                 for (path, cfg) in parsed {
                     limits
                         .limits
                         .insert(path, RateLimit::new(cfg.max, cfg.window));
                 }
             }
-        }
         limits
     }
 }
@@ -1189,9 +1184,11 @@ mod tests {
     #[test]
     fn test_endpoint_rate_limits_default_overrides() {
         let limiter = UserRateLimiter::new();
-        assert!(limiter
-            .endpoint_overrides()
-            .contains_key("/api/v1/auth/login"));
+        assert!(
+            limiter
+                .endpoint_overrides()
+                .contains_key("/api/v1/auth/login")
+        );
         assert!(limiter.endpoint_overrides().contains_key("/health"));
         assert!(limiter.endpoint_overrides().contains_key("/ready"));
     }

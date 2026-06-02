@@ -10,7 +10,7 @@
 
 use crate::error::{ImportExportError, ImportExportResult};
 use crate::frontmatter::Frontmatter;
-use crate::{parse_date, ImportSummary, ImportedDocument};
+use crate::{ImportSummary, ImportedDocument, parse_date};
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 use tracing::{debug, info, warn};
@@ -111,11 +111,10 @@ pub fn strip_bom_and_decode(bytes: &[u8]) -> Result<String, String> {
 
 /// Check whether a file path should be skipped during import.
 pub fn should_skip_path(path: &str) -> bool {
-    if let Some(ext) = Path::new(path).extension() {
-        if SKIP_EXTENSIONS.contains(&ext.to_string_lossy().as_ref()) {
+    if let Some(ext) = Path::new(path).extension()
+        && SKIP_EXTENSIONS.contains(&ext.to_string_lossy().as_ref()) {
             return true;
         }
-    }
 
     if path.contains("/.") || path.starts_with('.') {
         return true;

@@ -1,14 +1,14 @@
 use axum::{
-    body::Body,
-    http::{header, Request, StatusCode},
     Router,
+    body::Body,
+    http::{Request, StatusCode, header},
 };
 use http_body_util::BodyExt;
 use serde_json::json;
 use tower::ServiceExt;
 
 pub fn skip_without_db() -> bool {
-    std::env::var("TEST_DATABASE_URL").is_err()
+    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
 }
 
 pub async fn create_test_app() -> Router {
@@ -20,7 +20,7 @@ pub fn auth_header(token: &str) -> header::HeaderValue {
 }
 
 pub fn create_test_jwt(user_id: &str, secret: &str) -> String {
-    use jsonwebtoken::{encode, EncodingKey, Header};
+    use jsonwebtoken::{EncodingKey, Header, encode};
     let claims = json!({
         "sub": user_id,
         "iss": "tachyon",

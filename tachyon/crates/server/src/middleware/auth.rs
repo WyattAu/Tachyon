@@ -3,25 +3,25 @@
 
 use crate::config::ServerConfig;
 use axum::{
+    Json,
     extract::{Request, State},
     http::{HeaderMap, StatusCode},
     middleware::Next,
     response::Response,
-    Json,
 };
 use chrono::Utc;
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::Row;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tachyon_core::{UserAction, UserRole};
 use tachyon_database::{DatabasePool, Permission};
+use tachyon_rbac::AuthContext as RbacAuthContext;
 use tachyon_rbac::types::{
     AccessRequest, Action as RbacAction, Resource as RbacResource, Subject as RbacSubject,
 };
-use tachyon_rbac::AuthContext as RbacAuthContext;
 use tachyon_rbac::{Enforcer, EnforcerConfig as RbacEnforcerConfig};
 use tachyon_rbac::{SessionId, UserId};
 use tokio::sync::RwLock;
@@ -273,11 +273,10 @@ impl AuthState {
         let user_id: uuid::Uuid = row.get("user_id");
         let expires_at: Option<chrono::DateTime<chrono::Utc>> = row.get("expires_at");
 
-        if let Some(exp) = expires_at {
-            if exp < Utc::now() {
+        if let Some(exp) = expires_at
+            && exp < Utc::now() {
                 return Err(AuthError::InvalidApiKey);
             }
-        }
 
         let user_row = sqlx::query("SELECT role FROM users WHERE id = $1 AND is_active = true")
             .bind(user_id)
@@ -333,8 +332,8 @@ impl AuthState {
             }
         }
 
-        if self.config.api_keys.enabled {
-            if let Some(api_key_header) = headers.get(self.config.api_key_header()) {
+        if self.config.api_keys.enabled
+            && let Some(api_key_header) = headers.get(self.config.api_key_header()) {
                 let api_key = api_key_header
                     .to_str()
                     .map_err(|_| AuthError::InvalidTokenFormat)?;
@@ -349,7 +348,6 @@ impl AuthState {
                     auth_method: AuthMethod::ApiKey,
                 });
             }
-        }
 
         Err(AuthError::MissingAuthHeader)
     }

@@ -1,6 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use tachyon_renderer::types::OutputFormat;
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use tachyon_renderer::MarkdownParser;
+use tachyon_renderer::types::OutputFormat;
 
 fn generate_medium_document() -> String {
     let mut content = String::with_capacity(50_000);

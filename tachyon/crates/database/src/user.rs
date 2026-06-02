@@ -4,7 +4,7 @@
 use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use chrono::{DateTime, Utc};
-use sqlx::{query, query_as, Row};
+use sqlx::{Row, query, query_as};
 use tachyon_core::id::UserId;
 use tachyon_core::types::user::{User, UserRole, UserType};
 use tracing::{debug, info, instrument, warn};

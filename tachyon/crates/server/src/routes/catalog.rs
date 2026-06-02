@@ -2,9 +2,9 @@
 // Backstage-like catalog API endpoints
 
 use axum::{
+    Json,
     extract::{Path, Query, State},
     http::StatusCode,
-    Json,
 };
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -705,7 +705,7 @@ pub async fn remove_project_member(
 )]
 #[instrument(skip(state))]
 pub async fn get_catalog_stats(State(state): State<CatalogState>) -> axum::response::Response {
-    use axum::http::{header, HeaderValue};
+    use axum::http::{HeaderValue, header};
     use axum::response::{IntoResponse, Response};
 
     debug!("Getting catalog statistics");
@@ -810,8 +810,8 @@ pub async fn list_projects_cursor(
 // ============================================================================
 
 use axum::{
-    routing::{delete, get, post, put},
     Router,
+    routing::{delete, get, post, put},
 };
 
 /// Create the catalog router

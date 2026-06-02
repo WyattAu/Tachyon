@@ -2,8 +2,8 @@
 name = "tachyon-plugin-runtime"
 version = "0.1.0"
 license = { workspace = true }
+edition.workspace = true
 description = "WASM plugin runtime for Tachyon"
-edition = "2021"
 
 [dependencies]
 wasmtime = "44.0.2"

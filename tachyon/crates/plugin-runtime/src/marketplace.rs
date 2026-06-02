@@ -389,9 +389,10 @@ mod tests {
         mp.register_plugin(test_manifest("test/plugin-a")).unwrap();
         mp.verify_checksum(&PluginId("test/plugin-a".to_string()), "abc123")
             .unwrap();
-        assert!(mp
-            .verify_checksum(&PluginId("test/plugin-a".to_string()), "wrong")
-            .is_err());
+        assert!(
+            mp.verify_checksum(&PluginId("test/plugin-a".to_string()), "wrong")
+                .is_err()
+        );
     }
 
     #[test]
@@ -402,9 +403,10 @@ mod tests {
         let path = mp
             .wasm_path(&PluginId("org.example/my-plugin".to_string()))
             .unwrap();
-        assert!(path
-            .to_string_lossy()
-            .contains("org.example-my-plugin.wasm"));
+        assert!(
+            path.to_string_lossy()
+                .contains("org.example-my-plugin.wasm")
+        );
     }
 
     #[test]

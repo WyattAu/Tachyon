@@ -11,8 +11,8 @@
 //! non-markdown attachment files are skipped during import.
 
 use crate::{
-    error::ImportExportResult, frontmatter::Frontmatter, ImportExportError, ImportSummary,
-    ImportedDocument,
+    ImportExportError, ImportSummary, ImportedDocument, error::ImportExportResult,
+    frontmatter::Frontmatter,
 };
 use std::collections::HashSet;
 use std::io::{Cursor, Read};
@@ -267,11 +267,10 @@ fn should_skip_path(path: &str) -> bool {
         }
     }
 
-    if let Some(ext) = Path::new(path).extension() {
-        if SKIP_EXTENSIONS.contains(&ext.to_string_lossy().as_ref()) {
+    if let Some(ext) = Path::new(path).extension()
+        && SKIP_EXTENSIONS.contains(&ext.to_string_lossy().as_ref()) {
             return true;
         }
-    }
 
     if path.contains("/.") || path.starts_with('.') {
         return true;
@@ -377,9 +376,18 @@ mod tests {
     #[test]
     fn test_import_obsidian_vault() {
         let zip_bytes = create_obsidian_zip(&[
-            ("notes/daily/2024-01-15.md", "---\ntitle: Daily Note\ntags: [journal, daily]\ncreated: \"2024-01-15\"\n---\n\n# Daily Note\n\nJournal entry for today.\n\n#work #planning\n\nSome content with [[link]] and [[other|display text]]."),
-            ("ideas/project-idea.md", "# Project Idea\n\nA new project concept.\n\n#idea #brainstorm"),
-            ("templates/meeting.md", "---\ntitle: Meeting Template\ntemplate: meeting\n---\n\n# Meeting Notes\n\n## Attendees\n\n## Agenda"),
+            (
+                "notes/daily/2024-01-15.md",
+                "---\ntitle: Daily Note\ntags: [journal, daily]\ncreated: \"2024-01-15\"\n---\n\n# Daily Note\n\nJournal entry for today.\n\n#work #planning\n\nSome content with [[link]] and [[other|display text]].",
+            ),
+            (
+                "ideas/project-idea.md",
+                "# Project Idea\n\nA new project concept.\n\n#idea #brainstorm",
+            ),
+            (
+                "templates/meeting.md",
+                "---\ntitle: Meeting Template\ntemplate: meeting\n---\n\n# Meeting Notes\n\n## Attendees\n\n## Agenda",
+            ),
             ("attachments/image.png", "PNG_DATA"),
             (".obsidian/app.json", "{\"key\": \"value\"}"),
             ("scratch/empty.md", ""),

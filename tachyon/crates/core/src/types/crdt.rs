@@ -239,7 +239,7 @@ pub struct CollaborationInfo {
 // ============================================================================
 
 mod base64_bytes {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
     use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S: Serializer>(data: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error> {

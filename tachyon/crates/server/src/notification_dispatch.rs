@@ -4,9 +4,9 @@ use tokio::sync::broadcast;
 use tracing::debug;
 use uuid::Uuid;
 
+use crate::websocket::ConnectionManager;
 use crate::websocket::redis_relay::RedisRelay;
 use crate::websocket::types::WebSocketMessage;
-use crate::websocket::ConnectionManager;
 
 #[derive(Clone)]
 pub struct NotificationDispatcher {

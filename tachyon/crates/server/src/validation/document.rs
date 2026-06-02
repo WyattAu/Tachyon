@@ -1,8 +1,8 @@
 // Document validation rules
 // Validates document title, content, and metadata
 
-use super::common::*;
 use super::ValidationResult;
+use super::common::*;
 
 pub const MAX_TITLE_LENGTH: usize = 200;
 pub const MIN_TITLE_LENGTH: usize = 1;

@@ -2,8 +2,8 @@ use crate::audit::{AuditEvent, AuditEventType, AuditSeverity};
 use crate::error::ServerError;
 use crate::middleware::auth::AuthContext;
 use crate::routes::user::{
-    hash_refresh_token, AuthenticateResponse, UserResponse, UserState,
-    REFRESH_TOKEN_EXPIRATION_SECS,
+    AuthenticateResponse, REFRESH_TOKEN_EXPIRATION_SECS, UserResponse, UserState,
+    hash_refresh_token,
 };
 use crate::totp::{generate_backup_codes, generate_otpauth_uri, generate_secret, verify_totp};
 use axum::{

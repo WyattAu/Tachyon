@@ -192,7 +192,7 @@ enum PluginCommands {
 
 /// Initialize logging
 fn init_logging() -> CliResult<()> {
-    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_subscriber::{EnvFilter, fmt};
 
     let filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("tachyon_cli=info"));

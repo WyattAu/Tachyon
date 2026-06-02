@@ -139,17 +139,15 @@ pub fn load_translations(dir: &Path, languages: &[String]) -> SsgResult<Translat
 /// If the key doesn't exist at all, returns the key itself (useful for
 /// debugging missing translations).
 pub fn translate(translations: &Translations, key: &str, language: &str) -> String {
-    if let Some(lang_map) = translations.strings.get(language) {
-        if let Some(value) = lang_map.get(key) {
+    if let Some(lang_map) = translations.strings.get(language)
+        && let Some(value) = lang_map.get(key) {
             return value.clone();
         }
-    }
 
-    if let Some(en_map) = translations.strings.get("en") {
-        if let Some(value) = en_map.get(key) {
+    if let Some(en_map) = translations.strings.get("en")
+        && let Some(value) = en_map.get(key) {
             return value.clone();
         }
-    }
 
     key.to_string()
 }

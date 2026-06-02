@@ -2,8 +2,8 @@
 name = "tachyon-import-export"
 version = "0.1.0"
 license = { workspace = true }
+edition.workspace = true
 description = "Import/export functionality for Tachyon knowledge management system"
-edition = "2021"
 
 [lib]
 name = "tachyon_import_export"

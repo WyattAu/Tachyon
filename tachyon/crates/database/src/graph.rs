@@ -4,7 +4,7 @@ use crate::types::{GraphEdge, GraphNode};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::{query, query_as, Row};
+use sqlx::{Row, query, query_as};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tachyon_core::types::edge::Edge;
 use tachyon_core::types::node::Node;
@@ -432,7 +432,9 @@ impl GraphRepository {
         );
         let data_sql = format!(
             "SELECT * FROM knowledge_graph_nodes WHERE {} ORDER BY updated_at DESC LIMIT ${} OFFSET ${}",
-            where_sql, bind_idx + 1, bind_idx + 2
+            where_sql,
+            bind_idx + 1,
+            bind_idx + 2
         );
 
         let mut conn = self.pool.acquire().await?;

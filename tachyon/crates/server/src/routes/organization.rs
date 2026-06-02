@@ -6,10 +6,10 @@ use crate::error::ServerError;
 use crate::middleware::AuthContext;
 use crate::pagination::{CursorPage, CursorParams};
 use axum::{
+    Extension,
     extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
-    Extension,
 };
 use serde::{Deserialize, Serialize};
 use tachyon_database::{

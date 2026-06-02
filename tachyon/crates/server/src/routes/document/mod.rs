@@ -255,29 +255,28 @@ impl From<crate::pagination::CursorPage<DocumentResponse>> for DocumentCursorPag
 }
 
 pub use document_attachments::{
-    delete_attachment, download_attachment, list_attachments, upload_attachment, AttachmentResponse,
+    AttachmentResponse, delete_attachment, download_attachment, list_attachments, upload_attachment,
 };
 pub use document_batch::{
-    batch_operations, BatchAction, BatchOperation, BatchOperationResult, BatchOperationStatus,
-    BatchRequest, BatchResponse,
+    BatchAction, BatchOperation, BatchOperationResult, BatchOperationStatus, BatchRequest,
+    BatchResponse, batch_operations,
 };
 pub use document_crud::{
-    create_document, delete_document, get_document, get_document_metadata, list_documents,
-    list_documents_cursor, render_markdown, update_document, CreateDocumentRequest,
-    UpdateDocumentRequest,
+    CreateDocumentRequest, UpdateDocumentRequest, create_document, delete_document, get_document,
+    get_document_metadata, list_documents, list_documents_cursor, render_markdown, update_document,
 };
 pub use document_export::export_document;
 pub use document_search::{
-    get_backlinks, search_documents, semantic_search, BacklinkItem, BacklinksResponse,
-    SemanticSearchParams, SemanticSearchResponse,
+    BacklinkItem, BacklinksResponse, SemanticSearchParams, SemanticSearchResponse, get_backlinks,
+    search_documents, semantic_search,
 };
 pub use document_templates::{
-    create_template, delete_template, get_template, list_templates, update_template,
-    CreateTemplateBody, TemplateQuery, TemplateResponse, UpdateTemplateBody,
+    CreateTemplateBody, TemplateQuery, TemplateResponse, UpdateTemplateBody, create_template,
+    delete_template, get_template, list_templates, update_template,
 };
 pub use document_versions::{
-    create_version, diff_versions, get_version, list_versions, restore_version, CreateVersionBody,
-    DiffLine, DiffStats, DocumentDiffResponse, RestoreVersionResponse, VersionResponse,
+    CreateVersionBody, DiffLine, DiffStats, DocumentDiffResponse, RestoreVersionResponse,
+    VersionResponse, create_version, diff_versions, get_version, list_versions, restore_version,
 };
 
 pub fn create_document_router() -> axum::Router<DocumentState> {

@@ -2,7 +2,7 @@ use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query_as, FromRow};
+use sqlx::{FromRow, query_as};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, PartialEq, utoipa::ToSchema)]

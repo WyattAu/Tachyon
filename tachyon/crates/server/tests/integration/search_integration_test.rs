@@ -1,9 +1,6 @@
+use super::common::skip_without_db;
 use tachyon_core::id::{DocumentId, UserId};
 use tachyon_search::{IndexManager, QueryEngine, SearchDocument, SearchRequest, SortOrder};
-
-fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
-}
 
 fn skip_search_tests() -> bool {
     // Search tests require tantivy index infrastructure.

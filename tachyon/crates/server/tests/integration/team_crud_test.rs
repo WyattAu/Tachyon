@@ -1,12 +1,9 @@
 use tachyon_database::{Team, TeamRepository};
 
+use super::common::skip_without_db;
 use crate::common::setup::{
     create_test_pool, create_test_user, setup_database, teardown_test_user,
 };
-
-fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
-}
 
 fn make_team(owner_id: &str, name: &str) -> Team {
     let unique = uuid::Uuid::new_v4().as_simple().to_string();

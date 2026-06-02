@@ -5,8 +5,8 @@ description = "Tauri App for Tachyon desktop client"
 authors = ["Tachyon Team"]
 license = "MIT"
 repository = "https://github.com/tachyon/tachyon"
-edition = "2021"
-rust-version = "1.75"
+rust-version.workspace = true
+edition.workspace = true
 
 [lib]
 name = "tachyon_desktop_app"

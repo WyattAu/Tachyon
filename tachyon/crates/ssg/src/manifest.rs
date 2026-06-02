@@ -121,14 +121,13 @@ impl SiteConfig {
     /// more structured `[[menu.main]]` syntax. When both are present,
     /// `menu_items` takes priority.
     pub fn resolve_menu(&mut self) {
-        if self.menu_items.is_empty() {
-            if let Some(ref menu) = self.menu {
+        if self.menu_items.is_empty()
+            && let Some(ref menu) = self.menu {
                 let mut items = menu.main.clone();
                 // Sort by weight (ascending), stable sort preserves TOML order for ties
                 items.sort_by_key(|i| i.weight.unwrap_or(0));
                 self.menu_items = items;
             }
-        }
     }
 }
 

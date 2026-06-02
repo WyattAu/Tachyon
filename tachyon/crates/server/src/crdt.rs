@@ -91,10 +91,10 @@ impl CrdtDocumentManager {
         let text = doc.get_or_insert_text("content");
 
         // Try to load persisted state from database
-        if let Some(pool) = &self.pool {
-            if let Ok(uuid) = uuid::Uuid::parse_str(document_id) {
-                if let Ok(Some(row)) = tachyon_database::crdt::load_crdt_state(pool, uuid).await {
-                    if !row.state.is_empty() {
+        if let Some(pool) = &self.pool
+            && let Ok(uuid) = uuid::Uuid::parse_str(document_id)
+                && let Ok(Some(row)) = tachyon_database::crdt::load_crdt_state(pool, uuid).await
+                    && !row.state.is_empty() {
                         // Apply persisted state to the new document
                         if let Ok(update) = yrs::Update::decode_v1(&row.state) {
                             let mut txn = doc.transact_mut();
@@ -107,9 +107,6 @@ impl CrdtDocumentManager {
                             );
                         }
                     }
-                }
-            }
-        }
 
         let arc = Arc::new(CrdtDocument { doc, text });
         self.documents.insert(document_id.to_string(), arc.clone());
@@ -130,8 +127,8 @@ impl CrdtDocumentManager {
             .map(|entry| entry.key().clone());
         if let Some(key) = lru_key {
             // Try to persist before evicting
-            if let Some(pool) = &self.pool {
-                if let Some(doc_arc) = self.documents.get(&key) {
+            if let Some(pool) = &self.pool
+                && let Some(doc_arc) = self.documents.get(&key) {
                     let state = {
                         let txn = doc_arc.doc.transact();
                         let sv = txn.state_vector();
@@ -157,7 +154,6 @@ impl CrdtDocumentManager {
                         }
                     });
                 }
-            }
             self.documents.remove(&key);
             self.last_accessed.remove(&key);
         }
@@ -834,9 +830,11 @@ mod tests {
         // Verify convergence
         let server_text = manager.get_text("doc-conv").unwrap();
         let client_result = client_text.get_string(&client_doc.transact());
-        assert_eq!(server_text, client_result,
+        assert_eq!(
+            server_text, client_result,
             "Client should converge with server after applying diff\n  server: {:?}\n  client: {:?}",
-            server_text, client_result);
+            server_text, client_result
+        );
     }
 
     #[test]

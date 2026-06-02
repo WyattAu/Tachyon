@@ -1,8 +1,8 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use std::collections::BTreeMap;
 use tachyon_core::{
-    compute_content_hash, generate_document_id, generate_user_id, slugify, Document,
-    DocumentContent, DocumentId, DocumentVisibility, UserId,
+    Document, DocumentContent, DocumentId, DocumentVisibility, UserId, compute_content_hash,
+    generate_document_id, generate_user_id, slugify,
 };
 use tachyon_renderer::{RenderConfig, Renderer};
 use tachyon_search::{

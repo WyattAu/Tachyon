@@ -6,9 +6,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tachyon_core::compute_content_hash;
-use tachyon_database::{init_with_migrations, DocumentRepository};
+use tachyon_database::{DocumentRepository, init_with_migrations};
 use tachyon_renderer::context::{RenderContext, RenderMetadata};
-use tachyon_renderer::page::{render_full_page, render_full_page_with_template, SiteConfig};
+use tachyon_renderer::page::{SiteConfig, render_full_page, render_full_page_with_template};
 use tachyon_renderer::{RenderConfig, Renderer, TemplateEngine};
 
 #[derive(Debug, Clone)]
@@ -226,12 +226,19 @@ impl BuildCommand {
                     Some(engine)
                 }
                 Err(e) => {
-                    eprintln!("Warning: Failed to load template engine from '{}': {}. Falling back to hardcoded template.", path.display(), e);
+                    eprintln!(
+                        "Warning: Failed to load template engine from '{}': {}. Falling back to hardcoded template.",
+                        path.display(),
+                        e
+                    );
                     None
                 }
             },
             Some(path) => {
-                eprintln!("Warning: Template directory '{}' does not exist. Falling back to hardcoded template.", path.display());
+                eprintln!(
+                    "Warning: Template directory '{}' does not exist. Falling back to hardcoded template.",
+                    path.display()
+                );
                 None
             }
             None => None,

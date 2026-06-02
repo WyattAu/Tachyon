@@ -11,7 +11,7 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use tachyon_core::id::{RepositoryId, UserId};
 use tachyon_core::{
-    compute_content_hash, Document, DocumentContent, DocumentId, DocumentStatus, DocumentVisibility,
+    Document, DocumentContent, DocumentId, DocumentStatus, DocumentVisibility, compute_content_hash,
 };
 use tachyon_database::{
     ActivityRepository, CreateActivityEvent, CreateVersionRequest, DocumentVersionRepository,
@@ -111,11 +111,10 @@ pub async fn create_document(
         }
     }
 
-    if let Some(ref repo_id) = req.project_id {
-        if let Ok(id) = tachyon_core::id::RepositoryId::parse_str(repo_id) {
+    if let Some(ref repo_id) = req.project_id
+        && let Ok(id) = tachyon_core::id::RepositoryId::parse_str(repo_id) {
             doc.repository_id = Some(id);
         }
-    }
 
     if let Err(e) = doc.validate() {
         return Err(ServerError::bad_request(e.to_string()));
@@ -173,8 +172,8 @@ pub async fn create_document(
     {
         let outgoing_links = MarkdownParser::extract_wikilinks(&req.content);
         let links_json = serde_json::to_value(&outgoing_links).unwrap_or(serde_json::json!([]));
-        if let Ok(mut conn) = state.pool.acquire().await {
-            if let Err(e) = sqlx::query("UPDATE documents SET outgoing_links = $1 WHERE id = $2")
+        if let Ok(mut conn) = state.pool.acquire().await
+            && let Err(e) = sqlx::query("UPDATE documents SET outgoing_links = $1 WHERE id = $2")
                 .bind(&links_json)
                 .bind(doc.id.to_string())
                 .execute(&mut *conn)
@@ -185,7 +184,6 @@ pub async fn create_document(
                     doc.id, e
                 );
             }
-        }
     }
 
     if let Err(e) = state
@@ -219,8 +217,8 @@ pub async fn create_document(
         .await;
 
     // Generate and persist embedding asynchronously (non-blocking)
-    if let Some(ref ai) = state.ai_manager {
-        if ai.is_available() {
+    if let Some(ref ai) = state.ai_manager
+        && ai.is_available() {
             let ai = ai.clone();
             let repo = state.repository.clone();
             let doc_id = doc.id.to_string();
@@ -245,7 +243,6 @@ pub async fn create_document(
                 }
             });
         }
-    }
 
     if let Err(e) = ActivityRepository::create(
         &state.pool,
@@ -410,8 +407,8 @@ pub async fn update_document(
         // DLP scan before content update
         state.scan_content_dlp(&content)?;
 
-        if let Some(ref current_content) = metadata.content {
-            if current_content != &content {
+        if let Some(ref current_content) = metadata.content
+            && current_content != &content {
                 let version_repo = DocumentVersionRepository::new(state.pool.clone());
                 let user_id = tachyon_core::generate_user_id();
                 if let Err(e) = version_repo
@@ -426,7 +423,6 @@ pub async fn update_document(
                     warn!("Failed to auto-version document {}: {}", document_id, e);
                 }
             }
-        }
 
         metadata.content = Some(content.clone());
         metadata.content_hash = Some(compute_content_hash(&content));
@@ -466,8 +462,8 @@ pub async fn update_document(
         let content = metadata.content.as_deref().unwrap_or("");
         let outgoing_links = MarkdownParser::extract_wikilinks(content);
         let links_json = serde_json::to_value(&outgoing_links).unwrap_or(serde_json::json!([]));
-        if let Ok(mut conn) = state.pool.acquire().await {
-            if let Err(e) = sqlx::query("UPDATE documents SET outgoing_links = $1 WHERE id = $2")
+        if let Ok(mut conn) = state.pool.acquire().await
+            && let Err(e) = sqlx::query("UPDATE documents SET outgoing_links = $1 WHERE id = $2")
                 .bind(&links_json)
                 .bind(&document_id)
                 .execute(&mut *conn)
@@ -478,7 +474,6 @@ pub async fn update_document(
                     document_id, e
                 );
             }
-        }
     }
 
     if let Err(e) = state
@@ -515,9 +510,9 @@ pub async fn update_document(
         .await;
 
     // Re-generate and persist embedding asynchronously when content changes
-    if content_changed {
-        if let Some(ref ai) = state.ai_manager {
-            if ai.is_available() {
+    if content_changed
+        && let Some(ref ai) = state.ai_manager
+            && ai.is_available() {
                 let ai = ai.clone();
                 let repo = state.repository.clone();
                 let doc_id = document_id.clone();
@@ -542,8 +537,6 @@ pub async fn update_document(
                     }
                 });
             }
-        }
-    }
 
     if let Err(e) = ActivityRepository::create(
         &state.pool,
@@ -739,11 +732,10 @@ pub async fn list_documents(
         },
     );
 
-    if let Some(hit) = state.api_cache.get_response(&key).await {
-        if let Ok(parsed) = serde_json::from_slice::<DocumentSearchResponse>(&hit.data) {
+    if let Some(hit) = state.api_cache.get_response(&key).await
+        && let Ok(parsed) = serde_json::from_slice::<DocumentSearchResponse>(&hit.data) {
             return Ok(Json(parsed));
         }
-    }
 
     let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(20).min(100);

@@ -5,8 +5,8 @@ description = "Desktop client for Tachyon knowledge management system"
 authors = ["Tachyon Team"]
 license = "MIT"
 repository = "https://github.com/tachyon/tachyon"
-edition = "2021"
-rust-version = "1.75"
+rust-version.workspace = true
+edition.workspace = true
 
 [dependencies]
 # Workspace dependencies

@@ -154,7 +154,7 @@ mod tests {
 
         let grouped = registry.list_by_category();
         assert_eq!(grouped.len(), 2);
-        assert!(grouped.get(&CommandCategory::Visualization).is_some());
+        assert!(grouped.contains_key(&CommandCategory::Visualization));
     }
 
     fn make_cmd(name: &str, plugin: &str) -> SlashCommand {

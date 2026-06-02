@@ -2,8 +2,8 @@
 name = "tachyon-server"
 version = "0.1.0"
 license = { workspace = true }
+edition.workspace = true
 description = "JIT documentation server for Tachyon knowledge management system"
-edition = "2021"
 
 [lib]
 name = "tachyon_server"
@@ -94,7 +94,7 @@ deadpool-redis = "0.18"
 async-trait = "0.1"
 
 # LDAP
-ldap3 = { version = "0.7", default-features = false, features = ["tls-rustls", "sync"] }
+ldap3 = { version = "0.12", default-features = false, features = ["tls-rustls-ring", "sync"] }
 
 # CRDT
 yrs = { workspace = true }
@@ -119,15 +119,10 @@ serial_test = { workspace = true }
 proptest = { workspace = true }
 pretty_assertions = "1.4"
 assert_matches = "1.5"
-jsonwebtoken = "9"
-uuid = { version = "1", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-serde_json = "1"
 hyper = "1"
 http-body-util = "0.1"
 tempfile = "3"
 bytes = "1"
-tower = { version = "0.5", features = ["util"] }
 # WebSocket client for integration tests
 tokio-tungstenite = "0.26"
 

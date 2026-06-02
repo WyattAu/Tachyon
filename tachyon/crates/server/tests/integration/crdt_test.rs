@@ -1,13 +1,13 @@
 use std::time::Duration;
 
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpListener;
 use tokio_tungstenite::tungstenite::Message;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, GetString, ReadTxn, Text, Transact};
 
-use tachyon_server::websocket::{handle_crdt_websocket_upgrade, CrdtConnectionManager};
+use tachyon_server::websocket::{CrdtConnectionManager, handle_crdt_websocket_upgrade};
 
 // ============================================================================
 // Helpers
@@ -390,23 +390,19 @@ async fn test_crdt_convergence_with_concurrent_edits() {
     );
 
     // Apply the received updates
-    if let Some(data) = received_by_2 {
-        if data.len() > 1 && data[0] == 0 {
-            if let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
+    if let Some(data) = received_by_2
+        && data.len() > 1 && data[0] == 0
+            && let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
                 let mut txn = doc2.transact_mut();
                 txn.apply_update(update).unwrap();
             }
-        }
-    }
 
-    if let Some(data) = received_by_1 {
-        if data.len() > 1 && data[0] == 0 {
-            if let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
+    if let Some(data) = received_by_1
+        && data.len() > 1 && data[0] == 0
+            && let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
                 let mut txn = doc1.transact_mut();
                 txn.apply_update(update).unwrap();
             }
-        }
-    }
 
     // Both docs must converge to the same content
     let text1_final = {
@@ -814,23 +810,19 @@ async fn test_concurrent_edits_with_delta_sync() {
     assert!(received_by_2.is_some(), "Client 2 should receive update");
     assert!(received_by_1.is_some(), "Client 1 should receive update");
 
-    if let Some(data) = received_by_2 {
-        if data.len() > 1 && data[0] == 0 {
-            if let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
+    if let Some(data) = received_by_2
+        && data.len() > 1 && data[0] == 0
+            && let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
                 let mut txn = doc2.transact_mut();
                 txn.apply_update(update).unwrap();
             }
-        }
-    }
 
-    if let Some(data) = received_by_1 {
-        if data.len() > 1 && data[0] == 0 {
-            if let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
+    if let Some(data) = received_by_1
+        && data.len() > 1 && data[0] == 0
+            && let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
                 let mut txn = doc1.transact_mut();
                 txn.apply_update(update).unwrap();
             }
-        }
-    }
 
     let text1_final = text1.get_string(&doc1.transact());
     let text2_final = text2.get_string(&doc2.transact());

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use tachyon_core::id::{generate_document_id, DocumentId};
+use tachyon_core::id::{DocumentId, generate_document_id};
 use tachyon_core::types::document::{Document, DocumentContent, DocumentMetadata, DocumentStatus};
 use tachyon_core::types::storage::{
     DocumentListSummary, DocumentStore, ListParams, ListResult, SortDirection, SortField,

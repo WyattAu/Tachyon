@@ -975,11 +975,10 @@ impl ServerConfig {
             config.host = host;
         }
 
-        if let Ok(port) = std::env::var("TACHYON_PORT") {
-            if let Ok(p) = port.parse::<u16>() {
+        if let Ok(port) = std::env::var("TACHYON_PORT")
+            && let Ok(p) = port.parse::<u16>() {
                 config.port = p;
             }
-        }
 
         if let Ok(db_path) = std::env::var("TACHYON_DATABASE_PATH") {
             config.database_path = Some(db_path);
@@ -1027,11 +1026,10 @@ impl ServerConfig {
         }
         config.jwt.secrets = jwt_secrets;
 
-        if let Ok(jwt_expiration) = std::env::var("TACHYON_JWT_EXPIRATION") {
-            if let Ok(exp) = jwt_expiration.parse::<u64>() {
+        if let Ok(jwt_expiration) = std::env::var("TACHYON_JWT_EXPIRATION")
+            && let Ok(exp) = jwt_expiration.parse::<u64>() {
                 config.jwt.expiration_secs = exp;
             }
-        }
 
         if let Ok(rotation) = std::env::var("TACHYON_JWT_ROTATION_ENABLED") {
             config.jwt.rotation_enabled = rotation != "0" && rotation != "false";
@@ -1053,8 +1051,8 @@ impl ServerConfig {
             config.rate_limit.enabled = rate_limit_enabled != "0" && rate_limit_enabled != "false";
         }
 
-        if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS") {
-            if let Ok(parsed) = serde_json::from_str::<
+        if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS")
+            && let Ok(parsed) = serde_json::from_str::<
                 std::collections::HashMap<String, EndpointRateLimitJsonEntry>,
             >(&json_str)
             {
@@ -1068,7 +1066,6 @@ impl ServerConfig {
                     );
                 }
             }
-        }
 
         if let Ok(site_title) = std::env::var("TACHYON_SITE_TITLE") {
             config.site.title = site_title;
@@ -1153,11 +1150,10 @@ impl ServerConfig {
         if let Ok(val) = std::env::var("TACHYON_SMTP_PASSWORD") {
             config.smtp_password = Some(val);
         }
-        if let Ok(val) = std::env::var("TACHYON_SMTP_PORT") {
-            if let Ok(p) = val.parse::<u16>() {
+        if let Ok(val) = std::env::var("TACHYON_SMTP_PORT")
+            && let Ok(p) = val.parse::<u16>() {
                 config.smtp_port = Some(p);
             }
-        }
         if let Ok(val) = std::env::var("TACHYON_SMTP_TLS") {
             config.smtp_tls = val != "0" && val != "false";
         }
@@ -1195,43 +1191,36 @@ impl ServerConfig {
                 .filter(|s| !s.is_empty())
                 .collect();
         }
-        if let Ok(val) = std::env::var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES") {
-            if let Ok(v) = val.parse::<usize>() {
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES")
+            && let Ok(v) = val.parse::<usize>() {
                 config.security.max_request_size_bytes = v;
             }
-        }
-        if let Ok(val) = std::env::var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS") {
-            if let Ok(v) = val.parse::<u64>() {
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS")
+            && let Ok(v) = val.parse::<u64>() {
                 config.security.session_expiry_hours = v;
             }
-        }
-        if let Ok(val) = std::env::var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS") {
-            if let Ok(v) = val.parse::<usize>() {
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS")
+            && let Ok(v) = val.parse::<usize>() {
                 config.security.max_concurrent_sessions = v;
             }
-        }
 
         // Database pool configuration
-        if let Ok(val) = std::env::var("TACHYON_DB_MAX_CONNECTIONS") {
-            if let Ok(v) = val.parse::<u32>() {
+        if let Ok(val) = std::env::var("TACHYON_DB_MAX_CONNECTIONS")
+            && let Ok(v) = val.parse::<u32>() {
                 config.db_max_connections = v;
             }
-        }
-        if let Ok(val) = std::env::var("TACHYON_DB_MIN_CONNECTIONS") {
-            if let Ok(v) = val.parse::<u32>() {
+        if let Ok(val) = std::env::var("TACHYON_DB_MIN_CONNECTIONS")
+            && let Ok(v) = val.parse::<u32>() {
                 config.db_min_connections = v;
             }
-        }
-        if let Ok(val) = std::env::var("TACHYON_DB_ACQUIRE_TIMEOUT_MS") {
-            if let Ok(v) = val.parse::<u64>() {
+        if let Ok(val) = std::env::var("TACHYON_DB_ACQUIRE_TIMEOUT_MS")
+            && let Ok(v) = val.parse::<u64>() {
                 config.db_acquire_timeout_ms = v;
             }
-        }
-        if let Ok(val) = std::env::var("TACHYON_DB_IDLE_TIMEOUT_SECS") {
-            if let Ok(v) = val.parse::<u64>() {
+        if let Ok(val) = std::env::var("TACHYON_DB_IDLE_TIMEOUT_SECS")
+            && let Ok(v) = val.parse::<u64>() {
                 config.db_idle_timeout_secs = v;
             }
-        }
 
         config.redis_pubsub_url = std::env::var("TACHYON_REDIS_PUBSUB_URL").ok();
 
@@ -1242,16 +1231,14 @@ impl ServerConfig {
         if let Ok(val) = std::env::var("TACHYON_CDN_BASE_URL") {
             config.cdn.base_url = Some(val);
         }
-        if let Ok(val) = std::env::var("TACHYON_CDN_STATIC_TTL_SECS") {
-            if let Ok(v) = val.parse::<u64>() {
+        if let Ok(val) = std::env::var("TACHYON_CDN_STATIC_TTL_SECS")
+            && let Ok(v) = val.parse::<u64>() {
                 config.cdn.static_ttl_secs = v;
             }
-        }
-        if let Ok(val) = std::env::var("TACHYON_CDN_API_TTL_SECS") {
-            if let Ok(v) = val.parse::<u64>() {
+        if let Ok(val) = std::env::var("TACHYON_CDN_API_TTL_SECS")
+            && let Ok(v) = val.parse::<u64>() {
                 config.cdn.api_ttl_secs = v;
             }
-        }
         if let Ok(val) = std::env::var("TACHYON_CDN_ENABLED") {
             config.cdn.enabled = val == "true" || val == "1";
         }
@@ -1273,11 +1260,10 @@ impl ServerConfig {
         if let Ok(val) = std::env::var("TACHYON_SMS_OTP_ENABLED") {
             config.sms_otp.enabled = val == "1" || val == "true";
         }
-        if let Ok(val) = std::env::var("TACHYON_SMS_OTP_TTL_SECS") {
-            if let Ok(v) = val.parse::<u64>() {
+        if let Ok(val) = std::env::var("TACHYON_SMS_OTP_TTL_SECS")
+            && let Ok(v) = val.parse::<u64>() {
                 config.sms_otp.ttl_secs = v;
             }
-        }
         if let Ok(val) = std::env::var("TACHYON_SMS_PROVIDER") {
             config.sms_otp.provider = val;
         }
@@ -1373,16 +1359,22 @@ mod tests {
     #[test]
     #[serial]
     fn test_static_dir_default() {
-        std::env::remove_var("TACHYON_STATIC_DIR");
+        unsafe {
+            std::env::remove_var("TACHYON_STATIC_DIR");
+        }
         assert_eq!(static_dir(), "dist");
     }
 
     #[test]
     #[serial]
     fn test_static_dir_from_env() {
-        std::env::set_var("TACHYON_STATIC_DIR", "/var/www/html");
+        unsafe {
+            std::env::set_var("TACHYON_STATIC_DIR", "/var/www/html");
+        }
         assert_eq!(static_dir(), "/var/www/html");
-        std::env::remove_var("TACHYON_STATIC_DIR");
+        unsafe {
+            std::env::remove_var("TACHYON_STATIC_DIR");
+        }
     }
 
     #[test]
@@ -1396,13 +1388,17 @@ mod tests {
 
     #[test]
     fn test_db_pool_config_from_env() {
-        std::env::set_var("TACHYON_DB_MAX_CONNECTIONS", "20");
-        std::env::set_var("TACHYON_DB_MIN_CONNECTIONS", "5");
+        unsafe {
+            std::env::set_var("TACHYON_DB_MAX_CONNECTIONS", "20");
+            std::env::set_var("TACHYON_DB_MIN_CONNECTIONS", "5");
+        }
         let config = ServerConfig::from_env();
         assert_eq!(config.db_max_connections, 20);
         assert_eq!(config.db_min_connections, 5);
-        std::env::remove_var("TACHYON_DB_MAX_CONNECTIONS");
-        std::env::remove_var("TACHYON_DB_MIN_CONNECTIONS");
+        unsafe {
+            std::env::remove_var("TACHYON_DB_MAX_CONNECTIONS");
+            std::env::remove_var("TACHYON_DB_MIN_CONNECTIONS");
+        }
     }
 
     #[test]
@@ -1450,16 +1446,20 @@ mod tests {
     #[test]
     #[serial]
     fn test_security_config_from_env() {
-        std::env::set_var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES", "5242880");
-        std::env::set_var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS", "48");
-        std::env::set_var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS", "50");
+        unsafe {
+            std::env::set_var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES", "5242880");
+            std::env::set_var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS", "48");
+            std::env::set_var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS", "50");
+        }
         let config = ServerConfig::from_env();
         assert_eq!(config.security.max_request_size_bytes, 5242880);
         assert_eq!(config.security.session_expiry_hours, 48);
         assert_eq!(config.security.max_concurrent_sessions, 50);
-        std::env::remove_var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES");
-        std::env::remove_var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS");
-        std::env::remove_var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS");
+        unsafe {
+            std::env::remove_var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES");
+            std::env::remove_var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS");
+            std::env::remove_var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS");
+        }
     }
 
     #[test]
@@ -1482,9 +1482,11 @@ mod tests {
     #[test]
     #[serial]
     fn test_cdn_config_from_env() {
-        std::env::set_var("TACHYON_CDN_PROVIDER", "fastly");
-        std::env::set_var("TACHYON_CDN_BASE_URL", "https://cdn.example.com");
-        std::env::set_var("TACHYON_CDN_ENABLED", "true");
+        unsafe {
+            std::env::set_var("TACHYON_CDN_PROVIDER", "fastly");
+            std::env::set_var("TACHYON_CDN_BASE_URL", "https://cdn.example.com");
+            std::env::set_var("TACHYON_CDN_ENABLED", "true");
+        }
         let config = ServerConfig::from_env();
         assert_eq!(config.cdn.provider, "fastly");
         assert_eq!(
@@ -1492,9 +1494,11 @@ mod tests {
             Some("https://cdn.example.com")
         );
         assert!(config.cdn.enabled);
-        std::env::remove_var("TACHYON_CDN_PROVIDER");
-        std::env::remove_var("TACHYON_CDN_BASE_URL");
-        std::env::remove_var("TACHYON_CDN_ENABLED");
+        unsafe {
+            std::env::remove_var("TACHYON_CDN_PROVIDER");
+            std::env::remove_var("TACHYON_CDN_BASE_URL");
+            std::env::remove_var("TACHYON_CDN_ENABLED");
+        }
     }
 
     #[test]
@@ -1506,24 +1510,32 @@ mod tests {
     #[test]
     #[serial]
     fn test_read_replica_urls_from_env() {
-        std::env::set_var(
-            "TACHYON_READ_REPLICA_URLS",
-            "postgres://replica1:5432/db,postgres://replica2:5432/db",
-        );
+        unsafe {
+            std::env::set_var(
+                "TACHYON_READ_REPLICA_URLS",
+                "postgres://replica1:5432/db,postgres://replica2:5432/db",
+            );
+        }
         let config = ServerConfig::from_env();
         assert_eq!(config.read_replica_urls.len(), 2);
         assert_eq!(config.read_replica_urls[0], "postgres://replica1:5432/db");
         assert_eq!(config.read_replica_urls[1], "postgres://replica2:5432/db");
-        std::env::remove_var("TACHYON_READ_REPLICA_URLS");
+        unsafe {
+            std::env::remove_var("TACHYON_READ_REPLICA_URLS");
+        }
     }
 
     #[test]
     #[serial]
     fn test_read_replica_urls_empty_env() {
-        std::env::set_var("TACHYON_READ_REPLICA_URLS", "");
+        unsafe {
+            std::env::set_var("TACHYON_READ_REPLICA_URLS", "");
+        }
         let config = ServerConfig::from_env();
         assert!(config.read_replica_urls.is_empty());
-        std::env::remove_var("TACHYON_READ_REPLICA_URLS");
+        unsafe {
+            std::env::remove_var("TACHYON_READ_REPLICA_URLS");
+        }
     }
 
     #[test]
@@ -1535,19 +1547,31 @@ mod tests {
     #[test]
     #[serial]
     fn test_pgbouncer_enabled_from_env() {
-        std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "true");
+        unsafe {
+            std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "true");
+        }
         let config = ServerConfig::from_env();
         assert!(config.pgbouncer_enabled);
-        std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+        unsafe {
+            std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+        }
 
-        std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "1");
+        unsafe {
+            std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "1");
+        }
         let config = ServerConfig::from_env();
         assert!(config.pgbouncer_enabled);
-        std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+        unsafe {
+            std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+        }
 
-        std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "false");
+        unsafe {
+            std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "false");
+        }
         let config = ServerConfig::from_env();
         assert!(!config.pgbouncer_enabled);
-        std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+        unsafe {
+            std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+        }
     }
 }

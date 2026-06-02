@@ -1,15 +1,16 @@
+use super::common::skip_without_db;
+use axum::Router;
 use axum::body::Body;
 use axum::extract::Request;
-use axum::http::{header, StatusCode};
+use axum::http::{StatusCode, header};
 use axum::middleware::Next;
 use axum::routing::get;
-use axum::Router;
 use http_body_util::BodyExt;
-use jsonwebtoken::{encode, EncodingKey, Header};
+use jsonwebtoken::{EncodingKey, Header, encode};
 use serde_json::json;
 use tachyon_core::UserRole;
 use tachyon_server::config::ServerConfig;
-use tachyon_server::middleware::auth::{auth_middleware, AuthContext, AuthState};
+use tachyon_server::middleware::auth::{AuthContext, AuthState, auth_middleware};
 use tower::ServiceExt;
 
 const TEST_JWT_SECRET: &str = "integration-test-secret-key-at-least-32chars!";
@@ -106,13 +107,12 @@ fn generate_jwt_with_extra(user_id: &str, role: &str, extra: serde_json::Value) 
         "permissions": [],
         "team_id": null,
     });
-    if let Some(obj) = claims.as_object_mut() {
-        if let Some(extra_obj) = extra.as_object() {
+    if let Some(obj) = claims.as_object_mut()
+        && let Some(extra_obj) = extra.as_object() {
             for (k, v) in extra_obj {
                 obj.insert(k.clone(), v.clone());
             }
         }
-    }
 
     encode(
         &Header::default(),
@@ -171,10 +171,6 @@ async fn setup_pool() -> tachyon_database::DatabasePool {
     tachyon_database::DatabasePool::new(&db_url)
         .await
         .expect("Failed to connect to test database")
-}
-
-fn skip_without_db() -> bool {
-    std::env::var("TEST_DATABASE_URL").is_err()
 }
 
 async fn read_body_json(response: axum::response::Response<Body>) -> serde_json::Value {

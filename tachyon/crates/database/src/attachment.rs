@@ -5,7 +5,7 @@ use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, FromRow, Row};
+use sqlx::{FromRow, Row, query, query_as};
 use std::path::PathBuf;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;

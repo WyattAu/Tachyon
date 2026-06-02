@@ -53,29 +53,29 @@ use axum::Router;
 
 /// Create a test router with all routes for integration testing
 pub async fn create_router() -> Router {
-    use crate::routes::activity::{create_activity_router, ActivityState};
-    use crate::routes::billing::{create_billing_router, BillingState};
-    use crate::routes::catalog::{create_catalog_router, CatalogState};
-    use crate::routes::conflict::{create_conflict_router, ConflictState};
-    use crate::routes::digest::{create_digest_router, DigestState};
-    use crate::routes::document::{create_document_router, DocumentState};
-    use crate::routes::node::{create_node_router, NodeState};
-    use crate::routes::notification::{create_notification_router, NotificationState};
-    use crate::routes::onboarding::{create_onboarding_router, OnboardingState};
-    use crate::routes::organization::{create_organization_router, OrganizationState};
-    use crate::routes::plugin::{create_plugin_router_with_state, PluginState};
-    use crate::routes::repository::{create_repository_router, RepositoryState};
-    use crate::routes::review::{create_review_router, ReviewState};
-    use crate::routes::role::{create_role_router, RoleState};
-    use crate::routes::search::{create_search_router, SearchState};
-    use crate::routes::seo::{create_seo_router, SeoState};
-    use crate::routes::session::{create_session_router, SessionState};
-    use crate::routes::space::{create_space_router, SpaceState};
-    use crate::routes::ssg::{create_ssg_router, SsgState};
-    use crate::routes::tags::{create_tags_router, TagsState};
-    use crate::routes::team::{create_team_router, TeamState};
-    use crate::routes::user::{create_user_router, UserState};
-    use crate::routes::webhook::{create_webhook_router, WebhookState};
+    use crate::routes::activity::{ActivityState, create_activity_router};
+    use crate::routes::billing::{BillingState, create_billing_router};
+    use crate::routes::catalog::{CatalogState, create_catalog_router};
+    use crate::routes::conflict::{ConflictState, create_conflict_router};
+    use crate::routes::digest::{DigestState, create_digest_router};
+    use crate::routes::document::{DocumentState, create_document_router};
+    use crate::routes::node::{NodeState, create_node_router};
+    use crate::routes::notification::{NotificationState, create_notification_router};
+    use crate::routes::onboarding::{OnboardingState, create_onboarding_router};
+    use crate::routes::organization::{OrganizationState, create_organization_router};
+    use crate::routes::plugin::{PluginState, create_plugin_router_with_state};
+    use crate::routes::repository::{RepositoryState, create_repository_router};
+    use crate::routes::review::{ReviewState, create_review_router};
+    use crate::routes::role::{RoleState, create_role_router};
+    use crate::routes::search::{SearchState, create_search_router};
+    use crate::routes::seo::{SeoState, create_seo_router};
+    use crate::routes::session::{SessionState, create_session_router};
+    use crate::routes::space::{SpaceState, create_space_router};
+    use crate::routes::ssg::{SsgState, create_ssg_router};
+    use crate::routes::tags::{TagsState, create_tags_router};
+    use crate::routes::team::{TeamState, create_team_router};
+    use crate::routes::user::{UserState, create_user_router};
+    use crate::routes::webhook::{WebhookState, create_webhook_router};
     use crate::websocket::ConnectionManager;
     use tachyon_database::init_with_migrations;
 
@@ -203,183 +203,184 @@ pub async fn create_router() -> Router {
 
 // Catalog exports
 pub use catalog::{
+    AddMemberRequest, ApiResponse, CatalogState, PaginationParams, ProjectFilters,
     create_catalog_router, create_component, create_project, delete_component, delete_project,
     get_catalog_stats, get_component, get_project, get_project_by_slug, list_project_components,
-    list_project_members, list_projects, remove_project_member, update_project, AddMemberRequest,
-    ApiResponse, CatalogState, PaginationParams, ProjectFilters,
+    list_project_members, list_projects, remove_project_member, update_project,
 };
 
 // Document exports
 pub use document::{
-    create_document, create_document_router, delete_document, get_document, list_documents,
-    search_documents, update_document, DocumentQuery, DocumentState, UpdateDocumentRequest,
+    DocumentQuery, DocumentState, UpdateDocumentRequest, create_document, create_document_router,
+    delete_document, get_document, list_documents, search_documents, update_document,
 };
 
 // Node exports
 pub use node::{
-    create_edge, create_node, create_node_router, delete_edge, delete_node, get_graph_stats,
-    get_node, get_node_edges, list_nodes, query_graph, update_node, CreateEdgeRequest,
-    CreateNodeRequest, GraphQueryRequest, NodeQuery, NodeState, UpdateNodeRequest,
+    CreateEdgeRequest, CreateNodeRequest, GraphQueryRequest, NodeQuery, NodeState,
+    UpdateNodeRequest, create_edge, create_node, create_node_router, delete_edge, delete_node,
+    get_graph_stats, get_node, get_node_edges, list_nodes, query_graph, update_node,
 };
 
 // Repository exports
 pub use repository::{
-    clone_repository, commit, create_repository_router, delete_repository, get_repository,
-    init_repository, list_repositories, push, status, RepositoryState,
+    RepositoryState, clone_repository, commit, create_repository_router, delete_repository,
+    get_repository, init_repository, list_repositories, push, status,
 };
 
 // Role exports
 pub use role::{
-    create_role, create_role_router, delete_role, get_role, list_roles, seed_default_roles,
-    update_role, CreateRoleRequest, RoleResponse, RoleState, UpdateRoleRequest,
+    CreateRoleRequest, RoleResponse, RoleState, UpdateRoleRequest, create_role, create_role_router,
+    delete_role, get_role, list_roles, seed_default_roles, update_role,
 };
 
 // Search exports
 pub use search::{
-    create_saved_search, create_search_router, delete_saved_search, get_saved_search,
-    global_search, list_saved_searches, search, update_saved_search, CreateSavedSearchBody,
-    SavedSearchResponse, SearchQuery, SearchResultsResponse, SearchState, UpdateSavedSearchBody,
+    CreateSavedSearchBody, SavedSearchResponse, SearchQuery, SearchResultsResponse, SearchState,
+    UpdateSavedSearchBody, create_saved_search, create_search_router, delete_saved_search,
+    get_saved_search, global_search, list_saved_searches, search, update_saved_search,
 };
 
 // Session exports
 pub use session::{
-    create_session, create_session_router, get_session, list_sessions, revoke_all_sessions,
-    revoke_session, validate_session, SessionState,
+    SessionState, create_session, create_session_router, get_session, list_sessions,
+    revoke_all_sessions, revoke_session, validate_session,
 };
 
 // Team exports
 pub use team::{
-    add_team_member, create_team, create_team_router, delete_team, get_team, get_team_by_slug,
-    list_team_members, list_teams, remove_team_member, update_team, update_team_member,
     AddMemberRequest as TeamAddMemberRequest, CreateTeamRequest, TeamMemberResponse, TeamQuery,
-    TeamResponse, TeamState, UpdateMemberRequest, UpdateTeamRequest,
+    TeamResponse, TeamState, UpdateMemberRequest, UpdateTeamRequest, add_team_member, create_team,
+    create_team_router, delete_team, get_team, get_team_by_slug, list_team_members, list_teams,
+    remove_team_member, update_team, update_team_member,
 };
 
 // User exports
 pub use user::{
-    auth_status, authenticate, create_user, create_user_router, delete_user, get_me, get_user,
-    list_users, logout, update_me, update_user, AuthenticateRequest, AuthenticateResponse,
-    CreateUserRequest, UpdateProfileRequest, UpdateUserRequest, UserListResponse, UserQuery,
-    UserResponse, UserState,
+    AuthenticateRequest, AuthenticateResponse, CreateUserRequest, UpdateProfileRequest,
+    UpdateUserRequest, UserListResponse, UserQuery, UserResponse, UserState, auth_status,
+    authenticate, create_user, create_user_router, delete_user, get_me, get_user, list_users,
+    logout, update_me, update_user,
 };
 
 // SEO exports
-pub use seo::{create_seo_router, SeoState};
+pub use seo::{SeoState, create_seo_router};
 
 // Review exports
 pub use review::{
-    create_comment, create_review, create_review_router, get_review_status, list_comments,
-    list_reviews, update_review, CommentResponse, ReviewResponse, ReviewState,
-    ReviewStatusResponse,
+    CommentResponse, ReviewResponse, ReviewState, ReviewStatusResponse, create_comment,
+    create_review, create_review_router, get_review_status, list_comments, list_reviews,
+    update_review,
 };
 
 // Activity exports
 pub use activity::{
-    create_activity, create_activity_router, list_activity, list_activity_cursor,
-    ActivityCursorPage, ActivityListResponse, ActivityState, ListActivityQuery,
+    ActivityCursorPage, ActivityListResponse, ActivityState, ListActivityQuery, create_activity,
+    create_activity_router, list_activity, list_activity_cursor,
 };
 
 // Notification exports
 pub use notification::{
-    create_notification_router, list_notifications, list_notifications_cursor, mark_all_read,
-    mark_notification_read, unread_count, ListNotificationsQuery, MarkAllReadResponse,
-    MarkReadResponse, NotificationCursorPage, NotificationListResponse, NotificationState,
-    UnreadCountResponse,
+    ListNotificationsQuery, MarkAllReadResponse, MarkReadResponse, NotificationCursorPage,
+    NotificationListResponse, NotificationState, UnreadCountResponse, create_notification_router,
+    list_notifications, list_notifications_cursor, mark_all_read, mark_notification_read,
+    unread_count,
 };
 
 // Conflict exports
 pub use conflict::{
-    create_conflict_router, get_conflict_info, resolve_conflict, ConflictInfo, ConflictState,
-    MergeResultInfo, ResolveConflictRequest,
+    ConflictInfo, ConflictState, MergeResultInfo, ResolveConflictRequest, create_conflict_router,
+    get_conflict_info, resolve_conflict,
 };
 
 // Tags exports
-pub use tags::{create_tags_router, list_tags, TagInfo, TagsResponse, TagsState};
+pub use tags::{TagInfo, TagsResponse, TagsState, create_tags_router, list_tags};
 
 // Webhook exports
 pub use webhook::{
-    create_webhook, create_webhook_router, delete_webhook, list_webhooks, CreateWebhookBody,
-    WebhookResponse, WebhookState,
+    CreateWebhookBody, WebhookResponse, WebhookState, create_webhook, create_webhook_router,
+    delete_webhook, list_webhooks,
 };
 
 // Plugin exports
 pub use plugin::{
+    CreatePluginBody, PluginCursorPage, PluginResponse, PluginState, UpdatePluginBody,
     create_plugin, create_plugin_router_with_state, delete_plugin, get_plugin, list_plugins,
-    list_plugins_cursor, update_plugin, CreatePluginBody, PluginCursorPage, PluginResponse,
-    PluginState, UpdatePluginBody,
+    list_plugins_cursor, update_plugin,
 };
 
 // Space exports
 pub use space::{
-    create_space_router, list_spaces_cursor, AddMemberBody, CreateSpaceBody, SpaceCursorPage,
-    SpaceMemberResponse, SpaceQuery, SpaceResponse, SpaceState, UpdateMemberBody, UpdateSpaceBody,
+    AddMemberBody, CreateSpaceBody, SpaceCursorPage, SpaceMemberResponse, SpaceQuery,
+    SpaceResponse, SpaceState, UpdateMemberBody, UpdateSpaceBody, create_space_router,
+    list_spaces_cursor,
 };
 
 // Billing exports
 pub use billing::{
-    cancel_subscription, create_billing_router, create_subscription, get_subscription, get_usage,
-    list_invoices, list_plans, BillingState, InvoicesResponse, Plan, PlanDetails, PlanInfo,
-    PlansResponse, SubscriptionResponse, UsageMetrics, UsageResponse,
+    BillingState, InvoicesResponse, Plan, PlanDetails, PlanInfo, PlansResponse,
+    SubscriptionResponse, UsageMetrics, UsageResponse, cancel_subscription, create_billing_router,
+    create_subscription, get_subscription, get_usage, list_invoices, list_plans,
 };
 
 // Organization exports
 pub use organization::{
-    add_member, create_organization, create_organization_router, delete_organization,
-    get_organization, list_members, list_organizations, list_organizations_cursor, remove_member,
-    update_member, update_organization, AddMemberBody as OrgAddMemberBody, CreateOrganizationBody,
-    OrganizationCursorPage, OrganizationMemberResponse, OrganizationQuery, OrganizationResponse,
-    OrganizationState, UpdateMemberBody as OrgUpdateMemberBody, UpdateOrganizationBody,
+    AddMemberBody as OrgAddMemberBody, CreateOrganizationBody, OrganizationCursorPage,
+    OrganizationMemberResponse, OrganizationQuery, OrganizationResponse, OrganizationState,
+    UpdateMemberBody as OrgUpdateMemberBody, UpdateOrganizationBody, add_member,
+    create_organization, create_organization_router, delete_organization, get_organization,
+    list_members, list_organizations, list_organizations_cursor, remove_member, update_member,
+    update_organization,
 };
 
 // Password reset exports
 pub use password_reset::{
-    create_password_reset_router, EmailVerifyConfirm, EmailVerifyRequest,
-    MessageResponse as PasswordResetMessageResponse, PasswordResetConfirm, PasswordResetRequest,
-    PasswordResetState,
+    EmailVerifyConfirm, EmailVerifyRequest, MessageResponse as PasswordResetMessageResponse,
+    PasswordResetConfirm, PasswordResetRequest, PasswordResetState, create_password_reset_router,
 };
 
 // Magic link exports
 pub use magic_link::{
-    create_magic_link_router, MagicLinkMessageResponse, MagicLinkRequest, MagicLinkState,
-    MagicLinkVerify,
+    MagicLinkMessageResponse, MagicLinkRequest, MagicLinkState, MagicLinkVerify,
+    create_magic_link_router,
 };
 
 // Files exports
-pub use files::{create_files_router, FilesState, UploadResponse};
+pub use files::{FilesState, UploadResponse, create_files_router};
 
 // SSG exports
 pub use ssg::{
-    build_site, create_ssg_router, download_site, SsgBuildRequest, SsgBuildResponse,
-    SsgBuildResultWrapper, SsgNavLink, SsgState,
+    SsgBuildRequest, SsgBuildResponse, SsgBuildResultWrapper, SsgNavLink, SsgState, build_site,
+    create_ssg_router, download_site,
 };
 
 // Onboarding exports
 pub use onboarding::{
-    create_onboarding_router, CompleteStepRequest, CompleteStepResponse, OnboardingState,
-    OnboardingStatusResponse, SampleContentResponse, SuggestionsResponse, TemplateSuggestion,
+    CompleteStepRequest, CompleteStepResponse, OnboardingState, OnboardingStatusResponse,
+    SampleContentResponse, SuggestionsResponse, TemplateSuggestion, create_onboarding_router,
 };
 
 // Comment exports
-pub use comments::{create_comment_router, CommentState};
+pub use comments::{CommentState, create_comment_router};
 
 // SMS OTP exports
 pub use sms_otp::{
-    create_sms_otp_router, SmsOtpMessageResponse, SmsOtpRequest, SmsOtpRouteState, SmsOtpVerify,
+    SmsOtpMessageResponse, SmsOtpRequest, SmsOtpRouteState, SmsOtpVerify, create_sms_otp_router,
 };
 
 // E2E Encryption exports
 pub use e2e_encryption::{
-    register_encryption_key, E2eState, EncryptionKeyMeta, EncryptionStatus, RegisterKeyRequest,
+    E2eState, EncryptionKeyMeta, EncryptionStatus, RegisterKeyRequest, register_encryption_key,
 };
 
 // Compliance (SOC 2) exports
-pub use compliance::{generate_soc2_checklist, ComplianceChecklist, ComplianceItem, Soc2Category};
+pub use compliance::{ComplianceChecklist, ComplianceItem, Soc2Category, generate_soc2_checklist};
 
 // GDPR exports
 pub use gdpr::{
-    generate_data_export, generate_deletion_confirmation, GdprActivityEntry, GdprDataExport,
-    GdprDeletionResult, GdprDocumentsSummary, GdprPersonalData,
+    GdprActivityEntry, GdprDataExport, GdprDeletionResult, GdprDocumentsSummary, GdprPersonalData,
+    generate_data_export, generate_deletion_confirmation,
 };
 
 // HIPAA exports
-pub use hipaa::{hipaa_compliance_status, HipaaAuditEntry, HipaaComplianceStatus};
+pub use hipaa::{HipaaAuditEntry, HipaaComplianceStatus, hipaa_compliance_status};

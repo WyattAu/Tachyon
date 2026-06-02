@@ -3,8 +3,8 @@
 
 use crate::error::{DatabaseError, DatabaseResult};
 use crate::types::DatabaseConfig;
-use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::Postgres;
+use sqlx::postgres::{PgPool, PgPoolOptions};
 use tracing::{debug, info, instrument};
 
 /// Database pool for PostgreSQL connections

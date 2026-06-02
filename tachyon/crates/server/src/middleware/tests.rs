@@ -1,11 +1,11 @@
 use axum::{
+    Router,
     body::Body,
     extract::Request,
     http::{HeaderMap, HeaderValue, Method, StatusCode},
     middleware::{from_fn, from_fn_with_state},
     response::Response,
     routing::get,
-    Router,
 };
 use std::collections::HashMap;
 use tower::ServiceBuilder;
@@ -13,7 +13,7 @@ use tower::ServiceExt;
 
 use crate::middleware::rate_limit::{RateLimitConfig, RateLimitState};
 use crate::middleware::security_headers::{
-    add_security_headers_with_config, SecurityHeadersConfig,
+    SecurityHeadersConfig, add_security_headers_with_config,
 };
 use crate::middleware::{
     add_security_headers_from_config, audit_middleware, cache_control_middleware,
@@ -886,7 +886,7 @@ fn build_auth_test_app(config: &crate::config::ServerConfig) -> Router {
 }
 
 fn build_csp_nonce_app(config: &crate::config::ServerConfig) -> Router {
-    use crate::middleware::security_headers::{generate_nonce, CspNonce};
+    use crate::middleware::security_headers::{CspNonce, generate_nonce};
 
     let security_config = std::sync::Arc::new(config.security.clone());
 

@@ -132,7 +132,7 @@ impl ChatPlatformDispatcher {
                     success: false,
                     status_code: None,
                     error: Some("No Slack webhook URL configured".to_string()),
-                }
+                };
             }
         };
 
@@ -193,7 +193,7 @@ impl ChatPlatformDispatcher {
                     success: false,
                     status_code: None,
                     error: Some("No Discord webhook URL configured".to_string()),
-                }
+                };
             }
         };
 
@@ -305,11 +305,10 @@ fn build_slack_payload(
         attachment["title_link"] = serde_json::json!(link);
     }
 
-    if let Some(ref ts) = notification.timestamp {
-        if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(ts) {
+    if let Some(ref ts) = notification.timestamp
+        && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(ts) {
             attachment["ts"] = serde_json::json!(dt.timestamp());
         }
-    }
 
     serde_json::json!({
         "channel": channel,
@@ -354,11 +353,10 @@ fn build_discord_payload(
         embed["url"] = serde_json::json!(link);
     }
 
-    if let Some(ref ts) = notification.timestamp {
-        if chrono::DateTime::parse_from_rfc3339(ts).is_ok() {
+    if let Some(ref ts) = notification.timestamp
+        && chrono::DateTime::parse_from_rfc3339(ts).is_ok() {
             embed["timestamp"] = serde_json::json!(ts);
         }
-    }
 
     let mut payload = serde_json::json!({
         "username": username,
@@ -444,7 +442,7 @@ mod tests {
         let attachments = payload["attachments"].as_array().unwrap();
         let att = &attachments[0];
         assert_eq!(att["title"], "System Alert");
-        assert!(!att.get("title_link").is_some());
+        assert!(att.get("title_link").is_none());
         assert_eq!(att["color"], "#00BCD4");
         assert!(att["fields"].as_array().unwrap().is_empty());
     }
@@ -525,9 +523,9 @@ mod tests {
 
         let embeds = payload["embeds"].as_array().unwrap();
         let embed = &embeds[0];
-        assert!(!embed.get("url").is_some());
-        assert!(!embed.get("timestamp").is_some());
-        assert!(!embed.get("avatar_url").is_some());
+        assert!(embed.get("url").is_none());
+        assert!(embed.get("timestamp").is_none());
+        assert!(embed.get("avatar_url").is_none());
         assert!(embed["fields"].as_array().unwrap().is_empty());
     }
 
@@ -541,7 +539,7 @@ mod tests {
         let notification = sample_notification();
         let payload = build_discord_payload(&notification, &config);
         assert_eq!(payload["username"], "Tachyon");
-        assert!(!payload.get("avatar_url").is_some());
+        assert!(payload.get("avatar_url").is_none());
     }
 
     #[test]

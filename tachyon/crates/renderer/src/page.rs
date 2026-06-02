@@ -534,7 +534,12 @@ mod tests {
     #[test]
     fn test_extract_description() {
         assert_eq!(extract_description("<p>Hello world</p>"), "Hello world");
-        assert_eq!(extract_description("<p>This is a longer description that exceeds the 160 character limit for meta descriptions.</p>"), "This is a longer description that exceeds the 160 character limit for meta descriptions.");
+        assert_eq!(
+            extract_description(
+                "<p>This is a longer description that exceeds the 160 character limit for meta descriptions.</p>"
+            ),
+            "This is a longer description that exceeds the 160 character limit for meta descriptions."
+        );
     }
 
     #[test]

@@ -2,13 +2,11 @@ use tachyon_core::generate_session_id;
 use tachyon_core::generate_user_id;
 use tachyon_core::types::user::UserRole;
 use tachyon_rbac::{
-    types::{Action, Effect},
     AuthContext, Enforcer, Resource, Subject,
+    types::{Action, Effect},
 };
 
-fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
-}
+use super::common::skip_without_db;
 
 #[test]
 fn test_create_user_with_admin_role() {

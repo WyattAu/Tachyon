@@ -142,11 +142,10 @@ impl TrueLayerClient {
 
         {
             let cache = self.token_cache.lock().await;
-            if let Some(cached) = cache.as_ref() {
-                if cached.expires_at > Instant::now() {
+            if let Some(cached) = cache.as_ref()
+                && cached.expires_at > Instant::now() {
                     return Ok(cached.token.clone());
                 }
-            }
         }
 
         let resp = self

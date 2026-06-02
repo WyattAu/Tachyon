@@ -1,14 +1,14 @@
 //! WASM Sandbox for plugin execution.
 
+use crate::PluginRuntimeResult;
 use crate::error::PluginRuntimeError;
 use crate::permissions::PermissionSet;
-use crate::PluginRuntimeResult;
 use serde_json::Value;
 use std::path::Path;
 use wasmtime::*;
+use wasmtime_wasi::WasiCtxBuilder;
 use wasmtime_wasi::p1::{self, WasiP1Ctx};
 use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};
-use wasmtime_wasi::WasiCtxBuilder;
 
 #[derive(Debug, Clone)]
 pub struct SandboxConfig {
@@ -101,7 +101,7 @@ impl PluginSandbox {
                     "Failed to compile {}: {}",
                     self.wasm_path.display(),
                     e
-                )))
+                )));
             }
         };
 

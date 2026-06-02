@@ -2,14 +2,11 @@ use std::panic::AssertUnwindSafe;
 use tachyon_database::space::UpdateSpaceRequest;
 use tachyon_database::{DocumentRepository, RepositoryRepository, SpaceRepository, UserRepository};
 
+use super::common::skip_without_db;
 use crate::common::setup::{
     create_test_document, create_test_pool, create_test_repository, create_test_space,
     create_test_user, setup_database, teardown_test_user,
 };
-
-fn skip_without_db() -> bool {
-    std::env::var("DATABASE_URL").is_err() && std::env::var("TEST_DATABASE_URL").is_err()
-}
 
 #[tokio::test]
 async fn test_user_crud_lifecycle() {

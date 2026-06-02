@@ -277,7 +277,7 @@ pub trait DocumentStore: Send + Sync {
 
     /// Check if the storage backend is available and healthy.
     fn is_available<'a>(&'a self)
-        -> Pin<Box<dyn Future<Output = StorageResult<bool>> + Send + 'a>>;
+    -> Pin<Box<dyn Future<Output = StorageResult<bool>> + Send + 'a>>;
 }
 
 /// Configuration for embedded storage (used in desktop mode).

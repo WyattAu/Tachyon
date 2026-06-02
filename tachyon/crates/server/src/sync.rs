@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 use chrono::Utc;
 use regex::Regex;
 use tachyon_core::id::DocumentId;
-use tachyon_core::{compute_content_hash, generate_document_id, FileChangeEvent, FileChangeKind};
+use tachyon_core::{FileChangeEvent, FileChangeKind, compute_content_hash, generate_document_id};
 use tachyon_database::{DatabasePool, DocumentMetadata, DocumentRepository};
 use tachyon_renderer::{RenderConfig, Renderer};
 use tracing::{debug, info, warn};
@@ -150,11 +150,10 @@ impl FileSyncService {
             };
         }
 
-        if self.config.update_search_index {
-            if let Err(e) = repo.update_search_index(&doc_id, &title, &body, &[]).await {
+        if self.config.update_search_index
+            && let Err(e) = repo.update_search_index(&doc_id, &title, &body, &[]).await {
                 warn!("Failed to update search index for {}: {}", doc_id, e);
             }
-        }
 
         info!("Document created from file: {} -> {}", path.display(), slug);
         SyncResult::Created {
@@ -270,13 +269,11 @@ impl FileSyncService {
             };
         }
 
-        if self.config.update_search_index {
-            if let Ok(doc_id) = DocumentId::parse_str(&id) {
-                if let Err(e) = repo.update_search_index(&doc_id, &title, &body, &[]).await {
+        if self.config.update_search_index
+            && let Ok(doc_id) = DocumentId::parse_str(&id)
+                && let Err(e) = repo.update_search_index(&doc_id, &title, &body, &[]).await {
                     warn!("Failed to update search index for {}: {}", doc_id, e);
                 }
-            }
-        }
 
         info!(
             "Document updated from file: {} -> {} (conflict={})",
@@ -343,13 +340,11 @@ impl FileSyncService {
 
         if let Some(parent) = path.parent() {
             for component in parent.components() {
-                if let std::path::Component::Normal(name) = component {
-                    if let Some(s) = name.to_str() {
-                        if !s.is_empty() && !s.starts_with('.') {
+                if let std::path::Component::Normal(name) = component
+                    && let Some(s) = name.to_str()
+                        && !s.is_empty() && !s.starts_with('.') {
                             parts.push(s);
                         }
-                    }
-                }
             }
         }
 

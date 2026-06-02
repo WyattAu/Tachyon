@@ -4,7 +4,7 @@
 //! Supports full-page rendering with metadata (suitable for Confluence
 //! import, static hosting, or archival).
 
-use crate::{error::ImportExportResult, ExportSummary, ImportExportError};
+use crate::{ExportSummary, ImportExportError, error::ImportExportResult};
 use std::io::{Cursor, Write};
 use tachyon_renderer::{RenderConfig, Renderer};
 use zip::write::SimpleFileOptions;

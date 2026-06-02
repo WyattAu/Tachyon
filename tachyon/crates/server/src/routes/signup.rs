@@ -1,6 +1,6 @@
 //! Self-serve signup endpoint.
 
-use axum::{extract::State, http::StatusCode, response::Json, routing::post, Router};
+use axum::{Router, extract::State, http::StatusCode, response::Json, routing::post};
 use serde::{Deserialize, Serialize};
 use tachyon_core::{User, UserRole};
 use tachyon_database::{

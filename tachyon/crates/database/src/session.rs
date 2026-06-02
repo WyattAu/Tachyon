@@ -5,7 +5,7 @@ use crate::error::{DatabaseError, DatabaseResult};
 use crate::schema::DatabasePool;
 use crate::types::SessionRecord;
 use chrono::{DateTime, Duration, Utc};
-use sqlx::{query, query_as, Row};
+use sqlx::{Row, query, query_as};
 use tachyon_core::id::SessionId;
 use tachyon_core::types::session::Session;
 use tracing::{debug, info, instrument};

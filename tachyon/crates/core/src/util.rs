@@ -249,11 +249,10 @@ pub fn truncate_text(text: &str, max_len: usize) -> String {
         text.to_string()
     } else {
         // Find a safe break point (space or hyphen) near the limit
-        if max_len > 3 {
-            if let Some(pos) = text[..max_len].rfind(char::is_whitespace) {
+        if max_len > 3
+            && let Some(pos) = text[..max_len].rfind(char::is_whitespace) {
                 return format!("{}...", &text[..pos]);
             }
-        }
         format!("{}...", &text[..max_len])
     }
 }

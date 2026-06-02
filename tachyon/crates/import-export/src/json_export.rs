@@ -2,7 +2,7 @@
 //!
 //! Serializes documents to a JSON array, with optional metadata and pretty-printing.
 
-use crate::{error::ImportExportResult, ImportExportError};
+use crate::{ImportExportError, error::ImportExportResult};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::io::Write;

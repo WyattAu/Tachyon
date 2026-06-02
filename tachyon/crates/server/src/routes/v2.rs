@@ -2,7 +2,7 @@
 //! Currently mirrors v1 with version headers.
 
 use axum::{http::StatusCode, response::Json, routing::get};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// Health check for v2 API.
 pub async fn v2_health() -> Json<Value> {

@@ -5,11 +5,11 @@
 // FTS5 for full-text search.
 
 use chrono::{DateTime, Utc};
-use sqlx::{sqlite::SqliteConnectOptions, Row};
+use sqlx::{Row, sqlite::SqliteConnectOptions};
 use std::future::Future;
 use std::pin::Pin;
 use std::str::FromStr;
-use tachyon_core::id::{generate_document_id, DocumentId, UserId};
+use tachyon_core::id::{DocumentId, UserId, generate_document_id};
 use tachyon_core::types::document::{
     Document, DocumentContent, DocumentMetadata, DocumentStats, DocumentStatus, DocumentVisibility,
 };

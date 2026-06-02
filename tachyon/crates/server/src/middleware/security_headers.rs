@@ -4,7 +4,7 @@
 use crate::config::SecurityConfig as ServerSecurityConfig;
 use axum::{
     extract::Request,
-    http::{header, HeaderValue},
+    http::{HeaderValue, header},
     middleware::Next,
     response::Response,
 };
@@ -661,17 +661,15 @@ pub fn add_security_headers_with_config(
         HeaderValue::from_static(config.referrer_policy.to_header_value()),
     );
 
-    if let Some(ref sts) = config.strict_transport_security {
-        if let Ok(value) = HeaderValue::from_str(&sts.to_header_value()) {
+    if let Some(ref sts) = config.strict_transport_security
+        && let Ok(value) = HeaderValue::from_str(&sts.to_header_value()) {
             headers.insert(header::STRICT_TRANSPORT_SECURITY, value);
         }
-    }
 
-    if let Some(ref permissions) = config.permissions_policy {
-        if let Ok(value) = HeaderValue::from_str(&permissions.to_header_value()) {
+    if let Some(ref permissions) = config.permissions_policy
+        && let Ok(value) = HeaderValue::from_str(&permissions.to_header_value()) {
             headers.insert("Permissions-Policy", value);
         }
-    }
 
     if let Some(coep) = config.cross_origin_embedder_policy {
         headers.insert(

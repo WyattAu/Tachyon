@@ -1,8 +1,8 @@
 // User input validation
 // Validates username, email, password, and other user-related inputs
 
-use super::common::*;
 use super::ValidationResult;
+use super::common::*;
 
 pub const MIN_USERNAME_LENGTH: usize = 3;
 pub const MAX_USERNAME_LENGTH: usize = 50;
@@ -143,13 +143,12 @@ impl ValidatedEmail {
             "10minutemail.com",
         ];
 
-        if let Some(domain) = email.split('@').nth(1) {
-            if disposable_domains.contains(&domain) {
+        if let Some(domain) = email.split('@').nth(1)
+            && disposable_domains.contains(&domain) {
                 return Err(ValidationError::ForbiddenContent {
                     reason: "Disposable email addresses are not allowed".to_string(),
                 });
             }
-        }
 
         Ok(Self { value: email })
     }

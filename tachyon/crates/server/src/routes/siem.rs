@@ -3,10 +3,10 @@
 use crate::error::ServerError;
 use crate::middleware::AuthContext;
 use axum::{
-    extract::{Query, State},
-    http::{header, StatusCode},
-    response::{IntoResponse, Response},
     Extension, Json,
+    extract::{Query, State},
+    http::{StatusCode, header},
+    response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
 use tachyon_database::DatabasePool;

@@ -167,28 +167,24 @@ impl AuditContext {
         let mut context = Self::new();
 
         if let Some(forwarded) = headers.get("x-forwarded-for") {
-            if let Ok(forwarded_str) = forwarded.to_str() {
-                if let Some(first_ip) = forwarded_str.split(',').next() {
+            if let Ok(forwarded_str) = forwarded.to_str()
+                && let Some(first_ip) = forwarded_str.split(',').next() {
                     context = context.with_ip(first_ip.trim());
                 }
-            }
-        } else if let Some(real_ip) = headers.get("x-real-ip") {
-            if let Ok(ip_str) = real_ip.to_str() {
+        } else if let Some(real_ip) = headers.get("x-real-ip")
+            && let Ok(ip_str) = real_ip.to_str() {
                 context = context.with_ip(ip_str);
             }
-        }
 
-        if let Some(user_agent) = headers.get("user-agent") {
-            if let Ok(ua_str) = user_agent.to_str() {
+        if let Some(user_agent) = headers.get("user-agent")
+            && let Ok(ua_str) = user_agent.to_str() {
                 context = context.with_user_agent(ua_str);
             }
-        }
 
-        if let Some(request_id) = headers.get("x-request-id") {
-            if let Ok(rid_str) = request_id.to_str() {
+        if let Some(request_id) = headers.get("x-request-id")
+            && let Ok(rid_str) = request_id.to_str() {
                 context = context.with_request_id(rid_str);
             }
-        }
 
         context
     }

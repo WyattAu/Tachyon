@@ -58,11 +58,7 @@ impl EmailService {
                     }
                     if let Some(tls_override) = {
                         let tls = config.smtp_tls;
-                        if tls {
-                            None
-                        } else {
-                            Some(false)
-                        }
+                        if tls { None } else { Some(false) }
                     } {
                         parsed.tls = tls_override;
                     }

@@ -2,8 +2,8 @@
 name = "tachyon-database"
 version = "0.1.0"
 license = { workspace = true }
-edition = "2021"
-rust-version = "1.75"
+rust-version.workspace = true
+edition.workspace = true
 
 [dependencies]
 # Core Types

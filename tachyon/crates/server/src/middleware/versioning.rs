@@ -3,7 +3,7 @@
 //! Routes prefixed with /api/v1/ receive v1 behavior with deprecation headers.
 
 use axum::{
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 
