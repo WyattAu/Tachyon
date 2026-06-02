@@ -42,6 +42,7 @@ fn css_class(token: &HighlightToken) -> &'static str {
         HighlightToken::TableBorder => "ed-table-border",
         HighlightToken::Text => "ed-text",
         HighlightToken::Whitespace => "ed-whitespace",
+        _ => "ed-text",
     }
 }
 

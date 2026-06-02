@@ -9,7 +9,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use super::tree_sitter::{TreeSitterHighlighter, TsLanguage};
-use super::{HighlightProvider, HighlightSpan, HighlightToken, RegexHighlighter};
+use super::{HighlightProvider, HighlightSpan, RegexHighlighter};
 
 macro_rules! static_re {
     ($name:ident, $pattern:expr) => {
@@ -142,6 +142,7 @@ impl HighlightProvider for CompositeHighlighter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::HighlightToken;
 
     #[test]
     fn parse_rust_code_block() {
