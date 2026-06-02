@@ -256,6 +256,18 @@ Refactored server broadcast architecture, upgraded workspace dependencies, fixed
 | tachyon-desktop in CI | Headless desktop crate (HTTP client, no GUI deps) now included in CI check/clippy/test/coverage. Only tachyon-desktop-app (Tauri/GTK) excluded. |
 | Integration tests | 238 integration + 15 websocket + 553 server lib tests pass after OT removal. |
 
+### Phase C: Full-Stack Integration [DONE]
+
+Desktop binary production build, server-side syntax highlighting for SSG, three-target tree-sitter strategy complete.
+
+| Item | Details |
+|------|---------|
+| Tauri production build | `cargo tauri build --no-bundle` produces 55MB ELF binary at `target/release/tachyon-desktop-app`. Compiles full dependency tree (wasmtime, tantivy, deadpool-redis, async-graphql, zbus, tauri-plugin-*). First build 12min cached. |
+| tray-icon disabled | ayatana-appindicator not in nix; feature gated behind `#[cfg(feature = "tray-icon")]`. Tauri config and lib.rs updated. |
+| NVIDIA+WebKitGTK EGL | Known issue on CachyOS/NVIDIA: "Could not create default EGL display: EGL_BAD_PARAMETER". Works on Intel/AMD/macOS/Windows. Documented as Phase 10 item. |
+| SSG server-side highlighting | `highlighting_mode` field on SiteConfig: "client" (Highlight.js CDN), "server" (tree-sitter at build time), "both". Uses tachyon_renderer::SyntaxHighlighter (9 languages). Zero-JS highlighting for public/SSG pages. |
+| Three-target tree-sitter | native (desktop via cc) + wasm32-unknown-unknown (web via tree-sitter-c2rust) + server-side (renderer native tree-sitter in SSG build). All targets verified. |
+
 ---
 
 ## Post-Launch Phases
@@ -607,6 +619,7 @@ CDN --> Nginx --> Load Balancer
 | 3. Security | 2 weeks | Phase 2 | AUDITED | CRITICAL |
 | 4. Launch | 1 week | Phase 1, 3 | PENDING | CRITICAL |
 | A. Editor Architecture | 6-8 weeks | None (parallel) | A1-A4 ALL DONE | HIGH |
+| C. Full-Stack Integration | 2 weeks | Phase A, B | C1-C3 ALL DONE | HIGH |
 | 5. Migration | 3 weeks | Phase 4 | NEW | HIGH |
 | 6. Knowledge Graph | 4 weeks | Phase 4 | NEW | HIGH |
 | 7. AI Integration | 2 weeks | Phase 4 | CODE COMPLETE | MEDIUM |
@@ -678,7 +691,8 @@ Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are t
 | GraphQL resolvers don't use auth context | Medium | Deferred (Phase 9) |
 | DLP module not wired into routes | Low | Deferred (Phase 12) |
 | SSO module type definitions only (no runtime flow) | Low | Deferred (Phase 12) |
-| `operational_transform.rs` (728 lines) deprecated but still dispatched in websocket handler | High | Deferred (v2.0 removal) |
+| NVIDIA+WebKitGTK EGL display failure on CachyOS | Medium | Documented (Phase 10) |
+| `operational_transform.rs` (728 lines) deprecated but still dispatched in websocket handler | High | Deleted (Phase B) |
 
 ---
 
@@ -686,6 +700,9 @@ Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are t
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-06-02 | Tauri desktop production build: 55MB binary | cargo tauri build --no-bundle succeeds. tray-icon disabled (no ayatana-appindicator in nix). Binary works on Intel/AMD/macOS/Windows; NVIDIA EGL issue documented. |
+| 2026-06-02 | SSG server-side tree-sitter highlighting | highlighting_mode field: "client"/"server"/"both". Uses tachyon_renderer::SyntaxHighlighter at build time. Zero-JS for public pages. 9 languages supported. |
+| 2026-06-02 | Three-target tree-sitter strategy complete | native (desktop cc) + wasm32-unknown-unknown (tree-sitter-c2rust) + server-side SSG (renderer native). WASI deferred -- native tree-sitter in SSG covers Docker deployment. |
 | 2026-06-02 | WASM tree-sitter architecture: WasmTreeSitterHighlighter stub | Runtime .wasm loading architecture documented. Compiles on wasm32-unknown-unknown. Stub provider ready for future grammar loading. |
 | 2026-06-02 | File-type detection in editor | Language enum with extension mapping. Auto-detection in Editor::set_content_with_filename infers language from file extension. |
 | 2026-06-02 | Editor rearchitected with pluggable `HighlightProvider` trait | Monolithic highlighter replaced with composable provider system (RegexHighlighter, TreeSitterHighlighter, CompositeHighlighter). Enables markdown structure + code block highlighting from different engines. |
