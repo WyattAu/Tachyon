@@ -1,4 +1,5 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
+
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -47,7 +48,7 @@ pub struct HighlightSpan {
 
 macro_rules! static_re {
     ($name:ident, $pattern:expr) => {
-        static $name: Lazy<Regex> = Lazy::new(|| Regex::new($pattern).unwrap());
+        static $name: LazyLock<Regex> = LazyLock::new(|| Regex::new($pattern).unwrap());
     };
 }
 
@@ -72,14 +73,27 @@ static_re!(TABLE_RE, r"^\|?[\s\-:|]+\|?$");
 static_re!(STRIKETHROUGH_RE, r"(~~)(.+?)~~");
 static_re!(FRONTMATTER_DELIMITER_RE, r"^---\s*$");
 
-pub struct Highlighter;
+/// Pluggable syntax highlighting backend.
+///
+/// Implementors produce [`HighlightSpan`] vectors for each line of text.
+/// The editor holds `Box<dyn HighlightProvider>` and does not care whether
+/// the backend is regex-based (markdown), tree-sitter (code), or WASM-loaded.
+pub trait HighlightProvider: Send + Sync {
+    /// Highlight a single line, returning ordered non-overlapping spans.
+    ///
+    /// `in_code_block` tracks fenced-code-block state across calls so the
+    /// provider can suppress markdown tokens inside code fences.
+    fn highlight_line(&self, line: &str, in_code_block: &mut bool) -> Vec<HighlightSpan>;
+}
 
-impl Highlighter {
-    pub fn new() -> Self {
-        Self
-    }
+/// Markdown highlighter powered by compile-time regex patterns.
+///
+/// Suitable for markdown/markdown-like content. For programming-language
+/// syntax, use a tree-sitter-backed provider (Phase A2+).
+pub struct RegexHighlighter;
 
-    pub fn highlight_line(&self, line: &str, in_code_block: &mut bool) -> Vec<HighlightSpan> {
+impl HighlightProvider for RegexHighlighter {
+    fn highlight_line(&self, line: &str, in_code_block: &mut bool) -> Vec<HighlightSpan> {
         if CODE_BLOCK_START_RE.is_match(line) && !*in_code_block {
             *in_code_block = true;
             return vec![HighlightSpan {
@@ -254,7 +268,13 @@ impl Highlighter {
     }
 }
 
-impl Default for Highlighter {
+impl RegexHighlighter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for RegexHighlighter {
     fn default() -> Self {
         Self::new()
     }
@@ -306,7 +326,7 @@ mod tests {
 
     #[test]
     fn highlight_heading1() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("# Hello", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::Heading1));
@@ -315,7 +335,7 @@ mod tests {
 
     #[test]
     fn highlight_heading2() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("## World", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::Heading2));
@@ -323,7 +343,7 @@ mod tests {
 
     #[test]
     fn highlight_code_block_toggle() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans1 = h.highlight_line("```rust", &mut in_cb);
         assert!(in_cb);
@@ -340,7 +360,7 @@ mod tests {
 
     #[test]
     fn highlight_bold() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("This is **bold** text", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::Bold));
@@ -348,7 +368,7 @@ mod tests {
 
     #[test]
     fn highlight_italic() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("This is *italic* text", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::Italic));
@@ -356,7 +376,7 @@ mod tests {
 
     #[test]
     fn highlight_link() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("[example](https://example.com)", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::Link));
@@ -365,7 +385,7 @@ mod tests {
 
     #[test]
     fn highlight_wiki_link() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("See [[My Page]] for details", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::WikiLink));
@@ -373,7 +393,7 @@ mod tests {
 
     #[test]
     fn highlight_blockquote() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("> This is a quote", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::Blockquote));
@@ -381,7 +401,7 @@ mod tests {
 
     #[test]
     fn highlight_list_item() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("- Item one", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::ListMarker));
@@ -389,7 +409,7 @@ mod tests {
 
     #[test]
     fn highlight_task_marker() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("- [ ] Task", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::TaskMarker));
@@ -397,7 +417,7 @@ mod tests {
 
     #[test]
     fn highlight_tag() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("Some text #rust and #code", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::Tag));
@@ -405,7 +425,7 @@ mod tests {
 
     #[test]
     fn highlight_frontmatter_delimiter() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("---", &mut in_cb);
         assert_eq!(spans[0].token, HighlightToken::Frontmatter);
@@ -413,7 +433,7 @@ mod tests {
 
     #[test]
     fn highlight_horizontal_rule() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("---", &mut in_cb);
         assert_eq!(spans[0].token, HighlightToken::Frontmatter);
@@ -421,7 +441,7 @@ mod tests {
 
     #[test]
     fn highlight_plain_text() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = false;
         let spans = h.highlight_line("Just plain text", &mut in_cb);
         assert!(spans.iter().any(|s| s.token == HighlightToken::Text));
@@ -437,7 +457,7 @@ mod tests {
 
     #[test]
     fn highlight_inside_code_block() {
-        let h = Highlighter::new();
+        let h = RegexHighlighter::new();
         let mut in_cb = true;
         let spans = h.highlight_line("# Not a heading", &mut in_cb);
         assert!(in_cb);

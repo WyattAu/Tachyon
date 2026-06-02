@@ -2,7 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::buffer::TextBuffer;
 use crate::cursor::{Cursor, Selection, SelectionKind};
-use crate::highlight::{HighlightSpan, Highlighter};
+use crate::highlight::{HighlightProvider, HighlightSpan, RegexHighlighter};
 use crate::search::{Search, SearchResult};
 use crate::sync_queue::{OfflineSyncQueue, SyncStatus};
 use crate::transaction::{EditKind, Transaction, UndoStack};
@@ -30,7 +30,7 @@ pub struct Editor {
     cursor: Cursor,
     selection: Selection,
     undo_stack: UndoStack,
-    highlighter: Highlighter,
+    highlighter: Box<dyn HighlightProvider>,
     search: Search,
     is_dirty: bool,
     tab_size: usize,
@@ -59,7 +59,7 @@ impl Editor {
             cursor: Cursor::zero(),
             selection: Selection::caret(Cursor::zero()),
             undo_stack: UndoStack::new(1000),
-            highlighter: Highlighter::new(),
+            highlighter: Box::new(RegexHighlighter::new()),
             search: Search::new(),
             is_dirty: false,
             tab_size: 2,
@@ -99,6 +99,12 @@ impl Editor {
 
     pub fn is_dirty(&self) -> bool {
         self.is_dirty
+    }
+
+    /// Swap the highlight backend (e.g. regex -> tree-sitter at runtime).
+    pub fn set_highlighter(&mut self, backend: Box<dyn HighlightProvider>) {
+        self.highlighter = backend;
+        self.in_code_block = false;
     }
 
     pub fn set_content(&mut self, content: &str) {

@@ -11,7 +11,14 @@ pub mod transaction;
 pub use buffer::TextBuffer;
 pub use cursor::{Cursor, Selection, SelectionKind};
 pub use editor::{Editor, WikilinkState};
-pub use highlight::{HighlightSpan, HighlightToken, Highlighter};
+pub use highlight::{HighlightProvider, HighlightSpan, HighlightToken, RegexHighlighter};
 pub use search::SearchResult;
 pub use sync_queue::{OfflineSyncQueue, QueuedUpdate, SyncQueueSummary, SyncStatus};
 pub use transaction::{EditKind, Transaction};
+
+/// Backward-compatible alias — `RegexHighlighter` is the canonical name.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `RegexHighlighter` or `dyn HighlightProvider` instead."
+)]
+pub use RegexHighlighter as Highlighter;
