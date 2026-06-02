@@ -44,11 +44,11 @@ Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collabora
 
 ## Current State Summary
 
-### Test Suite (2,069 tests, all passing)
+### Test Suite (1,706 tests, all passing)
 
 | Crate | Tests | Status |
 |-------|-------|--------|
-| tachyon-server | 1,211 | PASS |
+| tachyon-server | 806 | PASS |
 | tachyon-core | 145 | PASS |
 | tachyon-database | 139 | PASS |
 | tachyon-renderer | 122 | PASS |
@@ -241,6 +241,20 @@ Language enum, extension mapping, auto-detection implemented in `Editor::set_con
 | Multi-cursor editing | Full multi-cursor with paste, delete, selection |
 | File-type detection | Infer language from file extension, implemented in Editor::set_content_with_filename |
 | Syntax theme switching | User-selectable color themes for syntax highlighting |
+| WASM tree-sitter | Real parsing on wasm32 via tree-sitter-highlight-wasm v0.25 (tree-sitter-c2rust, no C compiler) |
+
+### Phase B: Infrastructure Hardening [DONE]
+
+Refactored server broadcast architecture, upgraded workspace dependencies, fixed full-stack CI.
+
+| Item | Details |
+|------|---------|
+| OT-to-CRDT migration | SharedBroadcastBus replaces OT ConnectionManager. handler.rs (905 lines) + operational_transform.rs (728 lines) deleted. Collaboration routes and notification dispatch migrated to bus. /ws route removed; /ws/crdt/{room} is the only websocket endpoint. |
+| thiserror v1 -> v2 | Workspace-wide upgrade. 159 #[error] usages across 20 files, all backward-compatible. metrics-exporter-prometheus 0.16 -> 0.18. |
+| Frontend clippy clean | 15 deprecated editor method errors fixed. e.cursor()/e.selection() -> e.cursors().active(). Full workspace `cargo clippy -D warnings` clean. |
+| Full-stack Dockerfile | 3-stage: server-builder (musl) + frontend-builder (trunk 0.21.6) + scratch runtime. TACHYON_STATIC_DIR, TACHYON_MIGRATIONS_DIR env vars. |
+| tachyon-desktop in CI | Headless desktop crate (HTTP client, no GUI deps) now included in CI check/clippy/test/coverage. Only tachyon-desktop-app (Tauri/GTK) excluded. |
+| Integration tests | 238 integration + 15 websocket + 553 server lib tests pass after OT removal. |
 
 ---
 

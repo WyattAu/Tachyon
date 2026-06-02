@@ -60,7 +60,7 @@ jobs:
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
           TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-        run: cargo test --workspace --lib --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-benchmarks
+        run: cargo test --workspace --lib --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-benchmarks
 
   security:
     name: Security Audit
