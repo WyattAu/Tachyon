@@ -1,80 +1,100 @@
 //! WASM tree-sitter syntax highlighter for `wasm32-unknown-unknown`.
 //!
-//! # Architecture
+//! Uses `tree-sitter-highlight-wasm` (by d-e-s-o), a fork of
+//! `tree-sitter-highlight` that works in WebAssembly via `tree-sitter-c2rust`
+//! (pure Rust tree-sitter via c2rust transpilation).
 //!
-//! This module loads tree-sitter grammar **WASM files at runtime** from a
-//! configurable URL base (CDN, `/grammars/`, etc.), following the
-//! CodeMirror / Shiki model where grammar binaries are downloaded on demand
-//! rather than compiled into the editor binary.
+//! ## Grammar loading
 //!
-//! ## Grammar files
-//!
-//! Expected filenames follow the pattern `tree-sitter-<lang>.wasm`:
-//!
-//! - `tree-sitter-rust.wasm`
-//! - `tree-sitter-python.wasm`
-//! - `tree-sitter-javascript.wasm`
-//! - `tree-sitter-typescript.wasm`
-//! - etc.
-//!
-//! ## Future integration: `tree-sitter-highlight-wasm`
-//!
-//! Currently this stub returns plaintext [`HighlightToken::Text`] tokens as
-//! a fallback. The upgrade path uses `tree-sitter-highlight-wasm` v0.25.9
-//! (by d-e-s-o), which is a fork of `tree-sitter-highlight` that works in
-//! WebAssembly:
-//!
-//! - On wasm32: uses `tree-sitter-c2rust` (pure Rust tree-sitter via c2rust
-//!   transpilation) with optional `wasmtime-c-api` for loading grammar WASM.
-//! - On native: delegates to standard C-based tree-sitter (via `cc`).
-//! - API is identical to `tree-sitter-highlight`.
-//!
-//! **Blockers for integration:**
-//! - `thiserror` v2 conflict (workspace uses v1).
-//! - `wasmtime-c-api` increases WASM binary size (~1-5MB).
-//! - Grammar `.wasm` build pipeline needed (`tree-sitter build-wasm`).
-//! - Low crate adoption (397 downloads, 1 reverse dep).
-//!
-//! **Upgrade path:**
-//! 1. Upgrade workspace to `thiserror = "2"`.
-//! 2. Add `tree-sitter-highlight-wasm = "0.25"` as wasm32-only dependency.
-//! 3. Add `web-sys` fetch for runtime grammar loading.
-//! 4. Port `highlight_code()` from `super::tree_sitter` (same event types).
-//! 5. Add grammar build step to CI (`tree-sitter build-wasm` per language).
-//!
-//! ## Why not `wasm-bindgen` in this file?
-//!
-//! This module compiles as plain Rust (no `wasm-bindgen` dependency) so it
-//! can be type-checked with `cargo check --target wasm32-unknown-unknown`
-//! without a full JS toolchain. When `web-sys` fetch integration lands, the
-//! async runtime will live behind a feature gate.
+//! Currently grammar loading is a stub (`preload_grammar` is a no-op).
+//! Runtime WASM grammar loading needs `web-sys` fetch, which is a separate
+//! integration step.
 
 use std::collections::HashMap;
 
+use tree_sitter_highlight_wasm::{HighlightConfiguration, HighlightEvent, Highlighter};
+
 use crate::highlight::{HighlightProvider, HighlightSpan, HighlightToken};
 
-/// Default base URL for grammar WASM files.
+const CAPTURE_NAMES: &[&str] = &[
+    "attribute",
+    "constant",
+    "function.builtin",
+    "function",
+    "keyword",
+    "operator",
+    "property",
+    "punctuation",
+    "punctuation.bracket",
+    "punctuation.delimiter",
+    "string",
+    "string.escape",
+    "string.special",
+    "tag",
+    "type",
+    "type.builtin",
+    "variable",
+    "variable.builtin",
+    "variable.parameter",
+    "comment",
+    "constructor",
+    "embedded",
+    "label",
+    "number",
+    "repeat",
+    "character",
+    "conditional",
+    "define",
+    "include",
+    "boolean",
+];
+
+fn capture_to_token(highlight: tree_sitter_highlight_wasm::Highlight) -> HighlightToken {
+    match CAPTURE_NAMES.get(highlight.0) {
+        Some(&"keyword") => HighlightToken::Keyword,
+        Some(&"string") => HighlightToken::String,
+        Some(&"number") => HighlightToken::Number,
+        Some(&"comment") => HighlightToken::Comment,
+        Some(&"function") => HighlightToken::Function,
+        Some(&"type") => HighlightToken::Type,
+        Some(&"variable") => HighlightToken::Variable,
+        Some(&"operator") => HighlightToken::Operator,
+        Some(&"property") => HighlightToken::Property,
+        Some(&"punctuation") => HighlightToken::Punctuation,
+        Some(&"constant") => HighlightToken::Constant,
+        Some(&"attribute") => HighlightToken::Attribute,
+        Some(&"tag") => HighlightToken::CodeTag,
+        Some(&"label") => HighlightToken::Label,
+        Some(&"embedded") => HighlightToken::Embedded,
+        Some(&"constructor") => HighlightToken::Constructor,
+        Some(&"character") => HighlightToken::Character,
+        Some(&"boolean") => HighlightToken::Boolean,
+        Some(&"conditional") => HighlightToken::Conditional,
+        Some(&"repeat") => HighlightToken::Repeat,
+        Some(&"define") => HighlightToken::Define,
+        Some(&"include") => HighlightToken::Include,
+        Some(&"function.builtin") => HighlightToken::FunctionBuiltin,
+        Some(&"type.builtin") => HighlightToken::TypeBuiltin,
+        Some(&"variable.builtin") => HighlightToken::VariableBuiltin,
+        Some(&"variable.parameter") => HighlightToken::VariableParameter,
+        Some(&"string.escape") => HighlightToken::StringEscape,
+        Some(&"string.special") => HighlightToken::StringSpecial,
+        Some(&"punctuation.bracket") => HighlightToken::PunctuationBracket,
+        Some(&"punctuation.delimiter") => HighlightToken::PunctuationDelimiter,
+        _ => HighlightToken::Text,
+    }
+}
+
 const DEFAULT_GRAMMAR_BASE_URL: &str = "/grammars/";
 
-/// WASM tree-sitter highlighter for browser environments.
-///
-/// Grammar `.wasm` binaries are fetched from [`base_url`] at runtime and
-/// cached in [`loaded_grammars`]. Currently a plaintext stub pending
-/// `tree-sitter-highlight-wasm` integration.
 pub struct WasmTreeSitterHighlighter {
-    /// Base URL (or path) where grammar `.wasm` files are served.
-    /// Example: `"https://cdn.example.com/grammars/"`.
     base_url: String,
-
-    /// Cache of language name → grammar WASM bytes.
+    #[allow(dead_code)] // placeholder for web-sys fetch integration
     loaded_grammars: HashMap<String, Vec<u8>>,
+    configs: HashMap<String, HighlightConfiguration>,
 }
 
 impl WasmTreeSitterHighlighter {
-    /// Create a new WASM tree-sitter highlighter.
-    ///
-    /// `base_url` is the prefix for grammar files. A trailing slash is
-    /// appended if missing. Defaults to `"/grammars/"`.
     pub fn new(base_url: &str) -> Self {
         let base = if base_url.ends_with('/') {
             base_url.to_owned()
@@ -84,47 +104,129 @@ impl WasmTreeSitterHighlighter {
         Self {
             base_url: base,
             loaded_grammars: HashMap::new(),
+            configs: HashMap::new(),
         }
     }
 
-    /// Create with the default grammar base URL (`"/grammars/"`).
     pub fn with_defaults() -> Self {
         Self::new(DEFAULT_GRAMMAR_BASE_URL)
     }
 
-    /// Fetch and cache a grammar `.wasm` file from the configured base URL.
-    ///
-    /// On `wasm32`, the intended implementation uses `web_sys::fetch` to
-    /// download `{base_url}tree-sitter-{language}.wasm` and stores the raw
-    /// bytes in [`loaded_grammars`].
-    ///
-    /// For now this is a no-op stub. It will be implemented once
-    /// `web-sys` fetch integration is added.
     pub fn preload_grammar(&mut self, _language: &str) {
         // TODO: use web_sys::fetch to download {base_url}tree-sitter-{language}.wasm
-        //       and store bytes in self.loaded_grammars.
+        //       and store bytes in self.loaded_grammars, then create HighlightConfiguration.
     }
 
-    /// Check whether a grammar is already cached in memory.
     pub fn is_grammar_loaded(&self, language: &str) -> bool {
-        self.loaded_grammars.contains_key(language)
+        self.configs.contains_key(language)
     }
 
-    /// List the names of all currently loaded grammars.
     pub fn loaded_languages(&self) -> Vec<String> {
-        self.loaded_grammars.keys().cloned().collect()
+        self.configs.keys().cloned().collect()
     }
 
-    /// Return the base URL this highlighter is configured with.
     pub fn base_url(&self) -> &str {
         &self.base_url
     }
 
-    /// Build the expected filename for a grammar WASM file.
-    ///
-    /// Example: `grammar_wasm_filename("rust")` → `"tree-sitter-rust.wasm"`.
     pub fn grammar_wasm_filename(language: &str) -> String {
         format!("tree-sitter-{language}.wasm")
+    }
+
+    fn highlight_code(&self, code: &str, language: &str) -> Vec<Vec<HighlightSpan>> {
+        let config = match self.configs.get(language) {
+            Some(c) => c,
+            None => {
+                return vec![vec![HighlightSpan {
+                    token: HighlightToken::Text,
+                    start_col: 0,
+                    end_col: code.len(),
+                }]];
+            }
+        };
+
+        let mut highlighter = Highlighter::new();
+        let highlights = match highlighter.highlight(config, code.as_bytes(), None, |_| None) {
+            Ok(h) => h,
+            Err(e) => {
+                tracing::warn!("wasm tree-sitter highlight error: {e}");
+                return vec![vec![HighlightSpan {
+                    token: HighlightToken::Text,
+                    start_col: 0,
+                    end_col: code.len(),
+                }]];
+            }
+        };
+
+        let lines: Vec<&str> = code.lines().collect();
+        let line_count = lines.len();
+        let mut result: Vec<Vec<HighlightSpan>> = vec![Vec::new(); line_count];
+
+        let mut line_starts: Vec<usize> = Vec::with_capacity(line_count + 1);
+        let mut offset = 0;
+        for &line in &lines {
+            line_starts.push(offset);
+            offset += line.len() + 1;
+        }
+        line_starts.push(offset);
+
+        let mut active_highlights: Vec<(usize, usize, HighlightToken)> = Vec::new();
+
+        for event in highlights {
+            let event = match event {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+            match event {
+                HighlightEvent::HighlightStart(h) => {
+                    active_highlights.push((0, 0, capture_to_token(h)));
+                }
+                HighlightEvent::HighlightEnd => {
+                    active_highlights.pop();
+                }
+                HighlightEvent::Source { start, end } => {
+                    for (_, _, token) in &mut active_highlights {
+                        let start_line = match line_starts.binary_search(&start) {
+                            Ok(i) => i,
+                            Err(i) => i.saturating_sub(1),
+                        };
+                        let end_line = match line_starts.binary_search(&end) {
+                            Ok(i) => i,
+                            Err(i) => i.saturating_sub(1),
+                        };
+
+                        for line_idx in start_line..=end_line.min(line_count - 1) {
+                            let line_start = line_starts[line_idx];
+                            let line_end = line_starts.get(line_idx + 1).copied().unwrap_or(offset);
+                            let span_start = start.saturating_sub(line_start);
+                            let span_end =
+                                (end.saturating_sub(line_start)).min(line_end - line_start);
+                            if span_start < span_end {
+                                result[line_idx].push(HighlightSpan {
+                                    token: token.clone(),
+                                    start_col: span_start,
+                                    end_col: span_end,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (line_idx, line_spans) in result.iter_mut().enumerate() {
+            if line_spans.is_empty() {
+                line_spans.push(HighlightSpan {
+                    token: HighlightToken::Text,
+                    start_col: 0,
+                    end_col: lines[line_idx].len(),
+                });
+            } else {
+                line_spans.sort_by_key(|s| s.start_col);
+            }
+        }
+
+        result
     }
 }
 
@@ -135,11 +237,6 @@ impl Default for WasmTreeSitterHighlighter {
 }
 
 impl HighlightProvider for WasmTreeSitterHighlighter {
-    /// Return a plaintext span for the entire line.
-    ///
-    /// TODO: once `tree-sitter-highlight-wasm` is integrated, this should
-    /// delegate to a full-document WASM tree-sitter parse and return the
-    /// spans for just this line.
     fn highlight_line(&self, line: &str, _in_code_block: &mut bool) -> Vec<HighlightSpan> {
         if line.is_empty() {
             return Vec::new();
@@ -151,11 +248,23 @@ impl HighlightProvider for WasmTreeSitterHighlighter {
         }]
     }
 
-    // TODO: override with a single WASM tree-sitter parse of the full
-    // document, then split by line boundaries (same strategy as the
-    // native `super::tree_sitter::TreeSitterHighlighter`).
-    // For now the default HighlightProvider::highlight_document is used
-    // (calls highlight_line per line).
+    fn highlight_document(&self, text: &str) -> Vec<Vec<HighlightSpan>> {
+        if self.configs.is_empty() {
+            let mut in_code_block = false;
+            return text
+                .lines()
+                .map(|line| self.highlight_line(line, &mut in_code_block))
+                .collect();
+        }
+
+        let language = self
+            .configs
+            .keys()
+            .next()
+            .map(|s| s.as_str())
+            .unwrap_or("text");
+        self.highlight_code(text, language)
+    }
 }
 
 #[cfg(test)]
