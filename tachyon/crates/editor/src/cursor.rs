@@ -281,11 +281,7 @@ impl Cursors {
     }
 
     pub fn set_active_cursor(&mut self, cursor: Cursor, selection: Selection) {
-        if let Some(idx) = self
-            .entries
-            .iter()
-            .position(|(c, _)| *c == cursor)
-        {
+        if let Some(idx) = self.entries.iter().position(|(c, _)| *c == cursor) {
             self.active = idx;
             self.entries[idx] = (cursor, selection);
         } else {
@@ -389,7 +385,10 @@ mod tests {
     fn cursors_new_single_at_zero() {
         let c = Cursors::new();
         assert_eq!(c.len(), 1);
-        assert_eq!(c.active(), (Cursor::zero(), Selection::caret(Cursor::zero())));
+        assert_eq!(
+            c.active(),
+            (Cursor::zero(), Selection::caret(Cursor::zero()))
+        );
         assert_eq!(c.active_index(), 0);
         assert!(!c.is_empty());
     }
@@ -421,7 +420,10 @@ mod tests {
         let mut c = Cursors::new();
         c.remove(0);
         assert_eq!(c.len(), 1);
-        assert_eq!(c.active(), (Cursor::zero(), Selection::caret(Cursor::zero())));
+        assert_eq!(
+            c.active(),
+            (Cursor::zero(), Selection::caret(Cursor::zero()))
+        );
     }
 
     #[test]

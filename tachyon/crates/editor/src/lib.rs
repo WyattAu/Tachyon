@@ -7,6 +7,7 @@ pub mod highlight;
 pub mod language;
 pub mod search;
 pub mod sync_queue;
+pub mod theme;
 pub mod transaction;
 
 pub use buffer::TextBuffer;
@@ -18,6 +19,7 @@ pub use highlight::{
 pub use language::{Language, extract_extension};
 pub use search::SearchResult;
 pub use sync_queue::{OfflineSyncQueue, QueuedUpdate, SyncQueueSummary, SyncStatus};
+pub use theme::{SyntaxTheme, SyntaxThemeBuilder};
 pub use transaction::{EditKind, Transaction};
 
 /// Backward-compatible alias — `RegexHighlighter` is the canonical name.

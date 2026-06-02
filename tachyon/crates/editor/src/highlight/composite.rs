@@ -141,8 +141,8 @@ impl HighlightProvider for CompositeHighlighter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::HighlightToken;
+    use super::*;
 
     #[test]
     fn parse_rust_code_block() {

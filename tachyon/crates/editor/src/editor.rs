@@ -181,7 +181,8 @@ impl Editor {
 
     pub fn set_content(&mut self, content: &str) {
         self.buffer = TextBuffer::from_str(content);
-        self.cursors.clear(Cursor::zero(), Selection::caret(Cursor::zero()));
+        self.cursors
+            .clear(Cursor::zero(), Selection::caret(Cursor::zero()));
         self.undo_stack.clear();
         self.is_dirty = false;
         self.current_search_results.clear();
@@ -445,9 +446,9 @@ impl Editor {
         let cursor = self.active_cursor();
         if cursor.col > 0 {
             let start = Cursor::new(cursor.line, cursor.col - 1);
-            let deleted =
-                self.buffer
-                    .delete_range(start.line, start.col, cursor.line, cursor.col);
+            let deleted = self
+                .buffer
+                .delete_range(start.line, start.col, cursor.line, cursor.col);
             let new_cursor = Cursor::new(cursor.line, cursor.col - 1);
             self.update_active_cursor(new_cursor);
             self.update_active_selection(Selection::caret(new_cursor));
@@ -457,9 +458,9 @@ impl Editor {
         } else if cursor.line > 0 {
             let prev_line_len = self.buffer.line_len(cursor.line - 1);
             let start = Cursor::new(cursor.line - 1, prev_line_len);
-            let deleted =
-                self.buffer
-                    .delete_range(start.line, start.col, cursor.line, cursor.col);
+            let deleted = self
+                .buffer
+                .delete_range(start.line, start.col, cursor.line, cursor.col);
             let new_cursor = Cursor::new(cursor.line - 1, prev_line_len);
             self.update_active_cursor(new_cursor);
             self.update_active_selection(Selection::caret(new_cursor));
@@ -479,24 +480,18 @@ impl Editor {
         let line_len = self.buffer.line_len(cursor.line);
         if cursor.col < line_len {
             let start = cursor;
-            let deleted = self.buffer.delete_range(
-                cursor.line,
-                cursor.col,
-                cursor.line,
-                cursor.col + 1,
-            );
+            let deleted =
+                self.buffer
+                    .delete_range(cursor.line, cursor.col, cursor.line, cursor.col + 1);
             self.update_active_selection(Selection::caret(cursor));
             if !deleted.is_empty() {
                 self.push_transaction(EditKind::Delete { text: deleted }, start, cursor);
             }
         } else if cursor.line < self.buffer.len_lines() - 1 {
             let start = cursor;
-            let deleted = self.buffer.delete_range(
-                cursor.line,
-                cursor.col,
-                cursor.line + 1,
-                0,
-            );
+            let deleted = self
+                .buffer
+                .delete_range(cursor.line, cursor.col, cursor.line + 1, 0);
             self.update_active_selection(Selection::caret(cursor));
             if !deleted.is_empty() {
                 self.push_transaction(EditKind::Delete { text: deleted }, start, cursor);
@@ -509,9 +504,9 @@ impl Editor {
         let mut cursor = start;
         cursor.move_word_left(&self.buffer);
         if cursor != start {
-            let deleted =
-                self.buffer
-                    .delete_range(cursor.line, cursor.col, start.line, start.col);
+            let deleted = self
+                .buffer
+                .delete_range(cursor.line, cursor.col, start.line, start.col);
             self.update_active_cursor(cursor);
             self.update_active_selection(Selection::caret(cursor));
             if !deleted.is_empty() {
@@ -525,9 +520,9 @@ impl Editor {
         let mut cursor = start;
         cursor.move_word_right(&self.buffer);
         if cursor != start {
-            let deleted =
-                self.buffer
-                    .delete_range(start.line, start.col, cursor.line, cursor.col);
+            let deleted = self
+                .buffer
+                .delete_range(start.line, start.col, cursor.line, cursor.col);
             let end = Cursor::new(start.line, start.col);
             self.update_active_cursor(end);
             self.update_active_selection(Selection::caret(end));
@@ -741,10 +736,7 @@ impl Editor {
             };
 
             let cursor = Cursor::new(wl_state.start_line, wl_state.start_col);
-            let end = Cursor::new(
-                cursor.line,
-                wl_state.start_col + 2 + wl_state.query.len(),
-            );
+            let end = Cursor::new(cursor.line, wl_state.start_col + 2 + wl_state.query.len());
             self.update_active_cursor(cursor);
             self.update_active_selection(Selection::range(cursor, end));
             self.delete_selection();
