@@ -391,7 +391,8 @@ impl MarkdownParser {
         html::push_html(&mut html_output, parser_with_count);
 
         html_output = ammonia::Builder::default()
-            .add_tags(["img"])
+            .add_tags(["img", "pre", "code", "span", "div"])
+            .add_generic_attributes(&["class"])
             .add_tag_attributes("img", ["src", "alt", "title", "width", "height", "loading"])
             .clean(&html_output)
             .to_string();
@@ -939,5 +940,35 @@ Some more text.
     fn test_parse_block_reference_invalid() {
         assert!(parse_block_reference("").is_none());
         assert!(parse_block_reference("#").is_none());
+    }
+}
+
+#[cfg(test)]
+mod test_ammonia_class {
+    use crate::{RenderConfig, Renderer};
+
+    #[test]
+    fn test_ammonia_allows_class_on_code() {
+        let html = r#"<pre><code class="language-json">{"key": "value"}</code></pre>"#;
+        let cleaned = ammonia::Builder::default()
+            .add_tags(["img", "pre", "code", "span", "div"])
+            .add_generic_attributes(&["class"])
+            .add_tag_attributes("img", ["src", "alt", "title", "width", "height", "loading"])
+            .clean(html)
+            .to_string();
+        assert!(cleaned.contains(r#"class="language-json""#),
+            "Expected class preserved, got: {}", cleaned);
+    }
+
+    #[test]
+    fn test_code_block_preserves_class_attribute() {
+        let md = r#"```json
+{"key": "value"}
+```"#;
+        let config = RenderConfig::default();
+        let renderer = Renderer::new(config);
+        let result = renderer.render(md, None).unwrap();
+        assert!(result.content.contains(r#"class="language-json""#),
+            "Expected code block to have class=\"language-json\", got: {}", &result.content);
     }
 }

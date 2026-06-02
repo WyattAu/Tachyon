@@ -242,6 +242,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     use crate::routes::user::UserState;
     use crate::routes::webhook::WebhookState;
     use crate::websocket::CrdtConnectionManager;
+    use tachyon_database::init;
     use tachyon_database::init_with_migrations;
 
     let database_url = if config.database_url.is_empty() {
@@ -253,9 +254,14 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         &config.database_url
     };
 
-    let pool = init_with_migrations(database_url)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to initialize database: {}", e))?;
+    let pool = if std::env::var("TACHYON_SKIP_MIGRATIONS").is_ok() {
+        tracing::warn!("TACHYON_SKIP_MIGRATIONS is set -- skipping database migrations");
+        init(database_url).await.map_err(|e| anyhow::anyhow!("Failed to initialize database: {}", e))?
+    } else {
+        init_with_migrations(database_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to initialize database: {}", e))?
+    };
 
     // Seed initial admin user if no users exist
     {

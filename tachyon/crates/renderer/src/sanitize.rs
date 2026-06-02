@@ -1,8 +1,9 @@
 //! HTML sanitization module.
 //!
-//! Wraps `ammonia::clean()` to strip XSS vectors from rendered HTML output.
+//! Wraps `ammonia::Builder` to strip XSS vectors from rendered HTML output
+//! while preserving essential attributes like `class` for syntax highlighting.
 
-use ammonia::clean;
+use ammonia::Builder;
 
 /// Sanitize HTML content by removing potentially dangerous elements and attributes.
 ///
@@ -11,8 +12,26 @@ use ammonia::clean;
 /// - `on*` event handler attributes
 /// - `javascript:` and `data:` URLs
 /// - SVG-based XSS vectors
+///
+/// This preserves:
+/// - `class` attributes (needed for syntax highlighting, CSS targeting)
+/// - `id` attributes
+/// - `data-*` attributes
 pub fn sanitize_html(html: &str) -> String {
-    clean(html)
+    Builder::default()
+        .link_rel(None)
+        .add_tags([
+            "img", "pre", "code", "span", "div", "details", "summary",
+            "mark", "del", "ins", "sup", "sub", "kbd", "samp", "var",
+            "picture", "source", "video", "audio", "track",
+        ])
+        .add_generic_attributes(&[
+            "class", "id", "style", "role", "aria-label", "aria-hidden",
+            "aria-expanded", "data-language", "title", "colspan", "rowspan",
+        ])
+        .add_tag_attributes("img", ["src", "alt", "title", "width", "height", "loading"])
+        .clean(html)
+        .to_string()
 }
 
 #[cfg(test)]
@@ -63,5 +82,13 @@ mod tests {
         let input = r#"<iframe src="https://evil.com"></iframe>"#;
         let output = sanitize_html(input);
         assert!(!output.contains("<iframe"));
+    }
+
+    #[test]
+    fn test_preserves_class_on_code_block() {
+        let input = r#"<pre><code class="language-json">{"key": "value"}</code></pre>"#;
+        let output = sanitize_html(input);
+        assert!(output.contains(r#"class="language-json""#),
+            "Expected class preserved, got: {}", output);
     }
 }
