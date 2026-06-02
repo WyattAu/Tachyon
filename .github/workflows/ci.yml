@@ -41,9 +41,12 @@ jobs:
           key: check-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
           restore-keys: check-${{ runner.os }}-cargo-
 
+      - name: Install Tauri system dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev
+
       - name: Check workspace
         working-directory: tachyon
-        run: cargo check --workspace --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks
+        run: cargo check --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks
 
       - name: Check WASM compilation
         working-directory: tachyon
@@ -77,9 +80,12 @@ jobs:
 
       # Note: tachyon-cli depends on tachyon-desktop (Tauri/GTK), which requires
       # system libraries not available in CI. These are checked locally via pre-commit hook.
+      - name: Install Tauri system dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev
+
       - name: Run clippy
         working-directory: tachyon
-        run: cargo clippy --workspace --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --all-targets -- -D warnings
+        run: cargo clippy --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --all-targets -- -D warnings
 
   test:
     name: Test
@@ -117,14 +123,14 @@ jobs:
 
       - name: Run unit tests
         working-directory: tachyon
-        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-benchmarks --lib
+        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-cli --exclude tachyon-benchmarks --lib
 
       - name: Run integration tests
         working-directory: tachyon
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
           TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-desktop-app --exclude tachyon-cli --exclude tachyon-benchmarks --test integration -- --test-threads=1
+        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-cli --exclude tachyon-benchmarks --test integration -- --test-threads=1
 
   build:
     name: Build Release
@@ -274,7 +280,7 @@ jobs:
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
           TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-        run: cargo tarpaulin --workspace --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-frontend --exclude tachyon-desktop-app --exclude tachyon-cli --lib --out xml --output-dir coverage/
+        run: cargo tarpaulin --workspace --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-frontend --exclude tachyon-cli --lib --out xml --output-dir coverage/
 
       - name: Check minimum coverage (60%)
         working-directory: tachyon
