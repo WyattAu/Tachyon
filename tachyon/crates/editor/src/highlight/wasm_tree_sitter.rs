@@ -17,17 +17,30 @@
 //! - `tree-sitter-typescript.wasm`
 //! - etc.
 //!
-//! ## Future integration
+//! ## Future integration: `tree-sitter-highlight-wasm`
 //!
 //! Currently this stub returns plaintext [`HighlightToken::Text`] tokens as
-//! a fallback. The intended integration path is:
+//! a fallback. The upgrade path uses `tree-sitter-highlight-wasm` v0.25.9
+//! (by d-e-s-o), which is a fork of `tree-sitter-highlight` that works in
+//! WebAssembly:
 //!
-//! 1. Use `web-sys` `fetch` API to download grammar `.wasm` bytes into a
-//!    [`Vec<u8>`].
-//! 2. Feed those bytes into `tree-sitter-highlight-wasm` (or similar WASM-
-//!    oriented tree-sitter crate) to obtain parsed syntax highlights.
-//! 3. Map highlight captures to [`HighlightToken`] variants using the same
-//!    capture names as the native highlighter in [`super::tree_sitter`].
+//! - On wasm32: uses `tree-sitter-c2rust` (pure Rust tree-sitter via c2rust
+//!   transpilation) with optional `wasmtime-c-api` for loading grammar WASM.
+//! - On native: delegates to standard C-based tree-sitter (via `cc`).
+//! - API is identical to `tree-sitter-highlight`.
+//!
+//! **Blockers for integration:**
+//! - `thiserror` v2 conflict (workspace uses v1).
+//! - `wasmtime-c-api` increases WASM binary size (~1-5MB).
+//! - Grammar `.wasm` build pipeline needed (`tree-sitter build-wasm`).
+//! - Low crate adoption (397 downloads, 1 reverse dep).
+//!
+//! **Upgrade path:**
+//! 1. Upgrade workspace to `thiserror = "2"`.
+//! 2. Add `tree-sitter-highlight-wasm = "0.25"` as wasm32-only dependency.
+//! 3. Add `web-sys` fetch for runtime grammar loading.
+//! 4. Port `highlight_code()` from `super::tree_sitter` (same event types).
+//! 5. Add grammar build step to CI (`tree-sitter build-wasm` per language).
 //!
 //! ## Why not `wasm-bindgen` in this file?
 //!
