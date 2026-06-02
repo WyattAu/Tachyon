@@ -26,4 +26,6 @@ pub use transaction::{EditKind, Transaction};
 pub use RegexHighlighter as Highlighter;
 
 #[cfg(feature = "native-tree-sitter")]
+pub use highlight::composite::CompositeHighlighter;
+#[cfg(feature = "native-tree-sitter")]
 pub use highlight::tree_sitter::{TreeSitterHighlighter, TsLanguage};

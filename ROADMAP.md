@@ -12,6 +12,8 @@ This is the single authoritative roadmap. All prior roadmap variants have been c
 
 Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collaborative knowledge management system with an integrated SSG pipeline**. No existing product combines all three capabilities.
 
+**Editor paradigm:** Tachyon targets a VSCode/Neovim-style editor -- a programmable, syntax-aware editing platform with pluggable highlighters, tree-sitter grammars, and multi-cursor support. This is NOT a Notion-style block editor. Desktop-first via Tauri; tree-sitter compiled to three targets (native, wasm32 for web, wasm32-wasi for Docker SSG).
+
 **Defensible strengths to amplify:**
 - Full Rust stack (memory safety, deterministic perf, minimal attack surface) -- no competitor in this space
 - WASM plugin sandbox (Wasmtime) -- no competitor offers safe extensibility
@@ -42,7 +44,7 @@ Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collabora
 
 ## Current State Summary
 
-### Test Suite (2,054 tests, all passing)
+### Test Suite (2,062 tests, all passing)
 
 | Crate | Tests | Status |
 |-------|-------|--------|
@@ -50,7 +52,7 @@ Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collabora
 | tachyon-core | 145 | PASS |
 | tachyon-database | 139 | PASS |
 | tachyon-renderer | 122 | PASS |
-| tachyon-editor | 116 | PASS |
+| tachyon-editor | 124 | PASS |
 | tachyon-import-export | 50 | PASS |
 | tachyon-frontend | 89 | PASS |
 | tachyon-plugin-runtime | 74 | PASS |
@@ -60,7 +62,7 @@ Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collabora
 | tachyon-storage | 31 | PASS |
 | tachyon-desktop | 44 | PASS |
 | tachyon-cli | 35 | PASS |
-| **Total** | **2,054** | **ALL PASS** |
+| **Total** | **2,062** | **ALL PASS** |
 
 ### Code Quality
 
@@ -189,6 +191,50 @@ Depends on: Phase 1, Phase 3.
 
 ---
 
+## Phase A: Editor Architecture
+
+Rationale: Tachyon targets a VSCode/Neovim-style editor platform. Syntax highlighting is the foundation -- it drives the editing experience, informs the UI, and enables future features (go-to-definition, autocomplete, refactoring). The editor crate compiles to native (desktop via Tauri), wasm32-unknown-unknown (web), and wasm32-wasi (Docker SSG). Desktop-first priority.
+
+### Phase A1: Pluggable Highlight Architecture [DONE]
+
+Refactored editor highlighting from a monolithic struct into a composable provider system. Editor crate compiles to wasm32-unknown-unknown with tree-sitter behind a feature gate (`native-tree-sitter`).
+
+| Item | Details |
+|------|---------|
+| `HighlightProvider` trait | Pluggable interface: `highlight_line()`, `supports_language()` |
+| `RegexHighlighter` | Regex-based highlighting for markdown structure (headings, bold, italic, links, code fences, lists, blockquotes) |
+| `TreeSitterHighlighter` | Tree-sitter-based highlighting for 9 languages (Rust, Python, JavaScript, TypeScript, HTML, CSS, Go, C, C++), feature-gated behind `native-tree-sitter` |
+| Tests | 124 tests in tachyon-editor |
+| WASM compilation | `tachyon-editor` compiles to `wasm32-unknown-unknown` with `default-features = false` (no tree-sitter dep in WASM build) |
+| tree-sitter targets | native (desktop), wasm32-unknown-unknown (web), wasm32-wasi (Docker SSG) -- three-target strategy |
+
+### Phase A2: Composite Highlighter [IN PROGRESS]
+
+| Item | Details |
+|------|---------|
+| `CompositeHighlighter` | Combines RegexHighlighter (markdown structure) + TreeSitterHighlighter (code blocks inside fenced regions) |
+| Multi-cursor support | Selection model with multiple independent cursors |
+| Status | Design and initial implementation |
+
+### Phase A3: WASM Tree-Sitter Provider [PLANNED]
+
+| Item | Details |
+|------|---------|
+| `WasmTreeSitterHighlighter` | tree-sitter compiled to wasm32 via wasm-bindgen |
+| Runtime `.wasm` loading | Grammar WASM modules loaded at runtime (not compile-time) |
+| Frontend re-enablement | Re-enable syntax highlighting in browser WASM build |
+| Dependency | tree-sitter-wasm bindings (wasm-bindgen API) |
+
+### Phase A4: Advanced Editor Features [PLANNED]
+
+| Item | Details |
+|------|---------|
+| Multi-cursor editing | Full multi-cursor with paste, delete, selection |
+| File-type detection | Infer language from file extension, shebang, or content |
+| Syntax theme switching | User-selectable color themes for syntax highlighting |
+
+---
+
 ## Post-Launch Phases
 
 ### Phase 5: Migration and Onboarding (Week 5-7) [NEW -- HIGH PRIORITY]
@@ -312,8 +358,6 @@ Code complete. Needs integration testing.
 
 #### 13.1: Storage and Auth Quick Wins (Week 24-26)
 
-| # | ID | Feature | Who Has It | Effort | Priority |
-|---|-----|---------|-----------|--------|----------|
 | # | ID | Feature | Who Has It | Effort | Priority | Status |
 |---|-----|---------|-----------|--------|----------|--------|
 | 1 | U16 | S3-compatible object storage (attachments, exports) | Appwrite, Supabase, PocketBase, Directus, Strapi, Nhost | 3w | HIGH | [x] `7a6e192` |
@@ -325,8 +369,6 @@ Code complete. Needs integration testing.
 
 #### 13.2: Notifications and Integrations (Week 26-28)
 
-| # | ID | Feature | Who Has It | Effort | Priority |
-|---|-----|---------|-----------|--------|----------|
 | # | ID | Feature | Who Has It | Effort | Priority | Status |
 |---|-----|---------|-----------|--------|----------|--------|
 | 5 | U28 | In-app notification system (bell icon, WebSocket push) | Notion, Confluence, HackMD | 2w | HIGH | [x] `7a6e192` |
@@ -337,8 +379,6 @@ Code complete. Needs integration testing.
 
 #### 13.3: Import/Export Expansion (Week 28-30)
 
-| # | ID | Feature | Who Has It | Effort | Priority |
-|---|-----|---------|-----------|--------|----------|
 | # | ID | Feature | Who Has It | Effort | Priority | Status |
 |---|-----|---------|-----------|--------|----------|--------|
 | 8 | U31 | Word/DOCX import (via docx-rs or pandoc) | Confluence, BookStack, Notion | 2w | MEDIUM | [x] `2daa5e7` |
@@ -350,8 +390,6 @@ Code complete. Needs integration testing.
 
 #### 13.4: SSG Enhancements (Week 30-34)
 
-| # | ID | Feature | Who Has It | Effort | Priority |
-|---|-----|---------|-----------|--------|----------|
 | # | ID | Feature | Who Has It | Effort | Priority | Status |
 |---|-----|---------|-----------|--------|----------|--------|
 | 12 | U11 | SSG i18n (multi-language documentation sites) | Hugo, Astro, Docusaurus, VitePress | 3w | MEDIUM | [x] `2daa5e7` |
@@ -477,6 +515,21 @@ Browser (Leptos WASM)  Desktop (Tauri)  CLI (Clap)
               Documents  Users  Permissions  Audit
 ```
 
+```
+tachyon-editor (compiles to native + wasm32)
+  |
+  +-- HighlightProvider (trait)
+  |     +-- RegexHighlighter (markdown structure, always available)
+  |     +-- TreeSitterHighlighter (9 languages, feature-gated: native-tree-sitter)
+  |     +-- CompositeHighlighter (regex + tree-sitter, planned)
+  |     +-- WasmTreeSitterHighlighter (wasm-bindgen runtime .wasm, planned)
+  |
+  +-- tree-sitter targets
+        +-- native (desktop, Tauri)
+        +-- wasm32-unknown-unknown (web, Leptos)
+        +-- wasm32-wasi (Docker SSG)
+```
+
 ### Target (Post-Launch)
 
 ```
@@ -530,12 +583,13 @@ CDN --> Nginx --> Load Balancer
 | 2. API Validation | 2 weeks | None (code-only) | AUDITED | CRITICAL |
 | 3. Security | 2 weeks | Phase 2 | AUDITED | CRITICAL |
 | 4. Launch | 1 week | Phase 1, 3 | PENDING | CRITICAL |
+| A. Editor Architecture | 6-8 weeks | None (parallel) | A1 DONE, A2 IN PROGRESS | HIGH |
 | 5. Migration | 3 weeks | Phase 4 | NEW | HIGH |
 | 6. Knowledge Graph | 4 weeks | Phase 4 | NEW | HIGH |
 | 7. AI Integration | 2 weeks | Phase 4 | CODE COMPLETE | MEDIUM |
-| 8. Editor Experience | 3 weeks | Phase 4 | NEW | MEDIUM |
+| 8. Editor Experience | 3 weeks | Phase 4, Phase A | NEW | MEDIUM |
 | 9. Multi-Tenant SaaS | 2 weeks | Phase 4 | CODE COMPLETE | MEDIUM |
-| 10. Desktop/PWA/Mobile | 4 weeks | Phase 4 | PARTIAL | MEDIUM |
+| 10. Desktop/PWA/Mobile | 4 weeks | Phase 4, Phase A | PARTIAL | MEDIUM |
 | 11. Plugin Ecosystem | 4 weeks | Phase 4 | PARTIAL | LOW (post-adoption) |
 | 12. Enterprise | 4 weeks | Phase 9 | CODE COMPLETE | LOW (revenue) |
 | Phase 13. Gap Closure | 24w (HIGH+MED), 48w (all) | Phase 4 | DONE | HIGH (post-v2 parity) |
@@ -549,36 +603,38 @@ CDN --> Nginx --> Load Balancer
 
 ```
 Phase 1 (Infrastructure) ─────┬──> Phase 2 (API Validation) ──> Phase 3 (Security) ──> Phase 4 (Launch)
-                              │                                                                            │
-                              │            ┌───────────────────────────────────────────────────────────┘
-                              │            │
-                              │            v
-                              │     Phase 5 (Migration) ──────────> Phase 6 (Knowledge Graph)
-                              │            │
-                              │            v
-                              │     Phase 7 (AI) ───────────────> Phase 8 (Editor)
-                              │                                         │
-                              │            v                            │
-                              │     Phase 9 (Multi-Tenant) ──────────┘
-                              │            │
-                              │            v
-                              │     Phase 10 (Desktop/PWA/Mobile)
-                              │            │
-                              │            v
-                               │     Phase 11 (Plugins) ──────────────> Phase 12 (Enterprise)
+                               │                                                                            │
+                               │            ┌───────────────────────────────────────────────────────────┘
                                │            │
                                │            v
-                               │     Phase 13 (Gap Closure: 35 items)
-                               │     HIGH: U16,U23,U24,U28,U2,U10
-                               │     MED:  U22,U29,U31,U32,U11,U13,U14,U18,U6,U7
-                               │
-                               v
-                      [Production Live]
+                               │     Phase 5 (Migration) ──────────> Phase 6 (Knowledge Graph)
+                               │            │
+                               │            v
+                               │     Phase 7 (AI) ───────────────> Phase 8 (Editor)
+                               │                                         │
+                               │            v                            │
+                               │     Phase 9 (Multi-Tenant) ──────────┘
+                               │            │
+                               │            v
+                               │     Phase 10 (Desktop/PWA/Mobile)
+                               │            │
+                               │            v
+                                │     Phase 11 (Plugins) ──────────────> Phase 12 (Enterprise)
+                                │            │
+                                │            v
+                                │     Phase 13 (Gap Closure: 35 items)
+                                │     HIGH: U16,U23,U24,U28,U2,U10
+                                │     MED:  U22,U29,U31,U32,U11,U13,U14,U18,U6,U7
+                                │
+                                v
+                       [Production Live]
+
+Phase A (Editor Architecture) ──────────────────────────────────────────────────> Phase 8, 10
 
 Phase 13 (Feature Parity)────> [Feature Complete]
 ```
 
-Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are the highest-priority post-launch work because they unlock user acquisition. Phase 11 (plugins) is intentionally late -- shipping an empty marketplace is worse than shipping no marketplace. Phase 13 (gap closure) runs parallel to 11-12, prioritizing HIGH-ROI items first (storage, auth, notifications, import/export, SSG i18n).
+Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are the highest-priority post-launch work because they unlock user acquisition. Phase 11 (plugins) is intentionally late -- shipping an empty marketplace is worse than shipping no marketplace. Phase 13 (gap closure) runs parallel to 11-12, prioritizing HIGH-ROI items first (storage, auth, notifications, import/export, SSG i18n). Phase A (editor architecture) runs in parallel, feeding into Phase 8 (editor experience) and Phase 10 (desktop).
 
 ---
 
@@ -599,6 +655,7 @@ Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are t
 | GraphQL resolvers don't use auth context | Medium | Deferred (Phase 9) |
 | DLP module not wired into routes | Low | Deferred (Phase 12) |
 | SSO module type definitions only (no runtime flow) | Low | Deferred (Phase 12) |
+| `operational_transform.rs` (728 lines) deprecated but still dispatched in websocket handler | High | Deferred (v2.0 removal) |
 
 ---
 
@@ -606,6 +663,10 @@ Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are t
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-06-02 | Editor rearchitected with pluggable `HighlightProvider` trait | Monolithic highlighter replaced with composable provider system (RegexHighlighter, TreeSitterHighlighter, CompositeHighlighter). Enables markdown structure + code block highlighting from different engines. |
+| 2026-06-02 | tree-sitter multi-target strategy (native/wasm/wasi) | tree-sitter compiled to native (desktop via Tauri), wasm32-unknown-unknown (web frontend), wasm32-wasi (Docker SSG). Feature-gated so editor crate compiles to WASM without tree-sitter dep. |
+| 2026-06-02 | Desktop-first priority, VSCode/Neovim-style editor paradigm | Tachyon is a programmable editor platform, not a Notion-style block editor. Desktop via Tauri is the primary target. Syntax highlighting, multi-cursor, and tree-sitter support follow VSCode/Neovim patterns. |
+| 2026-06-02 | RegexHighlighter + TreeSitterHighlighter composite architecture | Markdown structure highlighted by regex (always available, zero dependencies). Code blocks inside fenced regions highlighted by tree-sitter (feature-gated). CompositeHighlighter merges both. |
 | 2026-05-31 | Add Phase 5 (Migration) as post-launch priority | Without Notion/Confluence/Google Docs import, no team switches. Highest-impact feature for acquisition. |
 | 2026-05-31 | Add Phase 6 (Knowledge Graph) as post-launch priority | Wiki-links and graph view are table stakes for PKM. Obsidian, Logseq, Roam all have this. |
 | 2026-05-31 | Add Phase 8 (Editor Experience) as medium priority | Markdown-first is defensible (GitBook, Docusaurus). Polish the MD experience, do not build a block editor. |

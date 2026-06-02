@@ -1,4 +1,6 @@
 #[cfg(feature = "native-tree-sitter")]
+pub mod composite;
+#[cfg(feature = "native-tree-sitter")]
 pub mod tree_sitter;
 
 use std::sync::LazyLock;
