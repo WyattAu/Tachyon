@@ -370,6 +370,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
             pool: pool.clone(),
             jwt_secret: config.jwt.signing_secret().to_string(),
             http_client: reqwest::Client::new(),
+            csrf_states: std::sync::Arc::new(dashmap::DashMap::new()),
         })
     } else {
         None
@@ -540,7 +541,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         compression::CompressionLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,
     };
 
-    let document_router = create_document_router().with_state(document_state);
+    let document_router = create_document_router().with_state(document_state.clone());
     let user_router = create_user_router().with_state(user_state.clone());
     let session_router = create_session_router().with_state(session_state);
     let repository_router = create_repository_router().with_state(repository_state);
@@ -698,7 +699,10 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         api_v1 = api_v1.merge(router);
     }
 
-    let api_v2 = crate::routes::v2::v2_routes();
+    let v2_state = crate::routes::v2::V2State {
+        document_state: document_state.clone(),
+    };
+    let api_v2 = crate::routes::v2::create_v2_router(v2_state);
 
     let crdt_ws_router = Router::new()
         .route("/ws/crdt/{room}", get(handle_crdt_websocket_upgrade))

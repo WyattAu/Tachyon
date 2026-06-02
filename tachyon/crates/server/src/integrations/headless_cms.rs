@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tracing::{debug, warn};
 
 /// Supported headless CMS providers.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -10,6 +11,16 @@ pub enum CmsProvider {
     Decap,
     Sanity,
     Generic,
+}
+
+impl std::fmt::Display for CmsProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Decap => write!(f, "decap"),
+            Self::Sanity => write!(f, "sanity"),
+            Self::Generic => write!(f, "generic"),
+        }
+    }
 }
 
 /// Configuration for a headless CMS integration.
@@ -64,6 +75,24 @@ pub struct CmsSyncResult {
     pub errors: Vec<String>,
     pub synced_at: String,
 }
+
+/// Errors that can occur during CMS operations.
+#[derive(Debug)]
+pub enum CmsError {
+    Fetch(String),
+    Database(String),
+}
+
+impl std::fmt::Display for CmsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Fetch(e) => write!(f, "CMS fetch error: {}", e),
+            Self::Database(e) => write!(f, "CMS database error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for CmsError {}
 
 /// Headless CMS client that pulls content from configured providers.
 pub struct HeadlessCmsClient {
@@ -131,6 +160,142 @@ impl HeadlessCmsClient {
             errors,
             synced_at: chrono::Utc::now().to_rfc3339(),
         }
+    }
+
+    /// Fetch documents from the CMS and upsert them into the local database.
+    ///
+    /// For each CMS document:
+    /// - Checks if a document with the same `external_id` (CMS id) already exists
+    /// - If not, checks by slug
+    /// - New documents are inserted; existing ones are updated
+    pub async fn sync_to_database(
+        &self,
+        pool: &tachyon_database::DatabasePool,
+    ) -> Result<CmsSyncResult, CmsError> {
+        let docs = self
+            .fetch_documents()
+            .await
+            .map_err(CmsError::Fetch)?;
+
+        let fetched = docs.len();
+        let mut imported = 0usize;
+        let mut skipped = 0usize;
+        let mut errors = Vec::new();
+
+        for doc in &docs {
+            let doc_type = self
+                .map_collection(&doc.collection)
+                .unwrap_or("document")
+                .to_string();
+
+            let external_id = format!("cms:{}:{}", self.config.provider, doc.id);
+
+            let now = chrono::Utc::now();
+            let published_at = doc
+                .published_at
+                .as_deref()
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&chrono::Utc));
+
+            let existing_id: Option<String> = sqlx::query_scalar(
+                "SELECT id FROM documents WHERE external_id = $1 LIMIT 1",
+            )
+            .bind(&external_id)
+            .fetch_optional(pool.inner())
+            .await
+            .map_err(|e| {
+                CmsError::Database(format!("Failed to check existing document: {}", e))
+            })?;
+
+            let slug = if doc.slug.is_empty() {
+                doc.title.to_lowercase().replace(' ', "-")
+            } else {
+                doc.slug.clone()
+            };
+
+            if let Some(existing_id) = existing_id {
+                debug!(doc_id = %external_id, "Updating existing synced document");
+                let result = sqlx::query(
+                    "UPDATE documents SET title = $1, slug = $2, content = $3, updated_at = $4, status = 'published', tags = $5 WHERE id = $6",
+                )
+                .bind(&doc.title)
+                .bind(&slug)
+                .bind(&doc.content)
+                .bind(now)
+                .bind(serde_json::json!([]))
+                .bind(&existing_id)
+                .execute(pool.inner())
+                .await;
+
+                match result {
+                    Ok(_) => imported += 1,
+                    Err(e) => {
+                        warn!(doc_id = %external_id, error = %e, "Failed to update synced document");
+                        errors.push(format!("Update failed for '{}': {}", doc.title, e));
+                    }
+                }
+            } else {
+                let existing_by_slug: Option<String> = sqlx::query_scalar(
+                    "SELECT id FROM documents WHERE slug = $1 LIMIT 1",
+                )
+                .bind(&slug)
+                .fetch_optional(pool.inner())
+                .await
+                .map_err(|e| {
+                    CmsError::Database(format!("Failed to check slug: {}", e))
+                })?;
+
+                if existing_by_slug.is_some() {
+                    debug!(slug = %slug, "Document slug already exists, skipping");
+                    skipped += 1;
+                    continue;
+                }
+
+                debug!(doc_id = %external_id, "Inserting new synced document");
+                let new_id = uuid::Uuid::new_v4().to_string();
+                let result = sqlx::query(
+                    r#"INSERT INTO documents (
+                        id, title, slug, author_id, description, tags, frontmatter,
+                        project_id, visibility, status, content_type,
+                        word_count, character_count, read_count, edit_count,
+                        content, html,
+                        created_at, updated_at, published_at,
+                        content_hash, conflict_detected, external_id
+                    ) VALUES ($1::uuid, $2, $3, '00000000-0000-0000-0000-000000000000'::uuid, NULL, $4::jsonb, NULL, NULL, 'private', $5, 'markdown', $6, $7, 0, 1, $8, NULL, $9, $10, $11, NULL, false, $12)"#,
+                )
+                .bind(&new_id)
+                .bind(&doc.title)
+                .bind(&slug)
+                .bind(serde_json::json!([]))
+                .bind(&doc_type)
+                .bind(doc.content.split_whitespace().count() as i32)
+                .bind(doc.content.len() as i32)
+                .bind(&doc.content)
+                .bind(now)
+                .bind(now)
+                .bind(published_at)
+                .bind(&external_id)
+                .execute(pool.inner())
+                .await;
+
+                match result {
+                    Ok(_) => imported += 1,
+                    Err(e) => {
+                        warn!(doc_id = %external_id, error = %e, "Failed to insert synced document");
+                        errors.push(format!("Insert failed for '{}': {}", doc.title, e));
+                    }
+                }
+            }
+        }
+
+        Ok(CmsSyncResult {
+            provider: format!("{:?}", self.config.provider).to_lowercase(),
+            documents_fetched: fetched,
+            documents_imported: imported,
+            documents_skipped: skipped,
+            errors,
+            synced_at: chrono::Utc::now().to_rfc3339(),
+        })
     }
 }
 

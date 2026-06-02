@@ -44,6 +44,8 @@ pub use activity_feed::{Activity, ActivityFeed};
 pub use app_shell::AppShell;
 pub use auth_guard::{AuthGuard, provide_auth_context};
 pub use breadcrumbs::{BreadcrumbItem, Breadcrumbs};
+#[allow(unused_imports)]
+pub use catalog::CatalogPage;
 pub use client_search::ClientSearch;
 pub use command_palette::CommandPalette;
 pub use conflict_resolver::ConflictResolver;
