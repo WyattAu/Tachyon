@@ -52,7 +52,7 @@ Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collabora
 | tachyon-core | 145 | PASS |
 | tachyon-database | 139 | PASS |
 | tachyon-renderer | 122 | PASS |
-| tachyon-editor | 131 | PASS |
+| tachyon-editor | 141 | PASS |
 | tachyon-import-export | 50 | PASS |
 | tachyon-frontend | 89 | PASS |
 | tachyon-plugin-runtime | 74 | PASS |
@@ -201,10 +201,14 @@ Refactored editor highlighting from a monolithic struct into a composable provid
 
 | Item | Details |
 |------|---------|
-| `HighlightProvider` trait | Pluggable interface: `highlight_line()`, `supports_language()` |
+| `HighlightProvider` trait | Pluggable interface: `highlight_line()`, `highlight_document()`, `supports_language()` |
 | `RegexHighlighter` | Regex-based highlighting for markdown structure (headings, bold, italic, links, code fences, lists, blockquotes) |
 | `TreeSitterHighlighter` | Tree-sitter-based highlighting for 9 languages (Rust, Python, JavaScript, TypeScript, HTML, CSS, Go, C, C++), feature-gated behind `native-tree-sitter` |
-| Tests | 131 tests in tachyon-editor (no feature), 149 (with native-tree-sitter) |
+| `CompositeHighlighter` | Regex (markdown) + tree-sitter (code blocks), auto-lang from fence markers |
+| `SyntaxTheme` | Dark/Light/HighContrast presets, builder API, 55 token color mappings |
+| Multi-cursor | `Cursors` type (sorted, merge-overlap), Editor migrated |
+| Language detection | 12 variants, 30+ extensions, auto-detect in Editor |
+| Tests | 141 tests in tachyon-editor (no feature), 151 (with native-tree-sitter) |
 | WASM compilation | `tachyon-editor` compiles to `wasm32-unknown-unknown` with `default-features = false` (no tree-sitter dep in WASM build) |
 | tree-sitter targets | native (desktop), wasm32-unknown-unknown (web), wasm32-wasi (Docker SSG) -- three-target strategy |
 

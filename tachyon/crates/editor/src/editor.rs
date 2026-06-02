@@ -6,6 +6,7 @@ use crate::highlight::{HighlightProvider, HighlightSpan};
 use crate::language::Language;
 use crate::search::{Search, SearchResult};
 use crate::sync_queue::{OfflineSyncQueue, SyncStatus};
+use crate::theme::SyntaxTheme;
 use crate::transaction::{EditKind, Transaction, UndoStack};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
@@ -31,6 +32,7 @@ pub struct Editor {
     cursors: Cursors,
     undo_stack: UndoStack,
     highlighter: Box<dyn HighlightProvider>,
+    theme: SyntaxTheme,
     search: Search,
     is_dirty: bool,
     tab_size: usize,
@@ -72,6 +74,7 @@ impl Editor {
             cursors: Cursors::new(),
             undo_stack: UndoStack::new(1000),
             highlighter: Self::default_highlighter(),
+            theme: SyntaxTheme::dark(),
             search: Search::new(),
             is_dirty: false,
             tab_size: 2,
@@ -171,6 +174,16 @@ impl Editor {
     pub fn set_language(&mut self, language: Language) {
         self.language = language;
         self.in_code_block = false;
+    }
+
+    /// Get a reference to the current syntax theme.
+    pub fn theme(&self) -> &SyntaxTheme {
+        &self.theme
+    }
+
+    /// Set the syntax theme.
+    pub fn set_theme(&mut self, theme: SyntaxTheme) {
+        self.theme = theme;
     }
 
     /// Swap the highlight backend (e.g. regex -> tree-sitter at runtime).
@@ -1197,7 +1210,8 @@ impl Default for Editor {
 #[allow(deprecated)]
 mod tests {
     use super::*;
-    use crate::HighlightToken;
+    use crate::highlight::HighlightToken;
+    use crate::theme::SyntaxTheme;
 
     #[test]
     fn new_editor_is_empty() {
@@ -1651,5 +1665,18 @@ mod tests {
 
         editor.notify_synced(1);
         assert_eq!(editor.offline_queue().status(), SyncStatus::Online);
+    }
+
+    #[test]
+    fn editor_has_default_dark_theme() {
+        let e = Editor::new();
+        assert_eq!(e.theme().name(), "dark");
+    }
+
+    #[test]
+    fn editor_theme_switch() {
+        let mut e = Editor::new();
+        e.set_theme(SyntaxTheme::light());
+        assert_eq!(e.theme().name(), "light");
     }
 }
