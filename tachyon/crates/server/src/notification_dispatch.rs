@@ -4,14 +4,14 @@ use tokio::sync::broadcast;
 use tracing::debug;
 use uuid::Uuid;
 
-use crate::websocket::ConnectionManager;
+use crate::broadcast_bus::SharedBroadcastBus;
 use crate::websocket::redis_relay::RedisRelay;
 use crate::websocket::types::WebSocketMessage;
 
 #[derive(Clone)]
 pub struct NotificationDispatcher {
     pool: DatabasePool,
-    connection_manager: Arc<ConnectionManager>,
+    broadcast_bus: Arc<SharedBroadcastBus>,
     sse_tx: Arc<broadcast::Sender<String>>,
     redis_relay: Option<Arc<RedisRelay>>,
 }
@@ -19,12 +19,12 @@ pub struct NotificationDispatcher {
 impl NotificationDispatcher {
     pub fn new(
         pool: DatabasePool,
-        connection_manager: Arc<ConnectionManager>,
+        broadcast_bus: Arc<SharedBroadcastBus>,
         sse_tx: Arc<broadcast::Sender<String>>,
     ) -> Self {
         Self {
             pool,
-            connection_manager,
+            broadcast_bus,
             sse_tx,
             redis_relay: None,
         }
@@ -76,9 +76,10 @@ impl NotificationDispatcher {
         });
 
         let room_id = format!("user:{}", recipient_user_id);
-        let msg = WebSocketMessage::notification(room_id, data.clone());
-        self.connection_manager
-            .broadcast_to_room(&format!("user:{}", recipient_user_id), msg)
+        let msg = WebSocketMessage::notification(room_id.clone(), data.clone());
+        let json = serde_json::to_string(&msg)?;
+        self.broadcast_bus
+            .publish_ot(&format!("user:{}", recipient_user_id), None, json)
             .await;
 
         if let Some(ref relay) = self.redis_relay {
@@ -97,10 +98,6 @@ impl NotificationDispatcher {
 
     pub fn pool(&self) -> &DatabasePool {
         &self.pool
-    }
-
-    pub fn connection_manager(&self) -> &Arc<ConnectionManager> {
-        &self.connection_manager
     }
 }
 

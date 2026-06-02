@@ -190,8 +190,8 @@ pub struct AppState {
     pub onboarding_state: crate::routes::onboarding::OnboardingState,
     pub comment_state: crate::routes::comments::CommentState,
     pub digest_state: crate::routes::digest::DigestState,
-    pub connection_manager: crate::websocket::ConnectionManager,
     pub crdt_connection_manager: crate::websocket::CrdtConnectionManager,
+    pub broadcast_bus: Arc<crate::broadcast_bus::SharedBroadcastBus>,
     pub ai_manager: Arc<crate::ai::AiManager>,
     pub pool: tachyon_database::DatabasePool,
     pub http_client: reqwest::Client,
@@ -241,7 +241,6 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     use crate::routes::team::TeamState;
     use crate::routes::user::UserState;
     use crate::routes::webhook::WebhookState;
-    use crate::websocket::ConnectionManager;
     use crate::websocket::CrdtConnectionManager;
     use tachyon_database::init_with_migrations;
 
@@ -330,10 +329,10 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     };
     let activity_state = ActivityState::new(pool.clone());
     let notification_state = NotificationState::new(pool.clone());
-    let connection_manager = ConnectionManager::new();
+    let broadcast_bus = Arc::new(broadcast_bus::SharedBroadcastBus::new(1024));
     let notification_dispatcher = crate::notification_dispatch::NotificationDispatcher::new(
         pool.clone(),
-        Arc::new(connection_manager.clone()),
+        broadcast_bus.clone(),
         notification_state.sse_tx.clone(),
     );
     let review_state = ReviewState::new(pool.clone(), http_client.clone())
@@ -361,7 +360,6 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let comment_state = crate::routes::comments::CommentState::new(pool.clone());
     let digest_state = crate::routes::digest::DigestState { pool: pool.clone() };
-    let connection_manager = ConnectionManager::new();
     let crdt_connection_manager = CrdtConnectionManager::with_pool(pool.inner().clone());
 
     let oidc_state = if !config.sso_oidc.is_empty() {
@@ -387,16 +385,6 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         jwt_secret: config.jwt.signing_secret().to_string(),
     });
 
-    {
-        let cleanup_cm = connection_manager.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
-            loop {
-                interval.tick().await;
-                cleanup_cm.cleanup_stale_clients(300).await;
-            }
-        });
-    }
     {
         let cleanup_crdt = crdt_connection_manager.clone();
         tokio::spawn(async move {
@@ -444,8 +432,8 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         onboarding_state,
         comment_state,
         digest_state,
-        connection_manager,
         crdt_connection_manager,
+        broadcast_bus,
         pool,
         ai_manager,
         http_client,
@@ -503,8 +491,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let space_state = state.space_state;
     let conflict_state = state.conflict_state;
     let onboarding_state = state.onboarding_state;
-    let connection_manager = state.connection_manager;
     let crdt_connection_manager = state.crdt_connection_manager;
+    let broadcast_bus = state.broadcast_bus;
     let pool = state.pool;
     let ai_manager = state.ai_manager;
     let http_client = state.http_client;
@@ -544,7 +532,6 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     use crate::routes::user::create_user_router;
     use crate::routes::webhook::create_webhook_router;
     use crate::websocket::handle_crdt_websocket_upgrade;
-    use crate::websocket::handle_websocket_upgrade;
     use axum::{Router, routing::get};
     use tower::ServiceBuilder;
     use tower_http::{
@@ -570,7 +557,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let plugin_router = create_plugin_router_with_state(plugin_state);
     let space_router = create_space_router().with_state(space_state);
     let onboarding_router = create_onboarding_router().with_state(onboarding_state);
-    let collaboration_state = CollaborationState::new(pool.clone(), connection_manager.clone());
+    let collaboration_state = CollaborationState::new(pool.clone(), broadcast_bus.clone());
     let collaboration_router = create_collaboration_router().with_state(collaboration_state);
     let ecosystem_state = EcosystemState::new(pool.clone());
     let ecosystem_router = create_ecosystem_router().with_state(ecosystem_state);
@@ -711,13 +698,6 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let api_v2 = crate::routes::v2::v2_routes();
 
-    let ws_router = Router::new()
-        .route("/ws", get(handle_websocket_upgrade))
-        .with_state(connection_manager)
-        .layer(RequestBodyLimitLayer::new(1024 * 1024 * 1024));
-
-    // CRDT WebSocket needs its own router since it uses different state
-    // y-websocket appends room name to URL: ws://host/ws/crdt/{documentId}
     let crdt_ws_router = Router::new()
         .route("/ws/crdt/{room}", get(handle_crdt_websocket_upgrade))
         .with_state(crdt_connection_manager)
@@ -782,7 +762,6 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(health_router)
         .merge(metrics_router)
         .merge(seo_router)
-        .merge(ws_router)
         .merge(crdt_ws_router)
         .nest("/api/v1", api_v1)
         .nest("/api/v2", api_v2)

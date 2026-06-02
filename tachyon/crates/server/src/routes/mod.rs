@@ -76,7 +76,6 @@ pub async fn create_router() -> Router {
     use crate::routes::team::{TeamState, create_team_router};
     use crate::routes::user::{UserState, create_user_router};
     use crate::routes::webhook::{WebhookState, create_webhook_router};
-    use crate::websocket::ConnectionManager;
     use tachyon_database::init_with_migrations;
 
     // Use test database URL or default
@@ -147,7 +146,6 @@ pub async fn create_router() -> Router {
         site_config: crate::config::SiteConfig::default(),
     };
     let digest_state = DigestState { pool: pool.clone() };
-    let _connection_manager = ConnectionManager::new();
 
     let document_router = create_document_router().with_state(document_state);
     let user_router = create_user_router().with_state(user_state);

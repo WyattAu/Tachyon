@@ -10,8 +10,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
+use std::sync::Arc;
+
+use crate::broadcast_bus::SharedBroadcastBus;
 use crate::error::ServerError;
-use crate::websocket::ConnectionManager;
 use tachyon_database::CommentRepository;
 use tachyon_database::CreateDocumentCommentRequest as DbCreateCommentRequest;
 use tachyon_database::PresenceRepository;
@@ -23,17 +25,17 @@ use tachyon_database::error::DatabaseError;
 #[derive(Clone)]
 pub struct CollaborationState {
     pub pool: tachyon_database::DatabasePool,
-    pub connection_manager: ConnectionManager,
+    pub broadcast_bus: Arc<SharedBroadcastBus>,
 }
 
 impl CollaborationState {
     pub fn new(
         pool: tachyon_database::DatabasePool,
-        connection_manager: ConnectionManager,
+        broadcast_bus: Arc<SharedBroadcastBus>,
     ) -> Self {
         Self {
             pool,
-            connection_manager,
+            broadcast_bus,
         }
     }
 }
@@ -279,10 +281,8 @@ pub async fn update_presence(
         req.document_id.clone(),
         vec![presence_user],
     );
-    let _ = state
-        .connection_manager
-        .broadcast_to_room(&format!("doc:{}", req.document_id), presence_msg)
-        .await;
+    let json = serde_json::to_string(&presence_msg).map_err(|_| ServerError::internal("serialize presence"))?;
+    state.broadcast_bus.publish_ot(&format!("doc:{}", req.document_id), None, json).await;
 
     // Return all live presence for this document
     let users = repo
@@ -351,10 +351,8 @@ pub async fn remove_presence(
 
     // Broadcast leave event to WebSocket clients
     let leave_msg = crate::websocket::types::WebSocketMessage::leave(document_id.clone(), user_id);
-    let _ = state
-        .connection_manager
-        .broadcast_to_room(&format!("doc:{}", document_id), leave_msg)
-        .await;
+    let json = serde_json::to_string(&leave_msg).map_err(|_| ServerError::internal("serialize leave"))?;
+    state.broadcast_bus.publish_ot(&format!("doc:{}", document_id), None, json).await;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -526,10 +524,8 @@ pub async fn create_comment(
         "system".to_string(),
         activity,
     );
-    let _ = state
-        .connection_manager
-        .broadcast_to_room(&format!("doc:{}", req.document_id), activity_msg)
-        .await;
+    let json = serde_json::to_string(&activity_msg).map_err(|_| ServerError::internal("serialize activity"))?;
+    state.broadcast_bus.publish_ot(&format!("doc:{}", req.document_id), None, json).await;
 
     Ok(Json(db_comment_to_comment(comment)))
 }
