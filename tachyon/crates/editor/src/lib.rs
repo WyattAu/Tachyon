@@ -11,7 +11,9 @@ pub mod transaction;
 pub use buffer::TextBuffer;
 pub use cursor::{Cursor, Selection, SelectionKind};
 pub use editor::{Editor, WikilinkState};
-pub use highlight::{HighlightProvider, HighlightSpan, HighlightToken, RegexHighlighter};
+pub use highlight::{
+    HighlightProvider, HighlightSpan, HighlightToken, RegexHighlighter, css_class,
+};
 pub use search::SearchResult;
 pub use sync_queue::{OfflineSyncQueue, QueuedUpdate, SyncQueueSummary, SyncStatus};
 pub use transaction::{EditKind, Transaction};
@@ -22,3 +24,6 @@ pub use transaction::{EditKind, Transaction};
     note = "Use `RegexHighlighter` or `dyn HighlightProvider` instead."
 )]
 pub use RegexHighlighter as Highlighter;
+
+#[cfg(feature = "native-tree-sitter")]
+pub use highlight::tree_sitter::{TreeSitterHighlighter, TsLanguage};

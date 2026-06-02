@@ -1,3 +1,6 @@
+#[cfg(feature = "native-tree-sitter")]
+pub mod tree_sitter;
+
 use std::sync::LazyLock;
 
 use regex::Regex;
@@ -6,6 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum HighlightToken {
+    // ─── Markdown tokens ───────────────────────────────────────────
     Heading1,
     Heading2,
     Heading3,
@@ -37,6 +41,37 @@ pub enum HighlightToken {
     TaskMarker,
     Text,
     Whitespace,
+    // ─── Code tokens (tree-sitter) ──────────────────────────────────
+    Keyword,
+    String,
+    Number,
+    Comment,
+    Function,
+    Type,
+    Variable,
+    Operator,
+    Property,
+    Punctuation,
+    Constant,
+    Attribute,
+    CodeTag,
+    Label,
+    Embedded,
+    Constructor,
+    Character,
+    Boolean,
+    Conditional,
+    Repeat,
+    Define,
+    Include,
+    FunctionBuiltin,
+    TypeBuiltin,
+    VariableBuiltin,
+    VariableParameter,
+    StringEscape,
+    StringSpecial,
+    PunctuationBracket,
+    PunctuationDelimiter,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,6 +119,18 @@ pub trait HighlightProvider: Send + Sync {
     /// `in_code_block` tracks fenced-code-block state across calls so the
     /// provider can suppress markdown tokens inside code fences.
     fn highlight_line(&self, line: &str, in_code_block: &mut bool) -> Vec<HighlightSpan>;
+
+    /// Highlight an entire document, returning spans per line.
+    ///
+    /// Default implementation iterates [`highlight_line`](Self::highlight_line)
+    /// for each line. Tree-sitter-backed providers override this to parse the
+    /// full document once and split highlights by line boundaries.
+    fn highlight_document(&self, text: &str) -> Vec<Vec<HighlightSpan>> {
+        let mut in_code_block = false;
+        text.lines()
+            .map(|line| self.highlight_line(line, &mut in_code_block))
+            .collect()
+    }
 }
 
 /// Markdown highlighter powered by compile-time regex patterns.
@@ -282,9 +329,8 @@ impl Default for RegexHighlighter {
 
 /// Map a highlight token to a CSS class name.
 ///
-/// Reserved for future use: CSS class generation for syntax highlighting.
-#[cfg(test)]
-pub(crate) fn css_class(token: &HighlightToken) -> &'static str {
+/// Used by frontend rendering to apply syntax-highlight colors.
+pub fn css_class(token: &HighlightToken) -> &'static str {
     match token {
         HighlightToken::Heading1 => "ed-h1",
         HighlightToken::Heading2 => "ed-h2",
@@ -317,6 +363,37 @@ pub(crate) fn css_class(token: &HighlightToken) -> &'static str {
         HighlightToken::TableBorder => "ed-table-border",
         HighlightToken::Text => "ed-text",
         HighlightToken::Whitespace => "ed-whitespace",
+        // Code tokens
+        HighlightToken::Keyword => "ed-keyword",
+        HighlightToken::String => "ed-string",
+        HighlightToken::Number => "ed-number",
+        HighlightToken::Comment => "ed-comment",
+        HighlightToken::Function => "ed-function",
+        HighlightToken::Type => "ed-type",
+        HighlightToken::Variable => "ed-variable",
+        HighlightToken::Operator => "ed-operator",
+        HighlightToken::Property => "ed-property",
+        HighlightToken::Punctuation => "ed-punctuation",
+        HighlightToken::Constant => "ed-constant",
+        HighlightToken::Attribute => "ed-attribute",
+        HighlightToken::CodeTag => "ed-tag-code",
+        HighlightToken::Label => "ed-label",
+        HighlightToken::Embedded => "ed-embedded",
+        HighlightToken::Constructor => "ed-constructor",
+        HighlightToken::Character => "ed-character",
+        HighlightToken::Boolean => "ed-boolean",
+        HighlightToken::Conditional => "ed-conditional",
+        HighlightToken::Repeat => "ed-repeat",
+        HighlightToken::Define => "ed-define",
+        HighlightToken::Include => "ed-include",
+        HighlightToken::FunctionBuiltin => "ed-function-builtin",
+        HighlightToken::TypeBuiltin => "ed-type-builtin",
+        HighlightToken::VariableBuiltin => "ed-variable-builtin",
+        HighlightToken::VariableParameter => "ed-variable-parameter",
+        HighlightToken::StringEscape => "ed-string-escape",
+        HighlightToken::StringSpecial => "ed-string-special",
+        HighlightToken::PunctuationBracket => "ed-punctuation-bracket",
+        HighlightToken::PunctuationDelimiter => "ed-punctuation-delimiter",
     }
 }
 
