@@ -2,9 +2,8 @@
 
 use crate::manifest::SsgDocument;
 
-/// Render a document on the server side (for hybrid SSR/SSG pages).
 pub fn render_document(document: &SsgDocument) -> String {
-    crate::render::render_markdown(&document.content)
+    crate::render::render_markdown(&document.content, "client", "github-dark")
 }
 
 #[cfg(test)]

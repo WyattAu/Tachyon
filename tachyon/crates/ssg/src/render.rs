@@ -54,6 +54,12 @@ static CODE_GROUP_BARE_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
         .unwrap()
 });
 
+static LANGUAGE_CLASS_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"class="language-([^"]*)""#).unwrap());
+
+static CODE_CONTENT_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"<code[^>]*>([\s\S]*?)</code>"#).unwrap());
+
 static MERMAID_CODE_BLOCK_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(
         r#"<pre[^>]*>\s*<code[^>]*class="language-mermaid"[^>]*>([\s\S]*?)</code>\s*</pre>"#,
@@ -169,6 +175,63 @@ pub(crate) fn add_copy_buttons(html: &str) -> String {
         )
     })
     .to_string()
+}
+
+pub(crate) fn highlight_code_blocks(html: &str, theme_name: &str) -> String {
+    use tachyon_renderer::SyntaxHighlighter;
+    use tachyon_renderer::types::SyntaxTheme;
+
+    let theme = match theme_name {
+        "light" | "one-light" | "github" => SyntaxTheme::Light,
+        "high-contrast" | "highcontrast" | "hc" => SyntaxTheme::HighContrast,
+        _ => SyntaxTheme::Dark,
+    };
+
+    let highlighter = SyntaxHighlighter::with_theme(theme);
+
+    CODE_BLOCK_REGEX.replace_all(html, |caps: &regex::Captures| {
+        let _pre_attrs = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        let code_attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        let code_html = &caps[3];
+
+        let lang = LANGUAGE_CLASS_REGEX
+            .captures(code_attrs)
+            .and_then(|c| c.get(1))
+            .map(|m| m.as_str());
+
+        let Some(lang) = lang else {
+            return caps[0].to_string();
+        };
+
+        let raw = html_decode(code_html);
+
+        match highlighter.highlight(&raw, lang) {
+            Ok(highlighted) => {
+                format!(
+                    r#"<div class="code-block-wrapper"><pre class="syntax-highlight" data-language="{}"><code class="language-{}">{}</code></pre><button class="code-copy-btn" onclick="(function(b){{var c=b.parentElement.querySelector('code');navigator.clipboard.writeText(c.textContent).then(function(){{b.textContent='Copied!';setTimeout(function(){{b.textContent='Copy'}},2000)}})}})(this)" aria-label="Copy code to clipboard">Copy</button></div>"#,
+                    lang, lang, extract_inner_code(&highlighted)
+                )
+            }
+            Err(_) => caps[0].to_string(),
+        }
+    })
+    .to_string()
+}
+
+fn extract_inner_code(html: &str) -> String {
+    CODE_CONTENT_REGEX
+        .captures(html)
+        .and_then(|c| c.get(1).map(|m| m.as_str().to_string()))
+        .unwrap_or_else(|| html.to_string())
+}
+
+fn html_decode(s: &str) -> String {
+    s.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&#x27;", "'")
 }
 
 pub(crate) fn extract_code_titles(html: &str) -> String {
@@ -378,7 +441,7 @@ impl crate::build::SiteGenerator {
             version_prefix,
         } = *ctx;
 
-        let body_html = render_markdown(&doc.content);
+        let body_html = render_markdown(&doc.content, &self.config.highlighting_mode, &self.config.code_theme);
         let toc = extract_toc(&body_html);
 
         let description = doc
@@ -531,7 +594,7 @@ impl crate::build::SiteGenerator {
         let doc_cards: Vec<DocCard> = docs
             .iter()
             .map(|d| {
-                let body = render_markdown(&d.content);
+                let body = render_markdown(&d.content, &self.config.highlighting_mode, &self.config.code_theme);
                 DocCard {
                     title: d.title.clone(),
                     slug: d.slug.clone(),
@@ -579,7 +642,7 @@ impl crate::build::SiteGenerator {
         let doc_cards: Vec<DocCard> = docs
             .iter()
             .map(|d| {
-                let body = render_markdown(&d.content);
+                let body = render_markdown(&d.content, &self.config.highlighting_mode, &self.config.code_theme);
                 DocCard {
                     title: d.title.clone(),
                     slug: d.slug.clone(),
@@ -915,7 +978,7 @@ fn capitalize_render(s: &str) -> String {
     }
 }
 
-pub(crate) fn render_markdown(content: &str) -> String {
+pub(crate) fn render_markdown(content: &str, highlighting_mode: &str, code_theme: &str) -> String {
     use tachyon_renderer::{RenderConfig, Renderer};
 
     let (content, mermaid_blocks) = extract_mermaid_blocks(content);
@@ -942,6 +1005,11 @@ pub(crate) fn render_markdown(content: &str) -> String {
     let toc_html = render_inline_toc(&toc_entries);
     let result = replace_mermaid_placeholders(&result, &mermaid_blocks);
     let result = add_copy_buttons(&result);
+    let result = if highlighting_mode == "server" || highlighting_mode == "both" {
+        highlight_code_blocks(&result, code_theme)
+    } else {
+        result
+    };
     let result = extract_code_titles(&result);
     let result = process_code_groups(&result);
     let result = enhance_images(&result);
@@ -1110,4 +1178,39 @@ pub(crate) fn escape_xml(s: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&apos;")
+}
+
+#[cfg(test)]
+mod tests_highlight {
+    use super::*;
+
+    #[test]
+    fn highlight_rust_code_block() {
+        let html = r#"<pre><code class="language-rust">fn main() { println!("Hello"); }</code></pre>"#;
+        let result = highlight_code_blocks(html, "dark");
+        assert!(result.contains("syntax-highlight"));
+        assert!(result.contains("data-language=\"rust\""));
+        assert!(result.contains("code-block-wrapper"));
+        assert!(!result.starts_with(html.trim_start()), "block should be replaced");
+    }
+
+    #[test]
+    fn highlight_preserves_unknown_language() {
+        let html = r#"<pre><code class="language-brainfuck">+++[>+++<-]</code></pre>"#;
+        let result = highlight_code_blocks(html, "dark");
+        assert_eq!(result, html);
+    }
+
+    #[test]
+    fn highlight_preserves_no_language_block() {
+        let html = r#"<pre><code>some plain text</code></pre>"#;
+        let result = highlight_code_blocks(html, "dark");
+        assert_eq!(result, html);
+    }
+
+    #[test]
+    fn html_decode_roundtrip() {
+        assert_eq!(html_decode("&lt;script&gt;"), "<script>");
+        assert_eq!(html_decode("&amp;"), "&");
+    }
 }

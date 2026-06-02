@@ -8,7 +8,7 @@ pub fn export_single_page_html(
     _slug: &str,
     options: &SinglePageOptions,
 ) -> String {
-    let rendered = render_markdown(content);
+    let rendered = render_markdown(content, "client", "github-dark");
     let css = inline_css();
     format!(
         r#"<!DOCTYPE html>

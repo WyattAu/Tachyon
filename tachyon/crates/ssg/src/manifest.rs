@@ -21,6 +21,10 @@ fn default_code_theme() -> String {
     "github-dark".to_string()
 }
 
+fn default_highlighting_mode() -> String {
+    "client".to_string()
+}
+
 fn default_site_id() -> String {
     "default".to_string()
 }
@@ -95,6 +99,9 @@ pub struct SiteConfig {
     /// See: <https://highlightjs.org/static/demo/>
     #[serde(default = "default_code_theme")]
     pub code_theme: String,
+    /// Syntax highlighting mode: "client" (Highlight.js CDN), "server" (tree-sitter at build time), "both"
+    #[serde(default = "default_highlighting_mode")]
+    pub highlighting_mode: String,
     /// Generate robots.txt in output
     #[serde(default = "default_true")]
     pub robots_txt: bool,
@@ -158,6 +165,7 @@ impl Default for SiteConfig {
             mermaid_enabled: true,
             syntax_highlighting_enabled: true,
             code_theme: default_code_theme(),
+            highlighting_mode: default_highlighting_mode(),
             robots_txt: true,
             og_image: None,
             image_optimization_enabled: false,

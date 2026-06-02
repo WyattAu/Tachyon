@@ -165,13 +165,32 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         String::new()
     };
 
-    let highlight_script = if ctx.site.syntax_highlighting_enabled {
+    let highlight_script = if ctx.site.syntax_highlighting_enabled
+        && (ctx.site.highlighting_mode == "client" || ctx.site.highlighting_mode == "both")
+    {
         let theme = &ctx.site.code_theme;
         format!(
             r##"<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/{theme}.min.css">
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js"></script>
 <script>document.addEventListener('DOMContentLoaded',function(){{hljs.highlightAll({{cssSelector:'pre code:not(.language-mermaid)'}})}});</script>"##
         )
+    } else {
+        String::new()
+    };
+
+    let server_highlight_css = if ctx.site.syntax_highlighting_enabled
+        && (ctx.site.highlighting_mode == "server" || ctx.site.highlighting_mode == "both")
+    {
+        let highlighter = tachyon_renderer::SyntaxHighlighter::with_theme(
+            match ctx.site.code_theme.as_str() {
+                "light" | "one-light" | "github" => tachyon_renderer::types::SyntaxTheme::Light,
+                "high-contrast" | "highcontrast" | "hc" => {
+                    tachyon_renderer::types::SyntaxTheme::HighContrast
+                }
+                _ => tachyon_renderer::types::SyntaxTheme::Dark,
+            },
+        );
+        format!("<style>{}</style>", highlighter.generate_stylesheet())
     } else {
         String::new()
     };
@@ -441,6 +460,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     [data-active-color="slate"] .dark, .dark[data-active-color="slate"] {{ --tachyon-primary: #94a3b8; --tachyon-secondary: #64748b; --tachyon-accent: #cbd5e1; }}
     {custom_css}
   </style>
+  {server_highlight_css}
 </head>
   <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
   <a href="#doc-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded">Skip to content</a>
@@ -614,6 +634,7 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
         pagefind_js = pagefind_js,
         mermaid_script = mermaid_script,
         highlight_script = highlight_script,
+        server_highlight_css = server_highlight_css,
         hreflang_tags = ctx.hreflang_tags,
         og_image_tags = ctx
             .og_image

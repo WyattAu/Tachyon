@@ -524,7 +524,7 @@ server {
 sudo certbot --nginx -d docs.example.com
 ```
 "#;
-        let html = render_markdown(deployment_content);
+        let html = render_markdown(deployment_content, "client", "github-dark");
         eprintln!("=== RENDERED MARKDOWN ({} bytes) ===\n{}", html.len(), html);
         assert!(html.contains("Docker"), "Docker section missing");
         assert!(
@@ -679,7 +679,7 @@ More content.
 
 Details.
 "#;
-        let html = render_markdown(md);
+        let html = render_markdown(md, "client", "github-dark");
         assert!(
             html.contains(r#"<nav class="toc">"#),
             "inline TOC should be present"
@@ -706,7 +706,7 @@ Details.
     fn test_render_markdown_no_toc_for_single_heading() {
         use crate::render::render_markdown;
         let md = "# Title\n\n## Only Section\n\nSome text.\n";
-        let html = render_markdown(md);
+        let html = render_markdown(md, "client", "github-dark");
         assert!(
             !html.contains(r#"<nav class="toc">"#),
             "TOC should not appear with single h2/h3"
@@ -1004,7 +1004,7 @@ Details.
     fn test_mermaid_not_wrapped_by_copy_button() {
         use crate::render::render_markdown;
         let md = "# Test\n\n```mermaid\ngraph TD\n  A-->B\n```\n\n```bash\necho hello\n```\n";
-        let html = render_markdown(md);
+        let html = render_markdown(md, "client", "github-dark");
         let mermaid_pos = html.find(r#"<div class="mermaid">"#);
         let copy_pos = html.find(r#"class="code-copy-btn""#);
         assert!(mermaid_pos.is_some(), "mermaid div should exist");
