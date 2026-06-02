@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.tachyon.desktop",
   "build": {
-    "beforeBuildCommand": "cd ../../frontend && trunk build --release",
+    "beforeBuildCommand": "cd ../.. && cd crates/frontend && trunk build --release",
     "frontendDist": "../../frontend/dist",
     "devUrl": "http://localhost:1420"
   },
@@ -27,10 +27,6 @@
         "enable": true,
         "scope": ["$APPDATA/**", "$APPCONFIG/**", "$RESOURCE/**"]
       }
-    },
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true
     }
   },
   "bundle": {

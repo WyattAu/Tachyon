@@ -9,6 +9,7 @@ mod filesystem;
 mod import_export;
 mod state;
 mod sync;
+#[cfg(feature = "tray-icon")]
 mod tray;
 
 // Re-export public API
@@ -132,7 +133,8 @@ pub fn run() {
             app.manage(sync_manager);
             app.manage(app_state);
 
-            // Set up system tray
+            // Set up system tray (only when tray-icon feature is enabled)
+            #[cfg(feature = "tray-icon")]
             if let Err(e) = tray::setup_tray(app) {
                 tracing::warn!("Failed to set up system tray: {}", e);
                 // Non-fatal: tray is optional
