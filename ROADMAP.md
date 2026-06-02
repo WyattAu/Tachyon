@@ -700,7 +700,9 @@ Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are t
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
-| 2026-06-02 | Tauri desktop production build: 55MB binary | cargo tauri build --no-bundle succeeds. tray-icon disabled (no ayatana-appindicator in nix). Binary works on Intel/AMD/macOS/Windows; NVIDIA EGL issue documented. |
+| 2026-06-03 | Runtime verification: all surfaces tested | T1 server /health + login PASS. T2 Leptos trunk serve PASS (2m35s wasm build). T3 SSG server-side tree-sitter highlighting PASS (json/py/rust). T4 full-stack server + SSG dist PASS. T5 Tauri binary builds (55MB) but NVIDIA+WebKitGTK EGL runtime issue blocks display on CachyOS. T6 Tauri frontend embedded in binary. |
+| 2026-06-03 | ammonia double-pass strips class attributes | ammonia::clean() called in both parse_to_html AND sanitize_html. sanitize_html used default Builder (strips all class). Fix: add_generic_attributes(["class"]) to both ammonia Builders. |
+| 2026-03 | Tauri desktop production build: 55MB binary | cargo tauri build --no-bundle succeeds. tray-icon disabled (no ayatana-appindicator in nix). Binary works on Intel/AMD/macOS/Windows; NVIDIA EGL issue documented. |
 | 2026-06-02 | SSG server-side tree-sitter highlighting | highlighting_mode field: "client"/"server"/"both". Uses tachyon_renderer::SyntaxHighlighter at build time. Zero-JS for public pages. 9 languages supported. |
 | 2026-06-02 | Three-target tree-sitter strategy complete | native (desktop cc) + wasm32-unknown-unknown (tree-sitter-c2rust) + server-side SSG (renderer native). WASI deferred -- native tree-sitter in SSG covers Docker deployment. |
 | 2026-06-02 | WASM tree-sitter architecture: WasmTreeSitterHighlighter stub | Runtime .wasm loading architecture documented. Compiles on wasm32-unknown-unknown. Stub provider ready for future grammar loading. |
