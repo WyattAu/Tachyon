@@ -151,8 +151,7 @@ pub fn NativeEditor(
                     (true, false, "Tab") => { e.unindent_selection(); }
                     (false, false, "ArrowLeft") => {
                         if shift {
-                            let cur = *e.cursor();
-                            let mut target = cur;
+                            let mut target = e.cursors().active().0;
                             target.move_left(e.buffer());
                             e.extend_selection_to(target);
                         } else {
@@ -161,8 +160,7 @@ pub fn NativeEditor(
                     }
                     (false, false, "ArrowRight") => {
                         if shift {
-                            let cur = *e.cursor();
-                            let mut target = cur;
+                            let mut target = e.cursors().active().0;
                             target.move_right(e.buffer());
                             e.extend_selection_to(target);
                         } else {
@@ -171,8 +169,7 @@ pub fn NativeEditor(
                     }
                     (false, false, "ArrowUp") => {
                         if shift {
-                            let cur = *e.cursor();
-                            let mut target = cur;
+                            let mut target = e.cursors().active().0;
                             target.move_up(e.buffer());
                             e.extend_selection_to(target);
                         } else {
@@ -181,8 +178,7 @@ pub fn NativeEditor(
                     }
                     (false, false, "ArrowDown") => {
                         if shift {
-                            let cur = *e.cursor();
-                            let mut target = cur;
+                            let mut target = e.cursors().active().0;
                             target.move_down(e.buffer());
                             e.extend_selection_to(target);
                         } else {
@@ -322,7 +318,7 @@ pub fn NativeEditor(
                             });
                             spans
                         };
-                        let cursor_line = editor.with(|e| e.cursor().line);
+                        let cursor_line = editor.with(|e| e.cursors().active().0.line);
                         let is_active = cursor_line == line_idx;
                         let line_num = line_idx + 1;
                         let h = handle_click;
@@ -383,7 +379,8 @@ pub fn NativeEditor(
 
                 move || {
                     let (cursor_line, cursor_col) = editor.with(|e| {
-                        (e.cursor().line, e.cursor().col)
+                        let c = e.cursors().active().0;
+                        (c.line, c.col)
                     });
                     let (_scroll_line, _) = scroll_off.get();
                     let gutter_w = if ln { 50.0 } else { 0.0 };
@@ -407,7 +404,7 @@ pub fn NativeEditor(
 
                 move || {
                     let (has_selection, sel_start, sel_end) = editor.with(|e| {
-                        let sel = e.selection();
+                        let sel = e.cursors().active().1;
                         if sel.is_empty() {
                             (false, Cursor::zero(), Cursor::zero())
                         } else {
@@ -478,9 +475,10 @@ pub fn insert_markdown_syntax(
     default_text: &str,
 ) {
     editor.update(|e| {
-        if !e.selection().is_empty() {
+        if !e.cursors().active().1.is_empty() {
             let selected = {
-                let (start, end) = e.selection().normalize();
+                let sel = e.cursors().active().1;
+                let (start, end) = sel.normalize();
                 let line = e.buffer().line(start.line);
                 let trimmed = line.trim_end_matches('\n');
                 if start.line == end.line {
@@ -492,7 +490,7 @@ pub fn insert_markdown_syntax(
             e.insert_text(&format!("{}{}{}", prefix, selected, suffix));
         } else {
             e.insert_text(&format!("{}{}{}", prefix, default_text, suffix));
-            let cursor = e.cursor();
+            let cursor = e.cursors().active().0;
             let _offset = prefix.len();
             e.move_cursor_to(
                 cursor.line,
@@ -504,16 +502,16 @@ pub fn insert_markdown_syntax(
 
 pub fn insert_line_prefix(editor: RwSignal<Editor>, prefix: &str) {
     editor.update(|e| {
-        let line = e.cursor().line;
+        let line = e.cursors().active().0.line;
         let line_text = e.current_line_text();
         let already = line_text.trim_start().starts_with(prefix.trim());
         if already {
             let remove_len = prefix.len();
             e.buffer_mut().delete_range(line, 0, line, remove_len);
-            e.move_cursor_to(line, e.cursor().col.saturating_sub(remove_len));
+            e.move_cursor_to(line, e.cursors().active().0.col.saturating_sub(remove_len));
         } else {
             e.buffer_mut().insert(line, 0, prefix);
-            e.move_cursor_to(line, e.cursor().col + prefix.len());
+            e.move_cursor_to(line, e.cursors().active().0.col + prefix.len());
         }
     });
 }
