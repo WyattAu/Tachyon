@@ -338,6 +338,8 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     let review_state = ReviewState::new(pool.clone(), http_client.clone())
         .with_audit_logger(audit_logger.clone())
         .with_notification_dispatcher(notification_dispatcher.clone());
+    let team_state =
+        team_state.with_notification_dispatcher(notification_dispatcher.clone());
     let tags_state = TagsState { pool: pool.clone() };
     let webhook_state = WebhookState {
         pool: pool.clone(),
@@ -360,7 +362,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let comment_state = crate::routes::comments::CommentState::new(pool.clone());
     let digest_state = crate::routes::digest::DigestState { pool: pool.clone() };
-    let crdt_connection_manager = CrdtConnectionManager::with_pool(pool.inner().clone());
+    let crdt_connection_manager = CrdtConnectionManager::with_pool(pool.inner().clone(), broadcast_bus.clone());
 
     let oidc_state = if !config.sso_oidc.is_empty() {
         Some(crate::sso::OidcState {

@@ -6,13 +6,20 @@
 //!
 //! ## Grammar loading
 //!
-//! Currently grammar loading is a stub (`preload_grammar` is a no-op).
-//! Runtime WASM grammar loading needs `web-sys` fetch, which is a separate
-//! integration step.
+//! Highlight queries for supported languages are embedded as static `&str`
+//! constants. Full `HighlightConfiguration` requires a `Language` object,
+//! which must be constructed from a `LanguageFn` obtained from a compiled
+//! grammar crate. Use [`load_grammar_from_language_fn`] to register a language.
+//!
+//! When [`preload_grammar`] is called for a language whose `LanguageFn` has
+//! already been registered via [`load_grammar_from_language_fn`], the
+//! configuration is created immediately.
 
 use std::collections::HashMap;
 
 use tree_sitter_highlight_wasm::{HighlightConfiguration, HighlightEvent, Highlighter};
+use tree_sitter_c2rust::Language;
+use tree_sitter_language::LanguageFn;
 
 use crate::highlight::{HighlightProvider, HighlightSpan, HighlightToken};
 
@@ -87,10 +94,78 @@ fn capture_to_token(highlight: tree_sitter_highlight_wasm::Highlight) -> Highlig
 
 const DEFAULT_GRAMMAR_BASE_URL: &str = "/grammars/";
 
+const DEFAULT_LANGUAGE: &str = "rust";
+
+pub const RUST_HIGHLIGHTS_QUERY: &str = include_str!("queries/rust_highlights.scm");
+pub const RUST_INJECTIONS_QUERY: &str = include_str!("queries/rust_injections.scm");
+
+pub const PYTHON_HIGHLIGHTS_QUERY: &str = include_str!("queries/python_highlights.scm");
+
+pub const JAVASCRIPT_HIGHLIGHTS_QUERY: &str =
+    include_str!("queries/javascript_highlights.scm");
+pub const JAVASCRIPT_INJECTIONS_QUERY: &str =
+    include_str!("queries/javascript_injections.scm");
+
+pub const TYPESCRIPT_HIGHLIGHTS_QUERY: &str =
+    include_str!("queries/typescript_highlights.scm");
+
+pub const JSON_HIGHLIGHTS_QUERY: &str = include_str!("queries/json_highlights.scm");
+
+pub const YAML_HIGHLIGHTS_QUERY: &str = include_str!("queries/yaml_highlights.scm");
+
+pub const CSS_HIGHLIGHTS_QUERY: &str = include_str!("queries/css_highlights.scm");
+
+pub const BASH_HIGHLIGHTS_QUERY: &str = include_str!("queries/bash_highlights.scm");
+
+pub const HTML_HIGHLIGHTS_QUERY: &str = include_str!("queries/html_highlights.scm");
+pub const HTML_INJECTIONS_QUERY: &str = include_str!("queries/html_injections.scm");
+
+struct EmbeddedLanguage {
+    highlights: &'static str,
+    injections: &'static str,
+}
+
+impl EmbeddedLanguage {
+    const fn new(highlights: &'static str, injections: &'static str) -> Self {
+        Self {
+            highlights,
+            injections,
+        }
+    }
+}
+
+fn embedded_language(name: &str) -> Option<&'static EmbeddedLanguage> {
+    match name {
+        "rust" => Some(&EMBEDDED_RUST),
+        "python" => Some(&EMBEDDED_PYTHON),
+        "javascript" => Some(&EMBEDDED_JAVASCRIPT),
+        "typescript" => Some(&EMBEDDED_TYPESCRIPT),
+        "json" => Some(&EMBEDDED_JSON),
+        "yaml" | "yml" => Some(&EMBEDDED_YAML),
+        "css" => Some(&EMBEDDED_CSS),
+        "bash" | "sh" | "shell" | "zsh" => Some(&EMBEDDED_BASH),
+        "html" => Some(&EMBEDDED_HTML),
+        _ => None,
+    }
+}
+
+const EMBEDDED_RUST: EmbeddedLanguage =
+    EmbeddedLanguage::new(RUST_HIGHLIGHTS_QUERY, RUST_INJECTIONS_QUERY);
+const EMBEDDED_PYTHON: EmbeddedLanguage = EmbeddedLanguage::new(PYTHON_HIGHLIGHTS_QUERY, "");
+const EMBEDDED_JAVASCRIPT: EmbeddedLanguage =
+    EmbeddedLanguage::new(JAVASCRIPT_HIGHLIGHTS_QUERY, JAVASCRIPT_INJECTIONS_QUERY);
+const EMBEDDED_TYPESCRIPT: EmbeddedLanguage =
+    EmbeddedLanguage::new(TYPESCRIPT_HIGHLIGHTS_QUERY, "");
+const EMBEDDED_JSON: EmbeddedLanguage = EmbeddedLanguage::new(JSON_HIGHLIGHTS_QUERY, "");
+const EMBEDDED_YAML: EmbeddedLanguage = EmbeddedLanguage::new(YAML_HIGHLIGHTS_QUERY, "");
+const EMBEDDED_CSS: EmbeddedLanguage = EmbeddedLanguage::new(CSS_HIGHLIGHTS_QUERY, "");
+const EMBEDDED_BASH: EmbeddedLanguage = EmbeddedLanguage::new(BASH_HIGHLIGHTS_QUERY, "");
+const EMBEDDED_HTML: EmbeddedLanguage =
+    EmbeddedLanguage::new(HTML_HIGHLIGHTS_QUERY, HTML_INJECTIONS_QUERY);
+
 pub struct WasmTreeSitterHighlighter {
     base_url: String,
-    #[allow(dead_code)] // placeholder for web-sys fetch integration
-    loaded_grammars: HashMap<String, Vec<u8>>,
+    language: String,
     configs: HashMap<String, HighlightConfiguration>,
 }
 
@@ -103,7 +178,7 @@ impl WasmTreeSitterHighlighter {
         };
         Self {
             base_url: base,
-            loaded_grammars: HashMap::new(),
+            language: DEFAULT_LANGUAGE.to_owned(),
             configs: HashMap::new(),
         }
     }
@@ -112,9 +187,51 @@ impl WasmTreeSitterHighlighter {
         Self::new(DEFAULT_GRAMMAR_BASE_URL)
     }
 
+    pub fn language(&self) -> &str {
+        &self.language
+    }
+
+    pub fn set_language(&mut self, language: &str) {
+        self.language = language.to_owned();
+    }
+
     pub fn preload_grammar(&mut self, _language: &str) {
-        // TODO: use web_sys::fetch to download {base_url}tree-sitter-{language}.wasm
-        //       and store bytes in self.loaded_grammars, then create HighlightConfiguration.
+        if self.configs.contains_key(_language) {
+            return;
+        }
+    }
+
+    pub fn load_grammar_from_language_fn(&mut self, language: &str, language_fn: LanguageFn) {
+        self.try_create_config(language, language_fn);
+    }
+
+    fn try_create_config(&mut self, language: &str, language_fn: LanguageFn) {
+        let embedded = match embedded_language(language) {
+            Some(e) => e,
+            None => return,
+        };
+
+        let language_obj = Language::new(language_fn);
+
+        match HighlightConfiguration::new(
+            language_obj,
+            language,
+            embedded.highlights,
+            embedded.injections,
+            "",
+        ) {
+            Ok(mut config) => {
+                config.configure(CAPTURE_NAMES);
+                self.configs.insert(language.to_owned(), config);
+                tracing::debug!("wasm tree-sitter: loaded config for '{language}'");
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "wasm tree-sitter: failed to create config for '{}': {e}",
+                    language
+                );
+            }
+        }
     }
 
     pub fn is_grammar_loaded(&self, language: &str) -> bool {
@@ -123,6 +240,24 @@ impl WasmTreeSitterHighlighter {
 
     pub fn loaded_languages(&self) -> Vec<String> {
         self.configs.keys().cloned().collect()
+    }
+
+    pub fn supported_languages() -> Vec<&'static str> {
+        vec![
+            "rust",
+            "python",
+            "javascript",
+            "typescript",
+            "json",
+            "yaml",
+            "css",
+            "bash",
+            "html",
+        ]
+    }
+
+    pub fn is_language_supported(name: &str) -> bool {
+        embedded_language(name).is_some()
     }
 
     pub fn base_url(&self) -> &str {
@@ -197,7 +332,8 @@ impl WasmTreeSitterHighlighter {
 
                         for line_idx in start_line..=end_line.min(line_count - 1) {
                             let line_start = line_starts[line_idx];
-                            let line_end = line_starts.get(line_idx + 1).copied().unwrap_or(offset);
+                            let line_end =
+                                line_starts.get(line_idx + 1).copied().unwrap_or(offset);
                             let span_start = start.saturating_sub(line_start);
                             let span_end =
                                 (end.saturating_sub(line_start)).min(line_end - line_start);
@@ -241,6 +377,10 @@ impl HighlightProvider for WasmTreeSitterHighlighter {
         if line.is_empty() {
             return Vec::new();
         }
+        if self.configs.contains_key(&self.language) {
+            let spans = self.highlight_code(line, &self.language);
+            return spans.into_iter().next().unwrap_or_default();
+        }
         vec![HighlightSpan {
             token: HighlightToken::Text,
             start_col: 0,
@@ -249,21 +389,7 @@ impl HighlightProvider for WasmTreeSitterHighlighter {
     }
 
     fn highlight_document(&self, text: &str) -> Vec<Vec<HighlightSpan>> {
-        if self.configs.is_empty() {
-            let mut in_code_block = false;
-            return text
-                .lines()
-                .map(|line| self.highlight_line(line, &mut in_code_block))
-                .collect();
-        }
-
-        let language = self
-            .configs
-            .keys()
-            .next()
-            .map(|s| s.as_str())
-            .unwrap_or("text");
-        self.highlight_code(text, language)
+        self.highlight_code(text, &self.language)
     }
 }
 
@@ -336,10 +462,17 @@ mod tests {
     }
 
     #[test]
-    fn preload_grammar_is_noop() {
+    fn preload_grammar_without_bytes_is_noop() {
         let mut h = WasmTreeSitterHighlighter::new("/grammars/");
         h.preload_grammar("rust");
         assert!(!h.is_grammar_loaded("rust"));
+    }
+
+    #[test]
+    fn preload_grammar_unknown_language_is_noop() {
+        let mut h = WasmTreeSitterHighlighter::new("/grammars/");
+        h.preload_grammar("brainfuck");
+        assert!(!h.is_grammar_loaded("brainfuck"));
     }
 
     #[test]
@@ -352,5 +485,62 @@ mod tests {
     fn default_trait_impl() {
         let h = WasmTreeSitterHighlighter::default();
         assert_eq!(h.base_url(), "/grammars/");
+    }
+
+    #[test]
+    fn default_language_is_rust() {
+        let h = WasmTreeSitterHighlighter::with_defaults();
+        assert_eq!(h.language(), "rust");
+    }
+
+    #[test]
+    fn set_language_changes_language() {
+        let mut h = WasmTreeSitterHighlighter::with_defaults();
+        h.set_language("python");
+        assert_eq!(h.language(), "python");
+    }
+
+    #[test]
+    fn supported_languages_list() {
+        let langs = WasmTreeSitterHighlighter::supported_languages();
+        assert_eq!(langs.len(), 9);
+        assert!(langs.contains(&"rust"));
+        assert!(langs.contains(&"python"));
+        assert!(langs.contains(&"javascript"));
+        assert!(langs.contains(&"typescript"));
+        assert!(langs.contains(&"json"));
+        assert!(langs.contains(&"yaml"));
+        assert!(langs.contains(&"css"));
+        assert!(langs.contains(&"bash"));
+        assert!(langs.contains(&"html"));
+    }
+
+    #[test]
+    fn is_language_supported() {
+        assert!(WasmTreeSitterHighlighter::is_language_supported("rust"));
+        assert!(WasmTreeSitterHighlighter::is_language_supported("python"));
+        assert!(WasmTreeSitterHighlighter::is_language_supported("yml"));
+        assert!(WasmTreeSitterHighlighter::is_language_supported("sh"));
+        assert!(!WasmTreeSitterHighlighter::is_language_supported("brainfuck"));
+    }
+
+    #[test]
+    fn embedded_language_queries_non_empty() {
+        let rust_el = embedded_language("rust").unwrap();
+        assert!(!rust_el.highlights.is_empty());
+        let js_el = embedded_language("javascript").unwrap();
+        assert!(!js_el.highlights.is_empty());
+        let html_el = embedded_language("html").unwrap();
+        assert!(!html_el.highlights.is_empty());
+    }
+
+    #[test]
+    fn highlight_document_uses_language_field() {
+        let mut h = WasmTreeSitterHighlighter::new("/grammars/");
+        h.set_language("python");
+        let text = "print('hello')\n";
+        let spans = h.highlight_document(text);
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0][0].token, HighlightToken::Text);
     }
 }

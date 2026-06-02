@@ -327,6 +327,22 @@ pub fn GlobalStyles() -> impl IntoView {
                     color: #d1d5db;
                 }}
 
+                /* Code syntax highlight tokens (One Dark inspired) */
+                .ed-keyword {{ color: #c678dd; }}
+                .ed-string, .ed-character, .ed-embedded {{ color: #98c379; }}
+                .ed-number, .ed-boolean {{ color: #d19a66; }}
+                .ed-comment {{ color: #5c6370; font-style: italic; }}
+                .ed-function, .ed-function-builtin {{ color: #61afef; }}
+                .ed-type, .ed-type-builtin, .ed-constructor {{ color: #e5c07b; }}
+                .ed-variable, .ed-variable-parameter {{ color: #e06c75; }}
+                .ed-operator {{ color: #56b6c2; }}
+                .ed-property, .ed-attribute, .ed-code-tag, .ed-label {{ color: #e06c75; }}
+                .ed-constant {{ color: #e5c07b; }}
+                .ed-string-escape, .ed-string-special {{ color: #56b6c2; }}
+                .ed-punctuation, .ed-punctuation-bracket, .ed-punctuation-delimiter {{ color: #abb2bf; }}
+                .ed-conditional, .ed-repeat, .ed-define, .ed-include {{ color: #c678dd; }}
+                .ed-variable-builtin {{ color: #e5c07b; }}
+
                 .ed-link {{ color: #2563eb; text-decoration: underline; }}
                 .dark .ed-link {{ color: #60a5fa; }}
                 .ed-link-url {{ color: #6b7280; font-style: italic; }}

@@ -3,6 +3,7 @@
 
 use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
 use crate::error::ServerError;
+use crate::notification_dispatch::NotificationDispatcher;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -18,6 +19,7 @@ pub struct TeamState {
     pub team_repo: TeamRepository,
     pub role_repo: RoleRepository,
     pub audit_logger: AuditLogger,
+    pub notification_dispatcher: Option<NotificationDispatcher>,
 }
 
 impl TeamState {
@@ -29,11 +31,17 @@ impl TeamState {
             team_repo,
             role_repo,
             audit_logger: AuditLogger::disabled(),
+            notification_dispatcher: None,
         }
     }
 
     pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
         self.audit_logger = logger;
+        self
+    }
+
+    pub fn with_notification_dispatcher(mut self, dispatcher: NotificationDispatcher) -> Self {
+        self.notification_dispatcher = Some(dispatcher);
         self
     }
 }
@@ -501,19 +509,30 @@ pub async fn add_team_member(
         )
         .await;
 
+    if let Some(dispatcher) = &state.notification_dispatcher {
+        let team = state.team_repo.get_by_id(&team_id).await.ok();
+        let team_name = team.as_ref().map(|t| t.name.as_str()).unwrap_or(&team_id);
+        let user_id = match req.user_id.parse::<uuid::Uuid>() {
+            Ok(id) => id,
+            Err(_) => return Ok(Json(TeamMemberResponse::from(created))),
+        };
+        let _ = dispatcher
+            .dispatch(
+                user_id,
+                "team_membership",
+                &format!("You have been added to team {team_name}"),
+                None,
+                Some(&format!("/teams/{team_id}")),
+                serde_json::json!({
+                    "team_id": team_id,
+                    "role": req.role_name,
+                }),
+            )
+            .await;
+    }
+
     Ok(Json(TeamMemberResponse::from(created)))
 }
-
-// TODO: Wire NotificationDispatcher to notify added user of team membership.
-// Pattern:
-//   dispatcher.dispatch(
-//       req.user_id.parse()?,
-//       "team_member_added",
-//       &format!("You were added to team {}", team_id),
-//       None,
-//       Some(&format!("/teams/{}", team_id)),
-//       json!({"team_id": team_id, "role": req.role_name}),
-//   ).await;
 
 /// Update a team member's role.
 ///

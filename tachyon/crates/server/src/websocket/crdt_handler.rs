@@ -30,6 +30,7 @@ use std::sync::Arc;
 use tokio::sync::{RwLock, broadcast};
 use tracing::{debug, info, warn};
 
+use crate::broadcast_bus::{BroadcastEvent, SharedBroadcastBus};
 use crate::crdt::CrdtDocumentManager;
 use crate::websocket::types::{PresenceInfo, PresenceStatus};
 use tachyon_core::types::crdt::{CollaborationInfo, CrdtDocumentState, SelectionRange};
@@ -104,10 +105,12 @@ pub struct CrdtConnectionManager {
     heartbeat_interval_secs: u64,
     /// Maximum binary message size in bytes (reject larger messages).
     max_message_size: usize,
+    /// Shared broadcast bus for receiving OT events from collaboration routes.
+    bus: Arc<SharedBroadcastBus>,
 }
 
 impl CrdtConnectionManager {
-    pub fn new() -> Self {
+    pub fn new(bus: Arc<SharedBroadcastBus>) -> Self {
         let (broadcast_tx, _) = broadcast::channel(1024);
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),
@@ -119,10 +122,11 @@ impl CrdtConnectionManager {
             max_connections: 1000,
             heartbeat_interval_secs: 30,
             max_message_size: 10 * 1024 * 1024, // 10 MiB
+            bus,
         }
     }
 
-    pub fn with_config(max_connections: usize, heartbeat_interval_secs: u64) -> Self {
+    pub fn with_config(max_connections: usize, heartbeat_interval_secs: u64, bus: Arc<SharedBroadcastBus>) -> Self {
         let (broadcast_tx, _) = broadcast::channel(1024);
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),
@@ -134,10 +138,11 @@ impl CrdtConnectionManager {
             max_connections,
             heartbeat_interval_secs,
             max_message_size: 10 * 1024 * 1024, // 10 MiB
+            bus,
         }
     }
 
-    pub fn with_pool(pool: sqlx::PgPool) -> Self {
+    pub fn with_pool(pool: sqlx::PgPool, bus: Arc<SharedBroadcastBus>) -> Self {
         let (broadcast_tx, _) = broadcast::channel(1024);
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),
@@ -149,6 +154,7 @@ impl CrdtConnectionManager {
             max_connections: 1000,
             heartbeat_interval_secs: 30,
             max_message_size: 10 * 1024 * 1024,
+            bus,
         }
     }
 
@@ -321,7 +327,7 @@ impl CrdtConnectionManager {
 
 impl Default for CrdtConnectionManager {
     fn default() -> Self {
-        Self::new()
+        Self::new(Arc::new(SharedBroadcastBus::new(1024)))
     }
 }
 
@@ -381,6 +387,9 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
 
     // Subscribe to relay events.
     let mut relay_rx = manager.subscribe();
+
+    // Subscribe to the shared broadcast bus for OT events from collaboration routes.
+    let mut bus_rx = manager.bus.subscribe();
 
     // Pre-load document from database if available.
     manager.crdt_manager().get_or_load(&room).await;
@@ -492,6 +501,21 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                     if ws_sender.send(Message::Ping(vec![].into())).await.is_err() {
                         info!(client_id = %client_id_for_send, "Failed to send heartbeat ping — connection dead");
                         break;
+                    }
+                }
+                Ok(event) = bus_rx.recv() => {
+                    match event {
+                        BroadcastEvent::OtMessage { room_id, payload, .. } => {
+                            if room_id == room_for_send
+                                && let Err(e) = ws_sender.send(Message::Text(payload.into())).await
+                            {
+                                warn!(client_id = %client_id_for_send, error = %e, "Failed to send OT message from bus");
+                                break;
+                            }
+                        }
+                        BroadcastEvent::CrdtBinary { .. } => {
+                            // CRDT binary events are already handled by the internal relay above.
+                        }
                     }
                 }
             }
@@ -735,15 +759,19 @@ fn parse_selection_update(data: &[u8]) -> Option<SelectionRange> {
 mod tests {
     use super::*;
 
+    fn test_bus() -> Arc<SharedBroadcastBus> {
+        Arc::new(SharedBroadcastBus::new(16))
+    }
+
     #[tokio::test]
     async fn test_manager_new() {
-        let manager = CrdtConnectionManager::new();
+        let manager = CrdtConnectionManager::new(test_bus());
         assert_eq!(manager.client_count().await, 0);
     }
 
     #[tokio::test]
     async fn test_join_and_leave() {
-        let manager = CrdtConnectionManager::new();
+        let manager = CrdtConnectionManager::new(test_bus());
         manager.join_room("client1", "room1").await;
         manager.join_room("client2", "room1").await;
         manager.join_room("client3", "room2").await;
@@ -760,7 +788,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_init_document_from_persisted() {
-        let manager = CrdtConnectionManager::new();
+        let manager = CrdtConnectionManager::new(test_bus());
         let update_log = vec![1, 2, 3, 4, 5];
         manager
             .init_document_from_persisted("doc1", update_log.clone())
@@ -772,7 +800,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_client_count() {
-        let manager = CrdtConnectionManager::new();
+        let manager = CrdtConnectionManager::new(test_bus());
         assert_eq!(manager.client_count().await, 0);
 
         // Simulate adding clients
@@ -889,9 +917,13 @@ mod concurrent_tests {
     use super::*;
     use std::sync::Arc;
 
+    fn test_bus() -> Arc<SharedBroadcastBus> {
+        Arc::new(SharedBroadcastBus::new(16))
+    }
+
     #[tokio::test]
     async fn test_concurrent_room_join() {
-        let manager = Arc::new(CrdtConnectionManager::new());
+        let manager = Arc::new(CrdtConnectionManager::new(test_bus()));
         let handles: Vec<_> = (0..50)
             .map(|i| {
                 let mgr = manager.clone();
