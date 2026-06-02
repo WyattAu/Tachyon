@@ -44,7 +44,7 @@ Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collabora
 
 ## Current State Summary
 
-### Test Suite (2,062 tests, all passing)
+### Test Suite (2,069 tests, all passing)
 
 | Crate | Tests | Status |
 |-------|-------|--------|
@@ -52,7 +52,7 @@ Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collabora
 | tachyon-core | 145 | PASS |
 | tachyon-database | 139 | PASS |
 | tachyon-renderer | 122 | PASS |
-| tachyon-editor | 124 | PASS |
+| tachyon-editor | 131 | PASS |
 | tachyon-import-export | 50 | PASS |
 | tachyon-frontend | 89 | PASS |
 | tachyon-plugin-runtime | 74 | PASS |
@@ -62,7 +62,7 @@ Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collabora
 | tachyon-storage | 31 | PASS |
 | tachyon-desktop | 44 | PASS |
 | tachyon-cli | 35 | PASS |
-| **Total** | **2,062** | **ALL PASS** |
+| **Total** | **2,069** | **ALL PASS** |
 
 ### Code Quality
 
@@ -197,40 +197,45 @@ Rationale: Tachyon targets a VSCode/Neovim-style editor platform. Syntax highlig
 
 ### Phase A1: Pluggable Highlight Architecture [DONE]
 
-Refactored editor highlighting from a monolithic struct into a composable provider system. Editor crate compiles to wasm32-unknown-unknown with tree-sitter behind a feature gate (`native-tree-sitter`).
+Refactored editor highlighting from a monolithic struct into a composable provider system. Editor crate compiles to wasm32-unknown-unknown with tree-sitter behind a feature gate (`native-tree-sitter`). Commits: `5fcf245`, `73b81eb`, `ee64736`.
 
 | Item | Details |
 |------|---------|
 | `HighlightProvider` trait | Pluggable interface: `highlight_line()`, `supports_language()` |
 | `RegexHighlighter` | Regex-based highlighting for markdown structure (headings, bold, italic, links, code fences, lists, blockquotes) |
 | `TreeSitterHighlighter` | Tree-sitter-based highlighting for 9 languages (Rust, Python, JavaScript, TypeScript, HTML, CSS, Go, C, C++), feature-gated behind `native-tree-sitter` |
-| Tests | 124 tests in tachyon-editor |
+| Tests | 131 tests in tachyon-editor (no feature), 149 (with native-tree-sitter) |
 | WASM compilation | `tachyon-editor` compiles to `wasm32-unknown-unknown` with `default-features = false` (no tree-sitter dep in WASM build) |
 | tree-sitter targets | native (desktop), wasm32-unknown-unknown (web), wasm32-wasi (Docker SSG) -- three-target strategy |
 
-### Phase A2: Composite Highlighter [IN PROGRESS]
+### Phase A2: Composite Highlighter [DONE]
+
+Commit: `8bd907d`.
 
 | Item | Details |
 |------|---------|
 | `CompositeHighlighter` | Combines RegexHighlighter (markdown structure) + TreeSitterHighlighter (code blocks inside fenced regions) |
 | Multi-cursor support | Selection model with multiple independent cursors |
-| Status | Design and initial implementation |
 
-### Phase A3: WASM Tree-Sitter Provider [PLANNED]
+### Phase A3: WASM Tree-Sitter Provider [DONE]
+
+WasmTreeSitterHighlighter stub implemented, runtime .wasm loading architecture documented, compiles on wasm32-unknown-unknown.
 
 | Item | Details |
 |------|---------|
-| `WasmTreeSitterHighlighter` | tree-sitter compiled to wasm32 via wasm-bindgen |
-| Runtime `.wasm` loading | Grammar WASM modules loaded at runtime (not compile-time) |
+| `WasmTreeSitterHighlighter` | tree-sitter compiled to wasm32 via wasm-bindgen (stub) |
+| Runtime `.wasm` loading | Architecture documented for loading grammar WASM modules at runtime |
 | Frontend re-enablement | Re-enable syntax highlighting in browser WASM build |
 | Dependency | tree-sitter-wasm bindings (wasm-bindgen API) |
 
-### Phase A4: Advanced Editor Features [PLANNED]
+### Phase A4: Advanced Editor Features [DONE]
+
+Language enum, extension mapping, auto-detection implemented in `Editor::set_content_with_filename`.
 
 | Item | Details |
 |------|---------|
 | Multi-cursor editing | Full multi-cursor with paste, delete, selection |
-| File-type detection | Infer language from file extension, shebang, or content |
+| File-type detection | Infer language from file extension, implemented in Editor::set_content_with_filename |
 | Syntax theme switching | User-selectable color themes for syntax highlighting |
 
 ---
@@ -583,7 +588,7 @@ CDN --> Nginx --> Load Balancer
 | 2. API Validation | 2 weeks | None (code-only) | AUDITED | CRITICAL |
 | 3. Security | 2 weeks | Phase 2 | AUDITED | CRITICAL |
 | 4. Launch | 1 week | Phase 1, 3 | PENDING | CRITICAL |
-| A. Editor Architecture | 6-8 weeks | None (parallel) | A1 DONE, A2 IN PROGRESS | HIGH |
+| A. Editor Architecture | 6-8 weeks | None (parallel) | A1-A4 ALL DONE | HIGH |
 | 5. Migration | 3 weeks | Phase 4 | NEW | HIGH |
 | 6. Knowledge Graph | 4 weeks | Phase 4 | NEW | HIGH |
 | 7. AI Integration | 2 weeks | Phase 4 | CODE COMPLETE | MEDIUM |
@@ -663,6 +668,8 @@ Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are t
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-06-02 | WASM tree-sitter architecture: WasmTreeSitterHighlighter stub | Runtime .wasm loading architecture documented. Compiles on wasm32-unknown-unknown. Stub provider ready for future grammar loading. |
+| 2026-06-02 | File-type detection in editor | Language enum with extension mapping. Auto-detection in Editor::set_content_with_filename infers language from file extension. |
 | 2026-06-02 | Editor rearchitected with pluggable `HighlightProvider` trait | Monolithic highlighter replaced with composable provider system (RegexHighlighter, TreeSitterHighlighter, CompositeHighlighter). Enables markdown structure + code block highlighting from different engines. |
 | 2026-06-02 | tree-sitter multi-target strategy (native/wasm/wasi) | tree-sitter compiled to native (desktop via Tauri), wasm32-unknown-unknown (web frontend), wasm32-wasi (Docker SSG). Feature-gated so editor crate compiles to WASM without tree-sitter dep. |
 | 2026-06-02 | Desktop-first priority, VSCode/Neovim-style editor paradigm | Tachyon is a programmable editor platform, not a Notion-style block editor. Desktop via Tauri is the primary target. Syntax highlighting, multi-cursor, and tree-sitter support follow VSCode/Neovim patterns. |

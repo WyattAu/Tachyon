@@ -3,6 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::buffer::TextBuffer;
 use crate::cursor::{Cursor, Cursors, Selection, SelectionKind};
 use crate::highlight::{HighlightProvider, HighlightSpan};
+use crate::language::Language;
 use crate::search::{Search, SearchResult};
 use crate::sync_queue::{OfflineSyncQueue, SyncStatus};
 use crate::transaction::{EditKind, Transaction, UndoStack};
@@ -36,6 +37,8 @@ pub struct Editor {
     current_search_results: Vec<SearchResult>,
     current_search_index: usize,
     in_code_block: bool,
+    /// Detected language for syntax highlighting (auto-detected from content or set manually).
+    language: Language,
     scroll_offset_lines: usize,
     scroll_offset_cols: usize,
     /// CRDT document — source of truth for collaboration sync.
@@ -75,6 +78,7 @@ impl Editor {
             current_search_results: Vec::new(),
             current_search_index: 0,
             in_code_block: false,
+            language: Language::Markdown,
             scroll_offset_lines: 0,
             scroll_offset_cols: 0,
             crdt_doc,
@@ -158,6 +162,17 @@ impl Editor {
         self.is_dirty
     }
 
+    /// Detected language for syntax highlighting.
+    pub fn language(&self) -> Language {
+        self.language
+    }
+
+    /// Set language explicitly (overrides auto-detection).
+    pub fn set_language(&mut self, language: Language) {
+        self.language = language;
+        self.in_code_block = false;
+    }
+
     /// Swap the highlight backend (e.g. regex -> tree-sitter at runtime).
     pub fn set_highlighter(&mut self, backend: Box<dyn HighlightProvider>) {
         self.highlighter = backend;
@@ -172,6 +187,12 @@ impl Editor {
         self.current_search_results.clear();
         self.in_code_block = false;
         self.sync_rope_to_yrs();
+    }
+
+    /// Set content with auto-language detection from file extension.
+    pub fn set_content_with_filename(&mut self, content: &str, filename: &str) {
+        self.language = Language::from_extension(crate::language::extract_extension(filename));
+        self.set_content(content);
     }
 
     pub fn content(&self) -> String {
