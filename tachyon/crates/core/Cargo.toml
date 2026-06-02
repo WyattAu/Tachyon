@@ -22,7 +22,7 @@ anyhow = "1"
 tracing = "0.1"
 # NOTE: once_cell removed -- zero imports; core uses std::sync::LazyLock
 # NOTE: tracing-subscriber removed -- only needed in binaries (cli/server/ssg)
-thiserror = "1"
+thiserror = "2"
 
 # Core Logic
 git2 = { version = "0.20", features = ["vendored-openssl", "vendored-libgit2"] }

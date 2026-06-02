@@ -119,6 +119,7 @@
 
 pub mod ai;
 pub mod api_docs;
+pub mod broadcast_bus;
 pub mod audit;
 pub mod config;
 pub mod conflict;
