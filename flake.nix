@@ -57,6 +57,8 @@
           atk
           stdenv.cc.cc.lib
           bzip2
+          zlib
+          libglvnd          # EGL/GL dispatch (needed for NVIDIA + Wayland)
         ];
 
         # Build tools
