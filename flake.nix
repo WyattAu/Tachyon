@@ -128,8 +128,12 @@
             export BUN_INSTALL="$HOME/.bun"
             export PATH="$BUN_INSTALL/bin:$PATH"
             
-            # WebKit settings for Tauri
-            export WEBKIT_DISABLE_COMPOSITING_MODE=1
+            # NVIDIA + Wayland: prepend /usr/lib to find NVIDIA EGL/GBM
+            # libraries (libnvidia-egl-wayland.so, libEGL_nvidia.so) that
+            # the nix WebKitGTK needs but LD_LIBRARY_PATH shadows.
+            # Do NOT set WEBKIT_DISABLE_COMPOSITING_MODE=1 — it kills the
+            # WebKit WebProcess entirely, leaving an empty window.
+            export LD_LIBRARY_PATH="/usr/lib:$LD_LIBRARY_PATH"
             
             echo "------------------------------------------------------------------"
             echo "Tachyon Dev Environment"
