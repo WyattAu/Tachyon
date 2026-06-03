@@ -10,7 +10,10 @@ edition.workspace = true
 
 [lib]
 name = "tachyon_desktop_app"
-crate-type = ["staticlib", "cdylib", "rlib"]
+# staticlib is NOT needed for Linux/Windows Tauri builds (only iOS/macOS).
+# Including it triples intermediate artifact size and causes OOM during LTO
+# when heavy dependencies like wasmtime and tree-sitter are present.
+crate-type = ["cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -27,8 +30,12 @@ tauri-plugin-notification = "2"
 # Workspace dependencies
 tachyon-core = { path = "../../core" }
 tachyon-import-export = { path = "../../import-export" }
-tachyon-server = { path = "../../server" }
 tachyon-storage = { path = "../../storage" }
+
+# Embedded server (optional — pulls in wasmtime, 10 tree-sitter grammars,
+# sqlx×4, tantivy, async-graphql, ldap3, etc. Only enable when the
+# desktop app needs to run the full server in-process.)
+tachyon-server = { path = "../../server", optional = true }
 
 # Serialization
 serde = { workspace = true }
@@ -37,8 +44,8 @@ serde_json = { workspace = true }
 # Async Runtime
 tokio = { workspace = true }
 
-# Axum (needed for embedded server's axum::serve)
-axum = "0.8"
+# Axum (needed for embedded server's axum::serve — optional)
+axum = { version = "0.8", optional = true }
 
 # Error Handling & Logging
 anyhow = { workspace = true }
@@ -69,3 +76,8 @@ hex = "0.4"
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
 tray-icon = ["tauri/tray-icon"]
+# Embed the full tachyon-server in the desktop app.
+# WARNING: This pulls in wasmtime, tree-sitter grammars, sqlx, tantivy,
+# async-graphql, and many other heavy crates. Build requires significant
+# RAM (~16GB+) and disk space (~10GB+).
+embedded-server = ["dep:tachyon-server", "dep:axum"]

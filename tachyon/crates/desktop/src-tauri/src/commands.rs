@@ -754,11 +754,15 @@ pub async fn open_path(path: String) -> Result<(), String> {
 
 // ============================================================================
 // Embedded Server Commands (v0.23.0)
+// Only compiled when the "embedded-server" feature is enabled.
+// This pulls in wasmtime, 10 tree-sitter grammars, sqlx×4, tantivy,
+// async-graphql, ldap3, and many other heavy crates.
 // ============================================================================
 
 /// Get the port of the embedded server, if it's running.
 ///
 /// Returns 0 if the server has not been started.
+#[cfg(feature = "embedded-server")]
 #[tauri::command]
 pub fn get_embedded_server_port(state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>) -> u16 {
     match state.lock() {
@@ -770,6 +774,13 @@ pub fn get_embedded_server_port(state: tauri::State<'_, Arc<Mutex<EmbeddedServer
     }
 }
 
+#[cfg(not(feature = "embedded-server"))]
+#[tauri::command]
+pub fn get_embedded_server_port(_state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>) -> u16 {
+    tracing::warn!("Embedded server not available — rebuild with --features embedded-server");
+    0
+}
+
 /// Start the embedded Axum server on a random port.
 ///
 /// This runs the full Tachyon server (API, WebSocket, renderer)
@@ -777,6 +788,7 @@ pub fn get_embedded_server_port(state: tauri::State<'_, Arc<Mutex<EmbeddedServer
 /// 127.0.0.1:0 and the assigned port is stored in state.
 ///
 /// Returns the port number on success, or 0 on failure.
+#[cfg(feature = "embedded-server")]
 #[tauri::command]
 pub async fn start_embedded_server(
     state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>,
@@ -847,11 +859,37 @@ pub async fn start_embedded_server(
     Ok(port)
 }
 
+#[cfg(not(feature = "embedded-server"))]
+#[tauri::command]
+pub async fn start_embedded_server(
+    _state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>,
+    _database_url: Option<String>,
+) -> Result<u16, String> {
+    Err("Embedded server not available — rebuild with --features embedded-server".to_string())
+}
+
 /// Stop the embedded server.
 ///
 /// Note: This does not gracefully shut down the server — it just marks
 /// the state as not started. The actual server task will terminate
 /// when the Tauri app exits.
+#[cfg(feature = "embedded-server")]
+#[tauri::command]
+pub fn stop_embedded_server(state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>) -> bool {
+    let mut s = match state.lock() {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Failed to lock embedded server state: {}", e);
+            return false;
+        }
+    };
+    let was_started = s.started;
+    s.started = false;
+    s.port = 0;
+    was_started
+}
+
+#[cfg(not(feature = "embedded-server"))]
 #[tauri::command]
 pub fn stop_embedded_server(state: tauri::State<'_, Arc<Mutex<EmbeddedServerState>>>) -> bool {
     let mut s = match state.lock() {
