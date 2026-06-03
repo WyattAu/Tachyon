@@ -1,4 +1,17 @@
 pub async fn landing_page() -> axum::response::Html<String> {
+    // If the static directory contains an index.html (e.g. trunk-built frontend),
+    // serve that instead of the hardcoded landing page. This enables the full
+    // web GUI when TACHYON_STATIC_DIR points to a trunk output directory.
+    let static_dir = crate::config::static_dir();
+    let frontend_index = std::path::Path::new(&static_dir).join("index.html");
+    if frontend_index.is_file() {
+        match std::fs::read_to_string(&frontend_index) {
+            Ok(html) => return axum::response::Html(html),
+            Err(e) => {
+                tracing::warn!("Failed to read frontend index.html: {}", e);
+            }
+        }
+    }
     axum::response::Html(HTML.to_string())
 }
 
