@@ -14,18 +14,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
+ENV CC_x86_64_UNKNOWN_LINUX_MUSL=musl-gcc
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc
 
 # Pre-create passwd file for scratch runtime (no shell available there)
 RUN echo "tachyon:x:65532:65532:tachyon:/app:/sbin/nologin" > /etc/passwd.tachyon
 
 # --- Stage 1: Server binary (musl static) ---
 FROM base AS server-builder
-COPY tachyon/ /build/tachyon/
-WORKDIR /build/tachyon
-
 RUN rustup target add x86_64-unknown-linux-musl
 
-# Dependency cache layer: build with stub crate sources first
+WORKDIR /build
+
+# Dependency cache layer: Cargo.toml+lock only, stub crate sources
+COPY tachyon/Cargo.toml tachyon/Cargo.lock ./
 RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g; s/, "crates\/frontend"//g' Cargo.toml && \
     mkdir -p crates && \
     for crate in core database editor import_export plugin-runtime rbac renderer search server ssg storage; do \
@@ -35,18 +37,23 @@ RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "
     rm -rf crates
 
 # Full build (server-only, no frontend)
+COPY tachyon/ .
 RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g; s/, "crates\/frontend"//g' Cargo.toml && \
-    CC_x86_64_unknown_linux_musl=musl-gcc \
-    CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc \
     cargo build --release --bin tachyon-server --target x86_64-unknown-linux-musl && \
     cp target/x86_64-unknown-linux-musl/release/tachyon-server /build/tachyon-server
 
 # --- Stage 2: Frontend WASM (trunk) ---
 FROM base AS frontend-builder
 RUN rustup target add wasm32-unknown-unknown \
-    && cargo install trunk --locked --version 0.21.6
+    && curl -sL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz \
+       | tar xz -C /usr/local/bin
 
 COPY tachyon/ /build/tachyon/
+WORKDIR /build/tachyon
+
+# Exclude desktop/testing/cli/benchmarks (require GTK/tauri not available in builder)
+RUN sed -i 's/, "crates\/desktop"//g; s/, "crates\/desktop\/src-tauri"//g; s/, "crates\/testing"//g; s/, "crates\/cli"//g; s/, "crates\/benchmarks"//g' Cargo.toml
+
 WORKDIR /build/tachyon/crates/frontend
 RUN trunk build --release
 
@@ -61,7 +68,7 @@ LABEL org.opencontainers.image.source="https://github.com/WyattAu/Tachyon" \
 WORKDIR /app
 
 COPY --from=server-builder /build/tachyon-server /app/tachyon-server
-COPY --from=server-builder /build/tachyon/crates/database/migrations /app/migrations
+COPY --from=server-builder /build/crates/database/migrations /app/migrations
 
 COPY --from=frontend-builder /build/tachyon/crates/frontend/dist/ /app/dist/
 
