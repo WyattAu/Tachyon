@@ -770,9 +770,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let security_config = Arc::new(config.security.clone());
 
     let static_dir = crate::config::static_dir();
-    let static_service = tower_http::services::ServeDir::new(&static_dir).fallback(
-        tower_http::services::ServeFile::new(format!("{}/index.html", static_dir)),
-    );
+    let static_service = tower_http::services::ServeDir::new(&static_dir);
 
     let mut router = Router::new()
         .merge(health_router)

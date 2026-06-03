@@ -410,8 +410,11 @@ pub async fn auth_middleware(
         || path == "/api/docs"
         || path.starts_with("/api/static/")
         || path == "/health"
-        || path == "/metrics"
         || path == "/"
+        // SSG static assets that should be publicly accessible (SEO, crawlers).
+        || path == "/sitemap.xml"
+        || path == "/robots.txt"
+        || path == "/404.html"
         // WebSocket upgrade paths — the WS handlers extract and validate
         // tokens from query parameters during the upgrade handshake.
         || path.starts_with("/ws")

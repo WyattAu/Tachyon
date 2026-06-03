@@ -128,9 +128,11 @@ pub(crate) async fn health_check(State(state): State<crate::HealthState>) -> Jso
         "unhealthy"
     };
 
+    let verbose = std::env::var("TACHYON_HEALTH_VERBOSE").is_ok();
+
     Json(HealthResponse {
         status: overall.to_string(),
-        version: env!("CARGO_PKG_VERSION").to_string(),
+        version: if verbose { env!("CARGO_PKG_VERSION").to_string() } else { "0".to_string() },
         uptime_secs: state.start_time.elapsed().as_secs(),
         checks: HealthChecks {
             database: db_check,
@@ -138,7 +140,7 @@ pub(crate) async fn health_check(State(state): State<crate::HealthState>) -> Jso
             tantivy: tantivy_check,
             smtp: smtp_check,
         },
-        memory,
+        memory: if verbose { get_memory_info() } else { None },
     })
 }
 
