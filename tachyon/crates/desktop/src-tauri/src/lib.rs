@@ -36,9 +36,55 @@ struct EmbeddedServerState {
     started: bool,
 }
 
+/// Workaround for WebKitGTK DMA-BUF renderer failures on NVIDIA + Wayland.
+///
+/// On NVIDIA GPUs with KWin/Sway compositors, WebKitGTK's DMA-BUF renderer
+/// fails with "Failed to create GBM buffer of size NxM: Invalid argument"
+/// because the NVIDIA EGL/GBM implementation doesn't support the specific
+/// buffer modifiers WebKit requests. Setting WEBKIT_DISABLE_DMABUF_RENDERER=1
+/// forces WebKit to fall back to shared-memory (shm) rendering which works
+/// on all GPU/compositor combinations.
+///
+/// This only sets the env var if it's not already explicitly configured,
+/// so users can override with WEBKIT_DISABLE_DMABUF_RENDERER=0 if needed.
+fn fix_webkit_dmabuf_on_nvidia() {
+    if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
+        // Detect NVIDIA GPU via the DRM subsystem
+        let has_nvidia = std::fs::read_dir("/dev/dri/by-path")
+            .map(|entries| {
+                entries.flatten().any(|e| {
+                    e.file_name()
+                        .to_string_lossy()
+                        .contains("nvidia")
+                })
+            })
+            .unwrap_or(false);
+
+        // Also check the classic /proc/driver/nvidia path
+        let has_nvidia_proc =
+            std::path::Path::new("/proc/driver/nvidia").exists();
+
+        if has_nvidia || has_nvidia_proc {
+            // SAFETY: This runs before any threads are spawned (single-threaded
+            // init phase of the Tauri app). set_var is unsafe in Rust 2024 to
+            // prevent data races with concurrent getenv, but we're still in the
+            // main thread's sequential setup code.
+            unsafe {
+                std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+            }
+            tracing::info!(
+                "NVIDIA GPU detected — set WEBKIT_DISABLE_DMABUF_RENDERER=1 \
+                 to avoid DMA-BUF GBM buffer failures on Wayland"
+            );
+        }
+    }
+}
+
 /// Run the Tauri application
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    fix_webkit_dmabuf_on_nvidia();
+
     let embedded_server = Arc::new(Mutex::new(EmbeddedServerState::default()));
 
     tauri::Builder::default()
