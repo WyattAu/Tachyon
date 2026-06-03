@@ -557,7 +557,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let catalog_router = create_catalog_router().with_state(catalog_state);
     let team_router = create_team_router().with_state(team_state);
     let role_router = create_role_router().with_state(role_state);
-    let search_router = create_search_router().with_state(search_state);
+    let search_router = create_search_router().with_state(search_state.clone());
     let seo_router = create_seo_router().with_state(seo_state);
     let review_router = create_review_router().with_state(review_state);
     let activity_router = create_activity_router().with_state(activity_state);
@@ -709,6 +709,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let v2_state = crate::routes::v2::V2State {
         document_state: document_state.clone(),
+        user_state: user_state.clone(),
+        search_state: search_state.clone(),
     };
     let api_v2 = crate::routes::v2::create_v2_router(v2_state);
 
