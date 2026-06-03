@@ -8,26 +8,16 @@ use axum::{
     extract::{Path, Query, State},
     response::Json,
 };
-use chrono::Utc;
-use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 use super::oidc::{OidcConfig, OidcDiscovery, OidcTokenResponse, OidcUserInfo};
+use crate::csrf_store::CsrfStore;
 use crate::error::ServerError;
 
 // ============================================================================
 // State
 // ============================================================================
-
-const OIDC_CSRF_STATE_TTL_SECS: i64 = 600;
-
-pub(crate) struct OidcCsrfEntry {
-    nonce: String,
-    redirect_url: Option<String>,
-    created_at: chrono::DateTime<Utc>,
-}
 
 /// State for OIDC SSO operations.
 #[derive(Clone)]
@@ -36,36 +26,22 @@ pub struct OidcState {
     pub pool: tachyon_database::DatabasePool,
     pub jwt_secret: String,
     pub http_client: reqwest::Client,
-    pub(crate) csrf_states: Arc<DashMap<String, OidcCsrfEntry>>,
+    pub(crate) csrf_store: crate::csrf_store::CsrfStoreType,
 }
 
 impl OidcState {
-    fn generate_csrf_state(&self, state_token: &str, redirect_url: Option<String>) {
-        self.csrf_states.insert(
-            state_token.to_string(),
-            OidcCsrfEntry {
-                nonce: state_token.to_string(),
-                redirect_url,
-                created_at: Utc::now(),
-            },
-        );
+    async fn generate_csrf_state(&self, state_token: &str, redirect_url: Option<String>) {
+        self.csrf_store.store(state_token, state_token, redirect_url).await;
     }
 
-    fn validate_csrf_state(&self, returned_state: &str) -> Result<Option<String>, ServerError> {
-        let result = self.csrf_states.remove(returned_state);
-
-        match result {
-            Some((_, entry)) => {
-                let elapsed = Utc::now()
-                    .signed_duration_since(entry.created_at)
-                    .num_seconds();
-
-                if entry.nonce == returned_state && elapsed <= OIDC_CSRF_STATE_TTL_SECS {
-                    Ok(entry.redirect_url)
+    async fn validate_csrf_state(&self, returned_state: &str) -> Result<Option<String>, ServerError> {
+        match self.csrf_store.retrieve_and_consume(returned_state).await {
+            Some((nonce, redirect_url)) => {
+                if nonce == returned_state {
+                    Ok(redirect_url)
                 } else {
                     warn!(
-                        elapsed_secs = elapsed,
-                        "OIDC CSRF state validation failed: mismatch or expired"
+                        "OIDC CSRF state validation failed: nonce mismatch"
                     );
                     Err(ServerError::bad_request(
                         "Invalid or expired CSRF state parameter",
@@ -79,22 +55,6 @@ impl OidcState {
                 ))
             }
         }
-    }
-
-    fn cleanup_expired_states(&self) {
-        let now = Utc::now();
-        self.csrf_states.retain(|_state_token, entry| {
-            let elapsed = now.signed_duration_since(entry.created_at).num_seconds();
-            if elapsed > OIDC_CSRF_STATE_TTL_SECS {
-                debug!(
-                    elapsed_secs = elapsed,
-                    "Cleaning up expired OIDC CSRF state"
-                );
-                false
-            } else {
-                true
-            }
-        });
     }
 }
 
@@ -165,8 +125,8 @@ pub async fn oidc_authorize(
         )
     })?;
 
-    // Lazy cleanup of expired CSRF entries
-    state.cleanup_expired_states();
+    // Periodic cleanup (no-op for Redis which handles TTL natively)
+    state.csrf_store.cleanup_expired().await;
 
     // Fetch discovery document
     let discovery = fetch_discovery(&state.http_client, &config.discovery_url).await?;
@@ -183,7 +143,7 @@ pub async fn oidc_authorize(
     );
 
     // Store CSRF state with 10-minute TTL
-    state.generate_csrf_state(&state_token, _params.redirect_url.clone());
+    state.generate_csrf_state(&state_token, _params.redirect_url.clone()).await;
 
     debug!("Generated OIDC auth URL for {}", provider);
 
@@ -235,7 +195,7 @@ pub async fn oidc_callback(
     let returned_state = params.state.as_deref().ok_or_else(|| {
         ServerError::bad_request("Missing required state parameter for CSRF validation")
     })?;
-    state.validate_csrf_state(returned_state)?;
+    state.validate_csrf_state(returned_state).await?;
 
     let config = state.configs.get(&provider).ok_or_else(|| {
         ServerError::not_found(

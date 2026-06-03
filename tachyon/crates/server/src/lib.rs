@@ -122,6 +122,7 @@ pub mod api_docs;
 pub mod broadcast_bus;
 pub mod audit;
 pub mod config;
+pub mod csrf_store;
 pub mod conflict;
 pub mod crdt;
 pub mod dlp;
@@ -376,7 +377,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
             pool: pool.clone(),
             jwt_secret: config.jwt.signing_secret().to_string(),
             http_client: reqwest::Client::new(),
-            csrf_states: std::sync::Arc::new(dashmap::DashMap::new()),
+            csrf_store: crate::csrf_store::CsrfStoreType::new(config.rate_limit.redis_url.as_deref()),
         })
     } else {
         None
@@ -386,6 +387,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         config: cfg.clone(),
         pool: pool.clone(),
         jwt_secret: config.jwt.signing_secret().to_string(),
+        csrf_store: crate::csrf_store::CsrfStoreType::new(config.rate_limit.redis_url.as_deref()),
     });
 
     let ldap_state = config.sso_ldap.as_ref().map(|cfg| crate::sso::LdapState {
@@ -604,7 +606,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         config: config.oauth2.clone(),
         pool: pool.clone(),
         client: http_client.clone(),
-        csrf_states: std::sync::Arc::new(dashmap::DashMap::new()),
+        csrf_store: crate::csrf_store::CsrfStoreType::new(config.rate_limit.redis_url.as_deref()),
     };
     let oauth2_router = create_oauth2_router().with_state(oauth2_state);
     let password_reset_state = PasswordResetState {

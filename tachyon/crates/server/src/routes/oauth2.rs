@@ -4,7 +4,7 @@
 //
 // Flow:
 // 1. Frontend redirects user to GET /api/v1/auth/oauth2/{provider}/authorize
-// 2. Server generates a CSRF state nonce, stores it, and includes it in the
+// 2. Server generates a CSRF state nonce, stores it in Redis/DashMap, and includes it in the
 //    provider's authorize URL
 // 3. User authenticates with the provider
 // 4. Provider redirects to GET /api/v1/auth/oauth2/{provider}/callback?code=...&state=...
@@ -14,9 +14,10 @@
 // 8. Server redirects to frontend with JWT token
 //
 // CSRF Protection:
-// Each authorize request generates a cryptographic random state nonce stored in an
-// in-memory `DashMap` with a 10-minute TTL. The callback must return the same state
-// value; otherwise the request is rejected. Expired states are cleaned periodically.
+// Each authorize request generates a cryptographic random state nonce stored via
+// CsrfStore (Redis-backed when available, in-memory DashMap fallback) with a
+// 10-minute TTL. The callback must return the same state value; otherwise the
+// request is rejected.
 
 use axum::{
     Router,
@@ -24,26 +25,16 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
     routing::get,
 };
-use chrono::Utc;
-use dashmap::DashMap;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tracing::{error, info, warn};
 
 use crate::config::OAuth2Config;
+use crate::csrf_store::CsrfStore;
 
 // ============================================================================
 // State
 // ============================================================================
-
-/// Stored CSRF state entry with creation timestamp for TTL enforcement.
-pub(crate) struct CsrfStateEntry {
-    /// Hex-encoded random nonce.
-    nonce: String,
-    /// When this entry was created (UTC).
-    created_at: chrono::DateTime<Utc>,
-}
 
 /// Shared state for OAuth2 routes.
 #[derive(Clone)]
@@ -55,51 +46,34 @@ pub struct OAuth2State {
     pub config: OAuth2Config,
     pub pool: tachyon_database::DatabasePool,
     pub client: reqwest::Client,
-    /// In-memory store for CSRF state nonces. Keyed by provider name (e.g. "google", "github").
-    /// Only one pending OAuth2 flow per provider at a time (per server instance).
-    pub(crate) csrf_states: Arc<DashMap<String, CsrfStateEntry>>,
+    /// CSRF state store. Keyed by provider name (e.g. "google", "github").
+    /// Backed by Redis when available, falls back to in-memory DashMap.
+    pub(crate) csrf_store: crate::csrf_store::CsrfStoreType,
 }
-
-/// Maximum age for a CSRF state nonce before it's considered expired (10 minutes).
-const CSRF_STATE_TTL_SECS: i64 = 600;
 
 impl OAuth2State {
     /// Generate a cryptographic random state nonce and store it for the given provider.
-    fn generate_csrf_state(&self, provider: &str) -> String {
+    async fn generate_csrf_state(&self, provider: &str) -> String {
         let mut bytes = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut bytes);
         let nonce = hex::encode(bytes);
 
-        self.csrf_states.insert(
-            provider.to_string(),
-            CsrfStateEntry {
-                nonce: nonce.clone(),
-                created_at: Utc::now(),
-            },
-        );
+        self.csrf_store.store(provider, &nonce, None).await;
 
         nonce
     }
 
     /// Validate the returned state nonce for the given provider.
-    /// Returns `true` if the nonce matches and hasn't expired.
-    /// On success, the nonce is consumed (single-use).
-    fn validate_csrf_state(&self, provider: &str, returned_state: &str) -> bool {
-        let result = self.csrf_states.remove(provider);
-
-        match result {
-            Some((_, entry)) => {
-                let elapsed = Utc::now()
-                    .signed_duration_since(entry.created_at)
-                    .num_seconds();
-
-                if entry.nonce == returned_state && elapsed <= CSRF_STATE_TTL_SECS {
+    /// Returns `true` if the nonce matches. On success, the nonce is consumed (single-use).
+    async fn validate_csrf_state(&self, provider: &str, returned_state: &str) -> bool {
+        match self.csrf_store.retrieve_and_consume(provider).await {
+            Some((stored_nonce, _redirect_url)) => {
+                if stored_nonce == returned_state {
                     true
                 } else {
                     warn!(
                         provider,
-                        elapsed_secs = elapsed,
-                        "OAuth2 CSRF state validation failed: mismatch or expired"
+                        "OAuth2 CSRF state validation failed: nonce mismatch"
                     );
                     false
                 }
@@ -112,24 +86,6 @@ impl OAuth2State {
                 false
             }
         }
-    }
-
-    /// Clean up expired CSRF state entries. Called periodically.
-    fn cleanup_expired_states(&self) {
-        let now = Utc::now();
-        self.csrf_states.retain(|provider, entry| {
-            let elapsed = now.signed_duration_since(entry.created_at).num_seconds();
-            if elapsed > CSRF_STATE_TTL_SECS {
-                info!(
-                    provider,
-                    elapsed_secs = elapsed,
-                    "Cleaning up expired OAuth2 CSRF state"
-                );
-                false
-            } else {
-                true
-            }
-        });
     }
 }
 
@@ -194,7 +150,7 @@ async fn google_authorize(State(state): State<OAuth2State>) -> Response {
     let scopes = "openid email profile";
 
     // Generate CSRF state nonce and store it
-    let csrf_nonce = state.generate_csrf_state("google");
+    let csrf_nonce = state.generate_csrf_state("google").await;
 
     let url = format!(
         "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope={}&state={}",
@@ -248,7 +204,7 @@ async fn google_callback(
         }
     };
 
-    if !state.validate_csrf_state("google", returned_state) {
+    if !state.validate_csrf_state("google", returned_state).await {
         warn!("Google OAuth2 CSRF state validation failed — rejecting callback");
         return axum::Json(serde_json::json!({
             "error": "invalid_state",
@@ -257,8 +213,8 @@ async fn google_callback(
         .into_response();
     }
 
-    // Periodically clean up expired states
-    state.cleanup_expired_states();
+    // Periodic cleanup (no-op for Redis)
+    state.csrf_store.cleanup_expired().await;
 
     let client_id = match &state.config.google_client_id {
         Some(id) => id.clone(),
@@ -410,7 +366,7 @@ async fn github_authorize(State(state): State<OAuth2State>) -> Response {
     let scopes = "read:user user:email";
 
     // Generate CSRF state nonce and store it
-    let csrf_nonce = state.generate_csrf_state("github");
+    let csrf_nonce = state.generate_csrf_state("github").await;
 
     let url = format!(
         "https://github.com/login/oauth/authorize?client_id={}&redirect_uri={}&scope={}&state={}",
@@ -464,7 +420,7 @@ async fn github_callback(
         }
     };
 
-    if !state.validate_csrf_state("github", returned_state) {
+    if !state.validate_csrf_state("github", returned_state).await {
         warn!("GitHub OAuth2 CSRF state validation failed — rejecting callback");
         return axum::Json(serde_json::json!({
             "error": "invalid_state",
@@ -473,8 +429,8 @@ async fn github_callback(
         .into_response();
     }
 
-    // Periodically clean up expired states
-    state.cleanup_expired_states();
+    // Periodic cleanup (no-op for Redis)
+    state.csrf_store.cleanup_expired().await;
 
     let client_id = match &state.config.github_client_id {
         Some(id) => id.clone(),
@@ -737,27 +693,21 @@ mod tests {
 
     // ── CSRF State Tests ────────────────────────────────────────────────
 
-    /// Helper to create a CSRF state store for testing.
-    /// Tests only need the DashMap — no OAuth2State construction required.
-    fn make_test_csrf_store() -> Arc<DashMap<String, CsrfStateEntry>> {
-        Arc::new(DashMap::new())
+    /// Helper to create a CSRF store for testing.
+    fn make_test_csrf_store() -> crate::csrf_store::CsrfStoreType {
+        crate::csrf_store::CsrfStoreType::Memory(crate::csrf_store::MemoryCsrfStore::new())
     }
 
-    #[test]
-    fn test_csrf_state_generate_and_validate() {
+    #[tokio::test]
+    async fn test_csrf_state_generate_and_validate() {
         let store = make_test_csrf_store();
 
         // Generate a nonce for google
         let mut bytes = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut bytes);
         let nonce = hex::encode(bytes);
-        store.insert(
-            "google".to_string(),
-            CsrfStateEntry {
-                nonce: nonce.clone(),
-                created_at: Utc::now(),
-            },
-        );
+
+        store.store("google", &nonce, None).await;
 
         assert_eq!(
             nonce.len(),
@@ -765,88 +715,65 @@ mod tests {
             "Nonce should be 32 bytes hex-encoded (64 chars)"
         );
 
-        // Simulate validation — same logic as validate_csrf_state
-        let result = store.remove("google");
-        match result {
-            Some((_, entry)) => {
-                assert_eq!(entry.nonce, nonce, "Nonce should match");
-                let elapsed = Utc::now()
-                    .signed_duration_since(entry.created_at)
-                    .num_seconds();
-                assert!(elapsed <= CSRF_STATE_TTL_SECS, "Should not be expired");
-            }
-            None => panic!("State should exist"),
-        }
+        // Retrieve and consume
+        let result = store.retrieve_and_consume("google").await;
+        assert!(result.is_some());
+        let (retrieved_nonce, _redirect) = result.unwrap();
+        assert_eq!(retrieved_nonce, nonce, "Nonce should match");
 
-        // State should be consumed — re-validation should fail
-        assert!(
-            store.get("google").is_none(),
-            "State should be consumed after validation"
-        );
+        // State should be consumed -- re-validation should fail
+        let result = store.retrieve_and_consume("google").await;
+        assert!(result.is_none(), "State should be consumed after validation");
     }
 
-    #[test]
-    fn test_csrf_state_wrong_nonce_rejected() {
+    #[tokio::test]
+    async fn test_csrf_state_wrong_nonce_rejected() {
         let store = make_test_csrf_store();
 
         let mut bytes = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut bytes);
-        store.insert(
-            "google".to_string(),
-            CsrfStateEntry {
-                nonce: hex::encode(bytes),
-                created_at: Utc::now(),
-            },
-        );
+        store.store("google", &hex::encode(bytes), None).await;
 
-        // Simulate validation with wrong nonce
-        let result = store.remove("google");
-        match result {
-            Some((_, entry)) => {
-                assert_ne!(entry.nonce, "wrong_nonce_value_here", "Should not match");
-            }
-            None => panic!("State should exist"),
-        }
+        // Retrieve and compare with wrong nonce
+        let result = store.retrieve_and_consume("google").await;
+        assert!(result.is_some());
+        let (retrieved_nonce, _) = result.unwrap();
+        assert_ne!(retrieved_nonce, "wrong_nonce_value_here", "Should not match");
     }
 
-    #[test]
-    fn test_csrf_state_no_nonce_stored() {
+    #[tokio::test]
+    async fn test_csrf_state_no_nonce_stored() {
         let store = make_test_csrf_store();
-        assert!(store.get("github").is_none(), "No state should be stored");
+        let result = store.retrieve_and_consume("github").await;
+        assert!(result.is_none(), "No state should be stored");
     }
 
-    #[test]
-    fn test_csrf_state_expired_rejected() {
+    #[tokio::test]
+    async fn test_csrf_state_expired_rejected() {
         let store = make_test_csrf_store();
-
+        // Insert directly with backdated timestamp to simulate expiry
         let mut bytes = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut bytes);
         let nonce = hex::encode(bytes);
 
-        // Insert with backdated timestamp to simulate expiry
-        store.insert(
-            "google".to_string(),
-            CsrfStateEntry {
-                nonce: nonce.clone(),
-                created_at: Utc::now() - chrono::Duration::seconds(CSRF_STATE_TTL_SECS + 1),
-            },
-        );
-
-        // Simulate validation — should reject due to expiry
-        let result = store.remove("google");
-        match result {
-            Some((_, entry)) => {
-                let elapsed = Utc::now()
-                    .signed_duration_since(entry.created_at)
-                    .num_seconds();
-                assert!(elapsed > CSRF_STATE_TTL_SECS, "Should be expired");
+        // Use the internal DashMap directly to backdate
+        match &store {
+            crate::csrf_store::CsrfStoreType::Memory(mem) => {
+                mem.entries.insert(
+                    "google".to_string(),
+                    (nonce.clone(), None, chrono::Utc::now() - chrono::Duration::seconds(601)),
+                );
             }
-            None => panic!("State should exist"),
+            _ => {}
         }
+
+        // Should return None because expired
+        let result = store.retrieve_and_consume("google").await;
+        assert!(result.is_none(), "Expired state should be rejected");
     }
 
-    #[test]
-    fn test_csrf_state_per_provider_isolation() {
+    #[tokio::test]
+    async fn test_csrf_state_per_provider_isolation() {
         let store = make_test_csrf_store();
 
         let mut bytes1 = [0u8; 32];
@@ -857,69 +784,48 @@ mod tests {
         rand::thread_rng().fill_bytes(&mut bytes2);
         let github_nonce = hex::encode(bytes2);
 
-        store.insert(
-            "google".to_string(),
-            CsrfStateEntry {
-                nonce: google_nonce.clone(),
-                created_at: Utc::now(),
-            },
-        );
-        store.insert(
-            "github".to_string(),
-            CsrfStateEntry {
-                nonce: github_nonce.clone(),
-                created_at: Utc::now(),
-            },
-        );
+        store.store("google", &google_nonce, None).await;
+        store.store("github", &github_nonce, None).await;
 
-        // Cross-provider: nonces should be different
-        let google_entry = store.get("google").unwrap();
-        let github_entry = store.get("github").unwrap();
+        // Retrieve both
+        let g = store.retrieve_and_consume("google").await.unwrap();
+        let h = store.retrieve_and_consume("github").await.unwrap();
         assert_ne!(
-            google_entry.nonce, github_entry.nonce,
+            g.0, h.0,
             "Nonces should be different per provider"
         );
-        drop(google_entry);
-        drop(github_entry);
-
-        // Each provider should validate independently
-        assert!(store.get("google").is_some());
-        assert!(store.get("github").is_some());
     }
 
-    #[test]
-    fn test_csrf_cleanup_removes_expired() {
+    #[tokio::test]
+    async fn test_csrf_cleanup_removes_expired() {
         let store = make_test_csrf_store();
 
-        // Insert expired state
-        store.insert(
-            "google".to_string(),
-            CsrfStateEntry {
-                nonce: "expired".to_string(),
-                created_at: Utc::now() - chrono::Duration::seconds(CSRF_STATE_TTL_SECS + 1),
-            },
-        );
+        match &store {
+            crate::csrf_store::CsrfStoreType::Memory(mem) => {
+                // Insert expired state
+                mem.entries.insert(
+                    "google".to_string(),
+                    ("expired".to_string(), None, chrono::Utc::now() - chrono::Duration::seconds(601)),
+                );
+                // Insert fresh state
+                mem.entries.insert(
+                    "github".to_string(),
+                    ("fresh".to_string(), None, chrono::Utc::now()),
+                );
+                assert_eq!(mem.entries.len(), 2);
+            }
+            _ => {}
+        }
 
-        // Insert fresh state
-        store.insert(
-            "github".to_string(),
-            CsrfStateEntry {
-                nonce: "fresh".to_string(),
-                created_at: Utc::now(),
-            },
-        );
+        store.cleanup_expired().await;
 
-        assert_eq!(store.len(), 2);
-
-        // Simulate cleanup (same logic as cleanup_expired_states)
-        let now = Utc::now();
-        store.retain(|_provider, entry| {
-            let elapsed = now.signed_duration_since(entry.created_at).num_seconds();
-            elapsed <= CSRF_STATE_TTL_SECS
-        });
-
-        assert_eq!(store.len(), 1, "Expired state should be cleaned up");
-        assert!(store.contains_key("github"));
-        assert!(!store.contains_key("google"));
+        match &store {
+            crate::csrf_store::CsrfStoreType::Memory(mem) => {
+                assert_eq!(mem.entries.len(), 1, "Expired state should be cleaned up");
+                assert!(mem.entries.contains_key("github"));
+                assert!(!mem.entries.contains_key("google"));
+            }
+            _ => {}
+        }
     }
 }
