@@ -19,7 +19,7 @@
 //! - GET  /search
 
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Json, Response},
     routing::{delete, get, post, put},
@@ -458,6 +458,7 @@ pub async fn v2_get_document(
 pub async fn v2_update_document(
     Path(document_id): Path<String>,
     State(state): State<V2State>,
+    auth: Option<Extension<crate::middleware::AuthContext>>,
     axum::Json(body): axum::Json<serde_json::Value>,
 ) -> Response {
     debug!("v2: updating document {}", document_id);
@@ -490,6 +491,7 @@ pub async fn v2_update_document(
     match crate::routes::document::update_document(
         Path(doc_id.to_string()),
         State(state.document_state.clone()),
+        auth,
         axum::Json(req),
     )
     .await
@@ -507,6 +509,7 @@ pub async fn v2_update_document(
 pub async fn v2_delete_document(
     Path(document_id): Path<String>,
     State(state): State<V2State>,
+    auth: Option<Extension<crate::middleware::AuthContext>>,
 ) -> Response {
     debug!("v2: deleting document {}", document_id);
 
@@ -525,6 +528,7 @@ pub async fn v2_delete_document(
     match crate::routes::document::delete_document(
         Path(doc_id.to_string()),
         State(state.document_state.clone()),
+        auth,
     )
     .await
     {

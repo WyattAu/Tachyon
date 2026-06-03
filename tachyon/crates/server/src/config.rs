@@ -1051,6 +1051,10 @@ impl ServerConfig {
             config.rate_limit.enabled = rate_limit_enabled != "0" && rate_limit_enabled != "false";
         }
 
+        if let Ok(redis_url) = std::env::var("TACHYON_RATE_LIMIT_REDIS_URL") {
+            config.rate_limit.redis_url = Some(redis_url);
+        }
+
         if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS")
             && let Ok(parsed) = serde_json::from_str::<
                 std::collections::HashMap<String, EndpointRateLimitJsonEntry>,

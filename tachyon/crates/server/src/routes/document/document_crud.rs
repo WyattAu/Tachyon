@@ -308,7 +308,10 @@ pub async fn create_document(
 ///
 /// `GET /api/v1/documents/{document_id}`
 ///
-/// Response: 200 with `DocumentResponse`, or 400 (invalid ID) / 404 on error.
+/// Authorization: The authenticated user must be the document author (owner),
+/// or the document must have `visibility=public`. Returns 403 otherwise.
+///
+/// Response: 200 with `DocumentResponse`, or 400 (invalid ID) / 403 (forbidden) / 404 on error.
 #[utoipa::path(
     get,
     path = "/api/v1/documents/{document_id}",
@@ -317,6 +320,7 @@ pub async fn create_document(
     ),
     responses(
         (status = 200, description = "Document found", body = DocumentResponse),
+        (status = 403, description = "Forbidden — not the document owner"),
         (status = 404, description = "Document not found"),
     ),
     tag = "documents",
@@ -324,6 +328,7 @@ pub async fn create_document(
 pub async fn get_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
+    auth: Option<Extension<crate::middleware::AuthContext>>,
 ) -> Result<Json<DocumentResponse>, ServerError> {
     debug!("Getting document: {}", document_id);
 
@@ -332,6 +337,27 @@ pub async fn get_document(
 
     match state.repository.get_by_id(&doc_id).await {
         Ok(metadata) => {
+            // Authorization check: only the owner or admin can access private/restricted docs.
+            // Public docs are accessible without auth (guest read).
+            let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
+            let is_admin = auth
+                .as_ref()
+                .is_some_and(|Extension(ctx)| ctx.is_admin());
+
+            match metadata.visibility.as_str() {
+                "public" => {
+                    // Public docs: anyone can read
+                }
+                _ => {
+                    // Private/restricted: must be owner or admin
+                    let is_owner =
+                        caller_id.is_some_and(|id| id == metadata.author_id);
+                    if !is_owner && !is_admin {
+                        return Err(ServerError::forbidden("You do not have permission to access this document"));
+                    }
+                }
+            }
+
             let tags = metadata.parse_tags().unwrap_or_default();
             let response = DocumentResponse {
                 id: metadata.id,
@@ -382,6 +408,7 @@ pub async fn get_document(
 pub async fn update_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
+    auth: Option<Extension<crate::middleware::AuthContext>>,
     Json(req): Json<UpdateDocumentRequest>,
 ) -> Result<Json<DocumentResponse>, ServerError> {
     debug!("Updating document: {}", document_id);
@@ -394,6 +421,16 @@ pub async fn update_document(
         .get_by_id(&doc_id)
         .await
         .map_err(|e| ServerError::not_found("Document", &format!("{}: {}", document_id, e)))?;
+
+    // Authorization: only the owner or an admin can update a document.
+    let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth
+        .as_ref()
+        .is_some_and(|Extension(ctx)| ctx.is_admin());
+    let is_owner = caller_id.is_some_and(|id| id == metadata.author_id);
+    if !is_owner && !is_admin {
+        return Err(ServerError::forbidden("You do not have permission to update this document"));
+    }
 
     if let Some(title) = req.title {
         let validated_title = ValidatedDocumentTitle::new(&title)
@@ -627,11 +664,28 @@ pub async fn update_document(
 pub async fn delete_document(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
+    auth: Option<Extension<crate::middleware::AuthContext>>,
 ) -> Result<StatusCode, ServerError> {
     debug!("Deleting document: {}", document_id);
 
     let doc_id = DocumentId::parse_str(&document_id)
         .map_err(|e| ServerError::bad_request(format!("Invalid document ID: {}", e)))?;
+
+    // Authorization: fetch first to check ownership.
+    let metadata = state
+        .repository
+        .get_by_id(&doc_id)
+        .await
+        .map_err(|e| ServerError::not_found("Document", &format!("{}: {}", document_id, e)))?;
+
+    let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth
+        .as_ref()
+        .is_some_and(|Extension(ctx)| ctx.is_admin());
+    let is_owner = caller_id.is_some_and(|id| id == metadata.author_id);
+    if !is_owner && !is_admin {
+        return Err(ServerError::forbidden("You do not have permission to delete this document"));
+    }
 
     match state.repository.delete(&doc_id).await {
         Ok(()) => {
@@ -835,6 +889,7 @@ pub async fn list_documents(
 pub async fn get_document_metadata(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
+    auth: Option<Extension<crate::middleware::AuthContext>>,
 ) -> Result<Json<BTreeMap<String, String>>, ServerError> {
     debug!("Getting document metadata: {}", document_id);
 
@@ -843,6 +898,22 @@ pub async fn get_document_metadata(
 
     match state.repository.get_by_id(&doc_id).await {
         Ok(metadata) => {
+            // Authorization: same rules as get_document.
+            let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
+            let is_admin = auth
+                .as_ref()
+                .is_some_and(|Extension(ctx)| ctx.is_admin());
+            let is_owner = caller_id.is_some_and(|id| id == metadata.author_id);
+            match metadata.visibility.as_str() {
+                "public" => {}
+                _ if !is_owner && !is_admin => {
+                    return Err(ServerError::forbidden(
+                        "You do not have permission to access this document",
+                    ));
+                }
+                _ => {}
+            }
+
             let mut result = BTreeMap::new();
             result.insert("id".to_string(), metadata.id.clone());
             result.insert("title".to_string(), metadata.title.clone());

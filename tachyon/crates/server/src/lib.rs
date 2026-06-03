@@ -858,6 +858,13 @@ pub fn build_cors_layer(config: &ServerConfig) -> CorsLayer {
         return CorsLayer::new();
     }
 
+    if config.cors.allowed_origins.contains(&"*".to_string()) {
+        tracing::warn!(
+            "CORS is configured with wildcard origin '*' — this allows any website to make cross-origin requests. \
+             Set TACHYON_CORS_ALLOWED_ORIGINS to a comma-separated list of trusted origins in production."
+        );
+    }
+
     let allow_origin = if config.cors.allowed_origins.contains(&"*".to_string()) {
         AllowOrigin::any()
     } else {
