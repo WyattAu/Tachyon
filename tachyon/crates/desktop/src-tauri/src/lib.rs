@@ -440,8 +440,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_log::Builder::default().build())
-        .plugin(tauri_plugin_notification::init());
+        .plugin(tauri_plugin_log::Builder::default().build());
 
     // Build the command handler list — include debug_report when debug is on
     if debug_level >= 1 {

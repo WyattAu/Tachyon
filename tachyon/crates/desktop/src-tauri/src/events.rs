@@ -235,7 +235,7 @@ impl EventEmitter {
             DesktopEvent::RepositoryStatusChanged { .. } => "repository-status-changed",
             DesktopEvent::FileChanged { .. } => "file-changed",
             DesktopEvent::Error { .. } => "error",
-            DesktopEvent::Notification { .. } => "notification",
+            DesktopEvent::Notification { .. } => "app-notification",
         };
 
         self.app_handle.emit(event_name, event).map_err(|e| {

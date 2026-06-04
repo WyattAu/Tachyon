@@ -302,54 +302,33 @@ pub fn BillingPage() -> impl IntoView {
                 <div class="border-b border-gray-200 dark:border-gray-700">
                     <nav class="flex -mb-px">
                         <button
-                            class:px-6=true
-                            class:py-3=true
-                            class:text-sm=true
-                            class:font-medium=true
-                            class:border-b-2=true
-                            class:transition-colors=true
-                            class:border-blue-500=move || active_tab.get() == 0
-                            class:text-blue-600=move || active_tab.get() == 0
-                            class:dark:text-blue-400=move || active_tab.get() == 0
-                            class:border-transparent=move || active_tab.get() != 0
-                            class:text-gray-500=move || active_tab.get() != 0
-                            class:hover:text-gray-700=move || active_tab.get() != 0
-                            class:dark:text-gray-400=move || active_tab.get() != 0
-                            class:dark:hover:text-gray-200=move || active_tab.get() != 0
+                            class=move || {
+                                if active_tab.get() == 0 {
+                                    "px-6 py-3 text-sm font-medium border-b-2 transition-colors border-blue-500 text-blue-600 dark:text-blue-400"
+                                } else {
+                                    "px-6 py-3 text-sm font-medium border-b-2 transition-colors border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                }
+                            }
                             on:click=move |_| set_active_tab.set(0)
                         >"Plans"</button>
                         <button
-                            class:px-6=true
-                            class:py-3=true
-                            class:text-sm=true
-                            class:font-medium=true
-                            class:border-b-2=true
-                            class:transition-colors=true
-                            class:border-blue-500=move || active_tab.get() == 1
-                            class:text-blue-600=move || active_tab.get() == 1
-                            class:dark:text-blue-400=move || active_tab.get() == 1
-                            class:border-transparent=move || active_tab.get() != 1
-                            class:text-gray-500=move || active_tab.get() != 1
-                            class:hover:text-gray-700=move || active_tab.get() != 1
-                            class:dark:text-gray-400=move || active_tab.get() != 1
-                            class:dark:hover:text-gray-200=move || active_tab.get() != 1
+                            class=move || {
+                                if active_tab.get() == 1 {
+                                    "px-6 py-3 text-sm font-medium border-b-2 transition-colors border-blue-500 text-blue-600 dark:text-blue-400"
+                                } else {
+                                    "px-6 py-3 text-sm font-medium border-b-2 transition-colors border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                }
+                            }
                             on:click=move |_| set_active_tab.set(1)
                         >"Invoices"</button>
                         <button
-                            class:px-6=true
-                            class:py-3=true
-                            class:text-sm=true
-                            class:font-medium=true
-                            class:border-b-2=true
-                            class:transition-colors=true
-                            class:border-blue-500=move || active_tab.get() == 2
-                            class:text-blue-600=move || active_tab.get() == 2
-                            class:dark:text-blue-400=move || active_tab.get() == 2
-                            class:border-transparent=move || active_tab.get() != 2
-                            class:text-gray-500=move || active_tab.get() != 2
-                            class:hover:text-gray-700=move || active_tab.get() != 2
-                            class:dark:text-gray-400=move || active_tab.get() != 2
-                            class:dark:hover:text-gray-200=move || active_tab.get() != 2
+                            class=move || {
+                                if active_tab.get() == 2 {
+                                    "px-6 py-3 text-sm font-medium border-b-2 transition-colors border-blue-500 text-blue-600 dark:text-blue-400"
+                                } else {
+                                    "px-6 py-3 text-sm font-medium border-b-2 transition-colors border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                }
+                            }
                             on:click=move |_| set_active_tab.set(2)
                         >"Payment Method"</button>
                     </nav>
