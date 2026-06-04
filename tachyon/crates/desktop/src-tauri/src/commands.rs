@@ -1316,3 +1316,136 @@ pub async fn authenticate_offline(
         error: None,
     })
 }
+
+// ---------------------------------------------------------------------------
+// Debug reporter — called via Tauri IPC from injected JS.
+// Writes one JSON line per call to /tmp/tachyon-debug.jsonl.
+// This is the only mechanism that works for WebView debugging when CSP
+// blocks inline scripts (Tauri 2 injects nonces which make 'unsafe-inline'
+// ineffective per CSP Level 3 spec). webview.eval() bypasses CSP entirely.
+// ---------------------------------------------------------------------------
+
+/// Append a JSON debug event to /tmp/tachyon-debug.jsonl.
+///
+/// Called from JS injected via `webview.eval()` in setup().
+/// Each call appends one line: `{"ts":"...","type":"...","data":{...}}`.
+#[tauri::command]
+pub fn debug_report(data: serde_json::Value) -> Result<(), String> {
+    use std::io::Write;
+    let ts = chrono::Utc::now().to_rfc3339();
+    let mut entry = serde_json::Map::new();
+    entry.insert("ts".into(), serde_json::Value::String(ts));
+    entry.insert("type".into(), data.get("type").cloned().unwrap_or(serde_json::Value::String("unknown".into())));
+    if let Some(d) = data.as_object() {
+        for (k, v) in d {
+            if k != "type" {
+                entry.insert(k.clone(), v.clone());
+            }
+        }
+    }
+    let line = serde_json::to_string(&entry).map_err(|e| e.to_string())?;
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/tachyon-debug.jsonl")
+        .map_err(|e| e.to_string())?;
+    writeln!(f, "{}", line).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// API proxy — makes HTTP requests from the Rust side, bypassing WebView CORS.
+//
+// The Tauri WebView loads from `tauri://localhost` (custom protocol) but the
+// backend server runs on `http://localhost:8080`. WebKit treats `tauri://`
+// as a non-HTTP origin and blocks cross-origin fetch to `http://localhost`.
+// This command proxies all API requests through the native Rust reqwest client,
+// which has no origin restrictions.
+// ---------------------------------------------------------------------------
+
+/// Response from the api_proxy command.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiResponse {
+    pub status: u16,
+    pub body: serde_json::Value,
+    pub headers: std::collections::HashMap<String, String>,
+}
+
+/// Proxy an API request through the native HTTP client.
+///
+/// The WebView calls `invoke("api_proxy", { method, path, body?, headers? })`
+/// instead of using `fetch()`. This bypasses CORS entirely because the request
+/// originates from the Rust process, not the WebView.
+#[tauri::command]
+pub async fn api_proxy(
+    method: String,
+    path: String,
+    body: Option<serde_json::Value>,
+    headers: Option<std::collections::HashMap<String, String>>,
+) -> Result<ApiResponse, String> {
+    let base_url = std::env::var("TACHYON_API_URL")
+        .unwrap_or_else(|_| "http://localhost:8080".to_string());
+    let url = format!("{}{}", base_url.trim_end_matches('/'), path);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    let method = match method.to_uppercase().as_str() {
+        "GET" => reqwest::Method::GET,
+        "POST" => reqwest::Method::POST,
+        "PUT" => reqwest::Method::PUT,
+        "DELETE" => reqwest::Method::DELETE,
+        "PATCH" => reqwest::Method::PATCH,
+        "HEAD" => reqwest::Method::HEAD,
+        "OPTIONS" => reqwest::Method::OPTIONS,
+        other => return Err(format!("Unsupported HTTP method: {}", other)),
+    };
+
+    let mut req = client.request(method, &url);
+
+    // Apply custom headers
+    if let Some(hdrs) = headers {
+        for (key, value) in hdrs {
+            // Skip content-length (reqwest sets it automatically)
+            if key.to_lowercase() != "content-length" {
+                if let Ok(header_name) = reqwest::header::HeaderName::from_bytes(key.as_bytes()) {
+                    if let Ok(header_value) = value.parse::<reqwest::header::HeaderValue>() {
+                        req = req.header(header_name, header_value);
+                    }
+                }
+            }
+        }
+    }
+
+    // Apply body for POST/PUT/PATCH
+    if let Some(b) = body {
+        req = req.json(&b);
+    }
+
+    let response = req.send().await.map_err(|e| format!("Request failed: {}", e))?;
+    let status = response.status().as_u16();
+
+    // Collect response headers
+    let mut resp_headers = std::collections::HashMap::new();
+    for (key, value) in response.headers() {
+        if let Ok(v) = value.to_str() {
+            resp_headers.insert(key.to_string(), v.to_string());
+        }
+    }
+
+    // Parse response body as JSON (fallback to raw string)
+    let body_val = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response body: {}", e))?
+        .parse::<serde_json::Value>()
+        .unwrap_or(serde_json::Value::String("".into()));
+
+    Ok(ApiResponse {
+        status,
+        body: body_val,
+        headers: resp_headers,
+    })
+}
