@@ -815,6 +815,12 @@ pub async fn start_embedded_server(
     // Force bind to localhost only for security
     config.host = "127.0.0.1".to_string();
 
+    // Disable CSP in desktop mode: the webview manages its own CSP via
+    // tauri.conf.json. The server's CSP would block inline styles (Tailwind
+    // CSS, Leptos-generated classes) since WebKit enforces both HTTP header
+    // CSP and meta-tag CSP (intersection).
+    config.security.csp_enabled = false;
+
     // Start the server
     let app = match tachyon_server::build_server(&config).await {
         Ok(app) => app,
@@ -1328,28 +1334,46 @@ pub async fn authenticate_offline(
 /// Append a JSON debug event to /tmp/tachyon-debug.jsonl.
 ///
 /// Called from JS injected via `webview.eval()` in setup().
-/// Each call appends one line: `{"ts":"...","type":"...","data":{...}}`.
+/// Supports both single entries (`{type, ...}`) and batched arrays (`[{...}, ...]`).
+/// Each call appends one or more lines: `{"ts":"...","type":"...","data":{...}}`.
 #[tauri::command]
 pub fn debug_report(data: serde_json::Value) -> Result<(), String> {
     use std::io::Write;
-    let ts = chrono::Utc::now().to_rfc3339();
-    let mut entry = serde_json::Map::new();
-    entry.insert("ts".into(), serde_json::Value::String(ts));
-    entry.insert("type".into(), data.get("type").cloned().unwrap_or(serde_json::Value::String("unknown".into())));
-    if let Some(d) = data.as_object() {
-        for (k, v) in d {
-            if k != "type" {
-                entry.insert(k.clone(), v.clone());
-            }
+
+    let entries: Vec<serde_json::Value> = match &data {
+        serde_json::Value::String(s) => {
+            // Batched: data is a JSON string like "[{...},{...}]"
+            serde_json::from_str(s).unwrap_or_else(|_| vec![data.clone()])
         }
-    }
-    let line = serde_json::to_string(&entry).map_err(|e| e.to_string())?;
+        other => {
+            // Single entry: {type: ..., message: ...}
+            vec![other.clone()]
+        }
+    };
+
     let mut f = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open("/tmp/tachyon-debug.jsonl")
         .map_err(|e| e.to_string())?;
-    writeln!(f, "{}", line).map_err(|e| e.to_string())?;
+
+    for entry in entries {
+        let ts = chrono::Utc::now().to_rfc3339();
+        let mut line = serde_json::Map::new();
+        line.insert("ts".into(), serde_json::Value::String(ts));
+        if let Some(t) = entry.get("type") {
+            line.insert("type".into(), t.clone());
+        }
+        if let Some(obj) = entry.as_object() {
+            for (k, v) in obj {
+                if k != "type" {
+                    line.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        let s = serde_json::to_string(&line).map_err(|e| e.to_string())?;
+        writeln!(f, "{}", s).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -1385,6 +1409,7 @@ pub async fn api_proxy(
 ) -> Result<ApiResponse, String> {
     let base_url = std::env::var("TACHYON_API_URL")
         .unwrap_or_else(|_| "http://localhost:8080".to_string());
+    let method_str = method.clone();
     let url = format!("{}{}", base_url.trim_end_matches('/'), path);
 
     let client = reqwest::Client::builder()
@@ -1427,6 +1452,8 @@ pub async fn api_proxy(
     let response = req.send().await.map_err(|e| format!("Request failed: {}", e))?;
     let status = response.status().as_u16();
 
+    tracing::info!("[api_proxy] {} {} → HTTP {}", method_str, url, status);
+
     // Collect response headers
     let mut resp_headers = std::collections::HashMap::new();
     for (key, value) in response.headers() {
@@ -1436,12 +1463,16 @@ pub async fn api_proxy(
     }
 
     // Parse response body as JSON (fallback to raw string)
-    let body_val = response
+    let body_text = response
         .text()
         .await
-        .map_err(|e| format!("Failed to read response body: {}", e))?
+        .map_err(|e| format!("Failed to read response body: {}", e))?;
+    let body_val = body_text
         .parse::<serde_json::Value>()
-        .unwrap_or(serde_json::Value::String("".into()));
+        .unwrap_or_else(|_| {
+            tracing::warn!("[api_proxy] response body not JSON ({} bytes), first 200: {}", body_text.len(), &body_text[..body_text.len().min(200)]);
+            serde_json::Value::String(body_text.clone())
+        });
 
     Ok(ApiResponse {
         status,

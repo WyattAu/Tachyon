@@ -315,9 +315,10 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
                                                         view! { <div style="display:none"></div> }.into_any()
                                                     }}
                                                     <button
-                                                        class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors "
-                                                        class=("bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100", is_selected)
-                                                        class=("text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50", move || !is_selected())
+                                                        class=move || format!(
+                                                            "w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors {}",
+                                                            if is_selected() { "bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100" } else { "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" }
+                                                        )
                                                         role="option"
                                                         attr:aria-selected=move || if is_selected() { "true" } else { "false" }
                                                         on:click=on_click

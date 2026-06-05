@@ -233,9 +233,8 @@ where
                 id="main-nav"
                 role="navigation"
                 aria-label="Main navigation"
-                class={
-                let collapsed = sidebar_collapsed.get();
-                move || {
+                class=move || {
+                    let collapsed = sidebar_collapsed.get();
                     let width = if collapsed { "w-16" } else { "w-64" };
                     let mobile_transform = if mobile_menu_open.get() { "translate-x-0" } else { "-translate-x-full" };
                     format!(
@@ -243,8 +242,7 @@ where
                         width,
                         mobile_transform,
                     )
-                }
-            }>
+                }>
                 <div class="h-full flex flex-col">
                     {/* Logo */}
                     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -273,23 +271,23 @@ where
 
                     {/* Navigation */}
                     <nav class="flex-1 p-2 space-y-1 overflow-y-auto no-print">
-                        <NavLink href="/" label="Home" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/dashboard" label="Dashboard" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/documents" label="Documents" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/spaces" label="Spaces" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/graph" label="Graph" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/tags" label="Tags" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/teams" label="Teams" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/search" label="Search" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/catalog" label="Catalog" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/templates" label="Templates" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/plugins" label="Plugins" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/ssg" label="Static Site" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/billing" label="Billing" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/audit" label="Audit Log" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/admin/roles" label="Admin" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/settings" label="Settings" collapsed={sidebar_collapsed.get()} />
-                        <NavLink href="/profile" label="Profile" collapsed={sidebar_collapsed.get()} />
+                        <NavLink href="/" label="Home" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/dashboard" label="Dashboard" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/documents" label="Documents" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/spaces" label="Spaces" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/graph" label="Graph" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/tags" label="Tags" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/teams" label="Teams" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/search" label="Search" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/catalog" label="Catalog" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/templates" label="Templates" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/plugins" label="Plugins" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/ssg" label="Static Site" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/billing" label="Billing" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/audit" label="Audit Log" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/admin/roles" label="Admin" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/settings" label="Settings" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/profile" label="Profile" collapsed={sidebar_collapsed.get_untracked()} />
                     </nav>
 
                     {/* Collapse toggle */}
@@ -308,15 +306,12 @@ where
             </aside>
 
             {/* Main content */}
-            <div class={
-                let collapsed = sidebar_collapsed.get();
-                move || {
-                    if collapsed {
+            <div class=move || {
+                    if sidebar_collapsed.get() {
                         "md:ml-16 transition-all duration-300"
                     } else {
                         "md:ml-64 transition-all duration-300"
                     }
-                }
             }>
                 {/* Top bar */}
                 <header class="sticky top-0 z-20 bg-white dark:bg-gray-950 border-b-2 border-gray-900 dark:border-gray-100 spatial-1 no-print" role="banner">

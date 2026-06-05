@@ -28,7 +28,10 @@ use storage::{BrowserStore, sync::SyncEngine};
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 pub fn mount_app() {
     console_error_panic_hook::set_once();
+    // Log mount attempt for debugging
+    web_sys::console::log_1(&"[Tachyon] mount_app() called".into());
     mount_to_body(App);
+    web_sys::console::log_1(&"[Tachyon] mount_to_body() completed".into());
 }
 
 /// Not found page component

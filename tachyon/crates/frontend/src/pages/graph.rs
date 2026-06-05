@@ -549,25 +549,28 @@ pub fn GraphPage() -> impl IntoView {
             <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
                 <nav class="flex space-x-8">
                     <button
-                        class="pb-3 border-b-2 font-medium text-sm transition-colors"
-                        class=("border-blue-500 text-blue-600 dark:text-blue-400", move || view.get() == GraphView::Visual)
-                        class=("border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400", move || view.get() != GraphView::Visual)
+                        class=move || format!(
+                            "pb-3 border-b-2 font-medium text-sm transition-colors {}",
+                            if view.get() == GraphView::Visual { "border-blue-500 text-blue-600 dark:text-blue-400" } else { "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400" }
+                        )
                         on:click=switch_to_visual
                     >
                         "Visual"
                     </button>
                     <button
-                        class="pb-3 border-b-2 font-medium text-sm transition-colors"
-                        class=("border-blue-500 text-blue-600 dark:text-blue-400", move || view.get() == GraphView::Stats)
-                        class=("border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400", move || view.get() != GraphView::Stats)
+                        class=move || format!(
+                            "pb-3 border-b-2 font-medium text-sm transition-colors {}",
+                            if view.get() == GraphView::Stats { "border-blue-500 text-blue-600 dark:text-blue-400" } else { "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400" }
+                        )
                         on:click=switch_to_stats
                     >
                         "Overview"
                     </button>
                     <button
-                        class="pb-3 border-b-2 font-medium text-sm transition-colors"
-                        class=("border-blue-500 text-blue-600 dark:text-blue-400", move || view.get() == GraphView::Nodes)
-                        class=("border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400", move || view.get() != GraphView::Nodes)
+                        class=move || format!(
+                            "pb-3 border-b-2 font-medium text-sm transition-colors {}",
+                            if view.get() == GraphView::Nodes { "border-blue-500 text-blue-600 dark:text-blue-400" } else { "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400" }
+                        )
                         on:click=switch_to_nodes
                     >
                         "Nodes"

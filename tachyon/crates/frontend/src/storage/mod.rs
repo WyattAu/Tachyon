@@ -136,14 +136,8 @@ impl BrowserStore {
                                 }
                             }
                         }
-                        Err(e) => {
-                            web_sys::console::log_1(
-                                &format!(
-                                    "[BrowserStore] IndexedDB init failed, using localStorage: {}",
-                                    e
-                                )
-                                .into(),
-                            );
+                        Err(_) => {
+                            // IndexedDB unavailable in WebKitGTK — expected, fall through to localStorage
                         }
                     }
                     // Mark IDB as ready regardless
@@ -151,14 +145,8 @@ impl BrowserStore {
                         *ready = true;
                     }
                 }
-                Err(e) => {
-                    web_sys::console::log_1(
-                        &format!(
-                            "[BrowserStore] IndexedDB unavailable, using localStorage: {}",
-                            e
-                        )
-                        .into(),
-                    );
+                Err(_) => {
+                    // IndexedDB unavailable in WebKitGTK — expected, using localStorage
                 }
             }
         });

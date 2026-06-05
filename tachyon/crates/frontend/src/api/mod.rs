@@ -44,7 +44,7 @@ async fn tauri_invoke(
     body: Option<&serde_json::Value>,
     auth_header: Option<&str>,
 ) -> Result<(u16, serde_json::Value), String> {
-    use js_sys::{Array, Function, Object, Promise};
+    use js_sys::{Function, Object, Promise};
     use wasm_bindgen::{JsCast, JsValue};
     use wasm_bindgen_futures::JsFuture;
 
@@ -83,9 +83,10 @@ async fn tauri_invoke(
     }
 
     // invoke(cmd, args) → returns a Promise
-    let call_args = Array::of2(&JsValue::from_str("api_proxy"), &args_obj.into());
+    // call2(this, arg0, arg1) → func.call(this, cmd, args)
+    let cmd = JsValue::from_str("api_proxy");
     let result: Promise = invoke
-        .call2(&core, &JsValue::UNDEFINED, &call_args)
+        .call2(&core, &cmd, &args_obj.into())
         .map_err(|e| format!("invoke call failed: {:?}", e))?
         .unchecked_into();
     let resp: serde_json::Value = JsFuture::from(result)

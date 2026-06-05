@@ -62,23 +62,23 @@ impl SyncEngine {
 
     pub fn trigger_sync(&self) {
         if !self.is_online() {
-            self.sync_state.set(SyncState::Offline);
+            let _ = self.sync_state.try_update(|s| *s = SyncState::Offline);
             return;
         }
 
-        if self.sync_state.get() == SyncState::Syncing {
+        if self.sync_state.try_with_untracked(|s| *s == SyncState::Syncing).unwrap_or(false) {
             return;
         }
 
-        self.sync_state.set(SyncState::Syncing);
+        let _ = self.sync_state.try_update(|s| *s = SyncState::Syncing);
         let api = self.api.clone();
         let store = self.store.clone();
         let ss = self.sync_state;
 
         wasm_bindgen_futures::spawn_local(async move {
             match Self::do_sync(&api, &store).await {
-                Ok(()) => ss.set(SyncState::Idle),
-                Err(e) => ss.set(SyncState::Error(e)),
+                Ok(()) => { let _ = ss.try_update(|s| *s = SyncState::Idle); }
+                Err(e) => { let _ = ss.try_update(|s| *s = SyncState::Error(e)); }
             }
         });
     }
@@ -99,15 +99,15 @@ impl SyncEngine {
                     if let Ok(mut online) = online_arc.lock() {
                         *online = true;
                     }
-                    sync_state.set(SyncState::Idle);
+                    let _ = sync_state.try_update(|s| *s = SyncState::Idle);
                     let api = api.clone();
                     let store = store.clone();
                     let ss = sync_state;
                     wasm_bindgen_futures::spawn_local(async move {
-                        ss.set(SyncState::Syncing);
+                        let _ = ss.try_update(|s| *s = SyncState::Syncing);
                         match Self::do_sync(&api, &store).await {
-                            Ok(()) => ss.set(SyncState::Idle),
-                            Err(e) => ss.set(SyncState::Error(e)),
+                            Ok(()) => { let _ = ss.try_update(|s| *s = SyncState::Idle); }
+                            Err(e) => { let _ = ss.try_update(|s| *s = SyncState::Error(e)); }
                         }
                     });
                 });
@@ -123,7 +123,7 @@ impl SyncEngine {
                     if let Ok(mut online) = online_arc.lock() {
                         *online = false;
                     }
-                    sync_state.set(SyncState::Offline);
+                    let _ = sync_state.try_update(|s| *s = SyncState::Offline);
                 });
                 let _ = window
                     .add_event_listener_with_callback("offline", closure.as_ref().unchecked_ref());
@@ -144,19 +144,23 @@ impl SyncEngine {
                 return;
             }
 
-            if sync_state.get() == SyncState::Syncing {
-                return;
+            // Guard against disposed signal (e.g., component unmounted while
+            // setInterval callback still running).
+            let current = sync_state.try_with_untracked(|s| s.clone());
+            match current {
+                Some(SyncState::Syncing) | None => return,
+                _ => {}
             }
 
-            sync_state.set(SyncState::Syncing);
+            let _ = sync_state.try_update(|s| *s = SyncState::Syncing);
             let api = api.clone();
             let store = store.clone();
             let ss = sync_state;
 
             wasm_bindgen_futures::spawn_local(async move {
                 match Self::do_sync(&api, &store).await {
-                    Ok(()) => ss.set(SyncState::Idle),
-                    Err(e) => ss.set(SyncState::Error(e)),
+                    Ok(()) => { let _ = ss.try_update(|s| *s = SyncState::Idle); }
+                    Err(e) => { let _ = ss.try_update(|s| *s = SyncState::Error(e)); }
                 }
             });
         });

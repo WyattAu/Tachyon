@@ -7,12 +7,43 @@
     <meta name="theme-color" content="#2563eb">
     <title>Tachyon - Knowledge Management System</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="dns-prefetch" href="//localhost:8080">
-    <link rel="preconnect" href="//localhost:8080" crossorigin>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS: In Tauri desktop (frontendDist mode), files are served
+         from tauri://localhost/ via the asset protocol, so a relative path
+         works. On the web (dev server), the dev server serves it. -->
+    <script>
+        (function() {
+            // In Tauri desktop mode, try local path first (asset protocol),
+            // then fall back to the dev server URL.
+            var src = '/tailwind.js';
+            if (!window.__TAURI__) {
+                // Web mode: load from same origin (dev server)
+                src = '/tailwind.js';
+            }
+            var s = document.createElement('script');
+            s.src = src;
+            s.onerror = function() {
+                console.warn('[Tachyon] Tailwind CSS failed to load from ' + src);
+            };
+            document.head.appendChild(s);
+        })();
+    </script>
+    <!-- Debug: capture WASM loading errors (only when TACHYON_DEBUG >= 1) -->
+    <script>
+        // These run BEFORE trunk's module script, so they catch init failures.
+        // Tauri debug hooks relay console output to the debug log.
+        window.addEventListener('error', function(e) {
+            console.error('[Tachyon] window.error:', e.message, e.filename, e.lineno);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('[Tachyon] unhandledrejection:', e.reason);
+        });
+    </script>
+    <!-- Set API URL before WASM boots. Tauri on_page_load sets this via eval()
+    but there's a race: WASM may read it first. This inline script ensures it's
+    available immediately. Overridden by on_page_load eval if TACHYON_API_URL is set. -->
+    <script>
+        window.tachyonApiUrl = window.tachyonApiUrl || "http://localhost:8080/api/v1";
+    </script>
     <script>
         tailwind.config = {
             darkMode: 'class',

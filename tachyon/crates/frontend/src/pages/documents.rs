@@ -1073,9 +1073,7 @@ pub fn DocumentEditPage() -> impl IntoView {
                                     <div class="flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400">
                                         <div class="flex items-center gap-3">
                                             <div
-                                                class="w-2 h-2 rounded-full"
-                                                class=("bg-yellow-400", move || dirty.get())
-                                                class=("bg-green-500", move || !dirty.get())
+                                                class=move || if dirty.get() { "w-2 h-2 rounded-full bg-yellow-400" } else { "w-2 h-2 rounded-full bg-green-500" }
                                                 title={move || if dirty.get() { "Unsaved changes" } else { "All changes saved" }}
                                             ></div>
                                             <span>{move || {
