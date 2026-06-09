@@ -1,12 +1,16 @@
 use regex::Regex;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
+use std::sync::LazyLock;
 use tachyon_core::id::DocumentId;
 use tachyon_database::{
     DatabaseError, DatabasePool, DatabaseResult, DocumentRepository, GraphEdge, GraphNode,
     GraphRepository,
 };
 use tracing::{debug, info, instrument};
+
+static MARKDOWN_LINK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[([^\]]*)\]\(([^)]+)\)").unwrap());
 
 // ============================================================================
 // Result & Config Types
@@ -219,8 +223,8 @@ impl GraphExtractor {
     // -----------------------------------------------------------------------
 
     pub fn parse_markdown_links(content: &str) -> Vec<(String, String)> {
-        let re = Regex::new(r"\[([^\]]*)\]\(([^)]+)\)").unwrap();
-        re.captures_iter(content)
+        MARKDOWN_LINK_RE
+            .captures_iter(content)
             .filter_map(|cap| {
                 let text = cap.get(1)?.as_str().trim().to_string();
                 let url = cap.get(2)?.as_str().trim().to_string();

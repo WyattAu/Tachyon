@@ -3,6 +3,10 @@
 
 use super::ValidationResult;
 use super::common::*;
+use regex::Regex;
+use std::sync::LazyLock;
+
+static SLUG_HYPHEN_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"-+").unwrap());
 
 pub const MAX_TITLE_LENGTH: usize = 200;
 pub const MIN_TITLE_LENGTH: usize = 1;
@@ -341,8 +345,7 @@ impl ValidatedSlug {
             .filter(|&c| c != '\0')
             .collect::<String>();
 
-        let slug = regex::Regex::new(r"-+")
-            .unwrap()
+        let slug = SLUG_HYPHEN_RE
             .replace_all(&slug, "-")
             .trim_matches('-')
             .to_string();

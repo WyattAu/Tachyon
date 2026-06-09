@@ -20,8 +20,18 @@ use crate::types::{MarkdownOptions, OutputFormat, RenderMetadata, RenderResult, 
 use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, html};
 use regex::Regex;
 use std::cell::Cell;
+use std::sync::LazyLock;
 use std::time::Instant;
 use tracing::{debug, instrument};
+
+// ============================================================================
+// Static Regex Patterns (compiled once, zero per-call overhead)
+// ============================================================================
+
+static EMBED_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"!\{(\w+):\s*([^}]+)\}").unwrap());
+
+static WIKILINK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]").unwrap());
 
 // ============================================================================
 // TOC & Embed Types
@@ -176,7 +186,6 @@ impl MarkdownParser {
     /// Skips content inside code blocks.
     pub fn extract_embeds(content: &str) -> Vec<EmbedBlock> {
         let mut embeds = Vec::new();
-        let re = Regex::new(r"!\{(\w+):\s*([^}]+)\}").unwrap();
         let mut in_code_block = false;
 
         for line in content.lines() {
@@ -185,7 +194,7 @@ impl MarkdownParser {
                 continue;
             }
             if !in_code_block {
-                for caps in re.captures_iter(line) {
+                for caps in EMBED_RE.captures_iter(line) {
                     let kind = caps[1].to_lowercase();
                     let id = caps[2].trim().to_string();
                     if !id.is_empty() {
@@ -199,7 +208,6 @@ impl MarkdownParser {
 
     /// Pre-process wikilinks [[target]] and [[target|display]] into markdown links
     fn preprocess_wikilinks(content: &str) -> String {
-        let re = Regex::new(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]").unwrap();
         let mut result = String::with_capacity(content.len());
         let mut in_code_block = false;
 
@@ -215,7 +223,7 @@ impl MarkdownParser {
                 result.push_str(line);
                 result.push('\n');
             } else {
-                let replaced = re.replace_all(line, |caps: &regex::Captures| {
+                let replaced = WIKILINK_RE.replace_all(line, |caps: &regex::Captures| {
                     let target: &str = &caps[1];
                     let display: &str = match caps.get(2) {
                         Some(m) => m.as_str(),
@@ -308,7 +316,6 @@ impl MarkdownParser {
 
     /// Extract all wikilink targets from content (without converting)
     pub fn extract_wikilinks(content: &str) -> Vec<String> {
-        let re = Regex::new(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]").unwrap();
         let mut in_code_block = false;
         let mut targets = Vec::new();
 
@@ -319,7 +326,7 @@ impl MarkdownParser {
             }
 
             if !in_code_block {
-                for caps in re.captures_iter(line) {
+                for caps in WIKILINK_RE.captures_iter(line) {
                     targets.push(caps[1].to_string());
                 }
             }

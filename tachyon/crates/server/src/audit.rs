@@ -4,7 +4,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
@@ -304,7 +304,7 @@ impl AuditEvent {
 
 #[derive(Debug, Clone)]
 pub struct AuditLogger {
-    store: Arc<RwLock<Vec<AuditEvent>>>,
+    store: Arc<RwLock<VecDeque<AuditEvent>>>,
     max_events: usize,
     enabled: bool,
     log_to_console: bool,
@@ -314,7 +314,7 @@ pub struct AuditLogger {
 impl AuditLogger {
     pub fn new(max_events: usize) -> Self {
         Self {
-            store: Arc::new(RwLock::new(Vec::with_capacity(max_events))),
+            store: Arc::new(RwLock::new(VecDeque::with_capacity(max_events))),
             max_events,
             enabled: true,
             log_to_console: true,
@@ -324,7 +324,7 @@ impl AuditLogger {
 
     pub fn disabled() -> Self {
         Self {
-            store: Arc::new(RwLock::new(Vec::new())),
+            store: Arc::new(RwLock::new(VecDeque::new())),
             max_events: 0,
             enabled: false,
             log_to_console: false,
@@ -397,10 +397,10 @@ impl AuditLogger {
         }
 
         let mut store = self.store.write().await;
-        store.push(event);
+        store.push_back(event);
 
         if store.len() > self.max_events {
-            store.remove(0);
+            store.pop_front();
         }
     }
 

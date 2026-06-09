@@ -1,7 +1,12 @@
 //! Document template engine — variable substitution in templates.
 
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::LazyLock;
+
+static TEMPLATE_PLACEHOLDER_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\{\{[^}]+\}\}").unwrap());
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentTemplate {
@@ -26,8 +31,7 @@ pub fn render_template(template: &str, variables: &HashMap<String, String>) -> S
     for (key, value) in variables {
         result = result.replace(&format!("{{{{{}}}}}", key), value);
     }
-    let re = regex::Regex::new(r"\{\{[^}]+\}\}").unwrap();
-    re.replace_all(&result, "").to_string()
+    TEMPLATE_PLACEHOLDER_RE.replace_all(&result, "").to_string()
 }
 
 #[derive(Debug, Serialize)]
@@ -44,8 +48,7 @@ pub fn render_template_with_stats(template: &str, variables: &HashMap<String, St
         result = result.replace(&format!("{{{{{}}}}}", key), value);
     }
     let remaining = count_placeholders(&result);
-    let re = regex::Regex::new(r"\{\{[^}]+\}\}").unwrap();
-    let content = re.replace_all(&result, "").to_string();
+    let content = TEMPLATE_PLACEHOLDER_RE.replace_all(&result, "").to_string();
     RenderedTemplate {
         content,
         variables_used: original_count - remaining,
@@ -54,8 +57,7 @@ pub fn render_template_with_stats(template: &str, variables: &HashMap<String, St
 }
 
 fn count_placeholders(s: &str) -> usize {
-    let re = regex::Regex::new(r"\{\{[^}]+\}\}").unwrap();
-    re.find_iter(s).count()
+    TEMPLATE_PLACEHOLDER_RE.find_iter(s).count()
 }
 
 #[cfg(test)]

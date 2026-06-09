@@ -4,7 +4,6 @@
 use crate::error::RbacResult;
 use crate::types::{Action, Effect, Resource, Subject};
 use dashmap::DashMap;
-use regex::Regex;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -145,15 +144,54 @@ fn match_pattern(pattern: &str, value: &str) -> bool {
         return true;
     }
 
-    // Handle wildcard pattern
+    // Handle wildcard pattern using simple glob matching (no regex compilation needed)
     if pattern.contains('*') {
-        let regex_str = pattern.replace('*', ".*");
-        if let Ok(re) = Regex::new(&regex_str) {
-            return re.is_match(value);
-        }
+        return glob_match(pattern, value);
     }
 
     false
+}
+
+/// Simple glob-style pattern matching supporting only `*` as a wildcard.
+/// Avoids regex compilation overhead on the permission hot path.
+fn glob_match(pattern: &str, value: &str) -> bool {
+    let parts: Vec<&str> = pattern.split('*').collect();
+    if parts.len() == 1 {
+        // No wildcards -- should not reach here, but be safe
+        return pattern == value;
+    }
+
+    let mut remaining = value;
+
+    // Match prefix (before first *)
+    if !parts[0].is_empty() {
+        if !remaining.starts_with(parts[0]) {
+            return false;
+        }
+        remaining = &remaining[parts[0].len()..];
+    }
+
+    // Match middle parts
+    for part in &parts[1..parts.len() - 1] {
+        if part.is_empty() {
+            continue;
+        }
+        match remaining.find(part) {
+            Some(idx) => {
+                remaining = &remaining[idx + part.len()..];
+            }
+            None => return false,
+        }
+    }
+
+    // Match suffix (after last *)
+    if let Some(last) = parts.last() {
+        if !last.is_empty() {
+            return remaining.ends_with(last);
+        }
+    }
+
+    true
 }
 
 // ============================================================================

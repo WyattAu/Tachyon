@@ -1,6 +1,8 @@
 //! Block references and transclusion — Logseq/Roam-style.
 
+use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 
 /// A block reference linking one document block to another.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -13,10 +15,15 @@ pub struct BlockReference {
     pub reference_type: String,
 }
 
+static BLOCK_REF_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[\[!([a-f0-9-]+)\]\]").unwrap());
+
+static EMBED_REF_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[\[!([a-f0-9-]+)(?:#([a-f0-9-]+))?\]\]").unwrap());
+
 /// Expand block references in document content.
 pub fn expand_block_references(content: &str, documents: &std::collections::HashMap<String, String>) -> String {
-    let re = regex::Regex::new(r"\[\[!([a-f0-9-]+)\]\]").unwrap();
-    re.replace_all(content, |caps: &regex::Captures| {
+    BLOCK_REF_RE.replace_all(content, |caps: &regex::Captures| {
         let doc_id = &caps[1];
         documents.get(doc_id).cloned().unwrap_or_else(|| format!("[[!{}]]", doc_id))
     }).to_string()
@@ -25,8 +32,7 @@ pub fn expand_block_references(content: &str, documents: &std::collections::Hash
 /// Parse embedded block references from content.
 pub fn parse_embed_references(content: &str) -> Vec<BlockReference> {
     let mut refs = Vec::new();
-    let re = regex::Regex::new(r"\[\[!([a-f0-9-]+)(?:#([a-f0-9-]+))?\]\]").unwrap();
-    for caps in re.captures_iter(content) {
+    for caps in EMBED_REF_RE.captures_iter(content) {
         refs.push(BlockReference {
             id: uuid::Uuid::new_v4().to_string(),
             source_document_id: String::new(),

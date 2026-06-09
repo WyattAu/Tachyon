@@ -2,6 +2,11 @@
 // Handles HTML template rendering and minification
 
 use anyhow::Result;
+use regex::Regex;
+use std::sync::LazyLock;
+
+static MINIFY_WHITESPACE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r">\s+<").unwrap());
 
 /// Render HTML with template data
 /// 
@@ -42,12 +47,7 @@ pub(crate) fn render_html(template: &str, data: &serde_json::Value) -> Result<St
 /// # Returns
 /// The minified HTML string
 pub(crate) fn minify_html(html: &str) -> String {
-    // Remove whitespace between tags
-    let result = regex::Regex::new(r">\s+<")
-        .map(|re| re.replace_all(html, "><"))
-        .unwrap_or_else(|_| html.to_string());
-    
-    result
+    MINIFY_WHITESPACE_RE.replace_all(html, "><").to_string()
 }
 
 #[cfg(test)]

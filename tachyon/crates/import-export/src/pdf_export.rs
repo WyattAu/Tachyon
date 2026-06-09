@@ -198,13 +198,12 @@ impl PdfExporter {
         decorator.set_margins(Margins::all(Mm::from(config.margin)));
         doc.set_page_decorator(decorator);
 
-        let mut paragraphs: Vec<&str> = Vec::new();
+        let mut paragraphs: Vec<String> = Vec::new();
         let mut current = String::new();
         for line in plain.lines() {
             if line.trim().is_empty() {
                 if !current.trim().is_empty() {
-                    let leaked = Box::leak(current.clone().into_boxed_str());
-                    paragraphs.push(leaked);
+                    paragraphs.push(std::mem::take(&mut current));
                 }
                 current.clear();
             } else {
@@ -215,12 +214,11 @@ impl PdfExporter {
             }
         }
         if !current.trim().is_empty() {
-            let leaked = Box::leak(current.clone().into_boxed_str());
-            paragraphs.push(leaked);
+            paragraphs.push(current);
         }
 
         for para in &paragraphs {
-            doc.push(elements::Paragraph::new(*para));
+            doc.push(elements::Paragraph::new(para.as_str()));
         }
 
         let mut buf = Cursor::new(Vec::new());
