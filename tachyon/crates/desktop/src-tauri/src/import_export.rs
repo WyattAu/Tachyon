@@ -70,6 +70,7 @@ pub struct MarkdownZipImportRequest {
 
 /// Export request for Markdown ZIP.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct MarkdownZipExportRequest {
     /// Output file path for the ZIP
     pub output_path: String,
@@ -255,6 +256,7 @@ pub async fn import_markdown_zip(
 
 /// Export documents as a Markdown ZIP archive.
 #[tauri::command]
+#[allow(dead_code)]
 pub async fn export_markdown_zip(
     request: MarkdownZipExportRequest,
     app: AppHandle,
