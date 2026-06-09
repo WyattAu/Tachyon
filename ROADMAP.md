@@ -44,7 +44,7 @@ Tachyon occupies an underserved niche: a **self-hostable, Rust-native, collabora
 
 ## Current State Summary
 
-### Test Suite (1,706 tests, all passing)
+### Test Suite (1,452 lib tests + 806 server tests = 2,258 total, all passing)
 
 | Crate | Tests | Status |
 |-------|-------|--------|
@@ -742,3 +742,8 @@ Phases 5-12 can partially overlap once Phase 4 is complete. Phases 5 and 6 are t
 | 2026-06-01 | Post-audit: fix ZAP scan networking (host.docker.internal) | Linux runners do not resolve host.docker.internal; use localhost |
 | 2026-06-01 | Post-audit: fix CLI test env var isolation | DATABASE_URL leaked between parallel tests via missing cleanup |
 | 2026-05-26 | Switch CI to pgvector/pgvector:pg16 | Migration requires CREATE EXTENSION vector |
+| 2026-06-09 | Full-stack audit: clippy zero-warnings, fmt clean, 1,452 tests pass | Fixed 50+ clippy issues across 8 crates (editor, server, desktop, frontend). Collapsible-if, manual_range_contains, needless_borrows, clone_on_copy, redundant_closure, single_match, type_complexity, manual_clamp. Registered export_markdown_zip IPC command (was dead code). Fixed integration test API mismatch (CrdtConnectionManager::new requires SharedBroadcastBus). |
+| 2026-06-09 | Frontend critical fixes: orphaned CSS, focus outline, reduced-motion | index.html lines 326-331 were orphaned CSS properties outside any selector block (editor had no base font/color/line-height). Removed style:outline="none" from native_editor.rs (WCAG 2.4.7 violation). Added prefers-reduced-motion media query. |
+| 2026-06-09 | CI/CD pipeline fixes: SHA pins, tool version pins, e2e PostgreSQL | Fixed invalid 41-char SHA for softprops/action-gh-release (used @v2 tag). Pinned cargo-audit/cargo-deny versions in security-new.yml. Converted e2e.yml manual docker run to services: block. Scoped release-drafter.yml permissions. Added timeout-minutes to docs.yml jobs. Clarified duplicate benchmark jobs. |
+| 2026-06-09 | Pre-commit hook enhanced: emoji detection, broader clippy coverage | 6 gates: fmt, clippy (all non-heavy crates), test, secrets, artifacts, emoji scan in .md files. |
+| 2026-06-09 | Duplication audit: markdown rendering identified as consolidation target | pulldown-cmark wikilink/heading/option logic duplicated between frontend and renderer crates. Recommended extraction of tachyon-markdown-core. CRDT Yrs utilities identified for tachyon-crdt-utils. All other duplication is intentional (offline-first architecture). |
