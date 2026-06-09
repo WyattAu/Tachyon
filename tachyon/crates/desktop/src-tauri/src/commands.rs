@@ -1407,8 +1407,8 @@ pub async fn api_proxy(
     body: Option<serde_json::Value>,
     headers: Option<std::collections::HashMap<String, String>>,
 ) -> Result<ApiResponse, String> {
-    let base_url = std::env::var("TACHYON_API_URL")
-        .unwrap_or_else(|_| "http://localhost:8080".to_string());
+    let base_url =
+        std::env::var("TACHYON_API_URL").unwrap_or_else(|_| "http://localhost:8080".to_string());
     let method_str = method.clone();
     let url = format!("{}{}", base_url.trim_end_matches('/'), path);
 
@@ -1431,6 +1431,21 @@ pub async fn api_proxy(
     let mut req = client.request(method, &url);
 
     // Apply custom headers
+    if let Some(hdrs) = &headers {
+        if let Some(auth) = hdrs
+            .get("authorization")
+            .or_else(|| hdrs.get("Authorization"))
+        {
+            tracing::info!(
+                "[api_proxy] auth header present: {}...",
+                &auth[..auth.len().min(20)]
+            );
+        } else {
+            tracing::warn!("[api_proxy] NO auth header in request to {}", url);
+        }
+    } else {
+        tracing::warn!("[api_proxy] NO headers at all for request to {}", url);
+    }
     if let Some(hdrs) = headers {
         for (key, value) in hdrs {
             // Skip content-length (reqwest sets it automatically)
@@ -1449,7 +1464,10 @@ pub async fn api_proxy(
         req = req.json(&b);
     }
 
-    let response = req.send().await.map_err(|e| format!("Request failed: {}", e))?;
+    let response = req
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
     let status = response.status().as_u16();
 
     tracing::info!("[api_proxy] {} {} → HTTP {}", method_str, url, status);
@@ -1467,16 +1485,456 @@ pub async fn api_proxy(
         .text()
         .await
         .map_err(|e| format!("Failed to read response body: {}", e))?;
-    let body_val = body_text
-        .parse::<serde_json::Value>()
-        .unwrap_or_else(|_| {
-            tracing::warn!("[api_proxy] response body not JSON ({} bytes), first 200: {}", body_text.len(), &body_text[..body_text.len().min(200)]);
-            serde_json::Value::String(body_text.clone())
-        });
+    let body_val = body_text.parse::<serde_json::Value>().unwrap_or_else(|_| {
+        tracing::warn!(
+            "[api_proxy] response body not JSON ({} bytes), first 200: {}",
+            body_text.len(),
+            &body_text[..body_text.len().min(200)]
+        );
+        serde_json::Value::String(body_text.clone())
+    });
 
     Ok(ApiResponse {
         status,
         body: body_val,
         headers: resp_headers,
     })
+}
+
+/// Write a debug file to /tmp/. Called from WebView JS via Tauri IPC.
+/// Filename should be just the basename (e.g. "tachyon-debug-page-1.html").
+#[tauri::command]
+pub fn write_debug_file(filename: String, content: String) -> Result<String, String> {
+    use std::io::Write;
+    let path = std::path::Path::new("/tmp").join(&filename);
+    let mut f = std::fs::File::create(&path).map_err(|e| format!("create failed: {}", e))?;
+    f.write_all(content.as_bytes())
+        .map_err(|e| format!("write failed: {}", e))?;
+    tracing::info!("[debug] wrote {} ({} bytes)", path.display(), content.len());
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// Capture current page DOM to a numbered file. Called from JS via invoke().
+#[tauri::command]
+pub fn capture_dom_file(route: String, html: String, filename: String) -> Result<String, String> {
+    let path = format!("/tmp/tachyon-traverse-{}", filename);
+    let meta = serde_json::json!({
+        "route": route,
+        "url": html.chars().take(0).count(), // placeholder
+        "captured_at": chrono::Utc::now().to_rfc3339(),
+        "html_length": html.len(),
+    });
+    let content = format!(
+        "<!-- {} -->\n{}",
+        serde_json::to_string_pretty(&meta).unwrap_or_default(),
+        html
+    );
+    std::fs::write(&path, content).map_err(|e| format!("write failed: {}", e))?;
+    tracing::info!("[traverse] captured {} ({} bytes)", path, html.len());
+    Ok(path)
+}
+
+/// Save a base64-encoded PNG screenshot to /tmp/tachyon-screenshots/.
+#[tauri::command]
+pub fn save_screenshot(
+    route: String,
+    base64_data: String,
+    width: u32,
+    height: u32,
+) -> Result<String, String> {
+    use base64::Engine;
+    let dir = "/tmp/tachyon-screenshots";
+    std::fs::create_dir_all(dir).map_err(|e| format!("mkdir failed: {}", e))?;
+
+    // Strip data URL prefix if present
+    let raw = if let Some(stripped) = base64_data.strip_prefix("data:image/png;base64,") {
+        stripped
+    } else {
+        &base64_data
+    };
+
+    let png_bytes = base64::engine::general_purpose::STANDARD
+        .decode(raw)
+        .map_err(|e| format!("base64 decode failed: {}", e))?;
+
+    let safe_route = route.replace('/', "_").trim_start_matches('_').to_string();
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let filename = format!("{}_{}_{}x{}.png", timestamp, safe_route, width, height);
+    let path = format!("{}/{}", dir, filename);
+
+    std::fs::write(&path, &png_bytes).map_err(|e| format!("write failed: {}", e))?;
+    tracing::info!(
+        "[screenshot] saved {} ({} bytes, {}x{})",
+        path,
+        png_bytes.len(),
+        width,
+        height
+    );
+    Ok(path)
+}
+
+/// Capture a real PNG screenshot of the webview content using WebKitGTK's snapshot API.
+/// On Linux, uses webkit_web_view_get_snapshot to render to a cairo surface → PNG.
+/// Also captures a layout-enhanced DOM dump HTML alongside for text verification.
+#[tauri::command]
+pub fn capture_screenshot(
+    webview_window: tauri::WebviewWindow,
+    route: String,
+) -> Result<String, String> {
+    #[cfg(target_os = "linux")]
+    {
+        let dir = "/tmp/tachyon-screenshots";
+        std::fs::create_dir_all(dir).map_err(|e| format!("mkdir failed: {}", e))?;
+
+        let safe_route = route.replace('/', "_").trim_start_matches('_').to_string();
+        let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+        let filename = format!("{}_{}.png", timestamp, safe_route);
+        let path = format!("{}/{}", dir, filename);
+
+        let path_clone = path.clone();
+        let route_clone = route.clone();
+        let safe_route_clone = safe_route.clone();
+
+        // 1) Screenshot via ImageMagick import (X11 window capture)
+        //    This captures the actual composited window pixels, unlike
+        //    webkit_web_view_get_snapshot which fires before paint completes.
+        {
+            use std::process::Command;
+
+            // Force a repaint and wait for the GTK paint cycle to complete
+            let _ = webview_window.with_webview(|webview| {
+                use gtk::prelude::WidgetExt;
+                webview.inner().queue_draw();
+            });
+            // Give the compositor time to finish painting
+            std::thread::sleep(std::time::Duration::from_millis(500));
+
+            // Find the X11 window ID via xdotool
+            let output = Command::new("xdotool")
+                .args(["search", "--name", "Tachyon"])
+                .output();
+            match output {
+                Ok(out) if out.status.success() => {
+                    let wids = String::from_utf8_lossy(&out.stdout);
+                    if let Some(wid) = wids.lines().next() {
+                        let wid = wid.trim();
+                        tracing::info!(
+                            "[screenshot] capturing X11 window {} for route {}",
+                            wid,
+                            route_clone
+                        );
+                        let result = Command::new("import")
+                            .args(["-window", wid, &path_clone])
+                            .output();
+                        match result {
+                            Ok(out) if out.status.success() => {
+                                let size =
+                                    std::fs::metadata(&path_clone).map(|m| m.len()).unwrap_or(0);
+                                tracing::info!(
+                                    "[screenshot] PNG saved {} ({} bytes) for route {}",
+                                    path_clone,
+                                    size,
+                                    route_clone
+                                );
+                            }
+                            Ok(out) => {
+                                let stderr = String::from_utf8_lossy(&out.stderr);
+                                tracing::error!("[screenshot] import failed: {}", stderr);
+                            }
+                            Err(e) => {
+                                tracing::error!("[screenshot] import exec failed: {}", e);
+                            }
+                        }
+                    } else {
+                        tracing::error!("[screenshot] no window found for 'Tachyon'");
+                    }
+                }
+                _ => {
+                    tracing::error!(
+                        "[screenshot] xdotool search failed, falling back to webkit snapshot"
+                    );
+                    // Fallback: try webkit snapshot
+                    let _ = webview_window.with_webview(|webview| {
+                        use webkit2gtk::{SnapshotOptions, SnapshotRegion, WebViewExt};
+                        let webview = webview.inner();
+                        webview.snapshot(
+                            SnapshotRegion::FullDocument,
+                            SnapshotOptions::NONE,
+                            gtk::gio::Cancellable::NONE,
+                            move |result| {
+                                if let Ok(surface) = result {
+                                    if let Ok(mut file) = std::fs::File::create(&path_clone) {
+                                        let _ = surface.write_to_png(&mut file);
+                                    }
+                                }
+                            },
+                        );
+                    });
+                }
+            }
+        }
+
+        // 2) Also capture a layout-enhanced DOM dump for text/content verification
+        let wv = webview_window.clone();
+        let _ = wv.eval(format!(
+            r#"(function() {{
+                function li(el, d) {{
+                    if (!el || d > 3 || el.children.length > 100) return '';
+                    var cs = window.getComputedStyle(el);
+                    var r = el.getBoundingClientRect();
+                    var tag = el.tagName.toLowerCase();
+                    var cls = el.className ? '.' + el.className.toString().split(/\s+/).slice(0,3).join('.') : '';
+                    var id = el.id ? '#' + el.id : '';
+                    var txt = '';
+                    if (d <= 2 && el.childNodes) {{
+                        for (var i = 0; i < Math.min(el.childNodes.length, 5); i++) {{
+                            var n = el.childNodes[i];
+                            if (n.nodeType === 3 && n.textContent.trim()) {{
+                                txt = n.textContent.trim().substring(0, 60);
+                                break;
+                            }}
+                        }}
+                    }}
+                    var info = '  '.repeat(d) + tag + id + cls +
+                        ' h=' + r.height.toFixed(0) + ' w=' + r.width.toFixed(0) +
+                        ' t=' + r.top.toFixed(0) + ' l=' + r.left.toFixed(0) +
+                        ' bg=' + cs.backgroundColor + (txt ? ' "' + txt + '"' : '') + '\n';
+                    var children = '';
+                    for (var i = 0; i < Math.min(el.children.length, 40); i++) {{
+                        children += li(el.children[i], d + 1);
+                    }}
+                    return info + children;
+                }}
+                var main = document.getElementById('main-content') || document.body;
+                var dump = 'Layout: ' + location.href + '\nViewport: ' + window.innerWidth + 'x' + window.innerHeight + '\n\n' +
+                    li(main, 0) + '\n--- DOM (50k) ---\n' + main.innerHTML.substring(0, 50000);
+                window.__TAURI__.core.invoke('capture_dom_file', {{
+                    route: '{}',
+                    html: '<pre style="font-size:11px;white-space:pre-wrap;word-break:break-all;">' +
+                        dump.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre>',
+                    filename: 'stepSCREENSHOT_{}_layout.html'
+                }}).catch(function(e) {{ console.error('layout dump failed: ' + e); }});
+            }})();"#,
+            route, safe_route_clone
+        ));
+
+        Ok(format!("Screenshot capturing: {}", path))
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        Ok("Screenshot not supported on this platform".to_string())
+    }
+}
+
+/// Traverse a list of SPA routes from Rust, capturing DOM at each step.
+/// Special route "EDITOR_TEST": navigates to edit page, types chars, tests Backspace/Enter.
+/// Runs in a background thread to avoid blocking the IPC handler.
+#[tauri::command]
+pub fn traverse_routes(
+    webview_window: tauri::WebviewWindow,
+    routes: Vec<String>,
+) -> Result<String, String> {
+    let wv = webview_window.clone();
+    let routes_clone = routes.clone();
+
+    std::thread::spawn(move || {
+        tracing::info!("[traverse] starting, {} routes", routes_clone.len());
+
+        for (idx, route) in routes_clone.iter().enumerate() {
+            let step = idx + 1;
+
+            // ---- EDITOR_TEST: navigate + type + backspace + enter ----
+            if route == "EDITOR_TEST" {
+                tracing::info!("[traverse] step {}: EDITOR_TEST", step);
+                let edit_route = "/documents/019ea201-d2cc-74a3-ad2f-4bdcbe3b4f83/edit";
+
+                // Navigate to editor page via pushState + popstate
+                let _ = wv.eval(format!(
+                    r#"(function() {{
+                    console.log('NAV: pushState to {}');
+                    history.pushState(null, '', '{}');
+                    window.dispatchEvent(new PopStateEvent('popstate', {{ state: null }}));
+                }})();"#,
+                    edit_route, edit_route
+                ));
+                // Wait for Leptos router to process popstate + document to load
+                std::thread::sleep(std::time::Duration::from_millis(6000));
+
+                // Check if navigation worked
+                let _ = wv.eval(
+                    r#"(function() {
+                    console.log('NAV_CHECK: url=' + location.href +
+                        ' editor=' + !!document.querySelector('.native-editor') +
+                        ' bridge=' + !!window.__tachyonEditor);
+                })();"#,
+                );
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+
+                // Type text via the JS bridge
+                let _ = wv.eval(
+                    r#"(function() {
+                    if (window.__tachyonEditor) {
+                        try {
+                            window.__tachyonEditor.insertText('Hello from traverse!');
+                            console.log('BRIDGE: insertText OK, content=' +
+                                window.__tachyonEditor.content().substring(0, 50));
+                        } catch(e) {
+                            console.log('BRIDGE: insertText ERR: ' + e.message);
+                        }
+                    } else {
+                        console.log('BRIDGE: __tachyonEditor not found');
+                    }
+                })();"#,
+                );
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+
+                // Type more text
+                let _ = wv.eval(
+                    r#"(function() {
+                    if (window.__tachyonEditor) {
+                        window.__tachyonEditor.insertText(' Second line.');
+                        console.log('BRIDGE: second insertText OK');
+                    }
+                })();"#,
+                );
+                std::thread::sleep(std::time::Duration::from_millis(500));
+
+                // Test cursor movement (up/down with desired_col)
+                let _ = wv.eval(
+                    r#"(function() {
+                    if (window.__tachyonEditor) {
+                        // Move to end of line 1 (the long line)
+                        window.__tachyonEditor.key('End');
+                        // Move down then up — should return to same column
+                        window.__tachyonEditor.key('ArrowDown');
+                        window.__tachyonEditor.key('ArrowUp');
+                        // Move to start
+                        window.__tachyonEditor.key('Home');
+                        console.log('BRIDGE: cursor movement OK');
+                    }
+                })();"#,
+                );
+                std::thread::sleep(std::time::Duration::from_millis(500));
+
+                // Final layout capture
+                let _ = wv.eval(r#"(function() {
+                    function li(el, label) {
+                        if (!el) return label + ': MISSING';
+                        var cs = window.getComputedStyle(el);
+                        var r = el.getBoundingClientRect();
+                        return label + ': h=' + r.height.toFixed(0) + ' w=' + r.width.toFixed(0) +
+                            ' display=' + cs.display + ' overflow=' + cs.overflow + ' position=' + cs.position;
+                    }
+                    var main = document.getElementById('main-content');
+                    var editor = document.querySelector('.native-editor');
+                    var container = editor ? editor.parentElement : null;
+                    var spacer = document.querySelector('.editor-scroll-spacer');
+                    var lines = document.querySelectorAll('.editor-line');
+                    var la = [];
+                    lines.forEach(function(l, i) { if (i < 5) la.push(li(l, 'line'+i)); });
+
+                    var info = li(document.body, 'body') + '\n' +
+                        li(document.getElementById('app'), '#app') + '\n' +
+                        li(main, '#main-content') + '\n' +
+                        li(container, 'editor-parent') + '\n' +
+                        li(editor, '.native-editor') + '\n' +
+                        li(spacer, 'spacer') + '\n' +
+                        la.join('\n') + '\n' +
+                        'total_lines=' + lines.length + '\n' +
+                        'url=' + location.href + '\n' +
+                        'bridge=' + !!window.__tachyonEditor + '\n' +
+                        'content="' + (window.__tachyonEditor ? window.__tachyonEditor.content() : 'NO') + '"';
+
+                    window.__TAURI__.core.invoke('capture_dom_file', {
+                        route: 'editor/layout', html: '<pre>' + info + '</pre>', filename: 'stepEDITOR_layout.html'
+                    });
+                    console.log('FINAL:\n' + info);
+                })();"#);
+                // Wait for DOM capture
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+
+                // Open find panel and type search query for visual verification
+                let _ = wv.eval(
+                    r#"(function() {
+                    if (window.__tachyonEditor) {
+                        // Use the bridge to open find panel and search
+                        window.__tachyonEditor.toggleFind();
+                        setTimeout(function() {
+                            window.__tachyonEditor.find('Hello');
+                            console.log('FIND: opened find panel, searched for "Hello"');
+                        }, 300);
+                    } else {
+                        console.log('FIND: editor bridge not available');
+                    }
+                })();"#,
+                );
+                std::thread::sleep(std::time::Duration::from_millis(1500));
+
+                // Take screenshot directly from Rust thread (not via JS invoke)
+                // This avoids the main-thread queue contention
+                {
+                    use std::process::Command;
+                    let dir = "/tmp/tachyon-screenshots";
+                    let _ = std::fs::create_dir_all(dir);
+                    let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+                    let path = format!("{}/{}_editor_layout.png", dir, ts);
+
+                    if let Ok(out) = Command::new("xdotool")
+                        .args(["search", "--name", "Tachyon"])
+                        .output()
+                    {
+                        if out.status.success() {
+                            if let Some(wid) = String::from_utf8_lossy(&out.stdout).lines().next() {
+                                let _ = Command::new("import")
+                                    .args(["-window", wid.trim(), &path])
+                                    .output();
+                                tracing::info!(
+                                    "[screenshot] PNG saved {} for route editor/layout",
+                                    path
+                                );
+                            }
+                        }
+                    }
+                }
+
+                tracing::info!("[traverse] step {} done: editor test complete", step);
+                continue;
+            }
+
+            // ---- Normal route navigation ----
+            tracing::info!("[traverse] step {}: navigating to {}", step, route);
+            let _ = wv.eval(format!(
+                r#"(function() {{ history.pushState(null, '', '{}'); window.dispatchEvent(new PopStateEvent('popstate')); }})();"#,
+                route
+            ));
+            std::thread::sleep(std::time::Duration::from_millis(6000));
+
+            let fname = format!(
+                "step{}_{}.html",
+                step,
+                route.replace('/', "_").trim_start_matches('_')
+            );
+            let _ = wv.eval(format!(
+                r#"(function() {{
+                    var m = document.getElementById('main-content') || document.body;
+                    window.__TAURI__.core.invoke('capture_dom_file', {{
+                        route: '{}', html: m ? m.innerHTML.substring(0,50000) : 'NO_ELEMENT', filename: '{}'
+                    }}).catch(function(e) {{ console.error('capture failed: ' + e); }});
+                    window.__TAURI__.core.invoke('capture_screenshot', {{ route: '{}' }})
+                        .catch(function(e) {{ console.log('screenshot failed: ' + e); }});
+                }})();"#,
+                route, fname, route
+            ));
+            std::thread::sleep(std::time::Duration::from_millis(3000));
+
+            let fpath = format!("/tmp/tachyon-traverse-{}", fname);
+            let size = std::fs::metadata(&fpath).map(|m| m.len()).unwrap_or(0);
+            tracing::info!("[traverse] step {} done: {} bytes → {}", step, size, fpath);
+        }
+
+        tracing::info!("[traverse] all done");
+    });
+
+    Ok(format!("Traversing {} routes in background.", routes.len()))
 }

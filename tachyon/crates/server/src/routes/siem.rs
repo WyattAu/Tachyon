@@ -1,5 +1,6 @@
 //! SIEM (Security Information and Event Management) audit export endpoints.
 
+use crate::audit::AuditLogger;
 use crate::error::ServerError;
 use crate::middleware::AuthContext;
 use axum::{
@@ -14,6 +15,7 @@ use tachyon_database::DatabasePool;
 #[derive(Clone)]
 pub struct SiemState {
     pub pool: DatabasePool,
+    pub audit_logger: AuditLogger,
 }
 
 #[derive(Debug, Deserialize)]
@@ -23,6 +25,14 @@ pub struct ExportQuery {
     pub to: Option<String>,
     pub severity: Option<String>,
     pub event_type: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AuditListQuery {
+    pub page: Option<u32>,
+    pub page_size: Option<u32>,
+    pub action: Option<String>,
+    pub actor_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -44,6 +54,14 @@ pub struct AuditStatsResponse {
     pub events_by_type: serde_json::Value,
     pub period_from: Option<String>,
     pub period_to: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AuditListResponse {
+    pub entries: serde_json::Value,
+    pub total: usize,
+    pub page: u32,
+    pub page_size: u32,
 }
 
 fn to_cef(event: &AuditEventExport) -> String {
@@ -72,6 +90,62 @@ fn to_leef(event: &AuditEventExport) -> String {
         event.user_id.as_deref().unwrap_or("-"),
         event.description,
     )
+}
+
+/// Paginated audit log list endpoint.
+/// Reads from in-memory ring buffer, supports filtering by action and actor.
+pub async fn list_audit_logs(
+    State(state): State<SiemState>,
+    Extension(auth): Extension<AuthContext>,
+    Query(params): Query<AuditListQuery>,
+) -> Result<Json<serde_json::Value>, ServerError> {
+    if !auth.is_admin() {
+        return Err(ServerError::forbidden(
+            "Admin access required for audit logs",
+        ));
+    }
+
+    let page = params.page.unwrap_or(1).max(1);
+    let page_size = params.page_size.unwrap_or(20).clamp(1, 100);
+    let action = params.action.as_deref();
+    let actor_id = params.actor_id.as_deref();
+
+    let events = state.audit_logger.get_events(None).await; // None = use default limit (10000)
+
+    // Apply filters
+    let filtered: Vec<_> = events
+        .into_iter()
+        .filter(|e| {
+            if let Some(a) = action
+                && e.action != a
+            {
+                return false;
+            }
+            if let Some(aid) = actor_id
+                && e.actor_id.as_deref() != Some(aid)
+            {
+                return false;
+            }
+            true
+        })
+        .collect();
+
+    let total = filtered.len();
+    let skip = ((page - 1) * page_size) as usize;
+    let entries: Vec<_> = filtered
+        .into_iter()
+        .skip(skip)
+        .take(page_size as usize)
+        .collect();
+
+    let response = serde_json::json!({
+        "entries": entries,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    });
+
+    Ok(Json(response))
 }
 
 pub async fn export_audit_events(
@@ -144,6 +218,7 @@ pub async fn get_audit_stats(
 
 pub fn create_siem_router() -> axum::Router<SiemState> {
     axum::Router::new()
+        .route("/admin/audit", axum::routing::get(list_audit_logs))
         .route(
             "/admin/audit/export",
             axum::routing::get(export_audit_events),

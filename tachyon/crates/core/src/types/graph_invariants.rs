@@ -1,6 +1,4 @@
-#![cfg(test)]
-
-// Graph Invariants — Property-Based Tests
+// Graph Invariants -- Property-Based Tests
 //
 // These tests verify that all graph structures maintain critical invariants
 // under arbitrary inputs. Each test is named after the invariant it protects.

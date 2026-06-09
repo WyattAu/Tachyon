@@ -7,6 +7,7 @@ use tokio_tungstenite::tungstenite::Message;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, GetString, ReadTxn, Text, Transact};
 
+use tachyon_server::broadcast_bus::SharedBroadcastBus;
 use tachyon_server::websocket::{CrdtConnectionManager, handle_crdt_websocket_upgrade};
 
 // ============================================================================
@@ -20,7 +21,8 @@ fn skip_crdt_tests() -> bool {
 }
 
 async fn start_crdt_test_server() -> (std::net::SocketAddr, CrdtConnectionManager) {
-    let manager = CrdtConnectionManager::new();
+    let bus = std::sync::Arc::new(SharedBroadcastBus::new(256));
+    let manager = CrdtConnectionManager::new(bus);
     let app = Router::new()
         .route("/ws/crdt/{room}", get(handle_crdt_websocket_upgrade))
         .with_state(manager.clone());
@@ -391,18 +393,22 @@ async fn test_crdt_convergence_with_concurrent_edits() {
 
     // Apply the received updates
     if let Some(data) = received_by_2
-        && data.len() > 1 && data[0] == 0
-            && let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
-                let mut txn = doc2.transact_mut();
-                txn.apply_update(update).unwrap();
-            }
+        && data.len() > 1
+        && data[0] == 0
+        && let Ok(update) = yrs::Update::decode_v1(&data[1..])
+    {
+        let mut txn = doc2.transact_mut();
+        txn.apply_update(update).unwrap();
+    }
 
     if let Some(data) = received_by_1
-        && data.len() > 1 && data[0] == 0
-            && let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
-                let mut txn = doc1.transact_mut();
-                txn.apply_update(update).unwrap();
-            }
+        && data.len() > 1
+        && data[0] == 0
+        && let Ok(update) = yrs::Update::decode_v1(&data[1..])
+    {
+        let mut txn = doc1.transact_mut();
+        txn.apply_update(update).unwrap();
+    }
 
     // Both docs must converge to the same content
     let text1_final = {
@@ -811,18 +817,22 @@ async fn test_concurrent_edits_with_delta_sync() {
     assert!(received_by_1.is_some(), "Client 1 should receive update");
 
     if let Some(data) = received_by_2
-        && data.len() > 1 && data[0] == 0
-            && let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
-                let mut txn = doc2.transact_mut();
-                txn.apply_update(update).unwrap();
-            }
+        && data.len() > 1
+        && data[0] == 0
+        && let Ok(update) = yrs::Update::decode_v1(&data[1..])
+    {
+        let mut txn = doc2.transact_mut();
+        txn.apply_update(update).unwrap();
+    }
 
     if let Some(data) = received_by_1
-        && data.len() > 1 && data[0] == 0
-            && let Ok(update) = yrs::Update::decode_v1(&data[1..]) {
-                let mut txn = doc1.transact_mut();
-                txn.apply_update(update).unwrap();
-            }
+        && data.len() > 1
+        && data[0] == 0
+        && let Ok(update) = yrs::Update::decode_v1(&data[1..])
+    {
+        let mut txn = doc1.transact_mut();
+        txn.apply_update(update).unwrap();
+    }
 
     let text1_final = text1.get_string(&doc1.transact());
     let text2_final = text2.get_string(&doc2.transact());

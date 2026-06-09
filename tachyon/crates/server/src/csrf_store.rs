@@ -57,7 +57,14 @@ pub trait CsrfStore: Send + Sync {
 /// Suitable for development and single-instance deployments.
 #[derive(Clone)]
 pub struct MemoryCsrfStore {
-pub(crate) entries: Arc<DashMap<String, (String, Option<String>, chrono::DateTime<Utc>)>>,
+    #[allow(clippy::type_complexity)]
+    pub(crate) entries: Arc<DashMap<String, (String, Option<String>, chrono::DateTime<Utc>)>>,
+}
+
+impl Default for MemoryCsrfStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MemoryCsrfStore {
@@ -99,7 +106,11 @@ impl CsrfStore for MemoryCsrfStore {
         self.entries.retain(|key, (_, _, created_at)| {
             let elapsed = now.signed_duration_since(*created_at).num_seconds();
             if elapsed > CSRF_TTL_SECS {
-                debug!(key = key, elapsed_secs = elapsed, "Cleaning up expired in-memory CSRF state");
+                debug!(
+                    key = key,
+                    elapsed_secs = elapsed,
+                    "Cleaning up expired in-memory CSRF state"
+                );
                 false
             } else {
                 true
@@ -155,7 +166,10 @@ impl CsrfStore for RedisCsrfStore {
         };
 
         // SET key value EX ttl (atomic set with expiry)
-        match conn.set_ex::<_, _, ()>(&redis_key, &value, CSRF_TTL_SECS as u64).await {
+        match conn
+            .set_ex::<_, _, ()>(&redis_key, &value, CSRF_TTL_SECS as u64)
+            .await
+        {
             Ok(_) => true,
             Err(e) => {
                 warn!("Redis SET error (csrf store): {}", e);
@@ -318,7 +332,10 @@ mod tests {
         let json = serde_json::to_string(&entry).unwrap();
         let deserialized: CsrfEntry = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.nonce, "abc123");
-        assert_eq!(deserialized.redirect_url, Some("https://example.com".to_string()));
+        assert_eq!(
+            deserialized.redirect_url,
+            Some("https://example.com".to_string())
+        );
     }
 
     #[test]
@@ -338,16 +355,14 @@ mod tests {
         let store = MemoryCsrfStore::new();
 
         // Insert an expired entry
-        store
-            .entries
-            .insert(
-                "expired-key".to_string(),
-                (
-                    "nonce".to_string(),
-                    None,
-                    Utc::now() - chrono::Duration::seconds(CSRF_TTL_SECS + 100),
-                ),
-            );
+        store.entries.insert(
+            "expired-key".to_string(),
+            (
+                "nonce".to_string(),
+                None,
+                Utc::now() - chrono::Duration::seconds(CSRF_TTL_SECS + 100),
+            ),
+        );
 
         // Insert a fresh entry
         store.store("fresh-key", "nonce-fresh", None).await;

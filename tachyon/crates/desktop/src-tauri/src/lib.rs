@@ -57,24 +57,19 @@ fn fix_webkit_dmabuf_on_nvidia() {
     if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
         let has_nvidia = std::fs::read_dir("/dev/dri/by-path")
             .map(|entries| {
-                entries.flatten().any(|e| {
-                    e.file_name()
-                        .to_string_lossy()
-                        .contains("nvidia")
-                })
+                entries
+                    .flatten()
+                    .any(|e| e.file_name().to_string_lossy().contains("nvidia"))
             })
             .unwrap_or(false);
 
-        let has_nvidia_proc =
-            std::path::Path::new("/proc/driver/nvidia").exists();
+        let has_nvidia_proc = std::path::Path::new("/proc/driver/nvidia").exists();
 
         if has_nvidia || has_nvidia_proc {
             unsafe {
                 std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
             }
-            tracing::info!(
-                "NVIDIA GPU detected — set WEBKIT_DISABLE_DMABUF_RENDERER=1"
-            );
+            tracing::info!("NVIDIA GPU detected — set WEBKIT_DISABLE_DMABUF_RENDERER=1");
         }
     }
 
@@ -85,7 +80,7 @@ fn fix_webkit_dmabuf_on_nvidia() {
     if std::env::var("GDK_BACKEND").is_err() {
         // Only force X11 if we're actually on a Wayland session
         let wayland_display = std::env::var("WAYLAND_DISPLAY").is_ok();
-        let x11_display = std::env::var("DISPLAY").is_ok();
+        let _x11_display = std::env::var("DISPLAY").is_ok();
 
         if wayland_display {
             unsafe {
@@ -113,6 +108,135 @@ fn fix_webkit_dmabuf_on_nvidia() {
 //   TACHYON_DEBUG=1 ./tachyon-desktop-app   # hooks + DOM snapshots
 //   TACHYON_DEBUG=2 ./tachyon-desktop-app   # hooks + DOM + automated traversal
 // ---------------------------------------------------------------------------
+
+/// Ctrl+Shift+D: captures full page HTML + metadata and saves to /tmp/tachyon-debug-page-N.html
+/// Each press increments the counter. Uses Tauri IPC to write files directly.
+static DEBUG_CAPTURE_HTML_JS: &str = r##"
+(function() {
+    if (window.__tachyonCaptureBound) return;
+    window.__tachyonCaptureBound = true;
+    window.__tachyonCaptureCount = (window.__tachyonCaptureCount || 0);
+
+    document.addEventListener('keydown', function(e) {
+        if (!e.ctrlKey || !e.shiftKey || e.key !== 'D') return;
+        e.preventDefault();
+
+        window.__tachyonCaptureCount++;
+        var n = window.__tachyonCaptureCount;
+        var main = document.getElementById('main-content') || document.getElementById('app') || document.body;
+        var fullHtml = document.documentElement.outerHTML;
+        var mainHtml = main.innerHTML;
+        var url = location.href;
+        var title = document.title;
+        var ts = new Date().toISOString();
+
+        // Collect visible text summary
+        var texts = [];
+        var els = document.querySelectorAll('h1,h2,h3,p,span,div,button,a,input,textarea,select');
+        for (var i = 0; i < els.length && texts.length < 100; i++) {
+            var t = els[i].textContent.trim();
+            if (t.length > 0 && t.length < 200) texts.push(els[i].tagName + ': ' + t);
+        }
+
+        // Collect computed style info for key elements
+        var styleInfo = [];
+        var keyEls = document.querySelectorAll('#app, #main-content, .editor-container, [role="tabpanel"]');
+        for (var si = 0; si < keyEls.length; si++) {
+            var el = keyEls[si];
+            var cs = window.getComputedStyle(el);
+            styleInfo.push({
+                id: el.id || el.className.substring(0, 50),
+                display: cs.display,
+                height: cs.height,
+                width: cs.width,
+                visibility: cs.visibility,
+                opacity: cs.opacity
+            });
+        }
+
+        var consoleErrors = window.__tachyonConsoleErrors || [];
+        var payload = {
+            url: url,
+            title: title,
+            timestamp: ts,
+            html_length: mainHtml.length,
+            full_html_length: fullHtml.length,
+            element_count: document.querySelectorAll('*').length,
+            visible_text: texts,
+            style_info: styleInfo,
+            console_errors: consoleErrors.slice(-20)
+        };
+
+        // Use Tauri IPC to save files
+        var invoke = null;
+        try {
+            invoke = window.__TAURI__.core && window.__TAURI__.core.invoke
+                ? window.__TAURI__.core.invoke.bind(window.__TAURI__.core)
+                : (window.__TAURI__.invoke ? window.__TAURI__.invoke.bind(window.__TAURI__) : null);
+        } catch(ex) {}
+
+        if (invoke) {
+            invoke('write_debug_file', {
+                filename: 'tachyon-debug-page-' + n + '.html',
+                content: '<!-- Capture #' + n + ' at ' + ts + ' -->\n' + fullHtml
+            }).catch(function() {});
+
+            invoke('write_debug_file', {
+                filename: 'tachyon-debug-page-' + n + '-main.html',
+                content: '<!-- Main content capture #' + n + ' at ' + ts + ' -->\n' + mainHtml
+            }).catch(function() {});
+
+            invoke('write_debug_file', {
+                filename: 'tachyon-debug-page-' + n + '.meta.json',
+                content: JSON.stringify(payload, null, 2)
+            }).catch(function() {});
+
+            // Also send to debug_report for quick log viewing
+            invoke('debug_report', { data: JSON.stringify([
+                { type: 'page_capture', captureNum: n, url: url, timestamp: ts, htmlLength: mainHtml.length, fullHtmlLength: fullHtml.length, elementCount: payload.element_count, visibleText: texts.slice(0,30), styleInfo: styleInfo }
+            ]) }).catch(function() {});
+        }
+
+        // Visual feedback
+        var badge = document.createElement('div');
+        badge.textContent = 'Captured #' + n + ' (' + Math.round(fullHtml.length/1024) + 'KB full, ' + Math.round(mainHtml.length/1024) + 'KB main)';
+        badge.style.cssText = 'position:fixed;top:10px;right:10px;z-index:999999;background:#2563eb;color:white;padding:8px 16px;border-radius:4px;font-size:14px;font-family:sans-serif;';
+        document.body.appendChild(badge);
+        setTimeout(function() { badge.remove(); }, 3000);
+    });
+
+    // Ctrl+Shift+T: traverse all SPA routes and capture DOM
+    document.addEventListener('keydown', function(e) {
+        if (!e.ctrlKey || !e.shiftKey || e.key !== 'T') return;
+        e.preventDefault();
+        var badge = document.createElement('div');
+        badge.textContent = 'Traversing... (check stderr)';
+        badge.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:orange;color:#000;padding:8px 16px;font-size:14px;';
+        document.body.appendChild(badge);
+        window.__TAURI__.core.invoke('traverse_routes', {
+            routes: ['/', '/documents', '/documents/019e99be-39dc-70e1-9007-27c23d519f5d', '/documents/019e99be-39dc-70e1-9007-27c23d519f5d/edit', '/dashboard', '/settings']
+        }).then(function(msg) {
+            badge.textContent = 'Traverse started! ' + msg;
+            setTimeout(function() { badge.remove(); }, 5000);
+        }).catch(function(err) {
+            badge.textContent = 'Traverse error: ' + err;
+            badge.style.background = 'red';
+            console.error('TRAVERSE ERROR:', err);
+            setTimeout(function() { badge.remove(); }, 5000);
+        });
+    });
+
+    // Capture console errors for debug reports
+    var _origErr = console.error;
+    console.error = function() {
+        var args = Array.prototype.slice.call(arguments).join(' ');
+        if (!window.__tachyonConsoleErrors) window.__tachyonConsoleErrors = [];
+        window.__tachyonConsoleErrors.push(args);
+        if (window.__tachyonConsoleErrors.length > 50) window.__tachyonConsoleErrors.shift();
+        if (_origErr) _origErr.apply(console, arguments);
+    };
+})();
+"##;
 
 /// Core debug hooks: captures all JS errors, unhandled rejections, network
 /// failures, console output, DOM state, computed styles, and resources.
@@ -991,9 +1115,101 @@ static DEBUG_TRAVERSE_JS: &str = r##"
 })();
 "##;
 
+/// Parse CLI arguments into a structured form.
+/// Supports: --server-url URL, --username USER, --password PASS
+/// Falls back to environment variables: TACHYON_SERVER_URL, TACHYON_USERNAME, TACHYON_PASSWORD
+struct CliArgs {
+    server_url: Option<String>,
+    username: Option<String>,
+    password: Option<String>,
+}
+
+fn parse_cli_args() -> CliArgs {
+    let args: Vec<String> = std::env::args().collect();
+    let mut cli = CliArgs {
+        server_url: None,
+        username: None,
+        password: None,
+    };
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--server-url" | "--server" => {
+                if i + 1 < args.len() {
+                    cli.server_url = Some(args[i + 1].clone());
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+            }
+            "--username" | "-u" => {
+                if i + 1 < args.len() {
+                    cli.username = Some(args[i + 1].clone());
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+            }
+            "--password" | "-p" => {
+                if i + 1 < args.len() {
+                    cli.password = Some(args[i + 1].clone());
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+            }
+            _ => i += 1,
+        }
+    }
+    // Fall back to environment variables
+    if cli.server_url.is_none() {
+        cli.server_url = std::env::var("TACHYON_SERVER_URL").ok();
+    }
+    if cli.username.is_none() {
+        cli.username = std::env::var("TACHYON_USERNAME").ok();
+    }
+    if cli.password.is_none() {
+        cli.password = std::env::var("TACHYON_PASSWORD").ok();
+    }
+    cli
+}
+
 /// Run the Tauri application
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Install panic hook to capture all panics (including GTK main thread)
+    std::panic::set_hook(Box::new(|info| {
+        let thread = std::thread::current();
+        let thread_name = thread.name().unwrap_or("<unnamed>");
+        let payload = info.payload();
+        let msg = if let Some(s) = payload.downcast_ref::<&str>() {
+            s.to_string()
+        } else if let Some(s) = payload.downcast_ref::<String>() {
+            s.clone()
+        } else {
+            "Box<dyn Any>".to_string()
+        };
+        let location = info
+            .location()
+            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+            .unwrap_or_default();
+        eprintln!("PANIC [{}]: {} at {}", thread_name, msg, location);
+        // Also try to write to the stderr log file
+        let _ = std::fs::create_dir_all("/tmp");
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/tachyon-desktop-stderr.log")
+            .and_then(|mut f| {
+                use std::io::Write;
+                writeln!(
+                    f,
+                    "[PANIC] thread={} msg={} at {}",
+                    thread_name, msg, location
+                )
+            });
+    }));
+
     fix_webkit_dmabuf_on_nvidia();
 
     // Check TACHYON_DEBUG env var for debug mode:
@@ -1005,12 +1221,29 @@ pub fn run() {
         .and_then(|v| v.parse::<u8>().ok())
         .unwrap_or(0);
 
+    // Parse CLI arguments for auto-login credentials
+    let cli = parse_cli_args();
+    if cli.server_url.is_some() || cli.username.is_some() {
+        tracing::info!(
+            "CLI args: server_url={}, username={}",
+            cli.server_url.as_deref().unwrap_or("(none)"),
+            cli.username.as_deref().unwrap_or("(none)"),
+        );
+    }
+
     if debug_level >= 1 {
-        tracing::info!("TACHYON_DEBUG={} — debug hooks enabled, traversal={}", debug_level, debug_level >= 2);
+        tracing::info!(
+            "TACHYON_DEBUG={} — debug hooks enabled, traversal={}",
+            debug_level,
+            debug_level >= 2
+        );
     }
 
     let embedded_server = Arc::new(Mutex::new(EmbeddedServerState::default()));
     let dl = debug_level;
+    let cli_server = cli.server_url.clone();
+    let cli_username = cli.username.clone();
+    let cli_password = cli.password.clone();
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -1054,6 +1287,7 @@ pub fn run() {
             commands::show_info_dialog,
             import_export::import_obsidian_vault,
             import_export::import_markdown_zip,
+            import_export::export_markdown_zip,
             import_export::export_html,
             commands::get_embedded_server_port,
             commands::start_embedded_server,
@@ -1082,6 +1316,10 @@ pub fn run() {
             commands::open_path,
             // Debug
             commands::debug_report,
+            commands::capture_dom_file,
+            commands::save_screenshot,
+            commands::capture_screenshot,
+            commands::traverse_routes,
             // API proxy (bypasses WebView CORS for tauri:// origin)
             commands::api_proxy,
         ]);
@@ -1120,6 +1358,7 @@ pub fn run() {
             commands::show_info_dialog,
             import_export::import_obsidian_vault,
             import_export::import_markdown_zip,
+            import_export::export_markdown_zip,
             import_export::export_html,
             commands::get_embedded_server_port,
             commands::start_embedded_server,
@@ -1146,8 +1385,13 @@ pub fn run() {
             commands::is_directory_watched,
             commands::get_app_data_dir,
             commands::open_path,
+            // Screenshots
+            commands::save_screenshot,
+            commands::capture_screenshot,
             // API proxy (bypasses WebView CORS for tauri:// origin)
             commands::api_proxy,
+            // Debug: write files to /tmp/ from WebView
+            commands::write_debug_file,
         ]);
     }
 
@@ -1164,12 +1408,36 @@ pub fn run() {
         // The frontend reads window.tachyonApiUrl and appends API paths like /documents.
         // The proxy command reads TACHYON_API_URL and appends the full path (including /api/v1).
         // So these two URLs differ: frontend base includes /api/v1, proxy base does not.
-        let proxy_base = std::env::var("TACHYON_API_URL")
-            .unwrap_or_else(|_| "http://localhost:8080".to_string());
+        let proxy_base = cli_server
+            .as_deref()
+            .map(|s| s.trim_end_matches('/').to_string())
+            .unwrap_or_else(|| {
+                std::env::var("TACHYON_API_URL")
+                    .unwrap_or_else(|_| "http://localhost:8080".to_string())
+            });
         let frontend_api_url = format!("{}/api/v1", proxy_base.trim_end_matches('/'));
-        if let Err(e) = webview.eval(&format!("window.tachyonApiUrl = \"{}\";", frontend_api_url)) {
-            tracing::warn!("[setup] failed to set API URL: {}", e);
+         if let Err(e) = webview.eval(format!("window.tachyonApiUrl = \"{}\";", frontend_api_url)) {
+             tracing::warn!("[setup] failed to set API URL: {}", e);
+         }
+
+        // Inject CLI credentials so the frontend can auto-login.
+        // window.tachyonCredentials = { username: "...", password: "..." }
+        // The frontend login page reads this and auto-submits if present.
+        if cli_username.is_some() || cli_password.is_some() {
+            let user = cli_username.as_deref().unwrap_or("");
+            let pass = cli_password.as_deref().unwrap_or("");
+            let json = serde_json::json!({
+                "username": user,
+                "password": pass,
+            });
+            if let Err(e) = webview.eval(format!(
+                "window.tachyonCredentials = {};",
+                serde_json::to_string(&json).unwrap_or_default()
+            )) {
+                tracing::warn!("[setup] failed to inject credentials: {}", e);
+            }
         }
+
 
         // Debug hooks and traversal (only when TACHYON_DEBUG >= 1)
         if debug_level >= 1 {
@@ -1185,6 +1453,52 @@ pub fn run() {
                 }
             }
 
+            // Ctrl+Shift+D: capture full page HTML to /tmp/tachyon-debug-page.html
+            // Always injected (even without TACHYON_DEBUG) for manual debugging.
+            if let Err(e) = webview.eval(DEBUG_CAPTURE_HTML_JS) {
+                tracing::warn!("[debug] capture_html eval failed: {}", e);
+            }
+
+            // Auto-login + auto-traverse: login first, then invoke traverse_routes (pure JS, no OS input)
+            if let Err(e) = webview.eval(r##"
+            (function() {
+                var FLAG = 'tachyon_traverse_done';
+                if (sessionStorage.getItem(FLAG)) return;
+                sessionStorage.setItem(FLAG, '1');
+
+                 function doLogin() {
+                     return new Promise(function(resolve) {
+                         // Always login fresh — server may have restarted with new JWT secret
+                         localStorage.removeItem('tachyon_token');
+                         fetch('http://127.0.0.1:8080/api/v1/auth/login', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({username: 'admin', password: 'admin123'})
+                        }).then(function(r) { return r.json(); }).then(function(data) {
+                            if (data.success && data.access_token) {
+                                localStorage.setItem('tachyon_token', data.access_token);
+                                console.log('AUTO: login ok');
+                            }
+                            resolve();
+                        }).catch(function(e) { console.log('AUTO: login err: ' + e); resolve(); });
+                    });
+                }
+
+                doLogin().then(function() {
+                    console.log('AUTO: invoking traverse_routes');
+                    window.__TAURI__.core.invoke('traverse_routes', {
+                        routes: ['/', 'EDITOR_TEST', '/documents', '/dashboard', '/settings', '/spaces', '/graph', '/search', '/catalog', '/tags', '/teams', '/templates', '/plugins', '/ssg', '/billing', '/audit', '/admin/roles', '/local', '/servers']
+                    }).then(function(msg) {
+                        console.log('TRAVERSE: ' + msg);
+                    }).catch(function(err) {
+                        console.error('TRAVERSE ERR: ' + err);
+                    });
+                });
+            })();
+            "##) {
+                tracing::warn!("[debug] auto-login eval failed: {}", e);
+            }
+
             if dl >= 2 {
                 if let Err(e) = webview.eval(DEBUG_TRAVERSE_JS) {
                     tracing::error!("[debug] traversal eval failed: {}", e);
@@ -1196,30 +1510,31 @@ pub fn run() {
         }
     });
 
-    builder.setup(move |app| {
-        // Initialize state manager
-        let state_manager = DesktopStateManager::new(DesktopState::default());
-        let sync_manager = AutoSyncManager::new(SyncConfig::default());
-        let app_state = DesktopAppState::new();
+    builder
+        .setup(move |app| {
+            // Initialize state manager
+            let state_manager = DesktopStateManager::new(DesktopState::default());
+            let sync_manager = AutoSyncManager::new(SyncConfig::default());
+            let app_state = DesktopAppState::new();
 
-        app.manage(state_manager);
-        app.manage(sync_manager);
-        app.manage(app_state);
+            app.manage(state_manager);
+            app.manage(sync_manager);
+            app.manage(app_state);
 
-        // NOTE: We do NOT redirect to http://localhost:8080 because that
-        // strips the Tauri IPC bridge (__TAURI__) from the page. All Tauri
-        // commands (api_proxy, debug_report, events) require tauri:// origin.
-        // Instead, the frontend uses the api_proxy Tauri command to make HTTP
-        // requests from Rust, bypassing WebView CORS restrictions.
+            // NOTE: We do NOT redirect to http://localhost:8080 because that
+            // strips the Tauri IPC bridge (__TAURI__) from the page. All Tauri
+            // commands (api_proxy, debug_report, events) require tauri:// origin.
+            // Instead, the frontend uses the api_proxy Tauri command to make HTTP
+            // requests from Rust, bypassing WebView CORS restrictions.
 
-        // Set up system tray (only when tray-icon feature is enabled)
-        #[cfg(feature = "tray-icon")]
-        if let Err(e) = tray::setup_tray(app) {
-            tracing::warn!("Failed to set up system tray: {}", e);
-        }
+            // Set up system tray (only when tray-icon feature is enabled)
+            #[cfg(feature = "tray-icon")]
+            if let Err(e) = tray::setup_tray(app) {
+                tracing::warn!("Failed to set up system tray: {}", e);
+            }
 
-        Ok(())
-    })
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

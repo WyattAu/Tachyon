@@ -22,6 +22,7 @@ use crate::error::ServerError;
 const SAML_ASSERTION_PREFIX: &str = "saml:assertion:";
 
 /// TTL for assertion ID entries (matches assertion lifetime + buffer).
+#[allow(dead_code)]
 const SAML_ASSERTION_TTL_SECS: i64 = 900; // 15 minutes
 
 #[derive(Clone)]
@@ -127,7 +128,10 @@ pub async fn saml_acs(
 
     // 2. XML-DSig verification (structural check -- full crypto verification requires xmldsig-rs)
     if let Some(ref cert_ref) = parsed.signature_cert_reference {
-        debug!(certificate_reference = cert_ref, "SAML response signature reference");
+        debug!(
+            certificate_reference = cert_ref,
+            "SAML response signature reference"
+        );
     } else {
         warn!("SAML assertion has Signature element but no X509Certificate reference");
         // Still proceed -- some IdPs use different certificate distribution methods
@@ -137,34 +141,38 @@ pub async fn saml_acs(
     if let Some(ref conditions) = parsed.conditions {
         let now = chrono::Utc::now();
 
-        if let Some(not_before) = conditions.not_before {
-            if now < not_before {
-                warn!(
-                    "SAML assertion rejected: not yet valid (NotBefore={:?}, now={:?})",
-                    not_before, now
-                );
-                return Err(ServerError::bad_request(
-                    "SAML assertion is not yet valid (NotBefore condition not met)",
-                ));
-            }
+        if let Some(not_before) = conditions.not_before
+            && now < not_before
+        {
+            warn!(
+                "SAML assertion rejected: not yet valid (NotBefore={:?}, now={:?})",
+                not_before, now
+            );
+            return Err(ServerError::bad_request(
+                "SAML assertion is not yet valid (NotBefore condition not met)",
+            ));
         }
 
-        if let Some(not_on_or_after) = conditions.not_on_or_after {
-            if now >= not_on_or_after {
-                warn!(
-                    "SAML assertion rejected: expired (NotOnOrAfter={:?}, now={:?})",
-                    not_on_or_after, now
-                );
-                return Err(ServerError::bad_request(
-                    "SAML assertion has expired (NotOnOrAfter condition exceeded)",
-                ));
-            }
+        if let Some(not_on_or_after) = conditions.not_on_or_after
+            && now >= not_on_or_after
+        {
+            warn!(
+                "SAML assertion rejected: expired (NotOnOrAfter={:?}, now={:?})",
+                not_on_or_after, now
+            );
+            return Err(ServerError::bad_request(
+                "SAML assertion has expired (NotOnOrAfter condition exceeded)",
+            ));
         }
 
         // 4. Validate Audience restriction
         if !conditions.audience_restrictions.is_empty() {
             let entity_id = &state.config.entity_id;
-            if !conditions.audience_restrictions.iter().any(|a| a == entity_id) {
+            if !conditions
+                .audience_restrictions
+                .iter()
+                .any(|a| a == entity_id)
+            {
                 warn!(
                     "SAML assertion rejected: audience mismatch (expected={}, got={:?})",
                     entity_id, conditions.audience_restrictions
@@ -179,7 +187,12 @@ pub async fn saml_acs(
     // 5. Replay protection: reject duplicate Assertion IDs
     if let Some(ref assertion_id) = parsed.assertion_id {
         let replay_key = format!("{}{}", SAML_ASSERTION_PREFIX, assertion_id);
-        if state.csrf_store.retrieve_and_consume(&replay_key).await.is_some() {
+        if state
+            .csrf_store
+            .retrieve_and_consume(&replay_key)
+            .await
+            .is_some()
+        {
             warn!(
                 assertion_id = assertion_id,
                 "SAML assertion rejected: replay attack detected (duplicate AssertionID)"
@@ -189,7 +202,10 @@ pub async fn saml_acs(
             ));
         }
         // Store the AssertionID to prevent future replays
-        state.csrf_store.store(&replay_key, assertion_id, None).await;
+        state
+            .csrf_store
+            .store(&replay_key, assertion_id, None)
+            .await;
     }
 
     debug!(
@@ -199,7 +215,13 @@ pub async fn saml_acs(
         "Parsed SAML assertion"
     );
 
-    upsert_saml_user(&state.pool, &parsed.name_id, &parsed.issuer, &parsed.attributes).await?;
+    upsert_saml_user(
+        &state.pool,
+        &parsed.name_id,
+        &parsed.issuer,
+        &parsed.attributes,
+    )
+    .await?;
 
     let now = jsonwebtoken::get_current_timestamp();
     let exp = now + 3600;
@@ -260,20 +282,18 @@ struct ParsedConditions {
 
 fn decode_saml_response(encoded: &str) -> Result<Vec<u8>, ServerError> {
     let engine = base64::engine::general_purpose::STANDARD;
-    engine
-        .decode(encoded.trim())
-        .map_err(|e| ServerError::bad_request(format!("Failed to base64-decode SAMLResponse: {}", e)))
+    engine.decode(encoded.trim()).map_err(|e| {
+        ServerError::bad_request(format!("Failed to base64-decode SAMLResponse: {}", e))
+    })
 }
 
 fn inflate_if_needed(data: &[u8]) -> Result<String, ServerError> {
     if data.len() >= 2 && (data[0] == 0x78) {
         let mut decoder = flate2::read::DeflateDecoder::new(data);
         let mut decompressed = String::new();
-        decoder
-            .read_to_string(&mut decompressed)
-            .map_err(|e| {
-                ServerError::bad_request(format!("Failed to inflate SAMLResponse: {}", e))
-            })?;
+        decoder.read_to_string(&mut decompressed).map_err(|e| {
+            ServerError::bad_request(format!("Failed to inflate SAMLResponse: {}", e))
+        })?;
         Ok(decompressed)
     } else {
         String::from_utf8(data.to_vec()).map_err(|e| {
@@ -283,8 +303,8 @@ fn inflate_if_needed(data: &[u8]) -> Result<String, ServerError> {
 }
 
 fn parse_saml_response(xml_str: &str) -> Result<ParsedSamlResponse, ServerError> {
-    use quick_xml::events::Event;
     use quick_xml::Reader;
+    use quick_xml::events::Event;
 
     let mut reader = Reader::from_str(xml_str);
     reader.config_mut().trim_text(true);

@@ -12,6 +12,24 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, GetString, ReadTxn, Text, TextRef, Transact, Update};
 
+/// A foldable region in the document.
+/// `start_line` is the line with the fold marker (e.g., heading).
+/// `end_line` is the last line of the foldable content.
+#[derive(Debug, Clone, Default)]
+pub struct FoldRegion {
+    pub start_line: usize,
+    pub end_line: usize,
+    pub kind: FoldKind,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum FoldKind {
+    #[default]
+    Heading,
+    CodeBlock,
+    Blockquote,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WikilinkState {
     pub active: bool,
@@ -21,10 +39,17 @@ pub struct WikilinkState {
 }
 
 fn current_timestamp() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0)
+    #[cfg(target_arch = "wasm32")]
+    {
+        js_sys::Date::now() as u64
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0)
+    }
 }
 
 pub struct Editor {
@@ -43,6 +68,18 @@ pub struct Editor {
     language: Language,
     scroll_offset_lines: usize,
     scroll_offset_cols: usize,
+    /// Desired column for vertical navigation (like Neovim's curswant).
+    /// Preserved across up/down moves so cursor doesn't jump to col 0 on shorter lines.
+    /// Cleared on horizontal movement or mouse click.
+    desired_col: Option<usize>,
+    /// Timestamp of last edit for undo grouping.
+    /// Consecutive character inserts within UNDO_GROUP_MS are merged into one undo step.
+    #[allow(dead_code)]
+    last_edit_timestamp: f64,
+    /// Fold regions — computed from content, cached until content changes.
+    fold_regions: Vec<FoldRegion>,
+    /// Set of line indices that are currently folded (collapsed).
+    folded_lines: std::collections::HashSet<usize>,
     /// CRDT document — source of truth for collaboration sync.
     /// All local edits are mirrored here; remote updates rebuild the rope.
     crdt_doc: Doc,
@@ -84,10 +121,14 @@ impl Editor {
             language: Language::Markdown,
             scroll_offset_lines: 0,
             scroll_offset_cols: 0,
+            desired_col: None,
             crdt_doc,
             crdt_text,
             last_encoded_state,
             offline_queue: OfflineSyncQueue::new(),
+            last_edit_timestamp: 0.0,
+            fold_regions: Vec::new(),
+            folded_lines: std::collections::HashSet::new(),
         }
     }
 
@@ -161,6 +202,118 @@ impl Editor {
         self.cursors.len()
     }
 
+    /// Add a cursor at the next occurrence of the current selection text.
+    /// If no selection, uses the word at cursor.
+    /// Returns true if a new cursor was added.
+    pub fn add_cursor_at_next_occurrence(&mut self) -> bool {
+        let sel_text = self.get_selected_text();
+        let query = if let Some(ref s) = sel_text {
+            if !s.is_empty() && !s.contains('\n') {
+                s.clone()
+            } else {
+                return false;
+            }
+        } else {
+            // Get word at cursor
+            let cursor = self.active_cursor();
+            let line = self.buffer.line(cursor.line);
+            let chars: Vec<char> = line.chars().collect();
+            let mut start = cursor.col.min(chars.len());
+            while start > 0
+                && chars
+                    .get(start - 1)
+                    .map(|c| {
+                        !c.is_whitespace()
+                            && !matches!(
+                                c,
+                                '(' | ')'
+                                    | '['
+                                    | ']'
+                                    | '{'
+                                    | '}'
+                                    | ','
+                                    | ';'
+                                    | ':'
+                                    | '.'
+                                    | '"'
+                                    | '\''
+                            )
+                    })
+                    .unwrap_or(false)
+            {
+                start -= 1;
+            }
+            let mut end = cursor.col.min(chars.len());
+            while end < chars.len()
+                && chars
+                    .get(end)
+                    .map(|c| {
+                        !c.is_whitespace()
+                            && !matches!(
+                                c,
+                                '(' | ')'
+                                    | '['
+                                    | ']'
+                                    | '{'
+                                    | '}'
+                                    | ','
+                                    | ';'
+                                    | ':'
+                                    | '.'
+                                    | '"'
+                                    | '\''
+                            )
+                    })
+                    .unwrap_or(false)
+            {
+                end += 1;
+            }
+            if end > start {
+                chars[start..end].iter().collect()
+            } else {
+                return false;
+            }
+        };
+
+        // Find next occurrence after current cursor
+        let current = self.active_cursor();
+        let results = self.search.find(&query, &self.buffer);
+        for result in &results {
+            let pos = Cursor::new(result.line, result.start_col);
+            // Skip if it's the same as current cursor position
+            if pos.line == current.line && pos.col == current.col {
+                continue;
+            }
+            // Skip if it's inside an existing selection
+            let mut inside_existing = false;
+            for (_c, s) in self.cursors.iter() {
+                if !s.is_empty() {
+                    let (start, end) = s.normalize();
+                    if pos.line >= start.line
+                        && pos.col >= start.col
+                        && pos.line <= end.line
+                        && pos.col <= end.col
+                    {
+                        inside_existing = true;
+                        break;
+                    }
+                }
+            }
+            if !inside_existing {
+                self.add_cursor(pos, Selection::caret(pos));
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Clear all cursors except the active one.
+    pub fn clear_extra_cursors(&mut self) {
+        let active = self.cursors.active().0;
+        let active_sel = self.cursors.active().1;
+        self.cursors.clear(active, active_sel);
+    }
+
     pub fn is_dirty(&self) -> bool {
         self.is_dirty
     }
@@ -200,6 +353,8 @@ impl Editor {
         self.is_dirty = false;
         self.current_search_results.clear();
         self.in_code_block = false;
+        self.folded_lines.clear();
+        self.compute_fold_regions();
         self.sync_rope_to_yrs();
     }
 
@@ -382,6 +537,28 @@ impl Editor {
     }
 
     fn push_transaction(&mut self, kind: EditKind, start: Cursor, end: Cursor) {
+        let is_char_insert = matches!(&kind, EditKind::Insert { text } if text.chars().count() == 1 && !text.contains('\n'));
+
+        // Undo grouping: merge consecutive single-character inserts
+        if is_char_insert
+            && let Some(last) = self.undo_stack.last_mut()
+            && matches!(&last.kind, EditKind::Insert { text } if text.chars().count() == 1 && !text.contains('\n'))
+            && last.end.line == start.line
+            && last.end.col == start.col
+        {
+            // Merge into previous transaction
+            if let EditKind::Insert {
+                text: ref mut prev_text,
+            } = last.kind
+            {
+                prev_text.push_str(&kind.text());
+            }
+            last.end = end;
+            self.is_dirty = true;
+            self.sync_rope_to_yrs();
+            return;
+        }
+
         let tx = Transaction {
             kind,
             start,
@@ -937,6 +1114,7 @@ impl Editor {
     }
 
     pub fn move_cursor_left(&mut self) {
+        self.desired_col = None;
         let selection = self.active_selection();
         if selection.kind != SelectionKind::Caret {
             let (start, _) = selection.normalize();
@@ -951,6 +1129,7 @@ impl Editor {
     }
 
     pub fn move_cursor_right(&mut self) {
+        self.desired_col = None;
         let selection = self.active_selection();
         if selection.kind != SelectionKind::Caret {
             let (_, end) = selection.normalize();
@@ -968,28 +1147,44 @@ impl Editor {
         let selection = self.active_selection();
         if selection.kind != SelectionKind::Caret {
             let (start, _) = selection.normalize();
+            self.desired_col = None;
             self.update_active_cursor(start);
             self.update_active_selection(Selection::caret(start));
             return;
         }
-        let mut cursor = self.active_cursor();
-        cursor.move_up(&self.buffer);
-        self.update_active_cursor(cursor);
-        self.update_active_selection(Selection::caret(cursor));
+        let cursor = self.active_cursor();
+        // Set desired_col on first vertical move (cleared on horizontal move)
+        if self.desired_col.is_none() {
+            self.desired_col = Some(cursor.col);
+        }
+        if cursor.line > 0 {
+            let target_col = self.desired_col.unwrap_or(cursor.col);
+            let new_col = target_col.min(self.buffer.line_len(cursor.line - 1));
+            self.update_active_cursor(Cursor::new(cursor.line - 1, new_col));
+            // Keep desired_col — NOT clamped, so next move uses original column
+            self.update_active_selection(Selection::caret(Cursor::new(cursor.line - 1, new_col)));
+        }
     }
 
     pub fn move_cursor_down(&mut self) {
         let selection = self.active_selection();
         if selection.kind != SelectionKind::Caret {
             let (_, end) = selection.normalize();
+            self.desired_col = None;
             self.update_active_cursor(end);
             self.update_active_selection(Selection::caret(end));
             return;
         }
-        let mut cursor = self.active_cursor();
-        cursor.move_down(&self.buffer);
-        self.update_active_cursor(cursor);
-        self.update_active_selection(Selection::caret(cursor));
+        let cursor = self.active_cursor();
+        if self.desired_col.is_none() {
+            self.desired_col = Some(cursor.col);
+        }
+        if cursor.line < self.buffer.len_lines() - 1 {
+            let target_col = self.desired_col.unwrap_or(cursor.col);
+            let new_col = target_col.min(self.buffer.line_len(cursor.line + 1));
+            self.update_active_cursor(Cursor::new(cursor.line + 1, new_col));
+            self.update_active_selection(Selection::caret(Cursor::new(cursor.line + 1, new_col)));
+        }
     }
 
     pub fn move_cursor_home(&mut self) {
@@ -1017,6 +1212,7 @@ impl Editor {
     }
 
     pub fn move_cursor_to(&mut self, line: usize, col: usize) {
+        self.desired_col = None;
         let cursor = Cursor::new(
             line.min(self.buffer.len_lines() - 1),
             col.min(self.buffer.line_len(line.min(self.buffer.len_lines() - 1))),
@@ -1037,10 +1233,118 @@ impl Editor {
         self.move_cursor_to(new_line, cursor.col);
     }
 
+    /// Move cursor left by one word (Ctrl+Left).
+    /// Uses VS Code-style word boundaries: stops at word separators.
+    pub fn move_cursor_word_left(&mut self) {
+        self.desired_col = None;
+        let mut cursor = self.active_cursor();
+        cursor.move_word_left(self.buffer());
+        self.update_active_cursor(cursor);
+        self.update_active_selection(Selection::caret(cursor));
+    }
+
+    /// Move cursor right by one word (Ctrl+Right).
+    /// Uses VS Code-style word boundaries: stops at word separators.
+    pub fn move_cursor_word_right(&mut self) {
+        self.desired_col = None;
+        let mut cursor = self.active_cursor();
+        cursor.move_word_right(self.buffer());
+        self.update_active_cursor(cursor);
+        self.update_active_selection(Selection::caret(cursor));
+    }
+
+    /// Join current line with the next line.
+    /// Collapses whitespace between them to a single space.
+    /// Cursor placed at the join point.
+    /// (Ctrl+J in VS Code / JetBrains)
+    pub fn join_lines(&mut self) {
+        let cursor = self.active_cursor();
+        let last_line = self.buffer.len_lines().saturating_sub(1);
+        if cursor.line >= last_line {
+            return;
+        }
+
+        let current_line = cursor.line;
+        let current_text = self.buffer.line(current_line).to_string();
+        let next_text = self.buffer.line(current_line + 1).to_string();
+
+        // Trim trailing whitespace from current line, trim leading from next
+        let current_trimmed = current_text.trim_end_matches(|c: char| c.is_whitespace());
+        let next_trimmed = next_text.trim_start_matches(|c: char| c.is_whitespace());
+
+        // Compute join column: end of trimmed current line
+        let join_col = current_trimmed.len();
+
+        // Replace both lines with joined content
+        let joined = if current_trimmed.is_empty() || next_trimmed.is_empty() {
+            format!("{}\n", next_trimmed)
+        } else {
+            format!("{} {}\n", current_trimmed, next_trimmed)
+        };
+
+        let end_of_next = self.buffer.line_len(current_line + 1);
+        self.buffer
+            .delete_range(current_line, 0, current_line + 1, end_of_next);
+        self.buffer.insert(current_line, 0, &joined);
+
+        let new_cursor = Cursor::new(current_line, join_col);
+        self.update_active_cursor(new_cursor);
+        self.update_active_selection(Selection::caret(new_cursor));
+        self.is_dirty = true;
+        self.sync_rope_to_yrs();
+    }
+
     pub fn find(&mut self, query: &str) -> Vec<SearchResult> {
         self.current_search_results = self.search.find(query, &self.buffer);
         self.current_search_index = 0;
+        // Move cursor to first match
+        if let Some(result) = self.current_search_results.first() {
+            let cursor = Cursor::new(result.line, result.start_col);
+            self.update_active_cursor(cursor);
+            self.update_active_selection(Selection::caret(cursor));
+        }
         self.current_search_results.clone()
+    }
+
+    pub fn search_match_count(&self) -> usize {
+        self.current_search_results.len()
+    }
+
+    pub fn search_current_index(&self) -> usize {
+        self.current_search_index
+    }
+
+    /// Get all search results for rendering highlights in the frontend.
+    /// Returns (line, start_col, end_col, is_current) for each match.
+    pub fn search_highlights(&self) -> Vec<(usize, usize, usize, bool)> {
+        self.current_search_results
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                (
+                    r.line,
+                    r.start_col,
+                    r.end_col,
+                    i == self.current_search_index,
+                )
+            })
+            .collect()
+    }
+
+    pub fn set_search_case_sensitive(&mut self, value: bool) {
+        self.search.set_case_sensitive(value);
+        // Re-run search with current query if results exist
+        if !self.current_search_results.is_empty() {
+            // Caller should re-call find() after changing options
+        }
+    }
+
+    pub fn set_search_whole_word(&mut self, value: bool) {
+        self.search.set_whole_word(value);
+    }
+
+    pub fn set_search_regex(&mut self, value: bool) {
+        self.search.set_regex(value);
     }
 
     pub fn find_next(&mut self) {
@@ -1141,6 +1445,201 @@ impl Editor {
         self.scroll_offset_cols = cols;
     }
 
+    /// Compute fold regions from document content.
+    /// Detects Markdown headings and fenced code blocks.
+    pub fn compute_fold_regions(&mut self) {
+        self.fold_regions.clear();
+        let total = self.buffer.len_lines();
+        let mut i = 0;
+        let mut in_code_block = false;
+        let mut code_start = 0;
+
+        while i < total {
+            let line = self.buffer.line(i);
+            let trimmed = line.trim_end_matches('\n');
+
+            // Fenced code blocks (```)
+            if trimmed.starts_with("```") {
+                if !in_code_block {
+                    in_code_block = true;
+                    code_start = i;
+                } else {
+                    self.fold_regions.push(FoldRegion {
+                        start_line: code_start,
+                        end_line: i,
+                        kind: FoldKind::CodeBlock,
+                    });
+                    in_code_block = false;
+                }
+                i += 1;
+                continue;
+            }
+
+            // Headings (# to ######)
+            if !in_code_block {
+                let hash_count = trimmed.chars().take_while(|&c| c == '#').count();
+                if (1..=6).contains(&hash_count)
+                    && trimmed.len() > hash_count
+                    && trimmed.as_bytes()[hash_count] == b' '
+                {
+                    // Find the end of this heading's section
+                    let mut end = i;
+                    while end + 1 < total {
+                        let next = self.buffer.line(end + 1);
+                        let next_trimmed = next.trim_end_matches('\n');
+                        // Stop at same-level or higher heading, or end of document
+                        let next_hash = next_trimmed.chars().take_while(|&c| c == '#').count();
+                        if next_hash >= 1
+                            && next_hash <= hash_count
+                            && next_trimmed.len() > next_hash
+                            && next_trimmed
+                                .as_bytes()
+                                .get(next_hash)
+                                .is_some_and(|&b| b == b' ')
+                        {
+                            break;
+                        }
+                        end += 1;
+                    }
+                    if end > i {
+                        self.fold_regions.push(FoldRegion {
+                            start_line: i,
+                            end_line: end,
+                            kind: FoldKind::Heading,
+                        });
+                    }
+                }
+            }
+
+            i += 1;
+        }
+    }
+
+    /// Get fold regions for the current view.
+    pub fn fold_regions(&self) -> &[FoldRegion] {
+        &self.fold_regions
+    }
+
+    /// Toggle fold on a line. Returns true if the line was folded, false if unfolded.
+    pub fn toggle_fold(&mut self, line: usize) -> bool {
+        // Check if this line starts a fold region
+        if let Some(region) = self.fold_regions.iter().find(|r| r.start_line == line) {
+            let end = region.end_line;
+            if self.folded_lines.contains(&line) {
+                // Unfold: remove this line and all lines in the region from folded set
+                self.folded_lines.remove(&line);
+                for l in (line + 1)..=end {
+                    self.folded_lines.remove(&l);
+                }
+                false
+            } else {
+                // Fold: add this line and all lines in the region to folded set
+                self.folded_lines.insert(line);
+                for l in (line + 1)..=end {
+                    self.folded_lines.insert(l);
+                }
+                true
+            }
+        } else {
+            false
+        }
+    }
+
+    /// Check if a line is folded (should be hidden in the view).
+    pub fn is_line_folded(&self, line: usize) -> bool {
+        self.folded_lines.contains(&line)
+    }
+
+    /// Get the number of visible (non-folded) lines.
+    pub fn visible_line_count(&self) -> usize {
+        let total = self.buffer.len_lines();
+        if self.folded_lines.is_empty() {
+            return total;
+        }
+        (0..total).filter(|&l| !self.is_line_folded(l)).count()
+    }
+
+    /// Map a logical line index to a visible line index (skipping folded lines).
+    pub fn logical_to_visible(&self, line: usize) -> usize {
+        if self.folded_lines.is_empty() {
+            return line;
+        }
+        (0..line).filter(|&l| !self.is_line_folded(l)).count()
+    }
+
+    /// Map a visible line index back to a logical line index.
+    pub fn visible_to_logical(&self, visible: usize) -> usize {
+        if self.folded_lines.is_empty() {
+            return visible;
+        }
+        let mut count = 0;
+        for l in 0..self.buffer.len_lines() {
+            if !self.is_line_folded(l) {
+                if count == visible {
+                    return l;
+                }
+                count += 1;
+            }
+        }
+        self.buffer.len_lines().saturating_sub(1)
+    }
+
+    /// Fold the region containing the cursor.
+    pub fn fold_at_cursor(&mut self) -> bool {
+        let cursor_line = self.active_cursor().line;
+        // Find the nearest fold region that contains or starts at this line
+        if let Some(region) = self.fold_regions.iter().find(|r| {
+            r.start_line == cursor_line || (cursor_line > r.start_line && cursor_line <= r.end_line)
+        }) {
+            let start = region.start_line;
+            let end = region.end_line;
+            if !self.folded_lines.contains(&start) {
+                self.folded_lines.insert(start);
+                for l in (start + 1)..=end {
+                    self.folded_lines.insert(l);
+                }
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Unfold the region containing the cursor.
+    pub fn unfold_at_cursor(&mut self) -> bool {
+        let cursor_line = self.active_cursor().line;
+        // Find the nearest fold region that starts at a folded line before or at cursor
+        if let Some(region) = self
+            .fold_regions
+            .iter()
+            .find(|r| self.folded_lines.contains(&r.start_line) && cursor_line >= r.start_line)
+        {
+            let start = region.start_line;
+            let end = region.end_line;
+            self.folded_lines.remove(&start);
+            for l in (start + 1)..=end {
+                self.folded_lines.remove(&l);
+            }
+            return true;
+        }
+        false
+    }
+
+    /// Fold all regions in the document.
+    pub fn fold_all(&mut self) {
+        self.compute_fold_regions();
+        for region in &self.fold_regions {
+            self.folded_lines.insert(region.start_line);
+            for l in (region.start_line + 1)..=region.end_line {
+                self.folded_lines.insert(l);
+            }
+        }
+    }
+
+    /// Unfold all regions in the document.
+    pub fn unfold_all(&mut self) {
+        self.folded_lines.clear();
+    }
+
     pub fn auto_indent_newline(&mut self) {
         let cursor = self.active_cursor();
         let line = cursor.line;
@@ -1159,18 +1658,156 @@ impl Editor {
     }
 
     pub fn auto_close_bracket(&mut self, bracket: char) {
-        let pairs = [('(', ')'), ('[', ']'), ('{', '}'), ('"', '"'), ('\'', '\'')];
+        let pairs: &[(char, char)] =
+            &[('(', ')'), ('[', ']'), ('{', '}'), ('"', '"'), ('\'', '\'')];
         let closing = pairs
             .iter()
             .find(|&&(open, _)| open == bracket)
             .map(|&(_, close)| close);
 
-        self.insert_text(&bracket.to_string());
-
         if let Some(close) = closing {
+            // Insert opening bracket via insert_text (respects undo, handles selection)
+            self.insert_text(&bracket.to_string());
+            // Insert closing bracket at cursor (between the pair)
             let cursor = self.active_cursor();
             self.buffer
                 .insert(cursor.line, cursor.col, &close.to_string());
+        } else {
+            self.insert_text(&bracket.to_string());
+        }
+    }
+
+    /// Find the matching bracket for the character at the given position.
+    /// Returns (matching_line, matching_col) if found, or None.
+    pub fn find_matching_bracket(&self, line: usize, col: usize) -> Option<(usize, usize)> {
+        let line_text = self.buffer.line(line).trim_end_matches('\n').to_string();
+        if col >= line_text.chars().count() {
+            return None;
+        }
+        let ch = line_text.chars().nth(col)?;
+        let (open, close) = match ch {
+            '(' | ')' => ('(', ')'),
+            '[' | ']' => ('[', ']'),
+            '{' | '}' => ('{', '}'),
+            _ => return None,
+        };
+
+        let is_open = ch == open;
+        let total_lines = self.buffer.len_lines();
+
+        if is_open {
+            // Search forward
+            let mut depth = 1usize;
+            let mut cur_line = line;
+            let mut cur_col = col + 1;
+            while cur_line < total_lines {
+                let lt = self
+                    .buffer
+                    .line(cur_line)
+                    .trim_end_matches('\n')
+                    .to_string();
+                let chars: Vec<char> = lt.chars().collect();
+                while cur_col < chars.len() {
+                    let c = chars[cur_col];
+                    if c == open {
+                        depth += 1;
+                    } else if c == close {
+                        depth -= 1;
+                        if depth == 0 {
+                            return Some((cur_line, cur_col));
+                        }
+                    }
+                    cur_col += 1;
+                }
+                cur_line += 1;
+                cur_col = 0;
+            }
+        } else {
+            // Search backward
+            let mut depth = 1usize;
+            let mut cur_line = line;
+            let mut cur_col = col.saturating_sub(1);
+            loop {
+                let lt = self
+                    .buffer
+                    .line(cur_line)
+                    .trim_end_matches('\n')
+                    .to_string();
+                let chars: Vec<char> = lt.chars().collect();
+                while cur_col < chars.len() {
+                    let c = chars[cur_col];
+                    if c == close {
+                        depth += 1;
+                    } else if c == open {
+                        depth -= 1;
+                        if depth == 0 {
+                            return Some((cur_line, cur_col));
+                        }
+                    }
+                    cur_col = cur_col.wrapping_sub(1);
+                }
+                if cur_line == 0 {
+                    break;
+                }
+                cur_line -= 1;
+                let prev_lt = self
+                    .buffer
+                    .line(cur_line)
+                    .trim_end_matches('\n')
+                    .to_string();
+                cur_col = prev_lt.chars().count().saturating_sub(1);
+            }
+        }
+        None
+    }
+
+    /// Get the currently selected text as a string, or None if no selection.
+    pub fn get_selected_text(&self) -> Option<String> {
+        let sel = self.active_selection();
+        if sel.is_empty() {
+            return None;
+        }
+        let (start, end) = sel.normalize();
+        if start.line == end.line {
+            let line_text = self
+                .buffer
+                .line(start.line)
+                .trim_end_matches('\n')
+                .to_string();
+            let chars: Vec<char> = line_text.chars().collect();
+            if start.col >= chars.len() || end.col > chars.len() {
+                return None;
+            }
+            Some(chars[start.col..end.col].iter().collect())
+        } else {
+            let mut result = String::new();
+            for line_idx in start.line..=end.line {
+                let lt = self
+                    .buffer
+                    .line(line_idx)
+                    .trim_end_matches('\n')
+                    .to_string();
+                let chars: Vec<char> = lt.chars().collect();
+                if line_idx == start.line && line_idx == end.line {
+                    if start.col < chars.len() && end.col <= chars.len() {
+                        result.push_str(&chars[start.col..end.col].iter().collect::<String>());
+                    }
+                } else if line_idx == start.line {
+                    if start.col < chars.len() {
+                        result.push_str(&chars[start.col..].iter().collect::<String>());
+                    }
+                } else if line_idx == end.line {
+                    if end.col <= chars.len() {
+                        result.push_str(&chars[..end.col].iter().collect::<String>());
+                    }
+                } else {
+                    result.push_str(&lt);
+                }
+                if line_idx < end.line {
+                    result.push('\n');
+                }
+            }
+            Some(result)
         }
     }
 

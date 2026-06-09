@@ -723,7 +723,10 @@ mod tests {
 
         // State should be consumed -- re-validation should fail
         let result = store.retrieve_and_consume("google").await;
-        assert!(result.is_none(), "State should be consumed after validation");
+        assert!(
+            result.is_none(),
+            "State should be consumed after validation"
+        );
     }
 
     #[tokio::test]
@@ -738,7 +741,10 @@ mod tests {
         let result = store.retrieve_and_consume("google").await;
         assert!(result.is_some());
         let (retrieved_nonce, _) = result.unwrap();
-        assert_ne!(retrieved_nonce, "wrong_nonce_value_here", "Should not match");
+        assert_ne!(
+            retrieved_nonce, "wrong_nonce_value_here",
+            "Should not match"
+        );
     }
 
     #[tokio::test]
@@ -757,14 +763,15 @@ mod tests {
         let nonce = hex::encode(bytes);
 
         // Use the internal DashMap directly to backdate
-        match &store {
-            crate::csrf_store::CsrfStoreType::Memory(mem) => {
-                mem.entries.insert(
-                    "google".to_string(),
-                    (nonce.clone(), None, chrono::Utc::now() - chrono::Duration::seconds(601)),
-                );
-            }
-            _ => {}
+        if let crate::csrf_store::CsrfStoreType::Memory(mem) = &store {
+            mem.entries.insert(
+                "google".to_string(),
+                (
+                    nonce.clone(),
+                    None,
+                    chrono::Utc::now() - chrono::Duration::seconds(601),
+                ),
+            );
         }
 
         // Should return None because expired
@@ -790,42 +797,37 @@ mod tests {
         // Retrieve both
         let g = store.retrieve_and_consume("google").await.unwrap();
         let h = store.retrieve_and_consume("github").await.unwrap();
-        assert_ne!(
-            g.0, h.0,
-            "Nonces should be different per provider"
-        );
+        assert_ne!(g.0, h.0, "Nonces should be different per provider");
     }
 
     #[tokio::test]
     async fn test_csrf_cleanup_removes_expired() {
         let store = make_test_csrf_store();
 
-        match &store {
-            crate::csrf_store::CsrfStoreType::Memory(mem) => {
-                // Insert expired state
-                mem.entries.insert(
-                    "google".to_string(),
-                    ("expired".to_string(), None, chrono::Utc::now() - chrono::Duration::seconds(601)),
-                );
-                // Insert fresh state
-                mem.entries.insert(
-                    "github".to_string(),
-                    ("fresh".to_string(), None, chrono::Utc::now()),
-                );
-                assert_eq!(mem.entries.len(), 2);
-            }
-            _ => {}
+        if let crate::csrf_store::CsrfStoreType::Memory(mem) = &store {
+            // Insert expired state
+            mem.entries.insert(
+                "google".to_string(),
+                (
+                    "expired".to_string(),
+                    None,
+                    chrono::Utc::now() - chrono::Duration::seconds(601),
+                ),
+            );
+            // Insert fresh state
+            mem.entries.insert(
+                "github".to_string(),
+                ("fresh".to_string(), None, chrono::Utc::now()),
+            );
+            assert_eq!(mem.entries.len(), 2);
         }
 
         store.cleanup_expired().await;
 
-        match &store {
-            crate::csrf_store::CsrfStoreType::Memory(mem) => {
-                assert_eq!(mem.entries.len(), 1, "Expired state should be cleaned up");
-                assert!(mem.entries.contains_key("github"));
-                assert!(!mem.entries.contains_key("google"));
-            }
-            _ => {}
+        if let crate::csrf_store::CsrfStoreType::Memory(mem) = &store {
+            assert_eq!(mem.entries.len(), 1, "Expired state should be cleaned up");
+            assert!(mem.entries.contains_key("github"));
+            assert!(!mem.entries.contains_key("google"));
         }
     }
 }
