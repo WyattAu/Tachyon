@@ -185,11 +185,10 @@ struct DocxParser {
 
 fn get_attr_val(e: &quick_xml::events::BytesStart, attr_name: &[u8]) -> Option<String> {
     for attr_result in e.attributes() {
-        if let Ok(attr) = attr_result {
-            if attr.key.local_name().as_ref() == attr_name {
+        if let Ok(attr) = attr_result
+            && attr.key.local_name().as_ref() == attr_name {
                 return Some(String::from_utf8_lossy(&attr.value).to_string());
             }
-        }
     }
     None
 }
@@ -220,10 +219,10 @@ impl DocxParser {
 
     fn process_event(&mut self, event: &Event) {
         match event {
-            Event::Start(ref e) => self.handle_start(e),
-            Event::Empty(ref e) => self.handle_empty(e),
-            Event::End(ref e) => self.handle_end(e),
-            Event::Text(ref e) => {
+            Event::Start(e) => self.handle_start(e),
+            Event::Empty(e) => self.handle_empty(e),
+            Event::End(e) => self.handle_end(e),
+            Event::Text(e) => {
                 if self.in_text {
                     let text = e.unescape().unwrap_or_default().to_string();
                     self.current_run.text.push_str(&text);
@@ -310,12 +309,11 @@ impl DocxParser {
                 }
             }
             b"numId" => {
-                if let Some(val) = get_attr_val(e, b"val") {
-                    if val != "0" {
+                if let Some(val) = get_attr_val(e, b"val")
+                    && val != "0" {
                         self.is_list_item = true;
                         self.num_id = val;
                     }
-                }
             }
             b"ilvl" => {
                 if let Some(val) = get_attr_val(e, b"val") {
@@ -361,12 +359,7 @@ impl DocxParser {
                     self.current_paragraph.ilvl = Some(self.ilvl.clone());
                 }
 
-                if self.in_table && self.in_cell {
-                    if !self.current_cell.is_empty() {
-                        self.current_cell.push('\n');
-                    }
-                    self.current_cell.push_str(&self.current_paragraph.text);
-                } else if self.in_table && self.in_row {
+                if self.in_table && (self.in_cell || self.in_row) {
                     if !self.current_cell.is_empty() {
                         self.current_cell.push('\n');
                     }
@@ -403,7 +396,7 @@ impl DocxParser {
         }
     }
 
-    fn to_markdown(self) -> String {
+    fn to_markdown(&self) -> String {
         let mut md = String::new();
 
         for para in &self.paragraphs {

@@ -662,6 +662,12 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let digest_router = create_digest_router().with_state(state.digest_state);
 
+    let import_state = crate::routes::import::ImportState {
+        pool: pool.clone(),
+        last_import: std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
+    };
+    let import_router = crate::routes::import::create_import_router().with_state(import_state);
+
     let siem_router = crate::routes::siem::create_siem_router().with_state(siem_state);
 
     let mut api_v1 = Router::new()
@@ -697,6 +703,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(oauth2_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
         .merge(comment_router)
         .merge(digest_router)
+        .merge(import_router)
         .merge(siem_router);
 
     if let Some(sms_otp_router) = sms_otp_router {

@@ -103,6 +103,9 @@ dashmap = { workspace = true }
 # XML parsing (SAML)
 quick-xml = "0.37"
 
+# Archive handling (for Confluence ZIP imports)
+zip = "2"
+
 # Inflate (SAML Deflate decoding)
 flate2 = "1"
 

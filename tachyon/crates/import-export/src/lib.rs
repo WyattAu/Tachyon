@@ -10,29 +10,27 @@
 //! - HTML export (rendered pages suitable for Confluence or static hosting)
 //! - JSON export (structured document data)
 
+pub mod confluence;
 pub mod csv_import;
 pub mod docusaurus;
+pub mod docx_export;
+pub mod docx_import;
 pub mod error;
 pub mod frontmatter;
 pub mod gdpr_export;
 pub mod html_export;
 pub mod json_export;
 pub mod markdown_zip;
-
-#[cfg(feature = "docx")]
-pub mod docx_export;
-#[cfg(feature = "docx")]
-pub mod docx_import;
+pub mod notion;
 pub mod obsidian;
 #[cfg(feature = "pdf-export")]
 pub mod pdf_export;
 pub mod vault_importer;
 
 // Re-export commonly used types
+pub use confluence::ConfluenceImporter;
 pub use docusaurus::DocusaurusImporter;
-#[cfg(feature = "docx")]
 pub use docx_export::{DocxExportOptions, DocxExporter, PageSize};
-#[cfg(feature = "docx")]
 pub use docx_import::{DocxImportOptions, DocxImporter};
 pub use error::{ImportExportError, ImportExportResult};
 pub use frontmatter::Frontmatter;
@@ -42,6 +40,7 @@ pub use gdpr_export::{
 pub use html_export::{HtmlExportConfig, HtmlExportDocument, HtmlExporter};
 pub use json_export::{ExportableDocument, JsonExporter};
 pub use markdown_zip::{ExportDocument, MarkdownZipExporter, MarkdownZipImporter};
+pub use notion::NotionImporter;
 pub use obsidian::ObsidianImporter;
 #[cfg(feature = "pdf-export")]
 pub use pdf_export::{PdfExportConfig, PdfExportDocument, PdfExporter};

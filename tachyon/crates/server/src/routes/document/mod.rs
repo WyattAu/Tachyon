@@ -387,10 +387,14 @@ mod tests {
             title: "Test Doc".to_string(),
             slug: "test-doc".to_string(),
             updated_at: "2026-01-01T00:00:00+00:00".to_string(),
+            excerpt: Some("This is a test document with content...".to_string()),
+            link_context: Some("...see [[Test Doc]] for details...".to_string()),
         };
         let json = serde_json::to_string(&item).unwrap();
         assert!(json.contains("Test Doc"));
         assert!(json.contains("test-doc"));
+        assert!(json.contains("excerpt"));
+        assert!(json.contains("link_context"));
     }
 
     #[test]
@@ -401,6 +405,8 @@ mod tests {
                 title: "Doc A".to_string(),
                 slug: "doc-a".to_string(),
                 updated_at: "2026-01-01T00:00:00+00:00".to_string(),
+                excerpt: None,
+                link_context: None,
             }],
             count: 1,
         };

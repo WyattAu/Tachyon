@@ -14,7 +14,8 @@ use crate::{
     ImportExportError, ImportSummary, ImportedDocument, error::ImportExportResult,
     frontmatter::Frontmatter,
 };
-use std::collections::HashSet;
+use regex::Regex;
+use std::collections::{BTreeMap, HashSet};
 use std::io::{Cursor, Read};
 use std::path::Path;
 use zip::ZipArchive;
@@ -31,6 +32,92 @@ const SKIP_EXTENSIONS: &[&str] = &[
     "doc", "docx", "xls", "xlsx", "ppt", "pptx", "zip", "tar", "gz", "7z", "exe", "dll", "so",
     "dylib", "json", "css", "js", "ts",
 ];
+
+/// Converts `[[wiki-link]]` syntax to Tachyon `[text](/doc/slug)` links.
+///
+/// Handles:
+/// - `[[page]]` -> `[page](/doc/page)`
+/// - `[[page|display text]]` -> `[display text](/doc/page)`
+/// - `[[page#heading]]` -> `[page#heading](/doc/page)`
+/// - `[[page#heading|display]]` -> `[display](/doc/page)`
+/// - `![[image.png]]` -> `![image.png](/files/image.png)` (embedded files preserved as-is)
+pub fn convert_wikilinks(content: &str) -> String {
+    // Regex for [[target]] or [[target|display]] — not embedded ![[...]]
+    // We match [[...]] but exclude the ! prefix (embedded files)
+    // Note: Rust regex doesn't support lookbehind, so we handle ![[ ]] separately
+    let wikilink_re = Regex::new(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]").unwrap();
+    // Regex for ![[embedded]] — keep as markdown image
+    let embed_re = Regex::new(r"!\[\[([^\]]+)\]\]").unwrap();
+
+    // First, protect embedded links by replacing them with placeholders
+    let mut result = content.to_string();
+    let mut placeholders: Vec<(String, String)> = Vec::new();
+    for caps in embed_re.captures_iter(content) {
+        let full = caps.get(0).unwrap().as_str();
+        let target = caps.get(1).unwrap().as_str();
+        let placeholder = format!("__EMBED_{}__", placeholders.len());
+        let replacement = format!("![{}]({})", target, target);
+        placeholders.push((placeholder.clone(), replacement));
+        result = result.replace(full, &placeholder);
+    }
+
+    // Convert wiki-links to Tachyon document links
+    result = wikilink_re
+        .replace_all(&result, |caps: &regex::Captures| {
+            let target = caps.get(1).unwrap().as_str().trim();
+            let display = caps
+                .get(2)
+                .map(|m| m.as_str().trim().to_string())
+                .unwrap_or_else(|| target.to_string());
+            // Strip any heading anchors from the slug
+            let slug = target.split('#').next().unwrap_or(target);
+            format!("[{}](/doc/{})", display, slug)
+        })
+        .to_string();
+
+    // Restore embedded links
+    for (placeholder, replacement) in &placeholders {
+        result = result.replace(placeholder, replacement);
+    }
+
+    result
+}
+
+/// Infer tags from a file path by extracting directory components.
+///
+/// For `docs/programming/rust.md`, returns `["docs", "programming", "rust"]`.
+/// Skips common non-semantic directories like "notes", "daily", "templates".
+pub fn infer_tags_from_path(source_path: &str) -> Vec<String> {
+    let path = Path::new(source_path);
+    let mut tags = Vec::new();
+
+    // Skip common non-semantic parent directories
+    let skip_components = &["notes", "templates", "attachments", ".obsidian"];
+
+    for component in path.parent().unwrap_or(Path::new("")).components() {
+        let name = component.as_os_str().to_string_lossy();
+        if !name.is_empty()
+            && name != "."
+            && name != ".."
+            && !skip_components.contains(&name.as_ref())
+        {
+            tags.push(name.to_lowercase());
+        }
+    }
+
+    // Also add the filename stem (without extension) as a tag
+    if let Some(stem) = path.file_stem() {
+        let name = stem.to_string_lossy().to_lowercase();
+        // Only add if it's not just the title (i.e., not a common word)
+        if !name.is_empty() && !skip_components.contains(&name.as_ref()) {
+            tags.push(name);
+        }
+    }
+
+    tags.sort();
+    tags.dedup();
+    tags
+}
 
 impl ObsidianImporter {
     /// Import all markdown files from an Obsidian vault ZIP archive.
@@ -92,16 +179,19 @@ impl ObsidianImporter {
             }
 
             let (frontmatter, body) = Frontmatter::parse(&content);
+            let body = convert_wikilinks(body);
 
             let title = frontmatter
                 .title
                 .clone()
-                .or_else(|| extract_first_heading(body))
+                .or_else(|| extract_first_heading(&body))
                 .unwrap_or_else(|| title_from_path(&name));
 
-            let mut inline_tags = extract_inline_tags(body);
+            let mut inline_tags = extract_inline_tags(&body);
+            let mut path_tags = infer_tags_from_path(&name);
             let mut tags: Vec<String> = frontmatter.tags.clone();
             tags.append(&mut inline_tags);
+            tags.append(&mut path_tags);
             tags.sort();
             tags.dedup();
 
@@ -128,7 +218,7 @@ impl ObsidianImporter {
                 source_path: name,
                 created_at,
                 updated_at,
-                extra: std::collections::BTreeMap::new(),
+                extra: BTreeMap::new(),
             };
             documents.push(doc);
         }
@@ -215,16 +305,19 @@ impl ObsidianImporter {
             }
 
             let (frontmatter, body) = Frontmatter::parse(&content);
+            let body = convert_wikilinks(body);
 
             let title = frontmatter
                 .title
                 .clone()
-                .or_else(|| extract_first_heading(body))
+                .or_else(|| extract_first_heading(&body))
                 .unwrap_or_else(|| title_from_path(&name));
 
-            let mut inline_tags = extract_inline_tags(body);
+            let mut inline_tags = extract_inline_tags(&body);
+            let mut path_tags = infer_tags_from_path(&name);
             let mut tags: Vec<String> = frontmatter.tags.clone();
             tags.append(&mut inline_tags);
+            tags.append(&mut path_tags);
             tags.sort();
             tags.dedup();
 
@@ -247,7 +340,7 @@ impl ObsidianImporter {
                 source_path: name,
                 created_at,
                 updated_at,
-                extra: std::collections::BTreeMap::new(),
+                extra: BTreeMap::new(),
             };
             documents.push(doc);
         }
@@ -402,13 +495,65 @@ mod tests {
         assert_eq!(docs.len(), 3);
 
         assert_eq!(docs[0].title, "Daily Note");
-        assert_eq!(docs[0].tags, vec!["daily", "journal", "planning", "work"]);
-        assert!(docs[0].content.contains("[[link]]"));
+        // Tags include path-derived tags: "daily", "2024-01-15" from path, plus frontmatter and inline
+        assert!(docs[0].tags.contains(&"journal".to_string()));
+        assert!(docs[0].tags.contains(&"daily".to_string()));
+        assert!(docs[0].tags.contains(&"work".to_string()));
+        assert!(docs[0].tags.contains(&"planning".to_string()));
+        // Wiki-links should be converted
+        assert!(docs[0].content.contains("[link](/doc/link)"));
+        assert!(docs[0].content.contains("[display text](/doc/other)"));
 
         assert_eq!(docs[1].title, "Project Idea");
         assert!(docs[1].tags.contains(&"idea".to_string()));
+        // Path-derived tags from "ideas/project-idea.md"
+        assert!(docs[1].tags.contains(&"ideas".to_string()));
 
         assert_eq!(docs[2].title, "Meeting Template");
+    }
+
+    #[test]
+    fn test_convert_wikilinks() {
+        assert_eq!(
+            convert_wikilinks("See [[My Page]] for details."),
+            "See [My Page](/doc/My Page) for details."
+        );
+        assert_eq!(
+            convert_wikilinks("[[target|display text]]"),
+            "[display text](/doc/target)"
+        );
+        assert_eq!(
+            convert_wikilinks("[[page#heading|show]]"),
+            "[show](/doc/page)"
+        );
+        // Embedded files are preserved as markdown images
+        assert_eq!(
+            convert_wikilinks("![[image.png]]"),
+            "![image.png](image.png)"
+        );
+        // Mixed
+        assert_eq!(
+            convert_wikilinks("Text [[link1]] and ![[file.png]] and [[link2|alias]]"),
+            "Text [link1](/doc/link1) and ![file.png](file.png) and [alias](/doc/link2)"
+        );
+    }
+
+    #[test]
+    fn test_infer_tags_from_path() {
+        let tags = infer_tags_from_path("docs/programming/rust.md");
+        assert!(tags.contains(&"docs".to_string()));
+        assert!(tags.contains(&"programming".to_string()));
+        assert!(tags.contains(&"rust".to_string()));
+
+        // Should skip "notes" directory
+        let tags = infer_tags_from_path("notes/daily/journal.md");
+        assert!(!tags.contains(&"notes".to_string()));
+        assert!(tags.contains(&"daily".to_string()));
+        assert!(tags.contains(&"journal".to_string()));
+
+        // Top-level file
+        let tags = infer_tags_from_path("readme.md");
+        assert!(tags.contains(&"readme".to_string()));
     }
 
     #[test]

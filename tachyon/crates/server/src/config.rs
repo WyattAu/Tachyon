@@ -113,6 +113,9 @@ pub struct ServerConfig {
     /// CDN edge caching configuration.
     #[serde(default)]
     pub cdn: CdnConfig,
+    /// White-label branding configuration
+    #[serde(default)]
+    pub brand: BrandConfig,
     /// Read replica URLs for search/analytics offloading.
     #[serde(default)]
     pub read_replica_urls: Vec<String>,
@@ -459,6 +462,43 @@ impl Default for SmsOtpConfig {
     }
 }
 
+/// White-label branding configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BrandConfig {
+    /// Company or product name displayed in the UI
+    pub company_name: String,
+    /// URL to the logo image (SVG recommended, 200x50px)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logo_url: Option<String>,
+    /// URL to the favicon (SVG or ICO, 32x32px minimum)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub favicon_url: Option<String>,
+    /// Primary brand color (hex, e.g., "#3B82F6")
+    pub primary_color: String,
+    /// Secondary brand color (hex, e.g., "#10B981")
+    pub secondary_color: String,
+    /// Custom CSS injected into the page head
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_css: Option<String>,
+    /// Custom domain for white-label deployments
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_domain: Option<String>,
+}
+
+impl Default for BrandConfig {
+    fn default() -> Self {
+        Self {
+            company_name: "Tachyon".to_string(),
+            logo_url: None,
+            favicon_url: None,
+            primary_color: "#3B82F6".to_string(),
+            secondary_color: "#10B981".to_string(),
+            custom_css: None,
+            custom_domain: None,
+        }
+    }
+}
+
 /// CDN edge caching configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CdnConfig {
@@ -552,6 +592,7 @@ impl Default for ServerConfig {
             db_idle_timeout_secs: 600,
             redis_pubsub_url: None,
             cdn: CdnConfig::default(),
+            brand: BrandConfig::default(),
             read_replica_urls: Vec::new(),
             pgbouncer_enabled: false,
         }
@@ -1257,6 +1298,29 @@ impl ServerConfig {
         }
         if let Ok(val) = std::env::var("TACHYON_CDN_ENABLED") {
             config.cdn.enabled = val == "true" || val == "1";
+        }
+
+        // Brand configuration
+        if let Ok(val) = std::env::var("TACHYON_BRAND_COMPANY_NAME") {
+            config.brand.company_name = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_LOGO_URL") {
+            config.brand.logo_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_FAVICON_URL") {
+            config.brand.favicon_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_PRIMARY_COLOR") {
+            config.brand.primary_color = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_SECONDARY_COLOR") {
+            config.brand.secondary_color = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_CUSTOM_CSS") {
+            config.brand.custom_css = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_CUSTOM_DOMAIN") {
+            config.brand.custom_domain = Some(val);
         }
 
         // Read replica configuration

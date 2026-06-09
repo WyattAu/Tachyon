@@ -19,16 +19,13 @@ pub struct DocxExportOptions {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[derive(Default)]
 pub enum PageSize {
+    #[default]
     A4,
     Letter,
 }
 
-impl Default for PageSize {
-    fn default() -> Self {
-        Self::A4
-    }
-}
 
 impl PageSize {
     fn width_inches(&self) -> f64 {
@@ -159,7 +156,7 @@ impl DocxExporter {
 
         for (i, (title, content)) in documents.iter().enumerate() {
             let path = if i == 0 {
-                format!("word/document.xml")
+                "word/document.xml".to_string()
             } else {
                 format!("word/document{}.xml", i)
             };
@@ -320,7 +317,7 @@ fn parse_markdown_blocks(md: &str) -> Vec<MdBlock> {
 
 fn parse_heading(line: &str) -> Option<MdBlock> {
     let count = line.chars().take_while(|&c| c == '#').count();
-    if count < 1 || count > 6 {
+    if !(1..=6).contains(&count) {
         return None;
     }
     let rest = line[count..].trim();

@@ -1,7 +1,10 @@
 // Tachyon CLI - Main Entry Point
 
 use clap::{Parser, Subcommand};
-use tachyon_cli::commands::{BuildCommand, Command, GuiCommand, InitCommand, ServeCommand};
+use tachyon_cli::commands::{
+    BuildCommand, Command, GuiCommand, InitCommand, PluginInfoCommand, PluginInstallCommand,
+    PluginListCommand, ServeCommand,
+};
 use tachyon_cli::{CliError, CliResult, VERSION};
 
 /// Tachyon Knowledge Base CLI
@@ -175,6 +178,23 @@ enum Commands {
 /// Plugin subcommands
 #[derive(Subcommand)]
 enum PluginCommands {
+    /// List installed plugins
+    List,
+
+    /// Show detailed information about a plugin
+    Info {
+        /// Plugin name
+        #[arg(value_name = "NAME")]
+        name: String,
+    },
+
+    /// Install a plugin from a URL
+    Install {
+        /// Plugin download URL
+        #[arg(value_name = "URL")]
+        url: String,
+    },
+
     /// Scaffold a new plugin from template
     New {
         /// Plugin name
@@ -313,6 +333,18 @@ fn main() {
         }
 
         Commands::Plugin { subcommand } => match subcommand {
+            PluginCommands::List => {
+                let cmd = PluginListCommand::new();
+                cmd.execute()
+            }
+            PluginCommands::Info { name } => {
+                let cmd = PluginInfoCommand::new(name);
+                cmd.execute()
+            }
+            PluginCommands::Install { url } => {
+                let cmd = PluginInstallCommand::new(url);
+                cmd.execute()
+            }
             PluginCommands::New { name } => {
                 tachyon_cli::plugin_commands::new_plugin(&name).map_err(CliError::generic)
             }

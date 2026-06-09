@@ -44,11 +44,10 @@ genpdf = { version = "0.2", features = ["images"], optional = true }
 printpdf = { version = "0.3", optional = true }
 
 # DOCX import/export (optional)
-quick-xml = { version = "0.37", features = ["serialize"], optional = true }
+quick-xml = { version = "0.37", features = ["serialize"] }
 
 [features]
 pdf-export = ["dep:genpdf", "dep:printpdf"]
-docx = ["dep:quick-xml"]
 
 [dev-dependencies]
 tempfile = "3"

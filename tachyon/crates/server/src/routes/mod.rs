@@ -18,6 +18,7 @@ pub mod gdpr;
 pub mod graph_api;
 pub mod health;
 pub mod hipaa;
+pub mod import;
 pub mod landing;
 pub mod magic_link;
 pub mod metrics;
@@ -60,6 +61,7 @@ pub async fn create_router() -> Router {
     use crate::routes::conflict::{ConflictState, create_conflict_router};
     use crate::routes::digest::{DigestState, create_digest_router};
     use crate::routes::document::{DocumentState, create_document_router};
+    use crate::routes::import::{ImportState, create_import_router};
     use crate::routes::node::{NodeState, create_node_router};
     use crate::routes::notification::{NotificationState, create_notification_router};
     use crate::routes::onboarding::{OnboardingState, create_onboarding_router};
@@ -147,6 +149,10 @@ pub async fn create_router() -> Router {
         site_config: crate::config::SiteConfig::default(),
     };
     let digest_state = DigestState { pool: pool.clone() };
+    let import_state = ImportState {
+        pool: pool.clone(),
+        last_import: std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
+    };
 
     let document_router = create_document_router().with_state(document_state);
     let user_router = create_user_router().with_state(user_state);
@@ -171,6 +177,7 @@ pub async fn create_router() -> Router {
     let conflict_router = create_conflict_router().with_state(conflict_state);
     let seo_router = create_seo_router().with_state(seo_state);
     let digest_router = create_digest_router().with_state(digest_state);
+    let import_router = create_import_router().with_state(import_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -195,7 +202,8 @@ pub async fn create_router() -> Router {
         .merge(onboarding_router)
         .merge(conflict_router)
         .merge(seo_router)
-        .merge(digest_router);
+        .merge(digest_router)
+        .merge(import_router);
 
     Router::new().nest("/api/v1", api_v1)
 }
