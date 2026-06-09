@@ -36,12 +36,12 @@ pub fn MobileNav(
                 </div>
 
                 <nav class="p-4 space-y-2" aria-label="Mobile navigation">
-                    <a href="/" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">"Home"</a>
-                    <a href="/documents" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">"Documents"</a>
-                    <a href="/spaces" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">"Spaces"</a>
-                    <a href="/search" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">"Search"</a>
-                    <a href="/teams" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">"Teams"</a>
-                    <a href="/settings" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">"Settings"</a>
+                    <a href="/" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 min-h-[44px] flex items-center" aria-label="Home">"Home"</a>
+                    <a href="/documents" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 min-h-[44px] flex items-center" aria-label="Documents">"Documents"</a>
+                    <a href="/spaces" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 min-h-[44px] flex items-center" aria-label="Spaces">"Spaces"</a>
+                    <a href="/search" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 min-h-[44px] flex items-center" aria-label="Search">"Search"</a>
+                    <a href="/teams" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 min-h-[44px] flex items-center" aria-label="Teams">"Teams"</a>
+                    <a href="/settings" class="block px-3 py-3 rounded-none text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 min-h-[44px] flex items-center" aria-label="Settings">"Settings"</a>
                 </nav>
             </div>
         </Show>

@@ -591,8 +591,7 @@ pub fn GraphPage() -> impl IntoView {
                     <Show when=move || !sim_nodes.get().is_empty()>
                         <div class="bg-white dark:bg-gray-800 rounded-none shadow overflow-hidden border border-gray-900 dark:border-gray-100">
                             <svg
-                                class="w-full"
-                                style="min-height: 500px;"
+                                class="w-full min-h-[50vh] sm:min-h-[500px]"
                                 style=("cursor", move || if dragging.get().is_some() { "grabbing" } else { "grab" })
                                 viewBox=view_box_str
                                 attr:data-vb=view_box_str
@@ -743,23 +742,23 @@ pub fn GraphPage() -> impl IntoView {
 
                             <div class="flex flex-wrap gap-4 px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
                                 <div class="flex items-center gap-1.5">
-                                    <span class="inline-block w-3 h-3 rounded-full" style="background-color: #3B82F6;"></span>
+                                    <span class="inline-block w-3 h-3 rounded-full bg-blue-500"></span>
                                     "Document"
                                 </div>
                                 <div class="flex items-center gap-1.5">
-                                    <span class="inline-block w-3 h-3 rounded-full" style="background-color: #10B981;"></span>
+                                    <span class="inline-block w-3 h-3 rounded-full bg-emerald-500"></span>
                                     "Component"
                                 </div>
                                 <div class="flex items-center gap-1.5">
-                                    <span class="inline-block w-3 h-3 rounded-full" style="background-color: #8B5CF6;"></span>
+                                    <span class="inline-block w-3 h-3 rounded-full bg-violet-500"></span>
                                     "Project"
                                 </div>
                                 <div class="flex items-center gap-1.5">
-                                    <span class="inline-block w-3 h-3 rounded-full" style="background-color: #F59E0B;"></span>
+                                    <span class="inline-block w-3 h-3 rounded-full bg-amber-500"></span>
                                     "Person"
                                 </div>
                                 <div class="flex items-center gap-1.5">
-                                    <span class="inline-block w-3 h-3 rounded-full" style="background-color: #6B7280;"></span>
+                                    <span class="inline-block w-3 h-3 rounded-full bg-gray-500"></span>
                                     "Other"
                                 </div>
                             </div>

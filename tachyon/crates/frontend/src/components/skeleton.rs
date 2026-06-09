@@ -5,7 +5,7 @@ use leptos::prelude::*;
 #[component]
 pub fn SkeletonText(#[prop(default = 3)] lines: usize) -> impl IntoView {
     view! {
-        <div class="space-y-2 animate-pulse">
+        <div class="space-y-2 animate-pulse" aria-busy="true" role="status">
             {(0..lines).map(|i| {
                 let width = if i == lines.saturating_sub(1) { "w-3/4" } else { "w-full" };
                 view! {
@@ -19,7 +19,7 @@ pub fn SkeletonText(#[prop(default = 3)] lines: usize) -> impl IntoView {
 #[component]
 pub fn SkeletonCard() -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-200 dark:border-gray-700 p-6 animate-pulse">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-200 dark:border-gray-700 p-6 animate-pulse" aria-busy="true" role="status">
             <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded-none w-3/4 mb-2"></div>
             <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-none w-1/2 mb-4"></div>
             <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded-none w-full mb-2"></div>
@@ -42,7 +42,7 @@ pub fn SkeletonTable(
     #[prop(default = 4)] cols: usize,
 ) -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse">
+        <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse" aria-busy="true" role="status">
             <div class="border-b-2 border-gray-200 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-gray-800/50">
                 <div class="flex gap-4">
                     {(0..cols).map(|_| {
@@ -72,7 +72,7 @@ pub fn SkeletonTable(
 #[component]
 pub fn SkeletonEditor() -> impl IntoView {
     view! {
-        <div class="flex flex-col h-full animate-pulse">
+        <div class="flex flex-col h-full animate-pulse" aria-busy="true" role="status">
             <div class="h-10 bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-200 dark:border-gray-700 flex items-center px-4 gap-3">
                 <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded-none w-40"></div>
                 <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded-none w-6"></div>

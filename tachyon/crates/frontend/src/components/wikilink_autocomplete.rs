@@ -107,12 +107,9 @@ pub fn WikilinkAutocomplete(
     view! {
         <Show when=move || visible.get()>
             <div
-                class="wikilink-autocomplete"
+                class="wikilink-autocomplete absolute z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg max-h-64 overflow-y-auto min-w-60"
                 style=move || format!(
-                    "position: absolute; z-index: 50; left: {}px; top: {}px; \
-                     background: white; border: 1px solid #e5e7eb; border-radius: 0; \
-                     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); max-height: 256px; \
-                     overflow-y: auto; min-width: 240px;",
+                    "left: {}px; top: {}px;",
                     position.get().0,
                     position.get().1
                 )
@@ -122,7 +119,7 @@ pub fn WikilinkAutocomplete(
             >
                 <Suspense fallback=move || {
                     view! {
-                        <div style="padding: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                        <div class="p-2 text-sm text-gray-500 dark:text-gray-400">
                             "Searching..."
                         </div>
                     }
@@ -130,7 +127,7 @@ pub fn WikilinkAutocomplete(
                     {move || completions.get().map(|items| {
                         if items.is_empty() {
                             view! {
-                                <div style="padding: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                                <div class="p-2 text-sm text-gray-500 dark:text-gray-400">
                                     "No documents found"
                                 </div>
                             }.into_any()
@@ -142,17 +139,14 @@ pub fn WikilinkAutocomplete(
                                 let snippet = item.snippet.clone();
                                 view! {
                                     <button
-                                        style=move || {
+                                        class=move || {
                                             let bg = if is_highlighted.get() {
-                                                "#eff6ff"
+                                                "bg-blue-50 dark:bg-blue-900/30"
                                             } else {
-                                                "transparent"
+                                                "bg-transparent"
                                             };
                                             format!(
-                                                "display: block; width: 100%; text-align: left; \
-                                                 padding: 0.5rem 1rem; border: none; cursor: pointer; \
-                                                 background: {}; font-size: 0.875rem; \
-                                                 font-family: inherit;",
+                                                "block w-full text-left px-4 py-2 border-none cursor-pointer text-sm font-sans hover:bg-gray-50 dark:hover:bg-gray-700 {}",
                                                 bg
                                             )
                                         }
@@ -161,8 +155,8 @@ pub fn WikilinkAutocomplete(
                                         role="option"
                                         aria-selected=move || is_highlighted.get()
                                     >
-                                        <div style="font-weight: 500;">{title}</div>
-                                        <div style="font-size: 0.75rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        <div class="font-medium">{title}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
                                             {snippet}
                                         </div>
                                     </button>

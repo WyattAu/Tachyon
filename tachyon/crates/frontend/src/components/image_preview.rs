@@ -71,6 +71,7 @@ pub fn ImagePreview(
                     <button
                         class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-none text-sm"
                         on:click=zoom_reset
+                        aria-label="Reset zoom"
                     >
                         {move || format!("{:.0}%", zoom_level.get() * 100.0)}
                     </button>

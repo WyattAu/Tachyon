@@ -415,7 +415,7 @@ where
                                     </svg>
                                     {move || if unread_count.get() > 0 {
                                         view! {
-                                            <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium">
+                                            <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium" aria-hidden="true">
                                                 {move || unread_count.get().to_string()}
                                             </span>
                                         }.into_any()
@@ -563,6 +563,7 @@ where
                                         <button
                                             on:click={move |ev| on_sign_out.run(ev)}
                                             class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            role="menuitem"
                                         >
                                             "Sign Out"
                                         </button>
@@ -579,7 +580,7 @@ where
                 </header>
 
                 {/* Page content */}
-                <main id="main-content" class="p-4 sm:p-6" role="main" tabindex="-1">
+                <main id="main-content" class="p-4 sm:p-6" role="main">
                     {children()}
                 </main>
             </div>

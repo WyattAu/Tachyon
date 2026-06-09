@@ -1018,7 +1018,7 @@ pub fn DocumentEditPage() -> impl IntoView {
                                     />
 
                                      <div class="flex-1 overflow-auto relative flex min-h-0">
-                                         <div class={move || if show_preview.get() { "flex-1 overflow-hidden border-r border-gray-200 dark:border-gray-700" } else { "flex-1 overflow-hidden" }} style="min-height: 200px">
+                                         <div class={move || if show_preview.get() { "flex-1 overflow-hidden border-r border-gray-200 dark:border-gray-700 min-h-[30vh] sm:min-h-[200px]" } else { "flex-1 overflow-hidden min-h-[30vh] sm:min-h-[200px]" }}>
                                              <NativeEditor
                                                  editor={ed}
                                                  document_id={doc_id}

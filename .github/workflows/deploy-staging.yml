@@ -17,6 +17,7 @@ jobs:
   build-and-push:
     name: Build and Push Staging Image
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
@@ -64,6 +65,7 @@ jobs:
   deploy:
     name: Deploy to Staging
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: build-and-push
     permissions:
       contents: read
@@ -125,6 +127,7 @@ jobs:
   health-check:
     name: Health Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: deploy
     if: needs.deploy.result == 'success'
     steps:
@@ -157,6 +160,7 @@ jobs:
   rollback:
     name: Rollback
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [deploy, health-check]
     if: always() && needs.deploy.result == 'success' && needs.health-check.result == 'failure'
     environment:

@@ -187,7 +187,7 @@ jobs:
           restore-keys: wasm-${{ runner.os }}-cargo-
 
       - name: Install trunk
-        run: TMPDIR=/tmp cargo install trunk --version 0.21.14
+        run: TMPDIR=/tmp cargo install trunk --version 0.21.14 --locked
 
       - name: Build frontend
         working-directory: tachyon/crates/frontend
@@ -263,7 +263,7 @@ jobs:
           key: cargo-tarpaulin-bin-v1
 
       - name: Install tarpaulin
-        run: command -v cargo-tarpaulin || cargo install cargo-tarpaulin --version 0.31.0
+        run: command -v cargo-tarpaulin || cargo install cargo-tarpaulin --version 0.31.0 --locked
 
       - name: Cache cargo
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
