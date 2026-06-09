@@ -189,6 +189,7 @@ pub struct AppState {
     pub space_state: crate::routes::space::SpaceState,
     pub conflict_state: crate::routes::conflict::ConflictState,
     pub onboarding_state: crate::routes::onboarding::OnboardingState,
+    pub ediscovery_state: crate::routes::ediscovery::EdiscoveryState,
     pub comment_state: crate::routes::comments::CommentState,
     pub digest_state: crate::routes::digest::DigestState,
     pub crdt_connection_manager: crate::websocket::CrdtConnectionManager,
@@ -368,6 +369,9 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     };
     let conflict_state = ConflictState { pool: pool.clone() };
     let onboarding_state = OnboardingState { pool: pool.clone() };
+    let ediscovery_state = crate::routes::ediscovery::EdiscoveryState {
+        pool: pool.clone(),
+    };
     let comment_state = crate::routes::comments::CommentState::new(pool.clone());
     let digest_state = crate::routes::digest::DigestState { pool: pool.clone() };
     let crdt_connection_manager =
@@ -445,6 +449,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         space_state,
         conflict_state,
         onboarding_state,
+        ediscovery_state,
         comment_state,
         digest_state,
         crdt_connection_manager,
@@ -464,12 +469,14 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
 
 async fn graphql_handler(
     State(pool): State<tachyon_database::DatabasePool>,
-    Extension(auth_context): Extension<crate::middleware::AuthContext>,
+    auth_context: Option<Extension<crate::middleware::AuthContext>>,
     request: async_graphql_axum::GraphQLRequest,
 ) -> async_graphql_axum::GraphQLResponse {
-    let gql_auth = graphql::GraphqlAuthContext::from(auth_context);
     let schema = graphql::build_schema_with_data(pool);
-    let request = request.into_inner().data(gql_auth);
+    let mut request = request.into_inner();
+    if let Some(Extension(auth_ctx)) = auth_context {
+        request = request.data(graphql::GraphqlAuthContext::from(auth_ctx));
+    }
     schema.execute(request).await.into()
 }
 
@@ -534,6 +541,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     use crate::routes::node::create_node_router;
     use crate::routes::notification::create_notification_router;
     use crate::routes::oauth2::{OAuth2State, create_oauth2_router};
+    use crate::routes::ediscovery::create_ediscovery_router;
     use crate::routes::onboarding::create_onboarding_router;
     use crate::routes::organization::{OrganizationState, create_organization_router};
     use crate::routes::password_reset::{PasswordResetState, create_password_reset_router};
@@ -577,6 +585,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let plugin_router = create_plugin_router_with_state(plugin_state);
     let space_router = create_space_router().with_state(space_state);
     let onboarding_router = create_onboarding_router().with_state(onboarding_state);
+    let ediscovery_router = create_ediscovery_router().with_state(state.ediscovery_state.clone());
     let collaboration_state = CollaborationState::new(pool.clone(), broadcast_bus.clone());
     let collaboration_router = create_collaboration_router().with_state(collaboration_state);
     let ecosystem_state = EcosystemState::new(pool.clone());
@@ -689,6 +698,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(plugin_router)
         .merge(space_router)
         .merge(onboarding_router)
+        .merge(ediscovery_router)
         .merge(collaboration_router)
         .merge(ecosystem_router)
         .merge(graph_api_router)
@@ -737,7 +747,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let api_v2 = crate::routes::v2::create_v2_router(v2_state);
 
     let crdt_ws_router = Router::new()
-        .route("/ws/crdt/{room}", get(handle_crdt_websocket_upgrade))
+        .route("/ws/{room}", get(handle_crdt_websocket_upgrade))
         .with_state(crdt_connection_manager)
         .layer(RequestBodyLimitLayer::new(1024 * 1024 * 1024));
 

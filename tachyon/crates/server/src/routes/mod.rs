@@ -10,6 +10,7 @@ pub mod comments;
 pub mod compliance;
 pub mod conflict;
 pub mod digest;
+pub mod ediscovery;
 pub mod document;
 pub mod e2e_encryption;
 pub mod ecosystem;
@@ -52,6 +53,9 @@ pub mod webhook;
 
 use crate::config::GuestConfig;
 use axum::Router;
+
+// eDiscovery exports
+pub use ediscovery::{EdiscoveryExportRequest, EdiscoveryState, export_ediscovery};
 
 /// Create a test router with all routes for integration testing
 pub async fn create_router() -> Router {
@@ -174,6 +178,11 @@ pub async fn create_router() -> Router {
     let organization_router = create_organization_router().with_state(organization_state);
     let ssg_router = create_ssg_router().with_state(ssg_state);
     let onboarding_router = create_onboarding_router().with_state(onboarding_state);
+    let ediscovery_state = crate::routes::ediscovery::EdiscoveryState {
+        pool: pool.clone(),
+    };
+    let ediscovery_router =
+        crate::routes::ediscovery::create_ediscovery_router().with_state(ediscovery_state);
     let conflict_router = create_conflict_router().with_state(conflict_state);
     let seo_router = create_seo_router().with_state(seo_state);
     let digest_router = create_digest_router().with_state(digest_state);
@@ -200,6 +209,7 @@ pub async fn create_router() -> Router {
         .merge(organization_router)
         .merge(ssg_router)
         .merge(onboarding_router)
+        .merge(ediscovery_router)
         .merge(conflict_router)
         .merge(seo_router)
         .merge(digest_router)
