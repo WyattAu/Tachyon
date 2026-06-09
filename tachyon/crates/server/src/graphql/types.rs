@@ -9,6 +9,13 @@ use tachyon_database::{
 
 use crate::graphql::schema::GraphqlAuthContext;
 
+/// Extract auth context from the GraphQL context, returning an error if missing.
+fn require_auth(ctx: &Context<'_>) -> Result<GraphqlAuthContext> {
+    ctx.data::<GraphqlAuthContext>()
+        .cloned()
+        .map_err(|_| async_graphql::Error::new("Authentication required"))
+}
+
 #[derive(Debug, Clone, SimpleObject)]
 pub struct Document {
     pub id: ID,
@@ -289,19 +296,11 @@ impl MutationRoot {
         space_id: Option<ID>,
         tags: Option<Vec<String>>,
     ) -> Result<Document> {
+        let auth = require_auth(ctx)?;
         let pool = ctx.data::<DatabasePool>()?;
         let repo = DocumentRepository::new(pool.clone());
 
         let doc_id = tachyon_core::generate_document_id();
-        let auth: GraphqlAuthContext =
-            ctx.data::<GraphqlAuthContext>()
-                .cloned()
-                .unwrap_or(GraphqlAuthContext {
-                    user_id: tachyon_core::generate_user_id().to_string(),
-                    role: "guest".to_string(),
-                    permissions: vec![],
-                    team_id: None,
-                });
         let author_id = auth.user_id;
         let now = chrono::Utc::now();
         let tags_json =
@@ -351,6 +350,7 @@ impl MutationRoot {
         content: Option<String>,
         tags: Option<Vec<String>>,
     ) -> Result<Document> {
+        let auth = require_auth(ctx)?;
         let pool = ctx.data::<DatabasePool>()?;
         let repo = DocumentRepository::new(pool.clone());
 
@@ -361,6 +361,15 @@ impl MutationRoot {
             .get_by_id(&doc_id)
             .await
             .map_err(|e| async_graphql::Error::new(e.to_string()))?;
+
+        // Authorization: only the owner or an admin can update
+        let is_owner = auth.user_id == metadata.author_id;
+        let is_admin = auth.role == "Admin";
+        if !is_owner && !is_admin {
+            return Err(async_graphql::Error::new(
+                "You do not have permission to update this document",
+            ));
+        }
 
         if let Some(t) = title {
             metadata.title = t;
@@ -385,11 +394,25 @@ impl MutationRoot {
     }
 
     async fn delete_document(&self, ctx: &Context<'_>, id: ID) -> Result<bool> {
+        let auth = require_auth(ctx)?;
         let pool = ctx.data::<DatabasePool>()?;
         let repo = DocumentRepository::new(pool.clone());
 
         let doc_id = tachyon_core::id::DocumentId::parse_str(id.as_str())
             .map_err(|e| async_graphql::Error::new(format!("Invalid document ID: {}", e)))?;
+
+        // Check ownership before deleting
+        let metadata = repo
+            .get_by_id(&doc_id)
+            .await
+            .map_err(|e| async_graphql::Error::new(e.to_string()))?;
+        let is_owner = auth.user_id == metadata.author_id;
+        let is_admin = auth.role == "Admin";
+        if !is_owner && !is_admin {
+            return Err(async_graphql::Error::new(
+                "You do not have permission to delete this document",
+            ));
+        }
 
         match repo.delete(&doc_id).await {
             Ok(()) => Ok(true),
@@ -405,18 +428,10 @@ impl MutationRoot {
         description: Option<String>,
         parent_id: Option<ID>,
     ) -> Result<Space> {
+        let auth = require_auth(ctx)?;
         let pool = ctx.data::<DatabasePool>()?;
         let repo = SpaceRepository::new(pool.clone());
 
-        let auth: GraphqlAuthContext =
-            ctx.data::<GraphqlAuthContext>()
-                .cloned()
-                .unwrap_or(GraphqlAuthContext {
-                    user_id: "00000000-0000-0000-0000-000000000000".to_string(),
-                    role: "guest".to_string(),
-                    permissions: vec![],
-                    team_id: None,
-                });
         let owner_id = auth.user_id;
         let req = tachyon_database::CreateSpaceRequest {
             name,

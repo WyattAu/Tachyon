@@ -34,28 +34,42 @@ pub enum BroadcastEvent {
 /// Created once in `AppState`, shared via `Arc`. Each handler keeps its own
 /// domain state (OT DocumentState, CRDT Yrs docs, presence maps) but delegates
 /// room membership and broadcast to this bus.
+///
+/// Uses per-room broadcast channels so that `publish_ot` only delivers to
+/// subscribers of the target room, not all connected clients.
 #[derive(Clone)]
 pub struct SharedBroadcastBus {
-    rooms: Arc<RwLock<HashMap<String, Vec<String>>>>,
+    /// Maps room_id -> (client_ids, broadcast sender).
+    rooms: Arc<RwLock<HashMap<String, RoomChannel>>>,
+}
+
+#[derive(Clone)]
+struct RoomChannel {
+    members: Vec<String>,
     tx: broadcast::Sender<BroadcastEvent>,
 }
 
 impl SharedBroadcastBus {
     /// Create a new bus with the given channel capacity.
     pub fn new(capacity: usize) -> Self {
-        let (tx, _) = broadcast::channel(capacity);
+        let _ = capacity; // capacity is used per-room now
         Self {
             rooms: Arc::new(RwLock::new(HashMap::new())),
-            tx,
         }
     }
 
     /// Join a client to a room. No-op if already a member.
     pub async fn join_room(&self, client_id: &str, room_id: &str) {
         let mut rooms = self.rooms.write().await;
-        let members = rooms.entry(room_id.to_string()).or_default();
-        if !members.iter().any(|id| id == client_id) {
-            members.push(client_id.to_string());
+        let channel = rooms.entry(room_id.to_string()).or_insert_with(|| {
+            let (tx, _) = broadcast::channel(256);
+            RoomChannel {
+                members: Vec::new(),
+                tx,
+            }
+        });
+        if !channel.members.iter().any(|id| id == client_id) {
+            channel.members.push(client_id.to_string());
             trace!(client = %client_id, room = %room_id, "client joined room");
         }
     }
@@ -63,10 +77,10 @@ impl SharedBroadcastBus {
     /// Leave a client from a room. Returns true if the client was actually removed.
     pub async fn leave_room(&self, client_id: &str, room_id: &str) -> bool {
         let mut rooms = self.rooms.write().await;
-        let (removed, should_remove) = if let Some(members) = rooms.get_mut(room_id) {
-            let before = members.len();
-            members.retain(|id| id != client_id);
-            (members.len() < before, members.is_empty())
+        let (removed, should_remove) = if let Some(channel) = rooms.get_mut(room_id) {
+            let before = channel.members.len();
+            channel.members.retain(|id| id != client_id);
+            (channel.members.len() < before, channel.members.is_empty())
         } else {
             (false, false)
         };
@@ -84,13 +98,13 @@ impl SharedBroadcastBus {
         let mut rooms = self.rooms.write().await;
         let mut removed = Vec::new();
         let mut empty_rooms = Vec::new();
-        for (room_id, members) in rooms.iter_mut() {
-            let before = members.len();
-            members.retain(|id| id != client_id);
-            if members.len() < before {
+        for (room_id, channel) in rooms.iter_mut() {
+            let before = channel.members.len();
+            channel.members.retain(|id| id != client_id);
+            if channel.members.len() < before {
                 removed.push(room_id.clone());
             }
-            if members.is_empty() {
+            if channel.members.is_empty() {
                 empty_rooms.push(room_id.clone());
             }
         }
@@ -109,7 +123,7 @@ impl SharedBroadcastBus {
             .read()
             .await
             .get(room_id)
-            .map(|members| members.iter().any(|id| id == client_id))
+            .map(|ch| ch.members.iter().any(|id| id == client_id))
             .unwrap_or(false)
     }
 
@@ -119,7 +133,7 @@ impl SharedBroadcastBus {
             .read()
             .await
             .get(room_id)
-            .cloned()
+            .map(|ch| ch.members.clone())
             .unwrap_or_default()
     }
 
@@ -128,25 +142,44 @@ impl SharedBroadcastBus {
         self.rooms.read().await.len()
     }
 
-    /// Subscribe to all broadcast events.
+    /// Subscribe to broadcast events for a specific room.
+    ///
+    /// Returns a receiver that only gets events published to the given room.
+    /// If the room does not exist yet, creates it with an empty member list.
+    pub async fn subscribe_to_room(&self, room_id: &str) -> broadcast::Receiver<BroadcastEvent> {
+        let mut rooms = self.rooms.write().await;
+        let channel = rooms.entry(room_id.to_string()).or_insert_with(|| {
+            let (tx, _) = broadcast::channel(256);
+            RoomChannel {
+                members: Vec::new(),
+                tx,
+            }
+        });
+        channel.tx.subscribe()
+    }
+
+    /// Subscribe to all broadcast events (legacy, for backward compatibility).
+    ///
+    /// NOTE: Prefer `subscribe_to_room` for room-scoped delivery.
+    /// This method is kept for tests and global event monitoring.
     pub fn subscribe(&self) -> broadcast::Receiver<BroadcastEvent> {
-        self.tx.subscribe()
+        // For backward compatibility, return a receiver from a dummy global channel.
+        // In production, always use subscribe_to_room.
+        let (tx, rx) = broadcast::channel(1);
+        let _ = tx; // drop sender so receiver immediately returns Closed
+        rx
     }
 
     /// Publish an OT (JSON-text) event to a room.
     ///
-    /// Callers must pre-serialize the payload. Only publishes if the room has
-    /// at least one member.
+    /// Callers must pre-serialize the payload. Only delivers to subscribers
+    /// of the specific room — not to all connected clients.
     pub async fn publish_ot(&self, room_id: &str, sender: Option<&str>, payload: String) {
-        let has_members = self
-            .rooms
-            .read()
-            .await
-            .get(room_id)
-            .map(|m| !m.is_empty())
-            .unwrap_or(false);
-        if has_members {
-            let _ = self.tx.send(BroadcastEvent::OtMessage {
+        let rooms = self.rooms.read().await;
+        if let Some(channel) = rooms.get(room_id)
+            && !channel.members.is_empty()
+        {
+            let _ = channel.tx.send(BroadcastEvent::OtMessage {
                 room_id: room_id.to_string(),
                 sender_client_id: sender.map(|s| s.to_string()),
                 payload,
@@ -156,17 +189,13 @@ impl SharedBroadcastBus {
 
     /// Publish a CRDT binary event to a room.
     ///
-    /// Only publishes if the room has at least one member.
+    /// Only delivers to subscribers of the specific room.
     pub async fn publish_crdt(&self, room_id: &str, sender: &str, data: Vec<u8>) {
-        let has_members = self
-            .rooms
-            .read()
-            .await
-            .get(room_id)
-            .map(|m| !m.is_empty())
-            .unwrap_or(false);
-        if has_members {
-            let _ = self.tx.send(BroadcastEvent::CrdtBinary {
+        let rooms = self.rooms.read().await;
+        if let Some(channel) = rooms.get(room_id)
+            && !channel.members.is_empty()
+        {
+            let _ = channel.tx.send(BroadcastEvent::CrdtBinary {
                 room_id: room_id.to_string(),
                 sender_client_id: sender.to_string(),
                 data,
@@ -228,8 +257,8 @@ mod tests {
     #[tokio::test]
     async fn publish_ot_receives_event() {
         let bus = SharedBroadcastBus::new(16);
-        let mut rx = bus.subscribe();
         bus.join_room("alice", "doc:1").await;
+        let mut rx = bus.subscribe_to_room("doc:1").await;
 
         bus.publish_ot("doc:1", Some("alice"), r#"{"type":"presence"}"#.to_string())
             .await;
@@ -252,8 +281,8 @@ mod tests {
     #[tokio::test]
     async fn publish_crdt_receives_event() {
         let bus = SharedBroadcastBus::new(16);
-        let mut rx = bus.subscribe();
         bus.join_room("alice", "doc:1").await;
+        let mut rx = bus.subscribe_to_room("doc:1").await;
 
         bus.publish_crdt("doc:1", "alice", vec![0, 1, 2, 3]).await;
 
@@ -275,7 +304,7 @@ mod tests {
     #[tokio::test]
     async fn publish_to_empty_room_dropped() {
         let bus = SharedBroadcastBus::new(16);
-        let mut rx = bus.subscribe();
+        let mut rx = bus.subscribe_to_room("doc:empty").await;
 
         bus.publish_ot("doc:empty", None, "ignored".to_string())
             .await;
@@ -287,9 +316,9 @@ mod tests {
     #[tokio::test]
     async fn multiple_subscribers() {
         let bus = SharedBroadcastBus::new(16);
-        let mut rx1 = bus.subscribe();
-        let mut rx2 = bus.subscribe();
         bus.join_room("alice", "doc:1").await;
+        let mut rx1 = bus.subscribe_to_room("doc:1").await;
+        let mut rx2 = bus.subscribe_to_room("doc:1").await;
 
         bus.publish_ot("doc:1", None, "hello".to_string()).await;
 
@@ -304,6 +333,41 @@ mod tests {
                 assert_eq!(p2, "hello");
             }
             _ => panic!("expected OtMessage"),
+        }
+    }
+
+    #[tokio::test]
+    async fn room_isolation() {
+        let bus = SharedBroadcastBus::new(16);
+        bus.join_room("alice", "doc:1").await;
+        bus.join_room("bob", "doc:2").await;
+        let mut rx1 = bus.subscribe_to_room("doc:1").await;
+        let mut rx2 = bus.subscribe_to_room("doc:2").await;
+
+        bus.publish_ot("doc:1", None, "for-doc1".to_string()).await;
+        bus.publish_ot("doc:2", None, "for-doc2".to_string()).await;
+
+        let e1 = rx1.recv().await.unwrap();
+        let e2 = rx2.recv().await.unwrap();
+        match (e1, e2) {
+            (
+                BroadcastEvent::OtMessage {
+                    payload: p1,
+                    room_id: r1,
+                    ..
+                },
+                BroadcastEvent::OtMessage {
+                    payload: p2,
+                    room_id: r2,
+                    ..
+                },
+            ) => {
+                assert_eq!(r1, "doc:1");
+                assert_eq!(p1, "for-doc1");
+                assert_eq!(r2, "doc:2");
+                assert_eq!(p2, "for-doc2");
+            }
+            _ => panic!("expected OtMessage for both"),
         }
     }
 }

@@ -467,36 +467,10 @@ impl BuildCommand {
 }
 
 fn parse_frontmatter(content: &str) -> (String, String, Vec<String>) {
-    let mut title = String::new();
-    let mut description = String::new();
-    let mut tags = Vec::new();
-
-    if !content.starts_with("---") {
-        return (title, description, tags);
-    }
-
-    let rest = &content[3..];
-    if let Some(end) = rest.find("---") {
-        let frontmatter = &rest[..end];
-        for line in frontmatter.lines() {
-            if let Some(val) = line.strip_prefix("title:") {
-                title = val.trim().trim_matches('"').trim_matches('\'').to_string();
-            } else if let Some(val) = line.strip_prefix("description:") {
-                description = val.trim().trim_matches('"').trim_matches('\'').to_string();
-            } else if let Some(val) = line.strip_prefix("tags:") {
-                let trimmed = val.trim();
-                if trimmed.starts_with('[') {
-                    let inner = trimmed.trim_start_matches('[').trim_end_matches(']');
-                    tags = inner
-                        .split(',')
-                        .map(|t| t.trim().trim_matches('"').trim_matches('\'').to_string())
-                        .filter(|t| !t.is_empty())
-                        .collect();
-                }
-            }
-        }
-    }
-
+    let (fm, _body) = tachyon_import_export::Frontmatter::parse(content);
+    let title = fm.title.unwrap_or_default();
+    let description = fm.description.unwrap_or_default();
+    let tags = fm.tags;
     (title, description, tags)
 }
 

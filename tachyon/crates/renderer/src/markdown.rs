@@ -206,7 +206,10 @@ impl MarkdownParser {
         embeds
     }
 
-    /// Pre-process wikilinks [[target]] and [[target|display]] into markdown links
+    /// Pre-process wikilinks [[target]] and [[target|display]] into HTML anchors.
+    ///
+    /// Converts to `<a href="/documents/{slug}" class="wikilink">{text}</a>`.
+    /// Skips wikilinks inside code blocks.
     fn preprocess_wikilinks(content: &str) -> String {
         let mut result = String::with_capacity(content.len());
         let mut in_code_block = false;
@@ -229,8 +232,21 @@ impl MarkdownParser {
                         Some(m) => m.as_str(),
                         None => target,
                     };
-                    let slug = target.to_lowercase().replace(' ', "-");
-                    format!("[{}]({})", display, slug)
+                    let slug = target
+                        .to_lowercase()
+                        .chars()
+                        .map(|c| {
+                            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                                c
+                            } else {
+                                '-'
+                            }
+                        })
+                        .collect::<String>();
+                    format!(
+                        "<a href=\"/documents/{}\" class=\"wikilink\">{}</a>",
+                        slug, display
+                    )
                 });
                 result.push_str(&replaced);
                 result.push('\n');
@@ -398,9 +414,10 @@ impl MarkdownParser {
         html::push_html(&mut html_output, parser_with_count);
 
         html_output = ammonia::Builder::default()
-            .add_tags(["img", "pre", "code", "span", "div"])
+            .add_tags(["img", "pre", "code", "span", "div", "a"])
             .add_generic_attributes(&["class"])
             .add_tag_attributes("img", ["src", "alt", "title", "width", "height", "loading"])
+            .add_tag_attributes("a", ["href", "title"])
             .clean(&html_output)
             .to_string();
 
@@ -709,13 +726,19 @@ Some more text.
     #[test]
     fn test_preprocess_wikilinks_basic() {
         let result = MarkdownParser::preprocess_wikilinks("See [[Hello]] for details");
-        assert_eq!(result, "See [Hello](hello) for details");
+        assert_eq!(
+            result,
+            r#"See <a href="/documents/hello" class="wikilink">Hello</a> for details"#
+        );
     }
 
     #[test]
     fn test_preprocess_wikilinks_with_display() {
         let result = MarkdownParser::preprocess_wikilinks("Click [[Hello|Click here]] now");
-        assert_eq!(result, "Click [Click here](hello) now");
+        assert_eq!(
+            result,
+            r#"Click <a href="/documents/hello" class="wikilink">Click here</a> now"#
+        );
     }
 
     #[test]
@@ -727,8 +750,8 @@ Some more text.
             "wikilink inside code block should NOT be converted"
         );
         assert!(
-            result.contains("[World](world)"),
-            "wikilink outside code block should be converted"
+            result.contains(r#"<a href="/documents/world" class="wikilink">World</a>"#),
+            "wikilink outside code block should be converted to HTML anchor"
         );
     }
 
@@ -738,7 +761,20 @@ Some more text.
         let result = MarkdownParser::preprocess_wikilinks(input);
         assert_eq!(
             result,
-            "Check [Alpha](alpha), [the beta doc](beta), and [Gamma](gamma)"
+            concat!(
+                r#"Check <a href="/documents/alpha" class="wikilink">Alpha</a>, "#,
+                r#"<a href="/documents/beta" class="wikilink">the beta doc</a>, "#,
+                r#"and <a href="/documents/gamma" class="wikilink">Gamma</a>"#
+            )
+        );
+    }
+
+    #[test]
+    fn test_preprocess_wikilinks_slug_with_special_chars() {
+        let result = MarkdownParser::preprocess_wikilinks("[[My Document Title]]");
+        assert_eq!(
+            result,
+            r#"<a href="/documents/my-document-title" class="wikilink">My Document Title</a>"#
         );
     }
 

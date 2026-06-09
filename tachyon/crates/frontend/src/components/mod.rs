@@ -31,6 +31,7 @@ pub mod presence_indicators;
 pub mod review_panel;
 pub mod role_badge;
 pub mod skeleton;
+pub mod slash_commands;
 pub mod table_of_contents;
 pub mod template_selector;
 pub mod theme_toggle;

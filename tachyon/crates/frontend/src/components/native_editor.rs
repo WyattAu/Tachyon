@@ -1,5 +1,6 @@
 #![allow(clippy::redundant_locals)]
 use crate::components::collaborative_cursors::{AwarenessState, CollaborativeCursors};
+use crate::components::slash_commands::{SlashCommand, SlashCommandMenu};
 use crate::components::wikilink_autocomplete::{WikilinkAutocomplete, WikilinkCompletion};
 use leptos::prelude::*;
 use leptos_use::{use_event_listener, use_resize_observer};
@@ -324,6 +325,12 @@ pub fn NativeEditor(
     let (wl_query, set_wl_query) = signal(String::new());
     let (wl_position, set_wl_position) = signal((0.0, 0.0));
 
+    // Slash command state
+    let (slash_visible, set_slash_visible) = signal(false);
+    let (slash_query, set_slash_query) = signal(String::new());
+    let (slash_position, set_slash_position) = signal((0.0, 0.0));
+    let (slash_start_col, set_slash_start_col) = signal(0usize);
+
     // Find/Replace state
     let (find_visible, set_find_visible) = signal(false);
     let (find_query, set_find_query) = signal(String::new());
@@ -381,6 +388,34 @@ pub fn NativeEditor(
         let key = ev.key();
         let ctrl = ev.ctrl_key() || ev.meta_key();
         let shift = ev.shift_key();
+
+        // If slash command menu is visible, handle navigation there first
+        if slash_visible.get() {
+            match key.as_str() {
+                "Escape" => {
+                    set_slash_visible.set(false);
+                    ev.prevent_default();
+                    if let Some(el) = container_ref.get() {
+                        let _ = el.focus();
+                    }
+                    return;
+                }
+                "ArrowDown" | "ArrowUp" | "Enter" | "Tab" => {
+                    // Let the slash menu handle these via its own keydown
+                    return;
+                }
+                _ => {
+                    // For other keys, check if we should close the menu
+                    if key.len() == 1 && !ctrl {
+                        // Update query
+                        let new_query =
+                            format!("{}{}", slash_query.get_untracked(), key.to_lowercase());
+                        set_slash_query.set(new_query);
+                        // Let the character be inserted by the editor
+                    }
+                }
+            }
+        }
 
         let should_prevent = !ctrl
             || matches!(
@@ -497,15 +532,24 @@ pub fn NativeEditor(
             return;
         }
 
-        // Escape: close find panel
-        if key.as_str() == "Escape" && find_visible.get() {
-            set_find_visible.set(false);
-            ev.prevent_default();
-            // Refocus editor
-            if let Some(el) = container_ref.get() {
-                let _ = el.focus();
+        // Escape: close find panel or slash menu
+        if key.as_str() == "Escape" {
+            if find_visible.get() {
+                set_find_visible.set(false);
+                ev.prevent_default();
+                if let Some(el) = container_ref.get() {
+                    let _ = el.focus();
+                }
+                return;
             }
-            return;
+            if slash_visible.get() {
+                set_slash_visible.set(false);
+                ev.prevent_default();
+                if let Some(el) = container_ref.get() {
+                    let _ = el.focus();
+                }
+                return;
+            }
         }
 
         if should_prevent {
@@ -542,6 +586,67 @@ pub fn NativeEditor(
                     );
                 if is_printable {
                     e.insert_text(&key);
+
+                    // Check for slash command trigger
+                    if key == "/" {
+                        let cursor = e.cursors().active().0;
+                        let line = e.buffer().line(cursor.line);
+                        let trimmed = line.trim_end_matches('\n');
+                        let col = cursor.col;
+
+                        // Check if at start of line or after a space
+                        let should_trigger = if col <= 1 {
+                            // At start of line (after the slash)
+                            col == 1 && trimmed.starts_with('/')
+                        } else {
+                            // After a space
+                            trimmed.as_bytes().get(col - 2) == Some(&b' ')
+                        };
+
+                        if should_trigger {
+                            let gutter_w = if line_numbers { 50.0 } else { 0.0 };
+                            let left_px = gutter_w + col as f64 * CHAR_WIDTH_PX;
+                            let top_px = cursor.line as f64 * LINE_HEIGHT_PX + LINE_HEIGHT_PX;
+                            set_slash_start_col.set(col);
+                            set_slash_query.set(String::new());
+                            set_slash_position.set((left_px, top_px));
+                            set_slash_visible.set(true);
+                        } else {
+                            set_slash_visible.set(false);
+                        }
+                    } else if slash_visible.get() {
+                        // Update slash query if menu is visible
+                        let cursor = e.cursors().active().0;
+                        let line = e.buffer().line(cursor.line);
+                        let trimmed = line.trim_end_matches('\n');
+                        let start = slash_start_col.get_untracked();
+                        if cursor.col > start {
+                            let query = trimmed[start..cursor.col].to_string();
+                            set_slash_query.set(query);
+                        } else {
+                            set_slash_visible.set(false);
+                        }
+                    }
+                } else if key == "Backspace" && slash_visible.get() {
+                    // Update slash query on backspace
+                    let cursor = e.cursors().active().0;
+                    let line = e.buffer().line(cursor.line);
+                    let trimmed = line.trim_end_matches('\n');
+                    let start = slash_start_col.get_untracked();
+                    if cursor.col >= start {
+                        let query = trimmed[start..cursor.col].to_string();
+                        set_slash_query.set(query);
+                    } else {
+                        set_slash_visible.set(false);
+                    }
+                } else if slash_visible.get()
+                    && key != "Shift"
+                    && key != "Control"
+                    && key != "Alt"
+                    && key != "Meta"
+                {
+                    // Close slash menu on non-text keys
+                    set_slash_visible.set(false);
                 }
             });
         }
@@ -1539,6 +1644,51 @@ pub fn NativeEditor(
                 visible=wl_visible
                 position=wl_position
                 on_select=on_wikilink_select
+            />
+
+            // Slash command menu
+            <SlashCommandMenu
+                visible=slash_visible.into()
+                query=slash_query.into()
+                position=slash_position.into()
+                editor=editor
+                render_tick=render_tick
+                on_select=Callback::new(move |cmd: SlashCommand| {
+                    // Remove the slash and query text
+                    let query_len = slash_query.get_untracked().len();
+                    editor.try_update(|e| {
+                        let cursor = e.cursors().active().0;
+                        let line = e.buffer().line(cursor.line);
+                        if let Some(slash_pos) = line.rfind('/') {
+                            let start_col = slash_pos;
+                            let end_col = (slash_pos + 1 + query_len).min(line.len());
+                            e.buffer_mut().delete_range(cursor.line, start_col, cursor.line, end_col);
+                            e.move_cursor_to(cursor.line, start_col);
+                        }
+                    });
+                    // Insert the markdown syntax
+                    let prefix = cmd.prefix;
+                    let suffix = cmd.suffix;
+                    let default_text = cmd.default_text;
+                    editor.try_update(|e| {
+                        e.insert_text(&format!("{}{}{}", prefix, default_text, suffix));
+                        if !default_text.is_empty() {
+                            let cursor = e.cursors().active().0;
+                            e.move_cursor_to(
+                                cursor.line,
+                                cursor.col.saturating_sub(default_text.len() + suffix.len()),
+                            );
+                        }
+                    });
+                    render_tick.update(|t| *t += 1);
+                    set_slash_visible.set(false);
+                })
+                on_close=Callback::new(move |()| {
+                    set_slash_visible.set(false);
+                    if let Some(el) = container_ref.get() {
+                        let _ = el.focus();
+                    }
+                })
             />
         </div>
         // Status bar: line:col, selection info, language

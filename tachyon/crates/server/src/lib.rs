@@ -529,6 +529,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     use crate::routes::document::create_document_router;
     use crate::routes::ecosystem::{EcosystemState, create_ecosystem_router};
     use crate::routes::files::{FilesState, create_files_router};
+    use crate::routes::graph_api::{GraphApiState, create_graph_api_router};
     use crate::routes::mfa::create_mfa_router;
     use crate::routes::node::create_node_router;
     use crate::routes::notification::create_notification_router;
@@ -580,6 +581,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let collaboration_router = create_collaboration_router().with_state(collaboration_state);
     let ecosystem_state = EcosystemState::new(pool.clone());
     let ecosystem_router = create_ecosystem_router().with_state(ecosystem_state);
+    let graph_api_state = GraphApiState::new(pool.clone());
+    let graph_api_router = create_graph_api_router().with_state(graph_api_state);
 
     // Billing, Organization, SSG routers (pool-backed, created inline)
     let truelayer_client = if config.truelayer.enabled {
@@ -682,6 +685,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(onboarding_router)
         .merge(collaboration_router)
         .merge(ecosystem_router)
+        .merge(graph_api_router)
         .merge(billing_router)
         .merge(organization_router)
         .merge(password_reset_router)
@@ -732,27 +736,9 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let swagger_ui = crate::api_docs::create_swagger_ui();
 
-    let rate_limit_state =
-        crate::middleware::RateLimitState::new(crate::middleware::RateLimitConfig {
-            enabled: config.rate_limit.enabled,
-            redis_url: config.rate_limit.redis_url.clone(),
-            default_requests_per_minute: config.rate_limit.default_requests_per_minute,
-            cleanup_interval_secs: config.rate_limit.cleanup_interval_secs,
-            endpoint_limits: config
-                .rate_limit
-                .endpoint_limits
-                .iter()
-                .map(|(k, v)| {
-                    (
-                        k.clone(),
-                        crate::middleware::rate_limit::RateLimit::new(
-                            v.max_requests,
-                            v.window_secs,
-                        ),
-                    )
-                })
-                .collect(),
-        });
+    let rate_limit_state = crate::middleware::RateLimitState::new(
+        crate::middleware::RateLimitConfig::from(&config.rate_limit),
+    );
 
     let health_router = Router::new()
         .route("/health", get(crate::routes::health::health_check))

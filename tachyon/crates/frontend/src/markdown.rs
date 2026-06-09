@@ -10,14 +10,9 @@ pub struct MarkdownHeading {
 }
 
 fn slugify(text: &str) -> String {
-    text.chars()
-        .map(|c| {
-            if c.is_alphanumeric() {
-                c.to_lowercase().next().unwrap()
-            } else {
-                '-'
-            }
-        })
+    text.to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
         .collect::<String>()
         .split('-')
         .filter(|s| !s.is_empty())

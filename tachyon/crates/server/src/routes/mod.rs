@@ -15,6 +15,7 @@ pub mod e2e_encryption;
 pub mod ecosystem;
 pub mod files;
 pub mod gdpr;
+pub mod graph_api;
 pub mod health;
 pub mod hipaa;
 pub mod landing;
@@ -205,6 +206,11 @@ pub use catalog::{
     create_catalog_router, create_component, create_project, delete_component, delete_project,
     get_catalog_stats, get_component, get_project, get_project_by_slug, list_project_components,
     list_project_members, list_projects, remove_project_member, update_project,
+};
+
+// Graph API exports
+pub use graph_api::{
+    GraphApiState, GraphEdgesResponse, GraphNodesResponse, create_graph_api_router,
 };
 
 // Document exports

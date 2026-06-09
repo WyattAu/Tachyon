@@ -58,6 +58,9 @@ pub async fn export_document(
     let (title, content, slug) =
         row.ok_or_else(|| ServerError::not_found("Document", &document_id))?;
 
+    // DLP scan before export — block if content contains restricted data
+    state.scan_content_dlp(&content)?;
+
     info!(
         document_id = %document_id,
         format = %format,

@@ -34,6 +34,160 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   production launch, post-launch features (F1-F5), and long-term vision
   (V1-V5).
 
+## [19.0.0] - 2026-05-24
+
+### Fixed
+
+- Fixed memory leak in `sync_bridge.rs` by eliminating `clippy::await_holding_refcell_ref`
+  using take/put-back pattern to avoid holding RefCell borrows across await points.
+- Fixed accessibility: focus trap, ARIA attributes, and responsive units across frontend
+  components for WCAG 2.1 AA compliance.
+- Fixed CI pipeline: excluded desktop crates from check and clippy jobs to prevent
+  GTK dependency failures on ubuntu-latest.
+- Fixed CI: excluded desktop crates from test and coverage jobs.
+
+### Changed
+
+- Auto-fixed clippy suggestions across entire workspace.
+- Excluded `tachyon-cli` from CI Check job (transitive GTK dependency).
+
+## [18.0.0] - 2026-05-23
+
+### Added
+
+- API v2 expansion with authentication, document CRUD, and search endpoints.
+- Redis-backed CSRF token store replacing in-memory implementation.
+- SAML Conditions validation with NotBefore/NotOnOrAfter time window checks.
+- Replay protection with nonce deduplication on SAML assertions.
+- Comprehensive debug hooks for Tauri IPC API proxy.
+
+### Fixed
+
+- Hardened `/health`, `/metrics`, and static file endpoints against information leakage.
+- Removed SSG fallback route that could serve stale content.
+- Resolved 50+ clippy warnings and critical code quality issues.
+- Resolved three migration bugs blocking server startup.
+
+### Security
+
+- Patched critical IDOR vulnerability on document CRUD endpoints.
+- Added configurable rate-limit Redis environment variable.
+
+## [17.0.0] - 2026-05-22
+
+### Added
+
+- Full-stack Dockerfile with multi-stage build and WASM tree-sitter upgrade path.
+- Trunk frontend serving from root when `TACHYON_STATIC_DIR` points to dist.
+- One-command deploy: docker-compose, landing page, and env template.
+
+### Changed
+
+- Migrated all crates to Rust edition 2024, resolving accumulated tech debt.
+- `SharedBroadcastBus` replaces ad-hoc WebSocket broadcasting in server.
+- Upgraded `thiserror` to v2 across workspace.
+
+### Removed
+
+- Operational transform handler and `operational_transform` crate (-1,695 lines).
+  CRDT-based sync replaced OT for real-time collaboration.
+
+### Fixed
+
+- Fixed `trunk` version pin, dependency caching, and healthcheck in Docker builds.
+- Fixed Dockerfile for scratch runtime: added patch binary for libquickjs-sys,
+  pinned trunk SHA256, and musl-tools for C cross-compilation.
+
+## [16.0.0] - 2026-05-21
+
+### Added
+
+- WASM tree-sitter via `tree-sitter-highlight-wasm v0.25` for client-side syntax highlighting.
+- Composite highlighter with regex + tree-sitter fallback chain.
+- TreeSitterHighlighter with native-tree-sitter feature flag.
+- Extracted `HighlightProvider` trait; renamed `Highlighter` to `RegexHighlighter`.
+- Syntax themes support for editor.
+- Multi-cursor support via `Cursors` type in editor.
+- File-type detection for automatic language assignment.
+- Server-side tree-sitter syntax highlighting for SSG.
+
+### Changed
+
+- Editor theme field moved to `Editor` struct with ROADMAP Phase A completion.
+
+### Fixed
+
+- Fixed deprecated editor methods and unused `Theme` re-export in frontend.
+
+## [15.0.0] - 2026-05-20
+
+### Added
+
+- Tauri desktop app development environment setup.
+- OIDC CSRF protection with cryptographic state parameter.
+- SAML assertion validation with signature and conditions checks.
+- CMS sync integration for bidirectional content synchronization.
+- Catalog UI for browsing available plugins and integrations.
+- Fill all stubs: code CSS, WASM queries, CRDT bus, team notifications.
+
+### Changed
+
+- CI unblocked for `tachyon-desktop-app` with GTK dependency handling.
+
+### Fixed
+
+- Ammonia HTML sanitizer now strips `class` attributes from code blocks
+  while preserving content.
+
+## [14.0.0] - 2026-05-20
+
+### Added
+
+- Tauri dev environment with IPC API proxy and comprehensive debug hooks.
+- `frontendDist` configuration for Tauri asset serving.
+
+### Fixed
+
+- Removed unused notification plugin from desktop app.
+- Fixed billing CSS class errors.
+- Restored `build.rs` for desktop; removed debug interceptor.
+- Removed `WEBKIT_DISABLE_COMPOSITING_MODE` env var; prepend `/usr/lib` to
+  library path.
+- Enabled devtools and fixed CSP for unstyled frontend.
+- Added `zlib` and `libglvnd` to Tauri system libraries in flake.nix.
+- Auto-disabled WebKit DMA-BUF renderer on NVIDIA GPUs.
+- Made embedded-server optional to prevent OOM during link phase.
+
+## [13.0.0] - 2026-05-19
+
+### Added
+
+- Versioned SSG with content-addressed builds and incremental regeneration.
+- Slack and Discord notification bridges for real-time event delivery.
+- DOCX export with formatting preservation.
+- Internationalization expansion: additional locale support.
+- SMS OTP for multi-factor authentication.
+- SCIM provisioning for enterprise identity provider integration.
+- S3-compatible storage backend with presigned URL support.
+- Magic link passwordless authentication flow.
+- Notification bridge for cross-channel event routing.
+- CRDT sync for collaborative editing.
+- Document review workflow with approval states.
+- SSG compliance features (accessibility, SEO).
+- Editor enhancements for rich text formatting.
+
+### Fixed
+
+- Optimized CI pipelines with concurrency groups and correctness fixes.
+- Enforced brutalist design tokens across frontend components.
+- Improved accessibility (ARIA labels, focus management, keyboard navigation).
+- Removed dead code and fixed poisoned lock handling in core/frontend.
+- Resolved clippy warnings and fixed test isolation in backend.
+
+### Documentation
+
+- Added post-audit changelog entries for transparency.
+
 ## [12.0.0] - 2026-05-19
 
 ### Changed
@@ -573,6 +727,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XSS prevention with HTML escaping in search results
 
 [20.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v20.0.0
+[19.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v19.0.0
+[18.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v18.0.0
+[17.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v17.0.0
+[16.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v16.0.0
+[15.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v15.0.0
+[14.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v14.0.0
+[13.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v13.0.0
 [12.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v12.0.0
 [11.0.0]: https://github.com/WyattAu/Tachyon/releases/tag/v11.0.0
 [10.1.1]: https://github.com/WyattAu/Tachyon/releases/tag/v10.1.1

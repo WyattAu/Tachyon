@@ -463,21 +463,7 @@ fn strip_html_tags(html: &str) -> String {
 ///
 /// Reserved for future use by the rendering pipeline.
 fn slugify(title: &str) -> String {
-    let slug: String = title
-        .to_lowercase()
-        .chars()
-        .map(|c| {
-            if c.is_alphanumeric() || c == '-' {
-                c.to_string()
-            } else {
-                "-".to_string()
-            }
-        })
-        .collect();
-    slug.split('-')
-        .filter(|s: &&str| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join("-")
+    tachyon_core::util::slugify(title)
 }
 
 #[cfg(test)]

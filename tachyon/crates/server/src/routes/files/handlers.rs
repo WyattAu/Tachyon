@@ -247,24 +247,16 @@ pub async fn list_directory(
 }
 
 fn parse_frontmatter(content: &str) -> (Option<serde_json::Value>, &str) {
-    if !content.starts_with("---") {
-        return (None, content);
-    }
-
-    if let Some(end) = content[3..].find("\n---") {
-        let yaml_str = &content[3..3 + end];
-        let body = &content[3 + end + 4..];
-
-        let yaml_val: serde_yaml::Value = match serde_yaml::from_str(yaml_str) {
-            Ok(val) => val,
-            Err(_) => return (None, content),
-        };
-        let frontmatter = serde_json::to_value(&yaml_val).unwrap_or(serde_json::Value::Null);
-
-        (Some(frontmatter), body.trim_start_matches('\n'))
+    let (fm, body) = tachyon_import_export::Frontmatter::parse(content);
+    // Frontmatter::parse returns default struct when no frontmatter found.
+    // If body == content, no frontmatter was actually parsed.
+    let has_frontmatter = body != content;
+    let value = if has_frontmatter {
+        serde_json::to_value(&fm).ok().filter(|v| !v.is_null())
     } else {
-        (None, content)
-    }
+        None
+    };
+    (value, body)
 }
 
 /// Read a file's contents.

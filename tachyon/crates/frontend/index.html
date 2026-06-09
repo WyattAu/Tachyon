@@ -863,13 +863,83 @@
         .editor-split-content.split-edit .editor-pane { flex: 1; }
         .editor-split-content.split-preview .editor-pane { flex: 1; }
         .editor-split-content.split-both .editor-pane { flex: 1; min-width: 0; }
-        .editor-split-divider { width: 2px; background: #111827; flex-shrink: 0; }
-        .dark .editor-split-divider { background: #f9fafb; }
+        .editor-split-divider {
+            width: 4px;
+            background: #374151;
+            flex-shrink: 0;
+            cursor: col-resize;
+            transition: background 0.15s;
+            position: relative;
+        }
+        .editor-split-divider:hover,
+        .editor-split-divider.dragging {
+            background: #3B82F6;
+        }
+        .editor-split-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 2px;
+            height: 30px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 1px;
+        }
+        .dark .editor-split-divider { background: #6b7280; }
+        .dark .editor-split-divider:hover,
+        .dark .editor-split-divider.dragging { background: #60a5fa; }
 
         .editor-pane { display: flex; flex-direction: column; overflow: hidden; }
         .editor-pane-full { width: 100%; }
         .editor-pane-left { border-right: none; }
         .editor-pane-right { border-left: none; }
+
+        /* Slash command menu */
+        .slash-command-menu {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-height: 240px;
+            overflow-y: auto;
+            min-width: 180px;
+            padding: 4px 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .dark .slash-command-menu {
+            background: #1f2937;
+            border-color: #374151;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        .slash-command-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .slash-command-item:hover,
+        .slash-command-item.selected {
+            background: #f3f4f6;
+        }
+        .dark .slash-command-item:hover,
+        .dark .slash-command-item.selected {
+            background: #374151;
+        }
+        .slash-command-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #111827;
+            min-width: 32px;
+        }
+        .dark .slash-command-label { color: #f9fafb; }
+        .slash-command-desc {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .dark .slash-command-desc { color: #9ca3af; }
     </style>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#3B82F6">

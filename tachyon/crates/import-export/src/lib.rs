@@ -120,14 +120,7 @@ impl ImportedDocument {
 
 /// Simple slugification: lowercase, replace non-alphanumeric with hyphens.
 pub(crate) fn slugify(text: &str) -> String {
-    text.to_lowercase()
-        .chars()
-        .map(|c| if c.is_alphanumeric() { c } else { '-' })
-        .collect::<String>()
-        .split('-')
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join("-")
+    tachyon_core::util::slugify(text)
 }
 
 /// Parse a date string from frontmatter into chrono::DateTime.

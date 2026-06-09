@@ -392,8 +392,8 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // Subscribe to relay events.
     let mut relay_rx = manager.subscribe();
 
-    // Subscribe to the shared broadcast bus for OT events from collaboration routes.
-    let mut bus_rx = manager.bus.subscribe();
+    // Subscribe to the shared broadcast bus for OT events scoped to this room.
+    let mut bus_rx = manager.bus.subscribe_to_room(&room).await;
 
     // Pre-load document from database if available.
     manager.crdt_manager().get_or_load(&room).await;

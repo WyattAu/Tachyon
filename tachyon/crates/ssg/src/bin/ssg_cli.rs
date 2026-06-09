@@ -109,18 +109,31 @@ struct Frontmatter {
     hide_breadcrumbs: bool,
 }
 
-/// YAML frontmatter parser using serde_yaml.
+/// YAML frontmatter parser using the canonical Frontmatter parser.
 fn parse_frontmatter(content: &str) -> Result<(Frontmatter, String), Box<dyn std::error::Error>> {
-    let trimmed = content
-        .trim_start_matches("---\n")
-        .trim_start_matches("---\r\n");
-    let end = trimmed
-        .find("---")
-        .ok_or("Missing closing --- in frontmatter")?;
-    let yaml_block = &trimmed[..end];
-    let body = trimmed[end + 3..].trim_start().to_string();
-    let frontmatter: Frontmatter = serde_yaml::from_str(yaml_block)?;
-    Ok((frontmatter, body))
+    let (fm, body) = tachyon_import_export::Frontmatter::parse(content);
+    let order = fm.extra.get("order").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+    let language = fm
+        .extra
+        .get("language")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let hide_breadcrumbs = fm
+        .extra
+        .get("hide_breadcrumbs")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let local = Frontmatter {
+        title: fm.title,
+        description: fm.description,
+        author: fm.author,
+        tags: fm.tags,
+        order,
+        language,
+        hide_breadcrumbs,
+    };
+    Ok((local, body.to_string()))
 }
 
 /// Derive title from first H1 heading in markdown content.

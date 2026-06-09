@@ -28,6 +28,22 @@ pub struct RateLimitConfig {
     pub endpoint_limits: HashMap<String, RateLimit>,
 }
 
+impl From<&crate::config::RateLimitConfig> for RateLimitConfig {
+    fn from(config: &crate::config::RateLimitConfig) -> Self {
+        Self {
+            enabled: config.enabled,
+            redis_url: config.redis_url.clone(),
+            default_requests_per_minute: config.default_requests_per_minute,
+            cleanup_interval_secs: config.cleanup_interval_secs,
+            endpoint_limits: config
+                .endpoint_limits
+                .iter()
+                .map(|(k, v)| (k.clone(), RateLimit::new(v.max_requests, v.window_secs)))
+                .collect(),
+        }
+    }
+}
+
 impl Default for RateLimitConfig {
     fn default() -> Self {
         let mut endpoint_limits = HashMap::new();

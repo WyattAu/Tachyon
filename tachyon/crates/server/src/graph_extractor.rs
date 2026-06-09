@@ -183,22 +183,15 @@ impl GraphExtractor {
     // -----------------------------------------------------------------------
 
     pub fn parse_frontmatter(content: &str) -> (serde_yaml::Value, &str) {
-        let trimmed = content.trim_start();
-        if !trimmed.starts_with("---") {
-            return (serde_yaml::Value::Null, content);
-        }
-
-        let after_delim = &trimmed[3..];
-        let end = match after_delim.find("\n---") {
-            Some(pos) => pos,
-            None => return (serde_yaml::Value::Null, content),
+        let (fm, body) = tachyon_import_export::Frontmatter::parse(content);
+        // If body == content, no frontmatter was actually parsed
+        let has_frontmatter = body != content;
+        let value = if has_frontmatter {
+            serde_yaml::to_value(&fm).unwrap_or(serde_yaml::Value::Null)
+        } else {
+            serde_yaml::Value::Null
         };
-
-        let yaml_block = &after_delim[..end];
-        let body = after_delim[end + 4..].trim_start_matches('\n');
-
-        let frontmatter = serde_yaml::from_str(yaml_block).unwrap_or(serde_yaml::Value::Null);
-        (frontmatter, body)
+        (value, body)
     }
 
     fn extract_tags_from_frontmatter(frontmatter: &serde_yaml::Value) -> Vec<String> {
@@ -725,26 +718,8 @@ impl GraphExtractor {
     // -----------------------------------------------------------------------
 
     fn slugify(text: &str) -> String {
-        text.to_lowercase()
-            .chars()
-            .map(|c| {
-                if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
-                    c
-                } else if c.is_whitespace() {
-                    '-'
-                } else {
-                    '\0'
-                }
-            })
-            .filter(|c| *c != '\0')
-            .collect::<String>()
-            .split('-')
-            .filter(|s| !s.is_empty())
-            .collect::<Vec<_>>()
-            .join("-")
-            .chars()
-            .take(128)
-            .collect()
+        let slug = tachyon_core::util::slugify(text);
+        slug.chars().take(128).collect()
     }
 }
 

@@ -206,6 +206,10 @@ pub struct BacklinkItem {
     pub title: String,
     pub slug: String,
     pub updated_at: String,
+    /// Short excerpt from the linking document (first 200 chars of content).
+    pub excerpt: Option<String>,
+    /// The surrounding text (up to 80 chars) where the wikilink appears in the linking document.
+    pub link_context: Option<String>,
 }
 
 /// Get documents that link to the given document.
@@ -213,7 +217,8 @@ pub struct BacklinkItem {
 /// `GET /api/v1/documents/{document_id}/backlinks`
 ///
 /// Queries the `outgoing_links` JSONB column to find all documents referencing
-/// this document by title. Returns up to 50 backlinks ordered by update time.
+/// this document by title. Returns up to 50 backlinks ordered by update time,
+/// each with a short excerpt and link context showing where the link appears.
 #[utoipa::path(
     get,
     path = "/api/v1/documents/{document_id}/backlinks",
@@ -248,8 +253,15 @@ pub async fn get_backlinks(
         .acquire()
         .await
         .map_err(|e| ServerError::database(format!("Failed to query backlinks: {}", e)))?;
-    let rows: Vec<(String, String, Option<String>, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
-        "SELECT id, title, slug, updated_at FROM documents WHERE outgoing_links @> $1::jsonb AND id != $2 ORDER BY updated_at DESC LIMIT 50"
+    type BacklinkRow = (
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        chrono::DateTime<chrono::Utc>,
+    );
+    let rows: Vec<BacklinkRow> = sqlx::query_as(
+        "SELECT id, title, slug, content, updated_at FROM documents WHERE outgoing_links @> $1::jsonb AND id != $2 ORDER BY updated_at DESC LIMIT 50"
     )
     .bind(&search_json)
     .bind(&document_id)
@@ -259,17 +271,83 @@ pub async fn get_backlinks(
         ServerError::database(format!("Failed to query backlinks: {}", e))
     })?;
 
+    let link_pattern = format!("[[{}]]", metadata.title);
     let backlinks: Vec<BacklinkItem> = rows
         .into_iter()
-        .map(|(id, title, slug, updated_at)| BacklinkItem {
-            id,
-            title,
-            slug: slug.unwrap_or_default(),
-            updated_at: updated_at.to_string(),
+        .map(|(id, title, slug, content, updated_at)| {
+            let excerpt = content.as_ref().map(|c| {
+                let trimmed = c.trim();
+                if trimmed.len() > 200 {
+                    format!("{}...", &trimmed[..200])
+                } else {
+                    trimmed.to_string()
+                }
+            });
+
+            let link_context = content
+                .as_ref()
+                .and_then(|c| find_link_context(c, &link_pattern));
+
+            BacklinkItem {
+                id,
+                title,
+                slug: slug.unwrap_or_default(),
+                updated_at: updated_at.to_rfc3339(),
+                excerpt,
+                link_context,
+            }
         })
         .collect();
 
     let count = backlinks.len();
 
     Ok(Json(BacklinksResponse { backlinks, count }))
+}
+
+/// Find the surrounding text where a link pattern appears in content.
+/// Returns up to 80 characters of context centered around the match.
+fn find_link_context(content: &str, pattern: &str) -> Option<String> {
+    let lower_content = content.to_lowercase();
+    let lower_pattern = pattern.to_lowercase();
+    let pos = lower_content.find(&lower_pattern)?;
+
+    let start = pos.saturating_sub(40);
+    let end = (pos + pattern.len() + 40).min(content.len());
+
+    let mut ctx_start = start;
+    let mut ctx_end = end;
+
+    // Try to break at word boundaries
+    if ctx_start > 0 {
+        while ctx_start < ctx_end && !content.is_char_boundary(ctx_start) {
+            ctx_start += 1;
+        }
+        // Move to next word boundary
+        while ctx_start < ctx_end
+            && !content[ctx_start..].starts_with(char::is_whitespace)
+            && !content[ctx_start..].starts_with([',', '.', '!'])
+        {
+            ctx_start += 1;
+        }
+        // Skip whitespace
+        while ctx_start < ctx_end && content[ctx_start..].starts_with(char::is_whitespace) {
+            ctx_start += 1;
+        }
+    }
+
+    if ctx_end < content.len() {
+        while ctx_end > ctx_start && !content.is_char_boundary(ctx_end) {
+            ctx_end -= 1;
+        }
+        // Move to previous word boundary
+        while ctx_end > ctx_start
+            && !content[..ctx_end].ends_with(char::is_whitespace)
+            && !content[..ctx_end].ends_with([',', '.', '!'])
+        {
+            ctx_end -= 1;
+        }
+    }
+
+    let ctx = content[ctx_start..ctx_end].trim().to_string();
+    if ctx.is_empty() { None } else { Some(ctx) }
 }

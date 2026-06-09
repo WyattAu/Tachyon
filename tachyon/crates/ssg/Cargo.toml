@@ -10,8 +10,9 @@ name = "tachyon-ssg-cli"
 path = "src/bin/ssg_cli.rs"
 
 [dependencies]
-# NOTE: tachyon-core removed — zero imports; SSG defines own SsgDocument type
+tachyon-core = { path = "../core" }
 tachyon-renderer = { path = "../renderer" }
+tachyon-import-export = { path = "../import-export" }
 
 # Serialization
 serde = { workspace = true }
