@@ -130,7 +130,7 @@ Provide advanced features for developers without overwhelming others:
 
 **Implementation:**
 ```bash
-# CLI example with powerful features
+# CLI example with advanced features
 tachyon open --format=markdown --editor=vscode docs/api.md
 tachyon search --author=@alice --since=2w "authentication"
 tachyon export --format=html --theme=dark --output=site/

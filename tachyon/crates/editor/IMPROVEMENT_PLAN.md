@@ -8,49 +8,49 @@ Tachyon editor: ~7,200 lines across 15 files. Rope-based buffer, line+col cursor
 
 | Feature | Tachyon | Monaco | Neovim | JetBrains | Priority | Status |
 |---------|---------|--------|--------|-----------|----------|--------|
-| **Buffer: Rope** | ✅ | Piece table | B-tree | Chars seq | Done | ✅ |
-| **Multi-cursor** | ✅ (struct exists, not wired in UI) | ✅ | ❌ (via macros) | ✅ | P1 | Backend done |
-| **Undo/Redo** | ✅ (flat stack) | ✅ (grouped) | ✅ (tree) | ✅ (command groups) | P1 | Done |
-| **Selection rendering** | ✅ (multi-line) | ✅ | ✅ | ✅ | P0 | ✅ Done |
-| **Cursor: desired_col** | ✅ | ✅ | ✅ (curswant) | ✅ | P0 | ✅ Done |
-| **Cursor: grapheme-aware** | ❌ (char-based) | ✅ (Intl.Segmenter) | ✌ (byte-based) | ✅ | P2 | — |
-| **Line numbers** | ✅ | ✅ | ✅ | ✅ | Done | ✅ |
-| **Word wrap** | ✅ (CSS word-wrap) | ✅ (view-aware) | ✅ | ✅ | P2 | ✅ Done |
-| **Find/Replace panel** | ✅ (UI + backend) | ✅ (full panel) | ✅ (`/`+incsearch) | ✅ (multi-line regex) | P1 | ✅ Done |
-| **Minimap** | ❌ | ✅ | ❌ | ✅ (error stripes) | P3 | — |
-| **Code folding** | ❌ | ✅ | ✅ (`zc`/`zo`) | ✅ | P2 | — |
-| **Bracket matching** | ✅ (highlight overlay) | ✅ (pair colorization) | ✅ (`%`) | ✅ (matched highlight) | P1 | ✅ Done |
-| **Auto-close brackets** | ✅ (wired) | ✅ | ❌ | ✅ | P0 | ✅ Done |
-| **Indent guides** | ✅ (subtle vertical lines) | ✅ | ❌ | ✅ (rainbow) | P1 | ✅ Done |
-| **Sticky scroll** | ❌ | ✅ | ❌ | ✅ | P2 | — |
-| **Clipboard (copy/cut/paste)** | ✅ (Ctrl+C/X/V) | ✅ | ✅ (registers) | ✅ | P0 | ✅ Done |
-| **Scroll beyond last line** | ✅ (+200px padding) | ✅ | ❌ | ✅ | P1 | ✅ Done |
-| **Smooth scrolling** | ❌ | ✅ | ❌ | ✅ | P2 | — |
-| **Visible lines (dynamic)** | ✅ (ResizeObserver) | ✅ (computed) | ✅ | ✅ | P0 | ✅ Done |
-| **Line operations** | ✅ (delete, duplicate, move, join) | ✅ | ✅ (dd, yy, p) | ✅ | Done | ✅ |
-| **Comment toggle** | ✅ | ✅ | ✅ (gc) | ✅ | Done | ✅ |
-| **Word navigation** | ✅ (Ctrl+Left/Right) | ✅ | ✅ (w/b/e) | ✅ (CamelHumps) | P1 | ✅ Done |
-| **Word selection** | ✅ (Ctrl+Shift+Left/Right) | ✅ | ✅ | ✅ | P1 | ✅ Done |
-| **Line selection** | ✅ (Ctrl+L) | ✅ | ✅ | ✅ | P1 | ✅ Done |
-| **Document selection** | ✅ (Ctrl+Shift+Home/End) | ✅ | ✅ | ✅ | P1 | ✅ Done |
-| **Mouse selection drag** | ✅ (mousedown/move/up) | ✅ | ❌ (visual mode) | ✅ | P1 | ✅ Done |
-| **Double-click word select** | ✅ | ✅ | ✅ | ✅ | P1 | ✅ Done |
-| **Triple-click line select** | ✅ | ✅ | ✅ | ✅ | P1 | ✅ Done |
-| **Cursor blink** | ✅ (CSS animation) | ✅ | ✅ | ✅ | P1 | ✅ Done |
-| **Status bar** | ✅ (Ln/Col, selection, language) | ✅ | ✅ | ✅ | P1 | ✅ Done |
-| **Bracket matching highlight** | ✅ | ✅ | ✅ | ✅ | P1 | ✅ Done |
-| **Join lines** | ✅ (Ctrl+J) | ✅ (Ctrl+J) | ✅ (J) | ✅ (Ctrl+Shift+J) | P1 | ✅ Done |
-| **Wikilinks** | ✅ | ❌ | ❌ | ❌ | Done | ✅ |
-| **CRDT sync** | ✅ (yrs) | ❌ | ❌ | ❌ | Done | ✅ |
-| **Theme system** | ✅ (3 built-in) | ✅ (300+) | ✅ (highlights) | ✅ | Done | ✅ |
-| **Ctrl+Z/Z undo** | ✅ | ✅ | ✅ | ✅ | Done | ✅ |
-| **Ctrl+A select all** | ✅ | ✅ | ✅ | ✅ | Done | ✅ |
-| **Find/Replace options** | ✅ (case, whole word, regex) | ✅ | ✅ | ✅ | P1 | ✅ Done |
-| **Join lines** | ✅ | ✅ | ✅ (J) | ✅ (Ctrl+Shift+J) | P1 | ✅ Done |
+| **Buffer: Rope** | [x] | Piece table | B-tree | Chars seq | Done | [x] |
+| **Multi-cursor** | [x] (struct exists, not wired in UI) | [x] | [ ] (via macros) | [x] | P1 | Backend done |
+| **Undo/Redo** | [x] (flat stack) | [x] (grouped) | [x] (tree) | [x] (command groups) | P1 | Done |
+| **Selection rendering** | [x] (multi-line) | [x] | [x] | [x] | P0 | [x] Done |
+| **Cursor: desired_col** | [x] | [x] | [x] (curswant) | [x] | P0 | [x] Done |
+| **Cursor: grapheme-aware** | [ ] (char-based) | [x] (Intl.Segmenter) | [~] (byte-based) | [x] | P2 | — |
+| **Line numbers** | [x] | [x] | [x] | [x] | Done | [x] |
+| **Word wrap** | [x] (CSS word-wrap) | [x] (view-aware) | [x] | [x] | P2 | [x] Done |
+| **Find/Replace panel** | [x] (UI + backend) | [x] (full panel) | [x] (`/`+incsearch) | [x] (multi-line regex) | P1 | [x] Done |
+| **Minimap** | [ ] | [x] | [ ] | [x] (error stripes) | P3 | — |
+| **Code folding** | [ ] | [x] | [x] (`zc`/`zo`) | [x] | P2 | — |
+| **Bracket matching** | [x] (highlight overlay) | [x] (pair colorization) | [x] (`%`) | [x] (matched highlight) | P1 | [x] Done |
+| **Auto-close brackets** | [x] (wired) | [x] | [ ] | [x] | P0 | [x] Done |
+| **Indent guides** | [x] (subtle vertical lines) | [x] | [ ] | [x] (rainbow) | P1 | [x] Done |
+| **Sticky scroll** | [ ] | [x] | [ ] | [x] | P2 | — |
+| **Clipboard (copy/cut/paste)** | [x] (Ctrl+C/X/V) | [x] | [x] (registers) | [x] | P0 | [x] Done |
+| **Scroll beyond last line** | [x] (+200px padding) | [x] | [ ] | [x] | P1 | [x] Done |
+| **Smooth scrolling** | [ ] | [x] | [ ] | [x] | P2 | — |
+| **Visible lines (dynamic)** | [x] (ResizeObserver) | [x] (computed) | [x] | [x] | P0 | [x] Done |
+| **Line operations** | [x] (delete, duplicate, move, join) | [x] | [x] (dd, yy, p) | [x] | Done | [x] |
+| **Comment toggle** | [x] | [x] | [x] (gc) | [x] | Done | [x] |
+| **Word navigation** | [x] (Ctrl+Left/Right) | [x] | [x] (w/b/e) | [x] (CamelHumps) | P1 | [x] Done |
+| **Word selection** | [x] (Ctrl+Shift+Left/Right) | [x] | [x] | [x] | P1 | [x] Done |
+| **Line selection** | [x] (Ctrl+L) | [x] | [x] | [x] | P1 | [x] Done |
+| **Document selection** | [x] (Ctrl+Shift+Home/End) | [x] | [x] | [x] | P1 | [x] Done |
+| **Mouse selection drag** | [x] (mousedown/move/up) | [x] | [ ] (visual mode) | [x] | P1 | [x] Done |
+| **Double-click word select** | [x] | [x] | [x] | [x] | P1 | [x] Done |
+| **Triple-click line select** | [x] | [x] | [x] | [x] | P1 | [x] Done |
+| **Cursor blink** | [x] (CSS animation) | [x] | [x] | [x] | P1 | [x] Done |
+| **Status bar** | [x] (Ln/Col, selection, language) | [x] | [x] | [x] | P1 | [x] Done |
+| **Bracket matching highlight** | [x] | [x] | [x] | [x] | P1 | [x] Done |
+| **Join lines** | [x] (Ctrl+J) | [x] (Ctrl+J) | [x] (J) | [x] (Ctrl+Shift+J) | P1 | [x] Done |
+| **Wikilinks** | [x] | [ ] | [ ] | [ ] | Done | [x] |
+| **CRDT sync** | [x] (yrs) | [ ] | [ ] | [ ] | Done | [x] |
+| **Theme system** | [x] (3 built-in) | [x] (300+) | [x] (highlights) | [x] | Done | [x] |
+| **Ctrl+Z/Z undo** | [x] | [x] | [x] | [x] | Done | [x] |
+| **Ctrl+A select all** | [x] | [x] | [x] | [x] | Done | [x] |
+| **Find/Replace options** | [x] (case, whole word, regex) | [x] | [x] | [x] | P1 | [x] Done |
+| **Join lines** | [x] | [x] | [x] (J) | [x] (Ctrl+Shift+J) | P1 | [x] Done |
 
 ## Prioritized Implementation Plan
 
-### Phase 1: Essential Fixes & Core UX (P0) — COMPLETE ✅
+### Phase 1: Essential Fixes & Core UX (P0) — COMPLETE [x]
 
 - [x] 1.1 Fix multi-line selection rendering
 - [x] 1.2 Add `desired_col` to cursor

@@ -81,7 +81,7 @@ Adopt JSON-LD (JSON for Linked Data) format for the knowledge graph with the fol
 ## Alternatives Considered
 
 1. **RDF/XML:** More expressive but more verbose and complex
-2. **Property Graph Database:** More powerful but requires specialized tools
+2. **Property Graph Database:** More capable but requires specialized tools
 3. **Relational Database:** Familiar but lacks semantic web capabilities
 4. **Wiki/Markdown:** Simple but lacks structured querying
 

@@ -22,7 +22,7 @@
 
 #### 1. `lepticons` — Lucide icons for Leptos
 **What:** Lucide icon toolkit with searchable picker, stroke draw-in animations, tree-shaking.
-**Why:** Our toolbar uses emoji (`🔗`, `🖼`, `☸`) which render inconsistently across platforms and look unprofessional. Lucide provides 1500+ consistent SVG icons.
+**Why:** Our toolbar uses emoji characters (link, image, compass) which render inconsistently across platforms and look unprofessional. Lucide provides 1500+ consistent SVG icons.
 **Impact:** Toolbar, sidebar, buttons, status bar — everywhere we use text/emoji for icons.
 **Risk:** Low — drop-in component replacement, no API changes.
 **Effort:** 1-2 days. Replace emoji literals with `<Icon icon=LucideBold />` components.
@@ -225,16 +225,16 @@
 
 | Decision | Verdict | Rationale |
 |----------|---------|-----------|
-| Keep Leptos | ✅ Keep | Best Rust WASM framework. CSR mode works well. No reason to switch. |
-| Keep Tauri | ✅ Keep | Best Rust desktop shell. Plugin ecosystem growing fast. |
-| Keep Trunk | ✅ Keep | Works, no HMR issues to solve (Trunk is the build tool, not the HMR provider) |
-| Adopt Tailwind fully | ✅ Adopt | Already using it via CDN. Switch to proper PostCSS build for HMR. |
-| Adopt `thaw` | ✅ Adopt | Saves weeks of component building. Accessibility built in. |
-| Adopt `lepticons` | ✅ Adopt | Immediate visual improvement. Zero risk. |
-| Adopt `leptos-use` | ✅ Adopt | Eliminates memory leak vectors. Modern patterns. |
-| Adopt `leptos-hotkeys` | ⚠️ Evaluate | Need to verify WebKitGTK compatibility before full adoption. |
-| Replace ImageMagick | ⚠️ Evaluate | Plugin may not capture WebKitGTK rendering. Test first. |
-| SSR migration | ❌ Not now | CSR works fine for desktop. SSR adds complexity without benefit. |
+| Keep Leptos | Keep | Best Rust WASM framework. CSR mode works well. No reason to switch. |
+| Keep Tauri | Keep | Best Rust desktop shell. Plugin ecosystem growing fast. |
+| Keep Trunk | Keep | Works, no HMR issues to solve (Trunk is the build tool, not the HMR provider) |
+| Adopt Tailwind fully | Adopt | Already using it via CDN. Switch to proper PostCSS build for HMR. |
+| Adopt `thaw` | Adopt | Saves weeks of component building. Accessibility built in. |
+| Adopt `lepticons` | Adopt | Immediate visual improvement. Zero risk. |
+| Adopt `leptos-use` | Adopt | Eliminates memory leak vectors. Modern patterns. |
+| Adopt `leptos-hotkeys` | Evaluate | Need to verify WebKitGTK compatibility before full adoption. |
+| Replace ImageMagick | Evaluate | Plugin may not capture WebKitGTK rendering. Test first. |
+| SSR migration | Not now | CSR works fine for desktop. SSR adds complexity without benefit. |
 
 ## Risk Register
 
