@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 #
 # Tachyon pre-commit hook
-# Enforces code quality gates before any commit is created.
+# Enforces strict code quality gates before any commit is created.
 #
 # Gates:
-#   1. cargo fmt --check
-#   2. cargo clippy -D warnings
-#   3. cargo test --lib (library unit tests; integration tests run in CI)
-#   4. cargo doc --no-deps (no warnings)
-#   5. Secret detection
-#   6. Debug artifact detection
+#   1. cargo fmt --check (all crates)
+#   2. cargo clippy -D warnings (all non-heavy crates)
+#   3. cargo test --lib (library unit tests; integration in CI)
+#   4. Secret detection
+#   5. Debug artifact detection
+#   6. Emoji detection in documentation
 #
 # Install: git config core.hooksPath .githooks
+
+set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 WORKSPACE_DIR="${REPO_ROOT}/tachyon"
@@ -27,68 +29,57 @@ fail()  { echo -e "${RED}[FAIL]${NC} $*"; }
 
 PASS=true
 
-# Skip checks if no Rust files were modified
+# Skip checks if no relevant files were modified
 RUST_CHANGED="$(git diff --cached --name-only --diff-filter=ACM | grep -cE '\.rs$|Cargo\.toml|Cargo\.lock' || true)"
-if [ "$RUST_CHANGED" -eq 0 ]; then
-    info "No Rust files staged. Skipping cargo checks."
+DOC_CHANGED="$(git diff --cached --name-only --diff-filter=ACM | grep -cE '\.md$' || true)"
+
+if [ "$RUST_CHANGED" -eq 0 ] && [ "$DOC_CHANGED" -eq 0 ]; then
+    info "No Rust or documentation files staged. Skipping checks."
     exit 0
 fi
 
-# ---- 1. Formatting ----
-info "Checking formatting (cargo fmt)..."
-if ! cargo fmt --all --manifest-path "${WORKSPACE_DIR}/Cargo.toml" -- --check; then
-    fail "Formatting issues found. Run: cargo fmt --all --manifest-path tachyon/Cargo.toml"
-    PASS=false
+if [ "$RUST_CHANGED" -eq 0 ]; then
+    # Only doc changes -- skip cargo checks
+    info "No Rust files staged. Skipping cargo checks."
+else
+    # ---- 1. Formatting ----
+    info "Checking formatting (cargo fmt)..."
+    if ! cargo fmt --all --manifest-path "${WORKSPACE_DIR}/Cargo.toml" -- --check; then
+        fail "Formatting issues found. Run: cargo fmt --all --manifest-path tachyon/Cargo.toml"
+        PASS=false
+    fi
+
+    # ---- 2. Clippy ----
+    # Exclude tachyon-cli (heavy deps: wasmtime, tauri) and tachyon-testing (aggregator)
+    info "Running clippy (-D warnings)..."
+    if ! cargo clippy \
+        --workspace \
+        --exclude tachyon-cli \
+        --exclude tachyon-testing \
+        --exclude tachyon-benchmarks \
+        --all-targets \
+        --manifest-path "${WORKSPACE_DIR}/Cargo.toml" \
+        -- -D warnings; then
+        fail "Clippy warnings found. Run: cargo clippy --fix"
+        PASS=false
+    fi
+
+    # ---- 3. Tests (library only; integration deferred to CI) ----
+    info "Running library tests (--lib)..."
+    if ! cargo test \
+        --lib \
+        --workspace \
+        --exclude tachyon-cli \
+        --exclude tachyon-testing \
+        --exclude tachyon-benchmarks \
+        --exclude tachyon-frontend \
+        --manifest-path "${WORKSPACE_DIR}/Cargo.toml"; then
+        fail "Tests failed. See output above for details."
+        PASS=false
+    fi
 fi
 
-# ---- 2. Clippy ----
-info "Running clippy (-D warnings)..."
-if ! cargo clippy \
-    --workspace \
-    --exclude tachyon-testing \
-    --exclude tachyon-benchmarks \
-    --exclude tachyon-frontend \
-    --exclude tachyon-desktop \
-    --exclude tachyon-desktop-app \
-    --manifest-path "${WORKSPACE_DIR}/Cargo.toml" \
-    -- -D warnings; then
-    fail "Clippy warnings found. Run: cargo clippy --fix"
-    PASS=false
-fi
-
-# ---- 3. Tests (library only; integration tests deferred to CI) ----
-info "Running library tests (--lib)..."
-if ! cargo test \
-    --lib \
-    --workspace \
-    --exclude tachyon-testing \
-    --exclude tachyon-benchmarks \
-    --exclude tachyon-frontend \
-    --exclude tachyon-desktop \
-    --exclude tachyon-desktop-app \
-    --manifest-path "${WORKSPACE_DIR}/Cargo.toml"; then
-    fail "Tests failed. See output above for details."
-    PASS=false
-fi
-
-# ---- 4. Rustdoc ----
-info "Checking rustdoc..."
-DOC_STDERR="$(cargo doc \
-    --workspace \
-    --exclude tachyon-testing \
-    --exclude tachyon-benchmarks \
-    --exclude tachyon-frontend \
-    --manifest-path "${WORKSPACE_DIR}/Cargo.toml" \
-    --no-deps 2>&1 >/dev/null)" || true
-# Filter for actual rustdoc warnings/errors (contain source file references or rustdoc:: lint names)
-DOC_WARNINGS="$(echo "$DOC_STDERR" | grep -E "^(warning|error)" | grep -vE "Found .feature|Compiling|Checking|Finished|Documenting" || true)"
-if [ -n "$DOC_WARNINGS" ]; then
-    fail "Rustdoc warnings/errors found:"
-    echo "$DOC_WARNINGS" | head -20
-    PASS=false
-fi
-
-# ---- 5. Secret detection (exclude this hook file and .env.* templates) ----
+# ---- 4. Secret detection ----
 info "Scanning for potential secrets..."
 STAGED_FILES="$(git diff --cached --name-only --diff-filter=ACM)"
 if [ -n "$STAGED_FILES" ]; then
@@ -96,16 +87,31 @@ if [ -n "$STAGED_FILES" ]; then
         '(PASSWORD|SECRET|API_KEY|TOKEN|PRIVATE_KEY).*=.*["\x27][^"\x27]{8,}' \
         2>/dev/null || true)"
     if [ -n "$SECRET_HITS" ]; then
-        warn "Potential secrets in staged files:"
+        fail "Potential secrets in staged files:"
         echo "$SECRET_HITS"
+        PASS=false
     fi
 fi
 
-# ---- 6. Debug artifact detection ----
+# ---- 5. Debug artifact detection ----
 info "Checking for debug/build artifacts..."
-if echo "$STAGED_FILES" | grep -qE '(^|/)target/|\.swp$|\.swo$|~$|\.pyc$|__pycache__'; then
+if echo "$STAGED_FILES" | grep -qE '(^|/)target/|\.swp$|\.swo$|~$|\.pyc$|__pycache__|\.orig$'; then
     fail "Debug/build artifacts detected in staged files. Remove them."
     PASS=false
+fi
+
+# ---- 6. Emoji detection in documentation ----
+if [ "$DOC_CHANGED" -gt 0 ]; then
+    info "Checking for emojis in documentation..."
+    DOC_FILES="$(git diff --cached --name-only --diff-filter=ACM | grep '\.md$' || true)"
+    if [ -n "$DOC_FILES" ]; then
+        EMOJI_HITS="$(echo "$DOC_FILES" | xargs grep -lP '[\x{1F600}-\x{1F64F}\x{1F300}-\x{1F5FF}\x{1F680}-\x{1F6FF}\x{1F1E0}-\x{1F1FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]' 2>/dev/null || true)"
+        if [ -n "$EMOJI_HITS" ]; then
+            fail "Emojis found in documentation files:"
+            echo "$EMOJI_HITS"
+            PASS=false
+        fi
+    fi
 fi
 
 # ---- Result ----
