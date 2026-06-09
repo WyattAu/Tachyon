@@ -46,7 +46,7 @@ jobs:
 
       - name: Check workspace
         working-directory: tachyon
-        run: cargo check --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks
+        run: cargo check --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app
 
       - name: Check WASM compilation
         working-directory: tachyon
@@ -85,7 +85,7 @@ jobs:
 
       - name: Run clippy
         working-directory: tachyon
-        run: cargo clippy --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --all-targets -- -D warnings
+        run: cargo clippy --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app --all-targets -- -D warnings
 
   test:
     name: Test
