@@ -306,9 +306,10 @@ fn build_slack_payload(
     }
 
     if let Some(ref ts) = notification.timestamp
-        && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(ts) {
-            attachment["ts"] = serde_json::json!(dt.timestamp());
-        }
+        && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(ts)
+    {
+        attachment["ts"] = serde_json::json!(dt.timestamp());
+    }
 
     serde_json::json!({
         "channel": channel,
@@ -354,9 +355,10 @@ fn build_discord_payload(
     }
 
     if let Some(ref ts) = notification.timestamp
-        && chrono::DateTime::parse_from_rfc3339(ts).is_ok() {
-            embed["timestamp"] = serde_json::json!(ts);
-        }
+        && chrono::DateTime::parse_from_rfc3339(ts).is_ok()
+    {
+        embed["timestamp"] = serde_json::json!(ts);
+    }
 
     let mut payload = serde_json::json!({
         "username": username,

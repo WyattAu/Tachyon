@@ -956,8 +956,11 @@ mod test_ammonia_class {
             .add_tag_attributes("img", ["src", "alt", "title", "width", "height", "loading"])
             .clean(html)
             .to_string();
-        assert!(cleaned.contains(r#"class="language-json""#),
-            "Expected class preserved, got: {}", cleaned);
+        assert!(
+            cleaned.contains(r#"class="language-json""#),
+            "Expected class preserved, got: {}",
+            cleaned
+        );
     }
 
     #[test]
@@ -968,7 +971,10 @@ mod test_ammonia_class {
         let config = RenderConfig::default();
         let renderer = Renderer::new(config);
         let result = renderer.render(md, None).unwrap();
-        assert!(result.content.contains(r#"class="language-json""#),
-            "Expected code block to have class=\"language-json\", got: {}", &result.content);
+        assert!(
+            result.content.contains(r#"class="language-json""#),
+            "Expected code block to have class=\"language-json\", got: {}",
+            &result.content
+        );
     }
 }

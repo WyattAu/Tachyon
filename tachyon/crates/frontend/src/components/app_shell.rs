@@ -5,6 +5,7 @@ use crate::components::{
     ClientSearch, CommandPalette, OnboardingWizard, ThemeToggle, should_show_onboarding,
 };
 use crate::types::Notification;
+use lepticons::{Icon, LucideGlyph};
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use wasm_bindgen::JsCast;
@@ -271,23 +272,53 @@ where
 
                     {/* Navigation */}
                     <nav class="flex-1 p-2 space-y-1 overflow-y-auto no-print">
-                        <NavLink href="/" label="Home" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/dashboard" label="Dashboard" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/documents" label="Documents" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/spaces" label="Spaces" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/graph" label="Graph" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/tags" label="Tags" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/teams" label="Teams" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/search" label="Search" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/catalog" label="Catalog" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/templates" label="Templates" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/plugins" label="Plugins" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/ssg" label="Static Site" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/billing" label="Billing" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/audit" label="Audit Log" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/admin/roles" label="Admin" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/settings" label="Settings" collapsed={sidebar_collapsed.get_untracked()} />
-                        <NavLink href="/profile" label="Profile" collapsed={sidebar_collapsed.get_untracked()} />
+                        <NavLink href="/" label="Home" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::House} />
+                        <NavLink href="/dashboard" label="Dashboard" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::LayoutDashboard} />
+
+                        {/* Server documents section */}
+                        <div class="pt-2 pb-1 px-2">
+                            <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                "Server"
+                            </span>
+                        </div>
+                        <NavLink href="/documents" label="Documents" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::FileText} />
+                        <NavLink href="/spaces" label="Spaces" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Folder} />
+                        <NavLink href="/graph" label="Graph" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::GitBranch} />
+                        <NavLink href="/tags" label="Tags" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Tag} />
+                        <NavLink href="/teams" label="Teams" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Users} />
+                        <NavLink href="/search" label="Search" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Search} />
+
+                        {/* Local documents section */}
+                        <div class="pt-2 pb-1 px-2">
+                            <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                "Local"
+                            </span>
+                        </div>
+                        <NavLink href="/local" label="Local Documents" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::FolderOpen} />
+                        <NavLink href="/servers" label="Server Connections" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Server} />
+
+                        {/* Admin section */}
+                        <div class="pt-2 pb-1 px-2">
+                            <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                "Admin"
+                            </span>
+                        </div>
+                        <NavLink href="/catalog" label="Catalog" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Package} />
+                        <NavLink href="/templates" label="Templates" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::LayoutTemplate} />
+                        <NavLink href="/plugins" label="Plugins" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Puzzle} />
+                        <NavLink href="/ssg" label="Static Site" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Globe} />
+                        <NavLink href="/billing" label="Billing" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::CreditCard} />
+                        <NavLink href="/audit" label="Audit Log" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::ScrollText} />
+                        <NavLink href="/admin/roles" label="Admin" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Shield} />
+
+                        {/* Account section */}
+                        <div class="pt-2 pb-1 px-2">
+                            <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                "Account"
+                            </span>
+                        </div>
+                        <NavLink href="/settings" label="Settings" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Settings} />
+                        <NavLink href="/profile" label="Profile" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::User} />
                     </nav>
 
                     {/* Collapse toggle */}
@@ -561,7 +592,12 @@ where
 
 /// Navigation link component
 #[component]
-pub fn NavLink(href: &'static str, label: &'static str, collapsed: bool) -> impl IntoView {
+pub fn NavLink(
+    href: &'static str,
+    label: &'static str,
+    collapsed: bool,
+    glyph: LucideGlyph,
+) -> impl IntoView {
     view! {
         <a
             href=href
@@ -569,9 +605,7 @@ pub fn NavLink(href: &'static str, label: &'static str, collapsed: bool) -> impl
             title=label
             attr:aria-label=label
         >
-            <svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
+            <Icon glyph=glyph size="20" />
             <Show when={move || !collapsed}>
                 <span class="ml-3">{label}</span>
             </Show>

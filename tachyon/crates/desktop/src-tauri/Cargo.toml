@@ -26,6 +26,13 @@ tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-log = "2"
 
+# Screenshot support (Linux/GTK only — webkit2gtk is already a Tauri transitive dep)
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "2.0"
+cairo-rs = { version = "0.18", features = ["png"] }
+gdk = "0.18"
+gtk = "0.18"
+
 # Workspace dependencies
 tachyon-core = { path = "../../core" }
 tachyon-import-export = { path = "../../import-export" }
@@ -70,6 +77,9 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 # Hashing for local authentication
 sha2 = "0.10"
 hex = "0.4"
+
+# Base64 for screenshot encoding
+base64 = "0.22"
 
 [features]
 default = ["custom-protocol"]

@@ -29,6 +29,18 @@ impl Search {
         }
     }
 
+    pub fn set_case_sensitive(&mut self, value: bool) {
+        self.case_sensitive = value;
+    }
+
+    pub fn set_whole_word(&mut self, value: bool) {
+        self.whole_word = value;
+    }
+
+    pub fn set_regex(&mut self, value: bool) {
+        self.use_regex = value;
+    }
+
     fn build_regex(&self, query: &str) -> Option<Regex> {
         if query.is_empty() {
             return None;

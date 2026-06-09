@@ -59,10 +59,18 @@ async fn tauri_invoke(
 
     // Build args object: { method, path, body, headers }
     let args_obj = Object::new();
-    js_sys::Reflect::set(&args_obj, &JsValue::from_str("method"), &JsValue::from_str(method))
-        .map_err(|_| "failed to set method")?;
-    js_sys::Reflect::set(&args_obj, &JsValue::from_str("path"), &JsValue::from_str(path))
-        .map_err(|_| "failed to set path")?;
+    js_sys::Reflect::set(
+        &args_obj,
+        &JsValue::from_str("method"),
+        &JsValue::from_str(method),
+    )
+    .map_err(|_| "failed to set method")?;
+    js_sys::Reflect::set(
+        &args_obj,
+        &JsValue::from_str("path"),
+        &JsValue::from_str(path),
+    )
+    .map_err(|_| "failed to set path")?;
 
     if let Some(b) = body {
         let js_val = serde_wasm_bindgen::to_value(b).map_err(|e| e.to_string())?;
@@ -99,22 +107,19 @@ async fn tauri_invoke(
     if let Some(status_str) = resp.get("status").and_then(|v| v.as_str()) {
         if status_str == "ok" {
             let data = resp.get("data").cloned().unwrap_or(serde_json::Value::Null);
-            let status = data.get("status")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0) as u16;
+            let status = data.get("status").and_then(|v| v.as_u64()).unwrap_or(0) as u16;
             let body = data.get("body").cloned().unwrap_or(serde_json::Value::Null);
             Ok((status, body))
         } else {
-            let error = resp.get("error")
+            let error = resp
+                .get("error")
                 .and_then(|v| v.as_str())
                 .unwrap_or("Unknown Tauri invoke error");
             Err(error.to_string())
         }
     } else {
         // Fallback: try to parse as ApiResponse directly (for Tauri 1 compat)
-        let status = resp.get("status")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as u16;
+        let status = resp.get("status").and_then(|v| v.as_u64()).unwrap_or(0) as u16;
         let body = resp.get("body").cloned().unwrap_or(serde_json::Value::Null);
         Ok((status, body))
     }
@@ -227,8 +232,8 @@ impl ApiClient {
             let path = url_to_path(url);
             let (status, body) = tauri_invoke("GET", &path, None, auth.as_deref())
                 .await
-                .map_err(|e| ApiError::Network(e))?;
-            if status >= 200 && status < 300 {
+                .map_err(ApiError::Network)?;
+            if (200..300).contains(&status) {
                 serde_json::from_value(body).map_err(|e| ApiError::Serialization(e.to_string()))
             } else {
                 Err(ApiError::Api(format!("HTTP {}: {}", status, body)))
@@ -262,15 +267,17 @@ impl ApiClient {
         body: &T,
     ) -> Result<R, ApiError> {
         let auth = self.get_auth_token().map(|t| format!("Bearer {}", t));
-        let body_val = serde_json::to_value(body).map_err(|e| ApiError::Serialization(e.to_string()))?;
+        let body_val =
+            serde_json::to_value(body).map_err(|e| ApiError::Serialization(e.to_string()))?;
 
         if is_tauri() {
             let path = url_to_path(url);
             let (status, resp_body) = tauri_invoke("POST", &path, Some(&body_val), auth.as_deref())
                 .await
-                .map_err(|e| ApiError::Network(e))?;
-            if status >= 200 && status < 300 {
-                serde_json::from_value(resp_body).map_err(|e| ApiError::Serialization(e.to_string()))
+                .map_err(ApiError::Network)?;
+            if (200..300).contains(&status) {
+                serde_json::from_value(resp_body)
+                    .map_err(|e| ApiError::Serialization(e.to_string()))
             } else {
                 Err(ApiError::Api(format!("HTTP {}: {}", status, resp_body)))
             }
@@ -305,15 +312,17 @@ impl ApiClient {
         body: &T,
     ) -> Result<R, ApiError> {
         let auth = self.get_auth_token().map(|t| format!("Bearer {}", t));
-        let body_val = serde_json::to_value(body).map_err(|e| ApiError::Serialization(e.to_string()))?;
+        let body_val =
+            serde_json::to_value(body).map_err(|e| ApiError::Serialization(e.to_string()))?;
 
         if is_tauri() {
             let path = url_to_path(url);
             let (status, resp_body) = tauri_invoke("PUT", &path, Some(&body_val), auth.as_deref())
                 .await
-                .map_err(|e| ApiError::Network(e))?;
-            if status >= 200 && status < 300 {
-                serde_json::from_value(resp_body).map_err(|e| ApiError::Serialization(e.to_string()))
+                .map_err(ApiError::Network)?;
+            if (200..300).contains(&status) {
+                serde_json::from_value(resp_body)
+                    .map_err(|e| ApiError::Serialization(e.to_string()))
             } else {
                 Err(ApiError::Api(format!("HTTP {}: {}", status, resp_body)))
             }
@@ -349,8 +358,8 @@ impl ApiClient {
             let path = url_to_path(url);
             let (status, body) = tauri_invoke("DELETE", &path, None, auth.as_deref())
                 .await
-                .map_err(|e| ApiError::Network(e))?;
-            if status >= 200 && status < 300 {
+                .map_err(ApiError::Network)?;
+            if (200..300).contains(&status) {
                 Ok(())
             } else {
                 Err(ApiError::Api(format!("HTTP {}: {}", status, body)))
@@ -382,8 +391,8 @@ impl ApiClient {
             let path = url_to_path(url);
             let (status, body) = tauri_invoke("POST", &path, None, auth.as_deref())
                 .await
-                .map_err(|e| ApiError::Network(e))?;
-            if status >= 200 && status < 300 {
+                .map_err(ApiError::Network)?;
+            if (200..300).contains(&status) {
                 Ok(())
             } else {
                 Err(ApiError::Api(format!("HTTP {}: {}", status, body)))
@@ -415,8 +424,8 @@ impl ApiClient {
             let path = url_to_path(url);
             let (status, body) = tauri_invoke("POST", &path, None, auth.as_deref())
                 .await
-                .map_err(|e| ApiError::Network(e))?;
-            if status >= 200 && status < 300 {
+                .map_err(ApiError::Network)?;
+            if (200..300).contains(&status) {
                 serde_json::from_value(body).map_err(|e| ApiError::Serialization(e.to_string()))
             } else {
                 Err(ApiError::Api(format!("HTTP {}: {}", status, body)))
@@ -450,14 +459,15 @@ impl ApiClient {
         body: &impl Serialize,
     ) -> Result<(), ApiError> {
         let auth = self.get_auth_token().map(|t| format!("Bearer {}", t));
-        let body_val = serde_json::to_value(body).map_err(|e| ApiError::Serialization(e.to_string()))?;
+        let body_val =
+            serde_json::to_value(body).map_err(|e| ApiError::Serialization(e.to_string()))?;
 
         if is_tauri() {
             let path = url_to_path(url);
             let (status, resp_body) = tauri_invoke("POST", &path, Some(&body_val), auth.as_deref())
                 .await
-                .map_err(|e| ApiError::Network(e))?;
-            if status >= 200 && status < 300 {
+                .map_err(ApiError::Network)?;
+            if (200..300).contains(&status) {
                 Ok(())
             } else {
                 Err(ApiError::Api(format!("HTTP {}: {}", status, resp_body)))

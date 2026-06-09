@@ -27,21 +27,23 @@ impl BuildCache {
     /// Load cache from a JSON file. Returns empty cache if file doesn't exist or is invalid.
     pub fn load(path: &Path) -> Self {
         if let Ok(data) = std::fs::read_to_string(path)
-            && let Ok(entries) = serde_json::from_str::<HashMap<String, ContentHash>>(&data) {
-                return Self {
-                    entries,
-                    dirty: false,
-                };
-            }
+            && let Ok(entries) = serde_json::from_str::<HashMap<String, ContentHash>>(&data)
+        {
+            return Self {
+                entries,
+                dirty: false,
+            };
+        }
         Self::default()
     }
 
     /// Save cache to a JSON file.
     pub fn save(&self, path: &Path) {
         if (self.dirty || !path.exists())
-            && let Ok(data) = serde_json::to_string_pretty(&self.entries) {
-                let _ = std::fs::write(path, data);
-            }
+            && let Ok(data) = serde_json::to_string_pretty(&self.entries)
+        {
+            let _ = std::fs::write(path, data);
+        }
     }
 
     /// Compute a content hash for a document.
@@ -64,9 +66,11 @@ impl BuildCache {
     pub fn needs_rebuild(&self, doc: &SsgDocument, output_path: &Path) -> bool {
         let hash = Self::hash_document(doc);
         if let Some(cached_hash) = self.entries.get(&doc.slug)
-            && *cached_hash == hash && output_path.exists() {
-                return false; // Unchanged and output exists
-            }
+            && *cached_hash == hash
+            && output_path.exists()
+        {
+            return false; // Unchanged and output exists
+        }
         true
     }
 

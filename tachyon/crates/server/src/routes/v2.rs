@@ -22,15 +22,15 @@ use axum::{
     extract::{Extension, Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Json, Response},
-    routing::{delete, get, post, put},
+    routing::{get, post},
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tracing::{debug, warn};
 
 use crate::routes::document::DocumentState;
-use crate::routes::user::UserState;
 use crate::routes::search::SearchState;
+use crate::routes::user::UserState;
 
 use crate::routes::document::{CreateDocumentRequest, UpdateDocumentRequest};
 
@@ -59,7 +59,10 @@ pub fn create_v2_router(state: V2State) -> axum::Router<()> {
         .route("/auth/refresh", post(v2_refresh))
         .route("/auth/me", get(v2_get_me).put(v2_update_me))
         // Documents
-        .route("/documents", get(v2_list_documents).post(v2_create_document))
+        .route(
+            "/documents",
+            get(v2_list_documents).post(v2_create_document),
+        )
         .route(
             "/documents/{document_id}",
             get(v2_get_document)
@@ -174,11 +177,8 @@ pub async fn v2_register(
         email: body.email,
         password: body.password,
     };
-    match crate::routes::user::handlers::register(
-        State(state.user_state.clone()),
-        axum::Json(req),
-    )
-    .await
+    match crate::routes::user::handlers::register(State(state.user_state.clone()), axum::Json(req))
+        .await
     {
         Ok(Json(response)) => {
             let data = serde_json::to_value(&response).unwrap_or_else(|_| json!({"success": true}));
@@ -229,18 +229,13 @@ pub async fn v2_refresh(
     }
 }
 
-pub async fn v2_get_me(
-    State(state): State<V2State>,
-    headers: HeaderMap,
-) -> Response {
+pub async fn v2_get_me(State(state): State<V2State>, headers: HeaderMap) -> Response {
     match crate::routes::user::handlers::get_me(State(state.user_state.clone()), headers).await {
         Ok(Json(response)) => {
             let data = serde_json::to_value(&response).unwrap_or_default();
             Json(v2_ok(data)).into_response()
         }
-        Err((status, Json(err))) => {
-            v2_error("UNAUTHORIZED", &err.message, status).into_response()
-        }
+        Err((status, Json(err))) => v2_error("UNAUTHORIZED", &err.message, status).into_response(),
     }
 }
 
@@ -270,9 +265,7 @@ pub async fn v2_update_me(
             let data = serde_json::to_value(&response).unwrap_or_default();
             Json(v2_ok(data)).into_response()
         }
-        Err((status, Json(err))) => {
-            v2_error("BAD_REQUEST", &err.message, status).into_response()
-        }
+        Err((status, Json(err))) => v2_error("BAD_REQUEST", &err.message, status).into_response(),
     }
 }
 
@@ -359,8 +352,12 @@ pub async fn v2_list_documents(
         }
         Err(e) => {
             warn!("v2: failed to list documents: {}", e);
-            v2_error("DATABASE_ERROR", &format!("Failed to list documents: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
-                .into_response()
+            v2_error(
+                "DATABASE_ERROR",
+                &format!("Failed to list documents: {}", e),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response()
         }
     }
 }
@@ -397,9 +394,7 @@ pub async fn v2_create_document(
             let data = serde_json::to_value(&response).unwrap_or_default();
             Json(v2_ok(data)).into_response()
         }
-        Err(e) => {
-            v2_error("BAD_REQUEST", &e.to_string(), StatusCode::BAD_REQUEST).into_response()
-        }
+        Err(e) => v2_error("BAD_REQUEST", &e.to_string(), StatusCode::BAD_REQUEST).into_response(),
     }
 }
 
@@ -478,14 +473,23 @@ pub async fn v2_update_document(
     // Build UpdateDocumentRequest from JSON body (flexible field set)
     let req = UpdateDocumentRequest {
         title: body.get("title").and_then(|v| v.as_str()).map(String::from),
-        content: body.get("content").and_then(|v| v.as_str()).map(String::from),
+        content: body
+            .get("content")
+            .and_then(|v| v.as_str())
+            .map(String::from),
         tags: body.get("tags").and_then(|v| v.as_array()).map(|arr| {
             arr.iter()
                 .filter_map(|v| v.as_str().map(String::from))
                 .collect()
         }),
-        visibility: body.get("visibility").and_then(|v| v.as_str()).map(String::from),
-        status: body.get("status").and_then(|v| v.as_str()).map(String::from),
+        visibility: body
+            .get("visibility")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        status: body
+            .get("status")
+            .and_then(|v| v.as_str())
+            .map(String::from),
     };
 
     match crate::routes::document::update_document(
@@ -500,9 +504,7 @@ pub async fn v2_update_document(
             let data = serde_json::to_value(&response).unwrap_or_default();
             Json(v2_ok(data)).into_response()
         }
-        Err(e) => {
-            v2_error("BAD_REQUEST", &e.to_string(), StatusCode::BAD_REQUEST).into_response()
-        }
+        Err(e) => v2_error("BAD_REQUEST", &e.to_string(), StatusCode::BAD_REQUEST).into_response(),
     }
 }
 
@@ -533,9 +535,7 @@ pub async fn v2_delete_document(
     .await
     {
         Ok(_) => StatusCode::NO_CONTENT.into_response(),
-        Err(e) => {
-            v2_error("BAD_REQUEST", &e.to_string(), StatusCode::BAD_REQUEST).into_response()
-        }
+        Err(e) => v2_error("BAD_REQUEST", &e.to_string(), StatusCode::BAD_REQUEST).into_response(),
     }
 }
 
@@ -576,19 +576,12 @@ pub async fn v2_search(
         date_to: None,
     };
 
-    match crate::routes::search::search(
-        Query(req),
-        State(state.search_state.clone()),
-    )
-    .await
-    {
+    match crate::routes::search::search(Query(req), State(state.search_state.clone())).await {
         Ok(Json(response)) => {
             let data = serde_json::to_value(&response).unwrap_or_default();
             Json(v2_ok(data)).into_response()
         }
-        Err(e) => {
-            v2_error("SEARCH_ERROR", &e.to_string(), StatusCode::BAD_REQUEST).into_response()
-        }
+        Err(e) => v2_error("SEARCH_ERROR", &e.to_string(), StatusCode::BAD_REQUEST).into_response(),
     }
 }
 

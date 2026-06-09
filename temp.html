@@ -1,0 +1,880 @@
+<html lang="en" class="dark"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tachyon - A deterministic, high-performance knowledge management system with sub-15ms rendering and real-time collaboration.">
+    <meta name="theme-color" content="#2563eb">
+    <title>Tachyon - Knowledge Management System</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <!-- Tailwind CSS: tauri:// asset protocol only serves trunk-generated
+         files (index.html, *.js, *.wasm), not arbitrary files from dist.
+         In desktop mode, load from the backend HTTP server instead.
+         In web/dev mode, the dev server serves it from public/. -->
+    <script>
+        if (window.__TAURI__) {
+            // Desktop: load tailwind from backend server (cross-origin HTTP)
+            var s = document.createElement('script');
+            s.src = (window.tachyonApiUrl || 'http://localhost:8080/api/v1').replace(/\/api\/v1\/?$/, '') + '/tailwind.js';
+            s.onerror = function() { console.warn('[Tachyon] Tailwind CSS load failed'); };
+            document.write(s.outerHTML);
+        } else {
+            // Web: synchronous load from same origin (dev server serves public/)
+            document.write('<script src="/tailwind.js"><\/script>');
+        }
+    </script><script src="http://localhost:8080/tailwind.js"></script>
+    <script>
+        tailwind.config = { prefix: '' };
+    </script>
+    <!-- Debug: capture WASM loading errors (only when TACHYON_DEBUG >= 1) -->
+    <script>
+        // These run BEFORE trunk's module script, so they catch init failures.
+        // Tauri debug hooks relay console output to the debug log.
+        window.addEventListener('error', function(e) {
+            console.error('[Tachyon] window.error:', e.message, e.filename, e.lineno);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('[Tachyon] unhandledrejection:', e.reason);
+        });
+    </script>
+    <!-- Set API URL before WASM boots. Tauri on_page_load sets this via eval()
+    but there's a race: WASM may read it first. This inline script ensures it's
+    available immediately. Overridden by on_page_load eval if TACHYON_API_URL is set. -->
+    <script>
+        window.tachyonApiUrl = window.tachyonApiUrl || "http://localhost:8080/api/v1";
+    </script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                        display: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        'amoebic': '60% 40% 30% 70% / 60% 30% 70% 40%',
+                        'amoebic-alt': '30% 70% 70% 30% / 30% 30% 70% 70%',
+                        'amoebic-sm': '40% 60% 50% 50% / 50% 40% 60% 50%',
+                    },
+                    boxShadow: {
+                        'spatial': '4px 4px 0px 0px',
+                        'spatial-lg': '8px 8px 0px 0px',
+                        'spatial-xl': '12px 12px 0px 0px',
+                        'spatial-sm': '2px 2px 0px 0px',
+                        'spatial-accent': '4px 4px 0px 0px',
+                    },
+                    transitionTimingFunction: {
+                        'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        'spring-bounce': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        'spatial': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    },
+                },
+            },
+            plugins: [
+                // Prose classes for document rendering
+                function({ addUtilities }) {
+                    const newUtilities = {
+                        '.prose': {
+                            'color': '#374151',
+                            'line-height': '1.75',
+                            'max-width': '65ch',
+                        },
+                        '.prose-sm': {
+                            'font-size': '0.875rem',
+                            'line-height': '1.7142857',
+                        },
+                    }
+                    addUtilities(newUtilities)
+                },
+            ],
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            html {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+            body {
+                @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+            }
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb {
+                @apply bg-gray-300 dark:bg-gray-600 rounded;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                @apply bg-gray-400 dark:bg-gray-500;
+            }
+
+            /* Spatial Materialism: noise texture overlay */
+            body::before {
+                content: '';
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                pointer-events: none;
+                z-index: 9999;
+                opacity: 0.025;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+                background-repeat: repeat;
+                background-size: 256px 256px;
+            }
+
+            /* Amoebic containers */
+            .amoebic {
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            }
+            .amoebic-alt {
+                border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            }
+
+            /* Brutalist structure exposure */
+            .brutalist {
+                border: 2px solid currentColor;
+                border-radius: 0 !important;
+            }
+
+            /* Spatial depth layers */
+            .spatial-1 { box-shadow: 2px 2px 0px 0px rgba(0,0,0,0.15); }
+            .spatial-2 { box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.15); }
+            .spatial-3 { box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.12); }
+            .dark .spatial-1 { box-shadow: 2px 2px 0px 0px rgba(255,255,255,0.08); }
+            .dark .spatial-2 { box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.08); }
+            .dark .spatial-3 { box-shadow: 8px 8px 0px 0px rgba(255,255,255,0.06); }
+
+            /* Spring transition utility */
+            .transition-spring { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+            .transition-spatial { transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        }
+    </style>
+    <style>
+        @media print {
+            nav, .no-print, button, input, textarea, select,
+            .sidebar, .toolbar, .command-palette {
+                display: none !important;
+            }
+            main, .content, article {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            body {
+                font-size: 12pt;
+                line-height: 1.6;
+                color: #000;
+                background: #fff;
+            }
+            a[href]::after {
+                content: " (" attr(href) ")";
+                font-size: 0.8em;
+                color: #666;
+            }
+            h1, h2, h3, h4 {
+                page-break-after: avoid;
+            }
+            img, figure {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+    <style>
+        /* ── Design System Tokens ── */
+        :root {
+            --color-primary-50: #eff6ff;
+            --color-primary-100: #dbeafe;
+            --color-primary-200: #bfdbfe;
+            --color-primary-300: #93c5fd;
+            --color-primary-400: #60a5fa;
+            --color-primary-500: #3b82f6;
+            --color-primary-600: #2563eb;
+            --color-primary-700: #1d4ed8;
+            --color-primary-800: #1e40af;
+            --color-primary-900: #1e3a8a;
+            --color-primary-950: #172554;
+
+            --color-gray-50: #f9fafb;
+            --color-gray-100: #f3f4f6;
+            --color-gray-200: #e5e7eb;
+            --color-gray-300: #d1d5db;
+            --color-gray-400: #9ca3af;
+            --color-gray-500: #6b7280;
+            --color-gray-600: #4b5563;
+            --color-gray-700: #374151;
+            --color-gray-800: #1f2937;
+            --color-gray-900: #111827;
+            --color-gray-950: #030712;
+
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-error: #ef4444;
+            --color-info: #3b82f6;
+
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.25rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --space-10: 2.5rem;
+            --space-12: 3rem;
+            --space-16: 4rem;
+            --space-20: 5rem;
+            --space-24: 6rem;
+            --space-32: 8rem;
+
+            --text-xs: 0.75rem;
+            --text-sm: 0.875rem;
+            --text-base: 1rem;
+            --text-lg: 1.125rem;
+            --text-xl: 1.25rem;
+            --text-2xl: 1.5rem;
+            --text-3xl: 1.875rem;
+            --text-4xl: 2.25rem;
+
+            --radius-sm: 0.25rem;
+            --radius-md: 0.375rem;
+            --radius-lg: 0.5rem;
+            --radius-xl: 0.75rem;
+            --radius-2xl: 1rem;
+            --radius-full: 9999px;
+
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+            --transition-fast: 150ms ease;
+            --transition-normal: 200ms ease;
+            --transition-slow: 300ms ease;
+
+            --radius-amoebic: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            --radius-amoebic-alt: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            --radius-brutalist: 0px;
+            --radius-sharp: 2px;
+
+            --shadow-spatial-1: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+            --shadow-spatial-2: 4px 4px 0px 0px rgba(0, 0, 0, 0.15);
+            --shadow-spatial-3: 8px 8px 0px 0px rgba(0, 0, 0, 0.12);
+
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --ease-spatial: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .dark {
+            --shadow-spatial-1: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+            --shadow-spatial-2: 4px 4px 0px 0px rgba(255, 255, 255, 0.08);
+            --shadow-spatial-3: 8px 8px 0px 0px rgba(255, 255, 255, 0.06);
+        }
+
+        /* ── Animations ── */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateX(-8px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes scale-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
+        .animate-slide-in { animation: slide-in 0.2s ease-out; }
+        .animate-scale-in { animation: scale-in 0.15s ease-out; }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 0; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        * { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+        .dark * { scrollbar-color: #4b5563 transparent; }
+
+        /* ── Focus ── */
+        :focus-visible {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+            border-radius: 0;
+        }
+
+        /* ── Native Editor ── */
+        .native-editor {
+            position: relative;
+            overflow-y: auto;
+            overflow-x: auto;
+            min-height: 100%;
+            width: 100%;
+            color: #111827;
+            background-color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 22px;
+            white-space: pre;
+        }
+        .dark .native-editor {
+            color: #e5e7eb;
+            background-color: #111827;
+        }
+        .native-editor:focus {
+            outline: none;
+        }
+
+        .editor-line {
+            display: flex;
+            position: absolute;
+            left: 0;
+            right: 0;
+            white-space: pre;
+        }
+        .editor-line.active-line {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        .dark .editor-line.active-line {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .line-number {
+            width: 50px;
+            min-width: 50px;
+            text-align: right;
+            padding-right: 12px;
+            color: #6b7280;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .dark .line-number {
+            color: #4b5563;
+        }
+
+        .line-content {
+            flex: 1;
+            white-space: pre;
+            min-width: 0;
+        }
+        .line-content.word-wrap {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .editor-cursor {
+            position: absolute;
+            width: 2px;
+            background: #1f2937;
+            animation: editor-cursor-blink 1s step-end infinite;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .dark .editor-cursor {
+            background: #e5e7eb;
+        }
+        @keyframes editor-cursor-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .editor-selection {
+            background: rgba(0, 120, 215, 0.2);
+            position: absolute;
+            z-index: 5;
+            pointer-events: none;
+            border-radius: 1px;
+        }
+        .dark .editor-selection {
+            background: rgba(96, 165, 250, 0.25);
+        }
+
+        .editor-placeholder {
+            position: absolute;
+            top: 0;
+            left: 62px;
+            color: #9ca3af;
+            pointer-events: none;
+            user-select: none;
+        }
+        .dark .editor-placeholder {
+            color: #4b5563;
+        }
+
+        .editor-scroll-spacer {
+            width: 1px;
+            pointer-events: none;
+            visibility: hidden;
+        }
+
+        /* ── Syntax Highlight Tokens ── */
+        .ed-text { color: inherit; }
+        .ed-whitespace { color: transparent; }
+
+        .ed-h1 { font-weight: 700; font-size: 1.4em; color: #1e40af; }
+        .ed-h2 { font-weight: 700; font-size: 1.25em; color: #1e40af; }
+        .ed-h3 { font-weight: 700; font-size: 1.1em; color: #1e40af; }
+        .ed-h4 { font-weight: 700; font-size: 1em; color: #374151; }
+        .ed-h5 { font-weight: 700; font-size: 0.95em; color: #374151; }
+        .ed-h6 { font-weight: 700; font-size: 0.9em; color: #6b7280; }
+
+        .dark .ed-h1 { color: #60a5fa; }
+        .dark .ed-h2 { color: #60a5fa; }
+        .dark .ed-h3 { color: #93c5fd; }
+        .dark .ed-h4 { color: #d1d5db; }
+        .dark .ed-h5 { color: #d1d5db; }
+        .dark .ed-h6 { color: #9ca3af; }
+
+        .ed-bold { font-weight: 700; }
+        .ed-italic { font-style: italic; }
+        .ed-bold-italic { font-weight: 700; font-style: italic; }
+        .ed-strikethrough { text-decoration: line-through; color: #6b7280; }
+        .dark .ed-strikethrough { color: #9ca3af; }
+
+        .ed-code-inline {
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            background: rgba(0, 0, 0, 0.06);
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 0.9em;
+            color: #be185d;
+        }
+        .dark .ed-code-inline {
+            background: rgba(255, 255, 255, 0.08);
+            color: #f472b6;
+        }
+
+        .ed-code-block {
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .dark .ed-code-block {
+            background: #1f2937;
+            color: #d1d5db;
+        }
+
+        /* Code syntax highlight tokens (One Dark inspired) */
+        .ed-keyword { color: #c678dd; }
+        .ed-string, .ed-character, .ed-embedded { color: #98c379; }
+        .ed-number, .ed-boolean { color: #d19a66; }
+        .ed-comment { color: #5c6370; font-style: italic; }
+        .ed-function, .ed-function-builtin { color: #61afef; }
+        .ed-type, .ed-type-builtin, .ed-constructor { color: #e5c07b; }
+        .ed-variable, .ed-variable-parameter { color: #e06c75; }
+        .ed-operator { color: #56b6c2; }
+        .ed-property, .ed-attribute, .ed-code-tag, .ed-label { color: #e06c75; }
+        .ed-constant { color: #e5c07b; }
+        .ed-string-escape, .ed-string-special { color: #56b6c2; }
+        .ed-punctuation, .ed-punctuation-bracket, .ed-punctuation-delimiter { color: #abb2bf; }
+        .ed-conditional, .ed-repeat, .ed-define, .ed-include { color: #c678dd; }
+        .ed-variable-builtin { color: #e5c07b; }
+
+        .ed-link { color: #2563eb; text-decoration: underline; }
+        .dark .ed-link { color: #60a5fa; }
+        .ed-link-url { color: #6b7280; font-style: italic; }
+        .dark .ed-link-url { color: #9ca3af; }
+        .ed-link-text { color: #2563eb; text-decoration: underline; }
+        .dark .ed-link-text { color: #60a5fa; }
+
+        .ed-image { color: #059669; }
+        .ed-image-url { color: #6b7280; font-style: italic; }
+        .ed-image-alt { color: #059669; }
+
+        .ed-wiki-link { color: #7c3aed; text-decoration: underline; }
+        .dark .ed-wiki-link { color: #a78bfa; }
+
+        .ed-blockquote {
+            border-left: 3px solid #d1d5db;
+            padding-left: 8px;
+            color: #6b7280;
+        }
+        .dark .ed-blockquote {
+            border-left-color: #4b5563;
+            color: #9ca3af;
+        }
+
+        .ed-list-marker { color: #059669; font-weight: 600; }
+        .dark .ed-list-marker { color: #34d399; }
+        .ed-task-marker { color: #059669; font-weight: 600; }
+        .dark .ed-task-marker { color: #34d399; }
+        .ed-list-item { color: inherit; }
+
+        .ed-hr { color: #d1d5db; }
+        .dark .ed-hr { color: #4b5563; }
+
+        .ed-table-header { font-weight: 700; color: #374151; }
+        .dark .ed-table-header { color: #d1d5db; }
+        .ed-table-cell { color: inherit; }
+        .ed-table-border { color: #d1d5db; }
+        .dark .ed-table-border { color: #4b5563; }
+
+        .ed-frontmatter { color: #6b7280; font-style: italic; }
+        .dark .ed-frontmatter { color: #9ca3af; }
+
+        .ed-tag { color: #2563eb; }
+        .dark .ed-tag { color: #60a5fa; }
+
+        /* ── Editor Toolbar ── */
+        .editor-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 4px 8px;
+            border-bottom: 2px solid #111827;
+            background: #f9fafb;
+            overflow-x: auto;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .dark .editor-toolbar {
+            border-bottom-color: #f9fafb;
+            background: #1f2937;
+        }
+
+        .editor-toolbar-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 28px;
+            padding: 2px 6px;
+            border: 2px solid transparent;
+            border-radius: 0;
+            background: transparent;
+            color: #374151;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 150ms var(--ease-spring);
+            white-space: nowrap;
+        }
+        @media (max-width: 767px) {
+            .editor-toolbar-btn {
+                min-width: 44px;
+                min-height: 44px;
+                height: 44px;
+                padding: 4px 8px;
+                font-size: 14px;
+            }
+        }
+        .editor-toolbar-btn:hover:not(:disabled) {
+            background: #f9fafb;
+            border-color: #111827;
+            box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+            transform: translate(-1px, -1px);
+        }
+        .dark .editor-toolbar-btn { color: #d1d5db; }
+        .dark .editor-toolbar-btn:hover:not(:disabled) {
+            background: #374151;
+            border-color: #f9fafb;
+            box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+            transform: translate(-1px, -1px);
+        }
+        .editor-toolbar-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .editor-toolbar-sep {
+            width: 2px;
+            height: 20px;
+            background: #111827;
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
+        .dark .editor-toolbar-sep { background: #f9fafb; }
+
+        /* ── Editor Search ── */
+        .editor-search {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: white;
+            border: 2px solid #111827;
+            border-radius: 0;
+            padding: 10px;
+            box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.15);
+            z-index: 50;
+            min-width: 340px;
+        }
+        .dark .editor-search {
+            background: #1f2937;
+            border-color: #f9fafb;
+            box-shadow: 4px 4px 0px 0px rgba(255, 255, 255, 0.08);
+        }
+
+        .editor-search-input {
+            flex: 1;
+            padding: 4px 8px;
+            border: 2px solid #111827;
+            border-radius: 0;
+            font-size: 13px;
+            outline: none;
+            min-width: 0;
+            transition: box-shadow 150ms var(--ease-spring);
+        }
+        .dark .editor-search-input {
+            background: #111827;
+            border-color: #f9fafb;
+            color: #e5e7eb;
+        }
+        .editor-search-input:focus {
+            box-shadow: 2px 2px 0px 0px rgba(37, 99, 235, 0.4);
+            transform: translate(-1px, -1px);
+        }
+
+        .editor-search-count { font-size: 11px; color: #6b7280; white-space: nowrap; min-width: 60px; text-align: center; }
+        .dark .editor-search-count { color: #9ca3af; }
+
+        .editor-search-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 26px; height: 26px; border: 2px solid #111827; border-radius: 0;
+            background: transparent; cursor: pointer; font-size: 12px; color: #374151;
+            transition: all 150ms var(--ease-spring);
+        }
+        .dark .editor-search-btn { border-color: #f9fafb; color: #d1d5db; }
+        .editor-search-btn:hover {
+            background: #f9fafb; box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15); transform: translate(-1px, -1px);
+        }
+        .dark .editor-search-btn:hover {
+            background: #374151; box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+        }
+
+        .editor-search-toggle { display: flex; align-items: center; gap: 2px; font-size: 11px; color: #6b7280; cursor: pointer; user-select: none; }
+        .dark .editor-search-toggle { color: #9ca3af; }
+        .editor-search-toggle input[type="checkbox"] { margin: 0; width: 14px; height: 14px; cursor: pointer; }
+
+        .editor-search-action-btn {
+            padding: 4px 10px; border: 2px solid #111827; border-radius: 0;
+            background: transparent; cursor: pointer; font-size: 12px; color: #374151;
+            white-space: nowrap; transition: all 150ms var(--ease-spring);
+        }
+        .dark .editor-search-action-btn { border-color: #f9fafb; color: #d1d5db; }
+        .editor-search-action-btn:hover {
+            background: #f9fafb; box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15); transform: translate(-1px, -1px);
+        }
+        .dark .editor-search-action-btn:hover {
+            background: #374151; box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+        }
+
+        /* ── Editor Preview ── */
+        .editor-preview { flex: 1; overflow-y: auto; padding: 24px; background: white; }
+        .dark .editor-preview { background: #111827; }
+
+        /* ── Editor Split View ── */
+        .editor-split-container { display: flex; flex-direction: column; height: 100%; }
+        .editor-split-controls {
+            display: flex; align-items: center; gap: 2px; padding: 4px 8px;
+            border-bottom: 2px solid #111827; background: #f9fafb;
+        }
+        .dark .editor-split-controls { border-bottom-color: #f9fafb; background: #1f2937; }
+
+        .editor-split-btn {
+            padding: 4px 10px; border: 2px solid transparent; border-radius: 0;
+            background: transparent; font-size: 12px; color: #6b7280; cursor: pointer;
+            transition: all 150ms var(--ease-spring);
+        }
+        .editor-split-btn:hover {
+            background: #f9fafb; color: #374151; border-color: #111827;
+            box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15); transform: translate(-1px, -1px);
+        }
+        .editor-split-btn.active {
+            background: #dbeafe; color: #1d4ed8; border-color: #111827;
+            box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+        }
+        .dark .editor-split-btn { color: #9ca3af; }
+        .dark .editor-split-btn:hover {
+            background: #374151; color: #d1d5db; border-color: #f9fafb;
+            box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+        }
+        .dark .editor-split-btn.active {
+            background: #1e3a8a; color: #60a5fa; border-color: #f9fafb;
+            box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+        }
+
+        .editor-split-content { display: flex; flex: 1; overflow: hidden; }
+        .editor-split-content.split-edit .editor-pane { flex: 1; }
+        .editor-split-content.split-preview .editor-pane { flex: 1; }
+        .editor-split-content.split-both .editor-pane { flex: 1; min-width: 0; }
+        .editor-split-divider { width: 2px; background: #111827; flex-shrink: 0; }
+        .dark .editor-split-divider { background: #f9fafb; }
+
+        .editor-pane { display: flex; flex-direction: column; overflow: hidden; }
+        .editor-pane-full { width: 100%; }
+        .editor-pane-left { border-right: none; }
+        .editor-pane-right { border-left: none; }
+    </style>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#3B82F6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tachyon">
+    
+<script type="module">
+import init, * as bindings from '/tachyon-frontend-dd2b0ba0cfde84c6.js';
+const wasm = await init({ module_or_path: '/tachyon-frontend-dd2b0ba0cfde84c6_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+    <base href="/">
+    <script>
+        // Tauri desktop detection and API URL configuration.
+        // When running inside Tauri, the __TAURI__ global is injected.
+        // The frontend's ApiClient reads window.tachyonApiUrl to determine
+        // the backend API base URL. In desktop mode, we default to the
+        // local server but allow configuration via Tauri's IPC commands.
+        (function() {
+            if (window.__TAURI__) {
+                window.__TACHYON_DESKTOP__ = true;
+                // In desktop mode, the user runs `tachyon serve` on the default port.
+                // If not set by the user, default to the local server.
+                if (!window.tachyonApiUrl) {
+                    window.tachyonApiUrl = 'http://localhost:8080/api/v1';
+                }
+            }
+        })();
+    </script>
+<link rel="modulepreload" href="/tachyon-frontend-dd2b0ba0cfde84c6.js" crossorigin="anonymous" integrity="sha384-ELWlrRPqUtwdkNGq/DIi8wLgMoTeEWIs5X1k6JUXlFvwhLRYjBRcEcLFFoYPLxwK"><link rel="preload" href="/tachyon-frontend-dd2b0ba0cfde84c6_bg.wasm" crossorigin="anonymous" integrity="sha384-oBlRbSDgFo7SZZfKYynqK3o6NZ7Zir4ixinD7wN/n+FWnCjYzQwjJH1kHbIamCF9" as="fetch" type="application/wasm"><style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }
+
+/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:Inter, -apple-system, BlinkMacSystemFont, sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:JetBrains Mono, Fira Code, monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}
+            html {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+            body{--tw-bg-opacity:1;background-color:rgb(249 250 251 / var(--tw-bg-opacity, 1));--tw-text-opacity:1;color:rgb(17 24 39 / var(--tw-text-opacity, 1))}
+            body:is(.dark *){--tw-bg-opacity:1;background-color:rgb(17 24 39 / var(--tw-bg-opacity, 1));--tw-text-opacity:1;color:rgb(243 244 246 / var(--tw-text-opacity, 1))}
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb{border-radius:0.25rem;--tw-bg-opacity:1;background-color:rgb(209 213 219 / var(--tw-bg-opacity, 1))}
+            :is(.dark *)::-webkit-scrollbar-thumb{--tw-bg-opacity:1;background-color:rgb(75 85 99 / var(--tw-bg-opacity, 1))}
+            ::-webkit-scrollbar-thumb:hover{--tw-bg-opacity:1;background-color:rgb(156 163 175 / var(--tw-bg-opacity, 1))}
+            :is(.dark *)::-webkit-scrollbar-thumb:hover{--tw-bg-opacity:1;background-color:rgb(107 114 128 / var(--tw-bg-opacity, 1))}
+
+            /* Spatial Materialism: noise texture overlay */
+            body::before {
+                content: '';
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                pointer-events: none;
+                z-index: 9999;
+                opacity: 0.025;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+                background-repeat: repeat;
+                background-size: 256px 256px;
+            }
+
+            /* Amoebic containers */
+
+            /* Brutalist structure exposure */
+
+            /* Spatial depth layers */
+            .spatial-1 { box-shadow: 2px 2px 0px 0px rgba(0,0,0,0.15); }
+            .spatial-3 { box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.12); }
+            .dark .spatial-1 { box-shadow: 2px 2px 0px 0px rgba(255,255,255,0.08); }
+            .dark .spatial-2 { box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.08); }
+            .dark .spatial-3 { box-shadow: 8px 8px 0px 0px rgba(255,255,255,0.06); }
+
+            /* Spring transition utility */
+            .transition-spring { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0, 0, 0, 0);white-space:nowrap;border-width:0}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0px}.inset-y-0{top:0px;bottom:0px}.left-0{left:0px}.right-0{right:0px}.top-0{top:0px}.left-3{left:0.75rem}.top-1\/2{top:50%}.z-20{z-index:20}.z-40{z-index:40}.z-50{z-index:50}.mb-3{margin-bottom:0.75rem}.mb-4{margin-bottom:1rem}.mb-8{margin-bottom:2rem}.ml-3{margin-left:0.75rem}.mr-3{margin-right:0.75rem}.mt-2{margin-top:0.5rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}.mb-2{margin-bottom:0.5rem}.line-clamp-1{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1}.block{display:block}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-10{height:2.5rem}.h-4{height:1rem}.h-5{height:1.25rem}.h-6{height:1.5rem}.h-8{height:2rem}.h-full{height:100%}.h-1\.5{height:0.375rem}.h-3{height:0.75rem}.h-\[calc\(100vh-6rem\)\]{height:calc(100vh - 6rem)}.h-2{height:0.5rem}.max-h-64{max-height:16rem}.max-h-80{max-height:20rem}.max-h-96{max-height:24rem}.min-h-\[44px\]{min-height:44px}.min-h-screen{min-height:100vh}.w-10{width:2.5rem}.w-4{width:1rem}.w-48{width:12rem}.w-5{width:1.25rem}.w-6{width:1.5rem}.w-64{width:16rem}.w-8{width:2rem}.w-80{width:20rem}.w-full{width:100%}.w-1\.5{width:0.375rem}.w-1\/2{width:50%}.w-12{width:3rem}.w-16{width:4rem}.w-20{width:5rem}.w-3\/4{width:75%}.w-5\/6{width:83.333333%}.w-2{width:0.5rem}.min-w-\[44px\]{min-width:44px}.min-w-0{min-width:0px}.max-w-2xl{max-width:42rem}.max-w-lg{max-width:32rem}.flex-1{flex:1 1 0%}.flex-shrink-0{flex-shrink:0}.-translate-x-full{--tw-translate-x:-100%;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.-translate-y-1\/2{--tw-translate-y:-50%;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.transform{transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite}@keyframes spin{to{transform:rotate(360deg)}}.animate-spin{animation:spin 1s linear infinite}.cursor-pointer{cursor:pointer}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.gap-1{gap:0.25rem}.space-x-4 > :not([hidden]) ~ :not([hidden]){--tw-space-x-reverse:0;margin-right:calc(1rem * var(--tw-space-x-reverse));margin-left:calc(1rem * calc(1 - var(--tw-space-x-reverse)))}.space-y-1 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.25rem * var(--tw-space-y-reverse))}.divide-y > :not([hidden]) ~ :not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px * var(--tw-divide-y-reverse))}.divide-gray-100 > :not([hidden]) ~ :not([hidden]){--tw-divide-opacity:1;border-color:rgb(243 244 246 / var(--tw-divide-opacity, 1))}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rounded{border-radius:0.25rem}.rounded-full{border-radius:9999px}.rounded-none{border-radius:0px}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-b-2{border-bottom-width:2px}.border-r-2{border-right-width:2px}.border-t{border-top-width:1px}.border-l{border-left-width:1px}.border-gray-200{--tw-border-opacity:1;border-color:rgb(229 231 235 / var(--tw-border-opacity, 1))}.border-gray-300{--tw-border-opacity:1;border-color:rgb(209 213 219 / var(--tw-border-opacity, 1))}.border-gray-900{--tw-border-opacity:1;border-color:rgb(17 24 39 / var(--tw-border-opacity, 1))}.border-gray-400{--tw-border-opacity:1;border-color:rgb(156 163 175 / var(--tw-border-opacity, 1))}.border-t-transparent{border-top-color:transparent}.bg-black{--tw-bg-opacity:1;background-color:rgb(0 0 0 / var(--tw-bg-opacity, 1))}.bg-black\/50{background-color:rgb(0 0 0 / 0.5)}.bg-blue-100{--tw-bg-opacity:1;background-color:rgb(219 234 254 / var(--tw-bg-opacity, 1))}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255 / var(--tw-bg-opacity, 1))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235 / var(--tw-bg-opacity, 1))}.bg-gray-100{--tw-bg-opacity:1;background-color:rgb(243 244 246 / var(--tw-bg-opacity, 1))}.bg-gray-50{--tw-bg-opacity:1;background-color:rgb(249 250 251 / var(--tw-bg-opacity, 1))}.bg-transparent{background-color:transparent}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.bg-blue-500{--tw-bg-opacity:1;background-color:rgb(59 130 246 / var(--tw-bg-opacity, 1))}.bg-gray-200{--tw-bg-opacity:1;background-color:rgb(229 231 235 / var(--tw-bg-opacity, 1))}.bg-yellow-100{--tw-bg-opacity:1;background-color:rgb(254 249 195 / var(--tw-bg-opacity, 1))}.bg-green-50{--tw-bg-opacity:1;background-color:rgb(240 253 244 / var(--tw-bg-opacity, 1))}.bg-green-500{--tw-bg-opacity:1;background-color:rgb(34 197 94 / var(--tw-bg-opacity, 1))}.bg-opacity-50{--tw-bg-opacity:0.5}.p-2{padding:0.5rem}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.p-1\.5{padding:0.375rem}.px-1\.5{padding-left:0.375rem;padding-right:0.375rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-2\.5{padding-left:0.625rem;padding-right:0.625rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-4{padding-left:1rem;padding-right:1rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.py-8{padding-top:2rem;padding-bottom:2rem}.pb-1{padding-bottom:0.25rem}.pt-2{padding-top:0.5rem}.pt-\[10vh\]{padding-top:10vh}.pl-10{padding-left:2.5rem}.pr-4{padding-right:1rem}.text-left{text-align:left}.text-center{text-align:center}.font-mono{font-family:JetBrains Mono, Fira Code, monospace}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.text-2xl{font-size:1.5rem;line-height:2rem}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.italic{font-style:italic}.tracking-wider{letter-spacing:0.05em}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235 / var(--tw-text-opacity, 1))}.text-blue-900{--tw-text-opacity:1;color:rgb(30 58 138 / var(--tw-text-opacity, 1))}.text-gray-300{--tw-text-opacity:1;color:rgb(209 213 219 / var(--tw-text-opacity, 1))}.text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175 / var(--tw-text-opacity, 1))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128 / var(--tw-text-opacity, 1))}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99 / var(--tw-text-opacity, 1))}.text-gray-700{--tw-text-opacity:1;color:rgb(55 65 81 / var(--tw-text-opacity, 1))}.text-gray-900{--tw-text-opacity:1;color:rgb(17 24 39 / var(--tw-text-opacity, 1))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.text-yellow-600{--tw-text-opacity:1;color:rgb(202 138 4 / var(--tw-text-opacity, 1))}.text-green-600{--tw-text-opacity:1;color:rgb(22 163 74 / var(--tw-text-opacity, 1))}.line-through{-webkit-text-decoration-line:line-through;text-decoration-line:line-through}.placeholder-gray-400::placeholder{--tw-placeholder-opacity:1;color:rgb(156 163 175 / var(--tw-placeholder-opacity, 1))}.shadow{--tw-shadow:0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 1px 3px 0 var(--tw-shadow-color), 0 1px 2px -1px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.outline-none{outline:2px solid transparent;outline-offset:2px}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-colors{transition-property:color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-200{transition-duration:200ms}.duration-300{transition-duration:300ms}.ease-in-out{transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1)}
+        .hover\:border-blue-500:hover{--tw-border-opacity:1;border-color:rgb(59 130 246 / var(--tw-border-opacity, 1))}
+        .hover\:bg-gray-100:hover{--tw-bg-opacity:1;background-color:rgb(243 244 246 / var(--tw-bg-opacity, 1))}
+        .hover\:bg-gray-200:hover{--tw-bg-opacity:1;background-color:rgb(229 231 235 / var(--tw-bg-opacity, 1))}
+        .hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216 / var(--tw-bg-opacity, 1))}
+        .hover\:bg-gray-50:hover{--tw-bg-opacity:1;background-color:rgb(249 250 251 / var(--tw-bg-opacity, 1))}
+        .hover\:text-gray-700:hover{--tw-text-opacity:1;color:rgb(55 65 81 / var(--tw-text-opacity, 1))}
+        .focus\:not-sr-only:focus{position:static;width:auto;height:auto;padding:0;margin:0;overflow:visible;clip:auto;white-space:normal}
+        .focus\:fixed:focus{position:fixed}
+        .focus\:left-2:focus{left:0.5rem}
+        .focus\:top-2:focus{top:0.5rem}
+        .focus\:z-\[100\]:focus{z-index:100}
+        .focus\:rounded-none:focus{border-radius:0px}
+        .focus\:border-transparent:focus{border-color:transparent}
+        .focus\:bg-blue-600:focus{--tw-bg-opacity:1;background-color:rgb(37 99 235 / var(--tw-bg-opacity, 1))}
+        .focus\:px-4:focus{padding-left:1rem;padding-right:1rem}
+        .focus\:py-2:focus{padding-top:0.5rem;padding-bottom:0.5rem}
+        .focus\:text-sm:focus{font-size:0.875rem;line-height:1.25rem}
+        .focus\:font-medium:focus{font-weight:500}
+        .focus\:text-white:focus{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}
+        .focus\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000)}
+        .focus\:ring-blue-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(59 130 246 / var(--tw-ring-opacity, 1))}
+        .disabled\:cursor-not-allowed:disabled{cursor:not-allowed}
+        .disabled\:opacity-50:disabled{opacity:0.5}
+        .dark\:divide-gray-700:is(.dark *) > :not([hidden]) ~ :not([hidden]){--tw-divide-opacity:1;border-color:rgb(55 65 81 / var(--tw-divide-opacity, 1))}
+        .dark\:border-gray-100:is(.dark *){--tw-border-opacity:1;border-color:rgb(243 244 246 / var(--tw-border-opacity, 1))}
+        .dark\:border-gray-500:is(.dark *){--tw-border-opacity:1;border-color:rgb(107 114 128 / var(--tw-border-opacity, 1))}
+        .dark\:border-gray-600:is(.dark *){--tw-border-opacity:1;border-color:rgb(75 85 99 / var(--tw-border-opacity, 1))}
+        .dark\:border-gray-700:is(.dark *){--tw-border-opacity:1;border-color:rgb(55 65 81 / var(--tw-border-opacity, 1))}
+        .dark\:bg-blue-900:is(.dark *){--tw-bg-opacity:1;background-color:rgb(30 58 138 / var(--tw-bg-opacity, 1))}
+        .dark\:bg-blue-900\/30:is(.dark *){background-color:rgb(30 58 138 / 0.3)}
+        .dark\:bg-gray-700:is(.dark *){--tw-bg-opacity:1;background-color:rgb(55 65 81 / var(--tw-bg-opacity, 1))}
+        .dark\:bg-gray-800:is(.dark *){--tw-bg-opacity:1;background-color:rgb(31 41 55 / var(--tw-bg-opacity, 1))}
+        .dark\:bg-gray-950:is(.dark *){--tw-bg-opacity:1;background-color:rgb(3 7 18 / var(--tw-bg-opacity, 1))}
+        .dark\:bg-blue-900\/20:is(.dark *){background-color:rgb(30 58 138 / 0.2)}
+        .dark\:bg-yellow-900:is(.dark *){--tw-bg-opacity:1;background-color:rgb(113 63 18 / var(--tw-bg-opacity, 1))}
+        .dark\:bg-green-900\/20:is(.dark *){background-color:rgb(20 83 45 / 0.2)}
+        .dark\:text-blue-100:is(.dark *){--tw-text-opacity:1;color:rgb(219 234 254 / var(--tw-text-opacity, 1))}
+        .dark\:text-blue-400:is(.dark *){--tw-text-opacity:1;color:rgb(96 165 250 / var(--tw-text-opacity, 1))}
+        .dark\:text-gray-100:is(.dark *){--tw-text-opacity:1;color:rgb(243 244 246 / var(--tw-text-opacity, 1))}
+        .dark\:text-gray-300:is(.dark *){--tw-text-opacity:1;color:rgb(209 213 219 / var(--tw-text-opacity, 1))}
+        .dark\:text-gray-400:is(.dark *){--tw-text-opacity:1;color:rgb(156 163 175 / var(--tw-text-opacity, 1))}
+        .dark\:text-gray-500:is(.dark *){--tw-text-opacity:1;color:rgb(107 114 128 / var(--tw-text-opacity, 1))}
+        .dark\:text-gray-600:is(.dark *){--tw-text-opacity:1;color:rgb(75 85 99 / var(--tw-text-opacity, 1))}
+        .dark\:text-red-400:is(.dark *){--tw-text-opacity:1;color:rgb(248 113 113 / var(--tw-text-opacity, 1))}
+        .dark\:text-white:is(.dark *){--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}
+        .dark\:text-yellow-300:is(.dark *){--tw-text-opacity:1;color:rgb(253 224 71 / var(--tw-text-opacity, 1))}
+        .dark\:text-green-400:is(.dark *){--tw-text-opacity:1;color:rgb(74 222 128 / var(--tw-text-opacity, 1))}
+        .dark\:hover\:border-blue-500:hover:is(.dark *){--tw-border-opacity:1;border-color:rgb(59 130 246 / var(--tw-border-opacity, 1))}
+        .dark\:hover\:bg-gray-600:hover:is(.dark *){--tw-bg-opacity:1;background-color:rgb(75 85 99 / var(--tw-bg-opacity, 1))}
+        .dark\:hover\:bg-gray-700:hover:is(.dark *){--tw-bg-opacity:1;background-color:rgb(55 65 81 / var(--tw-bg-opacity, 1))}
+        .dark\:hover\:bg-gray-700\/50:hover:is(.dark *){background-color:rgb(55 65 81 / 0.5)}
+        .dark\:hover\:text-gray-200:hover:is(.dark *){--tw-text-opacity:1;color:rgb(229 231 235 / var(--tw-text-opacity, 1))}
+        @media (min-width: 640px){.sm\:inline{display:inline}.sm\:flex{display:flex}.sm\:hidden{display:none}.sm\:flex-row{flex-direction:row}.sm\:justify-center{justify-content:center}.sm\:p-6{padding:1.5rem}.sm\:pt-\[15vh\]{padding-top:15vh}.sm\:pt-\[20vh\]{padding-top:20vh}}
+        @media (min-width: 768px){.md\:ml-64{margin-left:16rem}.md\:block{display:block}.md\:inline{display:inline}.md\:flex{display:flex}.md\:hidden{display:none}.md\:translate-x-0{--tw-translate-x:0px;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.md\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.md\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.md\:px-6{padding-left:1.5rem;padding-right:1.5rem}}
+        @media (min-width: 1024px){.lg\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}}
+    </style></head>
+<body>
+    <div id="app">
+        <noscript>
+            <div style="max-width:800px;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;">
+                <h1 style="font-size:2rem;font-weight:700;margin-bottom:0.5rem;">Tachyon</h1>
+                <p style="color:#666;margin-bottom:1.5rem;">A high-performance knowledge management platform</p>
+                <nav style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+                    <a href="/documents" style="display:block;padding:1.5rem;border:1px solid #e5e7eb;border-radius:0.5rem;text-decoration:none;color:inherit;">
+                        <h2 style="font-size:1.1rem;margin-bottom:0.25rem;">Documents</h2>
+                        <p style="color:#666;font-size:0.875rem;">View and manage your documents</p>
+                    </a>
+                    <a href="/search" style="display:block;padding:1.5rem;border:1px solid #e5e7eb;border-radius:0.5rem;text-decoration:none;color:inherit;">
+                        <h2 style="font-size:1.1rem;margin-bottom:0.25rem;">Search</h2>
+                        <p style="color:#666;font-size:0.875rem;">Search across all content</p>
+                    </a>
+                    <a href="/catalog" style="display:block;padding:1.5rem;border:1px solid #e5e7eb;border-radius:0.5rem;text-decoration:none;color:inherit;">
+                        <h2 style="font-size:1.1rem;margin-bottom:0.25rem;">Catalog</h2>
+                        <p style="color:#666;font-size:0.875rem;">Browse the project catalog</p>
+                    </a>
+                </nav>
+                <p style="margin-top:2rem;color:#999;font-size:0.875rem;">JavaScript is required for the full interactive experience.</p>
+            </div>
+        </noscript>
+    </div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
+
+
+<style><!----></style><!----><div class="min-h-screen bg-gray-50 dark:bg-gray-950"><a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-none focus:text-sm focus:font-medium">Skip to main content</a><div style="display: none;" class="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden transition-opacity duration-200"><!----></div><!----><aside class="fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out -translate-x-full md:translate-x-0 transition-all duration-300 bg-white dark:bg-gray-950 border-r-2 border-gray-900 dark:border-gray-100" id="main-nav" role="navigation" aria-label="Main navigation"><div class="h-full flex flex-col"><!----><div class="p-4 border-b border-gray-200 dark:border-gray-700"><div class="flex items-center justify-between"><div class="flex items-center"><div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center"><span class="text-white font-bold text-lg">T</span></div><span class="ml-3 text-lg font-semibold text-gray-900 dark:text-white">Tachyon</span></div><button class="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" attr:aria-label="Close sidebar"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div></div><!----><nav class="flex-1 p-2 space-y-1 overflow-y-auto no-print"><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/" title="Home" attr:aria-label="Home"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Home</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/dashboard" title="Dashboard" attr:aria-label="Dashboard"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Dashboard</span></a><!----><div class="pt-2 pb-1 px-2"><span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Server</span></div><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/documents" title="Documents" attr:aria-label="Documents"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Documents</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/spaces" title="Spaces" attr:aria-label="Spaces"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Spaces</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/graph" title="Graph" attr:aria-label="Graph"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Graph</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/tags" title="Tags" attr:aria-label="Tags"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Tags</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/teams" title="Teams" attr:aria-label="Teams"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Teams</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/search" title="Search" attr:aria-label="Search"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Search</span></a><!----><div class="pt-2 pb-1 px-2"><span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Local</span></div><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/local" title="Local Documents" attr:aria-label="Local Documents"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Local Documents</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/servers" title="Server Connections" attr:aria-label="Server Connections"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Server Connections</span></a><!----><div class="pt-2 pb-1 px-2"><span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Admin</span></div><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/catalog" title="Catalog" attr:aria-label="Catalog"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Catalog</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/templates" title="Templates" attr:aria-label="Templates"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Templates</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/plugins" title="Plugins" attr:aria-label="Plugins"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Plugins</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/ssg" title="Static Site" attr:aria-label="Static Site"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Static Site</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/billing" title="Billing" attr:aria-label="Billing"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Billing</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/audit" title="Audit Log" attr:aria-label="Audit Log"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Audit Log</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/admin/roles" title="Admin" attr:aria-label="Admin"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Admin</span></a><!----><div class="pt-2 pb-1 px-2"><span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Account</span></div><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/settings" title="Settings" attr:aria-label="Settings"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Settings</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/profile" title="Profile" attr:aria-label="Profile"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg><span class="ml-3">Profile</span></a></nav><!----><div class="hidden md:block p-2 border-t border-gray-200 dark:border-gray-700 no-print"><button class="w-full p-3 min-h-[44px] text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none flex items-center justify-center" attr:aria-label="Toggle sidebar"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button></div></div></aside><!----><div class="md:ml-64 transition-all duration-300"><!----><header class="sticky top-0 z-20 bg-white dark:bg-gray-950 border-b-2 border-gray-900 dark:border-gray-100 spatial-1 no-print" role="banner"><div class="px-4 md:px-6 py-4 flex items-center justify-between"><div class="flex items-center gap-3"><button class="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" attr:aria-label="Open menu"><svg class="w-6 h-6" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button><h1 class="text-xl font-semibold text-gray-900 dark:text-white">Tachyon</h1></div><div class="flex items-center space-x-4"><button class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-200 dark:border-gray-600 transition-colors" attr:aria-label="Search documents"><svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span class="hidden md:inline">Local Docs</span><kbd class="hidden md:inline text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded px-1.5 py-0.5 font-mono">Ctrl+K</kbd></button><button class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-200 dark:border-gray-600 transition-colors" aria-label="Open search (Cmd+K)"><svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg><span class="hidden md:inline">Search...</span><kbd class="hidden md:inline text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded px-1.5 py-0.5 font-mono">⌘K</kbd></button><a href="/api/docs" target="_blank" rel="noopener noreferrer" class="hidden sm:inline text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">API Docs</a><!----><button class="p-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-none hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors" aria-label="Theme: Dark" title="Current: Dark (click to switch)"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><g><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></g></svg></button><div class="relative"><button class="relative p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" attr:aria-haspopup="true" attr:aria-expanded="false" attr:aria-controls="notification-panel" attr:aria-label="Notifications"><svg class="h-5 w-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg><span><!----></span></button><div style="display: none;" class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-none shadow-lg border-2 border-gray-900 dark:border-gray-100 z-50" id="notification-panel" role="menu" tabindex="-1" aria-live="assertive"><div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"><span class="text-sm font-semibold text-gray-900 dark:text-white">Notifications</span><span><!----></span></div><div class="max-h-64 overflow-y-auto"><div class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">No notifications</div></div></div></div><div class="relative"><button class="flex items-center gap-2 p-2 min-h-[44px] rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" attr:aria-haspopup="true" attr:aria-expanded="false" attr:aria-controls="user-menu-panel" attr:aria-label="User menu"><div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center"><span class="text-white text-sm font-medium">U</span></div></button><div style="display: none;" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-none shadow-lg border-2 border-gray-900 dark:border-gray-100 py-1 z-50" id="user-menu-panel" role="menu" tabindex="-1"><div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700"><p class="text-sm font-medium text-gray-900 dark:text-white truncate"></p></div><a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" attr:role="menuitem">Settings</a><button class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">Sign Out</button></div></div><!----><!----></div></div></header><!----><main class="p-4 sm:p-6" id="main-content" role="main" tabindex="-1"><div style="height: calc(100vh - 4rem)" class="flex flex-col"><div class="flex-1 flex flex-col overflow-hidden"><div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-3 no-print toolbar"><h1 class="text-xl font-semibold text-gray-900 dark:text-white min-w-0 truncate">test doc</h1><button class="hidden md:flex p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0" title="Hide sidebar" attr:aria-label="Hide sidebar"><svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg></button></div><div class="flex-1 overflow-hidden"><div class="flex flex-col h-full"><div class="editor-toolbar"><button class="editor-toolbar-btn" title="Bold" aria-label="Bold"><span class="font-bold">B</span></button><button class="editor-toolbar-btn" title="Italic" aria-label="Italic"><span class="italic">I</span></button><button class="editor-toolbar-btn" title="Strikethrough" aria-label="Strikethrough"><span class="line-through">S</span></button><button class="editor-toolbar-btn" title="Inline Code" aria-label="Inline Code"><span class="font-mono text-xs">&lt;&gt;</span></button><div class="editor-toolbar-sep"><!----></div><button class="editor-toolbar-btn" title="Heading 1" aria-label="Heading 1"><span class="font-bold text-xs">H1</span></button><button class="editor-toolbar-btn" title="Heading 2" aria-label="Heading 2"><span class="font-bold text-xs">H2</span></button><button class="editor-toolbar-btn" title="Heading 3" aria-label="Heading 3"><span class="font-bold text-xs">H3</span></button><div class="editor-toolbar-sep"><!----></div><button class="editor-toolbar-btn" title="Bullet List" aria-label="Bullet List">• List</button><button class="editor-toolbar-btn" title="Ordered List" aria-label="Ordered List">1. List</button><button class="editor-toolbar-btn" title="Task List" aria-label="Task List">☐ Task</button><button class="editor-toolbar-btn" title="Blockquote" aria-label="Blockquote">“ Quote</button><div class="editor-toolbar-sep"><!----></div><button class="editor-toolbar-btn" title="Link" aria-label="Link">🔗</button><button class="editor-toolbar-btn" title="Image" aria-label="Image">🖼</button><button class="editor-toolbar-btn" title="Code Block" aria-label="Code Block"><span class="font-mono text-xs">{ }</span></button><button class="editor-toolbar-btn" title="Table" aria-label="Table">☸</button><button class="editor-toolbar-btn" title="Horizontal Rule" aria-label="Horizontal Rule">─</button><div class="editor-toolbar-sep"><!----></div><button class="editor-toolbar-btn" title="Undo (Ctrl+Z)" aria-label="Undo (Ctrl+Z)" disabled="">↩</button><button class="editor-toolbar-btn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo (Ctrl+Shift+Z)" disabled="">↪</button><button class="editor-toolbar-btn" title="Search (Ctrl+F)" aria-label="Search (Ctrl+F)">🔍</button><button class="editor-toolbar-btn" title="Preview" aria-label="Preview">👁</button><button class="editor-toolbar-btn" title="Save (Ctrl+S)" aria-label="Save (Ctrl+S)">💾</button></div><div class="flex-1 overflow-hidden relative flex"><div style="min-height: 200px" class="flex-1 overflow-hidden"><div class="native-editor show-line-numbers native-editor" tabindex="0" role="textbox" aria-label="Document editor" aria-multiline="true" style="font-size: 14px; cursor: text; outline: medium;"><div class="editor-scroll-spacer" style="height: 22px;"><!----></div><div class="editor-line active-line" style="position: absolute; top: 0px; left: 0px; right: 0px; height: 22px;"><div class="line-number">1</div><div class="line-content word-wrap"><span class="ed-text">hello</span><!----><span class="ed-whitespace">&nbsp;</span></div></div><!----><div class="editor-cursor" style="position: absolute; top: 0px; left: 50px;"><!----></div><!----><!----><!----><!----><!----><!----></div><!----><!----></div><!----><!----></div><div class="flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400"><div class="flex items-center gap-3"><div class="w-2 h-2 rounded-full bg-green-500" title="All changes saved"><!----></div><span>1 words · 5 chars</span></div><div>Not saved</div></div></div></div></div><div class="w-80 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 transition-all duration-200 overflow-hidden hidden md:block"><div class="flex border-b border-gray-200 dark:border-gray-700" role="tablist"><button class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors " id="sidebar-tab-activity" role="tab" attr:aria-selected="true" attr:aria-controls="sidebar-panel-activity" tabindex="0">Activity</button><button class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors " id="sidebar-tab-history" role="tab" attr:aria-selected="false" attr:aria-controls="sidebar-panel-history" tabindex="-1">History</button><button class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors " id="sidebar-tab-review" role="tab" attr:aria-selected="false" attr:aria-controls="sidebar-panel-review" tabindex="-1">Review</button><button class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors " id="sidebar-tab-conflicts" role="tab" attr:aria-selected="false" attr:aria-controls="sidebar-panel-conflicts" tabindex="-1">Conflicts</button><button class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors " id="sidebar-tab-backlinks" role="tab" attr:aria-selected="false" attr:aria-controls="sidebar-panel-backlinks" tabindex="-1">Backlinks</button><button class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors " id="sidebar-tab-outline" role="tab" attr:aria-selected="false" attr:aria-controls="sidebar-panel-outline" tabindex="-1">Outline</button><!----></div><div class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" id="sidebar-panel-activity" role="tabpanel" attr:aria-labelledby="sidebar-tab-activity"><div class="flex flex-col h-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700"><div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700"><h3 class="text-sm font-semibold text-gray-900 dark:text-white">Activity</h3><div class="mt-2 flex flex-wrap gap-1"><button class="px-2 py-1 text-xs rounded-none bg-blue-600 text-white">All</button><button class="px-2 py-1 text-xs rounded-none bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">Edits</button><button class="px-2 py-1 text-xs rounded-none bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">Comments</button><button class="px-2 py-1 text-xs rounded-none bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">Presence</button></div></div><div class="flex-1 overflow-y-auto"><div class="divide-y divide-gray-100 dark:divide-gray-700"><!----></div><div class="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">No activity yet</div></div></div></div></div></div><!----><!----></main></div><div style="display: none;" class="fixed inset-0 z-50 bg-black/50"><!----></div><div style="display: none;" class="fixed inset-0 z-50 flex items-start sm:justify-center pt-[10vh] sm:pt-[20vh] px-4"><div><div class="w-full max-w-lg bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 spatial-3 overflow-hidden" role="dialog" attr:aria-modal="true" attr:aria-label="Command palette"><div class="flex items-center px-4 border-b border-gray-200 dark:border-gray-700"><svg class="h-5 w-5 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg><input class="w-full min-h-[44px] px-3 py-3 bg-transparent text-gray-900 dark:text-gray-100 outline-none" type="text" placeholder="Search documents, commands..." attr:aria-label="Search commands"><kbd class="text-xs text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 flex-shrink-0">ESC</kbd></div><div class="max-h-80 overflow-y-auto py-2" role="listbox" attr:aria-label="Command results"><div><div class="px-4 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Navigation</div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100" role="option" attr:aria-selected="true"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Dashboard</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" attr:aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Documents</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" attr:aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Graph</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" attr:aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Search</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" attr:aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Settings</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" attr:aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Catalog</span></button><div class="px-4 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Actions</div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" attr:aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Create Document</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" attr:aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></g></svg><span>Toggle Dark Mode</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" attr:aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></g></svg><span>Sign Out</span></button><!----></div></div><div class="px-4 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400 text-center"><span class="hidden sm:inline">↑↓ Navigate · ↵ Select · Esc Close</span><span class="sm:hidden">Tap to select</span></div></div></div></div><div style="display: none;" class="fixed inset-0 z-50 bg-black/50"><!----></div><div style="display: none;" class="fixed inset-0 z-50 flex items-start sm:justify-center pt-[10vh] sm:pt-[15vh] px-4"><div class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 spatial-3 overflow-hidden" role="dialog" aria-label="Search local documents"><div class="flex items-center px-4 border-b border-gray-200 dark:border-gray-700 gap-3"><svg class="h-5 w-5 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg><input class="w-full min-h-[44px] px-3 py-3 bg-transparent text-gray-900 dark:text-gray-100 outline-none placeholder-gray-400" id="client-search-input" type="text" placeholder="Search local documents..."><!----><!----><!----><!----></div><div class="max-h-96 overflow-y-auto"><div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Type to search your local documents</div></div><div class="px-4 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400 text-center flex items-center justify-center gap-3"><span>Searching local documents</span><span class="text-gray-300 dark:text-gray-600">·</span><span>Esc to close</span></div></div></div><!----><!----></div></body></html>

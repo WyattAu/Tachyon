@@ -181,15 +181,14 @@ pub fn render_doc_page(ctx: &PageContext) -> String {
     let server_highlight_css = if ctx.site.syntax_highlighting_enabled
         && (ctx.site.highlighting_mode == "server" || ctx.site.highlighting_mode == "both")
     {
-        let highlighter = tachyon_renderer::SyntaxHighlighter::with_theme(
-            match ctx.site.code_theme.as_str() {
+        let highlighter =
+            tachyon_renderer::SyntaxHighlighter::with_theme(match ctx.site.code_theme.as_str() {
                 "light" | "one-light" | "github" => tachyon_renderer::types::SyntaxTheme::Light,
                 "high-contrast" | "highcontrast" | "hc" => {
                     tachyon_renderer::types::SyntaxTheme::HighContrast
                 }
                 _ => tachyon_renderer::types::SyntaxTheme::Dark,
-            },
-        );
+            });
         format!("<style>{}</style>", highlighter.generate_stylesheet())
     } else {
         String::new()

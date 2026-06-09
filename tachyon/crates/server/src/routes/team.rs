@@ -300,7 +300,7 @@ pub async fn list_teams(
     } else if let Some(user_id) = query.user_id {
         state.team_repo.list_for_user(&user_id).await
     } else {
-        state.team_repo.list_by_owner("").await
+        state.team_repo.list_all().await
     };
 
     let teams =

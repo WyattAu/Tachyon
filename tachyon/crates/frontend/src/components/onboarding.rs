@@ -239,14 +239,5 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
 ///
 /// Reserved for future use: conditional onboarding display.
 pub fn should_show_onboarding() -> bool {
-    if let Some(window) = web_sys::window() {
-        if let Some(storage) = window.local_storage().ok().flatten() {
-            return storage
-                .get_item("tachyon_onboarding_complete")
-                .ok()
-                .flatten()
-                .is_none();
-        }
-    }
     false
 }

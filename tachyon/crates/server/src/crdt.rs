@@ -93,20 +93,21 @@ impl CrdtDocumentManager {
         // Try to load persisted state from database
         if let Some(pool) = &self.pool
             && let Ok(uuid) = uuid::Uuid::parse_str(document_id)
-                && let Ok(Some(row)) = tachyon_database::crdt::load_crdt_state(pool, uuid).await
-                    && !row.state.is_empty() {
-                        // Apply persisted state to the new document
-                        if let Ok(update) = yrs::Update::decode_v1(&row.state) {
-                            let mut txn = doc.transact_mut();
-                            let _ = txn.apply_update(update);
-                            drop(txn);
-                            tracing::info!(
-                                "Loaded CRDT state for document {} (version {})",
-                                document_id,
-                                row.version
-                            );
-                        }
-                    }
+            && let Ok(Some(row)) = tachyon_database::crdt::load_crdt_state(pool, uuid).await
+            && !row.state.is_empty()
+        {
+            // Apply persisted state to the new document
+            if let Ok(update) = yrs::Update::decode_v1(&row.state) {
+                let mut txn = doc.transact_mut();
+                let _ = txn.apply_update(update);
+                drop(txn);
+                tracing::info!(
+                    "Loaded CRDT state for document {} (version {})",
+                    document_id,
+                    row.version
+                );
+            }
+        }
 
         let arc = Arc::new(CrdtDocument { doc, text });
         self.documents.insert(document_id.to_string(), arc.clone());
@@ -128,32 +129,30 @@ impl CrdtDocumentManager {
         if let Some(key) = lru_key {
             // Try to persist before evicting
             if let Some(pool) = &self.pool
-                && let Some(doc_arc) = self.documents.get(&key) {
-                    let state = {
-                        let txn = doc_arc.doc.transact();
-                        let sv = txn.state_vector();
-                        txn.encode_state_as_update_v1(&sv)
-                    };
-                    let pool = pool.clone();
-                    let key_clone = key.clone();
-                    // Spawn a fire-and-forget save task
-                    tokio::spawn(async move {
-                        if let Ok(uuid) = uuid::Uuid::parse_str(&key_clone) {
-                            let sv_empty = StateVector::default();
-                            let _ = tachyon_database::crdt::upsert_crdt_state(
-                                &pool,
-                                uuid,
-                                &sv_empty.encode_v1(),
-                                &state,
-                            )
-                            .await;
-                            tracing::debug!(
-                                "Persisted CRDT state for evicted document {}",
-                                key_clone
-                            );
-                        }
-                    });
-                }
+                && let Some(doc_arc) = self.documents.get(&key)
+            {
+                let state = {
+                    let txn = doc_arc.doc.transact();
+                    let sv = txn.state_vector();
+                    txn.encode_state_as_update_v1(&sv)
+                };
+                let pool = pool.clone();
+                let key_clone = key.clone();
+                // Spawn a fire-and-forget save task
+                tokio::spawn(async move {
+                    if let Ok(uuid) = uuid::Uuid::parse_str(&key_clone) {
+                        let sv_empty = StateVector::default();
+                        let _ = tachyon_database::crdt::upsert_crdt_state(
+                            &pool,
+                            uuid,
+                            &sv_empty.encode_v1(),
+                            &state,
+                        )
+                        .await;
+                        tracing::debug!("Persisted CRDT state for evicted document {}", key_clone);
+                    }
+                });
+            }
             self.documents.remove(&key);
             self.last_accessed.remove(&key);
         }

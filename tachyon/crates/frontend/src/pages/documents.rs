@@ -16,7 +16,6 @@ use leptos::prelude::*;
 use leptos_router::hooks::{use_navigate, use_params};
 use leptos_router::params::Params;
 use wasm_bindgen::JsCast;
-use wasm_bindgen::closure::Closure;
 use wasm_bindgen_futures::spawn_local;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -537,7 +536,11 @@ fn DocumentCard(document: Document) -> impl IntoView {
 #[component]
 pub fn DocumentPage() -> impl IntoView {
     let params = use_params::<DocumentViewParams>();
-    let document_id = move || params.with(|p| p.as_ref().map(|p| p.id.clone()).unwrap_or_default());
+    let document_id = move || {
+        params
+            .try_with(|p| p.as_ref().map(|p| p.id.clone()).unwrap_or_default())
+            .unwrap_or_default()
+    };
 
     let api_client = ApiClient::default();
     let doc_id = document_id();
@@ -737,7 +740,11 @@ struct DocumentViewParams {
 #[component]
 pub fn DocumentEditPage() -> impl IntoView {
     let params = use_params::<DocumentEditParams>();
-    let document_id = move || params.with(|p| p.as_ref().map(|p| p.id.clone()).unwrap_or_default());
+    let document_id = move || {
+        params
+            .try_with(|p| p.as_ref().map(|p| p.id.clone()).unwrap_or_default())
+            .unwrap_or_default()
+    };
 
     let _user_id = "user-".to_string() + &uuid::Uuid::new_v4().to_string()[..8];
     let _user_name = "User".to_string();
@@ -756,14 +763,13 @@ pub fn DocumentEditPage() -> impl IntoView {
     let (dirty, set_dirty) = signal(false);
 
     let api_client = ApiClient::default();
-    let fetch_doc_id = document_id();
     let set_dc = set_doc_content;
     let set_dt = set_doc_title;
     let set_ld = set_loading;
     let set_le = set_load_error;
 
     Effect::new(move || {
-        let did = fetch_doc_id.clone();
+        let did = document_id();
         if did.is_empty() {
             set_ld.set(false);
             return;
@@ -830,7 +836,9 @@ pub fn DocumentEditPage() -> impl IntoView {
             let closure = wasm_bindgen::closure::Closure::<dyn Fn()>::new(move || {
                 let api = api.clone();
                 let did = did.clone();
-                let content_val = document_content.get_untracked();
+                let content_val = document_content
+                    .try_with_untracked(|c| c.clone())
+                    .unwrap_or_default();
                 let set_is_saving = set_is_saving;
                 let set_last_saved = set_last_saved;
                 let set_dirty = set_dirty;
@@ -917,73 +925,30 @@ pub fn DocumentEditPage() -> impl IntoView {
 
     // Editor signal for sharing between toolbar and search
     let editor = RwSignal::new(tachyon_editor::Editor::with_content(""));
+    // Render trigger: bump to force NativeEditor to re-render after content sync
+    let render_trigger = RwSignal::new(0u64);
 
     // CRDT collaboration sync via WebSocket.
-    // Connects when a document is loaded, sends local CRDT updates as binary frames,
-    // and applies remote updates from other collaborators.
+    // DISABLED: The tachyon-server does not have a WebSocket endpoint at /ws.
+    // Re-enable once the server supports real-time collaboration.
+    // CRDT collaboration disabled: tachyon-server has no /ws endpoint yet.
+    // Re-enable the WebSocket sync once the server supports real-time collaboration.
     {
-        let editor = editor;
-        let doc_id = document_id;
-
-        // Track last sent state vector to avoid echo
-        let _last_sent_state = std::cell::RefCell::new(Vec::<u8>::new());
-
-        Effect::new(move || {
-            let id = doc_id();
-            if id.is_empty() {
-                return;
-            }
-
-            let ws = crate::api::ApiClient::default().websocket();
-
-            // Apply remote CRDT updates received as binary frames
-            let editor_for_binary = editor;
-            let binary_cb: std::rc::Rc<dyn Fn(Vec<u8>)> = std::rc::Rc::new(move |data: Vec<u8>| {
-                editor_for_binary.update(|ed| {
-                    ed.apply_remote_update(&data);
-                });
-            });
-            ws.on_binary(binary_cb);
-
-            // Connect and join the document room
-            ws.connect();
-            let user_id = "user-".to_string() + &uuid::Uuid::new_v4().to_string()[..8];
-            let _ = ws.join_document(&id, &user_id, "User");
-
-            // Poll editor for CRDT updates and send them via WebSocket.
-            // Uses setInterval for periodic sync (every 500ms).
-            let ws_for_poll = ws.clone();
-            let ed_for_poll = editor;
-            let interval_cb: Closure<dyn Fn()> = Closure::new(move || {
-                ed_for_poll.update(|editor| {
-                    let update = editor.encode_update();
-                    if !update.is_empty() {
-                        let _ = ws_for_poll.send_binary(&update);
-                    }
-                });
-            });
-            let _interval_id = web_sys::window().map(|w| {
-                w.set_interval_with_callback_and_timeout_and_arguments_0(
-                    interval_cb.as_ref().unchecked_ref(),
-                    500,
-                )
-                .unwrap_or(0)
-            });
-            interval_cb.forget();
-        });
+        let _id = document_id();
+        // Effect::new(move || { let _ = document_id(); }); // placeholder
     }
 
     view! {
-        <div class="flex h-[calc(100vh-4rem)]">
-            <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex" style="height: calc(100vh - 4rem);">
+            <div class="flex-1 flex flex-col overflow-hidden min-w-0">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-3 no-print toolbar">
                     <h1 class="text-xl font-semibold text-gray-900 dark:text-white min-w-0 truncate">
                         {move || {
                             let title = doc_title.get();
                             if title.is_empty() {
-                                format!("Editing Document: {}", document_id())
+                                format!("Editing: {}", document_id())
                             } else {
-                                title
+                                title.to_string()
                             }
                         }}
                     </h1>
@@ -999,25 +964,27 @@ pub fn DocumentEditPage() -> impl IntoView {
                     </button>
                 </div>
 
-                <div class="flex-1 overflow-hidden">
+                <div class="flex-1 overflow-hidden min-h-0 flex flex-col">
                     {move || {
                         let doc_id = document_id();
+                        let loading_val = loading.get();
+                        let error_val = load_error.get();
                         if doc_id.is_empty() {
                             view! {
                                 <div class="flex items-center justify-center h-full">
-                                    <p class="text-gray-500 dark:text-gray-400">"Select a document to edit"</p>
+                                    <p class="text-gray-500 dark:text-gray-400">No document selected</p>
                                 </div>
                             }.into_any()
-                        } else if loading.get() {
+                        } else if loading_val {
                             view! {
                                 <div class="flex items-center justify-center h-full">
                                     <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
                                         <div class="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                                        <span>"Loading document..."</span>
+                                        <span>"Loading..."</span>
                                     </div>
                                 </div>
                             }.into_any()
-                        } else if let Some(err) = load_error.get() {
+                        } else if let Some(err) = error_val {
                             view! {
                                 <div class="flex items-center justify-center h-full">
                                     <div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-700 dark:text-red-300">
@@ -1025,14 +992,16 @@ pub fn DocumentEditPage() -> impl IntoView {
                                     </div>
                                 </div>
                             }.into_any()
-                        } else {
+                         } else {
                             let content = doc_content.get();
                             // Sync loaded content to shared editor (only if different)
-                            editor.update(|e| {
+                            let _ = editor.try_update(|e| {
                                 if !content.is_empty() && e.content() != content {
                                     e.set_content(&content);
                                 }
                             });
+                            // Force NativeEditor to re-render with the new content
+                            render_trigger.update(|t| *t += 1);
                             let ed = editor;
                             let on_change = on_editor_change;
                             let on_save = manual_save;
@@ -1040,7 +1009,7 @@ pub fn DocumentEditPage() -> impl IntoView {
                             let on_preview = Callback::new(move |_: ()| set_show_preview.update(|s| *s = !*s));
 
                             view! {
-                                <div class="flex flex-col h-full">
+                                <div class="flex flex-col min-h-0 flex-1">
                                     <EditorToolbar
                                         editor={ed}
                                         on_save={on_save}
@@ -1048,37 +1017,37 @@ pub fn DocumentEditPage() -> impl IntoView {
                                         on_search={on_search}
                                     />
 
-                                    <div class="flex-1 overflow-hidden relative flex">
-                                        <div class={move || if show_preview.get() { "flex-1 overflow-hidden border-r border-gray-200 dark:border-gray-700" } else { "flex-1 overflow-hidden" }}>
-                                            <NativeEditor
-                                                editor={ed}
-                                                document_id={doc_id}
-                                                editable=true
-                                                placeholder="Start writing markdown...".into()
-                                                on_change={on_change}
-                                            />
+                                     <div class="flex-1 overflow-auto relative flex min-h-0">
+                                         <div class={move || if show_preview.get() { "flex-1 overflow-hidden border-r border-gray-200 dark:border-gray-700" } else { "flex-1 overflow-hidden" }} style="min-height: 200px">
+                                             <NativeEditor
+                                                 editor={ed}
+                                                 document_id={doc_id}
+                                                 editable=true
+                                                 placeholder="Start writing markdown...".into()
+                                                 on_change={on_change}
+                                                 render_trigger={render_trigger}
+                                             />
                                             <EditorSearch
                                                 editor={ed}
                                                 show={show_search}
                                             />
                                         </div>
                                         <Show when=move || show_preview.get()>
-                                            <div class="flex-1 overflow-hidden">
+                <div class="flex-1 overflow-hidden min-h-0">
                                                 <MarkdownPreview content={document_content.get()} render_toc=true />
                                             </div>
                                         </Show>
                                     </div>
 
                                     // Status bar
-                                    <div class="flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400">
+                                    <div class="flex-shrink-0 flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400">
                                         <div class="flex items-center gap-3">
                                             <div
                                                 class=move || if dirty.get() { "w-2 h-2 rounded-full bg-yellow-400" } else { "w-2 h-2 rounded-full bg-green-500" }
                                                 title={move || if dirty.get() { "Unsaved changes" } else { "All changes saved" }}
                                             ></div>
                                             <span>{move || {
-                                                let wc = editor.with(|e| e.word_count());
-                                                let cc = editor.with(|e| e.char_count());
+                                                let (wc, cc) = editor.try_with(|e| (e.word_count(), e.char_count())).unwrap_or((0, 0));
                                                 format!("{} words \u{00b7} {} chars", wc, cc)
                                             }}</span>
                                         </div>
@@ -1103,12 +1072,12 @@ pub fn DocumentEditPage() -> impl IntoView {
 
             <div
                 class={move || if sidebar_open.get() {
-                    "w-80 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 transition-all duration-200 overflow-hidden hidden md:block"
+                    "w-96 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 transition-all duration-200 overflow-hidden hidden md:block flex flex-col"
                 } else {
                     "w-0 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 transition-all duration-200 overflow-hidden"
                 }}
             >
-                <div class="flex border-b border-gray-200 dark:border-gray-700" role="tablist"
+                <div class="flex overflow-x-auto flex-shrink-0 border-b border-gray-200 dark:border-gray-700" role="tablist"
                     on:keydown=move |ev: web_sys::KeyboardEvent| {
                         let key = ev.key();
                         if key == "ArrowRight" || key == "ArrowLeft" {
@@ -1141,22 +1110,24 @@ pub fn DocumentEditPage() -> impl IntoView {
                         let name_for_onclick = name.clone();
                         let btn_id = format!("sidebar-tab-{}", tab_name);
                         let panel_id = format!("sidebar-panel-{}", tab_name);
-                        let label = match *tab_name {
-                            "activity" => "Activity",
-                            "history" => "History",
-                            "review" => "Review",
-                            "conflicts" => "Conflicts",
-                            "backlinks" => "Backlinks",
-                            "outline" => "Outline",
-                            _ => "Tab",
+                        let (label, full_label) = match *tab_name {
+                            "activity" => ("Act", "Activity"),
+                            "history" => ("Hist", "History"),
+                            "review" => ("Rev", "Review"),
+                            "conflicts" => ("Conf", "Conflicts"),
+                            "backlinks" => ("Back", "Backlinks"),
+                            "outline" => ("Out", "Outline"),
+                            _ => ("Tab", "Tab"),
                         };
+                        let full_label = full_label.to_string();
                         let is_active = move || sidebar_tab.get() == name_for_active;
                         let is_active_for_tabindex = move || sidebar_tab.get() == name_for_click;
                         view! {
                             <button
                                 id={btn_id}
-                                class="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors "
+                                class="flex-shrink-0 px-1.5 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap"
                                 role="tab"
+                                title={full_label}
                                 attr:aria-selected=move || if is_active() { "true" } else { "false" }
                                 attr:aria-controls={panel_id.clone()}
                                 tabindex=move || if is_active_for_tabindex() { 0 } else { -1 }
@@ -1172,38 +1143,38 @@ pub fn DocumentEditPage() -> impl IntoView {
                     let doc_id = document_id();
                     if tab == "history" {
                         view! {
-                            <div id="sidebar-panel-history" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-history">
+                            <div class="flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-history">
                                 <VersionHistory document_id={doc_id} on_rollback=None />
                             </div>
                         }.into_any()
                     } else if tab == "review" {
                         view! {
-                            <div id="sidebar-panel-review" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-review">
+                            <div id="sidebar-panel-review" class="p-4 flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-review">
                                 <ReviewPanel document_id={doc_id} />
                             </div>
                         }.into_any()
                     } else if tab == "conflicts" {
                         view! {
-                            <div id="sidebar-panel-conflicts" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-conflicts">
+                            <div id="sidebar-panel-conflicts" class="p-4 flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-conflicts">
                                 <ConflictResolver document_id={doc_id} />
                             </div>
                         }.into_any()
                     } else if tab == "backlinks" {
                         view! {
-                            <div id="sidebar-panel-backlinks" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-backlinks">
+                            <div id="sidebar-panel-backlinks" class="p-4 flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-backlinks">
                                 <BacklinksPanel document_id={doc_id} />
                             </div>
                         }.into_any()
                     } else if tab == "outline" {
                         let content = doc_content.get();
                         view! {
-                            <div id="sidebar-panel-outline" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-outline">
+                            <div id="sidebar-panel-outline" class="p-4 flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-outline">
                                 <TableOfContents markdown_content={content} />
                             </div>
                         }.into_any()
                     } else {
                         view! {
-                            <div id="sidebar-panel-activity" class="p-4 overflow-y-auto h-[calc(100vh-6rem)]" role="tabpanel" attr:aria-labelledby="sidebar-tab-activity">
+                            <div id="sidebar-panel-activity" class="p-4 flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-activity">
                                 <ActivityFeed
                                     activities={activities.get()}
                                     max_items=20
@@ -1216,7 +1187,6 @@ pub fn DocumentEditPage() -> impl IntoView {
         </div>
     }
 }
-
 #[derive(Params, PartialEq, Clone)]
 struct DocumentEditParams {
     id: String,

@@ -395,12 +395,13 @@ impl Repository {
         }
 
         if let Some(ref path) = self.local_path
-            && path.as_os_str().is_empty() {
-                return Err(TachyonError::field_validation(
-                    "local_path",
-                    "Local path cannot be empty",
-                ));
-            }
+            && path.as_os_str().is_empty()
+        {
+            return Err(TachyonError::field_validation(
+                "local_path",
+                "Local path cannot be empty",
+            ));
+        }
 
         Ok(())
     }

@@ -976,9 +976,10 @@ impl ServerConfig {
         }
 
         if let Ok(port) = std::env::var("TACHYON_PORT")
-            && let Ok(p) = port.parse::<u16>() {
-                config.port = p;
-            }
+            && let Ok(p) = port.parse::<u16>()
+        {
+            config.port = p;
+        }
 
         if let Ok(db_path) = std::env::var("TACHYON_DATABASE_PATH") {
             config.database_path = Some(db_path);
@@ -1027,9 +1028,10 @@ impl ServerConfig {
         config.jwt.secrets = jwt_secrets;
 
         if let Ok(jwt_expiration) = std::env::var("TACHYON_JWT_EXPIRATION")
-            && let Ok(exp) = jwt_expiration.parse::<u64>() {
-                config.jwt.expiration_secs = exp;
-            }
+            && let Ok(exp) = jwt_expiration.parse::<u64>()
+        {
+            config.jwt.expiration_secs = exp;
+        }
 
         if let Ok(rotation) = std::env::var("TACHYON_JWT_ROTATION_ENABLED") {
             config.jwt.rotation_enabled = rotation != "0" && rotation != "false";
@@ -1059,17 +1061,17 @@ impl ServerConfig {
             && let Ok(parsed) = serde_json::from_str::<
                 std::collections::HashMap<String, EndpointRateLimitJsonEntry>,
             >(&json_str)
-            {
-                for (path, entry) in parsed {
-                    config.rate_limit.endpoint_limits.insert(
-                        path,
-                        EndpointRateLimit {
-                            max_requests: entry.max,
-                            window_secs: entry.window,
-                        },
-                    );
-                }
+        {
+            for (path, entry) in parsed {
+                config.rate_limit.endpoint_limits.insert(
+                    path,
+                    EndpointRateLimit {
+                        max_requests: entry.max,
+                        window_secs: entry.window,
+                    },
+                );
             }
+        }
 
         if let Ok(site_title) = std::env::var("TACHYON_SITE_TITLE") {
             config.site.title = site_title;
@@ -1155,9 +1157,10 @@ impl ServerConfig {
             config.smtp_password = Some(val);
         }
         if let Ok(val) = std::env::var("TACHYON_SMTP_PORT")
-            && let Ok(p) = val.parse::<u16>() {
-                config.smtp_port = Some(p);
-            }
+            && let Ok(p) = val.parse::<u16>()
+        {
+            config.smtp_port = Some(p);
+        }
         if let Ok(val) = std::env::var("TACHYON_SMTP_TLS") {
             config.smtp_tls = val != "0" && val != "false";
         }
@@ -1196,35 +1199,42 @@ impl ServerConfig {
                 .collect();
         }
         if let Ok(val) = std::env::var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES")
-            && let Ok(v) = val.parse::<usize>() {
-                config.security.max_request_size_bytes = v;
-            }
+            && let Ok(v) = val.parse::<usize>()
+        {
+            config.security.max_request_size_bytes = v;
+        }
         if let Ok(val) = std::env::var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS")
-            && let Ok(v) = val.parse::<u64>() {
-                config.security.session_expiry_hours = v;
-            }
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.security.session_expiry_hours = v;
+        }
         if let Ok(val) = std::env::var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS")
-            && let Ok(v) = val.parse::<usize>() {
-                config.security.max_concurrent_sessions = v;
-            }
+            && let Ok(v) = val.parse::<usize>()
+        {
+            config.security.max_concurrent_sessions = v;
+        }
 
         // Database pool configuration
         if let Ok(val) = std::env::var("TACHYON_DB_MAX_CONNECTIONS")
-            && let Ok(v) = val.parse::<u32>() {
-                config.db_max_connections = v;
-            }
+            && let Ok(v) = val.parse::<u32>()
+        {
+            config.db_max_connections = v;
+        }
         if let Ok(val) = std::env::var("TACHYON_DB_MIN_CONNECTIONS")
-            && let Ok(v) = val.parse::<u32>() {
-                config.db_min_connections = v;
-            }
+            && let Ok(v) = val.parse::<u32>()
+        {
+            config.db_min_connections = v;
+        }
         if let Ok(val) = std::env::var("TACHYON_DB_ACQUIRE_TIMEOUT_MS")
-            && let Ok(v) = val.parse::<u64>() {
-                config.db_acquire_timeout_ms = v;
-            }
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.db_acquire_timeout_ms = v;
+        }
         if let Ok(val) = std::env::var("TACHYON_DB_IDLE_TIMEOUT_SECS")
-            && let Ok(v) = val.parse::<u64>() {
-                config.db_idle_timeout_secs = v;
-            }
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.db_idle_timeout_secs = v;
+        }
 
         config.redis_pubsub_url = std::env::var("TACHYON_REDIS_PUBSUB_URL").ok();
 
@@ -1236,13 +1246,15 @@ impl ServerConfig {
             config.cdn.base_url = Some(val);
         }
         if let Ok(val) = std::env::var("TACHYON_CDN_STATIC_TTL_SECS")
-            && let Ok(v) = val.parse::<u64>() {
-                config.cdn.static_ttl_secs = v;
-            }
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.cdn.static_ttl_secs = v;
+        }
         if let Ok(val) = std::env::var("TACHYON_CDN_API_TTL_SECS")
-            && let Ok(v) = val.parse::<u64>() {
-                config.cdn.api_ttl_secs = v;
-            }
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.cdn.api_ttl_secs = v;
+        }
         if let Ok(val) = std::env::var("TACHYON_CDN_ENABLED") {
             config.cdn.enabled = val == "true" || val == "1";
         }
@@ -1265,9 +1277,10 @@ impl ServerConfig {
             config.sms_otp.enabled = val == "1" || val == "true";
         }
         if let Ok(val) = std::env::var("TACHYON_SMS_OTP_TTL_SECS")
-            && let Ok(v) = val.parse::<u64>() {
-                config.sms_otp.ttl_secs = v;
-            }
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.sms_otp.ttl_secs = v;
+        }
         if let Ok(val) = std::env::var("TACHYON_SMS_PROVIDER") {
             config.sms_otp.provider = val;
         }

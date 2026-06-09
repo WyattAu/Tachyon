@@ -274,9 +274,10 @@ impl AuthState {
         let expires_at: Option<chrono::DateTime<chrono::Utc>> = row.get("expires_at");
 
         if let Some(exp) = expires_at
-            && exp < Utc::now() {
-                return Err(AuthError::InvalidApiKey);
-            }
+            && exp < Utc::now()
+        {
+            return Err(AuthError::InvalidApiKey);
+        }
 
         let user_row = sqlx::query("SELECT role FROM users WHERE id = $1 AND is_active = true")
             .bind(user_id)
@@ -333,21 +334,22 @@ impl AuthState {
         }
 
         if self.config.api_keys.enabled
-            && let Some(api_key_header) = headers.get(self.config.api_key_header()) {
-                let api_key = api_key_header
-                    .to_str()
-                    .map_err(|_| AuthError::InvalidTokenFormat)?;
+            && let Some(api_key_header) = headers.get(self.config.api_key_header())
+        {
+            let api_key = api_key_header
+                .to_str()
+                .map_err(|_| AuthError::InvalidTokenFormat)?;
 
-                let (user_id, role) = self.validate_api_key(api_key).await?;
+            let (user_id, role) = self.validate_api_key(api_key).await?;
 
-                return Ok(AuthContext {
-                    user_id,
-                    role,
-                    permissions: vec![],
-                    team_id: None,
-                    auth_method: AuthMethod::ApiKey,
-                });
-            }
+            return Ok(AuthContext {
+                user_id,
+                role,
+                permissions: vec![],
+                team_id: None,
+                auth_method: AuthMethod::ApiKey,
+            });
+        }
 
         Err(AuthError::MissingAuthHeader)
     }

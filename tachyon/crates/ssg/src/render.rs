@@ -441,7 +441,11 @@ impl crate::build::SiteGenerator {
             version_prefix,
         } = *ctx;
 
-        let body_html = render_markdown(&doc.content, &self.config.highlighting_mode, &self.config.code_theme);
+        let body_html = render_markdown(
+            &doc.content,
+            &self.config.highlighting_mode,
+            &self.config.code_theme,
+        );
         let toc = extract_toc(&body_html);
 
         let description = doc
@@ -594,7 +598,11 @@ impl crate::build::SiteGenerator {
         let doc_cards: Vec<DocCard> = docs
             .iter()
             .map(|d| {
-                let body = render_markdown(&d.content, &self.config.highlighting_mode, &self.config.code_theme);
+                let body = render_markdown(
+                    &d.content,
+                    &self.config.highlighting_mode,
+                    &self.config.code_theme,
+                );
                 DocCard {
                     title: d.title.clone(),
                     slug: d.slug.clone(),
@@ -642,7 +650,11 @@ impl crate::build::SiteGenerator {
         let doc_cards: Vec<DocCard> = docs
             .iter()
             .map(|d| {
-                let body = render_markdown(&d.content, &self.config.highlighting_mode, &self.config.code_theme);
+                let body = render_markdown(
+                    &d.content,
+                    &self.config.highlighting_mode,
+                    &self.config.code_theme,
+                );
                 DocCard {
                     title: d.title.clone(),
                     slug: d.slug.clone(),
@@ -1186,12 +1198,16 @@ mod tests_highlight {
 
     #[test]
     fn highlight_rust_code_block() {
-        let html = r#"<pre><code class="language-rust">fn main() { println!("Hello"); }</code></pre>"#;
+        let html =
+            r#"<pre><code class="language-rust">fn main() { println!("Hello"); }</code></pre>"#;
         let result = highlight_code_blocks(html, "dark");
         assert!(result.contains("syntax-highlight"));
         assert!(result.contains("data-language=\"rust\""));
         assert!(result.contains("code-block-wrapper"));
-        assert!(!result.starts_with(html.trim_start()), "block should be replaced");
+        assert!(
+            !result.starts_with(html.trim_start()),
+            "block should be replaced"
+        );
     }
 
     #[test]

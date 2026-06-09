@@ -140,14 +140,16 @@ pub fn load_translations(dir: &Path, languages: &[String]) -> SsgResult<Translat
 /// debugging missing translations).
 pub fn translate(translations: &Translations, key: &str, language: &str) -> String {
     if let Some(lang_map) = translations.strings.get(language)
-        && let Some(value) = lang_map.get(key) {
-            return value.clone();
-        }
+        && let Some(value) = lang_map.get(key)
+    {
+        return value.clone();
+    }
 
     if let Some(en_map) = translations.strings.get("en")
-        && let Some(value) = en_map.get(key) {
-            return value.clone();
-        }
+        && let Some(value) = en_map.get(key)
+    {
+        return value.clone();
+    }
 
     key.to_string()
 }

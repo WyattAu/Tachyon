@@ -329,9 +329,9 @@ pub fn SearchPage() -> impl IntoView {
                             let v = event_target_value(&ev);
                             sort_by.set(match v.as_str() { "updated" => SortBy::Updated, "created" => SortBy::Created, _ => SortBy::Relevance });
                         }>
-                        <option value="relevance" selected={sort_by.get() == SortBy::Relevance}>"Relevance"</option>
-                        <option value="updated" selected={sort_by.get() == SortBy::Updated}>"Last Modified"</option>
-                        <option value="created" selected={sort_by.get() == SortBy::Created}>"Date Created"</option>
+                        <option value="relevance" selected={move || sort_by.get() == SortBy::Relevance}>"Relevance"</option>
+                        <option value="updated" selected={move || sort_by.get() == SortBy::Updated}>"Last Modified"</option>
+                        <option value="created" selected={move || sort_by.get() == SortBy::Created}>"Date Created"</option>
                     </select>
                 </div>
 

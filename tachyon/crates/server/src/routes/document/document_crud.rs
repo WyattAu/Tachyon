@@ -85,7 +85,9 @@ pub async fn create_document(
 
     let author_id: tachyon_core::id::UserId = auth
         .and_then(|Extension(ctx)| tachyon_core::id::UserId::parse_str(&ctx.user_id).ok())
-        .unwrap_or_else(tachyon_core::generate_user_id);
+        .ok_or_else(|| {
+            ServerError::Auth("Authentication required to create documents".to_string())
+        })?;
 
     let doc_id = tachyon_core::generate_document_id();
     let content = DocumentContent::markdown(req.content.clone());
@@ -112,9 +114,10 @@ pub async fn create_document(
     }
 
     if let Some(ref repo_id) = req.project_id
-        && let Ok(id) = tachyon_core::id::RepositoryId::parse_str(repo_id) {
-            doc.repository_id = Some(id);
-        }
+        && let Ok(id) = tachyon_core::id::RepositoryId::parse_str(repo_id)
+    {
+        doc.repository_id = Some(id);
+    }
 
     if let Err(e) = doc.validate() {
         return Err(ServerError::bad_request(e.to_string()));
@@ -178,12 +181,12 @@ pub async fn create_document(
                 .bind(doc.id.to_string())
                 .execute(&mut *conn)
                 .await
-            {
-                warn!(
-                    "Failed to update outgoing links for document {}: {}",
-                    doc.id, e
-                );
-            }
+        {
+            warn!(
+                "Failed to update outgoing links for document {}: {}",
+                doc.id, e
+            );
+        }
     }
 
     if let Err(e) = state
@@ -218,31 +221,32 @@ pub async fn create_document(
 
     // Generate and persist embedding asynchronously (non-blocking)
     if let Some(ref ai) = state.ai_manager
-        && ai.is_available() {
-            let ai = ai.clone();
-            let repo = state.repository.clone();
-            let doc_id = doc.id.to_string();
-            let embed_text = format!(
-                "{} {}",
-                doc.metadata.title,
-                doc.content.as_text().unwrap_or("")
-            );
-            tokio::spawn(async move {
-                match ai.embed(&embed_text).await {
-                    Ok(embedding) => {
-                        if let Err(e) = repo.update_embedding(&doc_id, embedding).await {
-                            warn!("Failed to persist embedding for document {}: {}", doc_id, e);
-                        }
-                    }
-                    Err(e) => {
-                        warn!(
-                            "Failed to generate embedding for document {}: {}",
-                            doc_id, e
-                        );
+        && ai.is_available()
+    {
+        let ai = ai.clone();
+        let repo = state.repository.clone();
+        let doc_id = doc.id.to_string();
+        let embed_text = format!(
+            "{} {}",
+            doc.metadata.title,
+            doc.content.as_text().unwrap_or("")
+        );
+        tokio::spawn(async move {
+            match ai.embed(&embed_text).await {
+                Ok(embedding) => {
+                    if let Err(e) = repo.update_embedding(&doc_id, embedding).await {
+                        warn!("Failed to persist embedding for document {}: {}", doc_id, e);
                     }
                 }
-            });
-        }
+                Err(e) => {
+                    warn!(
+                        "Failed to generate embedding for document {}: {}",
+                        doc_id, e
+                    );
+                }
+            }
+        });
+    }
 
     if let Err(e) = ActivityRepository::create(
         &state.pool,
@@ -340,9 +344,7 @@ pub async fn get_document(
             // Authorization check: only the owner or admin can access private/restricted docs.
             // Public docs are accessible without auth (guest read).
             let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
-            let is_admin = auth
-                .as_ref()
-                .is_some_and(|Extension(ctx)| ctx.is_admin());
+            let is_admin = auth.as_ref().is_some_and(|Extension(ctx)| ctx.is_admin());
 
             match metadata.visibility.as_str() {
                 "public" => {
@@ -350,10 +352,11 @@ pub async fn get_document(
                 }
                 _ => {
                     // Private/restricted: must be owner or admin
-                    let is_owner =
-                        caller_id.is_some_and(|id| id == metadata.author_id);
+                    let is_owner = caller_id.is_some_and(|id| id == metadata.author_id);
                     if !is_owner && !is_admin {
-                        return Err(ServerError::forbidden("You do not have permission to access this document"));
+                        return Err(ServerError::forbidden(
+                            "You do not have permission to access this document",
+                        ));
                     }
                 }
             }
@@ -424,12 +427,12 @@ pub async fn update_document(
 
     // Authorization: only the owner or an admin can update a document.
     let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
-    let is_admin = auth
-        .as_ref()
-        .is_some_and(|Extension(ctx)| ctx.is_admin());
+    let is_admin = auth.as_ref().is_some_and(|Extension(ctx)| ctx.is_admin());
     let is_owner = caller_id.is_some_and(|id| id == metadata.author_id);
     if !is_owner && !is_admin {
-        return Err(ServerError::forbidden("You do not have permission to update this document"));
+        return Err(ServerError::forbidden(
+            "You do not have permission to update this document",
+        ));
     }
 
     if let Some(title) = req.title {
@@ -445,21 +448,22 @@ pub async fn update_document(
         state.scan_content_dlp(&content)?;
 
         if let Some(ref current_content) = metadata.content
-            && current_content != &content {
-                let version_repo = DocumentVersionRepository::new(state.pool.clone());
-                let user_id = tachyon_core::generate_user_id();
-                if let Err(e) = version_repo
-                    .create(CreateVersionRequest {
-                        document_id: document_id.clone(),
-                        content: current_content.clone(),
-                        commit_message: Some("Auto-snapshot before update".to_string()),
-                        created_by: user_id.to_string(),
-                    })
-                    .await
-                {
-                    warn!("Failed to auto-version document {}: {}", document_id, e);
-                }
+            && current_content != &content
+        {
+            let version_repo = DocumentVersionRepository::new(state.pool.clone());
+            let user_id = tachyon_core::generate_user_id();
+            if let Err(e) = version_repo
+                .create(CreateVersionRequest {
+                    document_id: document_id.clone(),
+                    content: current_content.clone(),
+                    commit_message: Some("Auto-snapshot before update".to_string()),
+                    created_by: user_id.to_string(),
+                })
+                .await
+            {
+                warn!("Failed to auto-version document {}: {}", document_id, e);
             }
+        }
 
         metadata.content = Some(content.clone());
         metadata.content_hash = Some(compute_content_hash(&content));
@@ -505,12 +509,12 @@ pub async fn update_document(
                 .bind(&document_id)
                 .execute(&mut *conn)
                 .await
-            {
-                warn!(
-                    "Failed to update outgoing links for document {}: {}",
-                    document_id, e
-                );
-            }
+        {
+            warn!(
+                "Failed to update outgoing links for document {}: {}",
+                document_id, e
+            );
+        }
     }
 
     if let Err(e) = state
@@ -549,31 +553,32 @@ pub async fn update_document(
     // Re-generate and persist embedding asynchronously when content changes
     if content_changed
         && let Some(ref ai) = state.ai_manager
-            && ai.is_available() {
-                let ai = ai.clone();
-                let repo = state.repository.clone();
-                let doc_id = document_id.clone();
-                let embed_text = format!(
-                    "{} {}",
-                    metadata.title,
-                    metadata.content.as_deref().unwrap_or("")
-                );
-                tokio::spawn(async move {
-                    match ai.embed(&embed_text).await {
-                        Ok(embedding) => {
-                            if let Err(e) = repo.update_embedding(&doc_id, embedding).await {
-                                warn!("Failed to persist embedding for document {}: {}", doc_id, e);
-                            }
-                        }
-                        Err(e) => {
-                            warn!(
-                                "Failed to generate embedding for document {}: {}",
-                                doc_id, e
-                            );
-                        }
+        && ai.is_available()
+    {
+        let ai = ai.clone();
+        let repo = state.repository.clone();
+        let doc_id = document_id.clone();
+        let embed_text = format!(
+            "{} {}",
+            metadata.title,
+            metadata.content.as_deref().unwrap_or("")
+        );
+        tokio::spawn(async move {
+            match ai.embed(&embed_text).await {
+                Ok(embedding) => {
+                    if let Err(e) = repo.update_embedding(&doc_id, embedding).await {
+                        warn!("Failed to persist embedding for document {}: {}", doc_id, e);
                     }
-                });
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to generate embedding for document {}: {}",
+                        doc_id, e
+                    );
+                }
             }
+        });
+    }
 
     if let Err(e) = ActivityRepository::create(
         &state.pool,
@@ -679,12 +684,12 @@ pub async fn delete_document(
         .map_err(|e| ServerError::not_found("Document", &format!("{}: {}", document_id, e)))?;
 
     let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
-    let is_admin = auth
-        .as_ref()
-        .is_some_and(|Extension(ctx)| ctx.is_admin());
+    let is_admin = auth.as_ref().is_some_and(|Extension(ctx)| ctx.is_admin());
     let is_owner = caller_id.is_some_and(|id| id == metadata.author_id);
     if !is_owner && !is_admin {
-        return Err(ServerError::forbidden("You do not have permission to delete this document"));
+        return Err(ServerError::forbidden(
+            "You do not have permission to delete this document",
+        ));
     }
 
     match state.repository.delete(&doc_id).await {
@@ -787,9 +792,10 @@ pub async fn list_documents(
     );
 
     if let Some(hit) = state.api_cache.get_response(&key).await
-        && let Ok(parsed) = serde_json::from_slice::<DocumentSearchResponse>(&hit.data) {
-            return Ok(Json(parsed));
-        }
+        && let Ok(parsed) = serde_json::from_slice::<DocumentSearchResponse>(&hit.data)
+    {
+        return Ok(Json(parsed));
+    }
 
     let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(20).min(100);
@@ -900,9 +906,7 @@ pub async fn get_document_metadata(
         Ok(metadata) => {
             // Authorization: same rules as get_document.
             let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
-            let is_admin = auth
-                .as_ref()
-                .is_some_and(|Extension(ctx)| ctx.is_admin());
+            let is_admin = auth.as_ref().is_some_and(|Extension(ctx)| ctx.is_admin());
             let is_owner = caller_id.is_some_and(|id| id == metadata.author_id);
             match metadata.visibility.as_str() {
                 "public" => {}

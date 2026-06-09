@@ -4,19 +4,14 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    
+
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    
-    rust-analyzer-src = {
-      url = "github:rust-lang/rust-analyzer";
-      flake = false;
-    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, fenix, rust-analyzer-src }:
+  outputs = { self, nixpkgs, flake-utils, fenix }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
@@ -85,7 +80,6 @@
 
         # Rust development tools
         rustDevTools = with pkgs; [
-          cargo-audit
           cargo-deny
           cargo-outdated
           cargo-tarpaulin
@@ -111,10 +105,10 @@
           RUST_SRC_PATH = "${fenix.packages.${system}.stable.rust-src}/lib/rustlib/src/rust/library";
           RUST_BACKTRACE = "1";
           CARGO_TERM_COLOR = "always";
-          
+
           # Library paths
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath libraries;
-          
+
           # PKG_CONFIG paths
           PKG_CONFIG_PATH = with pkgs; lib.concatStringsSep ":" [
             "${openssl.dev}/lib/pkgconfig"
@@ -127,14 +121,16 @@
             # Bun setup
             export BUN_INSTALL="$HOME/.bun"
             export PATH="$BUN_INSTALL/bin:$PATH"
-            
-            # NVIDIA + Wayland: prepend /usr/lib to find NVIDIA EGL/GBM
-            # libraries (libnvidia-egl-wayland.so, libEGL_nvidia.so) that
-            # the nix WebKitGTK needs but LD_LIBRARY_PATH shadows.
-            # Do NOT set WEBKIT_DISABLE_COMPOSITING_MODE=1 — it kills the
-            # WebKit WebProcess entirely, leaving an empty window.
-            export LD_LIBRARY_PATH="/usr/lib:$LD_LIBRARY_PATH"
-            
+
+            # NVIDIA + Wayland: expose system NVIDIA EGL/GBM libraries
+            # without poisoning the entire library path. Using
+            # LD_LIBRARY_PATH="/usr/lib" causes nix binaries (nix, cargo-audit)
+            # to load mismatched system libs (libtbb, libboost, etc.) and crash
+            # with SIGSEGV. Instead, only prepend the specific NVIDIA dir.
+            if [ -d /usr/lib/nvidia ]; then
+              export LD_LIBRARY_PATH="/usr/lib/nvidia''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+            fi
+
             echo "------------------------------------------------------------------"
             echo "Tachyon Dev Environment"
             echo "------------------------------------------------------------------"

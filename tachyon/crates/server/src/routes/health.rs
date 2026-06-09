@@ -1,5 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use tachyon_search::IndexManager;
 
@@ -114,7 +114,7 @@ pub(crate) async fn health_check(State(state): State<crate::HealthState>) -> Jso
     let redis_check = check_redis(&state).await;
     let tantivy_check = check_tantivy().await;
     let smtp_check = check_smtp(&state).await;
-    let memory = get_memory_info();
+    let _memory = get_memory_info();
 
     let overall = if db_check.status == "ok"
         && (redis_check.status == "ok" || redis_check.status == "disabled")
@@ -132,7 +132,11 @@ pub(crate) async fn health_check(State(state): State<crate::HealthState>) -> Jso
 
     Json(HealthResponse {
         status: overall.to_string(),
-        version: if verbose { env!("CARGO_PKG_VERSION").to_string() } else { "0".to_string() },
+        version: if verbose {
+            env!("CARGO_PKG_VERSION").to_string()
+        } else {
+            "0".to_string()
+        },
         uptime_secs: state.start_time.elapsed().as_secs(),
         checks: HealthChecks {
             database: db_check,
@@ -557,5 +561,55 @@ mod tests {
         assert!(response.memory.is_none());
         let json = serde_json::to_value(&response).unwrap();
         assert!(!json.as_object().unwrap().contains_key("memory"));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Debug: capture page HTML from desktop WebView and write to /tmp/
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+pub struct DebugHtmlRequest {
+    pub html: String,
+    #[allow(dead_code)]
+    pub meta: serde_json::Value,
+}
+
+/// POST /debug/html — receives captured page HTML from the desktop WebView
+/// and writes it to /tmp/tachyon-debug-page.html for inspection.
+pub async fn debug_capture_html(body: String) -> Result<Json<serde_json::Value>, StatusCode> {
+    let html_path = "/tmp/tachyon-debug-page.html";
+    let meta_path = "/tmp/tachyon-debug-page-meta.json";
+
+    // Try to parse as JSON
+    if let Ok(req) = serde_json::from_str::<DebugHtmlRequest>(&body) {
+        // Write HTML
+        if let Err(e) = std::fs::write(html_path, &req.html) {
+            tracing::warn!("[debug] failed to write HTML: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        // Write metadata
+        if let Ok(meta_json) = serde_json::to_string_pretty(&req.meta) {
+            let _ = std::fs::write(meta_path, meta_json);
+        }
+        tracing::info!(
+            "[debug] captured page: {} bytes HTML, url={}",
+            req.html.len(),
+            req.meta.get("url").and_then(|v| v.as_str()).unwrap_or("?")
+        );
+        Ok(Json(serde_json::json!({
+            "ok": true,
+            "path": html_path,
+            "html_bytes": req.html.len(),
+            "url": req.meta.get("url").and_then(|v| v.as_str()).unwrap_or("?"),
+        })))
+    } else {
+        // Fallback: write raw body
+        let _ = std::fs::write(html_path, &body);
+        Ok(Json(serde_json::json!({
+            "ok": true,
+            "path": html_path,
+            "raw_bytes": body.len(),
+        })))
     }
 }

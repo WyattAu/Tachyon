@@ -119,12 +119,12 @@
 
 pub mod ai;
 pub mod api_docs;
-pub mod broadcast_bus;
 pub mod audit;
+pub mod broadcast_bus;
 pub mod config;
-pub mod csrf_store;
 pub mod conflict;
 pub mod crdt;
+pub mod csrf_store;
 pub mod dlp;
 pub mod email;
 pub mod error;
@@ -257,7 +257,9 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
 
     let pool = if std::env::var("TACHYON_SKIP_MIGRATIONS").is_ok() {
         tracing::warn!("TACHYON_SKIP_MIGRATIONS is set -- skipping database migrations");
-        init(database_url).await.map_err(|e| anyhow::anyhow!("Failed to initialize database: {}", e))?
+        init(database_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to initialize database: {}", e))?
     } else {
         init_with_migrations(database_url)
             .await
@@ -345,8 +347,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     let review_state = ReviewState::new(pool.clone(), http_client.clone())
         .with_audit_logger(audit_logger.clone())
         .with_notification_dispatcher(notification_dispatcher.clone());
-    let team_state =
-        team_state.with_notification_dispatcher(notification_dispatcher.clone());
+    let team_state = team_state.with_notification_dispatcher(notification_dispatcher.clone());
     let tags_state = TagsState { pool: pool.clone() };
     let webhook_state = WebhookState {
         pool: pool.clone(),
@@ -369,7 +370,8 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let comment_state = crate::routes::comments::CommentState::new(pool.clone());
     let digest_state = crate::routes::digest::DigestState { pool: pool.clone() };
-    let crdt_connection_manager = CrdtConnectionManager::with_pool(pool.inner().clone(), broadcast_bus.clone());
+    let crdt_connection_manager =
+        CrdtConnectionManager::with_pool(pool.inner().clone(), broadcast_bus.clone());
 
     let oidc_state = if !config.sso_oidc.is_empty() {
         Some(crate::sso::OidcState {
@@ -377,7 +379,9 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
             pool: pool.clone(),
             jwt_secret: config.jwt.signing_secret().to_string(),
             http_client: reqwest::Client::new(),
-            csrf_store: crate::csrf_store::CsrfStoreType::new(config.rate_limit.redis_url.as_deref()),
+            csrf_store: crate::csrf_store::CsrfStoreType::new(
+                config.rate_limit.redis_url.as_deref(),
+            ),
         })
     } else {
         None
@@ -512,6 +516,10 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let oidc_state = state.oidc_state;
     let saml_state = state.saml_state;
     let ldap_state = state.ldap_state;
+    let siem_state = crate::routes::siem::SiemState {
+        pool: pool.clone(),
+        audit_logger: audit_logger.clone(),
+    };
     use crate::routes::activity::create_activity_router;
     use crate::routes::billing::{BillingState, create_billing_router};
     use crate::routes::catalog::create_catalog_router;
@@ -651,6 +659,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let digest_router = create_digest_router().with_state(state.digest_state);
 
+    let siem_router = crate::routes::siem::create_siem_router().with_state(siem_state);
+
     let mut api_v1 = Router::new()
         .merge(document_router)
         .merge(user_router)
@@ -682,7 +692,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(ssg_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
         .merge(oauth2_router.layer(RequestBodyLimitLayer::new(1024 * 1024)))
         .merge(comment_router)
-        .merge(digest_router);
+        .merge(digest_router)
+        .merge(siem_router);
 
     if let Some(sms_otp_router) = sms_otp_router {
         api_v1 = api_v1.merge(sms_otp_router);
@@ -757,6 +768,12 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
             smtp_configured: config.smtp_url.is_some(),
         });
 
+    // Stateless debug routes (no auth, no state)
+    let debug_router = Router::new().route(
+        "/debug/html",
+        axum::routing::post(crate::routes::health::debug_capture_html),
+    );
+
     let metrics_router = Router::new()
         .route(
             "/metrics/app",
@@ -774,6 +791,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let mut router = Router::new()
         .merge(health_router)
+        .merge(debug_router)
         .merge(metrics_router)
         .merge(seo_router)
         .merge(crdt_ws_router)

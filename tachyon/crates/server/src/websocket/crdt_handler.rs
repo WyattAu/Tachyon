@@ -126,7 +126,11 @@ impl CrdtConnectionManager {
         }
     }
 
-    pub fn with_config(max_connections: usize, heartbeat_interval_secs: u64, bus: Arc<SharedBroadcastBus>) -> Self {
+    pub fn with_config(
+        max_connections: usize,
+        heartbeat_interval_secs: u64,
+        bus: Arc<SharedBroadcastBus>,
+    ) -> Self {
         let (broadcast_tx, _) = broadcast::channel(1024);
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),
@@ -398,12 +402,13 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // This is the Yrs-encoded state vector + updates, which the client
     // uses to sync its local document.
     if let Ok(state) = manager.crdt_manager().get_state(&room)
-        && !state.is_empty() {
-            let sync_msg = encode_sync_step1(&state);
-            if let Err(e) = ws_sender.send(Message::Binary(sync_msg.into())).await {
-                warn!(client_id = %client_id, error = %e, "Failed to send initial document state");
-            }
+        && !state.is_empty()
+    {
+        let sync_msg = encode_sync_step1(&state);
+        if let Err(e) = ws_sender.send(Message::Binary(sync_msg.into())).await {
+            warn!(client_id = %client_id, error = %e, "Failed to send initial document state");
         }
+    }
 
     // Forward relay events to this client's WebSocket.
     let room_for_send = room.clone();
@@ -556,14 +561,14 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             if data_vec.len() > 1
                                 && let Err(e) =
                                     crdt_manager.apply_update(&room_for_recv, &data_vec[1..])
-                                {
-                                    warn!(
-                                        client_id = %client_id_for_recv,
-                                        room = %room_for_recv,
-                                        error = %e,
-                                        "Failed to apply CRDT update"
-                                    );
-                                }
+                            {
+                                warn!(
+                                    client_id = %client_id_for_recv,
+                                    room = %room_for_recv,
+                                    error = %e,
+                                    "Failed to apply CRDT update"
+                                );
+                            }
                             let seq = manager_for_recv.next_seq();
                             let _ = broadcast_tx.send(RelayEvent::Binary {
                                 room: room_for_recv.clone(),

@@ -108,11 +108,12 @@ fn generate_jwt_with_extra(user_id: &str, role: &str, extra: serde_json::Value) 
         "team_id": null,
     });
     if let Some(obj) = claims.as_object_mut()
-        && let Some(extra_obj) = extra.as_object() {
-            for (k, v) in extra_obj {
-                obj.insert(k.clone(), v.clone());
-            }
+        && let Some(extra_obj) = extra.as_object()
+    {
+        for (k, v) in extra_obj {
+            obj.insert(k.clone(), v.clone());
         }
+    }
 
     encode(
         &Header::default(),

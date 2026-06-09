@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use tracing::trace;
 
 /// Broadcast event variants for both OT and CRDT handlers.
@@ -236,7 +236,11 @@ mod tests {
 
         let event = rx.recv().await.unwrap();
         match event {
-            BroadcastEvent::OtMessage { room_id, sender_client_id, payload } => {
+            BroadcastEvent::OtMessage {
+                room_id,
+                sender_client_id,
+                payload,
+            } => {
                 assert_eq!(room_id, "doc:1");
                 assert_eq!(sender_client_id, Some("alice".to_string()));
                 assert_eq!(payload, r#"{"type":"presence"}"#);
@@ -255,7 +259,11 @@ mod tests {
 
         let event = rx.recv().await.unwrap();
         match event {
-            BroadcastEvent::CrdtBinary { room_id, sender_client_id, data } => {
+            BroadcastEvent::CrdtBinary {
+                room_id,
+                sender_client_id,
+                data,
+            } => {
                 assert_eq!(room_id, "doc:1");
                 assert_eq!(sender_client_id, "alice");
                 assert_eq!(data, vec![0, 1, 2, 3]);
@@ -269,7 +277,8 @@ mod tests {
         let bus = SharedBroadcastBus::new(16);
         let mut rx = bus.subscribe();
 
-        bus.publish_ot("doc:empty", None, "ignored".to_string()).await;
+        bus.publish_ot("doc:empty", None, "ignored".to_string())
+            .await;
 
         // No event should arrive -- rx.recv() would block, so try with timeout
         assert!(rx.try_recv().is_err());

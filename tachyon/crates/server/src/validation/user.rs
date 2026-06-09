@@ -144,11 +144,12 @@ impl ValidatedEmail {
         ];
 
         if let Some(domain) = email.split('@').nth(1)
-            && disposable_domains.contains(&domain) {
-                return Err(ValidationError::ForbiddenContent {
-                    reason: "Disposable email addresses are not allowed".to_string(),
-                });
-            }
+            && disposable_domains.contains(&domain)
+        {
+            return Err(ValidationError::ForbiddenContent {
+                reason: "Disposable email addresses are not allowed".to_string(),
+            });
+        }
 
         Ok(Self { value: email })
     }

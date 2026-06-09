@@ -29,7 +29,7 @@ impl ApiClient {
         } else {
             format!("?{}", params.join("&"))
         };
-        let url = format!("{}/audit{}", self.base_url, query);
+        let url = format!("{}/admin/audit{}", self.base_url, query);
         self.get(&url).await
     }
 

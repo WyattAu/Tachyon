@@ -324,12 +324,14 @@ impl Node {
         }
 
         if let Some(ref content) = self.content
-            && content.is_empty() && self.node_type.has_content() {
-                return Err(TachyonError::field_validation(
-                    "content",
-                    "Content cannot be empty for this node type",
-                ));
-            }
+            && content.is_empty()
+            && self.node_type.has_content()
+        {
+            return Err(TachyonError::field_validation(
+                "content",
+                "Content cannot be empty for this node type",
+            ));
+        }
 
         Ok(())
     }

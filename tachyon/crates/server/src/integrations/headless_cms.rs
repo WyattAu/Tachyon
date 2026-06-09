@@ -172,10 +172,7 @@ impl HeadlessCmsClient {
         &self,
         pool: &tachyon_database::DatabasePool,
     ) -> Result<CmsSyncResult, CmsError> {
-        let docs = self
-            .fetch_documents()
-            .await
-            .map_err(CmsError::Fetch)?;
+        let docs = self.fetch_documents().await.map_err(CmsError::Fetch)?;
 
         let fetched = docs.len();
         let mut imported = 0usize;
@@ -197,15 +194,14 @@ impl HeadlessCmsClient {
                 .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
                 .map(|dt| dt.with_timezone(&chrono::Utc));
 
-            let existing_id: Option<String> = sqlx::query_scalar(
-                "SELECT id FROM documents WHERE external_id = $1 LIMIT 1",
-            )
-            .bind(&external_id)
-            .fetch_optional(pool.inner())
-            .await
-            .map_err(|e| {
-                CmsError::Database(format!("Failed to check existing document: {}", e))
-            })?;
+            let existing_id: Option<String> =
+                sqlx::query_scalar("SELECT id FROM documents WHERE external_id = $1 LIMIT 1")
+                    .bind(&external_id)
+                    .fetch_optional(pool.inner())
+                    .await
+                    .map_err(|e| {
+                        CmsError::Database(format!("Failed to check existing document: {}", e))
+                    })?;
 
             let slug = if doc.slug.is_empty() {
                 doc.title.to_lowercase().replace(' ', "-")
@@ -235,15 +231,12 @@ impl HeadlessCmsClient {
                     }
                 }
             } else {
-                let existing_by_slug: Option<String> = sqlx::query_scalar(
-                    "SELECT id FROM documents WHERE slug = $1 LIMIT 1",
-                )
-                .bind(&slug)
-                .fetch_optional(pool.inner())
-                .await
-                .map_err(|e| {
-                    CmsError::Database(format!("Failed to check slug: {}", e))
-                })?;
+                let existing_by_slug: Option<String> =
+                    sqlx::query_scalar("SELECT id FROM documents WHERE slug = $1 LIMIT 1")
+                        .bind(&slug)
+                        .fetch_optional(pool.inner())
+                        .await
+                        .map_err(|e| CmsError::Database(format!("Failed to check slug: {}", e)))?;
 
                 if existing_by_slug.is_some() {
                     debug!(slug = %slug, "Document slug already exists, skipping");

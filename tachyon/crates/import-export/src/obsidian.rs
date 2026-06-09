@@ -268,9 +268,10 @@ fn should_skip_path(path: &str) -> bool {
     }
 
     if let Some(ext) = Path::new(path).extension()
-        && SKIP_EXTENSIONS.contains(&ext.to_string_lossy().as_ref()) {
-            return true;
-        }
+        && SKIP_EXTENSIONS.contains(&ext.to_string_lossy().as_ref())
+    {
+        return true;
+    }
 
     if path.contains("/.") || path.starts_with('.') {
         return true;

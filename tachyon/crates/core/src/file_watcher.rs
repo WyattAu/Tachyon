@@ -186,9 +186,10 @@ fn is_acceptable_path(path: &Path, watch_extensions: &[String]) -> bool {
 
     for component in path.components() {
         if let std::path::Component::Normal(name) = component
-            && name.to_str().is_some_and(|s| s.starts_with('.')) {
-                return false;
-            }
+            && name.to_str().is_some_and(|s| s.starts_with('.'))
+        {
+            return false;
+        }
     }
 
     true
@@ -242,10 +243,11 @@ fn debounce_and_forward(
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 if let Some(dl) = deadline
-                    && Instant::now() >= dl {
-                        flush_pending(&mut pending, &tx);
-                        deadline = None;
-                    }
+                    && Instant::now() >= dl
+                {
+                    flush_pending(&mut pending, &tx);
+                    deadline = None;
+                }
             }
             Err(mpsc::RecvTimeoutError::Disconnected) => {
                 debug!("Notify channel disconnected, flushing remaining events");

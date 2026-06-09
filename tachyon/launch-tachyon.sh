@@ -79,6 +79,7 @@ start_server() {
     TACHYON_ADMIN_USERNAME="$ADMIN_USER" \
     TACHYON_ADMIN_PASSWORD="$ADMIN_PASS" \
     TACHYON_SECURITY_CSP_ENABLED=false \
+    TACHYON_STATIC_DIR="$PROJECT_ROOT/crates/frontend/dist" \
     RUST_LOG="tachyon_server=info" \
     nohup "$SERVER_BIN" >/tmp/tachyon-server.log 2>&1 &
     echo $! > /tmp/tachyon-server.pid

@@ -270,6 +270,17 @@ impl TeamRepository {
             .ok_or_else(|| DatabaseError::not_found("team", slug))
     }
 
+    /// List all teams.
+    pub async fn list_all(&self) -> DatabaseResult<Vec<Team>> {
+        let select_sql = "SELECT * FROM teams ORDER BY created_at DESC";
+        let mut conn = self.pool.acquire().await?;
+        query_as::<_, TeamRecord>(select_sql)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))
+            .map(|records| records.into_iter().map(Team::from).collect())
+    }
+
     pub async fn list_by_owner(&self, owner_id: &str) -> DatabaseResult<Vec<Team>> {
         let select_sql = "SELECT * FROM teams WHERE owner_id = $1 ORDER BY created_at DESC";
 

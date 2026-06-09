@@ -1,5 +1,6 @@
 use crate::api::ApiClient;
 use crate::components::ButtonSpinner;
+use crate::servers::ServerRegistry;
 use leptos::ev;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -39,10 +40,57 @@ fn get_return_url() -> String {
         .unwrap_or_else(|| "/dashboard".to_string())
 }
 
+/// Read CLI credentials injected by the Tauri desktop shell.
+/// Returns (username, password, server_url) — each is None if not provided.
+fn read_cli_credentials() -> (Option<String>, Option<String>, Option<String>) {
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return (None, None, None),
+    };
+
+    let window_js: &wasm_bindgen::JsValue = &window;
+
+    let creds_val = js_sys::Reflect::get(window_js, &"tachyonCredentials".into())
+        .ok()
+        .and_then(|v| {
+            if v.is_object() && !v.is_null() {
+                Some(v)
+            } else {
+                None
+            }
+        });
+
+    let username = creds_val
+        .as_ref()
+        .and_then(|v| js_sys::Reflect::get(v, &"username".into()).ok())
+        .and_then(|v| v.as_string())
+        .filter(|s| !s.is_empty());
+
+    let password = creds_val
+        .as_ref()
+        .and_then(|v| js_sys::Reflect::get(v, &"password".into()).ok())
+        .and_then(|v| v.as_string())
+        .filter(|s| !s.is_empty());
+
+    let server_url = js_sys::Reflect::get(window_js, &"tachyonApiUrl".into())
+        .ok()
+        .and_then(|v| v.as_string())
+        .map(|url| {
+            // Strip /api/v1 suffix to get the server base URL
+            url.trim_end_matches("/api/v1")
+                .trim_end_matches('/')
+                .to_string()
+        })
+        .filter(|s| !s.is_empty() && s != "http://localhost:8080");
+
+    (username, password, server_url)
+}
+
 #[component]
 pub fn LoginPage() -> impl IntoView {
     let username = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
+    let server_url = RwSignal::new(String::new());
     let error = RwSignal::new(None::<String>);
     let username_error = RwSignal::new(None::<String>);
     let password_error = RwSignal::new(None::<String>);
@@ -53,6 +101,105 @@ pub fn LoginPage() -> impl IntoView {
     let guest_login_enabled = true;
     let public_notes_enabled = true;
     let nav = StoredValue::new(use_navigate());
+
+    // On mount: check for CLI credentials and auto-login
+    let (cli_user, cli_pass, cli_server) = read_cli_credentials();
+
+    // Also pre-populate server URL from the active server registry entry
+    let registry = ServerRegistry::load();
+    if server_url.get().is_empty() {
+        if let Some(server) = registry.active_server() {
+            server_url.set(server.base_url.clone());
+        } else if let Some(srv) = cli_server {
+            server_url.set(srv);
+        }
+    }
+    if username.get().is_empty() {
+        if let Some(ref u) = cli_user {
+            username.set(u.clone());
+        }
+    }
+    if password.get().is_empty() {
+        if let Some(ref p) = cli_pass {
+            password.set(p.clone());
+        }
+    }
+
+    // Auto-submit if CLI provided both username and password
+    let auto_login = cli_user.is_some() && cli_pass.is_some();
+
+    // Store token in both localStorage AND the server registry
+    let store_token_and_activate = move |token: String, remember: bool| {
+        if let Some(window) = web_sys::window() {
+            if let Ok(Some(storage)) = window.local_storage() {
+                let _ = storage.set_item("tachyon_token", &token);
+                if remember {
+                    let _ = storage.set_item("tachyon_remember", "true");
+                }
+            }
+        }
+
+        // Update server registry: save token to the active server entry
+        let mut reg = ServerRegistry::load();
+        if let Some(server) = reg.active_server_mut() {
+            server.auth_token = Some(token.clone());
+            server.last_connected = Some(chrono::Utc::now().to_rfc3339());
+        } else {
+            // No active server — create one from the current URL
+            let url_val =
+                js_sys::Reflect::get(&web_sys::window().unwrap().into(), &"tachyonApiUrl".into())
+                    .ok()
+                    .and_then(|v| v.as_string())
+                    .unwrap_or_else(|| "http://localhost:8080/api/v1".to_string());
+            let base = url_val
+                .trim_end_matches("/api/v1")
+                .trim_end_matches('/')
+                .to_string();
+            let entry = crate::servers::ServerEntry {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: base.clone(),
+                base_url: base,
+                auth_token: Some(token.clone()),
+                last_connected: Some(chrono::Utc::now().to_rfc3339()),
+            };
+            reg.add_server(entry);
+            reg.active_server_id = reg.servers.keys().last().cloned();
+        }
+        reg.save();
+    };
+
+    let do_login = move |username_val: String,
+                         password_val: String,
+                         remember_val: bool,
+                         return_url: String| {
+        loading.set(true);
+        error.set(None);
+        username_error.set(None);
+        password_error.set(None);
+
+        spawn_local(async move {
+            let client = ApiClient::default();
+            match client.login(&username_val, &password_val).await {
+                Ok(response) => {
+                    if response.success {
+                        if let Some(token) = &response.access_token {
+                            let token = token.clone();
+                            store_token_and_activate(token.clone(), remember_val);
+                            client.set_auth_token(token);
+                            nav.update_value(|n| n(&return_url, Default::default()));
+                        }
+                    } else {
+                        loading.set(false);
+                        error.set(response.error);
+                    }
+                }
+                Err(e) => {
+                    loading.set(false);
+                    error.set(Some(format!("Login failed: {}", e)));
+                }
+            }
+        });
+    };
 
     let on_submit = move |ev: ev::SubmitEvent| {
         ev.prevent_default();
@@ -89,46 +236,8 @@ pub fn LoginPage() -> impl IntoView {
             return;
         }
 
-        loading.set(true);
-        error.set(None);
-        username_error.set(None);
-        password_error.set(None);
-
         let return_url = get_return_url();
-
-        spawn_local(async move {
-            let client = ApiClient::default();
-            match client.login(&username_val, &password_val).await {
-                Ok(response) => {
-                    if response.success {
-                        if let Some(token) = &response.access_token {
-                            if let Some(window) = web_sys::window() {
-                                if let Ok(Some(storage)) = window.local_storage() {
-                                    let _ = storage.set_item("tachyon_token", token);
-                                }
-                            }
-                            client.set_auth_token(token.clone());
-
-                            if remember_val {
-                                if let Some(window) = web_sys::window() {
-                                    if let Ok(Some(storage)) = window.local_storage() {
-                                        let _ = storage.set_item("tachyon_remember", "true");
-                                    }
-                                }
-                            }
-                        }
-                        nav.update_value(|n| n(&return_url, Default::default()));
-                    } else {
-                        loading.set(false);
-                        error.set(response.error);
-                    }
-                }
-                Err(e) => {
-                    loading.set(false);
-                    error.set(Some(format!("Login failed: {}", e)));
-                }
-            }
-        });
+        do_login(username_val, password_val, remember_val, return_url);
     };
 
     let on_guest_login = move |_| {
@@ -140,12 +249,9 @@ pub fn LoginPage() -> impl IntoView {
                 Ok(response) => {
                     if response.success {
                         if let Some(token) = &response.access_token {
-                            if let Some(window) = web_sys::window() {
-                                if let Ok(Some(storage)) = window.local_storage() {
-                                    let _ = storage.set_item("tachyon_token", token);
-                                }
-                            }
-                            client.set_auth_token(token.clone());
+                            let token = token.clone();
+                            store_token_and_activate(token.clone(), false);
+                            client.set_auth_token(token);
                         }
                         nav.update_value(|n| n("/dashboard", Default::default()));
                     } else {
@@ -173,6 +279,18 @@ pub fn LoginPage() -> impl IntoView {
         ));
     };
 
+    // Auto-login effect
+    Effect::new(move || {
+        if auto_login {
+            let u = username.get();
+            let p = password.get();
+            if !u.is_empty() && !p.is_empty() && !loading.get() {
+                let return_url = get_return_url();
+                do_login(u, p, true, return_url);
+            }
+        }
+    });
+
     view! {
         <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
             <div class="max-w-md w-full space-y-8">
@@ -183,6 +301,23 @@ pub fn LoginPage() -> impl IntoView {
 
                 <div class="bg-white dark:bg-gray-800 rounded-none shadow-md p-8 border border-gray-900 dark:border-gray-100">
                     <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">"Sign in to your account"</h3>
+
+                    // Server URL input
+                    <div class="mb-4">
+                        <label for="server-url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">"Server URL"</label>
+                        <input
+                            id="server-url"
+                            name="server_url"
+                            type="text"
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-none bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            placeholder="http://localhost:8080"
+                            on:input=move |ev| server_url.set(event_target_value(&ev))
+                            prop:value=move || server_url.get()
+                        />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            "The URL of your Tachyon server. Leave default for local development."
+                        </p>
+                    </div>
 
                     <Show when=move || username_error.get().is_some()>
                         <div id="username-error" role="alert" class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-200 rounded text-sm">
@@ -341,6 +476,13 @@ pub fn LoginPage() -> impl IntoView {
                             </div>
                         </div>
                     </Show>
+                </div>
+
+                // Server management link
+                <div class="text-center">
+                    <a href="/servers" class="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                        "Manage server connections →"
+                    </a>
                 </div>
 
                 <div class="bg-blue-50 dark:bg-blue-900/30 rounded-none p-4">

@@ -126,11 +126,12 @@ async fn update_subscription(
     axum::Json(req): axum::Json<UpdateSubscriptionRequest>,
 ) -> Result<Json<SubscriptionResponse>, crate::error::ServerError> {
     if let Some(ref f) = req.frequency
-        && !matches!(f.as_str(), "daily" | "weekly") {
-            return Err(crate::error::ServerError::bad_request(
-                "frequency must be 'daily' or 'weekly'",
-            ));
-        }
+        && !matches!(f.as_str(), "daily" | "weekly")
+    {
+        return Err(crate::error::ServerError::bad_request(
+            "frequency must be 'daily' or 'weekly'",
+        ));
+    }
     let row = sqlx::query_as::<_, DigestSubscription>(
         r#"UPDATE digest_subscriptions SET
            frequency = COALESCE($2, frequency),

@@ -10,17 +10,18 @@ pub async fn request_size_limit(request: Request, next: Next) -> Response {
 
     if let Some(content_length) = request.headers().get("content-length")
         && let Ok(length_str) = content_length.to_str()
-            && let Ok(length) = length_str.parse::<usize>()
-                && length > MAX_SIZE {
-                    return (
-                        StatusCode::PAYLOAD_TOO_LARGE,
-                        axum::Json(serde_json::json!({
-                            "error": "request_too_large",
-                            "message": format!("Request body exceeds {} bytes", MAX_SIZE)
-                        })),
-                    )
-                        .into_response();
-                }
+        && let Ok(length) = length_str.parse::<usize>()
+        && length > MAX_SIZE
+    {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            axum::Json(serde_json::json!({
+                "error": "request_too_large",
+                "message": format!("Request body exceeds {} bytes", MAX_SIZE)
+            })),
+        )
+            .into_response();
+    }
 
     next.run(request).await
 }

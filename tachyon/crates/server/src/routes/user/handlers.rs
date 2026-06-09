@@ -79,15 +79,16 @@ pub async fn register(
     }
 
     if let Some(ref email) = req.email
-        && (!email.contains('@') || !email.contains('.')) {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(UserErrorResponse {
-                    code: "VALIDATION_ERROR".into(),
-                    message: "Invalid email format".into(),
-                }),
-            ));
-        }
+        && (!email.contains('@') || !email.contains('.'))
+    {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(UserErrorResponse {
+                code: "VALIDATION_ERROR".into(),
+                message: "Invalid email format".into(),
+            }),
+        ));
+    }
 
     // Build user with hashed password
     let user_id = tachyon_core::generate_user_id();
@@ -958,13 +959,14 @@ pub async fn logout(
     info!("User logout");
 
     if let Some(Json(req)) = body
-        && let Some(ref token) = req.refresh_token {
-            let hash = hash_refresh_token(token);
-            let repo = state.refresh_token_repo();
-            if let Err(e) = repo.revoke(&hash).await {
-                warn!("Failed to revoke refresh token: {}", e);
-            }
+        && let Some(ref token) = req.refresh_token
+    {
+        let hash = hash_refresh_token(token);
+        let repo = state.refresh_token_repo();
+        if let Err(e) = repo.revoke(&hash).await {
+            warn!("Failed to revoke refresh token: {}", e);
         }
+    }
 
     Ok(Json(serde_json::json!({
         "success": true,

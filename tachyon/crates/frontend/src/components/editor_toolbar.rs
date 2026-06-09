@@ -1,4 +1,5 @@
 use crate::components::native_editor::{insert_line_prefix, insert_markdown_syntax};
+use lepticons::{Icon, LucideGlyph};
 use leptos::prelude::*;
 use tachyon_editor::Editor;
 
@@ -92,83 +93,83 @@ pub fn EditorToolbar(
         <div class="editor-toolbar">
             // Text style
             <ToolbarBtn title="Bold" on_click={bold_action} disabled={false}>
-                <span class="font-bold">{"B"}</span>
+                <Icon glyph=LucideGlyph::Bold size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Italic" on_click={italic_action} disabled={false}>
-                <span class="italic">{"I"}</span>
+                <Icon glyph=LucideGlyph::Italic size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Strikethrough" on_click={strikethrough_action} disabled={false}>
-                <span class="line-through">{"S"}</span>
+                <Icon glyph=LucideGlyph::Strikethrough size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Inline Code" on_click={code_action} disabled={false}>
-                <span class="font-mono text-xs">{"<>"}</span>
+                <Icon glyph=LucideGlyph::Code size="16" />
             </ToolbarBtn>
 
             <ToolbarSep />
 
             // Headings
             <ToolbarBtn title="Heading 1" on_click={h1_action} disabled={false}>
-                <span class="font-bold text-xs">{"H1"}</span>
+                <Icon glyph=LucideGlyph::Heading1 size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Heading 2" on_click={h2_action} disabled={false}>
-                <span class="font-bold text-xs">{"H2"}</span>
+                <Icon glyph=LucideGlyph::Heading2 size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Heading 3" on_click={h3_action} disabled={false}>
-                <span class="font-bold text-xs">{"H3"}</span>
+                <Icon glyph=LucideGlyph::Heading3 size="16" />
             </ToolbarBtn>
 
             <ToolbarSep />
 
             // Lists
             <ToolbarBtn title="Bullet List" on_click={ul_action} disabled={false}>
-                {"\u{2022} List"}
+                <Icon glyph=LucideGlyph::List size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Ordered List" on_click={ol_action} disabled={false}>
-                {"1. List"}
+                <Icon glyph=LucideGlyph::ListOrdered size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Task List" on_click={task_action} disabled={false}>
-                {"\u{2610} Task"}
+                <Icon glyph=LucideGlyph::ListChecks size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Blockquote" on_click={blockquote_action} disabled={false}>
-                {"\u{201C} Quote"}
+                <Icon glyph=LucideGlyph::Quote size="16" />
             </ToolbarBtn>
 
             <ToolbarSep />
 
             // Insert
             <ToolbarBtn title="Link" on_click={link_action} disabled={false}>
-                {"\u{1F517}"}
+                <Icon glyph=LucideGlyph::Link size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Image" on_click={image_action} disabled={false}>
-                {"\u{1F5BC}"}
+                <Icon glyph=LucideGlyph::Image size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Code Block" on_click={code_block_action} disabled={false}>
-                <span class="font-mono text-xs">{"{ }"}</span>
+                <Icon glyph=LucideGlyph::CodeXml size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Table" on_click={table_action} disabled={false}>
-                {"\u{2638}"}
+                <Icon glyph=LucideGlyph::Table size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Horizontal Rule" on_click={hr_action} disabled={false}>
-                {"\u{2500}"}
+                <Icon glyph=LucideGlyph::Minus size="16" />
             </ToolbarBtn>
 
             <ToolbarSep />
 
             // Actions
             <ToolbarBtn title="Undo (Ctrl+Z)" on_click={undo_action} disabled={editor.with(|e| !e.can_undo())}>
-                {"\u{21A9}"}
+                <Icon glyph=LucideGlyph::Undo2 size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Redo (Ctrl+Shift+Z)" on_click={redo_action} disabled={editor.with(|e| !e.can_redo())}>
-                {"\u{21AA}"}
+                <Icon glyph=LucideGlyph::Redo2 size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Search (Ctrl+F)" on_click={move |_: leptos::ev::MouseEvent| on_search.run(())} disabled={false}>
-                {"\u{1F50D}"}
+                <Icon glyph=LucideGlyph::Search size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Preview" on_click={move |_: leptos::ev::MouseEvent| on_preview.run(())} disabled={false}>
-                {"\u{1F441}"}
+                <Icon glyph=LucideGlyph::Eye size="16" />
             </ToolbarBtn>
             <ToolbarBtn title="Save (Ctrl+S)" on_click={move |_: leptos::ev::MouseEvent| on_save.run(())} disabled={false}>
-                {"\u{1F4BE}"}
+                <Icon glyph=LucideGlyph::Save size="16" />
             </ToolbarBtn>
         </div>
     }

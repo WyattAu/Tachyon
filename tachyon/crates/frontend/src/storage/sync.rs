@@ -66,7 +66,11 @@ impl SyncEngine {
             return;
         }
 
-        if self.sync_state.try_with_untracked(|s| *s == SyncState::Syncing).unwrap_or(false) {
+        if self
+            .sync_state
+            .try_with_untracked(|s| *s == SyncState::Syncing)
+            .unwrap_or(false)
+        {
             return;
         }
 
@@ -77,8 +81,12 @@ impl SyncEngine {
 
         wasm_bindgen_futures::spawn_local(async move {
             match Self::do_sync(&api, &store).await {
-                Ok(()) => { let _ = ss.try_update(|s| *s = SyncState::Idle); }
-                Err(e) => { let _ = ss.try_update(|s| *s = SyncState::Error(e)); }
+                Ok(()) => {
+                    let _ = ss.try_update(|s| *s = SyncState::Idle);
+                }
+                Err(e) => {
+                    let _ = ss.try_update(|s| *s = SyncState::Error(e));
+                }
             }
         });
     }
@@ -106,8 +114,12 @@ impl SyncEngine {
                     wasm_bindgen_futures::spawn_local(async move {
                         let _ = ss.try_update(|s| *s = SyncState::Syncing);
                         match Self::do_sync(&api, &store).await {
-                            Ok(()) => { let _ = ss.try_update(|s| *s = SyncState::Idle); }
-                            Err(e) => { let _ = ss.try_update(|s| *s = SyncState::Error(e)); }
+                            Ok(()) => {
+                                let _ = ss.try_update(|s| *s = SyncState::Idle);
+                            }
+                            Err(e) => {
+                                let _ = ss.try_update(|s| *s = SyncState::Error(e));
+                            }
                         }
                     });
                 });
@@ -159,8 +171,12 @@ impl SyncEngine {
 
             wasm_bindgen_futures::spawn_local(async move {
                 match Self::do_sync(&api, &store).await {
-                    Ok(()) => { let _ = ss.try_update(|s| *s = SyncState::Idle); }
-                    Err(e) => { let _ = ss.try_update(|s| *s = SyncState::Error(e)); }
+                    Ok(()) => {
+                        let _ = ss.try_update(|s| *s = SyncState::Idle);
+                    }
+                    Err(e) => {
+                        let _ = ss.try_update(|s| *s = SyncState::Error(e));
+                    }
                 }
             });
         });

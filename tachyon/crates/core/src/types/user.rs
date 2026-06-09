@@ -137,15 +137,17 @@ impl UserPermissions {
     pub fn can_perform(&self, action: UserAction) -> bool {
         // Check explicit denials first
         if let Some(ref denied) = self.denied_permissions
-            && denied.contains(&action) {
-                return false;
-            }
+            && denied.contains(&action)
+        {
+            return false;
+        }
 
         // Check explicit grants
         if let Some(ref granted) = self.granted_permissions
-            && granted.contains(&action) {
-                return true;
-            }
+            && granted.contains(&action)
+        {
+            return true;
+        }
 
         // Default to role-based permissions
         self.role.can_perform(action)
@@ -411,12 +413,13 @@ impl User {
         }
 
         if let Some(ref email) = self.email
-            && !email.contains('@') {
-                return Err(TachyonError::field_validation(
-                    "email",
-                    "Invalid email format",
-                ));
-            }
+            && !email.contains('@')
+        {
+            return Err(TachyonError::field_validation(
+                "email",
+                "Invalid email format",
+            ));
+        }
 
         Ok(())
     }

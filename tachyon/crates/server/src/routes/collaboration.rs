@@ -281,8 +281,12 @@ pub async fn update_presence(
         req.document_id.clone(),
         vec![presence_user],
     );
-    let json = serde_json::to_string(&presence_msg).map_err(|_| ServerError::internal("serialize presence"))?;
-    state.broadcast_bus.publish_ot(&format!("doc:{}", req.document_id), None, json).await;
+    let json = serde_json::to_string(&presence_msg)
+        .map_err(|_| ServerError::internal("serialize presence"))?;
+    state
+        .broadcast_bus
+        .publish_ot(&format!("doc:{}", req.document_id), None, json)
+        .await;
 
     // Return all live presence for this document
     let users = repo
@@ -351,8 +355,12 @@ pub async fn remove_presence(
 
     // Broadcast leave event to WebSocket clients
     let leave_msg = crate::websocket::types::WebSocketMessage::leave(document_id.clone(), user_id);
-    let json = serde_json::to_string(&leave_msg).map_err(|_| ServerError::internal("serialize leave"))?;
-    state.broadcast_bus.publish_ot(&format!("doc:{}", document_id), None, json).await;
+    let json =
+        serde_json::to_string(&leave_msg).map_err(|_| ServerError::internal("serialize leave"))?;
+    state
+        .broadcast_bus
+        .publish_ot(&format!("doc:{}", document_id), None, json)
+        .await;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -524,8 +532,12 @@ pub async fn create_comment(
         "system".to_string(),
         activity,
     );
-    let json = serde_json::to_string(&activity_msg).map_err(|_| ServerError::internal("serialize activity"))?;
-    state.broadcast_bus.publish_ot(&format!("doc:{}", req.document_id), None, json).await;
+    let json = serde_json::to_string(&activity_msg)
+        .map_err(|_| ServerError::internal("serialize activity"))?;
+    state
+        .broadcast_bus
+        .publish_ot(&format!("doc:{}", req.document_id), None, json)
+        .await;
 
     Ok(Json(db_comment_to_comment(comment)))
 }

@@ -677,14 +677,16 @@ pub fn add_security_headers_with_config(
     );
 
     if let Some(ref sts) = config.strict_transport_security
-        && let Ok(value) = HeaderValue::from_str(&sts.to_header_value()) {
-            headers.insert(header::STRICT_TRANSPORT_SECURITY, value);
-        }
+        && let Ok(value) = HeaderValue::from_str(&sts.to_header_value())
+    {
+        headers.insert(header::STRICT_TRANSPORT_SECURITY, value);
+    }
 
     if let Some(ref permissions) = config.permissions_policy
-        && let Ok(value) = HeaderValue::from_str(&permissions.to_header_value()) {
-            headers.insert("Permissions-Policy", value);
-        }
+        && let Ok(value) = HeaderValue::from_str(&permissions.to_header_value())
+    {
+        headers.insert("Permissions-Policy", value);
+    }
 
     if let Some(coep) = config.cross_origin_embedder_policy {
         headers.insert(

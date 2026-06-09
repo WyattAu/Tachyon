@@ -9,6 +9,16 @@ pub enum EditKind {
     Replace { old_text: String, new_text: String },
 }
 
+impl EditKind {
+    pub fn text(&self) -> String {
+        match self {
+            EditKind::Insert { text } => text.clone(),
+            EditKind::Delete { text } => text.clone(),
+            EditKind::Replace { new_text, .. } => new_text.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
     pub kind: EditKind,
@@ -58,6 +68,10 @@ impl UndoStack {
 
     pub fn can_undo(&self) -> bool {
         !self.undo.is_empty()
+    }
+
+    pub fn last_mut(&mut self) -> Option<&mut Transaction> {
+        self.undo.last_mut()
     }
 
     pub fn can_redo(&self) -> bool {

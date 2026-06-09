@@ -21,13 +21,21 @@ pub fn sanitize_html(html: &str) -> String {
     Builder::default()
         .link_rel(None)
         .add_tags([
-            "img", "pre", "code", "span", "div", "details", "summary",
-            "mark", "del", "ins", "sup", "sub", "kbd", "samp", "var",
-            "picture", "source", "video", "audio", "track",
+            "img", "pre", "code", "span", "div", "details", "summary", "mark", "del", "ins", "sup",
+            "sub", "kbd", "samp", "var", "picture", "source", "video", "audio", "track",
         ])
         .add_generic_attributes(&[
-            "class", "id", "style", "role", "aria-label", "aria-hidden",
-            "aria-expanded", "data-language", "title", "colspan", "rowspan",
+            "class",
+            "id",
+            "style",
+            "role",
+            "aria-label",
+            "aria-hidden",
+            "aria-expanded",
+            "data-language",
+            "title",
+            "colspan",
+            "rowspan",
         ])
         .add_tag_attributes("img", ["src", "alt", "title", "width", "height", "loading"])
         .clean(html)
@@ -88,7 +96,10 @@ mod tests {
     fn test_preserves_class_on_code_block() {
         let input = r#"<pre><code class="language-json">{"key": "value"}</code></pre>"#;
         let output = sanitize_html(input);
-        assert!(output.contains(r#"class="language-json""#),
-            "Expected class preserved, got: {}", output);
+        assert!(
+            output.contains(r#"class="language-json""#),
+            "Expected class preserved, got: {}",
+            output
+        );
     }
 }

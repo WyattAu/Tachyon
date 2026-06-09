@@ -320,10 +320,11 @@ impl WebSocketClient {
         // Add ±25% jitter to prevent thundering herd on server restart
         let jitter = if web_sys::window().is_some() {
             let frac = js_sys::Math::random();
-            (base_delay as f64 * frac * 0.5) as u32 - (base_delay as f64 * 0.25) as u32
+            (base_delay as f64 * frac * 0.5) as i64 - (base_delay as f64 * 0.25) as i64
         } else {
             0
         };
+        let jitter = jitter.clamp(0, base_delay as i64) as u32;
         let delay_ms = base_delay.saturating_add(jitter);
 
         let attempts = inner.reconnect_attempts;
@@ -379,21 +380,38 @@ impl WebSocketClient {
         drop(inner);
 
         for msg_json in queue {
-            if let Some(ws) = &self.inner.borrow().ws {
-                if ws.send_with_str(&msg_json).is_err() {
+            let has_ws = self.inner.borrow().ws.is_some();
+            if has_ws {
+                // Send outside the borrow scope
+                let send_result = {
+                    let inner = self.inner.borrow();
+                    if let Some(ws) = &inner.ws {
+                        ws.send_with_str(&msg_json).map_err(|e| format!("{:?}", e))
+                    } else {
+                        Err("no ws".to_string())
+                    }
+                };
+                if send_result.is_err() {
                     self.inner.borrow_mut().message_queue.push(msg_json);
                     break;
                 }
             }
         }
         for binary_data in binary_queue {
-            if let Some(ws) = &self.inner.borrow().ws {
-                let js_bytes = js_sys::Uint8Array::new_with_length(binary_data.len() as u32);
-                js_bytes.copy_from(&binary_data);
-                if ws.send_with_array_buffer(&js_bytes.buffer()).is_err() {
-                    self.inner.borrow_mut().binary_queue.push(binary_data);
-                    break;
+            let send_result = {
+                let inner = self.inner.borrow();
+                if let Some(ws) = &inner.ws {
+                    let js_bytes = js_sys::Uint8Array::new_with_length(binary_data.len() as u32);
+                    js_bytes.copy_from(&binary_data);
+                    ws.send_with_array_buffer(&js_bytes.buffer())
+                        .map_err(|e| format!("{:?}", e))
+                } else {
+                    Err("no ws".to_string())
                 }
+            };
+            if send_result.is_err() {
+                self.inner.borrow_mut().binary_queue.push(binary_data);
+                break;
             }
         }
     }
@@ -624,7 +642,17 @@ impl WebSocketClient {
 
     /// Send binary data (e.g., CRDT updates) over the WebSocket.
     pub fn send_binary(&self, data: &[u8]) -> Result<(), String> {
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = match self.inner.try_borrow_mut() {
+            Ok(b) => b,
+            Err(_) => {
+                // Already borrowed (e.g. inside on_message callback) — queue for later
+                // Use try_borrow_mut again — if still failing, silently drop
+                if let Ok(mut inner) = self.inner.try_borrow_mut() {
+                    inner.binary_queue.push(data.to_vec());
+                }
+                return Err("Inner borrowed — binary message queued".to_string());
+            }
+        };
         if inner.state == ConnectionState::Connected {
             if let Some(ws) = &inner.ws {
                 let js_bytes = js_sys::Uint8Array::new_with_length(data.len() as u32);

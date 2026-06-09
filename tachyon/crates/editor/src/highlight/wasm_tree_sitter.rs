@@ -17,8 +17,8 @@
 
 use std::collections::HashMap;
 
-use tree_sitter_highlight_wasm::{HighlightConfiguration, HighlightEvent, Highlighter};
 use tree_sitter_c2rust::Language;
+use tree_sitter_highlight_wasm::{HighlightConfiguration, HighlightEvent, Highlighter};
 use tree_sitter_language::LanguageFn;
 
 use crate::highlight::{HighlightProvider, HighlightSpan, HighlightToken};
@@ -101,13 +101,10 @@ pub const RUST_INJECTIONS_QUERY: &str = include_str!("queries/rust_injections.sc
 
 pub const PYTHON_HIGHLIGHTS_QUERY: &str = include_str!("queries/python_highlights.scm");
 
-pub const JAVASCRIPT_HIGHLIGHTS_QUERY: &str =
-    include_str!("queries/javascript_highlights.scm");
-pub const JAVASCRIPT_INJECTIONS_QUERY: &str =
-    include_str!("queries/javascript_injections.scm");
+pub const JAVASCRIPT_HIGHLIGHTS_QUERY: &str = include_str!("queries/javascript_highlights.scm");
+pub const JAVASCRIPT_INJECTIONS_QUERY: &str = include_str!("queries/javascript_injections.scm");
 
-pub const TYPESCRIPT_HIGHLIGHTS_QUERY: &str =
-    include_str!("queries/typescript_highlights.scm");
+pub const TYPESCRIPT_HIGHLIGHTS_QUERY: &str = include_str!("queries/typescript_highlights.scm");
 
 pub const JSON_HIGHLIGHTS_QUERY: &str = include_str!("queries/json_highlights.scm");
 
@@ -332,8 +329,7 @@ impl WasmTreeSitterHighlighter {
 
                         for line_idx in start_line..=end_line.min(line_count - 1) {
                             let line_start = line_starts[line_idx];
-                            let line_end =
-                                line_starts.get(line_idx + 1).copied().unwrap_or(offset);
+                            let line_end = line_starts.get(line_idx + 1).copied().unwrap_or(offset);
                             let span_start = start.saturating_sub(line_start);
                             let span_end =
                                 (end.saturating_sub(line_start)).min(line_end - line_start);
@@ -521,7 +517,9 @@ mod tests {
         assert!(WasmTreeSitterHighlighter::is_language_supported("python"));
         assert!(WasmTreeSitterHighlighter::is_language_supported("yml"));
         assert!(WasmTreeSitterHighlighter::is_language_supported("sh"));
-        assert!(!WasmTreeSitterHighlighter::is_language_supported("brainfuck"));
+        assert!(!WasmTreeSitterHighlighter::is_language_supported(
+            "brainfuck"
+        ));
     }
 
     #[test]

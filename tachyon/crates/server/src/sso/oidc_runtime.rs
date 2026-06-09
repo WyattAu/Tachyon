@@ -31,18 +31,21 @@ pub struct OidcState {
 
 impl OidcState {
     async fn generate_csrf_state(&self, state_token: &str, redirect_url: Option<String>) {
-        self.csrf_store.store(state_token, state_token, redirect_url).await;
+        self.csrf_store
+            .store(state_token, state_token, redirect_url)
+            .await;
     }
 
-    async fn validate_csrf_state(&self, returned_state: &str) -> Result<Option<String>, ServerError> {
+    async fn validate_csrf_state(
+        &self,
+        returned_state: &str,
+    ) -> Result<Option<String>, ServerError> {
         match self.csrf_store.retrieve_and_consume(returned_state).await {
             Some((nonce, redirect_url)) => {
                 if nonce == returned_state {
                     Ok(redirect_url)
                 } else {
-                    warn!(
-                        "OIDC CSRF state validation failed: nonce mismatch"
-                    );
+                    warn!("OIDC CSRF state validation failed: nonce mismatch");
                     Err(ServerError::bad_request(
                         "Invalid or expired CSRF state parameter",
                     ))
@@ -143,7 +146,9 @@ pub async fn oidc_authorize(
     );
 
     // Store CSRF state with 10-minute TTL
-    state.generate_csrf_state(&state_token, _params.redirect_url.clone()).await;
+    state
+        .generate_csrf_state(&state_token, _params.redirect_url.clone())
+        .await;
 
     debug!("Generated OIDC auth URL for {}", provider);
 

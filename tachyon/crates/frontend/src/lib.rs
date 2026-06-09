@@ -10,6 +10,7 @@ mod i18n;
 mod markdown;
 mod offline;
 mod pages;
+pub mod servers;
 mod storage;
 mod styles;
 pub mod sync_bridge;
@@ -93,6 +94,20 @@ pub fn App() -> impl IntoView {
                     <Route path=path!("/") view=pages::HomePage />
                     <Route path=path!("/login") view=pages::LoginPage />
                     <Route path=path!("/register") view=pages::RegisterPage />
+                    <Route path=path!("/local") view=move || {
+                        view! {
+                            <AppErrorBoundary>
+                                <pages::LocalDocumentsPage />
+                            </AppErrorBoundary>
+                        }
+                    } />
+                    <Route path=path!("/servers") view=move || {
+                        view! {
+                            <AppErrorBoundary>
+                                <pages::ServerConnectionsPage />
+                            </AppErrorBoundary>
+                        }
+                    } />
 
                     // Protected routes (require authentication)
                     <Route path=path!("/dashboard") view=move || {

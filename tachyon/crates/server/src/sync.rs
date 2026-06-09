@@ -151,9 +151,10 @@ impl FileSyncService {
         }
 
         if self.config.update_search_index
-            && let Err(e) = repo.update_search_index(&doc_id, &title, &body, &[]).await {
-                warn!("Failed to update search index for {}: {}", doc_id, e);
-            }
+            && let Err(e) = repo.update_search_index(&doc_id, &title, &body, &[]).await
+        {
+            warn!("Failed to update search index for {}: {}", doc_id, e);
+        }
 
         info!("Document created from file: {} -> {}", path.display(), slug);
         SyncResult::Created {
@@ -271,9 +272,10 @@ impl FileSyncService {
 
         if self.config.update_search_index
             && let Ok(doc_id) = DocumentId::parse_str(&id)
-                && let Err(e) = repo.update_search_index(&doc_id, &title, &body, &[]).await {
-                    warn!("Failed to update search index for {}: {}", doc_id, e);
-                }
+            && let Err(e) = repo.update_search_index(&doc_id, &title, &body, &[]).await
+        {
+            warn!("Failed to update search index for {}: {}", doc_id, e);
+        }
 
         info!(
             "Document updated from file: {} -> {} (conflict={})",
@@ -342,9 +344,11 @@ impl FileSyncService {
             for component in parent.components() {
                 if let std::path::Component::Normal(name) = component
                     && let Some(s) = name.to_str()
-                        && !s.is_empty() && !s.starts_with('.') {
-                            parts.push(s);
-                        }
+                    && !s.is_empty()
+                    && !s.starts_with('.')
+                {
+                    parts.push(s);
+                }
             }
         }
 
