@@ -199,8 +199,8 @@ jobs:
           path: tachyon/crates/frontend/dist
           retention-days: 7
 
-  benchmark:
-    name: Benchmarks
+  benchmark-lib:
+    name: Library Benchmarks (libbench)
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 30
@@ -374,8 +374,8 @@ jobs:
           path: tachyon/mutants.out/
           retention-days: 30
 
-  benchmarks:
-    name: Performance Benchmarks
+  benchmarks-criterion:
+    name: Criterion Benchmarks
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 30

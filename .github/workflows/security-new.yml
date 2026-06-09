@@ -45,7 +45,7 @@ jobs:
           key: cargo-audit-bin-v1
       
       - name: Install cargo-audit
-        run: command -v cargo-audit || cargo install cargo-audit
+        run: command -v cargo-audit || cargo install cargo-audit --version 0.21.0 --locked
       
       - name: Run audit
         working-directory: tachyon
@@ -62,7 +62,7 @@ jobs:
       - name: Run cargo-deny
         working-directory: tachyon
         run: |
-          command -v cargo-deny || cargo install cargo-deny --locked
+          command -v cargo-deny || cargo install cargo-deny --version 2.46.4 --locked
           cargo deny check
 
   dependency-review:

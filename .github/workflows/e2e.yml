@@ -20,6 +20,20 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: tachyon_test
+          POSTGRES_PASSWORD: tachyon_test
+          POSTGRES_DB: tachyon_test
+        ports:
+          - '5433:5432'
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -42,16 +56,6 @@ jobs:
             tachyon/target
           key: e2e-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
           restore-keys: e2e-${{ runner.os }}-cargo-
-
-      - name: Start PostgreSQL
-        run: |
-          docker run -d --name tachyon-pg \
-            -e POSTGRES_USER=tachyon_test \
-            -e POSTGRES_PASSWORD=tachyon_test \
-            -e POSTGRES_DB=tachyon_test \
-            -p 5433:5432 \
-            pgvector/pgvector:pg16
-          sleep 3
 
       - name: Build WASM frontend
         working-directory: tachyon/crates/frontend
@@ -129,9 +133,7 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: |
-          kill $(pgrep -f tachyon-server) 2>/dev/null || true
-          docker rm -f tachyon-pg 2>/dev/null || true
+        run: kill $(pgrep -f tachyon-server) 2>/dev/null || true
 
       - name: Upload test results
         if: always()
