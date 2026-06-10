@@ -186,9 +186,10 @@ struct DocxParser {
 fn get_attr_val(e: &quick_xml::events::BytesStart, attr_name: &[u8]) -> Option<String> {
     for attr_result in e.attributes() {
         if let Ok(attr) = attr_result
-            && attr.key.local_name().as_ref() == attr_name {
-                return Some(String::from_utf8_lossy(&attr.value).to_string());
-            }
+            && attr.key.local_name().as_ref() == attr_name
+        {
+            return Some(String::from_utf8_lossy(&attr.value).to_string());
+        }
     }
     None
 }
@@ -310,10 +311,11 @@ impl DocxParser {
             }
             b"numId" => {
                 if let Some(val) = get_attr_val(e, b"val")
-                    && val != "0" {
-                        self.is_list_item = true;
-                        self.num_id = val;
-                    }
+                    && val != "0"
+                {
+                    self.is_list_item = true;
+                    self.num_id = val;
+                }
             }
             b"ilvl" => {
                 if let Some(val) = get_attr_val(e, b"val") {

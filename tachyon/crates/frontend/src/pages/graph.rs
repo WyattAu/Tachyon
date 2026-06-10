@@ -5,6 +5,7 @@ use crate::api::ApiClient;
 use crate::components::{BreadcrumbItem, Breadcrumbs};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use leptos_router::hooks::use_navigate;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use wasm_bindgen::JsCast;
@@ -282,22 +283,37 @@ fn svg_event_to_coords(ev: &web_sys::MouseEvent) -> Option<(f64, f64)> {
 
 #[component]
 fn NodeCard(node: GraphNode) -> impl IntoView {
+    let navigate = use_navigate();
+    let doc_id = node.document_id.clone();
+    let node_name = node.name.clone();
+    let node_type = node.node_type.clone();
+    let node_desc = node.description.clone();
+    let node_vis = node.visibility.clone();
+    let node_created = node.created_at.clone();
+
     view! {
-        <div class="bg-white dark:bg-gray-800 rounded-none shadow p-5 hover:shadow-md transition-shadow border border-gray-900 dark:border-gray-100">
+        <div
+            class="bg-white dark:bg-gray-800 rounded-none shadow p-5 hover:shadow-md transition-shadow border border-gray-900 dark:border-gray-100 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500"
+            on:click=move |_| {
+                if let Some(ref id) = doc_id {
+                    navigate(&format!("/documents/{}", id), Default::default());
+                }
+            }
+        >
             <div class="flex items-center justify-between mb-2">
                 <h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">
-                    {node.name.clone()}
+                    {node_name}
                 </h3>
                 <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 flex-shrink-0 ml-2">
-                    {node.node_type.clone()}
+                    {node_type}
                 </span>
             </div>
             <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
-                {node.description.clone().unwrap_or_else(|| "-".to_string())}
+                {node_desc.unwrap_or_else(|| "-".to_string())}
             </p>
             <div class="mt-3 flex items-center justify-between text-xs text-gray-400">
-                <span>{node.visibility.clone()}</span>
-                <span>{node.created_at.clone()}</span>
+                <span>{node_vis}</span>
+                <span>{node_created}</span>
             </div>
         </div>
     }
@@ -321,6 +337,12 @@ pub fn GraphPage() -> impl IntoView {
     let (hovered_node, set_hovered_node) = signal(None::<usize>);
     let (dragging, set_dragging) = signal(None::<(usize, f64, f64)>);
     let (view_box_str, set_view_box_str) = signal("0 0 1000 700".to_string());
+
+    // Search/filter for nodes
+    let (node_search, set_node_search) = signal(String::new());
+
+    let navigate = use_navigate();
+    let navigate_stored = StoredValue::new(navigate);
 
     let load_stats = move || {
         set_loading.set(true);
@@ -534,10 +556,31 @@ pub fn GraphPage() -> impl IntoView {
                 BreadcrumbItem { label: "Graph".into(), href: None },
             ]}/>
             <div class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">"Knowledge Graph"</h1>
-                <p class="mt-2 text-gray-600 dark:text-gray-400">
-                    "Explore nodes and relationships in your knowledge base."
-                </p>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">"Knowledge Graph"</h1>
+                        <p class="mt-2 text-gray-600 dark:text-gray-400">
+                            "Explore nodes and relationships in your knowledge base."
+                        </p>
+                    </div>
+                    // Node/Edge counts
+                    <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                        <div class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                            </svg>
+                            <span class="font-medium">{move || sim_nodes.get().len()}</span>
+                            " nodes"
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                            <span class="font-medium">{move || sim_edges.get().len()}</span>
+                            " edges"
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <Show when=move || error.get().is_some()>
@@ -581,6 +624,49 @@ pub fn GraphPage() -> impl IntoView {
             // Visual view
             <Show when=move || view.get() == GraphView::Visual>
                 <div class="relative">
+                    // Search/filter input
+                    <div class="mb-4">
+                        <div class="relative">
+                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input
+                                type="text"
+                                placeholder="Search nodes..."
+                                class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                prop:value={move || node_search.get()}
+                                on:input=move |ev| set_node_search.set(event_target_value(&ev))
+                            />
+                            <Show when=move || !node_search.get().is_empty()>
+                                <button
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    on:click=move |_| set_node_search.set(String::new())
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </Show>
+                        </div>
+                        <div class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                            {move || {
+                                let search = node_search.get();
+                                let total = sim_nodes.get().len();
+                                if search.is_empty() {
+                                    format!("Showing all {} nodes", total)
+                                } else {
+                                    let filtered = sim_nodes.with(|ns| {
+                                        ns.iter().filter(|n| {
+                                            n.label.to_lowercase().contains(&search.to_lowercase())
+                                                || n.node_type.to_lowercase().contains(&search.to_lowercase())
+                                        }).count()
+                                    });
+                                    format!("{} of {} nodes match", filtered, total)
+                                }
+                            }}
+                        </div>
+                    </div>
+
                     <Show when=move || sim_nodes.get().is_empty() && !loading.get()>
                         <div class="text-center py-16 text-gray-400 dark:text-gray-500">
                             <p class="text-lg">"No graph data available"</p>
@@ -659,6 +745,12 @@ pub fn GraphPage() -> impl IntoView {
                                         let set_hovered_node = set_hovered_node;
                                         let node_color_val: &'static str = node_color(&node.node_type);
                                         let node_idx = node.index;
+                                        let node_label_1 = node.label.clone();
+                                        let node_label_2 = node.label.clone();
+                                        let node_label_3 = node.label.clone();
+                                        let node_type_1 = node.node_type.clone();
+                                        let node_type_2 = node.node_type.clone();
+                                        let nav = navigate_stored;
                                         view! {
                                             <g
                                                 transform=move || format!("translate({}, {})", node.x, node.y)
@@ -673,7 +765,22 @@ pub fn GraphPage() -> impl IntoView {
                                                 }
                                                 on:click=move |ev: web_sys::MouseEvent| {
                                                     ev.stop_propagation();
-                                                    set_selected_node.set(Some(node_idx));
+                                                    // Navigate to document if available, otherwise show popup
+                                                    let has_doc = sim_nodes.with(|ns| {
+                                                        ns.get(node_idx)
+                                                            .and_then(|n| n.document_id.clone())
+                                                            .is_some()
+                                                    });
+                                                    if has_doc {
+                                                        let doc_id = sim_nodes.with(|ns| {
+                                                            ns.get(node_idx)
+                                                                .and_then(|n| n.document_id.clone())
+                                                                .unwrap_or_default()
+                                                        });
+                                                        nav.get_value()(&format!("/documents/{}", doc_id), Default::default());
+                                                    } else {
+                                                        set_selected_node.set(Some(node_idx));
+                                                    }
                                                 }
                                                 on:mouseenter=move |_| set_hovered_node.set(Some(node_idx))
                                                 on:mouseleave=move |_| set_hovered_node.set(None)
@@ -717,6 +824,20 @@ pub fn GraphPage() -> impl IntoView {
                                                     fill=node_color_val
                                                     stroke="white"
                                                     stroke-width=2
+                                                    opacity=move || {
+                                                        let search = node_search.get();
+                                                        if search.is_empty() {
+                                                            1.0
+                                                        } else {
+                                                            let label = node_label_1.to_lowercase();
+                                                            let ntype = node_type_1.to_lowercase();
+                                                            if label.contains(&search.to_lowercase()) || ntype.contains(&search.to_lowercase()) {
+                                                                1.0
+                                                            } else {
+                                                                0.2
+                                                            }
+                                                        }
+                                                    }
                                                 />
 
                                                 <text
@@ -724,9 +845,23 @@ pub fn GraphPage() -> impl IntoView {
                                                     text-anchor="middle"
                                                     class="fill-gray-600 dark:fill-gray-300 select-none"
                                                     style="font-size: 10px; pointer-events: none;"
+                                                    opacity=move || {
+                                                        let search = node_search.get();
+                                                        if search.is_empty() {
+                                                            1.0
+                                                        } else {
+                                                            let label = node_label_2.to_lowercase();
+                                                            let ntype = node_type_2.to_lowercase();
+                                                            if label.contains(&search.to_lowercase()) || ntype.contains(&search.to_lowercase()) {
+                                                                1.0
+                                                            } else {
+                                                                0.2
+                                                            }
+                                                        }
+                                                    }
                                                 >
                                                     {
-                                                        let label = node.label.clone();
+                                                        let label = node_label_3.clone();
                                                         if label.len() > 20 {
                                                             format!("{}...", &label[..17])
                                                         } else {
@@ -864,9 +999,44 @@ pub fn GraphPage() -> impl IntoView {
 
             // Nodes view
             <Show when=move || view.get() == GraphView::Nodes>
+                <div class="mb-4">
+                    <div class="relative">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                            type="text"
+                            placeholder="Search nodes..."
+                            class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            prop:value={move || node_search.get()}
+                            on:input=move |ev| set_node_search.set(event_target_value(&ev))
+                        />
+                        <Show when=move || !node_search.get().is_empty()>
+                            <button
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                on:click=move |_| set_node_search.set(String::new())
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </Show>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <For
-                        each=move || nodes.get()
+                        each=move || {
+                            let search = node_search.get();
+                            let all_nodes = nodes.get();
+                            if search.is_empty() {
+                                all_nodes
+                            } else {
+                                all_nodes.into_iter().filter(|n| {
+                                    n.name.to_lowercase().contains(&search.to_lowercase())
+                                        || n.node_type.to_lowercase().contains(&search.to_lowercase())
+                                }).collect()
+                            }
+                        }
                         key=|node| node.id.clone()
                         let:node
                     >

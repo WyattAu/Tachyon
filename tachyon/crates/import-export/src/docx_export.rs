@@ -18,14 +18,12 @@ pub struct DocxExportOptions {
     pub page_size: PageSize,
 }
 
-#[derive(Debug, Clone, Copy)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum PageSize {
     #[default]
     A4,
     Letter,
 }
-
 
 impl PageSize {
     fn width_inches(&self) -> f64 {

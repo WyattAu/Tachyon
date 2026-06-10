@@ -93,6 +93,30 @@ pub fn get_slash_commands() -> Vec<SlashCommand> {
             suffix: "",
             default_text: "Task",
         },
+        SlashCommand {
+            name: "youtube",
+            label: "YouTube",
+            description: "YouTube embed",
+            prefix: "![youtube](",
+            suffix: ")",
+            default_text: "VIDEO_ID",
+        },
+        SlashCommand {
+            name: "mermaid",
+            label: "Mermaid",
+            description: "Mermaid diagram",
+            prefix: "![mermaid](",
+            suffix: ")",
+            default_text: "graph TD; A-->B;",
+        },
+        SlashCommand {
+            name: "figma",
+            label: "Figma",
+            description: "Figma embed",
+            prefix: "![figma](",
+            suffix: ")",
+            default_text: "FIGMA_URL",
+        },
     ]
 }
 

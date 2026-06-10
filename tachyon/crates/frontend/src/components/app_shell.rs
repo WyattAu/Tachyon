@@ -287,6 +287,7 @@ where
                         <NavLink href="/tags" label="Tags" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Tag} />
                         <NavLink href="/teams" label="Teams" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Users} />
                         <NavLink href="/search" label="Search" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Search} />
+                        <NavLink href="/import" label="Import" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Upload} />
 
                         {/* Local documents section */}
                         <div class="pt-2 pb-1 px-2">
@@ -318,6 +319,7 @@ where
                             </span>
                         </div>
                         <NavLink href="/settings" label="Settings" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Settings} />
+                        <NavLink href="/settings/branding" label="Branding" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Palette} />
                         <NavLink href="/profile" label="Profile" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::User} />
                     </nav>
 

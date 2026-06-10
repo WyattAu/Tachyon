@@ -575,6 +575,30 @@ pub fn DocumentPage() -> impl IntoView {
         });
     });
 
+    // Backlinks
+    let (backlinks, set_backlinks) = signal(Vec::<crate::types::BacklinkItem>::new());
+    let (backlinks_loaded, set_backlinks_loaded) = signal(false);
+
+    Effect::new(move || {
+        let did = document_id();
+        if did.is_empty() || backlinks_loaded.get() {
+            return;
+        }
+        let api = ApiClient::default();
+        let did_clone = did.clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            match api.get_backlinks(&did_clone).await {
+                Ok(resp) => {
+                    set_backlinks.set(resp.backlinks);
+                    set_backlinks_loaded.set(true);
+                }
+                Err(_) => {
+                    set_backlinks_loaded.set(true);
+                }
+            }
+        });
+    });
+
     let navigate = use_navigate();
     let doc_id_for_edit = document_id();
 
@@ -717,6 +741,9 @@ pub fn DocumentPage() -> impl IntoView {
                                     <pre class="whitespace-pre-wrap font-sans text-gray-900 dark:text-white bg-transparent p-0 m-0">{content}</pre>
                                 </div>
                             </div>
+
+                            // Backlinks
+                            <BacklinksSection backlinks={backlinks.get()} />
                         </div>
                     }.into_any()
                 } else {
@@ -734,6 +761,78 @@ pub fn DocumentPage() -> impl IntoView {
 #[derive(Params, PartialEq, Clone)]
 struct DocumentViewParams {
     id: String,
+}
+
+/// Backlinks section component for the document view page
+#[component]
+fn BacklinksSection(backlinks: Vec<crate::types::BacklinkItem>) -> impl IntoView {
+    let navigate = use_navigate();
+
+    if backlinks.is_empty() {
+        return ().into_any();
+    }
+
+    let items: Vec<_> = backlinks.into_iter().map(|bl| {
+        let bl_id = bl.id.clone();
+        let bl_title = bl.title.clone();
+        let bl_excerpt = bl.excerpt.clone().unwrap_or_default();
+        let bl_context = bl.link_context.clone().unwrap_or_default();
+        let bl_updated = bl.updated_at.split('T').next().unwrap_or("Unknown").to_string();
+        let nav_clone = navigate.clone();
+        let bl_id_for_click = bl_id.clone();
+        view! {
+            <div
+                class="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 p-4 hover:border-blue-400 dark:hover:border-blue-500 transition-colors cursor-pointer"
+                on:click=move |_| {
+                    nav_clone(&format!("/documents/{}", bl_id_for_click), Default::default());
+                }
+            >
+                <div class="flex items-center justify-between mb-1">
+                    <h3 class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                        {bl_title}
+                    </h3>
+                    <span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-3">
+                        {bl_updated}
+                    </span>
+                </div>
+                {if !bl_excerpt.is_empty() {
+                    view! {
+                        <p class="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 mb-1">
+                            {bl_excerpt}
+                        </p>
+                    }.into_any()
+                } else {
+                    ().into_any()
+                }}
+                {if !bl_context.is_empty() {
+                    view! {
+                        <p class="text-xs text-gray-400 dark:text-gray-500 italic">
+                            {format!("Link context: {}", bl_context)}
+                        </p>
+                    }.into_any()
+                } else {
+                    ().into_any()
+                }}
+            </div>
+        }
+    }).collect::<Vec<_>>();
+
+    view! {
+        <div class="mt-8">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                "Backlinks"
+                <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
+                    {format!("({})", items.len())}
+                </span>
+            </h2>
+            <div class="space-y-3">
+                {items}
+            </div>
+        </div>
+    }.into_any()
 }
 
 /// Document edit page with native editor

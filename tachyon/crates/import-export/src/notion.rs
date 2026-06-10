@@ -177,9 +177,10 @@ fn parse_notion_page(
         );
     }
     if let Some(category) = properties.get("Category")
-        && !category.is_empty() {
-            tags.push(category.trim().to_lowercase());
-        }
+        && !category.is_empty()
+    {
+        tags.push(category.trim().to_lowercase());
+    }
 
     // Add path-derived tags
     let path_tags = crate::obsidian::infer_tags_from_path(source_path);

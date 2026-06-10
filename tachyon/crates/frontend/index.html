@@ -948,6 +948,28 @@
             color: #6b7280;
         }
         .dark .slash-command-desc { color: #9ca3af; }
+
+        /* ── Wiki-link styling ── */
+        .wikilink-content a.wikilink,
+        a.wikilink {
+            color: #2563eb;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.15s ease, text-decoration-color 0.15s ease;
+        }
+        .wikilink-content a.wikilink:hover,
+        a.wikilink:hover {
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .dark .wikilink-content a.wikilink,
+        .dark a.wikilink {
+            color: #60a5fa;
+        }
+        .dark .wikilink-content a.wikilink:hover,
+        .dark a.wikilink:hover {
+            color: #93c5fd;
+        }
     </style>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#3B82F6">

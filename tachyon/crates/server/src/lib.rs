@@ -369,9 +369,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     };
     let conflict_state = ConflictState { pool: pool.clone() };
     let onboarding_state = OnboardingState { pool: pool.clone() };
-    let ediscovery_state = crate::routes::ediscovery::EdiscoveryState {
-        pool: pool.clone(),
-    };
+    let ediscovery_state = crate::routes::ediscovery::EdiscoveryState { pool: pool.clone() };
     let comment_state = crate::routes::comments::CommentState::new(pool.clone());
     let digest_state = crate::routes::digest::DigestState { pool: pool.clone() };
     let crdt_connection_manager =
@@ -535,13 +533,13 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     use crate::routes::digest::create_digest_router;
     use crate::routes::document::create_document_router;
     use crate::routes::ecosystem::{EcosystemState, create_ecosystem_router};
+    use crate::routes::ediscovery::create_ediscovery_router;
     use crate::routes::files::{FilesState, create_files_router};
     use crate::routes::graph_api::{GraphApiState, create_graph_api_router};
     use crate::routes::mfa::create_mfa_router;
     use crate::routes::node::create_node_router;
     use crate::routes::notification::create_notification_router;
     use crate::routes::oauth2::{OAuth2State, create_oauth2_router};
-    use crate::routes::ediscovery::create_ediscovery_router;
     use crate::routes::onboarding::create_onboarding_router;
     use crate::routes::organization::{OrganizationState, create_organization_router};
     use crate::routes::password_reset::{PasswordResetState, create_password_reset_router};

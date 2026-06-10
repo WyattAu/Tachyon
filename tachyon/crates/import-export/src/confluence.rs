@@ -186,9 +186,10 @@ fn parse_confluence_xml(xml_bytes: &[u8]) -> ImportExportResult<Vec<ConfluencePa
                         // Extract the id attribute from <ancestor id="12345"/>
                         if in_ancestors
                             && let Some(id) = get_attr(e, "id")
-                                && let Some(ref mut page) = current_page {
-                                    page.parent_id = Some(id);
-                                }
+                            && let Some(ref mut page) = current_page
+                        {
+                            page.parent_id = Some(id);
+                        }
                     }
                     _ => {
                         if !in_ancestors {
@@ -225,9 +226,10 @@ fn parse_confluence_xml(xml_bytes: &[u8]) -> ImportExportResult<Vec<ConfluencePa
             Ok(Event::CData(ref e)) => {
                 let text = String::from_utf8_lossy(e.as_ref()).to_string();
                 if let Some(ref mut page) = current_page
-                    && in_body {
-                        page.body.push_str(&text);
-                    }
+                    && in_body
+                {
+                    page.body.push_str(&text);
+                }
             }
             Ok(Event::End(ref e)) => {
                 let tag_name = String::from_utf8_lossy(e.name().as_ref()).to_string();
@@ -448,9 +450,10 @@ pub fn confluence_storage_to_markdown(html: &str) -> String {
                     }
                     "a" => {
                         if let Some(last) = tag_stack.pop()
-                            && let Some(href) = last.strip_prefix("a|") {
-                                md.push_str(&format!("]({})", href));
-                            }
+                            && let Some(href) = last.strip_prefix("a|")
+                        {
+                            md.push_str(&format!("]({})", href));
+                        }
                     }
                     "ul" | "ol" => {
                         list_stack.pop();

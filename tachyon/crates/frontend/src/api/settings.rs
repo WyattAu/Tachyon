@@ -75,4 +75,28 @@ impl ApiClient {
         let url = format!("{}/webhooks/{}", self.base_url, id);
         self.delete(&url).await
     }
+
+    pub async fn get_brand_settings(&self) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/settings/brand", self.base_url);
+        self.get(&url).await
+    }
+
+    pub async fn update_brand_settings(
+        &self,
+        company_name: &str,
+        primary_color: &str,
+        secondary_color: &str,
+        logo: Option<&str>,
+    ) -> Result<serde_json::Value, ApiError> {
+        let url = format!("{}/settings/brand", self.base_url);
+        let mut body = serde_json::json!({
+            "company_name": company_name,
+            "primary_color": primary_color,
+            "secondary_color": secondary_color,
+        });
+        if let Some(logo_data) = logo {
+            body["logo"] = serde_json::json!(logo_data);
+        }
+        self.put(&url, &body).await
+    }
 }

@@ -208,6 +208,8 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
 
     let mut html = String::with_capacity(markdown.len() * 2);
     let mut in_table_head = false;
+    let mut heading_text_buf = String::new();
+    let mut in_heading: Option<HeadingLevel> = None;
 
     for event in parser {
         match event {
@@ -221,6 +223,10 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                         HeadingLevel::H5 => "5",
                         HeadingLevel::H6 => "6",
                     };
+                    // We need to collect heading text to generate slug, but events
+                    // come as Start/Text/End. Use a marker and fill id in End.
+                    heading_text_buf.clear();
+                    in_heading = Some(level);
                     html.push_str(&format!("<h{}>", lvl));
                 }
                 Tag::Paragraph => html.push_str("<p>"),
@@ -256,11 +262,33 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                     html.push_str("\">");
                 }
                 Tag::Image(_link_type, url, title) => {
-                    html.push_str("<img src=\"");
-                    html.push_str(url.as_ref());
-                    html.push_str("\" alt=\"");
-                    html.push_str(title.as_ref());
-                    html.push_str("\" />");
+                    let url_str = url.as_ref();
+                    let alt_str = title.as_ref();
+                    if alt_str == "youtube" {
+                        let video_id = url_str;
+                        html.push_str(&format!(
+                            r#"<div class="embed-youtube" data-video-id="{}"><iframe src="https://www.youtube.com/embed/{}" width="100%" height="360" frameborder="0" allowfullscreen loading="lazy"></iframe></div>"#,
+                            video_id, video_id
+                        ));
+                    } else if alt_str == "mermaid" {
+                        let code = url_str;
+                        html.push_str(&format!(
+                            r#"<div class="embed-mermaid"><pre class="mermaid">{}</pre></div>"#,
+                            code.replace('<', "&lt;").replace('>', "&gt;")
+                        ));
+                    } else if alt_str == "figma" {
+                        let figma_url = url_str;
+                        html.push_str(&format!(
+                            r#"<div class="embed-figma"><iframe src="https://www.figma.com/embed?embed_host=share&url={}" width="100%" height="450" frameborder="0" allowfullscreen loading="lazy"></iframe></div>"#,
+                            figma_url
+                        ));
+                    } else {
+                        html.push_str("<img src=\"");
+                        html.push_str(url_str);
+                        html.push_str("\" alt=\"");
+                        html.push_str(alt_str);
+                        html.push_str("\" />");
+                    }
                 }
                 Tag::Table(_alignment) => {
                     html.push_str("<div class=\"overflow-x-auto\"><table class=\"min-w-full\">")
@@ -294,7 +322,19 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                         HeadingLevel::H5 => "5",
                         HeadingLevel::H6 => "6",
                     };
+                    let slug = slugify(&heading_text_buf);
                     html.push_str(&format!("</h{}>", lvl));
+                    // Inject slug as heading ID by inserting before the closing tag
+                    // We use a retroactive approach: replace the opening tag
+                    // Actually, simpler: just append a span with id after the heading
+                    // For proper TOC linking, we replace the opening tag
+                    let open_tag = format!("<h{}>", lvl);
+                    let open_with_id = format!("<h{} id=\"{}\">", lvl, slug);
+                    if let Some(pos) = html.rfind(&open_tag) {
+                        html.replace_range(pos..pos + open_tag.len(), &open_with_id);
+                    }
+                    in_heading = None;
+                    heading_text_buf.clear();
                 }
                 Tag::Paragraph => html.push_str("</p>"),
                 Tag::BlockQuote => html.push_str("</blockquote>"),
@@ -325,9 +365,15 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                 }
             },
             Event::Text(text) => {
+                if in_heading.is_some() {
+                    heading_text_buf.push_str(text.as_ref());
+                }
                 html.push_str(text.as_ref());
             }
             Event::Code(text) => {
+                if in_heading.is_some() {
+                    heading_text_buf.push_str(text.as_ref());
+                }
                 html.push_str("<code>");
                 html.push_str(text.as_ref());
                 html.push_str("</code>");
@@ -689,5 +735,39 @@ mod tests {
     fn test_empty_markdown() {
         let html = render_markdown_to_html("");
         assert!(html.is_empty());
+    }
+
+    #[test]
+    fn test_youtube_embed() {
+        let md = "![youtube](dQw4w9WgXcQ)";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("embed-youtube"));
+        assert!(html.contains("youtube.com/embed/dQw4w9WgXcQ"));
+        assert!(html.contains("iframe"));
+    }
+
+    #[test]
+    fn test_mermaid_embed() {
+        let md = "![mermaid](graph TD; A-->B;)";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("embed-mermaid"));
+        assert!(html.contains("mermaid"));
+        assert!(html.contains("graph TD; A--&gt;B;"));
+    }
+
+    #[test]
+    fn test_figma_embed() {
+        let md = "![figma](https://www.figma.com/file/abc123)";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("embed-figma"));
+        assert!(html.contains("figma.com/embed"));
+    }
+
+    #[test]
+    fn test_heading_ids() {
+        let md = "# Hello World\n## Sub Section";
+        let html = render_markdown_to_html(md);
+        assert!(html.contains("id=\"hello-world\""));
+        assert!(html.contains("id=\"sub-section\""));
     }
 }

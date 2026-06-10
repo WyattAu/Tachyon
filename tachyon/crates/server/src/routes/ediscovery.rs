@@ -6,10 +6,10 @@
 //! - `index.csv` with document listing (id, title, author, date, tags, file_path)
 
 use axum::{
+    Json,
     extract::State,
     http::{HeaderMap, HeaderName, HeaderValue},
     response::IntoResponse,
-    Json,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -118,10 +118,7 @@ pub async fn export_ediscovery(
 ) -> Result<impl IntoResponse, ServerError> {
     let export_id = Uuid::new_v4().to_string();
     let exported_at = Utc::now().to_rfc3339();
-    let exporter_name = request
-        .exporter
-        .as_deref()
-        .unwrap_or("system");
+    let exporter_name = request.exporter.as_deref().unwrap_or("system");
     let purpose = request
         .purpose
         .as_deref()
@@ -159,15 +156,15 @@ pub async fn export_ediscovery(
             conditions.len()
         ));
     }
-    if let Some(ref tags) = request.tags {
-        if !tags.is_empty() {
-            let tag_conditions: Vec<String> = tags
-                .iter()
-                .enumerate()
-                .map(|(i, _)| format!("tags::jsonb @> ${}::jsonb", conditions.len() + 1 + i))
-                .collect();
-            conditions.push(tag_conditions.join(" OR "));
-        }
+    if let Some(ref tags) = request.tags
+        && !tags.is_empty()
+    {
+        let tag_conditions: Vec<String> = tags
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format!("tags::jsonb @> ${}::jsonb", conditions.len() + 1 + i))
+            .collect();
+        conditions.push(tag_conditions.join(" OR "));
     }
 
     let where_clause = conditions.join(" AND ");
@@ -209,8 +206,7 @@ pub async fn export_ediscovery(
     }
     if let Some(ref tags) = request.tags {
         for tag in tags {
-            let tag_json =
-                serde_json::to_string(&vec![tag]).unwrap_or_else(|_| "[]".to_string());
+            let tag_json = serde_json::to_string(&vec![tag]).unwrap_or_else(|_| "[]".to_string());
             query = query.bind(tag_json);
         }
     }
@@ -476,10 +472,7 @@ mod tests {
     fn test_escape_csv_string() {
         assert_eq!(escape_csv_string("hello"), "hello");
         assert_eq!(escape_csv_string("hello,world"), "\"hello,world\"");
-        assert_eq!(
-            escape_csv_string("say \"hi\""),
-            "\"say \"\"hi\"\"\""
-        );
+        assert_eq!(escape_csv_string("say \"hi\""), "\"say \"\"hi\"\"\"");
     }
 
     #[test]

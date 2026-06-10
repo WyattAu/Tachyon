@@ -453,12 +453,24 @@ impl MutationRoot {
 
     async fn update_profile(
         &self,
-        _ctx: &Context<'_>,
-        _display_name: Option<String>,
-        _avatar_url: Option<String>,
+        ctx: &Context<'_>,
+        display_name: Option<String>,
+        avatar_url: Option<String>,
     ) -> Result<User> {
-        Err(async_graphql::Error::new(
-            "update_profile requires authentication context",
-        ))
+        let auth = require_auth(ctx)?;
+        let pool = ctx.data::<DatabasePool>()?;
+        let repo = UserRepository::new(pool.clone());
+
+        let user_id = tachyon_core::id::UserId::parse_str(&auth.user_id)
+            .map_err(|e| async_graphql::Error::new(format!("Invalid user ID: {}", e)))?;
+
+        // avatar_url is not stored in the database; accept and ignore it for now
+        let _ = avatar_url;
+
+        let updated = repo
+            .update(&user_id, display_name.as_deref(), None, None, None)
+            .await
+            .map_err(|e| async_graphql::Error::new(e.to_string()))?;
+        Ok(map_user_to_gql(updated))
     }
 }

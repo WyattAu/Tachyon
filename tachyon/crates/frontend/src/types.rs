@@ -976,6 +976,10 @@ pub struct BacklinkItem {
     pub title: String,
     pub slug: String,
     pub updated_at: String,
+    #[serde(default)]
+    pub excerpt: Option<String>,
+    #[serde(default)]
+    pub link_context: Option<String>,
 }
 
 // ============================================================================

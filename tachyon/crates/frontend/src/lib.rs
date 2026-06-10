@@ -155,6 +155,33 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/daily") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::DailyNotesPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/daily/:date") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::DailyNotesPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/import") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::ImportPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
                     <Route path=path!("/teams") view=move || {
                         view! {
                             <AuthGuard>
@@ -205,6 +232,15 @@ pub fn App() -> impl IntoView {
                             <AuthGuard>
                                 <AppErrorBoundary>
                                     <pages::SettingsPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/settings/branding") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::BrandingPage />
                                 </AppErrorBoundary>
                             </AuthGuard>
                         }

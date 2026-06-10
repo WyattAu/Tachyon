@@ -3,8 +3,10 @@ FROM rust:latest AS builder
 
 WORKDIR /build
 
-# Copy workspace source (minimal server-only workspace)
+# Copy workspace source (repo root context, workspace at tachyon/)
 COPY . .
+
+WORKDIR /build/tachyon
 
 # Build the server binary
 RUN cargo build --release -p tachyon-server 2>&1 | tail -20
@@ -18,7 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY --from=builder /build/target/release/tachyon-server /app/tachyon-server
+COPY --from=builder /build/tachyon/target/release/tachyon-server /app/tachyon-server
+COPY --from=builder /build/tachyon/crates/database/migrations /app/migrations
 
 EXPOSE 8080
 

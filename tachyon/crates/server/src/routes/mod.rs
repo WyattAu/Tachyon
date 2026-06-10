@@ -10,10 +10,10 @@ pub mod comments;
 pub mod compliance;
 pub mod conflict;
 pub mod digest;
-pub mod ediscovery;
 pub mod document;
 pub mod e2e_encryption;
 pub mod ecosystem;
+pub mod ediscovery;
 pub mod files;
 pub mod gdpr;
 pub mod graph_api;
@@ -178,9 +178,7 @@ pub async fn create_router() -> Router {
     let organization_router = create_organization_router().with_state(organization_state);
     let ssg_router = create_ssg_router().with_state(ssg_state);
     let onboarding_router = create_onboarding_router().with_state(onboarding_state);
-    let ediscovery_state = crate::routes::ediscovery::EdiscoveryState {
-        pool: pool.clone(),
-    };
+    let ediscovery_state = crate::routes::ediscovery::EdiscoveryState { pool: pool.clone() };
     let ediscovery_router =
         crate::routes::ediscovery::create_ediscovery_router().with_state(ediscovery_state);
     let conflict_router = create_conflict_router().with_state(conflict_state);
