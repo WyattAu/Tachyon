@@ -77,8 +77,8 @@ pub fn SettingsPage() -> impl IntoView {
                             id={tab_id}
                             class={move || tab_button_class(active_tab.get(), t)}
                             role="tab"
-                            attr:aria-selected=move || if is_active() { "true" } else { "false" }
-                            attr:aria-controls={tab_ids[i].1}
+                            aria-selected=move || if is_active() { "true" } else { "false" }
+                            aria-controls={tab_ids[i].1}
                             tabindex=move || if is_active() { 0 } else { -1 }
                             on:click=move |_| active_tab.set(t)
                         >{label}</button>
@@ -86,22 +86,22 @@ pub fn SettingsPage() -> impl IntoView {
                 }).collect::<Vec<_>>()}
             </div>
             <Show when={move || active_tab.get() == SettingsTab::Profile}>
-                <div id="settings-panel-profile" role="tabpanel" attr:aria-labelledby="settings-tab-profile">
+                <div id="settings-panel-profile" role="tabpanel" aria-labelledby="settings-tab-profile">
                     <ProfileTab />
                 </div>
             </Show>
             <Show when={move || active_tab.get() == SettingsTab::Account}>
-                <div id="settings-panel-account" role="tabpanel" attr:aria-labelledby="settings-tab-account">
+                <div id="settings-panel-account" role="tabpanel" aria-labelledby="settings-tab-account">
                     <AccountTab />
                 </div>
             </Show>
             <Show when={move || active_tab.get() == SettingsTab::Preferences}>
-                <div id="settings-panel-preferences" role="tabpanel" attr:aria-labelledby="settings-tab-preferences">
+                <div id="settings-panel-preferences" role="tabpanel" aria-labelledby="settings-tab-preferences">
                     <PreferencesTab />
                 </div>
             </Show>
             <Show when={move || active_tab.get() == SettingsTab::Danger}>
-                <div id="settings-panel-danger" role="tabpanel" attr:aria-labelledby="settings-tab-danger">
+                <div id="settings-panel-danger" role="tabpanel" aria-labelledby="settings-tab-danger">
                     <DangerTab />
                 </div>
             </Show>
@@ -484,8 +484,8 @@ where
     view! {
         <button type="button" on:click=on_toggle
             role="switch"
-            attr:aria-checked=move || if enabled { "true" } else { "false" }
-            attr:aria-label=label.clone()
+            aria-checked=move || if enabled { "true" } else { "false" }
+            aria-label=label.clone()
             class=move || if enabled {
                 "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-blue-600 transition-colors"
             } else {

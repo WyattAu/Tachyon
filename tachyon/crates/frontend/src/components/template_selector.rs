@@ -168,14 +168,14 @@ pub fn TemplateSelector(
                     view! {
                         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                             <FocusTrap active=Signal::derive(move || preview_template.get().is_some())>
-                                <div class="bg-white dark:bg-gray-800 rounded-none shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden" role="dialog" attr:aria-modal="true" attr:aria-label="Template preview">
+                                <div class="bg-white dark:bg-gray-800 rounded-none shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden" role="dialog" aria-modal="true" aria-label="Template preview">
                                     <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                                             {template_for_name}
                                         </h3>
                                         <button
                                             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                                            attr:aria-label="Close"
+                                            aria-label="Close"
                                             on:click={move |_| set_preview_template.set(None)}
                                         >
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

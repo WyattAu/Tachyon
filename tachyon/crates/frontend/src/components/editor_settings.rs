@@ -222,10 +222,10 @@ pub fn EditorSettings(
                 <div class="editor-settings-overlay" on:keydown={on_keydown}>
                     <div class="editor-settings-backdrop" on:click={close}></div>
                     <FocusTrap active=visible.into()>
-                        <div class="editor-settings-panel" role="dialog" attr:aria-label="Editor Settings">
+                        <div class="editor-settings-panel" role="dialog" aria-label="Editor Settings">
                             <div class="editor-settings-header">
                                 <h2 class="editor-settings-title">{"Editor Settings"}</h2>
-                                <button class="editor-settings-close" on:click={close} attr:aria-label="Close settings">
+                                <button class="editor-settings-close" on:click={close} aria-label="Close settings">
                                     { "\u{2715}" }
                                 </button>
                             </div>

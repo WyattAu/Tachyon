@@ -218,7 +218,7 @@ pub fn UpdateBanner() -> impl IntoView {
                                 <button
                                     on:click=move |ev| on_dismiss.run(ev)
                                     class="text-blue-200 hover:text-white transition-colors"
-                                    attr:aria-label="Dismiss update notification"
+                                    aria-label="Dismiss update notification"
                                 >
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

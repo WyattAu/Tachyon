@@ -252,15 +252,15 @@ pub fn DocumentsPage() -> impl IntoView {
                 <div class="flex border border-gray-300 dark:border-gray-600 rounded-none overflow-hidden">
                     <button class={move || if view_mode.get() == ViewMode::Grid { "px-3 py-2 bg-blue-600 text-white" } else { "px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" }}
                         on:click=move |_| view_mode.set(ViewMode::Grid)
-                        attr:aria-label="Grid view"
-                        attr:aria-pressed=move || if view_mode.get() == ViewMode::Grid { "true" } else { "false" }
+                        aria-label="Grid view"
+                        aria-pressed=move || if view_mode.get() == ViewMode::Grid { "true" } else { "false" }
                     >
                         <svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                     </button>
                     <button class={move || if view_mode.get() == ViewMode::List { "px-3 py-2 bg-blue-600 text-white" } else { "px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" }}
                         on:click=move |_| view_mode.set(ViewMode::List)
-                        attr:aria-label="List view"
-                        attr:aria-pressed=move || if view_mode.get() == ViewMode::List { "true" } else { "false" }
+                        aria-label="List view"
+                        aria-pressed=move || if view_mode.get() == ViewMode::List { "true" } else { "false" }
                     >
                         <svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
                     </button>
@@ -312,7 +312,7 @@ pub fn DocumentsPage() -> impl IntoView {
                 Some(view! {
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                         <FocusTrap active={show_create_modal.into()}>
-                            <div class="bg-white dark:bg-gray-800 rounded-none p-6 w-full max-w-md" role="dialog" attr:aria-modal="true" attr:aria-labelledby="new-doc-title">
+                            <div class="bg-white dark:bg-gray-800 rounded-none p-6 w-full max-w-md" role="dialog" aria-modal="true" aria-labelledby="new-doc-title">
                                 <h2 id="new-doc-title" class="text-xl font-bold text-gray-900 dark:text-white mb-4">"New Document"</h2>
                                 {move || create_error.get().map(|e| view! {
                                     <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">{e}</div>
@@ -956,7 +956,7 @@ pub fn DocumentEditPage() -> impl IntoView {
                         class="hidden md:flex p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
                         on:click=move |_| set_sidebar_open.update(|o| *o = !*o)
                         title={move || if sidebar_open.get() { "Hide sidebar" } else { "Show sidebar" }}
-                        attr:aria-label={move || if sidebar_open.get() { "Hide sidebar" } else { "Show sidebar" }}
+                        aria-label={move || if sidebar_open.get() { "Hide sidebar" } else { "Show sidebar" }}
                     >
                         <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
@@ -1128,8 +1128,8 @@ pub fn DocumentEditPage() -> impl IntoView {
                                 class="flex-shrink-0 px-1.5 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap"
                                 role="tab"
                                 title={full_label}
-                                attr:aria-selected=move || if is_active() { "true" } else { "false" }
-                                attr:aria-controls={panel_id.clone()}
+                                aria-selected=move || if is_active() { "true" } else { "false" }
+                                aria-controls={panel_id.clone()}
                                 tabindex=move || if is_active_for_tabindex() { 0 } else { -1 }
                                 on:click=move |_| set_sidebar_tab.set(name_for_onclick.clone())
                             >
@@ -1143,38 +1143,38 @@ pub fn DocumentEditPage() -> impl IntoView {
                     let doc_id = document_id();
                     if tab == "history" {
                         view! {
-                            <div class="flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-history">
+                            <div class="flex-1 overflow-y-auto" role="tabpanel" aria-labelledby="sidebar-tab-history">
                                 <VersionHistory document_id={doc_id} on_rollback=None />
                             </div>
                         }.into_any()
                     } else if tab == "review" {
                         view! {
-                            <div id="sidebar-panel-review" class="p-4 flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-review">
+                            <div id="sidebar-panel-review" class="p-4 flex-1 overflow-y-auto" role="tabpanel" aria-labelledby="sidebar-tab-review">
                                 <ReviewPanel document_id={doc_id} />
                             </div>
                         }.into_any()
                     } else if tab == "conflicts" {
                         view! {
-                            <div id="sidebar-panel-conflicts" class="p-4 flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-conflicts">
+                            <div id="sidebar-panel-conflicts" class="p-4 flex-1 overflow-y-auto" role="tabpanel" aria-labelledby="sidebar-tab-conflicts">
                                 <ConflictResolver document_id={doc_id} />
                             </div>
                         }.into_any()
                     } else if tab == "backlinks" {
                         view! {
-                            <div id="sidebar-panel-backlinks" class="p-4 flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-backlinks">
+                            <div id="sidebar-panel-backlinks" class="p-4 flex-1 overflow-y-auto" role="tabpanel" aria-labelledby="sidebar-tab-backlinks">
                                 <BacklinksPanel document_id={doc_id} />
                             </div>
                         }.into_any()
                     } else if tab == "outline" {
                         let content = doc_content.get();
                         view! {
-                            <div id="sidebar-panel-outline" class="p-4 flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-outline">
+                            <div id="sidebar-panel-outline" class="p-4 flex-1 overflow-y-auto" role="tabpanel" aria-labelledby="sidebar-tab-outline">
                                 <TableOfContents markdown_content={content} />
                             </div>
                         }.into_any()
                     } else {
                         view! {
-                            <div id="sidebar-panel-activity" class="p-4 flex-1 overflow-y-auto" role="tabpanel" attr:aria-labelledby="sidebar-tab-activity">
+                            <div id="sidebar-panel-activity" class="p-4 flex-1 overflow-y-auto" role="tabpanel" aria-labelledby="sidebar-tab-activity">
                                 <ActivityFeed
                                     activities={activities.get()}
                                     max_items=20

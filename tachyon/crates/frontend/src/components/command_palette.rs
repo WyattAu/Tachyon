@@ -257,8 +257,8 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
                 <div
                     class="w-full max-w-lg bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 spatial-3 overflow-hidden"
                     role="dialog"
-                    attr:aria-modal="true"
-                    attr:aria-label="Command palette"
+                    aria-modal="true"
+                    aria-label="Command palette"
                     on:click=on_modal_click
                     on:keydown=on_escape_keydown
                 >
@@ -278,7 +278,7 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
                         <kbd class="text-xs text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 flex-shrink-0">"ESC"</kbd>
                     </div>
 
-                    <div class="max-h-80 overflow-y-auto py-2" role="listbox" attr:aria-label="Command results">
+                    <div class="max-h-80 overflow-y-auto py-2" role="listbox" aria-label="Command results">
                         {move || {
                             let items = filtered.get();
                             if items.is_empty() {
@@ -320,7 +320,7 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
                                                             if is_selected() { "bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100" } else { "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" }
                                                         )
                                                         role="option"
-                                                        attr:aria-selected=move || if is_selected() { "true" } else { "false" }
+                                                        aria-selected=move || if is_selected() { "true" } else { "false" }
                                                         on:click=on_click
                                                         on:mouseenter=move |_| set_selected.set(idx)
                                                     >

@@ -56,7 +56,7 @@ pub fn OnboardingWizard(#[prop(optional)] on_complete: Option<Callback<()>>) -> 
     let (trap_active, _) = signal(true);
 
     view! {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" attr:aria-modal="true" attr:aria-labelledby="onboarding-title">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
             <FocusTrap active=trap_active.into()>
                 <div class="bg-white dark:bg-gray-900 rounded-none shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
                 // Progress bar

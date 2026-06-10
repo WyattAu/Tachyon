@@ -365,7 +365,7 @@ where
                             <button
                                 on:click=move |_| set_search_open.set(true)
                                 class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-200 dark:border-gray-600 transition-colors"
-                                attr:aria-label="Search documents"
+                                aria-label="Search documents"
                             >
                                 <svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -398,10 +398,10 @@ where
                                 <button
                                     on:click={move |ev| on_toggle_notifications.run(ev)}
                                     class="relative p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                                    attr:aria-haspopup="true"
-                                    attr:aria-expanded=move || if show_notifications.get() { "true" } else { "false" }
-                                    attr:aria-controls="notification-panel"
-                                    attr:aria-label=move || {
+                                    aria-haspopup="true"
+                                    aria-expanded=move || if show_notifications.get() { "true" } else { "false" }
+                                    aria-controls="notification-panel"
+                                    aria-label=move || {
                                         let count = unread_count.get();
                                         if count > 0 {
                                             format!("Notifications ({} unread)", count)
@@ -528,10 +528,10 @@ where
                                     <button
                                         on:click={move |ev| on_toggle_menu.run(ev)}
                                         class="flex items-center gap-2 p-2 min-h-[44px] rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                        attr:aria-haspopup="true"
-                                        attr:aria-expanded=move || if show_user_menu.get() { "true" } else { "false" }
-                                        attr:aria-controls="user-menu-panel"
-                                        attr:aria-label="User menu"
+                                        aria-haspopup="true"
+                                        aria-expanded=move || if show_user_menu.get() { "true" } else { "false" }
+                                        aria-controls="user-menu-panel"
+                                        aria-label="User menu"
                                     >
                                         <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                                             <span class="text-white text-sm font-medium">
@@ -557,7 +557,7 @@ where
                                                 {move || user_display_name.get().unwrap_or_default()}
                                             </p>
                                         </div>
-                                        <a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" attr:role="menuitem">
+                                        <a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" role="menuitem">
                                             "Settings"
                                         </a>
                                         <button
@@ -604,7 +604,7 @@ pub fn NavLink(
             href=href
             class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring"
             title=label
-            attr:aria-label=label
+            aria-label=label
         >
             <Icon glyph=glyph size="20" />
             <Show when={move || !collapsed}>

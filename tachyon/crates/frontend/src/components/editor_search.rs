@@ -88,7 +88,7 @@ pub fn EditorSearch(editor: RwSignal<Editor>, show: RwSignal<bool>) -> impl Into
         {move || if show.get() {
             view! {
                 <FocusTrap active=show.into()>
-                    <div class="editor-search" role="dialog" attr:aria-label="Find and Replace" on:keydown={on_keydown}>
+                    <div class="editor-search" role="dialog" aria-label="Find and Replace" on:keydown={on_keydown}>
                         <div class="flex items-center gap-2 mb-2">
                             <label for="editor-search-input" class="sr-only">"Find"</label>
                             <input
@@ -101,7 +101,7 @@ pub fn EditorSearch(editor: RwSignal<Editor>, show: RwSignal<bool>) -> impl Into
                                     search_query.set(event_target_value(&ev));
                                 }
                             />
-                            <span class="editor-search-count" attr:aria-live="polite">
+                            <span class="editor-search-count" aria-live="polite">
                                 {move || {
                                     let total = match_count.get();
                                     let cur = current_match.get();
@@ -112,22 +112,22 @@ pub fn EditorSearch(editor: RwSignal<Editor>, show: RwSignal<bool>) -> impl Into
                                     }
                                 }}
                             </span>
-                            <button class="editor-search-btn" attr:aria-label="Previous match" on:click={go_prev}>{"\u{25B2}"}</button>
-                            <button class="editor-search-btn" attr:aria-label="Next match" on:click={go_next}>{"\u{25BC}"}</button>
-                            <button class="editor-search-btn" attr:aria-label="Close" on:click={close}>{"\u{2715}"}</button>
+                            <button class="editor-search-btn" aria-label="Previous match" on:click={go_prev}>{"\u{25B2}"}</button>
+                            <button class="editor-search-btn" aria-label="Next match" on:click={go_next}>{"\u{25BC}"}</button>
+                            <button class="editor-search-btn" aria-label="Close" on:click={close}>{"\u{2715}"}</button>
                         </div>
 
                         <div class="flex items-center gap-2 mb-2">
                             <label class="editor-search-toggle">
-                                <input type="checkbox" attr:aria-label="Case sensitive" prop:checked={move || case_sensitive.get()} on:change=move |ev| { case_sensitive.set(event_target_checked(&ev)); } />
+                                <input type="checkbox" aria-label="Case sensitive" prop:checked={move || case_sensitive.get()} on:change=move |ev| { case_sensitive.set(event_target_checked(&ev)); } />
                                 {"Aa"}
                             </label>
                             <label class="editor-search-toggle">
-                                <input type="checkbox" attr:aria-label="Whole word" prop:checked={move || whole_word.get()} on:change=move |ev| { whole_word.set(event_target_checked(&ev)); } />
+                                <input type="checkbox" aria-label="Whole word" prop:checked={move || whole_word.get()} on:change=move |ev| { whole_word.set(event_target_checked(&ev)); } />
                                 {"W"}
                             </label>
                             <label class="editor-search-toggle">
-                                <input type="checkbox" attr:aria-label="Use regex" prop:checked={move || use_regex.get()} on:change=move |ev| { use_regex.set(event_target_checked(&ev)); } />
+                                <input type="checkbox" aria-label="Use regex" prop:checked={move || use_regex.get()} on:change=move |ev| { use_regex.set(event_target_checked(&ev)); } />
                                 {".*"}
                             </label>
                         </div>
