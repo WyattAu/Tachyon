@@ -128,6 +128,7 @@ pub fn ClientSearch(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> impl
                         class="w-full min-h-[44px] px-3 py-3 bg-transparent text-gray-900 dark:text-gray-100 outline-none placeholder-gray-400"
                         prop:value={move || query.get()}
                         on:input=on_input
+                        aria-label="Search local documents"
                     />
                     <Show when={move || !query.get().is_empty()}>
                         <button

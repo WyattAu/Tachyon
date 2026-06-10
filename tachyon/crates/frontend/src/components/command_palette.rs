@@ -269,7 +269,7 @@ pub fn CommandPalette(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> im
                         <input
                             type="text"
                             placeholder="Search documents, commands..."
-                            attr:aria-label="Search commands"
+                            aria-label="Search commands"
                             class="w-full min-h-[44px] px-3 py-3 bg-transparent text-gray-900 dark:text-gray-100 outline-none"
                             prop:value={move || query.get()}
                             on:input=on_input

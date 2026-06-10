@@ -159,7 +159,11 @@ impl Default for ApiClient {
             window
                 .get("tachyonApiUrl")
                 .and_then(|v| v.as_string())
-                .unwrap_or_else(|| "http://localhost:8080/api/v1".to_string())
+                .unwrap_or_else(|| {
+                    // Use the current page origin instead of hardcoded localhost
+                    let origin = window.location().origin().unwrap_or_default();
+                    format!("{}/api/v1", origin)
+                })
         } else {
             "http://localhost:8080/api/v1".to_string()
         };

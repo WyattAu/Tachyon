@@ -261,7 +261,7 @@ where
                             <button
                                 class="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                                 on:click=on_close_mobile_menu
-                                attr:aria-label="Close sidebar"
+                                aria-label="Close sidebar"
                             >
                                 <svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -326,7 +326,7 @@ where
                         <button
                             on:click=move |_| set_sidebar_collapsed.update(|c| *c = !*c)
                             class="w-full p-3 min-h-[44px] text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none flex items-center justify-center"
-                            attr:aria-label="Toggle sidebar"
+                            aria-label="Toggle sidebar"
                         >
                             <svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -351,7 +351,7 @@ where
                             <button
                                 class="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                                 on:click=on_toggle_mobile_menu
-                                attr:aria-label="Open menu"
+                                aria-label="Open menu"
                             >
                                 <svg class="w-6 h-6" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
