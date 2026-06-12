@@ -146,6 +146,66 @@ impl ConfluenceImporter {
         })?;
         Self::import_from_bytes(&bytes)
     }
+
+    /// Import from Confluence REST API.
+    pub async fn import_from_api(
+        credentials: super::confluence_client::ConfluenceCredentials,
+        space_key: &str,
+    ) -> ImportExportResult<(Vec<ImportedDocument>, ImportSummary)> {
+        let client = super::confluence_client::ConfluenceClient::new(credentials).map_err(|e| {
+            ImportExportError::ConfluenceApi(format!("Failed to create client: {}", e))
+        })?;
+        let pages = client.get_space_pages(space_key).await.map_err(|e| {
+            ImportExportError::ConfluenceApi(format!("Failed to fetch pages: {}", e))
+        })?;
+
+        let mut summary = ImportSummary {
+            total_files: pages.len(),
+            imported: 0,
+            skipped: 0,
+            failed: 0,
+            document_titles: Vec::new(),
+            all_tags: Vec::new(),
+            warnings: Vec::new(),
+        };
+
+        let mut all_tags = std::collections::HashSet::new();
+        let mut documents = Vec::new();
+
+        for page in &pages {
+            let title = page.title.clone();
+            let body_text = page
+                .body
+                .as_ref()
+                .and_then(|b| b.storage.as_ref())
+                .map(|c| c.value.clone())
+                .unwrap_or_default();
+            let body = super::confluence_macros::convert_xhtml_to_markdown(
+                body_text.as_deref().unwrap_or(""),
+            );
+            let tags: Vec<String> = Vec::new(); // Labels would need separate API call
+
+            for tag in &tags {
+                all_tags.insert(tag.clone());
+            }
+
+            summary.imported += 1;
+            summary.document_titles.push(title.clone());
+
+            let doc = ImportedDocument {
+                title,
+                content: body,
+                tags,
+                source_path: format!("{}/{}", space_key, slugify_title(&page.title)),
+                ..Default::default()
+            };
+            documents.push(doc);
+        }
+
+        summary.all_tags = all_tags.into_iter().collect();
+        summary.all_tags.sort();
+        Ok((documents, summary))
+    }
 }
 
 /// Parse Confluence XML export into a list of pages.
@@ -272,225 +332,9 @@ fn parse_confluence_xml(xml_bytes: &[u8]) -> ImportExportResult<Vec<ConfluencePa
 
 /// Convert Confluence storage format (XHTML) to Markdown.
 ///
-/// Handles common Confluence markup:
-/// - `<p>` -> paragraphs
-/// - `<h1>`-`<h6>` -> `#`-`######`
-/// - `<strong>`, `<em>` -> `**`, `*`
-/// - `<code>` -> `` ` ``
-/// - `<pre><code>` -> ` ``` `
-/// - `<a href="url">` -> `[text](url)`
-/// - `<img src="url">` -> `![alt](url)`
-/// - `<ul>`, `<ol>`, `<li>` -> lists
-/// - `<table>` -> basic table syntax
-/// - `<ac:structured-macro>` callouts -> blockquotes
-/// - `<br>` -> newline
+/// Delegates to the enhanced macro-aware converter in `confluence_macros`.
 pub fn confluence_storage_to_markdown(html: &str) -> String {
-    let mut md = String::with_capacity(html.len());
-    let mut reader = Reader::from_str(html);
-    // Don't trim text - we need to preserve spaces between inline elements
-    let mut buf = Vec::new();
-    let mut list_stack: Vec<char> = Vec::new(); // 'u' for ul, 'o' for ol
-    let mut in_pre = false;
-    let mut in_code_block = false;
-    let mut code_content = String::new();
-    let mut in_macro = false;
-    let mut tag_stack: Vec<String> = Vec::new();
-
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
-                let tag_name = String::from_utf8_lossy(e.name().as_ref()).to_string();
-
-                match tag_name.as_str() {
-                    "p" | "div" | "section" => {
-                        if !in_pre && !in_code_block {
-                            md.push('\n');
-                        }
-                    }
-                    "br" => md.push('\n'),
-                    "h1" => {
-                        md.push_str("\n# ");
-                        tag_stack.push("h1".into());
-                    }
-                    "h2" => {
-                        md.push_str("\n## ");
-                        tag_stack.push("h2".into());
-                    }
-                    "h3" => {
-                        md.push_str("\n### ");
-                        tag_stack.push("h3".into());
-                    }
-                    "h4" => {
-                        md.push_str("\n#### ");
-                        tag_stack.push("h4".into());
-                    }
-                    "h5" => {
-                        md.push_str("\n##### ");
-                        tag_stack.push("h5".into());
-                    }
-                    "h6" => {
-                        md.push_str("\n###### ");
-                        tag_stack.push("h6".into());
-                    }
-                    "strong" | "b" => {
-                        md.push_str("**");
-                        tag_stack.push("strong".into());
-                    }
-                    "em" | "i" => {
-                        md.push('*');
-                        tag_stack.push("em".into());
-                    }
-                    "code" => {
-                        if in_pre {
-                            code_content.clear();
-                            in_code_block = true;
-                        } else {
-                            md.push('`');
-                            tag_stack.push("code".into());
-                        }
-                    }
-                    "pre" => {
-                        in_pre = true;
-                        tag_stack.push("pre".into());
-                    }
-                    "a" => {
-                        if let Some(href) = get_attr(e, "href") {
-                            md.push('[');
-                            tag_stack.push(format!("a|{}", href));
-                        }
-                    }
-                    "img" => {
-                        let src = get_attr(e, "src");
-                        let alt = get_attr(e, "alt").unwrap_or_default();
-                        if let Some(src) = src {
-                            md.push_str(&format!("![{}]({})", alt, src));
-                        }
-                    }
-                    "ul" => {
-                        list_stack.push('u');
-                        tag_stack.push("ul".into());
-                    }
-                    "ol" => {
-                        list_stack.push('o');
-                        tag_stack.push("ol".into());
-                    }
-                    "li" => {
-                        let prefix = match list_stack.last() {
-                            Some('o') => "1. ",
-                            _ => "- ",
-                        };
-                        let indent = "  ".repeat(list_stack.len().saturating_sub(1));
-                        md.push_str(&format!("\n{}{}", indent, prefix));
-                    }
-                    "table" => {
-                        tag_stack.push("table".into());
-                    }
-                    "tr" => {
-                        md.push('\n');
-                    }
-                    "td" | "th" => {
-                        md.push_str("| ");
-                        tag_stack.push("td".into());
-                    }
-                    "ac:structured-macro" => {
-                        in_macro = true;
-                        let name = get_attr(e, "ac:name").unwrap_or_default();
-                        tag_stack.push(format!("macro|{}", name));
-                    }
-                    "ac:plain-text-body" => {
-                        // Callout body content
-                    }
-                    _ => {}
-                }
-            }
-            Ok(Event::Text(ref e)) => {
-                let text = e.unescape().unwrap_or_default();
-                if in_code_block {
-                    code_content.push_str(&text);
-                } else if in_macro {
-                    // Callout content rendered as blockquote
-                    for line in text.lines() {
-                        md.push_str("> ");
-                        md.push_str(line.trim());
-                        md.push('\n');
-                    }
-                } else {
-                    md.push_str(&text);
-                }
-            }
-            Ok(Event::End(ref e)) => {
-                let tag_name = String::from_utf8_lossy(e.name().as_ref()).to_string();
-                match tag_name.as_str() {
-                    "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
-                        md.push('\n');
-                        tag_stack.pop();
-                    }
-                    "strong" | "b" => {
-                        md.push_str("**");
-                        tag_stack.pop();
-                    }
-                    "em" | "i" => {
-                        md.push('*');
-                        tag_stack.pop();
-                    }
-                    "code" => {
-                        if in_code_block {
-                            md.push_str("```\n");
-                            md.push_str(&code_content);
-                            md.push_str("\n```\n");
-                            in_code_block = false;
-                        } else {
-                            md.push('`');
-                            tag_stack.pop();
-                        }
-                    }
-                    "pre" => {
-                        in_pre = false;
-                        tag_stack.pop();
-                    }
-                    "a" => {
-                        if let Some(last) = tag_stack.pop()
-                            && let Some(href) = last.strip_prefix("a|")
-                        {
-                            md.push_str(&format!("]({})", href));
-                        }
-                    }
-                    "ul" | "ol" => {
-                        list_stack.pop();
-                        md.push('\n');
-                        tag_stack.pop();
-                    }
-                    "table" => {
-                        md.push('\n');
-                        tag_stack.pop();
-                    }
-                    "td" | "th" => {
-                        md.push(' ');
-                        tag_stack.pop();
-                    }
-                    "ac:structured-macro" => {
-                        in_macro = false;
-                        tag_stack.pop();
-                    }
-                    _ => {}
-                }
-            }
-            Ok(Event::Eof) => break,
-            Err(e) => {
-                tracing::warn!("XML parse error: {}", e);
-                break;
-            }
-            _ => {}
-        }
-        buf.clear();
-    }
-
-    // Clean up excessive newlines
-    let mut result = md.trim().to_string();
-    while result.contains("\n\n\n") {
-        result = result.replace("\n\n\n", "\n\n");
-    }
-    result
+    crate::confluence_macros::convert_xhtml_to_markdown(html)
 }
 
 /// Extract an attribute value from an XML element by name.

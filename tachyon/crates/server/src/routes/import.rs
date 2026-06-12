@@ -1,9 +1,10 @@
 use axum::{
     Extension,
-    extract::{Multipart, State},
+    extract::{Multipart, Query, State},
     response::Json,
+    response::{IntoResponse, Redirect, Response},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::time::Instant;
 use tachyon_core::id::DocumentId;
@@ -16,6 +17,29 @@ use crate::middleware::AuthContext;
 pub struct ImportState {
     pub pool: tachyon_database::DatabasePool,
     pub last_import: std::sync::Arc<std::sync::Mutex<std::time::Instant>>,
+}
+
+/// Notion OAuth configuration from environment/config.
+#[derive(Debug, Clone)]
+pub struct NotionOAuthConfig {
+    pub client_id: String,
+    pub client_secret: String,
+    pub base_url: String,
+}
+
+/// Pending Notion OAuth sessions (CSRF state -> config).
+pub type NotionOAuthSessions =
+    std::sync::Arc<dashmap::DashMap<String, (String, NotionOAuthConfig, String)>>;
+
+/// State for the Notion API import flow.
+#[derive(Clone)]
+pub struct NotionImportState {
+    pub pool: tachyon_database::DatabasePool,
+    pub http_client: reqwest::Client,
+    /// Pending OAuth sessions (state nonce -> (access_token_or_state, config, user_id)).
+    pub oauth_sessions: NotionOAuthSessions,
+    /// Notion OAuth config from env.
+    pub notion_config: Option<NotionOAuthConfig>,
 }
 
 #[derive(Debug, Serialize)]
@@ -284,6 +308,276 @@ pub async fn import_notion_zip(
     }))
 }
 
+// ============================================================================
+// Notion OAuth 2.0 Import Routes
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct NotionCallbackQuery {
+    pub code: Option<String>,
+    pub state: Option<String>,
+    pub error: Option<String>,
+    pub error_description: Option<String>,
+}
+
+/// Response for Notion import status.
+#[derive(Debug, Serialize)]
+pub struct NotionImportResponse {
+    pub imported: usize,
+    pub skipped: usize,
+    pub failed: usize,
+    pub total: usize,
+    pub warnings: Vec<String>,
+    pub tags: Vec<String>,
+    pub elapsed_ms: u64,
+}
+
+/// POST /api/v1/import/notion/start
+///
+/// Initiates the Notion OAuth 2.0 flow.
+/// Returns a redirect URL to Notion's consent screen.
+pub async fn notion_start_oauth(
+    State(state): State<NotionImportState>,
+    Extension(auth): Extension<AuthContext>,
+) -> Result<Json<serde_json::Value>, ServerError> {
+    let config = state.notion_config.as_ref().ok_or_else(|| {
+        ServerError::internal(
+            "Notion OAuth is not configured. Set NOTION_CLIENT_ID and NOTION_CLIENT_SECRET.",
+        )
+    })?;
+
+    // Generate CSRF state nonce
+    use rand::RngCore;
+    let mut bytes = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    let state_nonce = hex::encode(bytes);
+
+    // Store the session (state nonce -> (state, config, user_id))
+    state.oauth_sessions.insert(
+        state_nonce.clone(),
+        (state_nonce.clone(), config.clone(), auth.user_id.clone()),
+    );
+
+    // Build authorization URL
+    let auth_url = tachyon_import_export::notion_oauth::build_authorization_url(
+        &tachyon_import_export::NotionOAuthConfig::new(
+            config.client_id.clone(),
+            config.client_secret.clone(),
+            config.base_url.clone(),
+        ),
+        &state_nonce,
+    );
+
+    Ok(Json(serde_json::json!({
+        "authorization_url": auth_url,
+        "state": state_nonce,
+    })))
+}
+
+/// GET /api/v1/import/notion/callback
+///
+/// Handles the OAuth 2.0 callback from Notion.
+/// Exchanges the authorization code for an access token,
+/// then stores the token for the subsequent import step.
+pub async fn notion_oauth_callback(
+    State(state): State<NotionImportState>,
+    Query(query): Query<NotionCallbackQuery>,
+) -> Response {
+    // Check for OAuth error
+    if let Some(error) = &query.error {
+        return axum::Json(serde_json::json!({
+            "error": error,
+            "description": query.error_description,
+        }))
+        .into_response();
+    }
+
+    // Validate state parameter
+    let returned_state = match &query.state {
+        Some(s) if !s.is_empty() => s.clone(),
+        _ => {
+            return axum::Json(serde_json::json!({
+                "error": "invalid_request",
+                "message": "Missing or empty state parameter"
+            }))
+            .into_response();
+        }
+    };
+
+    // Look up and consume the OAuth session
+    let session = match state.oauth_sessions.remove(&returned_state) {
+        Some((_, session_data)) => session_data,
+        None => {
+            return axum::Json(serde_json::json!({
+                "error": "invalid_state",
+                "message": "No matching OAuth session found. Possible CSRF attack."
+            }))
+            .into_response();
+        }
+    };
+
+    let (_state_token, config, user_id) = session;
+
+    // Exchange code for token
+    let code = match &query.code {
+        Some(c) => c.clone(),
+        None => {
+            return axum::Json(serde_json::json!({
+                "error": "missing_code",
+                "message": "No authorization code provided"
+            }))
+            .into_response();
+        }
+    };
+
+    let notion_config = tachyon_import_export::NotionOAuthConfig::new(
+        config.client_id.clone(),
+        config.client_secret.clone(),
+        config.base_url.clone(),
+    );
+
+    let token = match tachyon_import_export::notion_oauth::exchange_code(
+        &state.http_client,
+        &notion_config,
+        &code,
+    )
+    .await
+    {
+        Ok(t) => t,
+        Err(e) => {
+            return axum::Json(serde_json::json!({
+                "error": "token_exchange_failed",
+                "message": format!("Failed to exchange code: {}", e)
+            }))
+            .into_response();
+        }
+    };
+
+    // Store the token temporarily (keyed by user_id) for the import step
+    let base_url = config.base_url.clone();
+    state.oauth_sessions.insert(
+        format!("token:{}", user_id),
+        (token.access_token.clone(), config, user_id.clone()),
+    );
+
+    tracing::info!(
+        user_id = %user_id,
+        workspace_id = %token.workspace_id,
+        "Notion OAuth completed successfully"
+    );
+
+    // Redirect to frontend with success
+    let redirect_url = format!(
+        "{}/settings/import?notion=connected&workspace={}",
+        &base_url, token.workspace_id
+    );
+
+    Redirect::temporary(&redirect_url).into_response()
+}
+
+/// POST /api/v1/import/notion/import
+///
+/// Triggers the Notion import after OAuth authentication.
+/// Fetches all pages from the Notion workspace and imports them.
+#[axum::debug_handler(state = NotionImportState)]
+pub async fn notion_import(
+    State(state): State<NotionImportState>,
+) -> Result<Json<NotionImportResponse>, ServerError> {
+    let start = Instant::now();
+
+    // Find any stored access token (simplified - in production, use session cookie)
+    let session_entry = state.oauth_sessions.iter().next().ok_or_else(|| {
+        ServerError::unauthorized("No Notion session found. Please authenticate first.")
+    })?;
+    let (_token_key, (access_token, _config, _user_id)) = session_entry.pair();
+    // Create Notion client
+    let client = tachyon_import_export::NotionClient::new(access_token.clone());
+
+    // Verify token works
+    client
+        .verify_token()
+        .await
+        .map_err(|e| ServerError::bad_request(format!("Failed to verify Notion token: {}", e)))?;
+
+    // Search for all pages
+    let pages = client
+        .search_all_pages()
+        .await
+        .map_err(|e| ServerError::bad_request(format!("Failed to search Notion pages: {}", e)))?;
+
+    let total = pages.len();
+    let mut documents = Vec::new();
+    let mut warnings = Vec::new();
+    let mut imported = 0usize;
+    let mut failed = 0usize;
+
+    for page in &pages {
+        // Skip archived pages
+        if page.archived {
+            continue;
+        }
+
+        // Extract title from properties
+        let title = tachyon_import_export::notion::extract_page_title(&page.properties);
+
+        // Extract tags from properties
+        let tags = tachyon_import_export::notion::extract_page_tags(&page.properties);
+
+        // Get block children for page content
+        match client.get_block_children_recursive(&page.id).await {
+            Ok(blocks) => {
+                let content = tachyon_import_export::notion::convert_blocks_to_markdown(&blocks);
+
+                let created_at = page
+                    .created_time
+                    .as_deref()
+                    .and_then(tachyon_import_export::parse_date);
+                let updated_at = page
+                    .last_edited_time
+                    .as_deref()
+                    .and_then(tachyon_import_export::parse_date);
+
+                let mut extra = std::collections::BTreeMap::new();
+                extra.insert(
+                    "notion_page_id".to_string(),
+                    serde_json::Value::String(page.id.clone()),
+                );
+
+                documents.push(tachyon_import_export::ImportedDocument {
+                    title: title.clone(),
+                    slug: None,
+                    content,
+                    frontmatter: tachyon_import_export::Frontmatter::default(),
+                    tags,
+                    source_path: format!("notion/{}.md", page.id),
+                    created_at,
+                    updated_at,
+                    extra,
+                });
+                imported += 1;
+            }
+            Err(e) => {
+                warnings.push(format!("Failed to fetch blocks for '{}': {}", title, e));
+                failed += 1;
+            }
+        }
+    }
+
+    let skipped = total - imported - failed;
+
+    let elapsed_ms = start.elapsed().as_millis() as u64;
+
+    Ok(Json(NotionImportResponse {
+        imported,
+        skipped,
+        failed,
+        total,
+        warnings,
+        tags: Vec::new(),
+        elapsed_ms,
+    }))
+}
+
 /// POST /api/v1/import/confluence
 ///
 /// Accepts a multipart form upload of a Confluence XML space export.
@@ -357,6 +651,100 @@ pub async fn import_confluence_xml(
     }))
 }
 
+/// Request body for Confluence API import.
+#[derive(Debug, Deserialize)]
+pub struct ConfluenceApiImportRequest {
+    /// Base URL of the Confluence instance
+    pub base_url: String,
+    /// Authentication method: "basic" or "token"
+    pub auth_type: String,
+    /// Username (for basic auth)
+    pub username: Option<String>,
+    /// Password or API token (for basic auth) or personal access token
+    pub password: Option<String>,
+    /// Space key to import
+    pub space_key: String,
+}
+
+/// Response for Confluence API import.
+#[derive(Debug, Serialize)]
+pub struct ConfluenceApiImportResponse {
+    pub imported: usize,
+    pub skipped: usize,
+    pub failed: usize,
+    pub total: usize,
+    pub warnings: Vec<String>,
+    pub tags: Vec<String>,
+    pub elapsed_ms: u64,
+    pub space_key: String,
+}
+
+/// POST /api/v1/import/confluence-api
+///
+/// Accepts a JSON body with Confluence API credentials and space key.
+/// Fetches the space via the Confluence REST API and imports all pages.
+pub async fn import_confluence_api(
+    State(state): State<ImportState>,
+    Extension(auth): Extension<AuthContext>,
+    Json(request): Json<ConfluenceApiImportRequest>,
+) -> Result<Json<ConfluenceApiImportResponse>, ServerError> {
+    check_rate_limit(&state)?;
+
+    let start = Instant::now();
+
+    let auth_method = match request.auth_type.as_str() {
+        "basic" => {
+            let username = request
+                .username
+                .ok_or_else(|| ServerError::bad_request("username required for basic auth"))?;
+            let password = request
+                .password
+                .ok_or_else(|| ServerError::bad_request("password required for basic auth"))?;
+            tachyon_import_export::ConfluenceAuth::Basic { username, password }
+        }
+        "token" => {
+            let token = request
+                .password
+                .ok_or_else(|| ServerError::bad_request("token required for token auth"))?;
+            tachyon_import_export::ConfluenceAuth::PersonalAccessToken(token)
+        }
+        _ => {
+            return Err(ServerError::bad_request(
+                "auth_type must be 'basic' or 'token'",
+            ));
+        }
+    };
+
+    let credentials = tachyon_import_export::ConfluenceCredentials {
+        base_url: request.base_url,
+        auth: auth_method,
+    };
+
+    let (documents, summary) =
+        tachyon_import_export::ConfluenceImporter::import_from_api(credentials, &request.space_key)
+            .await
+            .map_err(|e| {
+                ServerError::bad_request(format!("Confluence API import failed: {}", e))
+            })?;
+
+    let warnings = summary.warnings.clone();
+    let (actually_imported, warnings) =
+        persist_documents(&state.pool, &auth, &documents, warnings).await;
+
+    let elapsed_ms = start.elapsed().as_millis() as u64;
+
+    Ok(Json(ConfluenceApiImportResponse {
+        imported: actually_imported,
+        skipped: summary.skipped,
+        failed: documents.len() - actually_imported + summary.failed,
+        total: summary.total_files,
+        warnings,
+        tags: summary.all_tags,
+        elapsed_ms,
+        space_key: request.space_key,
+    }))
+}
+
 pub fn create_import_router() -> axum::Router<ImportState> {
     use axum::routing::post;
 
@@ -366,6 +754,17 @@ pub fn create_import_router() -> axum::Router<ImportState> {
         .route("/import/obsidian", post(import_obsidian_zip))
         .route("/import/notion", post(import_notion_zip))
         .route("/import/confluence", post(import_confluence_xml))
+        .route("/import/confluence-api", post(import_confluence_api))
+}
+
+/// Create a router for Notion API import (requires separate state).
+pub fn create_notion_import_router() -> axum::Router<NotionImportState> {
+    use axum::routing::{get, post};
+
+    axum::Router::new()
+        .route("/import/notion/start", post(notion_start_oauth))
+        .route("/import/notion/callback", get(notion_oauth_callback))
+        .route("/import/notion/import", post(notion_import))
 }
 
 #[cfg(test)]

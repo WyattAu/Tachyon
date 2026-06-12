@@ -44,6 +44,8 @@ pub enum HighlightToken {
     Frontmatter,
     Tag,
     TaskMarker,
+    AdmonitionHeader,
+    AdmonitionContent,
     Text,
     Whitespace,
     // ─── Code tokens (tree-sitter) ──────────────────────────────────
@@ -363,6 +365,8 @@ pub fn css_class(token: &HighlightToken) -> &'static str {
         HighlightToken::Frontmatter => "ed-frontmatter",
         HighlightToken::Tag => "ed-tag",
         HighlightToken::TaskMarker => "ed-task-marker",
+        HighlightToken::AdmonitionHeader => "ed-admonition-header",
+        HighlightToken::AdmonitionContent => "ed-admonition-content",
         HighlightToken::TableHeader => "ed-table-header",
         HighlightToken::TableCell => "ed-table-cell",
         HighlightToken::TableBorder => "ed-table-border",

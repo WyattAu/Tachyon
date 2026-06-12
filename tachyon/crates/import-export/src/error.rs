@@ -44,6 +44,22 @@ pub enum ImportExportError {
     /// Generic error.
     #[error("{0}")]
     Generic(String),
+
+    /// Notion API error.
+    #[error("Notion API error: {0}")]
+    NotionApi(String),
+
+    /// Confluence API error.
+    #[error("Confluence API error: {0}")]
+    ConfluenceApi(String),
+
+    /// OAuth error.
+    #[error("OAuth error: {0}")]
+    OAuth2(String),
+
+    /// Authentication error.
+    #[error("Authentication error: {0}")]
+    Auth(String),
 }
 
 impl ImportExportError {

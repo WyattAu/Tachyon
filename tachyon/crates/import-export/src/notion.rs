@@ -343,6 +343,182 @@ fn title_from_path(path: &str) -> String {
         .join(" ")
 }
 
+/// Extract page title from Notion page properties.
+pub fn extract_page_title(properties: &serde_json::Value) -> String {
+    if let Some(title_arr) = properties.get("title")
+        && let Some(title_prop) = title_arr.get(0)
+            && let Some(text_obj) = title_prop.get("text")
+                && let Some(content) = text_obj.get("content")
+                    && let Some(s) = content.as_str() {
+                        return s.to_string();
+                    }
+    "Untitled".to_string()
+}
+
+/// Extract tags from Notion page properties.
+pub fn extract_page_tags(properties: &serde_json::Value) -> Vec<String> {
+    let mut tags = Vec::new();
+    if let Some(obj) = properties.as_object() {
+        for (key, value) in obj.iter() {
+            if key == "title" || key == "created_time" || key == "last_edited_time" {
+                continue;
+            }
+            if let Some(multi_select) = value.get("multi_select") {
+                if let Some(arr) = multi_select.as_array() {
+                    for item in arr {
+                        if let Some(name) = item.get("name").and_then(|n| n.as_str()) {
+                            tags.push(name.to_string());
+                        }
+                    }
+                }
+            } else if let Some(select) = value.get("select")
+                && let Some(name) = select.get("name").and_then(|n| n.as_str()) {
+                    tags.push(name.to_string());
+                }
+        }
+    }
+    tags
+}
+
+/// Convert Notion blocks to Markdown.
+pub fn convert_blocks_to_markdown(blocks: &[super::notion_client::NotionBlock]) -> String {
+    let mut md = String::new();
+    for block in blocks {
+        let block_type = &block.block_type;
+        match block_type.as_str() {
+            "paragraph" => {
+                if let Some(text) = block
+                    .content
+                    .get("paragraph")
+                    .and_then(|p| p.get("rich_text"))
+                {
+                    md.push_str(&extract_rich_text(text));
+                    md.push_str("\n\n");
+                }
+            }
+            "heading_1" => {
+                if let Some(text) = block
+                    .content
+                    .get("heading_1")
+                    .and_then(|h| h.get("rich_text"))
+                {
+                    md.push_str("# ");
+                    md.push_str(&extract_rich_text(text));
+                    md.push_str("\n\n");
+                }
+            }
+            "heading_2" => {
+                if let Some(text) = block
+                    .content
+                    .get("heading_2")
+                    .and_then(|h| h.get("rich_text"))
+                {
+                    md.push_str("## ");
+                    md.push_str(&extract_rich_text(text));
+                    md.push_str("\n\n");
+                }
+            }
+            "heading_3" => {
+                if let Some(text) = block
+                    .content
+                    .get("heading_3")
+                    .and_then(|h| h.get("rich_text"))
+                {
+                    md.push_str("### ");
+                    md.push_str(&extract_rich_text(text));
+                    md.push_str("\n\n");
+                }
+            }
+            "bulleted_list_item" => {
+                if let Some(text) = block
+                    .content
+                    .get("bulleted_list_item")
+                    .and_then(|l| l.get("rich_text"))
+                {
+                    md.push_str("- ");
+                    md.push_str(&extract_rich_text(text));
+                    md.push('\n');
+                }
+            }
+            "numbered_list_item" => {
+                if let Some(text) = block
+                    .content
+                    .get("numbered_list_item")
+                    .and_then(|l| l.get("rich_text"))
+                {
+                    md.push_str("1. ");
+                    md.push_str(&extract_rich_text(text));
+                    md.push('\n');
+                }
+            }
+            "to_do" => {
+                if let Some(text) = block.content.get("to_do").and_then(|t| t.get("rich_text")) {
+                    let checked = block
+                        .content
+                        .get("to_do")
+                        .and_then(|t| t.get("checked"))
+                        .and_then(|c| c.as_bool())
+                        .unwrap_or(false);
+                    if checked {
+                        md.push_str("- [x] ");
+                    } else {
+                        md.push_str("- [ ] ");
+                    }
+                    md.push_str(&extract_rich_text(text));
+                    md.push('\n');
+                }
+            }
+            "code" => {
+                if let Some(text) = block.content.get("code").and_then(|c| c.get("rich_text")) {
+                    let lang = block
+                        .content
+                        .get("code")
+                        .and_then(|c| c.get("language"))
+                        .and_then(|l| l.as_str())
+                        .unwrap_or("");
+                    md.push_str(&format!("```{}\n", lang));
+                    md.push_str(&extract_rich_text(text));
+                    md.push_str("\n```\n\n");
+                }
+            }
+            "quote" => {
+                if let Some(text) = block.content.get("quote").and_then(|q| q.get("rich_text")) {
+                    for line in extract_rich_text(text).lines() {
+                        md.push_str("> ");
+                        md.push_str(line);
+                        md.push('\n');
+                    }
+                    md.push('\n');
+                }
+            }
+            "divider" => {
+                md.push_str("---\n\n");
+            }
+            _ => {
+                // Unknown block type - skip
+            }
+        }
+    }
+    md
+}
+
+/// Extract text from Notion rich_text array.
+fn extract_rich_text(rich_text: &serde_json::Value) -> String {
+    let mut text = String::new();
+    if let Some(arr) = rich_text.as_array() {
+        for item in arr {
+            if let Some(content) = item
+                .get("text")
+                .and_then(|t| t.get("content"))
+                .and_then(|c| c.as_str())
+            {
+                text.push_str(content);
+            }
+        }
+    }
+    text
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

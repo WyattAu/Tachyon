@@ -76,6 +76,20 @@ pub fn EditorToolbar(
     let blockquote_action = move |_: leptos::ev::MouseEvent| {
         insert_line_prefix(ed, "> ");
     };
+
+    let (admonition_open, set_admonition_open) = signal(false);
+    let admonition_action = move |_: leptos::ev::MouseEvent| {
+        set_admonition_open.update(|v| *v = !*v);
+    };
+    let ed = editor;
+    let admonition_insert = move |admonition_type: &'static str| {
+        let prefix = format!("> [!{}]\n> ", admonition_type);
+        ed.update(|e| {
+            e.insert_text(&prefix);
+        });
+        set_admonition_open.set(false);
+    };
+
     let ed = editor;
     let undo_action = move |_: leptos::ev::MouseEvent| {
         ed.update(|e| {
@@ -152,6 +166,60 @@ pub fn EditorToolbar(
             <ToolbarBtn title="Horizontal Rule" on_click={hr_action} disabled={false}>
                 <Icon glyph=LucideGlyph::Minus size="16" />
             </ToolbarBtn>
+
+            <ToolbarSep />
+
+            // Admonition
+            <div class="relative">
+                <ToolbarBtn title="Admonition" on_click={admonition_action} disabled={false}>
+                    <Icon glyph=LucideGlyph::Info size="16" />
+                </ToolbarBtn>
+                {move || {
+                    admonition_open.get().then(|| {
+                        view! {
+                            <div class="slash-command-menu absolute top-full left-0 z-50 mt-1">
+                                <div
+                                    class="slash-command-item"
+                                    on:click=move |_| admonition_insert("note")
+                                >
+                                    <span class="slash-command-label">Note</span>
+                                </div>
+                                <div
+                                    class="slash-command-item"
+                                    on:click=move |_| admonition_insert("tip")
+                                >
+                                    <span class="slash-command-label">Tip</span>
+                                </div>
+                                <div
+                                    class="slash-command-item"
+                                    on:click=move |_| admonition_insert("info")
+                                >
+                                    <span class="slash-command-label">Info</span>
+                                </div>
+                                <div
+                                    class="slash-command-item"
+                                    on:click=move |_| admonition_insert("warning")
+                                >
+                                    <span class="slash-command-label">Warning</span>
+                                </div>
+                                <div
+                                    class="slash-command-item"
+                                    on:click=move |_| admonition_insert("danger")
+                                >
+                                    <span class="slash-command-label">Danger</span>
+                                </div>
+                                <div
+                                    class="slash-command-item"
+                                    on:click=move |_| admonition_insert("caution")
+                                >
+                                    <span class="slash-command-label">Caution</span>
+                                </div>
+                            </div>
+                        }
+                            .into_any()
+                    })
+                }}
+            </div>
 
             <ToolbarSep />
 

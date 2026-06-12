@@ -149,11 +149,13 @@ pub fn LoginPage() -> impl IntoView {
             let base = if !server_url_val.is_empty() {
                 server_url_val.trim_end_matches('/').to_string()
             } else {
-                let url_val =
-                    js_sys::Reflect::get(&web_sys::window().unwrap().into(), &"tachyonApiUrl".into())
-                        .ok()
-                        .and_then(|v| v.as_string())
-                        .unwrap_or_else(|| "http://localhost:8080/api/v1".to_string());
+                let url_val = js_sys::Reflect::get(
+                    &web_sys::window().unwrap().into(),
+                    &"tachyonApiUrl".into(),
+                )
+                .ok()
+                .and_then(|v| v.as_string())
+                .unwrap_or_else(|| "http://localhost:8080/api/v1".to_string());
                 url_val
                     .trim_end_matches("/api/v1")
                     .trim_end_matches('/')
@@ -249,7 +251,13 @@ pub fn LoginPage() -> impl IntoView {
 
         let return_url = get_return_url();
         let server_url_val = server_url.get();
-        do_login(username_val, password_val, remember_val, return_url, server_url_val);
+        do_login(
+            username_val,
+            password_val,
+            remember_val,
+            return_url,
+            server_url_val,
+        );
     };
 
     let on_guest_login = move |_| {

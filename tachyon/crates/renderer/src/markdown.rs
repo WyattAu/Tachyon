@@ -33,6 +33,11 @@ static EMBED_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"!\{(\w+):\s*([^
 static WIKILINK_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]").unwrap());
 
+static ADMONITION_HEADER_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^>\s*\[!(\w+)\]").unwrap());
+
+static ADMONITION_BODY_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^>\s?(.*)").unwrap());
+
 // ============================================================================
 // TOC & Embed Types
 // ============================================================================
@@ -204,6 +209,80 @@ impl MarkdownParser {
             }
         }
         embeds
+    }
+
+    /// Pre-process admonition blocks `> [!type]` into HTML divs.
+    ///
+    /// Converts blocks like:
+    /// ```markdown
+    /// > [!note]
+    /// > This is a note
+    /// ```
+    ///
+    /// Into:
+    /// ```html
+    /// <div class="admonition admonition-note"><div class="admonition-title">Note</div><div class="admonition-content">
+    /// This is a note
+    /// </div></div>
+    /// ```
+    fn preprocess_admonitions(content: &str) -> String {
+        let mut result = String::with_capacity(content.len());
+        let mut in_code_block = false;
+        let mut in_admonition = false;
+        let mut admonition_type = String::new();
+        let mut admonition_lines: Vec<String> = Vec::new();
+
+        for line in content.lines() {
+            if line.trim_start().starts_with("```") {
+                if in_admonition {
+                    result.push_str(&format_admonition_html(&admonition_type, &admonition_lines));
+                    in_admonition = false;
+                    admonition_lines.clear();
+                }
+                in_code_block = !in_code_block;
+                result.push_str(line);
+                result.push('\n');
+                continue;
+            }
+
+            if in_code_block {
+                result.push_str(line);
+                result.push('\n');
+                continue;
+            }
+
+            if !in_admonition {
+                if let Some(caps) = ADMONITION_HEADER_RE.captures(line) {
+                    in_admonition = true;
+                    admonition_type = caps.get(1).unwrap().as_str().to_lowercase();
+                    continue;
+                }
+            }
+
+            if in_admonition {
+                if let Some(caps) = ADMONITION_BODY_RE.captures(line) {
+                    admonition_lines.push(caps.get(1).unwrap().as_str().to_string());
+                    continue;
+                } else {
+                    result.push_str(&format_admonition_html(&admonition_type, &admonition_lines));
+                    in_admonition = false;
+                    admonition_lines.clear();
+                }
+            }
+
+            result.push_str(line);
+            result.push('\n');
+        }
+
+        if in_admonition {
+            result.push_str(&format_admonition_html(&admonition_type, &admonition_lines));
+        }
+
+        if result.ends_with('\n') {
+            result.pop();
+        }
+
+        result
     }
 
     /// Pre-process wikilinks [[target]] and [[target|display]] into HTML anchors.
@@ -398,9 +477,11 @@ impl MarkdownParser {
         &self,
         markdown: &str,
     ) -> RendererResult<(String, RenderMetadata, RenderStats)> {
-        let parser = Parser::new_ext(markdown, self.cmark_options);
+        let markdown = Self::preprocess_wikilinks(markdown);
+        let markdown = Self::preprocess_admonitions(&markdown);
+        let parser = Parser::new_ext(&markdown, self.cmark_options);
 
-        let metadata = self.extract_metadata(markdown);
+        let metadata = self.extract_metadata(&markdown);
         let mut stats = RenderStats::new();
 
         let code_block_count = Cell::new(0u32);
@@ -558,6 +639,31 @@ impl Default for MarkdownParser {
     fn default() -> Self {
         Self::with_options(MarkdownOptions::default())
     }
+}
+
+/// Format an admonition block as HTML.
+fn format_admonition_html(admonition_type: &str, lines: &[String]) -> String {
+    let title = match admonition_type {
+        "note" => "Note",
+        "tip" => "Tip",
+        "info" => "Info",
+        "warning" => "Warning",
+        "danger" => "Danger",
+        "caution" => "Caution",
+        _ => admonition_type,
+    };
+
+    let content = lines.join("\n");
+
+    format!(
+        "<div class=\"admonition admonition-{type}\">\
+         <div class=\"admonition-title\">{title}</div>\
+         <div class=\"admonition-content\">{content}</div>\
+         </div>",
+        type = admonition_type,
+        title = title,
+        content = content
+    )
 }
 
 /// Parse the inner content of a block reference `[[target]]`, `[[target#heading]]`, `[[target#^block-id]]`.

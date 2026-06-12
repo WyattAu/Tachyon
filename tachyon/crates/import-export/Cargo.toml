@@ -39,6 +39,18 @@ tracing = "0.1"
 regex = "1"
 uuid = { version = "1", features = ["v4", "v7"] }
 
+# HTTP client (for Confluence API import)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Base64 encoding (for Confluence API auth)
+base64 = "0.22"
+
+# URL encoding (for Notion OAuth)
+urlencoding = "2"
+
+# Async runtime (for Confluence API client)
+tokio = { version = "1", features = ["time"] }
+
 # PDF generation (optional)
 genpdf = { version = "0.2", features = ["images"], optional = true }
 printpdf = { version = "0.3", optional = true }

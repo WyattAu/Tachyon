@@ -11,6 +11,8 @@
 //! - JSON export (structured document data)
 
 pub mod confluence;
+pub mod confluence_client;
+pub mod confluence_macros;
 pub mod csv_import;
 pub mod docusaurus;
 pub mod docx_export;
@@ -22,13 +24,22 @@ pub mod html_export;
 pub mod json_export;
 pub mod markdown_zip;
 pub mod notion;
+pub mod notion_client;
+pub mod notion_oauth;
 pub mod obsidian;
 #[cfg(feature = "pdf-export")]
 pub mod pdf_export;
 pub mod vault_importer;
 
+pub use notion_client::NotionClient;
+pub use notion_oauth::NotionOAuthConfig;
+
 // Re-export commonly used types
 pub use confluence::ConfluenceImporter;
+pub use confluence_client::{
+    ConfluenceAuth, ConfluenceClient, ConfluenceCredentials, ConfluenceEdition,
+};
+pub use confluence_macros::convert_xhtml_to_markdown;
 pub use docusaurus::DocusaurusImporter;
 pub use docx_export::{DocxExportOptions, DocxExporter, PageSize};
 pub use docx_import::{DocxImportOptions, DocxImporter};
@@ -50,7 +61,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 /// A document parsed from an import source, ready to be stored.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ImportedDocument {
     /// Document title (from frontmatter or filename)
     pub title: String,
