@@ -2,11 +2,16 @@
 
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{ClipboardEvent, DataTransfer, DragEvent};
+use web_sys::{ClipboardEvent, DataTransfer, DragEvent, HtmlCanvasElement, ImageBitmap};
 
 use crate::api::ApiClient;
 use crate::components::upload_progress::{UploadItem, UploadProgress, UploadStatus};
 use wasm_bindgen_futures::spawn_local;
+
+const IMAGE_COMPRESS_THRESHOLD: u64 = 1024 * 1024;
+const PROGRESS_DISMISS_MS: u32 = 3000;
+const MAX_COMPRESS_WIDTH: u32 = 1920;
+const MAX_COMPRESS_HEIGHT: u32 = 1080;
 
 #[derive(Debug, Clone)]
 pub struct DroppedFile {
@@ -16,14 +21,96 @@ pub struct DroppedFile {
     pub file: web_sys::File,
 }
 
-/// Returns true if the MIME type represents an image.
 fn is_image(content_type: &str) -> bool {
     content_type.starts_with("image/")
 }
 
-/// Returns true if the MIME type represents a video.
 fn is_video(content_type: &str) -> bool {
     content_type.starts_with("video/")
+}
+
+fn blob_to_file(blob: &web_sys::Blob, name: &str) -> Result<web_sys::File, String> {
+    let arr = js_sys::Array::new();
+    arr.push(blob);
+    web_sys::File::new_with_blob_sequence(&arr, name)
+        .map_err(|e| format!("Failed to create File from Blob: {:?}", e))
+}
+
+async fn maybe_compress_image(file: &web_sys::File) -> Result<web_sys::Blob, String> {
+    let ct = file.type_();
+    let size = file.size() as u64;
+
+    if !is_image(&ct) || size <= IMAGE_COMPRESS_THRESHOLD || ct == "image/svg+xml" {
+        return Ok(file.clone().into());
+    }
+
+    let blob_ref: &web_sys::Blob = file;
+    let window = web_sys::window().ok_or("No window")?;
+    let bitmap_future = window
+        .create_image_bitmap_with_blob(blob_ref)
+        .map_err(|e| format!("createImageBitmap failed: {:?}", e))?;
+    let bitmap: ImageBitmap = wasm_bindgen_futures::JsFuture::from(bitmap_future)
+        .await
+        .map_err(|e| format!("ImageBitmap promise failed: {:?}", e))?
+        .dyn_into()
+        .map_err(|_| "Failed to cast to ImageBitmap")?;
+
+    let natural_w = bitmap.width();
+    let natural_h = bitmap.height();
+    let (w, h) = if natural_w > MAX_COMPRESS_WIDTH || natural_h > MAX_COMPRESS_HEIGHT {
+        let scale = (MAX_COMPRESS_WIDTH as f64 / natural_w as f64)
+            .min(MAX_COMPRESS_HEIGHT as f64 / natural_h as f64);
+        (
+            (natural_w as f64 * scale) as u32,
+            (natural_h as f64 * scale) as u32,
+        )
+    } else {
+        (natural_w, natural_h)
+    };
+
+    let canvas: HtmlCanvasElement = web_sys::window()
+        .ok_or("No window")?
+        .document()
+        .ok_or("No document")?
+        .create_element("canvas")
+        .map_err(|e| format!("createElement failed: {:?}", e))?
+        .dyn_into()
+        .map_err(|_| "Failed to cast to HtmlCanvasElement")?;
+
+    canvas.set_width(w);
+    canvas.set_height(h);
+
+    let ctx = canvas
+        .get_context("2d")
+        .map_err(|e| format!("getContext failed: {:?}", e))?
+        .ok_or("No 2d context")?
+        .dyn_into::<web_sys::CanvasRenderingContext2d>()
+        .map_err(|_| "Failed to cast to CanvasRenderingContext2d")?;
+
+    ctx.draw_image_with_image_bitmap_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+        &bitmap,
+        0.0,
+        0.0,
+        natural_w as f64,
+        natural_h as f64,
+        0.0,
+        0.0,
+        w as f64,
+        h as f64,
+    )
+    .map_err(|e| format!("drawImage failed: {:?}", e))?;
+
+    let blob_promise = js_sys::Promise::new(&mut |resolve, _reject| {
+        canvas.to_blob_with_type(&resolve, "image/jpeg").ok();
+    });
+
+    let blob: web_sys::Blob = wasm_bindgen_futures::JsFuture::from(blob_promise)
+        .await
+        .map_err(|e| format!("toBlob promise failed: {:?}", e))?
+        .dyn_into()
+        .map_err(|_| "Failed to cast to Blob")?;
+
+    Ok(blob)
 }
 
 #[component]
@@ -84,7 +171,6 @@ pub fn DropZone(
         }
     };
 
-    // Clipboard paste handler for images
     let paste_insert = editor_insert;
     let handle_paste = move |ev: ClipboardEvent| {
         let clipboard = match ev.clipboard_data() {
@@ -124,7 +210,6 @@ pub fn DropZone(
                     let ct = content_type.clone();
 
                     spawn_local(async move {
-                        // Mark as uploading
                         set_uploads_inner.update(|u| {
                             if let Some(item) = u.iter_mut().find(|i| i.id == item_id_inner) {
                                 item.status = UploadStatus::Uploading;
@@ -132,7 +217,26 @@ pub fn DropZone(
                             }
                         });
 
-                        match api.upload_file(&file_clone).await {
+                        let upload_file = match maybe_compress_image(&file_clone).await {
+                            Ok(blob) => {
+                                set_uploads_inner.update(|u| {
+                                    if let Some(item) = u.iter_mut().find(|i| i.id == item_id_inner)
+                                    {
+                                        item.progress = 25.0;
+                                    }
+                                });
+                                blob_to_file(&blob, &name).unwrap_or(file_clone)
+                            }
+                            Err(_) => file_clone,
+                        };
+
+                        set_uploads_inner.update(|u| {
+                            if let Some(item) = u.iter_mut().find(|i| i.id == item_id_inner) {
+                                item.progress = 40.0;
+                            }
+                        });
+
+                        match api.upload_file(&upload_file).await {
                             Ok(response) => {
                                 let url = response.url.clone();
                                 set_uploads_inner.update(|u| {
@@ -144,7 +248,6 @@ pub fn DropZone(
                                     }
                                 });
 
-                                // Insert markdown into editor
                                 let md = if is_image(&ct) || is_video(&ct) {
                                     format!("![{}]({})", name, url)
                                 } else {
@@ -153,6 +256,14 @@ pub fn DropZone(
                                 if let Some(cb) = insert_cb {
                                     cb.run(md);
                                 }
+
+                                let id_clone = item_id_inner.clone();
+                                let dismiss = set_uploads_inner;
+                                wasm_bindgen_futures::spawn_local(async move {
+                                    gloo_timers::future::TimeoutFuture::new(PROGRESS_DISMISS_MS)
+                                        .await;
+                                    dismiss.update(|u| u.retain(|i| i.id != id_clone));
+                                });
                             }
                             Err(e) => {
                                 set_uploads_inner.update(|u| {
@@ -161,6 +272,13 @@ pub fn DropZone(
                                         item.status = UploadStatus::Error;
                                         item.error = Some(e.to_string());
                                     }
+                                });
+                                let id_clone = item_id_inner.clone();
+                                let dismiss = set_uploads_inner;
+                                wasm_bindgen_futures::spawn_local(async move {
+                                    gloo_timers::future::TimeoutFuture::new(PROGRESS_DISMISS_MS)
+                                        .await;
+                                    dismiss.update(|u| u.retain(|i| i.id != id_clone));
                                 });
                             }
                         }
@@ -296,7 +414,26 @@ pub fn EditorDropZone<T: leptos::IntoView + 'static>(
                     let ct_inner = ct;
 
                     spawn_local(async move {
-                        match api.upload_file(&web_file).await {
+                        let upload_file = match maybe_compress_image(&web_file).await {
+                            Ok(blob) => {
+                                set_uploads_inner.update(|u| {
+                                    if let Some(item) = u.iter_mut().find(|i| i.id == item_id_inner)
+                                    {
+                                        item.progress = 25.0;
+                                    }
+                                });
+                                blob_to_file(&blob, &name_inner).unwrap_or(web_file)
+                            }
+                            Err(_) => web_file,
+                        };
+
+                        set_uploads_inner.update(|u| {
+                            if let Some(item) = u.iter_mut().find(|i| i.id == item_id_inner) {
+                                item.progress = 40.0;
+                            }
+                        });
+
+                        match api.upload_file(&upload_file).await {
                             Ok(response) => {
                                 let url = response.url.clone();
                                 set_uploads_inner.update(|u| {
@@ -314,6 +451,14 @@ pub fn EditorDropZone<T: leptos::IntoView + 'static>(
                                     format!("[{}]({})", name_inner, url)
                                 };
                                 insert_cb_inner.run(md);
+
+                                let id_clone = item_id_inner.clone();
+                                let dismiss = set_uploads_inner;
+                                wasm_bindgen_futures::spawn_local(async move {
+                                    gloo_timers::future::TimeoutFuture::new(PROGRESS_DISMISS_MS)
+                                        .await;
+                                    dismiss.update(|u| u.retain(|i| i.id != id_clone));
+                                });
                             }
                             Err(e) => {
                                 set_uploads_inner.update(|u| {
@@ -322,6 +467,13 @@ pub fn EditorDropZone<T: leptos::IntoView + 'static>(
                                         item.status = UploadStatus::Error;
                                         item.error = Some(e.to_string());
                                     }
+                                });
+                                let id_clone = item_id_inner.clone();
+                                let dismiss = set_uploads_inner;
+                                wasm_bindgen_futures::spawn_local(async move {
+                                    gloo_timers::future::TimeoutFuture::new(PROGRESS_DISMISS_MS)
+                                        .await;
+                                    dismiss.update(|u| u.retain(|i| i.id != id_clone));
                                 });
                             }
                         }
@@ -374,7 +526,26 @@ pub fn EditorDropZone<T: leptos::IntoView + 'static>(
                     let ct_inner = ct;
 
                     spawn_local(async move {
-                        match api.upload_file(&file).await {
+                        let upload_file = match maybe_compress_image(&file).await {
+                            Ok(blob) => {
+                                set_uploads_inner.update(|u| {
+                                    if let Some(item) = u.iter_mut().find(|i| i.id == item_id_inner)
+                                    {
+                                        item.progress = 25.0;
+                                    }
+                                });
+                                blob_to_file(&blob, &name_inner).unwrap_or(file)
+                            }
+                            Err(_) => file,
+                        };
+
+                        set_uploads_inner.update(|u| {
+                            if let Some(item) = u.iter_mut().find(|i| i.id == item_id_inner) {
+                                item.progress = 40.0;
+                            }
+                        });
+
+                        match api.upload_file(&upload_file).await {
                             Ok(response) => {
                                 let url = response.url.clone();
                                 set_uploads_inner.update(|u| {
@@ -392,6 +563,14 @@ pub fn EditorDropZone<T: leptos::IntoView + 'static>(
                                     format!("[{}]({})", name_inner, url)
                                 };
                                 insert_cb_inner.run(md);
+
+                                let id_clone = item_id_inner.clone();
+                                let dismiss = set_uploads_inner;
+                                wasm_bindgen_futures::spawn_local(async move {
+                                    gloo_timers::future::TimeoutFuture::new(PROGRESS_DISMISS_MS)
+                                        .await;
+                                    dismiss.update(|u| u.retain(|i| i.id != id_clone));
+                                });
                             }
                             Err(e) => {
                                 set_uploads_inner.update(|u| {
@@ -400,6 +579,13 @@ pub fn EditorDropZone<T: leptos::IntoView + 'static>(
                                         item.status = UploadStatus::Error;
                                         item.error = Some(e.to_string());
                                     }
+                                });
+                                let id_clone = item_id_inner.clone();
+                                let dismiss = set_uploads_inner;
+                                wasm_bindgen_futures::spawn_local(async move {
+                                    gloo_timers::future::TimeoutFuture::new(PROGRESS_DISMISS_MS)
+                                        .await;
+                                    dismiss.update(|u| u.retain(|i| i.id != id_clone));
                                 });
                             }
                         }

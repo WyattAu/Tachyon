@@ -29,6 +29,7 @@ leptos_router = { version = "0.8" }
 
 # HTTP client for API calls
 gloo-net = { version = "0.6", features = ["json", "websocket"] }
+gloo-timers = "0.3"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = [
@@ -83,6 +84,13 @@ web-sys = { version = "0.3", features = [
     "ResizeObserver",
     "ResizeObserverEntry",
     "ResizeObserverSize",
+    "IntersectionObserver",
+    "IntersectionObserverEntry",
+    "IntersectionObserverInit",
+    "CanvasRenderingContext2d",
+    "HtmlCanvasElement",
+    "ImageBitmap",
+    "ImageBitmapOptions",
 ] }
 js-sys = "0.3"
 

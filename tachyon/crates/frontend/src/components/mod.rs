@@ -21,6 +21,7 @@ pub mod empty_state;
 pub mod error_boundary;
 pub mod image_preview;
 pub mod keyboard;
+pub mod language_picker;
 pub mod layout;
 pub mod loading;
 pub mod markdown_preview;
@@ -56,6 +57,8 @@ pub use editor_toolbar::EditorToolbar;
 pub use empty_state::{EmptyDocuments, EmptySearch};
 pub use error_boundary::AppErrorBoundary;
 pub use keyboard::FocusTrap;
+#[allow(unused_imports)]
+pub use language_picker::LanguagePicker;
 pub use loading::ButtonSpinner;
 pub use markdown_preview::MarkdownPreview;
 pub use native_editor::NativeEditor;

@@ -25,6 +25,8 @@ pub mod ssg;
 pub mod tags;
 pub mod teams;
 pub mod templates;
+pub mod themes;
+pub mod webhooks;
 
 pub use admin::roles::RolesPage;
 pub use audit::AuditPage;
@@ -52,3 +54,6 @@ pub use tags::TagsPage;
 pub use teams::TeamDetailPage;
 pub use teams::TeamsPage;
 pub use templates::TemplatesPage;
+#[allow(unused_imports)]
+pub use themes::ThemesPage;
+pub use webhooks::WebhooksPage;

@@ -151,10 +151,8 @@ pub fn convert_xhtml_to_markdown(html: &str) -> String {
                     "table" => {
                         tag_stack.push("table".into());
                     }
-                    "thead" => {
-                    }
-                    "tbody" => {
-                    }
+                    "thead" => {}
+                    "tbody" => {}
                     "tr" => {
                         md.push('\n');
                     }
@@ -182,10 +180,11 @@ pub fn convert_xhtml_to_markdown(html: &str) -> String {
                     }
                     "ac:parameter" => {
                         if let Some(_mac) = macro_stack.last_mut()
-                            && let Some(param_name) = get_xml_attr(e, "ac:name") {
-                                current_param_name = param_name;
-                                in_macro_param = true;
-                            }
+                            && let Some(param_name) = get_xml_attr(e, "ac:name")
+                        {
+                            current_param_name = param_name;
+                            in_macro_param = true;
+                        }
                     }
                     "ac:plain-text-body" => {
                         if macro_stack.last().is_some() {
@@ -204,9 +203,10 @@ pub fn convert_xhtml_to_markdown(html: &str) -> String {
                     }
                     "ri:page" => {
                         if tag_stack.last().map(|s| s.as_str()) == Some("ac:link")
-                            && let Some(title) = get_xml_attr(e, "ri:content-title") {
-                                md.push_str(&format!("[{}]", title));
-                            }
+                            && let Some(title) = get_xml_attr(e, "ri:content-title")
+                        {
+                            md.push_str(&format!("[{}]", title));
+                        }
                     }
                     "ac:emoticon" => {
                         let name = get_xml_attr(e, "ac:name").unwrap_or_default();
@@ -303,9 +303,10 @@ pub fn convert_xhtml_to_markdown(html: &str) -> String {
                     }
                     "a" => {
                         if let Some(last) = tag_stack.pop()
-                            && let Some(href) = last.strip_prefix("a|") {
-                                md.push_str(&format!("]({})", href));
-                            }
+                            && let Some(href) = last.strip_prefix("a|")
+                        {
+                            md.push_str(&format!("]({})", href));
+                        }
                     }
                     "ul" | "ol" => {
                         list_stack.pop();
@@ -349,9 +350,10 @@ pub fn convert_xhtml_to_markdown(html: &str) -> String {
                         tag_stack.pop();
                         // If we have a URL parameter, append it
                         if let Some(mac) = macro_stack.last()
-                            && let Some(url) = mac.parameters.get("href") {
-                                md.push_str(&format!("({})", url));
-                            }
+                            && let Some(url) = mac.parameters.get("href")
+                        {
+                            md.push_str(&format!("({})", url));
+                        }
                     }
                     _ => {}
                 }
@@ -706,7 +708,11 @@ mod tests {
     fn test_include_macro() {
         let html = r#"<ac:structured-macro ac:name="include"><ac:parameter ac:name="page">My Other Page</ac:parameter></ac:structured-macro>"#;
         let md = convert_xhtml_to_markdown(html);
-        assert!(md.contains("My Other Page"), "Expected 'My Other Page' in output: {}", md);
+        assert!(
+            md.contains("My Other Page"),
+            "Expected 'My Other Page' in output: {}",
+            md
+        );
     }
 
     #[test]

@@ -12,6 +12,7 @@
 // Public modules
 pub mod cache;
 pub mod context;
+pub mod embeds;
 pub mod error;
 pub mod latex;
 pub mod markdown;

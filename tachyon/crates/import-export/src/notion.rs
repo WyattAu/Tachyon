@@ -347,11 +347,12 @@ fn title_from_path(path: &str) -> String {
 pub fn extract_page_title(properties: &serde_json::Value) -> String {
     if let Some(title_arr) = properties.get("title")
         && let Some(title_prop) = title_arr.get(0)
-            && let Some(text_obj) = title_prop.get("text")
-                && let Some(content) = text_obj.get("content")
-                    && let Some(s) = content.as_str() {
-                        return s.to_string();
-                    }
+        && let Some(text_obj) = title_prop.get("text")
+        && let Some(content) = text_obj.get("content")
+        && let Some(s) = content.as_str()
+    {
+        return s.to_string();
+    }
     "Untitled".to_string()
 }
 
@@ -372,9 +373,10 @@ pub fn extract_page_tags(properties: &serde_json::Value) -> Vec<String> {
                     }
                 }
             } else if let Some(select) = value.get("select")
-                && let Some(name) = select.get("name").and_then(|n| n.as_str()) {
-                    tags.push(name.to_string());
-                }
+                && let Some(name) = select.get("name").and_then(|n| n.as_str())
+            {
+                tags.push(name.to_string());
+            }
         }
     }
     tags

@@ -103,6 +103,11 @@ impl Locale {
 pub struct TranslationKey(&'static str);
 
 impl TranslationKey {
+    /// Create a new TranslationKey from a static string.
+    pub const fn new(key: &'static str) -> Self {
+        TranslationKey(key)
+    }
+
     // Navigation
     pub const HOME: Self = TranslationKey("nav.home");
     pub const DASHBOARD: Self = TranslationKey("nav.dashboard");
@@ -504,8 +509,6 @@ fn translations_for(locale: Locale) -> &'static HashMap<&'static str, &'static s
 }
 
 /// Look up a translation by key.
-///
-/// Reserved for future use: i18n string resolution.
 pub fn t(locale: Locale, key: TranslationKey) -> &'static str {
     translations_for(locale)
         .get(key.0)
@@ -516,11 +519,29 @@ pub fn t(locale: Locale, key: TranslationKey) -> &'static str {
         })
 }
 
+/// Look up a translation by raw string key.
+pub fn t_raw(locale: Locale, key: &str) -> String {
+    translations_for(locale)
+        .get(key)
+        .copied()
+        .unwrap_or_else(|| EN_TRANSLATIONS.get(key).copied().unwrap_or(key))
+        .to_string()
+}
+
+/// Format a translation with placeholders.
+/// Replaces `{}` with the provided arguments in order.
+pub fn t_fmt(locale: Locale, key: TranslationKey, args: &[&str]) -> String {
+    let template = t(locale, key);
+    let mut result = template.to_string();
+    for arg in args {
+        result = result.replacen("{}", arg, 1);
+    }
+    result
+}
+
 /// Reactive translation helper.
 ///
-/// Returns a Leptos signal carrying the current locale. Components that
-/// need translated strings should read this signal and pass the locale
-/// code to the `t()` function.
+/// Returns a Leptos signal carrying the current locale.
 ///
 /// Usage in a component:
 /// ```rust,ignore
@@ -541,4 +562,164 @@ pub fn use_locale() -> ReadSignal<Locale> {
     });
 
     locale
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_all_keys_resolve_in_english() {
+        let keys = [
+            "nav.home",
+            "nav.dashboard",
+            "nav.documents",
+            "nav.search",
+            "nav.settings",
+            "nav.catalog",
+            "nav.teams",
+            "nav.plugins",
+            "nav.spaces",
+            "nav.graph",
+            "nav.tags",
+            "nav.billing",
+            "nav.ssg",
+            "nav.admin",
+            "nav.audit",
+            "nav.templates",
+            "action.save",
+            "action.cancel",
+            "action.delete",
+            "action.create",
+            "action.edit",
+            "action.search",
+            "action.sign_in",
+            "action.sign_out",
+            "action.register",
+            "common.loading",
+            "common.error",
+            "common.no_results",
+            "common.confirm_delete",
+            "docs.new",
+            "docs.empty",
+            "docs.not_found",
+            "docs.draft",
+            "docs.published",
+            "docs.archived",
+            "login.tachyon",
+            "login.subtitle",
+            "login.sign_in_title",
+            "login.server_url",
+            "login.username_email",
+            "login.password",
+            "login.remember_me",
+            "login.forgot_password",
+            "login.signing_in",
+            "login.or",
+            "login.continue_as_guest",
+            "login.getting_started",
+            "dashboard.good_morning",
+            "dashboard.good_afternoon",
+            "dashboard.good_evening",
+            "dashboard.welcome_back",
+            "dashboard.new_document",
+            "dashboard.total_documents",
+            "settings.title",
+            "settings.profile",
+            "settings.account",
+            "settings.preferences",
+            "settings.danger_zone",
+            "settings.display_name",
+            "settings.email",
+            "settings.avatar",
+            "settings.save_profile",
+            "settings.change_password",
+            "settings.logout",
+            "settings.appearance",
+            "settings.theme",
+            "settings.language",
+            "not_found.title",
+            "not_found.message",
+            "not_found.go_home",
+            "onboarding.welcome",
+            "onboarding.get_started",
+            "editor.bold",
+            "editor.italic",
+            "editor.preview",
+            "dropzone.label",
+            "import.source",
+        ];
+        for key in keys {
+            let result = t(Locale::En, TranslationKey::new(key));
+            assert_ne!(result, key, "Key '{}' did not resolve in English", key);
+        }
+    }
+
+    #[test]
+    fn test_all_keys_resolve_in_chinese() {
+        let keys = [
+            "nav.home",
+            "nav.dashboard",
+            "action.save",
+            "common.loading",
+            "docs.new",
+            "login.tachyon",
+            "dashboard.good_morning",
+            "settings.title",
+        ];
+        for key in keys {
+            let result = t(Locale::Zh, TranslationKey::new(key));
+            assert_ne!(result, key, "Key '{}' did not resolve in Chinese", key);
+        }
+    }
+
+    #[test]
+    fn test_fallback_to_english() {
+        // Key that doesn't exist in any locale should return the key itself
+        let result = t(Locale::Zh, TranslationKey::new("nonexistent.key"));
+        assert_eq!(result, "nonexistent.key");
+    }
+
+    #[test]
+    fn test_t_raw_works() {
+        let result = t_raw(Locale::En, "nav.home");
+        assert_eq!(result, "Home");
+    }
+
+    #[test]
+    fn test_t_fmt_works() {
+        let result = t_fmt(
+            Locale::En,
+            TranslationKey::new("dashboard.new_document"),
+            &[],
+        );
+        assert_eq!(result, "New Document");
+    }
+
+    #[test]
+    fn test_locale_from_code() {
+        assert_eq!(Locale::from_code("en"), Locale::En);
+        assert_eq!(Locale::from_code("zh"), Locale::Zh);
+        assert_eq!(Locale::from_code("ja"), Locale::Ja);
+        assert_eq!(Locale::from_code("de"), Locale::De);
+        assert_eq!(Locale::from_code("fr"), Locale::Fr);
+        assert_eq!(Locale::from_code("es"), Locale::Es);
+        assert_eq!(Locale::from_code("ko"), Locale::Ko);
+        assert_eq!(Locale::from_code("pt"), Locale::Pt);
+        assert_eq!(Locale::from_code("unknown"), Locale::En);
+    }
+
+    #[test]
+    fn test_locale_code() {
+        assert_eq!(Locale::En.code(), "en");
+        assert_eq!(Locale::Zh.code(), "zh");
+        assert_eq!(Locale::Ja.code(), "ja");
+    }
+
+    #[test]
+    fn test_locale_native_name() {
+        assert_eq!(Locale::En.native_name(), "English");
+        assert_eq!(Locale::Zh.native_name(), "中文");
+        assert_eq!(Locale::Ja.native_name(), "日本語");
+    }
 }

@@ -76,6 +76,20 @@ impl ApiClient {
         self.delete(&url).await
     }
 
+    pub async fn test_webhook(&self, id: &str) -> Result<(), ApiError> {
+        let url = format!("{}/webhooks/{}/test", self.base_url, id);
+        self.post_empty(&url).await
+    }
+
+    pub async fn update_webhook(
+        &self,
+        id: &str,
+        body: &serde_json::Value,
+    ) -> Result<crate::types::WebhookInfo, ApiError> {
+        let url = format!("{}/webhooks/{}", self.base_url, id);
+        self.put(&url, body).await
+    }
+
     pub async fn get_brand_settings(&self) -> Result<serde_json::Value, ApiError> {
         let url = format!("{}/settings/brand", self.base_url);
         self.get(&url).await

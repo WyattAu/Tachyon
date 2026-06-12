@@ -245,6 +245,15 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/settings/webhooks") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::WebhooksPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
                     <Route path=path!("/admin/roles") view=move || {
                         view! {
                             <AuthGuard>

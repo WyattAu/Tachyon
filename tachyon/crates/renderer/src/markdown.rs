@@ -15,6 +15,7 @@
 //! (tags can span chunk boundaries). Streaming would add complexity without
 //! measurable benefit for this use case.
 
+use crate::embeds;
 use crate::error::{RendererError, RendererResult};
 use crate::types::{MarkdownOptions, OutputFormat, RenderMetadata, RenderResult, RenderStats};
 use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, html};
@@ -336,6 +337,59 @@ impl MarkdownParser {
         result
     }
 
+    /// Pre-process embed blocks `![type](url)` into raw HTML.
+    ///
+    /// Converts recognized embed types (youtube, figma, gist, codepen, tweet)
+    /// into HTML embed markup. Passes through unrecognized image syntax unchanged.
+    /// Skips content inside code blocks.
+    fn preprocess_embeds(content: &str) -> String {
+        let mut result = String::with_capacity(content.len());
+        let mut in_code_block = false;
+
+        for line in content.lines() {
+            if line.trim_start().starts_with("```") {
+                in_code_block = !in_code_block;
+                result.push_str(line);
+                result.push('\n');
+                continue;
+            }
+
+            if in_code_block {
+                result.push_str(line);
+                result.push('\n');
+                continue;
+            }
+
+            let mut processed = line.to_string();
+            for alt in ["youtube", "figma", "gist", "codepen", "tweet"] {
+                let needle = format!("![{}](", alt);
+                while let Some(pos) = processed.find(&needle) {
+                    let after = &processed[pos + needle.len()..];
+                    if let Some(close) = after.find(')') {
+                        let url = after[..close].trim().to_string();
+                        if !url.is_empty() {
+                            if let Some(html) = embeds::render_embed(alt, &url) {
+                                let end = pos + needle.len() + close + 1;
+                                processed.replace_range(pos..end, &html);
+                                continue;
+                            }
+                        }
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            result.push_str(&processed);
+            result.push('\n');
+        }
+
+        if result.ends_with('\n') {
+            result.pop();
+        }
+        result
+    }
+
     /// Extract block references (transclusions) from markdown content.
     ///
     /// Parses `![[target]]`, `![[target#heading]]`, `![[target#^block-id]]` syntax.
@@ -479,6 +533,7 @@ impl MarkdownParser {
     ) -> RendererResult<(String, RenderMetadata, RenderStats)> {
         let markdown = Self::preprocess_wikilinks(markdown);
         let markdown = Self::preprocess_admonitions(&markdown);
+        let markdown = Self::preprocess_embeds(&markdown);
         let parser = Parser::new_ext(&markdown, self.cmark_options);
 
         let metadata = self.extract_metadata(&markdown);
@@ -495,10 +550,31 @@ impl MarkdownParser {
         html::push_html(&mut html_output, parser_with_count);
 
         html_output = ammonia::Builder::default()
-            .add_tags(["img", "pre", "code", "span", "div", "a"])
-            .add_generic_attributes(&["class"])
+            .add_tags([
+                "img",
+                "pre",
+                "code",
+                "span",
+                "div",
+                "a",
+                "iframe",
+                "blockquote",
+            ])
+            .add_generic_attributes(&["class", "id", "style", "data-video-id", "data-tweet-url"])
             .add_tag_attributes("img", ["src", "alt", "title", "width", "height", "loading"])
             .add_tag_attributes("a", ["href", "title"])
+            .add_tag_attributes(
+                "iframe",
+                [
+                    "src",
+                    "width",
+                    "height",
+                    "frameborder",
+                    "allowfullscreen",
+                    "loading",
+                    "sandbox",
+                ],
+            )
             .clean(&html_output)
             .to_string();
 
@@ -812,6 +888,106 @@ Some more text.
     }
 
     #[test]
+    fn test_youtube_embed_rendered() {
+        let parser = MarkdownParser::new();
+        let result = parser
+            .parse("![youtube](dQw4w9WgXcQ)", OutputFormat::Html)
+            .unwrap();
+        assert!(result.content.contains("embed-youtube"));
+        assert!(result.content.contains("youtube.com/embed/dQw4w9WgXcQ"));
+        assert!(result.content.contains("iframe"));
+    }
+
+    #[test]
+    fn test_figma_embed_rendered() {
+        let parser = MarkdownParser::new();
+        let result = parser
+            .parse(
+                "![figma](https://www.figma.com/file/abc)",
+                OutputFormat::Html,
+            )
+            .unwrap();
+        assert!(result.content.contains("embed-figma"));
+        assert!(result.content.contains("figma.com/embed"));
+    }
+
+    #[test]
+    fn test_gist_embed_rendered() {
+        let parser = MarkdownParser::new();
+        let result = parser
+            .parse(
+                "![gist](https://gist.github.com/user/abc)",
+                OutputFormat::Html,
+            )
+            .unwrap();
+        assert!(result.content.contains("embed-gist"));
+        assert!(result.content.contains("gist.github.com/user/abc.js"));
+    }
+
+    #[test]
+    fn test_codepen_embed_rendered() {
+        let parser = MarkdownParser::new();
+        let result = parser
+            .parse(
+                "![codepen](https://codepen.io/user/pen/abc)",
+                OutputFormat::Html,
+            )
+            .unwrap();
+        assert!(result.content.contains("embed-codepen"));
+        assert!(result.content.contains("codepen.io/embed/"));
+    }
+
+    #[test]
+    fn test_tweet_embed_rendered() {
+        let parser = MarkdownParser::new();
+        let result = parser
+            .parse(
+                "![tweet](https://x.com/user/status/123)",
+                OutputFormat::Html,
+            )
+            .unwrap();
+        assert!(result.content.contains("embed-tweet"));
+        assert!(result.content.contains("twitter-tweet"));
+    }
+
+    #[test]
+    fn test_embeds_have_lazy_loading() {
+        let parser = MarkdownParser::new();
+        let result = parser.parse("![youtube](abc)", OutputFormat::Html).unwrap();
+        assert!(result.content.contains("loading=\"lazy\""));
+    }
+
+    #[test]
+    fn test_embeds_have_sandbox() {
+        let parser = MarkdownParser::new();
+        let result = parser.parse("![youtube](abc)", OutputFormat::Html).unwrap();
+        assert!(result.content.contains("sandbox="));
+    }
+
+    #[test]
+    fn test_embeds_skipped_in_code_blocks() {
+        let parser = MarkdownParser::new();
+        let result = parser
+            .parse("```\n![youtube](abc)\n```", OutputFormat::Html)
+            .unwrap();
+        assert!(!result.content.contains("embed-youtube"));
+    }
+
+    #[test]
+    fn test_regular_images_preserved() {
+        let parser = MarkdownParser::new();
+        let result = parser
+            .parse("![alt](https://example.com/img.png)", OutputFormat::Html)
+            .unwrap();
+        assert!(result.content.contains("<img"));
+        assert!(
+            result
+                .content
+                .contains("src=\"https://example.com/img.png\"")
+        );
+    }
+
+    #[test]
     fn test_gfm_features() {
         let parser = MarkdownParser::new();
         let markdown = "| Col1 | Col2 |\n|------|------|\n| A | B |";
@@ -941,12 +1117,19 @@ Some more text.
     #[test]
     fn test_xss_iframe_stripped() {
         let parser = MarkdownParser::new();
-        let markdown = r#"<iframe src="https://evil.com"></iframe>"#;
+        let markdown = r#"<iframe src="https://evil.com" onload="alert('xss')"></iframe>"#;
         let result = parser.parse(markdown, OutputFormat::Html).unwrap();
 
+        // iframe is now allowed for embeds, but event handlers must be stripped
         assert!(
-            !result.content.contains("<iframe"),
-            "iframe tags must be stripped by ammonia, got: {}",
+            !result.content.contains("onload"),
+            "Event handlers must be stripped by ammonia, got: {}",
+            result.content
+        );
+        // iframe src is preserved (for embeds)
+        assert!(
+            result.content.contains("<iframe"),
+            "iframe should be preserved for embeds, got: {}",
             result.content
         );
     }

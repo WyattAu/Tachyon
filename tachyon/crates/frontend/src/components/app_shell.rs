@@ -320,6 +320,8 @@ where
                         </div>
                         <NavLink href="/settings" label="Settings" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Settings} />
                         <NavLink href="/settings/branding" label="Branding" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Palette} />
+                        <NavLink href="/settings/themes" label="Themes" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Paintbrush} />
+                        <NavLink href="/settings/webhooks" label="Webhooks" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::Link} />
                         <NavLink href="/profile" label="Profile" collapsed={sidebar_collapsed.get_untracked()} glyph={LucideGlyph::User} />
                     </nav>
 
