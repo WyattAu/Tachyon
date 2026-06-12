@@ -128,6 +128,7 @@ pub mod csrf_store;
 pub mod dlp;
 pub mod email;
 pub mod error;
+pub mod flashcards;
 pub mod graph_extractor;
 pub mod graphql;
 pub mod integrations;
@@ -192,6 +193,8 @@ pub struct AppState {
     pub ediscovery_state: crate::routes::ediscovery::EdiscoveryState,
     pub comment_state: crate::routes::comments::CommentState,
     pub digest_state: crate::routes::digest::DigestState,
+    pub flashcard_state: crate::routes::flashcards::FlashcardState,
+    pub push_state: crate::routes::push::PushState,
     pub crdt_connection_manager: crate::websocket::CrdtConnectionManager,
     pub broadcast_bus: Arc<crate::broadcast_bus::SharedBroadcastBus>,
     pub ai_manager: Arc<crate::ai::AiManager>,
@@ -372,6 +375,10 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     let ediscovery_state = crate::routes::ediscovery::EdiscoveryState { pool: pool.clone() };
     let comment_state = crate::routes::comments::CommentState::new(pool.clone());
     let digest_state = crate::routes::digest::DigestState { pool: pool.clone() };
+    let flashcard_state = crate::routes::flashcards::FlashcardState {
+        repo: tachyon_database::FlashcardRepository::new(pool.clone()),
+    };
+    let push_state = crate::routes::push::PushState { pool: pool.clone() };
     let crdt_connection_manager =
         CrdtConnectionManager::with_pool(pool.inner().clone(), broadcast_bus.clone());
 
@@ -450,6 +457,8 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         ediscovery_state,
         comment_state,
         digest_state,
+        flashcard_state,
+        push_state,
         crdt_connection_manager,
         broadcast_bus,
         pool,
@@ -668,6 +677,9 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         crate::routes::comments::create_comment_router().with_state(state.comment_state);
 
     let digest_router = create_digest_router().with_state(state.digest_state);
+    let flashcard_router =
+        crate::routes::flashcards::create_flashcard_router().with_state(state.flashcard_state);
+    let push_router = crate::routes::push::create_push_router().with_state(state.push_state);
 
     let import_state = crate::routes::import::ImportState {
         pool: pool.clone(),
@@ -712,7 +724,9 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(comment_router)
         .merge(digest_router)
         .merge(import_router)
-        .merge(siem_router);
+        .merge(siem_router)
+        .merge(push_router)
+        .merge(flashcard_router);
 
     if let Some(sms_otp_router) = sms_otp_router {
         api_v1 = api_v1.merge(sms_otp_router);

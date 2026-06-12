@@ -5,6 +5,7 @@ pub mod cursor;
 pub mod editor;
 pub mod highlight;
 pub mod language;
+pub mod outliner;
 pub mod search;
 pub mod sync_queue;
 pub mod theme;

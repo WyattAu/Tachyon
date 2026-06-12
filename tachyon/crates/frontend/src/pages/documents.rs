@@ -7,6 +7,7 @@ use crate::components::{
     EditorToolbar, EmptyDocuments, FocusTrap, MarkdownPreview, NativeEditor, ReviewPanel,
     TableOfContents, TemplateSelector, VersionHistory,
 };
+use crate::pdf_document_view::PdfDocumentView;
 use crate::storage::sync::SyncEngine;
 use crate::storage::{
     BrowserStore, LocalDocument, StoredDocument, SyncState, SyncStatus, stored_to_document,
@@ -668,84 +669,128 @@ pub fn DocumentPage() -> impl IntoView {
                     };
                     let word_count_text = if word_count == 1 { "1 word".to_string() } else { format!("{} words", word_count) };
 
+                    // Check if this is a PDF document
+                    // For now, we'll check if the content contains a PDF URL pattern
+                    // In a real implementation, we'd check the document type or file extension
+                    let is_pdf = content.contains(".pdf") || content.contains("pdf") || title.to_lowercase().ends_with(".pdf");
+
                     let nav = navigate.clone();
                     let edit_id_clone = edit_id.clone();
                     let on_edit = Callback::new(move |_: leptos::ev::MouseEvent| {
                         nav(&format!("/documents/{}/edit", edit_id_clone), Default::default());
                     });
 
-                    view! {
-                        <div>
-                            // Title and actions
-                            <div class="flex items-start justify-between mb-6">
-                                <div>
-                                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{title}</h1>
-                                    <div class="flex gap-2">
-                                        <span class={format!("px-2 py-0.5 text-xs rounded {}", status_class)}>{status_text}</span>
-                                        <span class="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{visibility_text}</span>
+                    if is_pdf {
+                        // Show PDF viewer with annotation support
+                        view! {
+                            <div class="h-full">
+                                // Title and actions
+                                <div class="flex items-start justify-between mb-6">
+                                    <div>
+                                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{title}</h1>
+                                        <div class="flex gap-2">
+                                            <span class={format!("px-2 py-0.5 text-xs rounded {}", status_class)}>{status_text}</span>
+                                            <span class="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{visibility_text}</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        on:click={move |ev| on_edit.run(ev)}
+                                        class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                    >
+                                        <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        "Edit"
+                                    </button>
+                                </div>
+
+                                // PDF Viewer with annotation support
+                                <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 overflow-hidden" style="height: calc(100vh - 200px);">
+                                    <PdfDocumentView
+                                        url=content.clone()
+                                        title=title.clone()
+                                    />
+                                </div>
+
+                                // Backlinks
+                                <BacklinksSection backlinks={backlinks.get()} />
+                            </div>
+                        }.into_any()
+                    } else {
+                        // Show regular document content
+                        view! {
+                            <div>
+                                // Title and actions
+                                <div class="flex items-start justify-between mb-6">
+                                    <div>
+                                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{title}</h1>
+                                        <div class="flex gap-2">
+                                            <span class={format!("px-2 py-0.5 text-xs rounded {}", status_class)}>{status_text}</span>
+                                            <span class="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{visibility_text}</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        on:click={move |ev| on_edit.run(ev)}
+                                        class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                    >
+                                        <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        "Edit"
+                                    </button>
+                                </div>
+
+                                // Metadata
+                                <div class="flex flex-wrap gap-4 mb-6 text-sm text-gray-500 dark:text-gray-400">
+                                    <span class="flex items-center gap-1">
+                                        <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        "Created: "{created_at.split('T').next().unwrap_or("Unknown")}
+                                    </span>
+                                    <span class="flex items-center gap-1">
+                                        <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        "Updated: "{updated_at.split('T').next().unwrap_or("Unknown")}
+                                    </span>
+                                    <span class="flex items-center gap-1">
+                                        <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        {word_count_text}
+                                    </span>
+                                </div>
+
+                                // Tags
+                                {if !tags.is_empty() {
+                                    view! {
+                                        <div class="flex flex-wrap gap-2 mb-6">
+                                            {tags.into_iter().map(|tag| {
+                                                view! {
+                                                    <span class="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 rounded">
+                                                        {tag}
+                                                    </span>
+                                                }
+                                            }).collect::<Vec<_>>()}
+                                        </div>
+                                    }.into_any()
+                                } else {
+                                    view! { <div class="mb-6"></div> }.into_any()
+                                }}
+
+                                // Content
+                                <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6">
+                                    <div class="prose dark:prose-invert max-w-none">
+                                        <pre class="whitespace-pre-wrap font-sans text-gray-900 dark:text-white bg-transparent p-0 m-0">{content}</pre>
                                     </div>
                                 </div>
-                                <button
-                                    on:click={move |ev| on_edit.run(ev)}
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors flex items-center gap-2"
-                                >
-                                    <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    "Edit"
-                                </button>
+
+                                // Backlinks
+                                <BacklinksSection backlinks={backlinks.get()} />
                             </div>
-
-                            // Metadata
-                            <div class="flex flex-wrap gap-4 mb-6 text-sm text-gray-500 dark:text-gray-400">
-                                <span class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                    "Created: "{created_at.split('T').next().unwrap_or("Unknown")}
-                                </span>
-                                <span class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    "Updated: "{updated_at.split('T').next().unwrap_or("Unknown")}
-                                </span>
-                                <span class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    {word_count_text}
-                                </span>
-                            </div>
-
-                            // Tags
-                            {if !tags.is_empty() {
-                                view! {
-                                    <div class="flex flex-wrap gap-2 mb-6">
-                                        {tags.into_iter().map(|tag| {
-                                            view! {
-                                                <span class="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 rounded">
-                                                    {tag}
-                                                </span>
-                                            }
-                                        }).collect::<Vec<_>>()}
-                                    </div>
-                                }.into_any()
-                            } else {
-                                view! { <div class="mb-6"></div> }.into_any()
-                            }}
-
-                            // Content
-                            <div class="bg-white dark:bg-gray-800 rounded-none shadow border-2 border-gray-900 dark:border-gray-100 p-6">
-                                <div class="prose dark:prose-invert max-w-none">
-                                    <pre class="whitespace-pre-wrap font-sans text-gray-900 dark:text-white bg-transparent p-0 m-0">{content}</pre>
-                                </div>
-                            </div>
-
-                            // Backlinks
-                            <BacklinksSection backlinks={backlinks.get()} />
-                        </div>
-                    }.into_any()
+                        }.into_any()
+                    }
                 } else {
                     view! {
                         <div class="p-8 text-center">

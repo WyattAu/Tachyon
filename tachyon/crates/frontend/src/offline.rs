@@ -6,9 +6,16 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{IdbDatabase, IdbObjectStore, IdbOpenDbRequest, IdbTransactionMode};
 
 const DB_NAME: &str = "tachyon_offline";
-const DB_VERSION: u32 = 1;
+const DB_VERSION: u32 = 2;
 const DOC_STORE: &str = "offline_documents";
 const CHANGES_STORE: &str = "pending_changes";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum OnlineStatus {
+    Online,
+    Offline,
+    Syncing,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OfflineDocument {
@@ -16,6 +23,8 @@ pub struct OfflineDocument {
     pub title: String,
     pub content: String,
     pub updated_at: String,
+    pub version: u64,
+    pub checksum: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,6 +35,16 @@ pub struct PendingChange {
     pub payload: String,
     pub created_at: String,
     pub retry_count: u32,
+    pub version: u64,
+    pub checksum: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncState {
+    pub status: OnlineStatus,
+    pub pending_count: usize,
+    pub last_sync: Option<String>,
+    pub error: Option<String>,
 }
 
 fn to_js<T: serde::Serialize>(value: &T) -> Result<wasm_bindgen::JsValue, String> {
@@ -106,6 +125,8 @@ impl OfflineStore {
                         let request = target.unchecked_ref::<IdbOpenDbRequest>();
                         if let Ok(result) = request.result() {
                             let db: IdbDatabase = result.unchecked_into();
+
+                            // Create object stores if they don't exist
                             let _ = db.create_object_store(DOC_STORE);
                             let _ = db.create_object_store(CHANGES_STORE);
                         }
@@ -164,6 +185,21 @@ impl OfflineStore {
         Ok(())
     }
 
+    pub async fn list_documents(&self) -> Result<Vec<OfflineDocument>, String> {
+        let store = self.store(DOC_STORE, IdbTransactionMode::Readonly)?;
+        let request = store
+            .get_all()
+            .map_err(|e| format!("get_all error: {:?}", e))?;
+        let result = idb_await(&request).await?;
+        let array = js_sys::Array::from(&result);
+        let mut docs = Vec::with_capacity(array.length() as usize);
+        for i in 0..array.length() {
+            let doc: OfflineDocument = from_js(&array.get(i))?;
+            docs.push(doc);
+        }
+        Ok(docs)
+    }
+
     pub async fn get_pending_changes(&self) -> Result<Vec<PendingChange>, String> {
         let store = self.store(CHANGES_STORE, IdbTransactionMode::Readonly)?;
         let request = store
@@ -217,4 +253,23 @@ impl OfflineStore {
             .filter(|c| c.document_id == document_id)
             .collect())
     }
+
+    pub async fn pending_count(&self) -> Result<usize, String> {
+        let changes = self.get_pending_changes().await?;
+        Ok(changes.len())
+    }
+
+    pub async fn oldest_pending_change(&self) -> Result<Option<PendingChange>, String> {
+        let changes = self.get_pending_changes().await?;
+        Ok(changes.into_iter().min_by_key(|c| c.created_at.clone()))
+    }
+}
+
+/// Compute a simple checksum for conflict detection
+pub fn compute_checksum(content: &str) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    content.hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
 }

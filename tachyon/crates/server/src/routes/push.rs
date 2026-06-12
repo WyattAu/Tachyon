@@ -1,12 +1,12 @@
 //! Push notification registration and management.
 
 use crate::error::ServerError;
-use crate::push::web_push::{PushPayload, PushSubscription};
+use crate::push::web_push::{PushPayload, PushSubscription, VapidConfig};
 use axum::{
     Router,
     extract::State,
     response::Json,
-    routing::{delete, post},
+    routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
 use tachyon_database::DatabasePool;
@@ -57,9 +57,30 @@ pub struct BroadcastPushResponse {
     pub failed: usize,
 }
 
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct VapidPublicKeyResponse {
+    pub public_key: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/push/vapid-public-key",
+    responses(
+        (status = 200, description = "VAPID public key", body = VapidPublicKeyResponse),
+    ),
+    tag = "push",
+)]
+pub async fn vapid_public_key() -> Result<Json<VapidPublicKeyResponse>, ServerError> {
+    let vapid = VapidConfig::from_env()
+        .ok_or_else(|| ServerError::internal("VAPID keys not configured"))?;
+    Ok(Json(VapidPublicKeyResponse {
+        public_key: vapid.public_key,
+    }))
+}
+
 #[utoipa::path(
     post,
-    path = "/push/register",
+    path = "/push/subscribe",
     request_body(content = RegisterPushRequest, description = "Push subscription registration"),
     responses(
         (status = 200, description = "Subscription registered", body = RegisterPushResponse),
@@ -69,7 +90,7 @@ pub struct BroadcastPushResponse {
     tag = "push",
     security(("bearer_auth" = [])),
 )]
-pub async fn register_push(
+pub async fn subscribe_push(
     State(state): State<PushState>,
     Json(body): Json<RegisterPushRequest>,
 ) -> Result<Json<RegisterPushResponse>, ServerError> {
@@ -112,8 +133,8 @@ pub async fn register_push(
 }
 
 #[utoipa::path(
-    delete,
-    path = "/push/unregister",
+    post,
+    path = "/push/unsubscribe",
     request_body(content = UnregisterPushRequest, description = "Push subscription removal"),
     responses(
         (status = 200, description = "Subscription removed", body = UnregisterPushResponse),
@@ -122,7 +143,7 @@ pub async fn register_push(
     tag = "push",
     security(("bearer_auth" = [])),
 )]
-pub async fn unregister_push(
+pub async fn unsubscribe_push(
     State(state): State<PushState>,
     Json(body): Json<UnregisterPushRequest>,
 ) -> Result<Json<UnregisterPushResponse>, ServerError> {
@@ -201,7 +222,8 @@ pub async fn broadcast_push(
 
 pub fn create_push_router() -> Router<PushState> {
     Router::new()
-        .route("/push/register", post(register_push))
-        .route("/push/unregister", delete(unregister_push))
+        .route("/push/vapid-public-key", get(vapid_public_key))
+        .route("/push/subscribe", post(subscribe_push))
+        .route("/push/unsubscribe", post(unsubscribe_push))
         .route("/admin/push/broadcast", post(broadcast_push))
 }

@@ -20,6 +20,7 @@ enum SettingsTab {
     Profile,
     Account,
     Preferences,
+    Notifications,
     Danger,
 }
 
@@ -31,13 +32,15 @@ pub fn SettingsPage() -> impl IntoView {
         SettingsTab::Profile,
         SettingsTab::Account,
         SettingsTab::Preferences,
+        SettingsTab::Notifications,
         SettingsTab::Danger,
     ];
 
-    let tab_ids: [(&'static str, &'static str); 4] = [
+    let tab_ids: [(&'static str, &'static str); 5] = [
         ("settings-tab-profile", "settings-panel-profile"),
         ("settings-tab-account", "settings-panel-account"),
         ("settings-tab-preferences", "settings-panel-preferences"),
+        ("settings-tab-notifications", "settings-panel-notifications"),
         ("settings-tab-danger", "settings-panel-danger"),
     ];
 
@@ -100,6 +103,11 @@ pub fn SettingsPage() -> impl IntoView {
                     <PreferencesTab />
                 </div>
             </Show>
+            <Show when={move || active_tab.get() == SettingsTab::Notifications}>
+                <div id="settings-panel-notifications" role="tabpanel" aria-labelledby="settings-tab-notifications">
+                    <NotificationSettingsLink />
+                </div>
+            </Show>
             <Show when={move || active_tab.get() == SettingsTab::Danger}>
                 <div id="settings-panel-danger" role="tabpanel" aria-labelledby="settings-tab-danger">
                     <DangerTab />
@@ -127,8 +135,28 @@ impl SettingsTab {
             SettingsTab::Profile => "Profile",
             SettingsTab::Account => "Account",
             SettingsTab::Preferences => "Preferences",
+            SettingsTab::Notifications => "Notifications",
             SettingsTab::Danger => "Danger Zone",
         }
+    }
+}
+
+#[component]
+fn NotificationSettingsLink() -> impl IntoView {
+    view! {
+        <div class="space-y-6">
+            <SettingsSection title="Notifications" description="Manage your notification preferences">
+                <div class="space-y-4">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        "Configure push notifications, notification types, and test your notification setup."
+                    </p>
+                    <a href="/settings/notifications"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-none transition-colors">
+                        "Open Notification Settings"
+                    </a>
+                </div>
+            </SettingsSection>
+        </div>
     }
 }
 

@@ -5,11 +5,15 @@
 #![allow(dead_code)]
 
 mod api;
+pub mod canvas;
 mod components;
 mod i18n;
 mod markdown;
 mod offline;
 mod pages;
+pub mod pdf_annotation_types;
+pub mod pdf_document_view;
+pub mod push;
 pub mod servers;
 mod storage;
 mod styles;
@@ -155,6 +159,15 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/flashcards") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::FlashcardsPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
                     <Route path=path!("/daily") view=move || {
                         view! {
                             <AuthGuard>
@@ -169,6 +182,24 @@ pub fn App() -> impl IntoView {
                             <AuthGuard>
                                 <AppErrorBoundary>
                                     <pages::DailyNotesPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/journal") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::JournalPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/journal/:date") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::JournalPage />
                                 </AppErrorBoundary>
                             </AuthGuard>
                         }
@@ -254,6 +285,15 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/settings/notifications") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::NotificationSettingsPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
                     <Route path=path!("/admin/roles") view=move || {
                         view! {
                             <AuthGuard>
@@ -322,6 +362,24 @@ pub fn App() -> impl IntoView {
                             <AuthGuard>
                                 <AppErrorBoundary>
                                     <pages::ProfilePage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/canvas") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::CanvasPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/canvas/:id") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::CanvasPage />
                                 </AppErrorBoundary>
                             </AuthGuard>
                         }

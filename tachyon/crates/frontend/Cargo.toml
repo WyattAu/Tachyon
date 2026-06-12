@@ -105,6 +105,9 @@ log = "0.4"
 # UUID - with js feature for WASM support
 uuid = { version = "1.11", features = ["v4", "serde", "js"] }
 
+# Base64 encoding for push notification VAPID keys
+base64 = "0.22"
+
 # Native editor engine
 tachyon-editor = { path = "../editor" }
 

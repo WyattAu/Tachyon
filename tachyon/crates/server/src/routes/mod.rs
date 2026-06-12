@@ -4,6 +4,7 @@
 pub mod activity;
 pub mod ai_routes;
 pub mod billing;
+pub mod canvas;
 pub mod catalog;
 pub mod collaboration;
 pub mod comments;
@@ -15,6 +16,7 @@ pub mod e2e_encryption;
 pub mod ecosystem;
 pub mod ediscovery;
 pub mod files;
+pub mod flashcards;
 pub mod gdpr;
 pub mod graph_api;
 pub mod health;
@@ -61,6 +63,7 @@ pub use ediscovery::{EdiscoveryExportRequest, EdiscoveryState, export_ediscovery
 pub async fn create_router() -> Router {
     use crate::routes::activity::{ActivityState, create_activity_router};
     use crate::routes::billing::{BillingState, create_billing_router};
+    use crate::routes::canvas::{CanvasState, create_canvas_router};
     use crate::routes::catalog::{CatalogState, create_catalog_router};
     use crate::routes::conflict::{ConflictState, create_conflict_router};
     use crate::routes::digest::{DigestState, create_digest_router};
@@ -71,6 +74,7 @@ pub async fn create_router() -> Router {
     use crate::routes::onboarding::{OnboardingState, create_onboarding_router};
     use crate::routes::organization::{OrganizationState, create_organization_router};
     use crate::routes::plugin::{PluginState, create_plugin_router_with_state};
+    use crate::routes::push::{PushState, create_push_router};
     use crate::routes::repository::{RepositoryState, create_repository_router};
     use crate::routes::review::{ReviewState, create_review_router};
     use crate::routes::role::{RoleState, create_role_router};
@@ -148,11 +152,15 @@ pub async fn create_router() -> Router {
     let ssg_state = SsgState::new(pool.clone());
     let onboarding_state = OnboardingState { pool: pool.clone() };
     let conflict_state = ConflictState { pool: pool.clone() };
+    let push_state = PushState { pool: pool.clone() };
     let seo_state = SeoState {
         pool: pool.clone(),
         site_config: crate::config::SiteConfig::default(),
     };
     let digest_state = DigestState { pool: pool.clone() };
+    let flashcard_state = FlashcardState {
+        repo: tachyon_database::FlashcardRepository::new(pool.clone()),
+    };
     let import_state = ImportState {
         pool: pool.clone(),
         last_import: std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
@@ -178,13 +186,18 @@ pub async fn create_router() -> Router {
     let organization_router = create_organization_router().with_state(organization_state);
     let ssg_router = create_ssg_router().with_state(ssg_state);
     let onboarding_router = create_onboarding_router().with_state(onboarding_state);
+    let push_router = create_push_router().with_state(push_state);
     let ediscovery_state = crate::routes::ediscovery::EdiscoveryState { pool: pool.clone() };
     let ediscovery_router =
         crate::routes::ediscovery::create_ediscovery_router().with_state(ediscovery_state);
     let conflict_router = create_conflict_router().with_state(conflict_state);
     let seo_router = create_seo_router().with_state(seo_state);
     let digest_router = create_digest_router().with_state(digest_state);
+    let flashcard_router = create_flashcard_router().with_state(flashcard_state);
     let import_router = create_import_router().with_state(import_state);
+
+    let canvas_state = CanvasState { pool: pool.clone() };
+    let canvas_router = create_canvas_router().with_state(canvas_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -211,7 +224,10 @@ pub async fn create_router() -> Router {
         .merge(conflict_router)
         .merge(seo_router)
         .merge(digest_router)
-        .merge(import_router);
+        .merge(import_router)
+        .merge(push_router)
+        .merge(flashcard_router)
+        .merge(canvas_router);
 
     Router::new().nest("/api/v1", api_v1)
 }
@@ -227,6 +243,12 @@ pub use catalog::{
 // Graph API exports
 pub use graph_api::{
     GraphApiState, GraphEdgesResponse, GraphNodesResponse, create_graph_api_router,
+};
+
+// Flashcard exports
+pub use flashcards::{
+    FlashcardListResponse, FlashcardResponse, FlashcardReviewResponse, FlashcardState,
+    ReviewQueueResponse, create_flashcard_router,
 };
 
 // Document exports
@@ -404,3 +426,9 @@ pub use gdpr::{
 
 // HIPAA exports
 pub use hipaa::{HipaaAuditEntry, HipaaComplianceStatus, hipaa_compliance_status};
+
+// Canvas exports
+pub use canvas::{
+    CanvasEdgeResponse, CanvasFullResponse, CanvasListResponse, CanvasNodeResponse, CanvasResponse,
+    CanvasState as CanvasRouteState, create_canvas_router,
+};

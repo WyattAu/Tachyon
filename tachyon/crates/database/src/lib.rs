@@ -6,6 +6,7 @@
 pub mod activity;
 pub mod attachment;
 pub mod billing;
+pub mod canvas;
 pub mod catalog;
 pub mod comment;
 pub mod crdt;
@@ -13,6 +14,7 @@ pub mod document_branch;
 pub mod document_review;
 pub mod document_version;
 pub mod error;
+pub mod flashcard;
 pub mod graph;
 pub mod magic_link;
 pub mod migrations;
@@ -48,6 +50,11 @@ pub use billing::{
     NotificationPreference, NotificationPreferenceRepository, Subscription, SubscriptionRepository,
     UpdateInvoiceRequest, UpdateSubscriptionRequest, UpsertNotificationPrefRequest,
 };
+pub use canvas::{
+    Canvas, CanvasEdge, CanvasNode, CanvasRepository, CreateCanvasEdgeRequest,
+    CreateCanvasNodeRequest, CreateCanvasRequest, UpdateCanvasEdgeRequest, UpdateCanvasNodeRequest,
+    UpdateCanvasRequest,
+};
 pub use catalog::CatalogRepository;
 pub use catalog::{CatalogStats, CreateComponentRequest, CreateProjectRequest};
 pub use comment::{
@@ -63,6 +70,10 @@ pub use document_review::{
 };
 pub use document_version::{CreateVersionRequest, DocumentVersion, DocumentVersionRepository};
 pub use error::{DatabaseError, DatabaseResult};
+pub use flashcard::{
+    CardState, CreateFlashcardRequest, Flashcard, FlashcardRepository, FlashcardSrsState, Rating,
+    ReviewFlashcardRequest, ReviewLog, UpdateFlashcardRequest,
+};
 pub use graph::{GraphDiff, GraphRepository};
 pub use magic_link::{MagicLinkRepository, MagicLinkToken};
 pub use notification::{CreateNotification, Notification, NotificationRepository};

@@ -28,6 +28,10 @@ pub mod markdown_preview;
 pub mod mobile_nav;
 pub mod native_editor;
 pub mod onboarding;
+pub mod online_status;
+pub mod outliner;
+pub mod pdf_annotation;
+pub mod pdf_viewer;
 pub mod presence_indicators;
 pub mod review_panel;
 pub mod role_badge;
@@ -63,6 +67,12 @@ pub use loading::ButtonSpinner;
 pub use markdown_preview::MarkdownPreview;
 pub use native_editor::NativeEditor;
 pub use onboarding::{OnboardingWizard, should_show_onboarding};
+pub use online_status::OnlineStatusIndicator;
+pub use outliner::OutlinerView;
+pub use pdf_annotation::{
+    AnnotationListPanel, AnnotationToolbar, ExportAnnotationsDialog, StickyNoteInput,
+};
+pub use pdf_viewer::PdfViewer;
 pub use review_panel::ReviewPanel;
 pub use table_of_contents::TableOfContents;
 pub use template_selector::TemplateSelector;

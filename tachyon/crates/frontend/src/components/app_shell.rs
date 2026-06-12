@@ -2,7 +2,8 @@
 
 use crate::api::ApiClient;
 use crate::components::{
-    ClientSearch, CommandPalette, OnboardingWizard, ThemeToggle, should_show_onboarding,
+    ClientSearch, CommandPalette, OnboardingWizard, OnlineStatusIndicator, ThemeToggle,
+    should_show_onboarding,
 };
 use crate::types::Notification;
 use lepticons::{Icon, LucideGlyph};
@@ -396,6 +397,8 @@ where
                             >
                                 "API Docs"
                             </a>
+                            {/* Online status */}
+                            <OnlineStatusIndicator />
                             {/* Theme toggle */}
                             <ThemeToggle />
                             <div class="relative">
