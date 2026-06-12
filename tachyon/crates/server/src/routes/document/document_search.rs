@@ -261,7 +261,7 @@ pub async fn get_backlinks(
         chrono::DateTime<chrono::Utc>,
     );
     let rows: Vec<BacklinkRow> = sqlx::query_as(
-        "SELECT id, title, slug, content, updated_at FROM documents WHERE outgoing_links @> $1::jsonb AND id != $2 ORDER BY updated_at DESC LIMIT 50"
+        "SELECT id, title, slug, content, updated_at FROM documents WHERE outgoing_links @> $1::jsonb AND id != $2::uuid ORDER BY updated_at DESC LIMIT 50"
     )
     .bind(&search_json)
     .bind(&document_id)

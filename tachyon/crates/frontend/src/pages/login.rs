@@ -129,7 +129,7 @@ pub fn LoginPage() -> impl IntoView {
     let auto_login = cli_user.is_some() && cli_pass.is_some();
 
     // Store token in both localStorage AND the server registry
-    let store_token_and_activate = move |token: String, remember: bool| {
+    let store_token_and_activate = move |token: String, remember: bool, server_url_val: &str| {
         if let Some(window) = web_sys::window() {
             if let Ok(Some(storage)) = window.local_storage() {
                 let _ = storage.set_item("tachyon_token", &token);
@@ -145,16 +145,20 @@ pub fn LoginPage() -> impl IntoView {
             server.auth_token = Some(token.clone());
             server.last_connected = Some(chrono::Utc::now().to_rfc3339());
         } else {
-            // No active server — create one from the current URL
-            let url_val =
-                js_sys::Reflect::get(&web_sys::window().unwrap().into(), &"tachyonApiUrl".into())
-                    .ok()
-                    .and_then(|v| v.as_string())
-                    .unwrap_or_else(|| "http://localhost:8080/api/v1".to_string());
-            let base = url_val
-                .trim_end_matches("/api/v1")
-                .trim_end_matches('/')
-                .to_string();
+            // No active server — create one from the provided or current URL
+            let base = if !server_url_val.is_empty() {
+                server_url_val.trim_end_matches('/').to_string()
+            } else {
+                let url_val =
+                    js_sys::Reflect::get(&web_sys::window().unwrap().into(), &"tachyonApiUrl".into())
+                        .ok()
+                        .and_then(|v| v.as_string())
+                        .unwrap_or_else(|| "http://localhost:8080/api/v1".to_string());
+                url_val
+                    .trim_end_matches("/api/v1")
+                    .trim_end_matches('/')
+                    .to_string()
+            };
             let entry = crate::servers::ServerEntry {
                 id: uuid::Uuid::new_v4().to_string(),
                 name: base.clone(),
@@ -171,20 +175,27 @@ pub fn LoginPage() -> impl IntoView {
     let do_login = move |username_val: String,
                          password_val: String,
                          remember_val: bool,
-                         return_url: String| {
+                         return_url: String,
+                         server_url_val: String| {
         loading.set(true);
         error.set(None);
         username_error.set(None);
         password_error.set(None);
 
         spawn_local(async move {
-            let client = ApiClient::default();
+            let client = if server_url_val.trim().is_empty() {
+                ApiClient::default()
+            } else {
+                let base = server_url_val.trim_end_matches('/');
+                let api_url = format!("{}/api/v1", base);
+                ApiClient::new(&api_url)
+            };
             match client.login(&username_val, &password_val).await {
                 Ok(response) => {
                     if response.success {
                         if let Some(token) = &response.access_token {
                             let token = token.clone();
-                            store_token_and_activate(token.clone(), remember_val);
+                            store_token_and_activate(token.clone(), remember_val, &server_url_val);
                             client.set_auth_token(token);
                             nav.update_value(|n| n(&return_url, Default::default()));
                         }
@@ -237,7 +248,8 @@ pub fn LoginPage() -> impl IntoView {
         }
 
         let return_url = get_return_url();
-        do_login(username_val, password_val, remember_val, return_url);
+        let server_url_val = server_url.get();
+        do_login(username_val, password_val, remember_val, return_url, server_url_val);
     };
 
     let on_guest_login = move |_| {
@@ -250,7 +262,7 @@ pub fn LoginPage() -> impl IntoView {
                     if response.success {
                         if let Some(token) = &response.access_token {
                             let token = token.clone();
-                            store_token_and_activate(token.clone(), false);
+                            store_token_and_activate(token.clone(), false, &server_url.get());
                             client.set_auth_token(token);
                         }
                         nav.update_value(|n| n("/dashboard", Default::default()));
@@ -286,7 +298,8 @@ pub fn LoginPage() -> impl IntoView {
             let p = password.get();
             if !u.is_empty() && !p.is_empty() && !loading.get() {
                 let return_url = get_return_url();
-                do_login(u, p, true, return_url);
+                let server_url_val = server_url.get();
+                do_login(u, p, true, return_url, server_url_val);
             }
         }
     });

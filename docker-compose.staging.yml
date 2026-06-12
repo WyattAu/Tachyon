@@ -1,0 +1,97 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tachyon
+      POSTGRES_USER: tachyon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.staging}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tachyon -d tachyon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - tachyon-net
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      DATABASE_URL: postgres://tachyon:${POSTGRES_PASSWORD}@postgres:5432/tachyon
+      TACHYON_JWT_SECRETS: ${TACHYON_JWT_SECRETS:?Set TACHYON_JWT_SECRETS in .env.staging}
+      TACHYON_HOST: 0.0.0.0
+      TACHYON_PORT: "8080"
+      TACHYON_LOG_FORMAT: json
+      TACHYON_LOG_LEVEL: ${TACHYON_LOG_LEVEL:-info}
+      TACHYON_SECURITY_DEVELOPMENT: "false"
+      TACHYON_SECURITY_CSP_ENABLED: "true"
+      TACHYON_SECURITY_HSTS_ENABLED: "true"
+      TACHYON_DB_MAX_CONNECTIONS: ${TACHYON_DB_MAX_CONNECTIONS:-20}
+      TACHYON_DB_MIN_CONNECTIONS: ${TACHYON_DB_MIN_CONNECTIONS:-5}
+      TACHYON_SITE_TITLE: ${TACHYON_SITE_TITLE:-Tachyon}
+      TACHYON_BASE_URL: ${TACHYON_BASE_URL}
+      GUEST_LOGIN_ENABLED: ${GUEST_LOGIN_ENABLED:-false}
+      PUBLIC_NOTES_ENABLED: ${PUBLIC_NOTES_ENABLED:-false}
+      TACHYON_FILES_ROOT: /app/content
+    volumes:
+      - tachyon-content:/app/content
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - tachyon-net
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/staging.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
+      - certbot-conf:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+    depends_on:
+      - server
+    networks:
+      - tachyon-net
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - tachyon-net
+
+volumes:
+  pgdata:
+    driver: local
+  tachyon-content:
+    driver: local
+  certbot-conf:
+    driver: local
+  certbot-www:
+    driver: local
+
+networks:
+  tachyon-net:
+    driver: bridge

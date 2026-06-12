@@ -12,7 +12,6 @@ flake.lock
 flake.nix
 result
 .cache
-tachyon/crates/frontend/dist
 tachyon/crates/desktop
 tachyon/crates/cli
 tachyon/crates/testing
