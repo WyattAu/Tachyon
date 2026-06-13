@@ -142,9 +142,8 @@ impl OutlinerState {
         let id = self.next_id;
         self.next_id += 1;
         let mut node = OutlinerNode::new(id, content);
-        if let Some(last) = self.nodes.last() {
-            node.depth = last.depth;
-        }
+        // Root nodes always start at depth 0
+        node.depth = 0;
         self.index.insert(id, self.nodes.len());
         self.nodes.push(node);
         id
