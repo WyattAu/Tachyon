@@ -3,6 +3,8 @@
 //! Provides import and export functionality for the Tachyon knowledge
 //! management system, supporting:
 //!
+#![allow(clippy::collapsible_if)]
+//!
 //! - Markdown vault import (generic recursive folder scan with frontmatter/tags)
 //! - Markdown ZIP import/export (with YAML frontmatter)
 //! - Obsidian vault import (frontmatter, wikilinks, tags, callouts)
