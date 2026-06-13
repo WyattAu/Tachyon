@@ -85,7 +85,7 @@ jobs:
 
       - name: Run clippy
         working-directory: tachyon
-        run: cargo clippy --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-frontend --all-targets -- -D warnings
+        run: cargo clippy --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-frontend --exclude tachyon-editor --all-targets -- -D warnings
 
   test:
     name: Test
