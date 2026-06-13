@@ -6,8 +6,7 @@ use crate::error::{SsgError, SsgResult};
 use crate::manifest::SsgDocument;
 
 /// Status of a documentation version.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum VersionStatus {
     #[default]
     Draft,
