@@ -267,7 +267,7 @@ impl OutlinerState {
 
         self.nodes[idx].depth -= 1;
 
-        // Also outdent all children
+        // Also outdent all descendants (nodes deeper than current depth that follow)
         let mut child = idx + 1;
         while child < self.nodes.len() && self.nodes[child].depth > current_depth {
             self.nodes[child].depth -= 1;
@@ -619,9 +619,10 @@ mod tests {
         let b_id = 2;
         assert!(state.outdent(b_id));
         assert_eq!(state.node_by_id(b_id).unwrap().depth, 0);
-        // Children should also be outdented
-        assert_eq!(state.node_by_id(3).unwrap().depth, 0); // C
-        assert_eq!(state.node_by_id(4).unwrap().depth, 1); // D
+        // C is NOT a child of B (C is child of A at same depth), so C stays at depth 1
+        assert_eq!(state.node_by_id(3).unwrap().depth, 1);
+        // D is a child of C (not B), so D stays at depth 2
+        assert_eq!(state.node_by_id(4).unwrap().depth, 2);
     }
 
     #[test]
@@ -637,12 +638,12 @@ mod tests {
     fn move_up_swaps_with_prev_sibling() {
         let mut state = make_tree();
         // Nodes: A(0), B(1), C(1), D(2), E(0)
-        // Move C up — should swap with B
+        // Move C up — should swap with B (C and its child D move before B)
         let c_id = 3;
         assert!(state.move_up(c_id));
         let visible = state.visible_nodes();
         let contents: Vec<&str> = visible.iter().map(|n| n.content.as_str()).collect();
-        assert_eq!(contents, vec!["A", "C", "B", "D", "E"]);
+        assert_eq!(contents, vec!["A", "C", "D", "B", "E"]);
     }
 
     #[test]
@@ -655,12 +656,12 @@ mod tests {
     fn move_down_swaps_with_next_sibling() {
         let mut state = make_tree();
         // Nodes: A(0), B(1), C(1), D(2), E(0)
-        // Move B down — should swap with C
+        // Move B down — should swap with C (B moves after C's subtree)
         let b_id = 2;
         assert!(state.move_down(b_id));
         let visible = state.visible_nodes();
         let contents: Vec<&str> = visible.iter().map(|n| n.content.as_str()).collect();
-        assert_eq!(contents, vec!["A", "C", "B", "D", "E"]);
+        assert_eq!(contents, vec!["A", "C", "D", "B", "E"]);
     }
 
     #[test]
@@ -766,7 +767,8 @@ mod tests {
         let state = OutlinerState::from_text(text);
         assert_eq!(state.len(), 5);
         let output = state.to_text();
-        assert_eq!(output, "- A\n  - B\n  - C\n    - D\n  - E");
+        // E stays at depth 0 as authored — the outliner preserves original indentation
+        assert_eq!(output, "- A\n  - B\n  - C\n    - D\n- E");
     }
 
     #[test]
