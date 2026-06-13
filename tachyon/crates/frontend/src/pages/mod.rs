@@ -3,6 +3,7 @@
 pub mod admin;
 pub mod audit;
 pub mod billing;
+pub mod blog;
 pub mod branding;
 pub mod canvas;
 pub mod catalog;
@@ -30,11 +31,14 @@ pub mod tags;
 pub mod teams;
 pub mod templates;
 pub mod themes;
+pub mod versions;
 pub mod webhooks;
 
 pub use admin::roles::RolesPage;
 pub use audit::AuditPage;
 pub use billing::BillingPage;
+pub use blog::BlogPage;
+pub use blog::{BlogAdminPage, BlogPostPage};
 pub use branding::BrandingPage;
 pub use canvas::CanvasPage;
 pub use catalog::CatalogPage;
@@ -64,4 +68,5 @@ pub use teams::TeamsPage;
 pub use templates::TemplatesPage;
 #[allow(unused_imports)]
 pub use themes::ThemesPage;
+pub use versions::VersionsPage;
 pub use webhooks::WebhooksPage;

@@ -121,6 +121,7 @@ pub mod ai;
 pub mod api_docs;
 pub mod audit;
 pub mod broadcast_bus;
+pub mod compliance;
 pub mod config;
 pub mod conflict;
 pub mod crdt;
@@ -195,6 +196,7 @@ pub struct AppState {
     pub digest_state: crate::routes::digest::DigestState,
     pub flashcard_state: crate::routes::flashcards::FlashcardState,
     pub push_state: crate::routes::push::PushState,
+    pub blog_state: crate::routes::blog::BlogState,
     pub crdt_connection_manager: crate::websocket::CrdtConnectionManager,
     pub broadcast_bus: Arc<crate::broadcast_bus::SharedBroadcastBus>,
     pub ai_manager: Arc<crate::ai::AiManager>,
@@ -207,6 +209,7 @@ pub struct AppState {
     pub oidc_state: Option<crate::sso::OidcState>,
     pub saml_state: Option<crate::sso::SamlState>,
     pub ldap_state: Option<crate::sso::LdapState>,
+    pub scim_state: crate::routes::scim::ScimState,
 }
 
 /// Initialize application state from a [`ServerConfig`].
@@ -379,6 +382,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         repo: tachyon_database::FlashcardRepository::new(pool.clone()),
     };
     let push_state = crate::routes::push::PushState { pool: pool.clone() };
+    let blog_state = crate::routes::blog::BlogState::new(pool.clone());
     let crdt_connection_manager =
         CrdtConnectionManager::with_pool(pool.inner().clone(), broadcast_bus.clone());
 
@@ -408,6 +412,12 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         pool: pool.clone(),
         jwt_secret: config.jwt.signing_secret().to_string(),
     });
+
+    let scim_state = crate::routes::scim::ScimState {
+        pool: pool.clone(),
+        bearer_token: std::env::var("TACHYON_SCIM_BEARER_TOKEN")
+            .unwrap_or_else(|_| "tachyon-scim-token".to_string()),
+    };
 
     {
         let cleanup_crdt = crdt_connection_manager.clone();
@@ -459,6 +469,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         digest_state,
         flashcard_state,
         push_state,
+        blog_state,
         crdt_connection_manager,
         broadcast_bus,
         pool,
@@ -471,6 +482,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         oidc_state,
         saml_state,
         ldap_state,
+        scim_state,
     })
 }
 
@@ -530,6 +542,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let oidc_state = state.oidc_state;
     let saml_state = state.saml_state;
     let ldap_state = state.ldap_state;
+    let scim_state = state.scim_state;
     let siem_state = crate::routes::siem::SiemState {
         pool: pool.clone(),
         audit_logger: audit_logger.clone(),
@@ -680,6 +693,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let flashcard_router =
         crate::routes::flashcards::create_flashcard_router().with_state(state.flashcard_state);
     let push_router = crate::routes::push::create_push_router().with_state(state.push_state);
+    let blog_router = crate::routes::blog::create_blog_router().with_state(state.blog_state);
 
     let import_state = crate::routes::import::ImportState {
         pool: pool.clone(),
@@ -688,6 +702,16 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     let import_router = crate::routes::import::create_import_router().with_state(import_state);
 
     let siem_router = crate::routes::siem::create_siem_router().with_state(siem_state);
+
+    let scim_router = crate::routes::scim::create_scim_router().with_state(scim_state);
+
+    let soc2_state = crate::routes::soc2::Soc2State {
+        audit_logger: audit_logger.clone(),
+    };
+    let soc2_router = crate::routes::soc2::create_soc2_router().with_state(soc2_state);
+
+    let e2e_state = crate::routes::e2e_encryption::E2eState { pool: pool.clone() };
+    let e2e_router = crate::routes::e2e_encryption::create_e2e_router().with_state(e2e_state);
 
     let mut api_v1 = Router::new()
         .merge(document_router)
@@ -725,8 +749,12 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(digest_router)
         .merge(import_router)
         .merge(siem_router)
+        .merge(soc2_router)
         .merge(push_router)
-        .merge(flashcard_router);
+        .merge(flashcard_router)
+        .merge(e2e_router)
+        .merge(scim_router)
+        .merge(blog_router);
 
     if let Some(sms_otp_router) = sms_otp_router {
         api_v1 = api_v1.merge(sms_otp_router);

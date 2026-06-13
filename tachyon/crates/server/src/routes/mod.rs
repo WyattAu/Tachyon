@@ -4,6 +4,7 @@
 pub mod activity;
 pub mod ai_routes;
 pub mod billing;
+pub mod blog;
 pub mod canvas;
 pub mod catalog;
 pub mod collaboration;
@@ -37,12 +38,14 @@ pub mod push;
 pub mod repository;
 pub mod review;
 pub mod role;
+pub mod scim;
 pub mod search;
 pub mod seo;
 pub mod session;
 pub mod siem;
 pub mod signup;
 pub mod sms_otp;
+pub mod soc2;
 pub mod space;
 pub mod ssg;
 pub mod swagger;
@@ -63,6 +66,7 @@ pub use ediscovery::{EdiscoveryExportRequest, EdiscoveryState, export_ediscovery
 pub async fn create_router() -> Router {
     use crate::routes::activity::{ActivityState, create_activity_router};
     use crate::routes::billing::{BillingState, create_billing_router};
+    use crate::routes::blog::{BlogState, create_blog_router};
     use crate::routes::canvas::{CanvasState, create_canvas_router};
     use crate::routes::catalog::{CatalogState, create_catalog_router};
     use crate::routes::conflict::{ConflictState, create_conflict_router};
@@ -165,6 +169,12 @@ pub async fn create_router() -> Router {
         pool: pool.clone(),
         last_import: std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
     };
+    let scim_state = crate::routes::scim::ScimState {
+        pool: pool.clone(),
+        bearer_token: "test-scim-token".to_string(),
+    };
+
+    let e2e_state = E2eState { pool: pool.clone() };
 
     let document_router = create_document_router().with_state(document_state);
     let user_router = create_user_router().with_state(user_state);
@@ -196,8 +206,16 @@ pub async fn create_router() -> Router {
     let flashcard_router = create_flashcard_router().with_state(flashcard_state);
     let import_router = create_import_router().with_state(import_state);
 
+    let blog_state = BlogState::new(pool.clone());
+    let blog_router = create_blog_router().with_state(blog_state);
+
     let canvas_state = CanvasState { pool: pool.clone() };
     let canvas_router = create_canvas_router().with_state(canvas_state);
+    let e2e_router = create_e2e_router().with_state(e2e_state);
+    let soc2_state = crate::routes::soc2::Soc2State {
+        audit_logger: crate::audit::AuditLogger::disabled(),
+    };
+    let soc2_router = crate::routes::soc2::create_soc2_router().with_state(soc2_state);
 
     let api_v1 = Router::new()
         .merge(document_router)
@@ -227,7 +245,11 @@ pub async fn create_router() -> Router {
         .merge(import_router)
         .merge(push_router)
         .merge(flashcard_router)
-        .merge(canvas_router);
+        .merge(canvas_router)
+        .merge(e2e_router)
+        .merge(soc2_router)
+        .merge(blog_router)
+        .merge(crate::routes::scim::create_scim_router().with_state(scim_state));
 
     Router::new().nest("/api/v1", api_v1)
 }
@@ -412,7 +434,9 @@ pub use sms_otp::{
 
 // E2E Encryption exports
 pub use e2e_encryption::{
-    E2eState, EncryptionKeyMeta, EncryptionStatus, RegisterKeyRequest, register_encryption_key,
+    DeleteKeyResponse, E2eState, EncryptionKeyMeta, EncryptionStatus, KeyListResponse,
+    RegisterKeyRequest, UpdateKeyRequest, create_e2e_router, delete_encryption_key,
+    get_encryption_key, get_encryption_status, list_encryption_keys, register_encryption_key,
 };
 
 // Compliance (SOC 2) exports
@@ -431,4 +455,11 @@ pub use hipaa::{HipaaAuditEntry, HipaaComplianceStatus, hipaa_compliance_status}
 pub use canvas::{
     CanvasEdgeResponse, CanvasFullResponse, CanvasListResponse, CanvasNodeResponse, CanvasResponse,
     CanvasState as CanvasRouteState, create_canvas_router,
+};
+
+// Blog exports
+pub use blog::{
+    BlogListResponse, BlogPostResponse, BlogState, CreateBlogPostRequest,
+    NewsletterSubscribeResponse, UpdateBlogPostRequest, blog_feed, create_blog_router,
+    subscribe_newsletter,
 };

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tachyon_core::id::UserId;
 use tachyon_core::types::user::{User, UserRole};
-use tachyon_database::DatabasePool;
+use tachyon_database::{DatabasePool, TeamRepository};
 use tracing::{info, instrument};
 
 // ============================================================================
@@ -16,8 +16,13 @@ use tracing::{info, instrument};
 // ============================================================================
 
 const SCIM_USER_SCHEMA: &str = "urn:ietf:params:scim:schemas:core:2.0:User";
+const SCIM_GROUP_SCHEMA: &str = "urn:ietf:params:scim:schemas:core:2.0:Group";
 const SCIM_LIST_RESPONSE_SCHEMA: &str = "urn:ietf:params:scim:api:messages:2.0:ListResponse";
 const SCIM_ERROR_SCHEMA: &str = "urn:ietf:params:scim:api:messages:2.0:Error";
+const SCIM_PATCH_OP_SCHEMA: &str = "urn:ietf:params:scim:api:messages:2.0:PatchOp";
+const SCIM_SERVICE_PROVIDER_CONFIG_SCHEMA: &str =
+    "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig";
+const SCIM_SCHEMA_SCHEMA: &str = "urn:ietf:params:scim:schemas:core:2.0:Schema";
 const SCIM_CONTENT_TYPE: &str = "application/scim+json";
 
 // ============================================================================
@@ -113,6 +118,153 @@ pub struct ScimError {
     pub schemas: Vec<String>,
     pub detail: String,
     pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScimMember {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+    #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
+    pub ref_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScimGroup {
+    #[serde(rename = "schemas")]
+    pub schemas: Vec<String>,
+    pub id: String,
+    #[serde(rename = "externalId", skip_serializing_if = "Option::is_none")]
+    pub external_id: Option<String>,
+    pub display_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub members: Option<Vec<ScimMember>>,
+    pub meta: Option<ScimMeta>,
+}
+
+impl ScimGroup {
+    pub fn from_team(team: &tachyon_database::Team, base_url: Option<&str>) -> Self {
+        let meta = Some(ScimMeta {
+            resource_type: "Group".to_string(),
+            created: team.created_at,
+            last_modified: Some(team.updated_at),
+            version: None,
+            location: base_url.map(|b| format!("{}/api/v1/scim/v2/Groups/{}", b, team.id)),
+        });
+
+        ScimGroup {
+            schemas: vec![SCIM_GROUP_SCHEMA.to_string()],
+            id: team.id.clone(),
+            external_id: None,
+            display_name: team.name.clone(),
+            members: None,
+            meta,
+        }
+    }
+
+    pub fn from_team_with_members(
+        team: &tachyon_database::Team,
+        members: &[tachyon_database::TeamMember],
+        base_url: Option<&str>,
+    ) -> Self {
+        let mut group = Self::from_team(team, base_url);
+        group.members = Some(
+            members
+                .iter()
+                .map(|m| ScimMember {
+                    value: Some(m.user_id.clone()),
+                    ref_url: base_url.map(|b| format!("{}/api/v1/scim/v2/Users/{}", b, m.user_id)),
+                    display: None,
+                })
+                .collect(),
+        );
+        group
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScimServiceProviderConfig {
+    pub schemas: Vec<String>,
+    pub patch: ScimPatchSupport,
+    pub bulk: ScimBulkSupport,
+    pub filter: ScimFilterSupport,
+    pub changePassword: ScimChangePasswordSupport,
+    pub sort: ScimSortSupport,
+    pub etag: ScimEtagSupport,
+    pub authentication_schemes: Vec<ScimAuthScheme>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScimPatchSupport {
+    pub supported: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScimBulkSupport {
+    pub supported: bool,
+    pub max_operations: Option<usize>,
+    pub max_payload_size: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScimFilterSupport {
+    pub supported: bool,
+    pub max_results: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScimChangePasswordSupport {
+    pub supported: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScimSortSupport {
+    pub supported: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScimEtagSupport {
+    pub supported: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScimAuthScheme {
+    #[serde(rename = "type")]
+    pub scheme_type: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub spec_uri: Option<String>,
+    pub documentation_uri: Option<String>,
+    pub primary: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScimSchema {
+    pub schemas: Vec<String>,
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub attributes: Vec<ScimSchemaAttribute>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScimSchemaAttribute {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub attr_type: String,
+    pub multi_valued: bool,
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub required: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub case_exact: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mutability: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub returned: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uniqueness: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -277,10 +429,10 @@ impl ScimUser {
             user.display_name = display_name.clone();
         }
 
-        if let Some(ref emails) = self.emails {
-            if let Some(primary) = emails.iter().find(|e| e.primary.unwrap_or(false)) {
+        if !self.emails.is_empty() {
+            if let Some(primary) = self.emails.iter().find(|e| e.primary.unwrap_or(false)) {
                 user.email = Some(primary.value.clone());
-            } else if let Some(first) = emails.first() {
+            } else if let Some(first) = self.emails.first() {
                 user.email = Some(first.value.clone());
             }
         }
@@ -311,14 +463,14 @@ fn parse_role(role_str: &str) -> UserRole {
 
 fn generate_random_password() -> String {
     use rand::Rng;
-    let mut rng = rand::rng();
+    let mut rng = rand::thread_rng();
     let charset: Vec<u8> = (b'a'..=b'z')
         .chain(b'A'..=b'Z')
         .chain(b'0'..=b'9')
         .collect();
     (0..32)
         .map(|_| {
-            let idx = rng.random_range(0..charset.len());
+            let idx = rng.gen_range(0..charset.len());
             charset[idx] as char
         })
         .collect()
@@ -331,6 +483,7 @@ fn generate_random_password() -> String {
 #[derive(Debug)]
 enum ScimFilter {
     UserNameEq(String),
+    DisplayNameCo(String),
     ActiveEq(bool),
     EmailEq(String),
 }
@@ -339,6 +492,10 @@ impl ScimFilter {
     fn matches(&self, user: &User) -> bool {
         match self {
             ScimFilter::UserNameEq(name) => user.username.eq_ignore_ascii_case(name),
+            ScimFilter::DisplayNameCo(substring) => user
+                .display_name
+                .to_lowercase()
+                .contains(&substring.to_lowercase()),
             ScimFilter::ActiveEq(active) => user.is_active.unwrap_or(true) == *active,
             ScimFilter::EmailEq(email) => user
                 .email
@@ -358,6 +515,14 @@ fn parse_filter(filter_str: &str) -> Result<ScimFilter, String> {
             return Err("userName value cannot be empty".to_string());
         }
         return Ok(ScimFilter::UserNameEq(value));
+    }
+
+    if let Some(rest) = s.strip_prefix("displayName co ") {
+        let value = rest.trim().trim_matches('"').to_string();
+        if value.is_empty() {
+            return Err("displayName value cannot be empty".to_string());
+        }
+        return Ok(ScimFilter::DisplayNameCo(value));
     }
 
     if let Some(rest) = s.strip_prefix("active eq ") {
@@ -391,12 +556,20 @@ fn scim_error_response(status: StatusCode, detail: &str) -> Response {
         detail: detail.to_string(),
         status: status.as_u16().to_string(),
     };
-    (status, [(axum::http::header::CONTENT_TYPE, SCIM_CONTENT_TYPE)], Json(body))
+    (
+        status,
+        [(axum::http::header::CONTENT_TYPE, SCIM_CONTENT_TYPE)],
+        Json(body),
+    )
         .into_response()
 }
 
 fn scim_json_response<T: Serialize>(status: StatusCode, body: &T) -> Response {
-    (status, [(axum::http::header::CONTENT_TYPE, SCIM_CONTENT_TYPE)], Json(body))
+    (
+        status,
+        [(axum::http::header::CONTENT_TYPE, SCIM_CONTENT_TYPE)],
+        Json(body),
+    )
         .into_response()
 }
 
@@ -449,7 +622,10 @@ pub async fn list_users(
     let (users, total) = match repo.list(page, page_size, None).await {
         Ok(result) => result,
         Err(e) => {
-            return scim_error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("Database error: {}", e));
+            return scim_error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Database error: {}", e),
+            );
         }
     };
 
@@ -463,9 +639,9 @@ pub async fn list_users(
         match parse_filter(filter_str) {
             Ok(filter) => {
                 resources.retain(|scim_user| {
-                    users.iter().any(|u| {
-                        u.username == scim_user.user_name && filter.matches(u)
-                    })
+                    users
+                        .iter()
+                        .any(|u| u.username == scim_user.user_name && filter.matches(u))
                 });
             }
             Err(e) => {
@@ -559,12 +735,10 @@ pub async fn create_user(
                     let scim = ScimUser::from_user(&u, None);
                     scim_json_response(StatusCode::OK, &scim)
                 }
-                Err(e) => {
-                    scim_error_response(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        &format!("Update failed: {}", e),
-                    )
-                }
+                Err(e) => scim_error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("Update failed: {}", e),
+                ),
             }
         }
         Err(_) => match repo.create(&user).await {
@@ -623,19 +797,17 @@ pub async fn update_user(
             Some(updated.permissions.role),
             updated.is_active,
         )
-    .await
+        .await
     {
         Ok(u) => {
             info!("SCIM user updated: {}", u.username);
             let scim = ScimUser::from_user(&u, None);
             scim_json_response(StatusCode::OK, &scim)
         }
-        Err(e) => {
-            scim_error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                &format!("Update failed: {}", e),
-            )
-        }
+        Err(e) => scim_error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &format!("Update failed: {}", e),
+        ),
     }
 }
 
@@ -694,19 +866,17 @@ pub async fn patch_user(
             Some(user.permissions.role),
             user.is_active,
         )
-    .await
+        .await
     {
         Ok(u) => {
             info!("SCIM user patched: {}", u.username);
             let scim = ScimUser::from_user(&u, None);
             scim_json_response(StatusCode::OK, &scim)
         }
-        Err(e) => {
-            scim_error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                &format!("Patch failed: {}", e),
-            )
-        }
+        Err(e) => scim_error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &format!("Patch failed: {}", e),
+        ),
     }
 }
 
@@ -735,6 +905,328 @@ pub async fn delete_user(
         }
         Err(_) => scim_error_response(StatusCode::NOT_FOUND, &format!("User '{}' not found", id)),
     }
+}
+
+// ============================================================================
+// SCIM Group Handlers
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct ScimGroupListParams {
+    pub filter: Option<String>,
+    #[serde(rename = "startIndex", default)]
+    pub start_index: Option<usize>,
+    #[serde(rename = "count", default)]
+    pub count: Option<usize>,
+}
+
+#[instrument(skip(state, headers))]
+pub async fn list_groups(
+    State(state): State<ScimState>,
+    Query(params): Query<ScimGroupListParams>,
+    headers: HeaderMap,
+) -> Response {
+    if let Err(e) = verify_bearer_token(&headers, &state.bearer_token) {
+        return e;
+    }
+
+    let team_repo = TeamRepository::new(state.pool.clone());
+    let teams = match team_repo.list_all().await {
+        Ok(t) => t,
+        Err(e) => {
+            return scim_error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Database error: {}", e),
+            );
+        }
+    };
+
+    let mut resources: Vec<ScimGroup> = teams
+        .iter()
+        .map(|t| ScimGroup::from_team(t, None))
+        .collect();
+
+    if let Some(ref filter_str) = params.filter {
+        if let Some(rest) = filter_str.trim().strip_prefix("displayName eq ") {
+            let value = rest.trim().trim_matches('"').to_string();
+            resources.retain(|g| g.display_name.eq_ignore_ascii_case(&value));
+        } else if let Some(rest) = filter_str.trim().strip_prefix("displayName co ") {
+            let value = rest.trim().trim_matches('"').to_string();
+            resources.retain(|g| {
+                g.display_name
+                    .to_lowercase()
+                    .contains(&value.to_lowercase())
+            });
+        } else {
+            return scim_error_response(
+                StatusCode::BAD_REQUEST,
+                &format!("Unsupported SCIM filter: {}", filter_str),
+            );
+        }
+    }
+
+    let page_size = params.count.unwrap_or(100).min(100);
+    let start = params.start_index.unwrap_or(1).max(1);
+    let end = (start - 1 + page_size).min(resources.len());
+    let paged = if start <= resources.len() {
+        resources[start - 1..end].to_vec()
+    } else {
+        Vec::new()
+    };
+
+    let total = paged.len();
+    let list_response = ScimListResponse {
+        schemas: vec![SCIM_LIST_RESPONSE_SCHEMA.to_string()],
+        total_results: total,
+        start_index: params.start_index,
+        items_per_page: Some(total),
+        Resources: paged,
+    };
+
+    scim_json_response(StatusCode::OK, &list_response)
+}
+
+#[instrument(skip(state, headers))]
+pub async fn get_group(
+    State(state): State<ScimState>,
+    Path(id): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    if let Err(e) = verify_bearer_token(&headers, &state.bearer_token) {
+        return e;
+    }
+
+    let team_repo = TeamRepository::new(state.pool.clone());
+    match team_repo.get_by_id(&id).await {
+        Ok(team) => {
+            let members = team_repo.list_members(&id).await.unwrap_or_default();
+            let scim_group = ScimGroup::from_team_with_members(&team, &members, None);
+            scim_json_response(StatusCode::OK, &scim_group)
+        }
+        Err(_) => scim_error_response(StatusCode::NOT_FOUND, &format!("Group '{}' not found", id)),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ScimCreateGroup {
+    #[serde(rename = "schemas")]
+    pub schemas: Vec<String>,
+    #[serde(rename = "displayName")]
+    pub display_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub members: Option<Vec<ScimMember>>,
+}
+
+#[instrument(skip(state, headers))]
+pub async fn create_group(
+    State(state): State<ScimState>,
+    headers: HeaderMap,
+    Json(body): Json<ScimCreateGroup>,
+) -> Response {
+    if let Err(e) = verify_bearer_token(&headers, &state.bearer_token) {
+        return e;
+    }
+
+    if body.display_name.is_empty() {
+        return scim_error_response(StatusCode::BAD_REQUEST, "displayName is required");
+    }
+
+    let team_repo = TeamRepository::new(state.pool.clone());
+    let slug = body
+        .display_name
+        .to_lowercase()
+        .replace(' ', "-")
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-')
+        .collect::<String>();
+
+    let owner_id = "00000000-0000-0000-0000-000000000000".to_string();
+    let team = tachyon_database::Team::new(body.display_name.clone(), slug, owner_id);
+
+    match team_repo.create(&team).await {
+        Ok(created) => {
+            info!("SCIM group created: {}", created.name);
+            let scim_group = ScimGroup::from_team(&created, None);
+            scim_json_response(StatusCode::CREATED, &scim_group)
+        }
+        Err(e) => {
+            let err_msg = e.to_string();
+            if err_msg.contains("duplicate") || err_msg.contains("unique") {
+                scim_error_response(StatusCode::CONFLICT, &err_msg)
+            } else {
+                scim_error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("Create failed: {}", e),
+                )
+            }
+        }
+    }
+}
+
+#[instrument(skip(state, headers))]
+pub async fn delete_group(
+    State(state): State<ScimState>,
+    Path(id): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    if let Err(e) = verify_bearer_token(&headers, &state.bearer_token) {
+        return e;
+    }
+
+    let team_repo = TeamRepository::new(state.pool.clone());
+    match team_repo.delete(&id).await {
+        Ok(()) => {
+            info!("SCIM group deleted: {}", id);
+            StatusCode::NO_CONTENT.into_response()
+        }
+        Err(_) => scim_error_response(StatusCode::NOT_FOUND, &format!("Group '{}' not found", id)),
+    }
+}
+
+// ============================================================================
+// SCIM Service Provider Config
+// ============================================================================
+
+#[instrument(skip(headers))]
+pub async fn service_provider_config(headers: HeaderMap) -> Response {
+    let config = ScimServiceProviderConfig {
+        schemas: vec![SCIM_SERVICE_PROVIDER_CONFIG_SCHEMA.to_string()],
+        patch: ScimPatchSupport { supported: true },
+        bulk: ScimBulkSupport {
+            supported: false,
+            max_operations: None,
+            max_payload_size: None,
+        },
+        filter: ScimFilterSupport {
+            supported: true,
+            max_results: Some(100),
+        },
+        changePassword: ScimChangePasswordSupport { supported: false },
+        sort: ScimSortSupport { supported: false },
+        etag: ScimEtagSupport { supported: false },
+        authentication_schemes: vec![ScimAuthScheme {
+            scheme_type: "oauthbearertoken".to_string(),
+            name: "OAuth Bearer Token".to_string(),
+            description: Some("Authentication scheme using Bearer tokens".to_string()),
+            spec_uri: Some("https://tools.ietf.org/html/rfc6750".to_string()),
+            documentation_uri: None,
+            primary: true,
+        }],
+    };
+
+    scim_json_response(StatusCode::OK, &config)
+}
+
+// ============================================================================
+// SCIM Schemas
+// ============================================================================
+
+#[instrument(skip(headers))]
+pub async fn schemas_endpoint(headers: HeaderMap) -> Response {
+    let user_schema = ScimSchema {
+        schemas: vec![SCIM_SCHEMA_SCHEMA.to_string()],
+        id: SCIM_USER_SCHEMA.to_string(),
+        name: "User".to_string(),
+        description: "Tachyon User".to_string(),
+        attributes: vec![
+            ScimSchemaAttribute {
+                name: "userName".to_string(),
+                attr_type: "string".to_string(),
+                multi_valued: false,
+                description: Some("Unique identifier for the user".to_string()),
+                required: Some(true),
+                case_exact: Some(true),
+                mutability: Some("readWrite".to_string()),
+                returned: Some("always".to_string()),
+                uniqueness: Some("server".to_string()),
+            },
+            ScimSchemaAttribute {
+                name: "displayName".to_string(),
+                attr_type: "string".to_string(),
+                multi_valued: false,
+                description: Some("The name of the user".to_string()),
+                required: Some(false),
+                case_exact: Some(false),
+                mutability: Some("readWrite".to_string()),
+                returned: Some("always".to_string()),
+                uniqueness: Some("none".to_string()),
+            },
+            ScimSchemaAttribute {
+                name: "emails".to_string(),
+                attr_type: "complex".to_string(),
+                multi_valued: true,
+                description: Some("Email addresses for the user".to_string()),
+                required: Some(false),
+                case_exact: Some(false),
+                mutability: Some("readWrite".to_string()),
+                returned: Some("always".to_string()),
+                uniqueness: Some("none".to_string()),
+            },
+            ScimSchemaAttribute {
+                name: "active".to_string(),
+                attr_type: "boolean".to_string(),
+                multi_valued: false,
+                description: Some("Whether the user is active".to_string()),
+                required: Some(false),
+                case_exact: None,
+                mutability: Some("readWrite".to_string()),
+                returned: Some("always".to_string()),
+                uniqueness: Some("none".to_string()),
+            },
+            ScimSchemaAttribute {
+                name: "roles".to_string(),
+                attr_type: "complex".to_string(),
+                multi_valued: true,
+                description: Some("User roles".to_string()),
+                required: Some(false),
+                case_exact: Some(false),
+                mutability: Some("readWrite".to_string()),
+                returned: Some("always".to_string()),
+                uniqueness: Some("none".to_string()),
+            },
+        ],
+    };
+
+    let group_schema = ScimSchema {
+        schemas: vec![SCIM_SCHEMA_SCHEMA.to_string()],
+        id: SCIM_GROUP_SCHEMA.to_string(),
+        name: "Group".to_string(),
+        description: "Tachyon Group (Team)".to_string(),
+        attributes: vec![
+            ScimSchemaAttribute {
+                name: "displayName".to_string(),
+                attr_type: "string".to_string(),
+                multi_valued: false,
+                description: Some("A human-readable name for the group".to_string()),
+                required: Some(true),
+                case_exact: Some(false),
+                mutability: Some("readWrite".to_string()),
+                returned: Some("always".to_string()),
+                uniqueness: Some("none".to_string()),
+            },
+            ScimSchemaAttribute {
+                name: "members".to_string(),
+                attr_type: "complex".to_string(),
+                multi_valued: true,
+                description: Some("Members of the group".to_string()),
+                required: Some(false),
+                case_exact: Some(false),
+                mutability: Some("readWrite".to_string()),
+                returned: Some("default".to_string()),
+                uniqueness: Some("none".to_string()),
+            },
+        ],
+    };
+
+    let list_response = ScimListResponse {
+        schemas: vec![SCIM_LIST_RESPONSE_SCHEMA.to_string()],
+        total_results: 2,
+        start_index: Some(1),
+        items_per_page: Some(2),
+        Resources: vec![user_schema, group_schema],
+    };
+
+    scim_json_response(StatusCode::OK, &list_response)
 }
 
 // ============================================================================
@@ -770,7 +1262,12 @@ fn apply_patch_op(user: &mut User, path: &str, value: &Option<Value>) {
         }
         "name.familyName" | "name.family" => {
             if let Some(s) = value.as_str() {
-                let given = user.display_name.splitn(2, ' ').next().unwrap_or("").to_string();
+                let given = user
+                    .display_name
+                    .splitn(2, ' ')
+                    .next()
+                    .unwrap_or("")
+                    .to_string();
                 user.display_name = if given.is_empty() {
                     s.to_string()
                 } else {
@@ -847,6 +1344,15 @@ pub fn create_scim_router() -> axum::Router<ScimState> {
         .route("/Users/{id}", axum::routing::put(update_user))
         .route("/Users/{id}", axum::routing::patch(patch_user))
         .route("/Users/{id}", axum::routing::delete(delete_user))
+        .route("/Groups", axum::routing::get(list_groups))
+        .route("/Groups", axum::routing::post(create_group))
+        .route("/Groups/{id}", axum::routing::get(get_group))
+        .route("/Groups/{id}", axum::routing::delete(delete_group))
+        .route(
+            "/ServiceProviderConfig",
+            axum::routing::get(service_provider_config),
+        )
+        .route("/Schemas", axum::routing::get(schemas_endpoint))
 }
 
 // ============================================================================
@@ -861,7 +1367,12 @@ mod tests {
 
     fn make_test_user() -> User {
         let id = UserId::new();
-        let mut user = User::new(id, "john.doe".to_string(), "John Doe".to_string(), UserRole::Editor);
+        let mut user = User::new(
+            id,
+            "john.doe".to_string(),
+            "John Doe".to_string(),
+            UserRole::Editor,
+        );
         user.email = Some("john@example.com".to_string());
         user.is_active = Some(true);
         user.user_type = UserType::Regular;
@@ -876,13 +1387,13 @@ mod tests {
         let scim = ScimUser::from_user(&user, Some("https://tachyon.example.com"));
 
         let json = serde_json::to_string(&scim).unwrap();
-        assert!(json.contains("\"schemas\":[\"urn:ietf:params:scim:schemas:core:2.0:User\"]"));
-        assert!(json.contains("\"userName\":\"john.doe\""));
-        assert!(json.contains("\"displayName\":\"John Doe\""));
-        assert!(json.contains("\"emails\""));
-        assert!(json.contains("\"john@example.com\""));
-        assert!(json.contains("\"active\":true"));
-        assert!(json.contains("\"urn:ietf:params:scim:api:messages:2.0:ListResponse\""));
+        assert!(json.contains("urn:ietf:params:scim:schemas:core:2.0:User"));
+        assert!(json.contains("\"userName\""));
+        assert!(json.contains("john.doe"));
+        assert!(json.contains("John Doe"));
+        assert!(json.contains("emails"));
+        assert!(json.contains("john@example.com"));
+        assert!(json.contains("true"));
     }
 
     #[test]
@@ -896,6 +1407,7 @@ mod tests {
     fn test_scim_user_deserialization() {
         let json = r#"{
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": "test-user-id",
             "userName": "jane.smith",
             "displayName": "Jane Smith",
             "name": {
@@ -904,7 +1416,8 @@ mod tests {
             },
             "emails": [{"value": "jane@example.com", "primary": true}],
             "active": true,
-            "roles": [{"value": "admin"}]
+            "roles": [{"value": "admin"}],
+            "groups": []
         }"#;
 
         let scim: ScimUser = serde_json::from_str(json).unwrap();
@@ -929,7 +1442,9 @@ mod tests {
         };
 
         let json = serde_json::to_string(&list).unwrap();
-        assert!(json.contains("\"schemas\":[\"urn:ietf:params:scim:api:messages:2.0:ListResponse\"]"));
+        assert!(
+            json.contains("\"schemas\":[\"urn:ietf:params:scim:api:messages:2.0:ListResponse\"]")
+        );
         assert!(json.contains("\"totalResults\":1"));
         assert!(json.contains("\"startIndex\":1"));
         assert!(json.contains("\"itemsPerPage\":100"));
@@ -1189,5 +1704,124 @@ mod tests {
         let pw = generate_random_password();
         assert_eq!(pw.len(), 32);
         assert!(pw.chars().all(|c| c.is_ascii_alphanumeric()));
+    }
+
+    #[test]
+    fn test_filter_parse_display_name_co() {
+        let filter = parse_filter(r#"displayName co "ohn""#).unwrap();
+        let user = make_test_user();
+        assert!(filter.matches(&user));
+
+        let filter = parse_filter(r#"displayName co "xyz""#).unwrap();
+        assert!(!filter.matches(&user));
+    }
+
+    #[test]
+    fn test_filter_parse_display_name_co_case_insensitive() {
+        let filter = parse_filter(r#"displayName co "JOHN""#).unwrap();
+        let user = make_test_user();
+        assert!(filter.matches(&user));
+    }
+
+    #[test]
+    fn test_scim_group_serialization() {
+        let team = tachyon_database::Team {
+            id: "test-team-id".to_string(),
+            name: "Engineering".to_string(),
+            slug: "engineering".to_string(),
+            description: Some("Engineering team".to_string()),
+            owner_id: "owner-id".to_string(),
+            avatar_url: None,
+            settings: serde_json::json!({}),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let scim_group = ScimGroup::from_team(&team, Some("https://tachyon.example.com"));
+        let json = serde_json::to_string(&scim_group).unwrap();
+        assert!(json.contains("urn:ietf:params:scim:schemas:core:2.0:Group"));
+        assert!(json.contains("Engineering"));
+        assert!(json.contains("test-team-id"));
+    }
+
+    #[test]
+    fn test_scim_group_with_members() {
+        let team = tachyon_database::Team {
+            id: "team-1".to_string(),
+            name: "Dev".to_string(),
+            slug: "dev".to_string(),
+            description: None,
+            owner_id: "owner".to_string(),
+            avatar_url: None,
+            settings: serde_json::json!({}),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let members = vec![
+            tachyon_database::TeamMember {
+                id: 1,
+                team_id: "team-1".to_string(),
+                user_id: "user-1".to_string(),
+                role_id: 1,
+                role_name: "member".to_string(),
+                joined_at: Utc::now(),
+                invited_by: None,
+            },
+            tachyon_database::TeamMember {
+                id: 2,
+                team_id: "team-1".to_string(),
+                user_id: "user-2".to_string(),
+                role_id: 1,
+                role_name: "member".to_string(),
+                joined_at: Utc::now(),
+                invited_by: None,
+            },
+        ];
+
+        let scim_group = ScimGroup::from_team_with_members(&team, &members, None);
+        let json = serde_json::to_string(&scim_group).unwrap();
+        assert!(json.contains("\"members\""));
+        assert!(json.contains("\"user-1\""));
+        assert!(json.contains("\"user-2\""));
+    }
+
+    #[test]
+    fn test_scim_group_from_team_without_base_url() {
+        let team = tachyon_database::Team {
+            id: "team-2".to_string(),
+            name: "Product".to_string(),
+            slug: "product".to_string(),
+            description: None,
+            owner_id: "owner".to_string(),
+            avatar_url: None,
+            settings: serde_json::json!({}),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let scim_group = ScimGroup::from_team(&team, None);
+        assert!(scim_group.meta.as_ref().unwrap().location.is_none());
+    }
+
+    #[test]
+    fn test_scim_group_from_team_with_base_url() {
+        let team = tachyon_database::Team {
+            id: "team-3".to_string(),
+            name: "Sales".to_string(),
+            slug: "sales".to_string(),
+            description: None,
+            owner_id: "owner".to_string(),
+            avatar_url: None,
+            settings: serde_json::json!({}),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let scim_group = ScimGroup::from_team(&team, Some("https://tachyon.example.com"));
+        assert_eq!(
+            scim_group.meta.as_ref().unwrap().location,
+            Some("https://tachyon.example.com/api/v1/scim/v2/Groups/team-3".to_string())
+        );
     }
 }

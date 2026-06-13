@@ -18,6 +18,7 @@ pub mod editor_settings;
 pub mod editor_split;
 pub mod editor_toolbar;
 pub mod empty_state;
+pub mod encryption_indicator;
 pub mod error_boundary;
 pub mod image_preview;
 pub mod keyboard;
@@ -43,6 +44,7 @@ pub mod theme_toggle;
 pub mod update_banner;
 pub mod upload_progress;
 pub mod user_avatar;
+pub mod version_diff;
 pub mod version_history;
 pub mod wikilink_autocomplete;
 
@@ -59,6 +61,7 @@ pub use editor_preview::EditorPreview;
 pub use editor_search::EditorSearch;
 pub use editor_toolbar::EditorToolbar;
 pub use empty_state::{EmptyDocuments, EmptySearch};
+pub use encryption_indicator::{EncryptionIndicator, EncryptionStatusBadge};
 pub use error_boundary::AppErrorBoundary;
 pub use keyboard::FocusTrap;
 #[allow(unused_imports)]

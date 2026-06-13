@@ -268,25 +268,22 @@ pub fn OutlinerView(initial_state: OutlinerState) -> impl IntoView {
                         }.into_any();
                     }
                     let current_state = state.get();
+                    let node_views: Vec<_> = nodes.iter().map(|n| {
+                        let node = current_state.node_by_id(n.id).cloned().unwrap();
+                        let has_children = current_state.has_children(n.id);
+                        view! {
+                            <OutlinerNodeRow
+                                node=node
+                                depth=node.depth
+                                has_children=has_children
+                                set_event=set_event
+                                editing_id=editing_id
+                                set_editing_id=set_editing_id
+                            />
+                        }
+                    }).collect();
                     view! {
-                        <For
-                            each=move || nodes.iter().map(|n| n.id).collect::<Vec<_>>()
-                            key=|id| *id
-                            children=move |id: u64| {
-                                let node = current_state.node_by_id(id).cloned().unwrap();
-                                let has_children = current_state.has_children(id);
-                                view! {
-                                    <OutlinerNodeRow
-                                        node=node
-                                        depth=node.depth
-                                        has_children=has_children
-                                        set_event=set_event
-                                        editing_id=editing_id
-                                        set_editing_id=set_editing_id
-                                    />
-                                }
-                            }
-                        />
+                        {node_views}
                     }.into_any()
                 }}
             </div>

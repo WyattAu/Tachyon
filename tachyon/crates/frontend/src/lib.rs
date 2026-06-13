@@ -7,6 +7,7 @@
 mod api;
 pub mod canvas;
 mod components;
+pub mod crypto;
 mod i18n;
 mod markdown;
 mod offline;
@@ -339,6 +340,15 @@ pub fn App() -> impl IntoView {
                             </AuthGuard>
                         }
                     } />
+                    <Route path=path!("/versions") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::VersionsPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
                     <Route path=path!("/billing") view=move || {
                         view! {
                             <AuthGuard>
@@ -389,6 +399,17 @@ pub fn App() -> impl IntoView {
                             <AuthGuard>
                                 <AppErrorBoundary>
                                     <pages::OnboardingPage />
+                                </AppErrorBoundary>
+                            </AuthGuard>
+                        }
+                    } />
+                    <Route path=path!("/blog") view=pages::BlogPage />
+                    <Route path=path!("/blog/:slug") view=pages::BlogPostPage />
+                    <Route path=path!("/blog/admin/new") view=move || {
+                        view! {
+                            <AuthGuard>
+                                <AppErrorBoundary>
+                                    <pages::BlogAdminPage />
                                 </AppErrorBoundary>
                             </AuthGuard>
                         }

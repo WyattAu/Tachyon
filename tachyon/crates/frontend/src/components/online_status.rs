@@ -74,27 +74,23 @@ pub fn OnlineStatusIndicator() -> impl IntoView {
                     }
                 },
             );
-            if let Some(worker_container) = window.navigator().service_worker() {
-                let _ = worker_container.add_event_listener_with_callback(
-                    "message",
-                    msg_closure.as_ref().unchecked_ref(),
-                );
-            }
+            let worker_container = window.navigator().service_worker();
+            let _ = worker_container
+                .add_event_listener_with_callback("message", msg_closure.as_ref().unchecked_ref());
             msg_closure.forget();
         }
     });
 
     let trigger_sync = move |_| {
         if let Some(window) = web_sys::window() {
-            if let Some(worker_container) = window.navigator().service_worker() {
-                if let Ok(Some(worker)) = worker_container.active() {
-                    let _ = worker.post_message(
-                        &serde_wasm_bindgen::to_value(&serde_json::json!({
-                            "type": "TRIGGER_SYNC"
-                        }))
-                        .unwrap_or_default(),
-                    );
-                }
+            let worker_container = window.navigator().service_worker();
+            if let Ok(Some(worker)) = worker_container.active() {
+                let _ = worker.post_message(
+                    &serde_wasm_bindgen::to_value(&serde_json::json!({
+                        "type": "TRIGGER_SYNC"
+                    }))
+                    .unwrap_or_default(),
+                );
             }
         }
         set_status.set(ConnectionStatus::Syncing);

@@ -6,8 +6,10 @@ use std::sync::{Arc, Mutex};
 pub mod activity;
 pub mod auth;
 pub mod billing;
+pub mod blog;
 pub mod canvas;
 pub mod documents;
+pub mod e2e;
 pub mod files;
 pub mod graph;
 pub mod plugins;
@@ -19,6 +21,7 @@ pub mod spaces;
 pub mod ssg;
 pub mod teams;
 pub mod templates;
+pub mod versions;
 
 // ---------------------------------------------------------------------------
 // Tauri IPC bridge — calls `window.__TAURI__.core.invoke("api_proxy", ...)`

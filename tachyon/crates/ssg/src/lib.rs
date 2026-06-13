@@ -7,6 +7,7 @@
 //! Designed to compete with Docusaurus as the best SSG for markdown content.
 
 pub mod assets;
+pub mod blog;
 mod build;
 mod build_cache;
 mod error;
@@ -18,6 +19,7 @@ pub mod single_page_export;
 mod sitemap;
 pub mod ssr;
 mod templates;
+pub mod versioning;
 
 pub use build::SiteGenerator;
 pub use error::{SsgError, SsgResult};
