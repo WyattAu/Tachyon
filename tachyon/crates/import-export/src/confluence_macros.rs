@@ -31,7 +31,7 @@ pub struct ParsedMacro {
 ///
 /// This extends the basic conversion in `confluence_storage_to_markdown`
 /// by properly rendering macro bodies into their markdown equivalents.
-#[allow(clippy::collapsible_match)]
+#[allow(clippy::collapsible_match, clippy::collapsible_if)]
 pub fn convert_xhtml_to_markdown(html: &str) -> String {
     let mut md = String::with_capacity(html.len());
     let mut reader = Reader::from_str(html);
