@@ -173,7 +173,7 @@ fn BlogPostCard(post: BlogPost) -> impl IntoView {
 #[component]
 pub fn BlogPostPage() -> impl IntoView {
     let params = leptos_router::hooks::use_params_map();
-    let slug = move || params.get().get("slug").cloned().unwrap_or_default();
+    let slug = move || params.get().get("slug").map(|s| s.to_string()).unwrap_or_default();
 
     let (post, set_post) = signal(Option::<BlogPost>::None);
     let (loading, set_loading) = signal(true);

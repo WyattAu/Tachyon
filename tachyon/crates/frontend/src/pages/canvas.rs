@@ -16,7 +16,7 @@ pub fn CanvasPage() -> impl IntoView {
     let (loading, set_loading) = signal(false);
     let (error, set_error) = signal(None::<String>);
 
-    let canvas_ref = NodeRef::<web_sys::HtmlCanvasElement>::new();
+    let canvas_ref = NodeRef::new();
 
     // Initialize canvas renderer on mount
     let _ = watch(

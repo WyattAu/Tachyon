@@ -29,7 +29,7 @@ pub enum OutlinerEvent {
 pub struct OutlinerProps {
     pub state: OutlinerState,
     pub on_event: Signal<Option<OutlinerEvent>>,
-    pub set_event: Callback<Option<OutlinerEvent>>,
+    pub set_event: WriteSignal<Option<OutlinerEvent>>,
 }
 
 impl Clone for OutlinerProps {
@@ -48,7 +48,7 @@ fn OutlinerNodeRow(
     node: tachyon_editor::outliner::OutlinerNode,
     depth: usize,
     has_children: bool,
-    set_event: Callback<Option<OutlinerEvent>>,
+    set_event: WriteSignal<Option<OutlinerEvent>>,
     editing_id: ReadSignal<Option<NodeId>>,
     set_editing_id: WriteSignal<Option<NodeId>>,
 ) -> impl IntoView {

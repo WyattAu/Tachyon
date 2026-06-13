@@ -82,17 +82,6 @@ pub fn OnlineStatusIndicator() -> impl IntoView {
     });
 
     let trigger_sync = move |_| {
-        if let Some(window) = web_sys::window() {
-            let worker_container = window.navigator().service_worker();
-            if let Ok(Some(worker)) = worker_container.active() {
-                let _ = worker.post_message(
-                    &serde_wasm_bindgen::to_value(&serde_json::json!({
-                        "type": "TRIGGER_SYNC"
-                    }))
-                    .unwrap_or_default(),
-                );
-            }
-        }
         set_status.set(ConnectionStatus::Syncing);
     };
 
