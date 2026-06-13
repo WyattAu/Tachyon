@@ -19,6 +19,7 @@ const SCIM_USER_SCHEMA: &str = "urn:ietf:params:scim:schemas:core:2.0:User";
 const SCIM_GROUP_SCHEMA: &str = "urn:ietf:params:scim:schemas:core:2.0:Group";
 const SCIM_LIST_RESPONSE_SCHEMA: &str = "urn:ietf:params:scim:api:messages:2.0:ListResponse";
 const SCIM_ERROR_SCHEMA: &str = "urn:ietf:params:scim:api:messages:2.0:Error";
+#[allow(dead_code)]
 const SCIM_PATCH_OP_SCHEMA: &str = "urn:ietf:params:scim:api:messages:2.0:PatchOp";
 const SCIM_SERVICE_PROVIDER_CONFIG_SCHEMA: &str =
     "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig";
@@ -110,7 +111,8 @@ pub struct ScimListResponse<T: Serialize> {
     pub start_index: Option<usize>,
     #[serde(rename = "itemsPerPage", skip_serializing_if = "Option::is_none")]
     pub items_per_page: Option<usize>,
-    pub Resources: Vec<T>,
+    #[serde(rename = "Resources")]
+    pub resources: Vec<T>,
 }
 
 #[derive(Debug, Serialize)]
@@ -189,7 +191,8 @@ pub struct ScimServiceProviderConfig {
     pub patch: ScimPatchSupport,
     pub bulk: ScimBulkSupport,
     pub filter: ScimFilterSupport,
-    pub changePassword: ScimChangePasswordSupport,
+    #[serde(rename = "changePassword")]
+    pub change_password: ScimChangePasswordSupport,
     pub sort: ScimSortSupport,
     pub etag: ScimEtagSupport,
     pub authentication_schemes: Vec<ScimAuthScheme>,
@@ -279,7 +282,8 @@ pub struct ScimPatchOp {
 pub struct ScimPatchRequest {
     #[serde(rename = "schemas")]
     pub schemas: Vec<String>,
-    pub Operations: Vec<ScimPatchOp>,
+    #[serde(rename = "Operations")]
+    pub operations: Vec<ScimPatchOp>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -577,6 +581,7 @@ fn scim_json_response<T: Serialize>(status: StatusCode, body: &T) -> Response {
 // Bearer Token Auth Middleware (inline)
 // ============================================================================
 
+#[allow(clippy::result_large_err)]
 fn verify_bearer_token(headers: &HeaderMap, expected_token: &str) -> Result<(), Response> {
     let auth_header = headers
         .get(axum::http::header::AUTHORIZATION)
@@ -659,7 +664,7 @@ pub async fn list_users(
         },
         start_index: params.start_index,
         items_per_page: Some(resources.len()),
-        Resources: resources,
+        resources,
     };
 
     scim_json_response(StatusCode::OK, &list_response)
@@ -838,7 +843,7 @@ pub async fn patch_user(
     };
 
     let mut user = existing.clone();
-    for operation in &patch_req.Operations {
+    for operation in &patch_req.operations {
         match operation.op.as_str() {
             "replace" => {
                 apply_patch_op(&mut user, &operation.path, &operation.value);
@@ -980,7 +985,7 @@ pub async fn list_groups(
         total_results: total,
         start_index: params.start_index,
         items_per_page: Some(total),
-        Resources: paged,
+        resources: paged,
     };
 
     scim_json_response(StatusCode::OK, &list_response)
@@ -1087,8 +1092,8 @@ pub async fn delete_group(
 // SCIM Service Provider Config
 // ============================================================================
 
-#[instrument(skip(headers))]
-pub async fn service_provider_config(headers: HeaderMap) -> Response {
+#[instrument(skip(_headers))]
+pub async fn service_provider_config(_headers: HeaderMap) -> Response {
     let config = ScimServiceProviderConfig {
         schemas: vec![SCIM_SERVICE_PROVIDER_CONFIG_SCHEMA.to_string()],
         patch: ScimPatchSupport { supported: true },
@@ -1101,7 +1106,7 @@ pub async fn service_provider_config(headers: HeaderMap) -> Response {
             supported: true,
             max_results: Some(100),
         },
-        changePassword: ScimChangePasswordSupport { supported: false },
+        change_password: ScimChangePasswordSupport { supported: false },
         sort: ScimSortSupport { supported: false },
         etag: ScimEtagSupport { supported: false },
         authentication_schemes: vec![ScimAuthScheme {
@@ -1121,8 +1126,8 @@ pub async fn service_provider_config(headers: HeaderMap) -> Response {
 // SCIM Schemas
 // ============================================================================
 
-#[instrument(skip(headers))]
-pub async fn schemas_endpoint(headers: HeaderMap) -> Response {
+#[instrument(skip(_headers))]
+pub async fn schemas_endpoint(_headers: HeaderMap) -> Response {
     let user_schema = ScimSchema {
         schemas: vec![SCIM_SCHEMA_SCHEMA.to_string()],
         id: SCIM_USER_SCHEMA.to_string(),
@@ -1223,7 +1228,7 @@ pub async fn schemas_endpoint(headers: HeaderMap) -> Response {
         total_results: 2,
         start_index: Some(1),
         items_per_page: Some(2),
-        Resources: vec![user_schema, group_schema],
+        resources: vec![user_schema, group_schema],
     };
 
     scim_json_response(StatusCode::OK, &list_response)
@@ -1249,10 +1254,9 @@ fn apply_patch_op(user: &mut User, path: &str, value: &Option<Value>) {
             if let Some(s) = value.as_str() {
                 let family = user
                     .display_name
-                    .splitn(2, ' ')
-                    .nth(1)
-                    .unwrap_or("")
-                    .to_string();
+                    .split_once(' ')
+                    .map(|(_, f)| f.to_string())
+                    .unwrap_or_default();
                 user.display_name = if family.is_empty() {
                     s.to_string()
                 } else {
@@ -1264,10 +1268,9 @@ fn apply_patch_op(user: &mut User, path: &str, value: &Option<Value>) {
             if let Some(s) = value.as_str() {
                 let given = user
                     .display_name
-                    .splitn(2, ' ')
-                    .next()
-                    .unwrap_or("")
-                    .to_string();
+                    .split_once(' ')
+                    .map(|(g, _)| g.to_string())
+                    .unwrap_or_default();
                 user.display_name = if given.is_empty() {
                     s.to_string()
                 } else {
@@ -1438,7 +1441,7 @@ mod tests {
             total_results: 1,
             start_index: Some(1),
             items_per_page: Some(100),
-            Resources: vec![scim],
+            resources: vec![scim],
         };
 
         let json = serde_json::to_string(&list).unwrap();
@@ -1582,9 +1585,9 @@ mod tests {
         }"#;
 
         let patch: ScimPatchRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(patch.Operations.len(), 2);
-        assert_eq!(patch.Operations[0].op, "replace");
-        assert_eq!(patch.Operations[0].path, "active");
+        assert_eq!(patch.operations.len(), 2);
+        assert_eq!(patch.operations[0].op, "replace");
+        assert_eq!(patch.operations[0].path, "active");
     }
 
     #[test]

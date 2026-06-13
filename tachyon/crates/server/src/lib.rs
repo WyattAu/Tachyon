@@ -1,6 +1,7 @@
 //! Tachyon Server Library
 //!
 //! A high-performance HTTP/2 server for knowledge management built with Axum.
+#![allow(clippy::collapsible_if)]
 //!
 //! # Features
 //!
