@@ -7,16 +7,12 @@ use crate::manifest::SsgDocument;
 
 /// Status of a documentation version.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default)]
 pub enum VersionStatus {
+    #[default]
     Draft,
     Published,
     Archived,
-}
-
-impl Default for VersionStatus {
-    fn default() -> Self {
-        Self::Draft
-    }
 }
 
 impl std::fmt::Display for VersionStatus {
@@ -140,7 +136,7 @@ impl VersionStore {
     /// List all versions.
     pub fn list_versions(&self) -> Vec<DocVersion> {
         let mut versions: Vec<DocVersion> = self.versions.values().cloned().collect();
-        versions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        versions.sort_by_key(|b| std::cmp::Reverse(b.created_at));
         versions
     }
 
