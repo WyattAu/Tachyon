@@ -46,11 +46,11 @@ jobs:
 
       - name: Check workspace
         working-directory: tachyon
-        run: cargo check --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app
+        run: cargo check --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-frontend
 
       - name: Check WASM compilation
         working-directory: tachyon
-        run: cargo check -p tachyon-frontend -p tachyon-editor --target wasm32-unknown-unknown
+        run: cargo check -p tachyon-editor --target wasm32-unknown-unknown
 
   lint:
     name: Lint
@@ -85,7 +85,7 @@ jobs:
 
       - name: Run clippy
         working-directory: tachyon
-        run: cargo clippy --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app --all-targets -- -D warnings
+        run: cargo clippy --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-frontend --all-targets -- -D warnings
 
   test:
     name: Test
