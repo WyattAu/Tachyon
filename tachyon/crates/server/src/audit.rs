@@ -1043,7 +1043,10 @@ async fn persist_audit_event(pool: &PgPool, event: &AuditEvent) -> Result<(), sq
         )
         "#,
     )
-    .bind(&event.id)
+    .bind(
+        uuid::Uuid::parse_str(&event.id)
+            .unwrap_or_else(|_| uuid::Uuid::new_v4())
+    )
     .bind(enum_to_string(&event.event_type))
     .bind(enum_to_string(&event.severity))
     .bind(event.timestamp)
