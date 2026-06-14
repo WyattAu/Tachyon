@@ -189,6 +189,25 @@ pub async fn create_document(
         }
     }
 
+    // Populate graph nodes and edges for the new document
+    {
+        let graph_extractor = crate::graph_extractor::GraphExtractor::new(
+            state.pool.clone(),
+            crate::graph_extractor::ExtractionConfig::default(),
+        );
+        match graph_extractor.extract_document(&doc.id.to_string()).await {
+            Ok(result) => {
+                debug!(
+                    "Graph extraction for {}: {} nodes, {} edges created",
+                    doc.id, result.nodes_created, result.edges_created
+                );
+            }
+            Err(e) => {
+                warn!("Failed to extract graph for document {}: {}", doc.id, e);
+            }
+        }
+    }
+
     if let Err(e) = state
         .repository
         .update_search_index(

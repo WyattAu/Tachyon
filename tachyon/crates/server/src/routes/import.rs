@@ -120,10 +120,39 @@ async fn persist_documents(
         let word_count = content.split_whitespace().count() as i32;
         let character_count = content.len() as i32;
 
+        // Generate slug from title if not provided
+        let slug = doc.slug.clone().unwrap_or_else(|| {
+            let base: String = doc
+                .title
+                .to_lowercase()
+                .chars()
+                .filter_map(|c| {
+                    if c.is_alphanumeric() || c == '-' || c == '_' {
+                        Some(c)
+                    } else if c.is_whitespace() {
+                        Some('-')
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            // Collapse multiple hyphens and trim
+            let base = base
+                .split('-')
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+                .join("-");
+            if base.is_empty() {
+                format!("doc-{}", &id_str[..8])
+            } else {
+                base
+            }
+        });
+
         let metadata = tachyon_database::DocumentMetadata {
             id: id_str.clone(),
             title: doc.title.clone(),
-            slug: doc.slug.clone(),
+            slug: Some(slug),
             author_id: auth.user_id.clone(),
             description: doc.frontmatter.description.clone(),
             tags: tags_json,
