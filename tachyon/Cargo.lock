@@ -10166,10 +10166,13 @@ dependencies = [
 name = "tachyon-frontend"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "console_error_panic_hook",
  "console_log",
  "gloo-net",
+ "gloo-timers",
+ "hex",
  "js-sys",
  "lepticons",
  "leptos",
@@ -10195,11 +10198,13 @@ name = "tachyon-import-export"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "chrono",
  "genpdf",
  "printpdf",
  "quick-xml 0.37.5",
  "regex",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -10207,7 +10212,9 @@ dependencies = [
  "tachyon-renderer",
  "tempfile",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
+ "urlencoding",
  "uuid",
  "walkdir",
  "zip 2.4.2",

@@ -100,7 +100,7 @@ pub fn LoginPage() -> impl IntoView {
     let remember_me = RwSignal::new(false);
     let guest_login_enabled = true;
     let public_notes_enabled = true;
-    let nav = StoredValue::new(use_navigate());
+    let _nav = StoredValue::new(use_navigate());
 
     // On mount: check for CLI credentials and auto-login
     let (cli_user, cli_pass, cli_server) = read_cli_credentials();
