@@ -165,8 +165,9 @@ impl GraphExtractor {
         let doc_slug = format!("doc:{}", document_id);
         match graph_repo.get_node_by_slug(&doc_slug).await {
             Ok(node) => {
-                let _ = graph_repo.deactivate_edges_for_node(&node.id).await;
-                graph_repo.deactivate_node(&node.id).await?;
+                let node_id_str = node.id.to_string();
+                let _ = graph_repo.deactivate_edges_for_node(&node_id_str).await;
+                graph_repo.deactivate_node(&node_id_str).await?;
                 info!("Removed graph entities for document {}", document_id);
             }
             Err(DatabaseError::NotFound { .. }) => {

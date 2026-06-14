@@ -836,28 +836,49 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .fallback(tower_http::services::ServeFile::new(&index_html_path));
 
     // PWA files: serve explicitly so they aren't caught by the SPA fallback
-    // (index.html catch-all) in ServeDir. Reads from TACHYON_PUBLIC_DIR or
-    // the default crates/frontend/public path.
-    async fn serve_pwa_file(
-        axum::extract::Path(filename): axum::extract::Path<String>,
-    ) -> axum::response::Response {
-        let public_dir = std::env::var("TACHYON_PUBLIC_DIR")
-            .unwrap_or_else(|_| "tachyon/crates/frontend/public".to_string());
-        let path = std::path::Path::new(&public_dir).join(&filename);
+    async fn serve_manifest() -> axum::response::Response {
+        let public_dir = std::env::var("TACHYON_STATIC_DIR")
+            .unwrap_or_else(|_| "dist".to_string());
+        let path = std::path::Path::new(&public_dir).join("manifest.json");
         match tokio::fs::read(&path).await {
-            Ok(bytes) => {
-                let mime = match filename.as_str() {
-                    "manifest.json" => "application/manifest+json",
-                    "sw.js" => "application/javascript",
-                    "offline.html" => "text/html",
-                    _ => "application/octet-stream",
-                };
-                axum::http::Response::builder()
-                    .header(axum::http::header::CONTENT_TYPE, mime)
-                    .header(axum::http::header::CACHE_CONTROL, "public, max-age=3600")
-                    .body(axum::body::Body::from(bytes))
-                    .unwrap()
-            }
+            Ok(bytes) => axum::http::Response::builder()
+                .header(axum::http::header::CONTENT_TYPE, "application/manifest+json")
+                .header(axum::http::header::CACHE_CONTROL, "public, max-age=3600")
+                .body(axum::body::Body::from(bytes))
+                .unwrap(),
+            Err(_) => axum::http::Response::builder()
+                .status(404)
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        }
+    }
+
+    async fn serve_sw() -> axum::response::Response {
+        let public_dir = std::env::var("TACHYON_STATIC_DIR")
+            .unwrap_or_else(|_| "dist".to_string());
+        let path = std::path::Path::new(&public_dir).join("sw.js");
+        match tokio::fs::read(&path).await {
+            Ok(bytes) => axum::http::Response::builder()
+                .header(axum::http::header::CONTENT_TYPE, "application/javascript")
+                .header(axum::http::header::CACHE_CONTROL, "public, max-age=3600")
+                .body(axum::body::Body::from(bytes))
+                .unwrap(),
+            Err(_) => axum::http::Response::builder()
+                .status(404)
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        }
+    }
+
+    async fn serve_offline() -> axum::response::Response {
+        let public_dir = std::env::var("TACHYON_STATIC_DIR")
+            .unwrap_or_else(|_| "dist".to_string());
+        let path = std::path::Path::new(&public_dir).join("offline.html");
+        match tokio::fs::read(&path).await {
+            Ok(bytes) => axum::http::Response::builder()
+                .header(axum::http::header::CONTENT_TYPE, "text/html")
+                .body(axum::body::Body::from(bytes))
+                .unwrap(),
             Err(_) => axum::http::Response::builder()
                 .status(404)
                 .body(axum::body::Body::empty())
@@ -871,9 +892,9 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(metrics_router)
         .merge(seo_router)
         .merge(crdt_ws_router)
-        .route("/manifest.json", get(serve_pwa_file))
-        .route("/sw.js", get(serve_pwa_file))
-        .route("/offline.html", get(serve_pwa_file))
+        .route("/manifest.json", get(serve_manifest))
+        .route("/sw.js", get(serve_sw))
+        .route("/offline.html", get(serve_offline))
         .nest("/api/v1", api_v1)
         .nest("/api/v2", api_v2)
         .layer(
