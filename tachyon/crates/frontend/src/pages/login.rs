@@ -199,7 +199,10 @@ pub fn LoginPage() -> impl IntoView {
                             let token = token.clone();
                             store_token_and_activate(token.clone(), remember_val, &server_url_val);
                             client.set_auth_token(token);
-                            nav.update_value(|n| n(&return_url, Default::default()));
+                            // Use window.location for reliable redirect
+                            if let Some(window) = web_sys::window() {
+                                let _ = window.location().set_href(&return_url);
+                            }
                         }
                     } else {
                         loading.set(false);
@@ -273,7 +276,10 @@ pub fn LoginPage() -> impl IntoView {
                             store_token_and_activate(token.clone(), false, &server_url.get());
                             client.set_auth_token(token);
                         }
-                        nav.update_value(|n| n("/dashboard", Default::default()));
+                        // Use window.location for reliable redirect
+                        if let Some(window) = web_sys::window() {
+                            let _ = window.location().set_href("/dashboard");
+                        }
                     } else {
                         loading.set(false);
                         error.set(response.error);
