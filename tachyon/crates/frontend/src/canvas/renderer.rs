@@ -238,7 +238,9 @@ impl CanvasRenderer {
         self.ctx.move_to(sx, sy);
         self.ctx.line_to(tx, ty);
         let _ = self.ctx.stroke();
-        self.ctx.set_line_dash(&js_sys::Array::new().into()).unwrap_or(());
+        self.ctx
+            .set_line_dash(&js_sys::Array::new().into())
+            .unwrap_or(());
 
         if edge.has_arrowhead() {
             self.draw_arrowhead(sx, sy, tx, ty);

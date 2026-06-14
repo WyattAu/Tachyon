@@ -56,7 +56,10 @@ pub fn NotificationSettingsPage() -> impl IntoView {
     };
 
     let on_toggle_type = move |field: fn(&mut NotificationPreferences) -> &mut bool| {
-        set_prefs.update(|p| { let val = field(p); *val = !*val; });
+        set_prefs.update(|p| {
+            let val = field(p);
+            *val = !*val;
+        });
         let current = prefs.get();
         save_notification_preferences(&current);
     };
