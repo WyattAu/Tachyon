@@ -315,6 +315,10 @@ fn CreateVersionModal(
     let (submitting, set_submitting) = signal(false);
     let (error, set_error) = signal(None::<String>);
 
+    let on_close_for_submit = on_close.clone();
+    let on_close_for_cancel = on_close.clone();
+    let on_close_for_x = on_close.clone();
+
     let handle_submit = move |ev: web_sys::SubmitEvent| {
         ev.prevent_default();
         if submitting.get() {
@@ -330,7 +334,7 @@ fn CreateVersionModal(
         set_error.set(None);
         let desc = description.get();
         let refresh = on_created.clone();
-        let close = on_close.clone();
+        let close = on_close_for_submit.clone();
         spawn_local(async move {
             let api = ApiClient::default();
             let req = CreateDocVersionRequest {
@@ -357,7 +361,7 @@ fn CreateVersionModal(
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">"New Documentation Version"</h2>
                     <button
                         class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                        on:click=move |_| on_close()
+                        on:click=move |_| on_close_for_x()
                     >
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -411,7 +415,7 @@ fn CreateVersionModal(
                         <button type="button"
                             class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600
                                    rounded-none hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                            on:click=move |_| on_close()>
+                            on:click=move |_| on_close_for_cancel()>
                             "Cancel"
                         </button>
                         <button type="submit"

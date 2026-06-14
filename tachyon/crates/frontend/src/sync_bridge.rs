@@ -94,6 +94,8 @@ impl SyncQueueBridge {
                 payload: pay,
                 created_at: chrono::Utc::now().to_rfc3339(),
                 retry_count: 0,
+                version: 1,
+                checksum: String::new(),
             };
 
             // Extract store from RefCell, drop borrow, then await

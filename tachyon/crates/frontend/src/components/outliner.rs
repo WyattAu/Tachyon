@@ -53,40 +53,45 @@ fn OutlinerNodeRow(
     set_editing_id: WriteSignal<Option<NodeId>>,
 ) -> impl IntoView {
     let node_id = node.id;
+    let node_content = node.content.clone();
+    let node_collapsed = node.collapsed;
     let indent_px = depth as i32 * 24;
 
-    let on_keydown = move |ev: web_sys::KeyboardEvent| {
-        let key = ev.key();
-        match key.as_str() {
-            "Tab" => {
-                ev.prevent_default();
-                if ev.shift_key() {
-                    set_event.set(Some(OutlinerEvent::Outdent(node_id)));
-                } else {
-                    set_event.set(Some(OutlinerEvent::Indent(node_id)));
+    let on_keydown = {
+        let node_content = node_content.clone();
+        move |ev: web_sys::KeyboardEvent| {
+            let key = ev.key();
+            match key.as_str() {
+                "Tab" => {
+                    ev.prevent_default();
+                    if ev.shift_key() {
+                        set_event.set(Some(OutlinerEvent::Outdent(node_id)));
+                    } else {
+                        set_event.set(Some(OutlinerEvent::Indent(node_id)));
+                    }
                 }
+                "ArrowUp" if ev.alt_key() => {
+                    ev.prevent_default();
+                    set_event.set(Some(OutlinerEvent::MoveUp(node_id)));
+                }
+                "ArrowDown" if ev.alt_key() => {
+                    ev.prevent_default();
+                    set_event.set(Some(OutlinerEvent::MoveDown(node_id)));
+                }
+                "Enter" => {
+                    ev.prevent_default();
+                    set_event.set(Some(OutlinerEvent::InsertAfter(node_id)));
+                }
+                "Backspace" if node_content.is_empty() => {
+                    ev.prevent_default();
+                    set_event.set(Some(OutlinerEvent::Delete(node_id)));
+                }
+                _ => {}
             }
-            "ArrowUp" if ev.alt_key() => {
-                ev.prevent_default();
-                set_event.set(Some(OutlinerEvent::MoveUp(node_id)));
-            }
-            "ArrowDown" if ev.alt_key() => {
-                ev.prevent_default();
-                set_event.set(Some(OutlinerEvent::MoveDown(node_id)));
-            }
-            "Enter" => {
-                ev.prevent_default();
-                set_event.set(Some(OutlinerEvent::InsertAfter(node_id)));
-            }
-            "Backspace" if node.content.is_empty() => {
-                ev.prevent_default();
-                set_event.set(Some(OutlinerEvent::Delete(node_id)));
-            }
-            _ => {}
         }
     };
 
-    let on_input = move |ev: web_sys::InputEvent| {
+    let on_input = move |ev: web_sys::Event| {
         let value = event_target_value(&ev);
         set_event.set(Some(OutlinerEvent::EditContent(node_id, value)));
     };
@@ -102,7 +107,7 @@ fn OutlinerNodeRow(
     let is_editing = move || editing_id.get() == Some(node_id);
 
     let collapse_indicator = if has_children {
-        if node.collapsed { "▶" } else { "▼" }
+        if node_collapsed { "▶" } else { "▼" }
     } else {
         "•"
     };
@@ -117,7 +122,7 @@ fn OutlinerNodeRow(
             <button
                 class="w-5 h-5 flex items-center justify-center text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 shrink-0 cursor-pointer"
                 on:click=on_toggle
-                aria-label=if node.collapsed { "Expand" } else { "Collapse" }
+                aria-label=if node_collapsed { "Expand" } else { "Collapse" }
             >
                 {collapse_indicator}
             </button>
@@ -129,7 +134,7 @@ fn OutlinerNodeRow(
                         <input
                             type="text"
                             class="flex-1 bg-transparent border-b border-blue-500 outline-none text-sm text-gray-900 dark:text-white px-1"
-                            prop:value={node.content.clone()}
+                            prop:value={node_content.clone()}
                             on:input=on_input
                             on:blur=move |_| {
                                 set_editing_id.set(None);
@@ -152,7 +157,7 @@ fn OutlinerNodeRow(
                             class="flex-1 text-sm text-gray-900 dark:text-white cursor-text whitespace-pre-wrap"
                             on:dblclick=on_double_click
                         >
-                            {node.content.clone()}
+                            {node_content.clone()}
                         </span>
                     }.into_any()
                 }
@@ -222,7 +227,10 @@ pub fn OutlinerView(initial_state: OutlinerState) -> impl IntoView {
         }
     });
 
-    let visible_nodes = move || state.get().visible_nodes();
+    let visible_nodes = move || {
+        let s = state.get();
+        s.visible_nodes().into_iter().cloned().collect::<Vec<_>>()
+    };
 
     let on_new_root = move |_| {
         set_state.update(|s| {
@@ -271,10 +279,11 @@ pub fn OutlinerView(initial_state: OutlinerState) -> impl IntoView {
                     let node_views: Vec<_> = nodes.iter().map(|n| {
                         let node = current_state.node_by_id(n.id).cloned().unwrap();
                         let has_children = current_state.has_children(n.id);
+                        let depth = node.depth;
                         view! {
                             <OutlinerNodeRow
                                 node=node
-                                depth=node.depth
+                                depth=depth
                                 has_children=has_children
                                 set_event=set_event
                                 editing_id=editing_id

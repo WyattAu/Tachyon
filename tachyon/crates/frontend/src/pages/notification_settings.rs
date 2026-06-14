@@ -56,7 +56,7 @@ pub fn NotificationSettingsPage() -> impl IntoView {
     };
 
     let on_toggle_type = move |field: fn(&mut NotificationPreferences) -> &mut bool| {
-        set_prefs.update(|p| field(p) = !field(p));
+        set_prefs.update(|p| { let val = field(p); *val = !*val; });
         let current = prefs.get();
         save_notification_preferences(&current);
     };
@@ -195,9 +195,11 @@ pub fn NotificationSettingsPage() -> impl IntoView {
 fn NotifTypeToggle(
     label: &'static str,
     description: &'static str,
-    enabled: impl Fn() -> bool + 'static,
+    enabled: impl Fn() -> bool + Clone + 'static + Send,
     on_toggle: impl Fn(leptos::ev::MouseEvent) + 'static,
 ) -> impl IntoView {
+    let enabled2 = enabled.clone();
+    let enabled3 = enabled.clone();
     view! {
         <div class="flex items-center justify-between py-2">
             <div>
@@ -210,12 +212,12 @@ fn NotifTypeToggle(
                 role="switch"
                 aria-checked=move || if enabled() { "true" } else { "false" }
                 aria-label=label
-                class=move || if enabled() {
+                class=move || if enabled2() {
                     "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-blue-600 transition-colors"
                 } else {
                     "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-gray-200 dark:bg-gray-600 transition-colors"
                 }>
-                <span class=move || if enabled() {
+                <span class=move || if enabled3() {
                     "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition translate-x-5"
                 } else {
                     "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition translate-x-0"

@@ -153,8 +153,8 @@ fn url_to_path(url: &str) -> String {
 
 /// HTTP client for communicating with the Tachyon backend API.
 #[derive(Clone)]
-pub struct ApiClient {
-    base_url: String,
+pub(crate) struct ApiClient {
+    pub(crate) base_url: String,
     auth_token: Arc<Mutex<Option<String>>>,
 }
 
@@ -234,7 +234,7 @@ impl ApiClient {
         WebSocketClient::new(&self.websocket_url())
     }
 
-    async fn get<T: DeserializeOwned>(&self, url: &str) -> Result<T, ApiError> {
+    pub(crate) async fn get<T: DeserializeOwned>(&self, url: &str) -> Result<T, ApiError> {
         let auth = self.get_auth_token().map(|t| format!("Bearer {}", t));
 
         if is_tauri() {
@@ -270,7 +270,7 @@ impl ApiClient {
         }
     }
 
-    async fn post<T: Serialize, R: DeserializeOwned>(
+    pub(crate) async fn post<T: Serialize, R: DeserializeOwned>(
         &self,
         url: &str,
         body: &T,

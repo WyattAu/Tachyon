@@ -687,7 +687,7 @@ pub fn DocumentPage() -> impl IntoView {
                                 // Title and actions
                                 <div class="flex items-start justify-between mb-6">
                                     <div>
-                                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{title}</h1>
+                                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{title.clone()}</h1>
                                         <div class="flex gap-2">
                                             <span class={format!("px-2 py-0.5 text-xs rounded {}", status_class)}>{status_text}</span>
                                             <span class="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{visibility_text}</span>

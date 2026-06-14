@@ -1,5 +1,5 @@
 use crate::canvas::{CanvasEdge, CanvasNode, CanvasNodeData, EdgeStyle, Position, ViewState};
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 /// Renderer for the canvas using Canvas 2D API
@@ -106,7 +106,7 @@ impl CanvasRenderer {
                 // Text
                 self.ctx.set_fill_style_str(&d.color);
                 self.ctx.set_font(&format!("{}px sans-serif", d.font_size));
-                self.ctx.set_text_baseline("middle").unwrap_or(());
+                self.ctx.set_text_baseline("middle");
                 let _ = self.ctx.fill_text(&d.content, x + 8.0, y + h / 2.0);
             }
             CanvasNodeData::Image(d) => {
@@ -119,8 +119,8 @@ impl CanvasRenderer {
 
                 // Image icon placeholder
                 self.ctx.set_fill_style_str("#9CA3AF");
-                self.ctx.set_font("12px sans-serif").unwrap_or(());
-                self.ctx.set_text_baseline("middle").unwrap_or(());
+                self.ctx.set_font("12px sans-serif");
+                self.ctx.set_text_baseline("middle");
                 let label = if d.alt.is_empty() { "Image" } else { &d.alt };
                 let _ = self.ctx.fill_text(label, x + 8.0, y + h / 2.0);
             }
@@ -132,14 +132,14 @@ impl CanvasRenderer {
                 self.ctx.stroke_rect(x, y, w, h);
 
                 self.ctx.set_fill_style_str("#1D4ED8");
-                self.ctx.set_font("bold 12px sans-serif").unwrap_or(());
-                self.ctx.set_text_baseline("top").unwrap_or(());
+                self.ctx.set_font("bold 12px sans-serif");
+                self.ctx.set_text_baseline("top");
                 let title = if d.title.is_empty() { &d.url } else { &d.title };
                 let _ = self.ctx.fill_text(title, x + 8.0, y + 8.0);
 
                 if !d.description.is_empty() {
                     self.ctx.set_fill_style_str("#6B7280");
-                    self.ctx.set_font("10px sans-serif").unwrap_or(());
+                    self.ctx.set_font("10px sans-serif");
                     let _ = self.ctx.fill_text(&d.description, x + 8.0, y + 28.0);
                 }
             }
@@ -151,12 +151,12 @@ impl CanvasRenderer {
                 self.ctx.stroke_rect(x, y, w, h);
 
                 self.ctx.set_fill_style_str("#166534");
-                self.ctx.set_font("bold 12px sans-serif").unwrap_or(());
-                self.ctx.set_text_baseline("top").unwrap_or(());
+                self.ctx.set_font("bold 12px sans-serif");
+                self.ctx.set_text_baseline("top");
                 let _ = self.ctx.fill_text(&d.title, x + 8.0, y + 8.0);
 
                 self.ctx.set_fill_style_str("#6B7280");
-                self.ctx.set_font("10px sans-serif").unwrap_or(());
+                self.ctx.set_font("10px sans-serif");
                 let _ = self.ctx.fill_text("Document", x + 8.0, y + 28.0);
             }
             CanvasNodeData::Shape(d) => match d.shape_type {
@@ -221,10 +221,16 @@ impl CanvasRenderer {
         match edge.style() {
             EdgeStyle::Solid => {}
             EdgeStyle::Dotted => {
-                self.ctx.set_line_dash(&[4.0, 4.0]).unwrap_or(());
+                let arr = js_sys::Array::new();
+                arr.push(&JsValue::from_f64(4.0));
+                arr.push(&JsValue::from_f64(4.0));
+                self.ctx.set_line_dash(&arr.into()).unwrap_or(());
             }
             EdgeStyle::Dashed => {
-                self.ctx.set_line_dash(&[8.0, 4.0]).unwrap_or(());
+                let arr = js_sys::Array::new();
+                arr.push(&JsValue::from_f64(8.0));
+                arr.push(&JsValue::from_f64(4.0));
+                self.ctx.set_line_dash(&arr.into()).unwrap_or(());
             }
         }
 
@@ -232,7 +238,7 @@ impl CanvasRenderer {
         self.ctx.move_to(sx, sy);
         self.ctx.line_to(tx, ty);
         let _ = self.ctx.stroke();
-        self.ctx.set_line_dash(&[]).unwrap_or(());
+        self.ctx.set_line_dash(&js_sys::Array::new().into()).unwrap_or(());
 
         if edge.has_arrowhead() {
             self.draw_arrowhead(sx, sy, tx, ty);

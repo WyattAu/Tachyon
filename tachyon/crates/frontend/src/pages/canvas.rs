@@ -21,7 +21,7 @@ pub fn CanvasPage() -> impl IntoView {
     // Initialize canvas renderer on mount
     let _ = watch(
         move || canvas_ref.get(),
-        move |canvas_el, _, _| {
+        move |canvas_el: &Option<web_sys::HtmlCanvasElement>, _, _| {
             if let Some(canvas) = canvas_el {
                 let _ = canvas.set_width(800);
                 let _ = canvas.set_height(600);
@@ -275,7 +275,7 @@ pub fn CanvasPage() -> impl IntoView {
                                         <div class="space-y-2 text-xs">
                                             <div>
                                                 <label class="block text-gray-500 dark:text-gray-400 mb-1">"Content"</label>
-                                                <div class="text-gray-900 dark:text-white">{&d.content}</div>
+                                                <div class="text-gray-900 dark:text-white">{d.content.clone()}</div>
                                             </div>
                                             <div>
                                                 <label class="block text-gray-500 dark:text-gray-400 mb-1">"Font Size"</label>
@@ -287,7 +287,7 @@ pub fn CanvasPage() -> impl IntoView {
                                         <div class="space-y-2 text-xs">
                                             <div>
                                                 <label class="block text-gray-500 dark:text-gray-400 mb-1">"Source"</label>
-                                                <div class="text-gray-900 dark:text-white break-all">{&d.src}</div>
+                                                <div class="text-gray-900 dark:text-white break-all">{d.src.clone()}</div>
                                             </div>
                                         </div>
                                     }.into_any(),
@@ -295,7 +295,7 @@ pub fn CanvasPage() -> impl IntoView {
                                         <div class="space-y-2 text-xs">
                                             <div>
                                                 <label class="block text-gray-500 dark:text-gray-400 mb-1">"URL"</label>
-                                                <div class="text-gray-900 dark:text-white break-all">{&d.url}</div>
+                                                <div class="text-gray-900 dark:text-white break-all">{d.url.clone()}</div>
                                             </div>
                                         </div>
                                     }.into_any(),
@@ -303,7 +303,7 @@ pub fn CanvasPage() -> impl IntoView {
                                         <div class="space-y-2 text-xs">
                                             <div>
                                                 <label class="block text-gray-500 dark:text-gray-400 mb-1">"Title"</label>
-                                                <div class="text-gray-900 dark:text-white">{&d.title}</div>
+                                                <div class="text-gray-900 dark:text-white">{d.title.clone()}</div>
                                             </div>
                                         </div>
                                     }.into_any(),
