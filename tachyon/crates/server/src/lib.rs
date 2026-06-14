@@ -837,12 +837,14 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     // PWA files: serve explicitly so they aren't caught by the SPA fallback
     async fn serve_manifest() -> axum::response::Response {
-        let public_dir = std::env::var("TACHYON_STATIC_DIR")
-            .unwrap_or_else(|_| "dist".to_string());
+        let public_dir = std::env::var("TACHYON_STATIC_DIR").unwrap_or_else(|_| "dist".to_string());
         let path = std::path::Path::new(&public_dir).join("manifest.json");
         match tokio::fs::read(&path).await {
             Ok(bytes) => axum::http::Response::builder()
-                .header(axum::http::header::CONTENT_TYPE, "application/manifest+json")
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/manifest+json",
+                )
                 .header(axum::http::header::CACHE_CONTROL, "public, max-age=3600")
                 .body(axum::body::Body::from(bytes))
                 .unwrap(),
@@ -854,8 +856,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     }
 
     async fn serve_sw() -> axum::response::Response {
-        let public_dir = std::env::var("TACHYON_STATIC_DIR")
-            .unwrap_or_else(|_| "dist".to_string());
+        let public_dir = std::env::var("TACHYON_STATIC_DIR").unwrap_or_else(|_| "dist".to_string());
         let path = std::path::Path::new(&public_dir).join("sw.js");
         match tokio::fs::read(&path).await {
             Ok(bytes) => axum::http::Response::builder()
@@ -871,8 +872,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     }
 
     async fn serve_offline() -> axum::response::Response {
-        let public_dir = std::env::var("TACHYON_STATIC_DIR")
-            .unwrap_or_else(|_| "dist".to_string());
+        let public_dir = std::env::var("TACHYON_STATIC_DIR").unwrap_or_else(|_| "dist".to_string());
         let path = std::path::Path::new(&public_dir).join("offline.html");
         match tokio::fs::read(&path).await {
             Ok(bytes) => axum::http::Response::builder()
