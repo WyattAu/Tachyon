@@ -206,7 +206,7 @@ impl GraphRepository {
     /// given ID, or `DatabaseError::ValidationError` if `id` is not a valid UUID.
     #[instrument(skip(self))]
     pub async fn get_node_by_id(&self, id: &str) -> DatabaseResult<GraphNode> {
-        let sql = "SELECT * FROM knowledge_graph_nodes WHERE id = $1 AND is_active = true";
+        let sql = "SELECT id::text, node_type, name, slug, description, content, visibility, weight, properties, project_id, document_id, created_by, is_active, created_at, updated_at, deactivated_at FROM knowledge_graph_nodes WHERE id = $1 AND is_active = true";
         let mut conn = self.pool.acquire().await?;
         let record = query_as::<_, GraphNode>(sql)
             .bind(
@@ -222,7 +222,7 @@ impl GraphRepository {
 
     #[instrument(skip(self), fields(slug = %slug))]
     pub async fn get_node_by_slug(&self, slug: &str) -> DatabaseResult<GraphNode> {
-        let sql = "SELECT * FROM knowledge_graph_nodes WHERE slug = $1 AND is_active = true";
+        let sql = "SELECT id::text, node_type, name, slug, description, content, visibility, weight, properties, project_id, document_id, created_by, is_active, created_at, updated_at, deactivated_at FROM knowledge_graph_nodes WHERE slug = $1 AND is_active = true";
         let mut conn = self.pool.acquire().await?;
         let record = query_as::<_, GraphNode>(sql)
             .bind(slug)
@@ -248,7 +248,7 @@ impl GraphRepository {
         let uuids = uuids?;
 
         let sql =
-            "SELECT * FROM knowledge_graph_nodes WHERE id = ANY($1::uuid[]) AND is_active = true";
+            "SELECT id::text, node_type, name, slug, description, content, visibility, weight, properties, project_id, document_id, created_by, is_active, created_at, updated_at, deactivated_at FROM knowledge_graph_nodes WHERE id = ANY($1::uuid[]) AND is_active = true";
         let mut conn = self.pool.acquire().await?;
         let records = query_as::<_, GraphNode>(sql)
             .bind(&uuids)
@@ -268,7 +268,7 @@ impl GraphRepository {
         }
 
         let sql =
-            "SELECT * FROM knowledge_graph_nodes WHERE slug = ANY($1::text[]) AND is_active = true";
+            "SELECT id::text, node_type, name, slug, description, content, visibility, weight, properties, project_id, document_id, created_by, is_active, created_at, updated_at, deactivated_at FROM knowledge_graph_nodes WHERE slug = ANY($1::text[]) AND is_active = true";
         let mut conn = self.pool.acquire().await?;
         let records = query_as::<_, GraphNode>(sql)
             .bind(slugs)
@@ -431,7 +431,7 @@ impl GraphRepository {
             where_sql
         );
         let data_sql = format!(
-            "SELECT * FROM knowledge_graph_nodes WHERE {} ORDER BY updated_at DESC LIMIT ${} OFFSET ${}",
+            "SELECT id::text, node_type, name, slug, description, content, visibility, weight, properties, project_id, document_id, created_by, is_active, created_at, updated_at, deactivated_at FROM knowledge_graph_nodes WHERE {} ORDER BY updated_at DESC LIMIT ${} OFFSET ${}",
             where_sql,
             bind_idx + 1,
             bind_idx + 2
@@ -571,7 +571,7 @@ impl GraphRepository {
 
     #[instrument(skip(self))]
     pub async fn get_edge_by_id(&self, id: &str) -> DatabaseResult<GraphEdge> {
-        let sql = "SELECT * FROM knowledge_graph_edges WHERE id = $1 AND is_active = true";
+        let sql = "SELECT id::text, source_id::text, target_id::text, edge_type, label, description, weight, confidence, properties, is_active, created_at, updated_at, deactivated_at FROM knowledge_graph_edges WHERE id = $1 AND is_active = true";
         let mut conn = self.pool.acquire().await?;
         let record = query_as::<_, GraphEdge>(sql)
             .bind(
@@ -700,7 +700,7 @@ impl GraphRepository {
 
         let where_sql = where_clauses.join(" AND ");
         let sql = format!(
-            "SELECT * FROM knowledge_graph_edges WHERE {} ORDER BY created_at DESC",
+            "SELECT id::text, source_id::text, target_id::text, edge_type, label, description, weight, confidence, properties, is_active, created_at, updated_at, deactivated_at FROM knowledge_graph_edges WHERE {} ORDER BY created_at DESC",
             where_sql
         );
 
@@ -941,7 +941,7 @@ impl GraphRepository {
     }
 
     pub async fn get_node_edges(&self, node_id: &str) -> DatabaseResult<Vec<GraphEdge>> {
-        let sql = "SELECT * FROM knowledge_graph_edges WHERE (source_id = $1 OR target_id = $1) AND is_active = true ORDER BY created_at DESC";
+        let sql = "SELECT id::text, source_id::text, target_id::text, edge_type, label, description, weight, confidence, properties, is_active, created_at, updated_at, deactivated_at FROM knowledge_graph_edges WHERE (source_id = $1 OR target_id = $1) AND is_active = true ORDER BY created_at DESC";
         let mut conn = self.pool.acquire().await?;
         let records = query_as::<_, GraphEdge>(sql)
             .bind(
@@ -1118,7 +1118,7 @@ impl GraphRepository {
         let mut conn = self.pool.acquire().await?;
 
         let nodes = query_as::<_, GraphNode>(
-            "SELECT * FROM knowledge_graph_nodes \
+            "SELECT id::text, node_type, name, slug, description, content, visibility, weight, properties, project_id, document_id, created_by, is_active, created_at, updated_at, deactivated_at FROM knowledge_graph_nodes \
              WHERE created_at <= $1 AND (deactivated_at IS NULL OR deactivated_at > $1) \
              ORDER BY created_at ASC",
         )
@@ -1128,7 +1128,7 @@ impl GraphRepository {
         .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
 
         let edges = query_as::<_, GraphEdge>(
-            "SELECT * FROM knowledge_graph_edges \
+            "SELECT id::text, source_id::text, target_id::text, edge_type, label, description, weight, confidence, properties, is_active, created_at, updated_at, deactivated_at FROM knowledge_graph_edges \
              WHERE created_at <= $1 AND (deactivated_at IS NULL OR deactivated_at > $1) \
              ORDER BY created_at ASC",
         )
