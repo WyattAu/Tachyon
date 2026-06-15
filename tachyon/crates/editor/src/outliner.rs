@@ -555,9 +555,9 @@ mod tests {
     fn make_tree() -> OutlinerState {
         let mut state = OutlinerState::new();
         let a = state.push_node("A");
-        let b = state.push_child(a, "B").unwrap();
+        let _b = state.push_child(a, "B").unwrap();
         let c = state.push_child(a, "C").unwrap();
-        let d = state.push_child(c, "D").unwrap();
+        let _d = state.push_child(c, "D").unwrap();
         state.push_node("E");
         state
     }
@@ -585,7 +585,7 @@ mod tests {
 
     #[test]
     fn indent_increases_depth() {
-        let mut state = make_tree();
+        let _state = make_tree();
         // B is at depth 1, parent A is at depth 0 — indent B
         // B should go to depth 2 (child of A, after itself)
         // Actually B is already a child of A. Indenting B would make it depth 2,
@@ -596,7 +596,7 @@ mod tests {
         // Let's build a simpler tree for indent testing.
         let mut state2 = OutlinerState::new();
         let a = state2.push_node("A");
-        let b = state2.push_child(a, "B").unwrap();
+        let _b = state2.push_child(a, "B").unwrap();
         state2.push_node("C");
 
         // Indent C (depth 0) — preceding node B is at depth 1, so C can become depth 1
