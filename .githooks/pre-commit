@@ -52,15 +52,13 @@ else
     fi
 
     # ---- 2. Clippy ----
-    # Exclude tachyon-cli (heavy deps: wasmtime, tauri), tachyon-testing (aggregator),
-    # and tachyon-frontend (requires WASM target, 65+ pre-existing warnings)
+    # Exclude tachyon-cli (heavy deps: wasmtime, tauri) and tachyon-testing (aggregator)
     info "Running clippy (-D warnings)..."
     if ! cargo clippy \
         --workspace \
         --exclude tachyon-cli \
         --exclude tachyon-testing \
         --exclude tachyon-benchmarks \
-        --exclude tachyon-frontend \
         --all-targets \
         --manifest-path "${WORKSPACE_DIR}/Cargo.toml" \
         -- -D warnings; then

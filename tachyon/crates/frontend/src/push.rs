@@ -196,7 +196,7 @@ pub async fn subscribe_to_push() -> Result<PushSubscriptionInfo, String> {
             .map_err(|_| "No subscribe method")?
             .unchecked_into();
 
-    let options = js_sys::Object::new();
+    let _options = js_sys::Object::new();
     let user_visible_only = js_sys::Object::new();
     js_sys::Reflect::set(
         &user_visible_only,

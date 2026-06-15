@@ -3,9 +3,7 @@ pub mod layout;
 pub mod node;
 pub mod renderer;
 
-use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 pub use edge::*;
 pub use layout::*;
@@ -53,7 +51,7 @@ impl Default for ViewState {
 }
 
 /// The main canvas state
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CanvasState {
     pub nodes: Vec<CanvasNode>,
     pub edges: Vec<CanvasEdge>,
@@ -62,20 +60,6 @@ pub struct CanvasState {
     pub view: ViewState,
     pub is_panning: bool,
     pub connecting_from: Option<CanvasEntityId>,
-}
-
-impl Default for CanvasState {
-    fn default() -> Self {
-        Self {
-            nodes: Vec::new(),
-            edges: Vec::new(),
-            selected_node_id: None,
-            selected_edge_id: None,
-            view: ViewState::default(),
-            is_panning: false,
-            connecting_from: None,
-        }
-    }
 }
 
 impl CanvasState {

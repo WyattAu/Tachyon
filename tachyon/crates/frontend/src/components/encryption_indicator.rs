@@ -99,7 +99,6 @@ pub fn EncryptionStatusBadge(encrypted: bool) -> impl IntoView {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_encryption_indicator_variants() {

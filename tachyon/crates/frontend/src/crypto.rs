@@ -513,7 +513,7 @@ pub fn remove_key_locally(document_id: &str) -> Result<(), CryptoError> {
 /// High-level helper: encrypt a document's content.
 pub async fn encrypt_document(key: &JsValue, content: &str) -> Result<String, CryptoError> {
     let encrypted = encrypt(key, content.as_bytes()).await?;
-    Ok(serde_json::to_string(&encrypted).map_err(|e| CryptoError::Encryption(e.to_string()))?)
+    serde_json::to_string(&encrypted).map_err(|e| CryptoError::Encryption(e.to_string()))
 }
 
 /// High-level helper: decrypt a document's content.

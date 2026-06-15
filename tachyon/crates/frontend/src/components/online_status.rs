@@ -14,7 +14,7 @@ pub fn OnlineStatusIndicator() -> impl IntoView {
     let (pending_count, set_pending_count) = signal(0usize);
 
     Effect::new(move |_| {
-        let set_status = set_status.clone();
+        let set_status = set_status;
 
         if let Some(window) = web_sys::window() {
             let navigator = window.navigator();
@@ -25,7 +25,7 @@ pub fn OnlineStatusIndicator() -> impl IntoView {
                 ConnectionStatus::Offline
             });
 
-            let set_online = set_status.clone();
+            let set_online = set_status;
             let online_closure = wasm_bindgen::closure::Closure::<dyn Fn(_)>::new(
                 move |_: wasm_bindgen::JsValue| {
                     set_online.set(ConnectionStatus::Online);
@@ -37,7 +37,7 @@ pub fn OnlineStatusIndicator() -> impl IntoView {
             );
             online_closure.forget();
 
-            let set_offline = set_status.clone();
+            let set_offline = set_status;
             let offline_closure = wasm_bindgen::closure::Closure::<dyn Fn(_)>::new(
                 move |_: wasm_bindgen::JsValue| {
                     set_offline.set(ConnectionStatus::Offline);
@@ -52,12 +52,12 @@ pub fn OnlineStatusIndicator() -> impl IntoView {
     });
 
     Effect::new(move |_| {
-        let set_status = set_status.clone();
-        let set_pending = set_pending_count.clone();
+        let set_status = set_status;
+        let set_pending = set_pending_count;
 
         if let Some(window) = web_sys::window() {
-            let set_status_msg = set_status.clone();
-            let set_pending_msg = set_pending.clone();
+            let set_status_msg = set_status;
+            let set_pending_msg = set_pending;
             let msg_closure = wasm_bindgen::closure::Closure::<dyn Fn(_)>::new(
                 move |event: wasm_bindgen::JsValue| {
                     if let Some(msg_event) = event.dyn_ref::<web_sys::MessageEvent>() {

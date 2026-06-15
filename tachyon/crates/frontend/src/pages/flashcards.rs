@@ -72,9 +72,6 @@ pub fn FlashcardsPage() -> impl IntoView {
 
     // Load due cards
     let load_cards = {
-        let set_loading = set_loading.clone();
-        let set_error = set_error.clone();
-        let set_cards = set_cards.clone();
         move || {
             set_loading.set(true);
             set_error.set(None);
@@ -136,24 +133,21 @@ pub fn FlashcardsPage() -> impl IntoView {
                 .expect("failed to serialize")
                 .send()
                 .await;
-            match resp {
-                Ok(r) => {
-                    if let Ok(_review_resp) = r.json::<ReviewResponse>().await {
-                        set_session_stats.update(|s| {
-                            s.reviews += 1;
-                            match rating {
-                                0 => s.again += 1,
-                                1 => s.hard += 1,
-                                2 => s.good += 1,
-                                3 => s.easy += 1,
-                                _ => {}
-                            }
-                        });
-                        set_current_index.update(|i| *i += 1);
-                        set_show_back.set(false);
-                    }
+            if let Ok(r) = resp {
+                if let Ok(_review_resp) = r.json::<ReviewResponse>().await {
+                    set_session_stats.update(|s| {
+                        s.reviews += 1;
+                        match rating {
+                            0 => s.again += 1,
+                            1 => s.hard += 1,
+                            2 => s.good += 1,
+                            3 => s.easy += 1,
+                            _ => {}
+                        }
+                    });
+                    set_current_index.update(|i| *i += 1);
+                    set_show_back.set(false);
                 }
-                Err(_) => {}
             }
             set_reviewing.set(false);
         });

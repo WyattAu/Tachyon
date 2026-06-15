@@ -17,7 +17,7 @@ pub fn BlogPage() -> impl IntoView {
     let (error, set_error) = signal(Option::<String>::None);
 
     // Load posts on mount
-    let _ = leptos::task::spawn_local(async move {
+    leptos::task::spawn_local(async move {
         load_posts(1, set_posts, set_total, set_loading, set_error).await;
     });
 
@@ -186,7 +186,7 @@ pub fn BlogPostPage() -> impl IntoView {
     let (error, set_error) = signal(Option::<String>::None);
 
     let current_slug = slug();
-    let _ = leptos::task::spawn_local(async move {
+    leptos::task::spawn_local(async move {
         set_loading.set(true);
         let api = crate::api::ApiClient::default();
         match api.get_blog_post(&current_slug).await {

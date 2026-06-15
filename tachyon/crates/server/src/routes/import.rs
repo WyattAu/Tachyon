@@ -12,6 +12,7 @@ use tachyon_database::DocumentRepository;
 
 use crate::error::ServerError;
 use crate::middleware::AuthContext;
+use tracing::{debug, warn};
 
 #[derive(Clone)]
 pub struct ImportState {
@@ -191,6 +192,26 @@ async fn persist_documents(
     for (doc_id, title, content, tags) in &imported_ids {
         if let Err(e) = repo.update_search_index(doc_id, title, content, tags).await {
             tracing::warn!("Failed to update search index for {}: {}", doc_id, e);
+        }
+    }
+
+    // Extract knowledge graph edges from imported documents
+    {
+        use crate::graph_extractor::{ExtractionConfig, GraphExtractor};
+        let extractor = GraphExtractor::new(pool.clone(), ExtractionConfig::default());
+        for (doc_id, _, _, _) in &imported_ids {
+            let id_str = doc_id.as_str().to_string();
+            match extractor.extract_document(&id_str).await {
+                Ok(result) => {
+                    debug!(
+                        "Graph extraction for imported doc {}: {} nodes, {} edges",
+                        doc_id, result.nodes_created, result.edges_created
+                    );
+                }
+                Err(e) => {
+                    warn!("Failed to extract graph for imported doc {}: {}", doc_id, e);
+                }
+            }
         }
     }
 

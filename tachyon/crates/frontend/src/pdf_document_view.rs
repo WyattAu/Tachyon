@@ -15,11 +15,11 @@ pub fn PdfDocumentView(url: String, title: String) -> impl IntoView {
     let (active_color, set_active_color) = signal(AnnotationColor::Yellow);
     let (show_annotation_panel, set_show_annotation_panel) = signal(true);
     let (show_export_dialog, set_show_export_dialog) = signal(false);
-    let (current_page, set_current_page) = signal(1u32);
+    let (current_page, _set_current_page) = signal(1u32);
     let (pending_sticky_note, set_pending_sticky_note) = signal::<Option<(f64, f64)>>(None);
 
     // Handle text selection for annotation creation
-    let handle_text_selection = move |(x, y): (f64, f64)| {
+    let _handle_text_selection = move |(x, y): (f64, f64)| {
         let tool = active_tool.get();
         let color = active_color.get();
 
@@ -33,12 +33,12 @@ pub fn PdfDocumentView(url: String, title: String) -> impl IntoView {
                     id: Uuid::new_v4().to_string(),
                     page: current_page.get(),
                     rects: vec![Rect {
-                        x: x,
-                        y: y,
+                        x,
+                        y,
                         width: 100.0,
                         height: 20.0,
                     }],
-                    color: color,
+                    color,
                     note: None,
                     kind: tool.clone(),
                     created_at: chrono::Utc::now().to_rfc3339(),
@@ -57,9 +57,9 @@ pub fn PdfDocumentView(url: String, title: String) -> impl IntoView {
             let annotation = Annotation::StickyNote(StickyNoteAnnotation {
                 id: Uuid::new_v4().to_string(),
                 page: current_page.get(),
-                x: x,
-                y: y,
-                content: content,
+                x,
+                y,
+                content,
                 created_at: chrono::Utc::now().to_rfc3339(),
             });
             set_annotations.update(|a| a.push(annotation));

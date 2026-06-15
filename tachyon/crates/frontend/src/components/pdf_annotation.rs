@@ -7,6 +7,7 @@ use wasm_bindgen::JsValue;
 
 /// PDF annotation toolbar component
 #[component]
+#[allow(unused_variables)]
 pub fn AnnotationToolbar(
     active_tool: ReadSignal<AnnotationType>,
     active_color: ReadSignal<AnnotationColor>,
@@ -196,6 +197,7 @@ pub fn AnnotationListPanel(
 
 /// Sticky note input component
 #[component]
+#[allow(unused_variables)]
 pub fn StickyNoteInput(
     x: f64,
     y: f64,
@@ -276,8 +278,7 @@ pub fn AnnotationOverlay(
                     let overlays: Vec<_> = text
                         .rects
                         .iter()
-                        .enumerate()
-                        .map(|(i, rect)| {
+                        .map(|rect| {
                             let color = match text.kind {
                                 AnnotationType::Highlight => text.color.to_rgba(0.3),
                                 AnnotationType::Underline => text.color.to_rgba(0.8),
@@ -503,7 +504,7 @@ mod tests {
 
     #[test]
     fn test_annotation_list_panel_with_items() {
-        let annotations = vec![
+        let annotations = [
             Annotation::Text(TextAnnotation {
                 id: "1".to_string(),
                 page: 1,

@@ -1,17 +1,12 @@
 use crate::canvas::{CanvasEdge, CanvasNode, Position};
 
 /// Layout algorithm type
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum LayoutAlgorithm {
+    #[default]
     ForceDirected,
     Hierarchical,
     Radial,
-}
-
-impl Default for LayoutAlgorithm {
-    fn default() -> Self {
-        Self::ForceDirected
-    }
 }
 
 /// Apply the specified layout algorithm to the given nodes and edges.

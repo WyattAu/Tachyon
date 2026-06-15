@@ -61,7 +61,6 @@ pub use editor_preview::EditorPreview;
 pub use editor_search::EditorSearch;
 pub use editor_toolbar::EditorToolbar;
 pub use empty_state::{EmptyDocuments, EmptySearch};
-pub use encryption_indicator::{EncryptionIndicator, EncryptionStatusBadge};
 pub use error_boundary::AppErrorBoundary;
 pub use keyboard::FocusTrap;
 #[allow(unused_imports)]

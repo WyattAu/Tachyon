@@ -50,7 +50,7 @@ async fn find_or_create_journal(api: &ApiClient, date: &str) -> Result<(String, 
 #[component]
 pub fn JournalPage() -> impl IntoView {
     let params = use_params_map();
-    let navigate = use_navigate();
+    let _navigate = use_navigate();
 
     let today = chrono::Utc::now().date_naive();
     let initial_date =

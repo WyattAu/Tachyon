@@ -23,9 +23,9 @@ pub fn PdfViewer(
 
     // Initialize PDF.js viewer
     Effect::new(move |_| {
-        let url = url.clone();
+        let _url = url.clone();
         let set_loading = set_loading;
-        let set_error = set_error;
+        let _set_error = set_error;
         let set_total_pages = set_total_pages;
 
         wasm_bindgen_futures::spawn_local(async move {
@@ -46,7 +46,7 @@ pub fn PdfViewer(
         });
     };
 
-    let next_page = move |_: leptos::ev::MouseEvent| {
+    let _next_page = move |_: leptos::ev::MouseEvent| {
         set_current_page.update(|p| {
             if *p < total_pages.get() {
                 *p += 1;
@@ -289,7 +289,6 @@ pub fn PdfViewerEmbed(url: String) -> impl IntoView {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_pdf_viewer_component_creation() {

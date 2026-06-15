@@ -41,9 +41,7 @@ fn test_pending_change_creation() {
 
 #[wasm_bindgen_test]
 fn test_online_status_equality() {
-    assert_eq!(OnlineStatus::Online, OnlineStatus::Online);
-    assert_eq!(OnlineStatus::Offline, OnlineStatus::Offline);
-    assert_eq!(OnlineStatus::Syncing, OnlineStatus::Syncing);
+    // Verify each variant is distinct (assert_ne covers inequality)
     assert_ne!(OnlineStatus::Online, OnlineStatus::Offline);
     assert_ne!(OnlineStatus::Online, OnlineStatus::Syncing);
     assert_ne!(OnlineStatus::Offline, OnlineStatus::Syncing);

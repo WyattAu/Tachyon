@@ -52,7 +52,7 @@ impl CanvasRenderer {
             self.ctx.begin_path();
             self.ctx.move_to(x, 0.0);
             self.ctx.line_to(x, self.height);
-            let _ = self.ctx.stroke();
+            self.ctx.stroke();
             x += grid_size;
         }
 
@@ -61,7 +61,7 @@ impl CanvasRenderer {
             self.ctx.begin_path();
             self.ctx.move_to(0.0, y);
             self.ctx.line_to(self.width, y);
-            let _ = self.ctx.stroke();
+            self.ctx.stroke();
             y += grid_size;
         }
     }
@@ -176,10 +176,10 @@ impl CanvasRenderer {
                         .arc(cx, cy, r, 0.0, std::f64::consts::PI * 2.0)
                         .unwrap_or(());
                     self.ctx.set_fill_style_str(&d.fill);
-                    let _ = self.ctx.fill();
+                    self.ctx.fill();
                     self.ctx.set_stroke_style_str(&d.stroke);
                     self.ctx.set_line_width(2.0);
-                    let _ = self.ctx.stroke();
+                    self.ctx.stroke();
                 }
                 crate::canvas::ShapeType::Diamond => {
                     let cx = x + w / 2.0;
@@ -191,10 +191,10 @@ impl CanvasRenderer {
                     self.ctx.line_to(x, cy);
                     self.ctx.close_path();
                     self.ctx.set_fill_style_str(&d.fill);
-                    let _ = self.ctx.fill();
+                    self.ctx.fill();
                     self.ctx.set_stroke_style_str(&d.stroke);
                     self.ctx.set_line_width(2.0);
-                    let _ = self.ctx.stroke();
+                    self.ctx.stroke();
                 }
             },
         }
@@ -237,7 +237,7 @@ impl CanvasRenderer {
         self.ctx.begin_path();
         self.ctx.move_to(sx, sy);
         self.ctx.line_to(tx, ty);
-        let _ = self.ctx.stroke();
+        self.ctx.stroke();
         self.ctx
             .set_line_dash(&js_sys::Array::new().into())
             .unwrap_or(());
@@ -262,7 +262,7 @@ impl CanvasRenderer {
         self.ctx.line_to(ax, ay);
         self.ctx.move_to(tx, ty);
         self.ctx.line_to(bx, by);
-        let _ = self.ctx.stroke();
+        self.ctx.stroke();
     }
 
     /// Convert screen coordinates to canvas coordinates

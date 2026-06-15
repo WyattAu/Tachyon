@@ -569,6 +569,26 @@ pub async fn update_document(
         })
         .await;
 
+    // Update knowledge graph edges from wiki-links and content structure
+    {
+        use crate::graph_extractor::{ExtractionConfig, GraphExtractor};
+        let extractor = GraphExtractor::new(state.pool.clone(), ExtractionConfig::default());
+        match extractor.extract_document(&document_id).await {
+            Ok(result) => {
+                debug!(
+                    "Graph extraction for document {}: {} nodes, {} edges created",
+                    document_id, result.nodes_created, result.edges_created
+                );
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to extract graph for document {}: {}",
+                    document_id, e
+                );
+            }
+        }
+    }
+
     // Re-generate and persist embedding asynchronously when content changes
     if content_changed
         && let Some(ref ai) = state.ai_manager

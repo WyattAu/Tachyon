@@ -4,16 +4,12 @@ use serde::{Deserialize, Serialize};
 /// Edge style variants
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum EdgeStyle {
+    #[default]
     Solid,
     Dotted,
     Dashed,
-}
-
-impl Default for EdgeStyle {
-    fn default() -> Self {
-        Self::Solid
-    }
 }
 
 /// All supported canvas edge types

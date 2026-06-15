@@ -10,7 +10,7 @@ mod components;
 pub mod crypto;
 mod i18n;
 mod markdown;
-mod offline;
+pub mod offline;
 mod pages;
 pub mod pdf_annotation_types;
 pub mod pdf_document_view;

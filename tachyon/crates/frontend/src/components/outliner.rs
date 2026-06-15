@@ -2,7 +2,6 @@
 
 use leptos::prelude::*;
 use tachyon_editor::outliner::{NodeId, OutlinerState};
-use wasm_bindgen::JsCast;
 
 /// A single outliner row event.
 #[derive(Debug, Clone)]
@@ -199,14 +198,14 @@ pub fn OutlinerView(initial_state: OutlinerState) -> impl IntoView {
                         }
                     }
                     OutlinerEvent::InsertAfter(id) => {
-                        let idx = s.index_of(*id).map(|i| i + 1).unwrap_or(s.len());
+                        let _idx = s.index_of(*id).map(|i| i + 1).unwrap_or(s.len());
                         let new_id = s.push_node("");
                         // Move the new node to after the target
                         // Simple approach: just push at end and reorder
                         // For simplicity, we insert at the right position
                         if let Some(target_idx) = s.index_of(*id) {
                             let target_depth = s.nodes()[target_idx].depth;
-                            let new_idx = s.index_of(new_id).unwrap();
+                            let _new_idx = s.index_of(new_id).unwrap();
                             let mut node = s.node_by_id_mut(new_id).cloned().unwrap();
                             node.depth = target_depth;
                             // Remove from current position and insert after target
@@ -214,7 +213,7 @@ pub fn OutlinerView(initial_state: OutlinerState) -> impl IntoView {
                             // We need to re-push with correct depth
                         }
                         // Re-add at correct position
-                        let children_of = s.children(*id);
+                        let _children_of = s.children(*id);
                         let insert_depth = s.node_by_id(*id).map(|n| n.depth).unwrap_or(0);
                         let _ = insert_depth;
                     }

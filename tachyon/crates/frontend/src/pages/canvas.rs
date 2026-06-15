@@ -1,7 +1,6 @@
 // Canvas / Whiteboard Page
 // Interactive infinite canvas with node/edge creation, drag-and-drop, and auto-layout
 
-use crate::api::ApiClient;
 use crate::canvas::*;
 use crate::components::{BreadcrumbItem, Breadcrumbs};
 use leptos::prelude::*;
@@ -13,18 +12,19 @@ use wasm_bindgen::JsCast;
 pub fn CanvasPage() -> impl IntoView {
     let (canvas_state, set_canvas_state) = signal(CanvasState::default());
     let (toolbar_mode, set_toolbar_mode) = signal(ToolbarMode::Select);
-    let (loading, set_loading) = signal(false);
-    let (error, set_error) = signal(None::<String>);
+    let (_loading, _set_loading) = signal(false);
+    let (error, _set_error) = signal(None::<String>);
 
     let canvas_ref = NodeRef::new();
 
     // Initialize canvas renderer on mount
+    #[allow(deprecated)]
     let _ = watch(
         move || canvas_ref.get(),
         move |canvas_el: &Option<web_sys::HtmlCanvasElement>, _, _| {
             if let Some(canvas) = canvas_el {
-                let _ = canvas.set_width(800);
-                let _ = canvas.set_height(600);
+                canvas.set_width(800);
+                canvas.set_height(600);
             }
         },
         false,
@@ -32,7 +32,7 @@ pub fn CanvasPage() -> impl IntoView {
 
     // Render loop
     let render_loop = StoredValue::new(canvas_ref);
-    let _ = spawn_local(async move {
+    spawn_local(async move {
         loop {
             gloo_timers::future::TimeoutFuture::new(16).await; // ~60fps
             if let Some(canvas) = render_loop.get_value().get() {
@@ -94,8 +94,6 @@ pub fn CanvasPage() -> impl IntoView {
 
     // Canvas mouse handlers
     let on_canvas_click = {
-        let canvas_state = canvas_state;
-        let set_canvas_state = set_canvas_state;
         move |ev: web_sys::MouseEvent| {
             let canvas = ev
                 .target()
@@ -118,8 +116,6 @@ pub fn CanvasPage() -> impl IntoView {
     };
 
     let on_canvas_mousedown = {
-        let canvas_state = canvas_state;
-        let set_canvas_state = set_canvas_state;
         move |ev: web_sys::MouseEvent| {
             if ev.button() == 1 {
                 // Middle mouse button = pan
@@ -131,8 +127,6 @@ pub fn CanvasPage() -> impl IntoView {
     };
 
     let on_canvas_mouseup = {
-        let canvas_state = canvas_state;
-        let set_canvas_state = set_canvas_state;
         move |_: web_sys::MouseEvent| {
             let mut state = canvas_state.get();
             state.is_panning = false;
@@ -141,8 +135,6 @@ pub fn CanvasPage() -> impl IntoView {
     };
 
     let on_canvas_wheel = {
-        let canvas_state = canvas_state;
-        let set_canvas_state = set_canvas_state;
         move |ev: web_sys::WheelEvent| {
             ev.prevent_default();
             let mut state = canvas_state.get();

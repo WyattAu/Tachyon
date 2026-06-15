@@ -2,7 +2,7 @@ use super::*;
 use serde::{Deserialize, Serialize};
 
 /// SSG version management types for the frontend API.
-
+///
 /// A documentation version as represented by the API.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DocVersion {

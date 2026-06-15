@@ -12,6 +12,9 @@ use tracing::{debug, info, instrument};
 static MARKDOWN_LINK_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\[([^\]]*)\]\(([^)]+)\)").unwrap());
 
+static WIKILINK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]").unwrap());
+
 // ============================================================================
 // Result & Config Types
 // ============================================================================
@@ -120,6 +123,13 @@ impl GraphExtractor {
                 .process_links(&graph_repo, &doc_repo, &doc_node_id, &links, &doc.slug)
                 .await;
             result.merge(link_result);
+
+            // Also process wiki-links [[target]] and [[target|display]]
+            let wikilinks = Self::parse_wikilinks(body);
+            let wikilink_result = self
+                .process_wikilinks(&graph_repo, &doc_repo, &doc_node_id, &wikilinks)
+                .await;
+            result.merge(wikilink_result);
         }
 
         info!(
@@ -226,6 +236,28 @@ impl GraphExtractor {
                     return None;
                 }
                 Some((text, url))
+            })
+            .collect()
+    }
+
+    /// Extract wiki-link targets from content.
+    ///
+    /// Matches `[[target]]` and `[[target|display]]` patterns.
+    /// Returns a list of (target_title, display_text) tuples where
+    /// display_text defaults to target_title if not specified.
+    pub fn parse_wikilinks(content: &str) -> Vec<(String, String)> {
+        WIKILINK_RE
+            .captures_iter(content)
+            .filter_map(|cap| {
+                let target = cap.get(1)?.as_str().trim().to_string();
+                let display = cap
+                    .get(2)
+                    .map(|m| m.as_str().trim().to_string())
+                    .unwrap_or_else(|| target.clone());
+                if target.is_empty() {
+                    return None;
+                }
+                Some((target, display))
             })
             .collect()
     }
@@ -602,9 +634,116 @@ impl GraphExtractor {
         result
     }
 
-    // -----------------------------------------------------------------------
-    // Dedup helpers
-    // -----------------------------------------------------------------------
+    /// Process wiki-links `[[target]]` by resolving targets to document nodes
+    /// and creating `references` edges between them.
+    async fn process_wikilinks(
+        &self,
+        graph_repo: &GraphRepository,
+        doc_repo: &DocumentRepository,
+        doc_node_id: &str,
+        wikilinks: &[(String, String)],
+    ) -> ExtractionResult {
+        let mut result = ExtractionResult::default();
+
+        if wikilinks.is_empty() {
+            return result;
+        }
+
+        // Collect all unique target titles for batch lookup
+        let target_titles: Vec<String> =
+            wikilinks.iter().map(|(target, _)| target.clone()).collect();
+
+        // Try to find documents by title (case-insensitive slug match)
+        let target_slugs: Vec<String> = target_titles.iter().map(|t| Self::slugify(t)).collect();
+
+        let doc_by_slug: HashMap<String, tachyon_database::DocumentMetadata> =
+            match doc_repo.get_by_slugs_batch(&target_slugs).await {
+                Ok(docs) => docs
+                    .into_iter()
+                    .filter_map(|d| d.slug.clone().map(|s| (s, d)))
+                    .collect(),
+                Err(e) => {
+                    result
+                        .errors
+                        .push(format!("wikilink batch slug lookup: {}", e));
+                    HashMap::new()
+                }
+            };
+
+        // Also try title-based lookup for targets that don't match by slug
+        let title_to_doc: HashMap<String, tachyon_database::DocumentMetadata> =
+            match doc_repo.list_all(Some(10000), Some(0)).await {
+                Ok(all_docs) => all_docs
+                    .into_iter()
+                    .map(|d| (d.title.to_lowercase(), d))
+                    .collect(),
+                Err(_) => HashMap::new(),
+            };
+
+        // Get graph nodes for matched documents
+        let matched_doc_ids: Vec<String> = doc_by_slug
+            .values()
+            .map(|d| d.id.clone())
+            .chain(title_to_doc.values().map(|d| d.id.clone()))
+            .collect();
+
+        let graph_node_slugs: Vec<String> = matched_doc_ids
+            .iter()
+            .map(|id| format!("doc:{}", id))
+            .collect();
+
+        let existing_graph_nodes: HashMap<String, GraphNode> = if !graph_node_slugs.is_empty() {
+            match graph_repo.get_nodes_by_slugs_batch(&graph_node_slugs).await {
+                Ok(nodes) => nodes
+                    .into_iter()
+                    .filter_map(|n| n.slug.clone().map(|s| (s, n)))
+                    .collect(),
+                Err(_) => HashMap::new(),
+            }
+        } else {
+            HashMap::new()
+        };
+
+        for (target, display) in wikilinks {
+            // Try slug match first, then title match
+            let target_slug = Self::slugify(target);
+            let target_doc = doc_by_slug
+                .get(&target_slug)
+                .or_else(|| title_to_doc.get(&target.to_lowercase()));
+
+            if let Some(doc) = target_doc {
+                let target_graph_slug = format!("doc:{}", doc.id);
+                if let Some(target_node) = existing_graph_nodes.get(&target_graph_slug) {
+                    match self
+                        .create_edge_if_missing(
+                            graph_repo,
+                            doc_node_id,
+                            &target_node.id,
+                            "references",
+                            Some(display),
+                            1.2,
+                        )
+                        .await
+                    {
+                        Ok(true) => result.edges_created += 1,
+                        Ok(false) => result.nodes_skipped += 1,
+                        Err(e) => result
+                            .errors
+                            .push(format!("wikilink edge '{}': {}", target, e)),
+                    }
+                } else {
+                    result.errors.push(format!(
+                        "wikilink target document node not found for: {}",
+                        target
+                    ));
+                }
+            } else {
+                debug!("Wiki-link target not found: {}", target);
+            }
+        }
+
+        result
+    }
 
     async fn get_or_create_concept_node(
         &self,
