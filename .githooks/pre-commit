@@ -59,6 +59,7 @@ else
         --exclude tachyon-cli \
         --exclude tachyon-testing \
         --exclude tachyon-benchmarks \
+        --exclude tachyon-tui \
         --all-targets \
         --manifest-path "${WORKSPACE_DIR}/Cargo.toml" \
         -- -D warnings; then
