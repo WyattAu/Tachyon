@@ -50,7 +50,7 @@ enum Commands {
     /// Start the Tachyon server (HTTP + WebSocket)
     Serve {
         /// Host address to bind to
-        #[arg(short, long, value_name = "HOST", default_value = "127.0.0.1")]
+        #[arg(short = 'H', long, value_name = "HOST", default_value = "127.0.0.1")]
         host: String,
 
         /// Port (HTTP and WebSocket share this port)
