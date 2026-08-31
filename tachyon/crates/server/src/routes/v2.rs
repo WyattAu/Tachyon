@@ -32,6 +32,7 @@ use crate::routes::document::DocumentState;
 use crate::routes::search::SearchState;
 use crate::routes::user::UserState;
 
+use crate::routes::document::document_search::visible_to_caller;
 use crate::routes::document::{CreateDocumentRequest, UpdateDocumentRequest};
 
 // ============================================================================
@@ -284,6 +285,7 @@ pub struct V2DocumentQuery {
 pub async fn v2_list_documents(
     Query(query): Query<V2DocumentQuery>,
     State(state): State<V2State>,
+    auth: Option<Extension<crate::middleware::AuthContext>>,
 ) -> Response {
     debug!("v2: listing documents");
 
@@ -311,10 +313,14 @@ pub async fn v2_list_documents(
             .await
     };
 
+    let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth.as_ref().is_some_and(|Extension(ctx)| ctx.is_admin());
+
     match documents {
         Ok(metas) => {
             let items: Vec<Value> = metas
                 .into_iter()
+                .filter(|m| visible_to_caller(&m.visibility, &m.author_id, caller_id, is_admin))
                 .map(|m| {
                     json!({
                         "id": m.id,
@@ -401,6 +407,7 @@ pub async fn v2_create_document(
 pub async fn v2_get_document(
     Path(document_id): Path<String>,
     State(state): State<V2State>,
+    auth: Option<Extension<crate::middleware::AuthContext>>,
 ) -> Response {
     debug!("v2: getting document {}", document_id);
 
@@ -418,6 +425,16 @@ pub async fn v2_get_document(
 
     match state.document_state.repository.get_by_id(&doc_id).await {
         Ok(m) => {
+            let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
+            let is_admin = auth.as_ref().is_some_and(|Extension(ctx)| ctx.is_admin());
+            if !visible_to_caller(&m.visibility, &m.author_id, caller_id, is_admin) {
+                return v2_error(
+                    "FORBIDDEN",
+                    "You do not have permission to access this document",
+                    StatusCode::FORBIDDEN,
+                )
+                .into_response();
+            }
             let tags = m.parse_tags().unwrap_or_default();
             Json(v2_ok(json!({
                 "id": m.id,
@@ -576,7 +593,7 @@ pub async fn v2_search(
         date_to: None,
     };
 
-    match crate::routes::search::search(Query(req), State(state.search_state.clone())).await {
+    match crate::routes::search::search(Query(req), State(state.search_state.clone()), None).await {
         Ok(Json(response)) => {
             let data = serde_json::to_value(&response).unwrap_or_default();
             Json(v2_ok(data)).into_response()
@@ -617,6 +634,18 @@ mod tests {
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(body["error"]["code"], "NOT_FOUND");
         assert_eq!(body["error"]["message"], "thing not found");
+    }
+
+    #[test]
+    fn test_v2_private_document_access_is_denied_cross_tenant() {
+        assert!(!visible_to_caller("private", "owner", Some("other"), false));
+        assert!(visible_to_caller("private", "owner", Some("owner"), false));
+        assert!(visible_to_caller("private", "owner", Some("other"), true));
+    }
+
+    #[test]
+    fn test_v2_public_document_access_allows_guests() {
+        assert!(visible_to_caller("public", "owner", None, false));
     }
 
     #[test]

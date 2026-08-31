@@ -49,7 +49,10 @@ pub struct TestApp {
 impl TestApp {
     pub async fn new() -> Self {
         let database_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
-            "postgres://tachyon:tachyon@localhost:5432/tachyon_test".to_string()
+            format!(
+                "postgres://tachyon:tachyon@localhost:{}/tachyon_test",
+                config::DB_TEST_PORT
+            )
         });
 
         let pool = tachyon_database::init_with_migrations(&database_url)
@@ -176,11 +179,15 @@ impl MockDataGenerator {
 }
 
 pub mod db_helpers {
+    use super::config;
     use tachyon_database::DatabasePool;
 
     pub async fn setup_test_pool() -> Option<DatabasePool> {
         let database_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
-            "postgres://tachyon:tachyon@localhost:5432/tachyon_test".to_string()
+            format!(
+                "postgres://tachyon:tachyon@localhost:{}/tachyon_test",
+                config::DB_TEST_PORT
+            )
         });
 
         tachyon_database::init_with_migrations(&database_url)

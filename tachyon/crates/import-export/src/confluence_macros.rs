@@ -225,7 +225,7 @@ pub fn convert_xhtml_to_markdown(html: &str) -> String {
                 }
             }
             Ok(Event::Text(ref e)) => {
-                let text = e.unescape().unwrap_or_default();
+                let text = e.decode().unwrap_or_default();
 
                 #[allow(clippy::collapsible_if)]
                 if in_code_block {

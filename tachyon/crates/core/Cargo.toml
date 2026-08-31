@@ -25,13 +25,16 @@ tracing = "0.1"
 thiserror = "2"
 
 # Core Logic
-git2 = { version = "0.20", features = ["vendored-openssl", "vendored-libgit2"] }
+git2 = { version = "0.21", features = ["vendored-openssl", "vendored-libgit2"] }
 uuid = { version = "1", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 
 # Authentication
-argon2 = "0.5"
+salting = { workspace = true }
 rand = "0.8"
+
+# Cryptography
+cryptkit = { workspace = true }
 
 # File System Monitoring
 notify = "6.0"
@@ -39,8 +42,7 @@ notify = "6.0"
 # Markdown Processing
 pulldown-cmark = { version = "0.9", features = ["simd"] }
 
-# Hashing
-sha2 = "0.10"
+# Hashing - provided by cryptkit
 
 # CRDT (base64 encoding for binary Yjs updates)
 base64 = "0.22"
@@ -49,6 +51,7 @@ base64 = "0.22"
 dashmap = "5"
 walkdir = "2"
 regex = "1.11"
+hex = "0.4"
 
 [dev-dependencies]
 proptest = { workspace = true }

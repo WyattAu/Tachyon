@@ -17,7 +17,6 @@ use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tachyon_rbac::Enforcer;
-#[cfg(feature = "staging")]
 use tachyon_rbac::Resource;
 use tokio::sync::Mutex;
 
@@ -384,7 +383,7 @@ impl SearchApiState {
 ///
 /// # Errors
 /// Returns error if authorization check fails
-#[cfg(feature = "staging")]
+#[allow(dead_code)]
 fn check_search_permission(
     enforcer: &Arc<Enforcer>,
     resource: Resource,

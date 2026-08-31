@@ -797,6 +797,7 @@ pub async fn delete_document(
 pub async fn list_documents(
     Query(query): Query<DocumentQuery>,
     State(state): State<DocumentState>,
+    auth: Option<Extension<crate::middleware::AuthContext>>,
 ) -> Result<Json<DocumentSearchResponse>, ServerError> {
     debug!(
         "Listing documents (page: {:?}, size: {:?})",
@@ -840,6 +841,9 @@ pub async fn list_documents(
     let page_size = query.page_size.unwrap_or(20).min(100);
     let offset = (page - 1) * page_size;
 
+    let caller_id = auth.as_ref().map(|Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth.as_ref().is_some_and(|Extension(ctx)| ctx.is_admin());
+
     let documents = if let Some(author_id) = query.author_id {
         state
             .repository
@@ -861,6 +865,9 @@ pub async fn list_documents(
         Ok(metas) => {
             let results: Vec<DocumentResponse> = metas
                 .into_iter()
+                .filter(|m| {
+                    is_admin || m.visibility == "public" || caller_id == Some(m.author_id.as_str())
+                })
                 .map(|m| {
                     let tags = m.parse_tags().unwrap_or_default();
                     DocumentResponse {

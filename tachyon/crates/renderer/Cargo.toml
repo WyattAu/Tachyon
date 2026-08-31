@@ -54,13 +54,13 @@ tree-sitter-html = "0.23"
 katex = { version = "0.2", default-features = false }
 
 # HTML sanitization
-ammonia = "4"
+ammonia = ">=4.1.4, <5"
 
 # Wikilink parsing
 regex = "1"
 
 # Caching
-lru = "0.12"
+lru = ">=0.12.5, <0.13"
 parking_lot = "0.12"
 
 # Hashing

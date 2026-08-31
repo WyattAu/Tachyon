@@ -111,7 +111,7 @@ pub fn ReviewPanel(document_id: String) -> impl IntoView {
         let document_id = document_id.clone();
         move || {
             let _ = refresh_counter.get();
-            let client = api_client.lock().unwrap().clone();
+            let client = api_client.lock().unwrap_or_else(|e| e.into_inner()).clone();
             let doc_id = document_id.clone();
             async move { client.list_reviews(&doc_id).await.unwrap_or_default() }
         }
@@ -122,7 +122,7 @@ pub fn ReviewPanel(document_id: String) -> impl IntoView {
         let document_id = document_id.clone();
         move || {
             let _ = refresh_counter.get();
-            let client = api_client.lock().unwrap().clone();
+            let client = api_client.lock().unwrap_or_else(|e| e.into_inner()).clone();
             let doc_id = document_id.clone();
             async move { client.get_review_status(&doc_id).await.ok() }
         }
@@ -135,7 +135,7 @@ pub fn ReviewPanel(document_id: String) -> impl IntoView {
         ev.prevent_default();
         let doc_id = doc_id_for_new.clone();
         let set_rc = set_rc_for_new;
-        let client = api_client_for_submit.lock().unwrap().clone();
+        let client = api_client_for_submit.lock().unwrap_or_else(|e| e.into_inner()).clone();
 
         wasm_bindgen_futures::spawn_local(async move {
             // Use the author from localStorage or a default
@@ -296,7 +296,7 @@ fn ReviewItem(
         }
         let doc_id = doc_id_approve.clone();
         let rid = review_id_approve.clone();
-        let api = api_approve.lock().unwrap().clone();
+        let api = api_approve.lock().unwrap_or_else(|e| e.into_inner()).clone();
         let set_rc = set_rc_approve;
         wasm_bindgen_futures::spawn_local(async move {
             let _ = api
@@ -319,7 +319,7 @@ fn ReviewItem(
         }
         let doc_id = doc_id_reject.clone();
         let rid = review_id_reject.clone();
-        let api = api_reject.lock().unwrap().clone();
+        let api = api_reject.lock().unwrap_or_else(|e| e.into_inner()).clone();
         let set_rc = set_rc_reject;
         wasm_bindgen_futures::spawn_local(async move {
             let _ = api
@@ -342,7 +342,7 @@ fn ReviewItem(
         }
         let doc_id = doc_id_changes.clone();
         let rid = review_id_changes.clone();
-        let api = api_changes.lock().unwrap().clone();
+        let api = api_changes.lock().unwrap_or_else(|e| e.into_inner()).clone();
         let set_rc = set_rc_changes;
         wasm_bindgen_futures::spawn_local(async move {
             let _ = api
@@ -376,7 +376,7 @@ fn ReviewItem(
         }
         let doc_id = doc_id_post.clone();
         let rid = review_id_post.clone();
-        let api = api_post.lock().unwrap().clone();
+        let api = api_post.lock().unwrap_or_else(|e| e.into_inner()).clone();
         let set_rc = set_rc_post;
         let set_c = set_comments;
         let content = text;
@@ -448,7 +448,7 @@ fn ReviewItem(
                         if new_show {
                             let doc_id = doc_id_comments.clone();
                             let rid = review_id_comments.clone();
-                            let api = api_comments.lock().unwrap().clone();
+                            let api = api_comments.lock().unwrap_or_else(|e| e.into_inner()).clone();
                             let set_c = set_comments_clone;
                             wasm_bindgen_futures::spawn_local(async move {
                                 if let Ok(coms) = api.list_review_comments(&doc_id, &rid).await {

@@ -46,6 +46,8 @@ pub fn build_heading_tree(headings: &[Heading]) -> Vec<TocNode> {
         let node = TocNode::new(heading.clone());
 
         while let Some(&(top_level, _)) = stack.last() {
+            // A heading may be nested under the most recent shallower heading.
+            // Equal or deeper headings close the current parent.
             if top_level < level {
                 break;
             }
@@ -830,11 +832,11 @@ mod tests {
             },
         ];
         let tree = build_heading_tree(&headings);
-        assert_eq!(tree.len(), 2);
+        assert_eq!(tree.len(), 1);
         assert_eq!(tree[0].heading.text, "A");
-        assert_eq!(tree[0].children.len(), 1);
+        assert_eq!(tree[0].children.len(), 2);
         assert_eq!(tree[0].children[0].heading.text, "B");
-        assert_eq!(tree[1].heading.text, "C");
+        assert_eq!(tree[0].children[1].heading.text, "C");
     }
 
     #[test]

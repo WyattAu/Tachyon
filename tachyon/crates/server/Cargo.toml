@@ -42,6 +42,8 @@ serde_yaml = "0.9"
 
 # Authentication
 jsonwebtoken = "9"
+tokenkit = { workspace = true }
+cryptkit = { workspace = true }
 
 # Error Handling & Logging
 anyhow = "1"
@@ -101,7 +103,7 @@ yrs = { workspace = true }
 dashmap = { workspace = true }
 
 # XML parsing (SAML)
-quick-xml = "0.37"
+quick-xml = "0.41"
 
 # Archive handling (for Confluence ZIP imports)
 zip = "2"

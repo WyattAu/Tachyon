@@ -225,7 +225,7 @@ impl DocxParser {
             Event::End(e) => self.handle_end(e),
             Event::Text(e) => {
                 if self.in_text {
-                    let text = e.unescape().unwrap_or_default().to_string();
+                    let text = e.decode().unwrap_or_default().to_string();
                     self.current_run.text.push_str(&text);
                 }
             }

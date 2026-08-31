@@ -29,7 +29,7 @@ fn generate_document_markdown(word_count: usize) -> String {
             md.push_str(para);
             words += 30;
         }
-        md.push_str("\n");
+        md.push('\n');
     }
     md
 }

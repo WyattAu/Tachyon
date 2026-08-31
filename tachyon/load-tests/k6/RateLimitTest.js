@@ -12,7 +12,7 @@ const RATE_LIMIT = parseInt(__ENV.RATE_LIMIT || '100', 10);
 
 const rateLimited = new Rate('rate_limited');
 const rateLimitHeaders = new Rate('rate_limit_headers_present');
-const retryAfterValid = new Rate('retry_after_valid');
+const retryAfterValid = new Rate('retry_after_valid_present');
 const limitRecovery = new Rate('limit_recovery');
 
 export const options = {
@@ -36,8 +36,8 @@ export const options = {
   },
   thresholds: {
     rate_limited: ['rate>0'],          // Must trigger rate limiting
-    rate_limit_headers: ['rate>0.9'],  // Must include rate limit headers
-    retry_after_valid: ['rate>0.9'],   // Must include valid Retry-After
+    rate_limit_headers_present: ['rate>0.9'],  // Must include rate limit headers
+    retry_after_valid_present: ['rate>0.9'],   // Must include valid Retry-After
   },
 };
 

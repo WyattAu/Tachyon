@@ -25,6 +25,15 @@ use tracing::{info, warn};
 #[allow(unused_imports)] // used in derive macros below
 use utoipa::IntoParams;
 
+fn visible_to_caller(
+    visibility: &str,
+    author_id: &str,
+    caller_id: Option<&str>,
+    is_admin: bool,
+) -> bool {
+    is_admin || visibility == "public" || caller_id == Some(author_id)
+}
+
 #[derive(Clone)]
 pub struct SearchState {
     pub pool: DatabasePool,
@@ -240,11 +249,15 @@ async fn search_tantivy(
 pub async fn search(
     Query(query): Query<SearchQuery>,
     State(state): State<SearchState>,
+    auth: Option<axum::Extension<crate::middleware::AuthContext>>,
 ) -> Result<Json<SearchResultsResponse>, ServerError> {
     info!(
         "Search request: q='{}', page={}, page_size={}",
         query.q, query.page, query.page_size
     );
+
+    let caller_id = auth.as_ref().map(|axum::Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth.as_ref().is_some_and(|axum::Extension(ctx)| ctx.is_admin());
 
     let filters = SearchFilters {
         content_type: query.content_type,
@@ -434,8 +447,12 @@ pub async fn search(
 pub async fn global_search(
     Query(query): Query<SearchQuery>,
     State(state): State<SearchState>,
+    auth: Option<axum::Extension<crate::middleware::AuthContext>>,
 ) -> Result<Json<GlobalSearchResultsResponse>, ServerError> {
     info!("Global search request: q='{}'", query.q);
+
+    let caller_id = auth.as_ref().map(|axum::Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth.as_ref().is_some_and(|axum::Extension(ctx)| ctx.is_admin());
 
     let filters = SearchFilters {
         content_type: query.content_type,
@@ -459,6 +476,8 @@ pub async fn global_search(
         }),
     };
 
+    let caller_id = auth.as_ref().map(|axum::Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth.as_ref().is_some_and(|axum::Extension(ctx)| ctx.is_admin());
     let page = query.page.max(1);
     let page_size = query.page_size.clamp(1, 100);
 
@@ -472,6 +491,14 @@ pub async fn global_search(
                 .documents
                 .results
                 .into_iter()
+                .filter(|r| {
+                    visible_to_caller(
+                        &r.document.visibility,
+                        &r.document.author_id,
+                        caller_id,
+                        is_admin,
+                    )
+                })
                 .map(|r| {
                     let tags = r.document.parse_tags().unwrap_or_default();
                     SearchResultItem {
@@ -940,11 +967,15 @@ impl From<CursorPage<SearchResultItem>> for SearchCursorPage {
 pub async fn search_cursor(
     Query(query): Query<SearchQuery>,
     State(state): State<SearchState>,
+    auth: Option<axum::Extension<crate::middleware::AuthContext>>,
 ) -> Result<Json<SearchCursorPage>, ServerError> {
     info!(
         "Search cursor request: q='{}', page_size={}",
         query.q, query.page_size
     );
+
+    let caller_id = auth.as_ref().map(|axum::Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth.as_ref().is_some_and(|axum::Extension(ctx)| ctx.is_admin());
 
     let filters = SearchFilters {
         content_type: query.content_type.clone(),

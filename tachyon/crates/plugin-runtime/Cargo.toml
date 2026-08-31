@@ -6,8 +6,8 @@ edition.workspace = true
 description = "WASM plugin runtime for Tachyon"
 
 [dependencies]
-wasmtime = "44.0.2"
-wasmtime-wasi = "44.0.2"
+wasmtime = ">=46.0.2, <47"
+wasmtime-wasi = ">=46.0.1, <47"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -28,5 +28,5 @@ registry-client = ["dep:reqwest"]
 
 [dev-dependencies]
 tempfile = "3"
-wasmtime = "44.0.2"
-wasmtime-wasi = "44.0.2"
+wasmtime = ">=46.0.2, <47"
+wasmtime-wasi = ">=46.0.1, <47"

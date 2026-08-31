@@ -72,12 +72,7 @@ impl RegistryClient {
                 env!("CARGO_PKG_VERSION")
             ))
             .build()
-            .map_err(|e| {
-                MarketplaceError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    e.to_string(),
-                ))
-            })?;
+            .map_err(|e| MarketplaceError::Io(std::io::Error::other(e.to_string())))?;
 
         Ok(Self { config, client })
     }
@@ -131,10 +126,9 @@ impl RegistryClient {
             .send()
             .await
             .map_err(|e| {
-                MarketplaceError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Registry request failed: {e}"),
-                ))
+                MarketplaceError::Io(std::io::Error::other(format!(
+                    "Registry request failed: {e}"
+                )))
             })?;
 
         if !response.status().is_success() {
@@ -145,10 +139,9 @@ impl RegistryClient {
         }
 
         response.json::<PluginListResponse>().await.map_err(|e| {
-            MarketplaceError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to parse response: {e}"),
-            ))
+            MarketplaceError::Io(std::io::Error::other(format!(
+                "Failed to parse response: {e}"
+            )))
         })
     }
 
@@ -159,10 +152,9 @@ impl RegistryClient {
             .send()
             .await
             .map_err(|e| {
-                MarketplaceError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Registry request failed: {e}"),
-                ))
+                MarketplaceError::Io(std::io::Error::other(format!(
+                    "Registry request failed: {e}"
+                )))
             })?;
 
         if response.status() == reqwest::StatusCode::NOT_FOUND {
@@ -178,10 +170,9 @@ impl RegistryClient {
         }
 
         response.json::<PluginManifest>().await.map_err(|e| {
-            MarketplaceError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to parse response: {e}"),
-            ))
+            MarketplaceError::Io(std::io::Error::other(format!(
+                "Failed to parse response: {e}"
+            )))
         })
     }
 
@@ -199,10 +190,9 @@ impl RegistryClient {
             .send()
             .await
             .map_err(|e| {
-                MarketplaceError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Registry request failed: {e}"),
-                ))
+                MarketplaceError::Io(std::io::Error::other(format!(
+                    "Registry request failed: {e}"
+                )))
             })?;
 
         if !response.status().is_success() {
@@ -215,10 +205,9 @@ impl RegistryClient {
             .json::<PluginDownloadResponse>()
             .await
             .map_err(|e| {
-                MarketplaceError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to parse response: {e}"),
-                ))
+                MarketplaceError::Io(std::io::Error::other(format!(
+                    "Failed to parse response: {e}"
+                )))
             })
     }
 
@@ -234,10 +223,7 @@ impl RegistryClient {
             .send()
             .await
             .map_err(|e| {
-                MarketplaceError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Download failed: {e}"),
-                ))
+                MarketplaceError::Io(std::io::Error::other(format!("Download failed: {e}")))
             })?;
 
         if !response.status().is_success() {
@@ -248,10 +234,9 @@ impl RegistryClient {
         }
 
         let bytes = response.bytes().await.map_err(|e| {
-            MarketplaceError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to read response body: {e}"),
-            ))
+            MarketplaceError::Io(std::io::Error::other(format!(
+                "Failed to read response body: {e}"
+            )))
         })?;
 
         Ok(bytes.to_vec())

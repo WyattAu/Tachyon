@@ -86,12 +86,14 @@ impl EmailService {
         let transport = match &self.transport {
             Some(t) => t,
             None => {
-                tracing::info!(
-                    "Email not configured, skipping: to={}, subject={}",
-                    message.to,
-                    message.subject
+                tracing::error!(
+                    to = %message.to,
+                    subject = %message.subject,
+                    "Email delivery requested but SMTP is not configured"
                 );
-                return Ok(());
+                return Err(EmailError::ConfigError(
+                    "SMTP is not configured; email delivery is unavailable".to_string(),
+                ));
             }
         };
 
@@ -354,7 +356,7 @@ mod tests {
             body_text: "Test".to_string(),
         };
         let result = service.send(&msg).await;
-        assert!(result.is_ok());
+        assert!(matches!(result, Err(EmailError::ConfigError(_))));
     }
 
     #[tokio::test]
@@ -370,7 +372,7 @@ mod tests {
                 Some("https://example.com/doc/123"),
             )
             .await;
-        assert!(result.is_ok());
+        assert!(matches!(result, Err(EmailError::ConfigError(_))));
     }
 
     #[test]

@@ -132,7 +132,7 @@ impl GraphRepository {
             INSERT INTO knowledge_graph_nodes
                 (node_type, name, slug, description, content, visibility, weight, properties, project_id, document_id, created_by, is_active, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-            RETURNING id::text, node_type, name, slug, description, content, visibility, weight, properties, project_id::text, document_id::text, created_by::text, is_active, created_at, updated_at
+            RETURNING id::text, node_type, name, slug, description, content, visibility, weight, properties, project_id::text, document_id::text, created_by::text, is_active, created_at, updated_at, deactivated_at
         "#;
 
         let mut conn = self.pool.acquire().await?;
@@ -318,7 +318,7 @@ impl GraphRepository {
                 properties = COALESCE($8, properties),
                 updated_at = NOW()
             WHERE id = $1 AND is_active = true
-            RETURNING id::text, node_type, name, slug, description, content, visibility, weight, properties, project_id::text, document_id::text, created_by::text, is_active, created_at, updated_at
+            RETURNING id::text, node_type, name, slug, description, content, visibility, weight, properties, project_id::text, document_id::text, created_by::text, is_active, created_at, updated_at, deactivated_at
         "#;
 
         let mut conn = self.pool.acquire().await?;

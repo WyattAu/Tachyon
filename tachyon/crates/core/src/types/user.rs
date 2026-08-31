@@ -3,10 +3,6 @@
 
 use crate::id::UserId;
 use crate::types::error::TachyonError;
-use argon2::{
-    Algorithm, Argon2, Params, Version,
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -296,7 +292,11 @@ impl User {
         self.permissions.can_perform(action)
     }
 
-    /// Hash a password using Argon2
+    /// Hash a password using Argon2id with low-memory parameters.
+    ///
+    /// Delegates to `salting::hash_password_with_params` using
+    /// `Argon2Params::low_memory()` (m=65536, t=2, p=1) to match
+    /// Tachyon's original hashing configuration.
     ///
     /// # Arguments
     /// * `password` - Plain text password
@@ -304,25 +304,13 @@ impl User {
     /// # Returns
     /// Result containing the password hash or error
     pub fn hash_password(password: &str) -> Result<String, TachyonError> {
-        let salt = SaltString::generate(&mut rand::rngs::OsRng);
-        let argon2 = Argon2::new(
-            Algorithm::Argon2id,
-            Version::V0x13,
-            Params::new(65536, 2, 1, None).map_err(|e| {
-                TachyonError::internal("PASSWORD_HASH", format!("Argon2 params error: {}", e))
-            })?,
-        );
-
-        let password_hash = argon2
-            .hash_password(password.as_bytes(), &salt)
-            .map_err(|e| {
-                TachyonError::internal("PASSWORD_HASH", format!("Password hashing error: {}", e))
-            })?;
-
-        Ok(password_hash.to_string())
+        salting::hash_password_with_params(password, &salting::Argon2Params::low_memory())
+            .map_err(|e| TachyonError::internal("PASSWORD_HASH", format!("Password hashing error: {}", e)))
     }
 
-    /// Verify a password against the stored hash
+    /// Verify a password against the stored hash.
+    ///
+    /// Delegates to `salting::verify_password`.
     ///
     /// # Arguments
     /// * `password` - Plain text password to verify
@@ -331,21 +319,11 @@ impl User {
     /// # Returns
     /// Result indicating if password is valid
     pub fn verify_password(password: &str, hash: &str) -> Result<bool, TachyonError> {
-        let parsed_hash = PasswordHash::new(hash).map_err(|e| {
-            TachyonError::authentication("INVALID_HASH", format!("Invalid password hash: {}", e))
-        })?;
-
-        let argon2 = Argon2::default();
-
-        argon2
-            .verify_password(password.as_bytes(), &parsed_hash)
-            .map(|()| true)
-            .map_err(|e| {
-                TachyonError::authentication(
-                    "PASSWORD_MISMATCH",
-                    format!("Password verification failed: {}", e),
-                )
-            })
+        salting::verify_password(password, hash)
+            .map_err(|e| TachyonError::authentication(
+                "PASSWORD_VERIFICATION_FAILED",
+                format!("Password verification error: {}", e),
+            ))
     }
 
     /// Set the password for this user

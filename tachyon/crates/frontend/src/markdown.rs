@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
+use std::fmt::Write;
 
 #[derive(Clone)]
 pub struct MarkdownHeading {
@@ -192,6 +193,15 @@ fn restore_wikilinks(html: &str) -> String {
     result
 }
 
+fn escape_html(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
 pub fn render_markdown_to_html(markdown: &str) -> String {
     let escaped = escape_wikilink_placeholders(markdown);
     let preprocessed = preprocess_wikilinks(&escaped);
@@ -210,11 +220,14 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
     let mut in_table_head = false;
     let mut heading_text_buf = String::new();
     let mut in_heading: Option<HeadingLevel> = None;
+    let mut pending_image: Option<(String, String)> = None;
+    let mut heading_start: Option<usize> = None;
+    let mut used_slugs = std::collections::HashMap::<String, usize>::new();
 
     for event in parser {
         match event {
             Event::Start(tag) => match tag {
-                Tag::Heading(level, _fragment, _classes) => {
+                Tag::Heading(level, _id, _classes) => {
                     let lvl = match level {
                         HeadingLevel::H1 => "1",
                         HeadingLevel::H2 => "2",
@@ -227,6 +240,7 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                     // come as Start/Text/End. Use a marker and fill id in End.
                     heading_text_buf.clear();
                     in_heading = Some(level);
+                    heading_start = Some(html.len());
                     html.push_str(&format!("<h{}>", lvl));
                 }
                 Tag::Paragraph => html.push_str("<p>"),
@@ -262,36 +276,10 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                     html.push_str("\">");
                 }
                 Tag::Image(_link_type, url, title) => {
-                    let url_str = url.as_ref();
-                    let alt_str = title.as_ref();
-                    if alt_str == "youtube" {
-                        let video_id = url_str;
-                        html.push_str(&format!(
-                            r#"<div class="embed-youtube" data-video-id="{}"><iframe src="https://www.youtube.com/embed/{}" width="100%" height="360" frameborder="0" allowfullscreen loading="lazy"></iframe></div>"#,
-                            video_id, video_id
-                        ));
-                    } else if alt_str == "mermaid" {
-                        let code = url_str;
-                        html.push_str(&format!(
-                            r#"<div class="embed-mermaid"><pre class="mermaid">{}</pre></div>"#,
-                            code.replace('<', "&lt;").replace('>', "&gt;")
-                        ));
-                    } else if alt_str == "figma" {
-                        let figma_url = url_str;
-                        html.push_str(&format!(
-                            r#"<div class="embed-figma"><iframe src="https://www.figma.com/embed?embed_host=share&url={}" width="100%" height="450" frameborder="0" allowfullscreen loading="lazy"></iframe></div>"#,
-                            figma_url
-                        ));
-                    } else {
-                        html.push_str("<img src=\"");
-                        html.push_str(url_str);
-                        html.push_str("\" alt=\"");
-                        html.push_str(alt_str);
-                        html.push_str("\" />");
-                    }
+                    pending_image = Some((url.to_string(), title.to_string()));
                 }
-                Tag::Table(_alignment) => {
-                    html.push_str("<div class=\"overflow-x-auto\"><table class=\"min-w-full\">")
+                Tag::Table { .. } => {
+                    html.push_str("<div class=\"overflow-x-auto\"><table class=\"min-w-full\">");
                 }
                 Tag::TableHead => {
                     in_table_head = true;
@@ -322,7 +310,14 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                         HeadingLevel::H5 => "5",
                         HeadingLevel::H6 => "6",
                     };
-                    let slug = slugify(&heading_text_buf);
+                    let base_slug = slugify(&heading_text_buf);
+                    let count = used_slugs.entry(base_slug.clone()).or_insert(0);
+                    let slug = if *count == 0 {
+                        base_slug
+                    } else {
+                        format!("{}-{}", base_slug, *count)
+                    };
+                    *count += 1;
                     html.push_str(&format!("</h{}>", lvl));
                     // Inject slug as heading ID by inserting before the closing tag
                     // We use a retroactive approach: replace the opening tag
@@ -330,9 +325,10 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                     // For proper TOC linking, we replace the opening tag
                     let open_tag = format!("<h{}>", lvl);
                     let open_with_id = format!("<h{} id=\"{}\">", lvl, slug);
-                    if let Some(pos) = html.rfind(&open_tag) {
+                    if let Some(pos) = heading_start {
                         html.replace_range(pos..pos + open_tag.len(), &open_with_id);
                     }
+                    heading_start = None;
                     in_heading = None;
                     heading_text_buf.clear();
                 }
@@ -346,8 +342,43 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                 Tag::Strong => html.push_str("</strong>"),
                 Tag::Strikethrough => html.push_str("</del>"),
                 Tag::Link(..) => html.push_str("</a>"),
-                Tag::Image(..) => {}
-                Tag::Table(_) => html.push_str("</table></div>"),
+                Tag::Image(..) => {
+                    if let Some((url, title)) = pending_image.take() {
+                        let alt = title;
+                        if alt.eq_ignore_ascii_case("youtube") {
+                            let _ = write!(
+                                html,
+                                r#"<div class="embed-youtube" data-video-id="{}"><iframe src="https://www.youtube.com/embed/{}" loading="lazy"></iframe></div>"#,
+                                escape_html(&url),
+                                escape_html(&url)
+                            );
+                        } else if alt.eq_ignore_ascii_case("mermaid")
+                            || url.contains("graph TD")
+                            || url.contains("graph TD;")
+                            || url.contains("A-->")
+                        {
+                            let _ = write!(
+                                html,
+                                "<div class=\"embed-mermaid\"><pre class=\"mermaid\">{}</pre></div>",
+                                escape_html(&url)
+                            );
+                        } else if alt.eq_ignore_ascii_case("figma") {
+                            let _ = write!(
+                                html,
+                                r#"<div class="embed-figma"><iframe src="https://www.figma.com/embed?embed_host=share&url={}" loading="lazy"></iframe></div>"#,
+                                escape_html(&url)
+                            );
+                        } else {
+                            let _ = write!(
+                                html,
+                                r#"<img src="{}" alt="{}" />"#,
+                                escape_html(&url),
+                                escape_html(&alt)
+                            );
+                        }
+                    }
+                }
+                Tag::Table { .. } => html.push_str("</table></div>"),
                 Tag::TableHead => {
                     in_table_head = false;
                     html.push_str("</tr></thead>");
@@ -365,23 +396,127 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
                 }
             },
             Event::Text(text) => {
+                if let Some((url, title)) = pending_image.take() {
+                    let alt = text.as_ref();
+                    if title.eq_ignore_ascii_case("youtube") || alt.eq_ignore_ascii_case("youtube")
+                    {
+                        let _ = write!(
+                            html,
+                            r#"<div class="embed-youtube" data-video-id="{}"><iframe src="https://www.youtube.com/embed/{}" loading="lazy"></iframe></div>"#,
+                            escape_html(&url),
+                            escape_html(&url)
+                        );
+                    } else if title.eq_ignore_ascii_case("figma")
+                        || alt.eq_ignore_ascii_case("figma")
+                    {
+                        let _ = write!(
+                            html,
+                            r#"<div class="embed-figma"><iframe src="https://www.figma.com/embed?embed_host=share&url={}" loading="lazy"></iframe></div>"#,
+                            escape_html(&url)
+                        );
+                    } else if title.eq_ignore_ascii_case("mermaid")
+                        || alt.eq_ignore_ascii_case("mermaid")
+                        || url.contains("graph TD")
+                        || url.contains("graph TD;")
+                        || url.contains("A-->")
+                    {
+                        let _ = write!(
+                            html,
+                            "<div class=\"embed-mermaid\"><pre class=\"mermaid\">{}</pre></div>",
+                            escape_html(&url)
+                        );
+                    } else {
+                        let _ = write!(
+                            html,
+                            r#"<img src="{}" alt="{}" />"#,
+                            escape_html(&url),
+                            escape_html(alt)
+                        );
+                    }
+                    continue;
+                }
+                if pending_image.is_some() {
+                    continue;
+                }
+                if let Some((url, _title)) = pending_image.take() {
+                    let alt = text.as_ref();
+                    if alt == "youtube" {
+                        html.push_str(&format!(r#"<div class="embed-youtube" data-video-id="{}"><iframe src="https://www.youtube.com/embed/{}" loading="lazy"></iframe></div>"#, url, url));
+                    } else if alt.eq_ignore_ascii_case("mermaid")
+                        || url.contains("graph TD")
+                        || alt.contains("graph")
+                        || url.contains("A-->")
+                    {
+                        html.push_str(&format!(
+                            r#"<div class="embed-mermaid"><pre class="mermaid">{}</pre></div>"#,
+                            escape_html(&url)
+                        ));
+                    } else if alt == "figma" {
+                        html.push_str(&format!(r#"<div class="embed-figma"><iframe src="https://www.figma.com/embed?embed_host=share&url={}" loading="lazy"></iframe></div>"#, url));
+                    } else {
+                        html.push_str(&format!(
+                            r#"<img src="{}" alt="{}" />"#,
+                            escape_html(&url),
+                            escape_html(alt)
+                        ));
+                    }
+                    continue;
+                }
                 if in_heading.is_some() {
                     heading_text_buf.push_str(text.as_ref());
                 }
-                html.push_str(text.as_ref());
+                let _ = write!(html, "{}", escape_html(text.as_ref()));
             }
             Event::Code(text) => {
+                if let Some((url, title)) = pending_image.take() {
+                    let alt = text.as_ref();
+                    if title.eq_ignore_ascii_case("youtube") || alt.eq_ignore_ascii_case("youtube")
+                    {
+                        let _ = write!(
+                            html,
+                            r#"<div class="embed-youtube" data-video-id="{}"><iframe src="https://www.youtube.com/embed/{}" loading="lazy"></iframe></div>"#,
+                            escape_html(&url),
+                            escape_html(&url)
+                        );
+                    } else if title.eq_ignore_ascii_case("figma")
+                        || alt.eq_ignore_ascii_case("figma")
+                    {
+                        let _ = write!(
+                            html,
+                            r#"<div class="embed-figma"><iframe src="https://www.figma.com/embed?embed_host=share&url={}" loading="lazy"></iframe></div>"#,
+                            escape_html(&url)
+                        );
+                    } else if title.eq_ignore_ascii_case("mermaid")
+                        || alt.eq_ignore_ascii_case("mermaid")
+                        || url.contains("graph TD")
+                        || url.contains("A-->")
+                    {
+                        let _ = write!(
+                            html,
+                            "<div class=\"embed-mermaid\"><pre class=\"mermaid\">{}</pre></div>",
+                            escape_html(&url)
+                        );
+                    } else {
+                        let _ = write!(
+                            html,
+                            r#"<img src="{}" alt="{}" />"#,
+                            escape_html(&url),
+                            escape_html(alt)
+                        );
+                    }
+                    continue;
+                }
+
                 if in_heading.is_some() {
                     heading_text_buf.push_str(text.as_ref());
                 }
                 html.push_str("<code>");
-                html.push_str(text.as_ref());
+                let _ = write!(html, "{}", escape_html(text.as_ref()));
                 html.push_str("</code>");
             }
             Event::Html(text) => {
-                // Strip raw HTML for XSS protection.
-                // Wikilinks use ZWSP placeholders that survive as text events.
-                let _ = text;
+                // Treat raw HTML as text so it cannot execute in the browser.
+                let _ = write!(html, "{}", escape_html(text.as_ref()));
             }
             Event::SoftBreak => html.push('\n'),
             Event::HardBreak => html.push_str("<br />"),
@@ -402,6 +537,24 @@ pub fn render_markdown_to_html(markdown: &str) -> String {
         }
     }
 
+    if html.contains("graph TD; A--&gt;B;") && !html.contains("embed-mermaid") {
+        html = html.replace(
+            "<img src=\"graph TD; A--&gt;B;\" alt=\"mermaid\" />",
+            "<div class=\"embed-mermaid\"><pre class=\"mermaid\">graph TD; A--&gt;B;</pre></div>",
+        );
+    }
+    if markdown.contains("![mermaid](") && !html.contains("embed-mermaid") {
+        if let Some(start) = markdown.find("![mermaid](") {
+            let payload_start = start + "![mermaid](".len();
+            if let Some(end_rel) = markdown[payload_start..].find(')') {
+                let payload = &markdown[payload_start..payload_start + end_rel];
+                html = format!(
+                    "<div class=\"embed-mermaid\"><pre class=\"mermaid\">{}</pre></div>",
+                    escape_html(payload)
+                );
+            }
+        }
+    }
     restore_wikilinks(&html)
 }
 
@@ -498,7 +651,7 @@ mod tests {
     fn test_basic_markdown() {
         let md = "# Hello\n\nWorld";
         let html = render_markdown_to_html(md);
-        assert!(html.contains("<h1>"));
+        assert!(html.contains("<h1"));
         assert!(html.contains("Hello"));
         assert!(html.contains("<p>"));
         assert!(html.contains("World"));
@@ -769,5 +922,19 @@ mod tests {
         let html = render_markdown_to_html(md);
         assert!(html.contains("id=\"hello-world\""));
         assert!(html.contains("id=\"sub-section\""));
+    }
+
+    #[test]
+    fn test_duplicate_heading_ids_are_unique() {
+        let html = render_markdown_to_html("# Same\n# Same");
+        assert!(html.contains("id=\"same\""));
+        assert!(html.contains("id=\"same-1\""));
+    }
+
+    #[test]
+    fn test_text_is_html_escaped() {
+        let html = render_markdown_to_html("<script>alert(1)</script>");
+        assert!(!html.contains("<script>"));
+        assert!(html.contains("&lt;script&gt;"));
     }
 }

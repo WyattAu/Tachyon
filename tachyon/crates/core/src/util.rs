@@ -292,8 +292,6 @@ impl std::error::Error for PathError {}
 // Hash Utilities
 // ============================================================================
 
-use sha2::{Digest, Sha256};
-
 /// Compute a deterministic SHA-256 hash of markdown content.
 ///
 /// The content is normalized before hashing:
@@ -304,10 +302,8 @@ use sha2::{Digest, Sha256};
 /// platform-specific line endings or trailing whitespace.
 pub fn compute_content_hash(content: &str) -> String {
     let normalized = content.trim().replace("\r\n", "\n").replace('\r', "\n");
-    let mut hasher = Sha256::new();
-    hasher.update(normalized.as_bytes());
-    let result = hasher.finalize();
-    format!("{:x}", result)
+    let hash = cryptkit::hash::sha256(normalized.as_bytes());
+    hex::encode(hash)
 }
 
 // ============================================================================

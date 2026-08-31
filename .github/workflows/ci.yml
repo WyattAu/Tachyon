@@ -46,7 +46,7 @@ jobs:
 
       - name: Check workspace
         working-directory: tachyon
-        run: cargo check --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-frontend
+        run: cargo check --workspace --all-features
 
       - name: Check WASM compilation
         working-directory: tachyon
@@ -78,14 +78,12 @@ jobs:
         working-directory: tachyon
         run: cargo fmt --all -- --check
 
-      # Note: tachyon-cli depends on tachyon-desktop (Tauri/GTK), which requires
-      # system libraries not available in CI. These are checked locally via pre-commit hook.
       - name: Install Tauri system dependencies
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev
 
       - name: Run clippy
         working-directory: tachyon
-        run: cargo clippy --workspace --exclude tachyon-cli --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app --exclude tachyon-frontend --exclude tachyon-editor --exclude tachyon-import-export --all-targets --no-deps -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   test:
     name: Test
@@ -121,16 +119,16 @@ jobs:
           key: test-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
           restore-keys: test-${{ runner.os }}-cargo-
 
-      - name: Run unit tests
+      - name: Run workspace library tests
         working-directory: tachyon
-        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-cli --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app --lib
+        run: cargo test --workspace --all-features --lib -- --test-threads=1
 
       - name: Run integration tests
         working-directory: tachyon
         env:
           DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
           TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
-        run: cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --exclude tachyon-cli --exclude tachyon-benchmarks --exclude tachyon-desktop --exclude tachyon-desktop-app --test integration -- --test-threads=1
+        run: cargo test --workspace --all-features --test integration -- --test-threads=1
 
   build:
     name: Build Release

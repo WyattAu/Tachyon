@@ -783,13 +783,13 @@ mod tests {
         impl Drop for RestoreEnv {
             fn drop(&mut self) {
                 match &self.0 {
-                    Some(v) => std::env::set_var("DATABASE_URL", v),
-                    None => std::env::remove_var("DATABASE_URL"),
+                    Some(v) => unsafe { std::env::set_var("DATABASE_URL", v) },
+                    None => unsafe { std::env::remove_var("DATABASE_URL") },
                 }
             }
         }
         let _guard = RestoreEnv(std::env::var("DATABASE_URL").ok());
-        std::env::remove_var("DATABASE_URL");
+        unsafe { std::env::remove_var("DATABASE_URL") };
 
         let dir = tempdir().unwrap();
         let cmd = BuildCommand::from_args(
@@ -812,7 +812,7 @@ mod tests {
     #[test]
     fn test_resolve_database_url_with_env_var() {
         let dir = tempdir().unwrap();
-        std::env::set_var("DATABASE_URL", "postgres://env:pass@host/db");
+        unsafe { std::env::set_var("DATABASE_URL", "postgres://env:pass@host/db") };
         let cmd = BuildCommand::from_args(
             Some(dir.path().to_path_buf()),
             None,
@@ -827,7 +827,7 @@ mod tests {
         );
         let url = cmd.resolve_database_url().unwrap();
         assert_eq!(url, "postgres://env:pass@host/db");
-        std::env::remove_var("DATABASE_URL");
+        unsafe { std::env::remove_var("DATABASE_URL") };
     }
 
     #[test]

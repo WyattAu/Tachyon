@@ -95,7 +95,7 @@ pub async fn create_router() -> Router {
 
     // Use test database URL or default
     let database_url = std::env::var("TEST_DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://tachyon:tachyon@localhost:5433/tachyon_test".to_string());
+        .unwrap_or_else(|_| "postgres://tachyon:tachyon@localhost:5432/tachyon_test".to_string());
 
     // Initialize database pool
     let pool = init_with_migrations(&database_url)
@@ -108,10 +108,11 @@ pub async fn create_router() -> Router {
         guest_user_id: "00000000-0000-0000-0000-000000000000".to_string(),
     };
 
+    let shared_test_client = reqwest::Client::new();
     let document_state = DocumentState::with_guest_config(
         pool.clone(),
         guest_config.clone(),
-        reqwest::Client::new(),
+        shared_test_client.clone(),
     );
     let user_state = UserState::with_guest_config(
         pool.clone(),
@@ -125,7 +126,7 @@ pub async fn create_router() -> Router {
     let repository_state = RepositoryState::new(pool.clone());
     let node_state = NodeState::new(pool.clone());
     let catalog_state = CatalogState::new(pool.clone());
-    let review_state = ReviewState::new(pool.clone(), reqwest::Client::new());
+    let review_state = ReviewState::new(pool.clone(), shared_test_client.clone());
     let activity_state = ActivityState::new(pool.clone());
     let notification_state = NotificationState::new(pool.clone());
     let tags_state = TagsState { pool: pool.clone() };

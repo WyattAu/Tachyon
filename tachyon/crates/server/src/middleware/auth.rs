@@ -412,7 +412,12 @@ pub async fn auth_middleware(
         || path == "/api/docs"
         || path.starts_with("/api/static/")
         || path == "/health"
+        || path == "/ready"
+        || path == "/live"
         || path == "/"
+        || path == "/metrics"
+        || path == "/metrics/prometheus"
+        || path == "/metrics/app"
         // SSG static assets that should be publicly accessible (SEO, crawlers).
         || path == "/sitemap.xml"
         || path == "/robots.txt"

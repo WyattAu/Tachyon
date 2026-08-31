@@ -9,6 +9,33 @@ use tracing::{debug, warn};
 
 use super::{DocumentQuery, DocumentResponse, DocumentSearchResponse, DocumentState};
 
+#[cfg(test)]
+mod tests {
+    use super::visible_to_caller;
+
+    #[test]
+    fn private_documents_are_owner_or_admin_only() {
+        assert!(!visible_to_caller("private", "owner", None, false));
+        assert!(!visible_to_caller("private", "owner", Some("other"), false));
+        assert!(visible_to_caller("private", "owner", Some("owner"), false));
+        assert!(visible_to_caller("private", "owner", Some("other"), true));
+    }
+
+    #[test]
+    fn public_documents_are_visible_to_guests() {
+        assert!(visible_to_caller("public", "owner", None, false));
+    }
+}
+
+pub(crate) fn visible_to_caller(
+    visibility: &str,
+    author_id: &str,
+    caller_id: Option<&str>,
+    is_admin: bool,
+) -> bool {
+    is_admin || visibility == "public" || caller_id == Some(author_id)
+}
+
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct SemanticSearchParams {
     /// The query text to embed and search with.
@@ -48,6 +75,7 @@ pub struct SemanticSearchResponse {
 pub async fn semantic_search(
     Query(params): Query<SemanticSearchParams>,
     State(state): State<DocumentState>,
+    auth: Option<axum::Extension<crate::middleware::AuthContext>>,
 ) -> Result<Json<SemanticSearchResponse>, ServerError> {
     let query = params.q.trim();
     if query.is_empty() {
@@ -77,8 +105,22 @@ pub async fn semantic_search(
         .await
         .map_err(|e| ServerError::database(format!("Semantic search failed: {}", e)))?;
 
+    let caller_id = auth
+        .as_ref()
+        .map(|axum::Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth
+        .as_ref()
+        .is_some_and(|axum::Extension(ctx)| ctx.is_admin());
     let results: Vec<DocumentResponse> = documents
         .into_iter()
+        .filter(|metadata| {
+            visible_to_caller(
+                &metadata.visibility,
+                &metadata.author_id,
+                caller_id,
+                is_admin,
+            )
+        })
         .map(|metadata| {
             let tags = metadata.parse_tags().unwrap_or_default();
             DocumentResponse {
@@ -130,6 +172,7 @@ pub async fn semantic_search(
 pub async fn search_documents(
     Query(query): Query<DocumentQuery>,
     State(state): State<DocumentState>,
+    auth: Option<axum::Extension<crate::middleware::AuthContext>>,
 ) -> Result<Json<DocumentSearchResponse>, ServerError> {
     tracing::info!("Searching documents: {:?}", query.search);
 
@@ -155,8 +198,22 @@ pub async fn search_documents(
                 .collect();
 
             let mut results = Vec::new();
+            let caller_id = auth
+                .as_ref()
+                .map(|axum::Extension(ctx)| ctx.user_id.as_str());
+            let is_admin = auth
+                .as_ref()
+                .is_some_and(|axum::Extension(ctx)| ctx.is_admin());
             if let Ok(docs) = state.repository.get_by_ids_batch(&doc_ids).await {
                 for metadata in docs {
+                    if !visible_to_caller(
+                        &metadata.visibility,
+                        &metadata.author_id,
+                        caller_id,
+                        is_admin,
+                    ) {
+                        continue;
+                    }
                     let tags = metadata.parse_tags().unwrap_or_default();
                     results.push(DocumentResponse {
                         id: metadata.id,

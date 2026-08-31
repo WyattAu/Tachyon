@@ -15,6 +15,7 @@
 // via the cargo-fuzz toolchain.
 
 #[cfg(feature = "fuzz-tests")]
+#[allow(dead_code)]
 mod targets {
     /// Fuzz target: Markdown parser resilience.
     ///
@@ -39,7 +40,7 @@ mod targets {
     /// Feeds arbitrary byte sequences as JWT tokens to verify the
     /// validation logic handles malformed, truncated, and malicious
     /// tokens without panicking or hanging.
-    #[cfg(fuzzing)]
+    #[cfg(feature = "fuzz-tests")]
     pub fn fuzz_jwt_validate(data: &[u8]) {
         use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
         if let Ok(token_str) = std::str::from_utf8(data) {
@@ -81,7 +82,9 @@ mod targets {
         let _ = serde_json::from_slice::<serde_json::Value>(data);
 
         // Test specific known types that might be deserialized.
-        use tachyon_database::{CreateDocumentRequest, DocumentQuery, SearchFilters};
+        use tachyon_database::SearchFilters;
+        use tachyon_server::routes::DocumentQuery;
+        use tachyon_server::routes::document::CreateDocumentRequest;
         let _ = serde_json::from_slice::<CreateDocumentRequest>(data);
         let _ = serde_json::from_slice::<DocumentQuery>(data);
         let _ = serde_json::from_slice::<SearchFilters>(data);

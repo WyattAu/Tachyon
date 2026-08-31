@@ -1,9 +1,9 @@
 # Tachyon Capability Matrix
 
 **Document ID:** TACHYON-CM-V1.0
-**Date:** 2026-02-10
-**Phase:** -0.5 (Environment Materialization)
-**Status:** Complete
+**Date:** 2026-08-30
+**Phase:** Audit remediation
+**Status:** Partially verified — capability availability is not equivalent to feature completeness or compliance certification.
 
 ---
 
@@ -285,7 +285,7 @@ This matrix documents all available capabilities in the Tachyon development envi
 
 ## Conclusion
 
-The Tachyon development environment provides comprehensive tooling support for all 71 capabilities across 4 phases. All high-priority capabilities have tool support available. The environment is reproducible through both Nix and Docker configurations.
+The environment provides broad tooling support, but this matrix must not be read as proof that all 71 product capabilities are implemented, operational, or compliance-certified. Current verification includes a passing workspace typecheck, formatting check, strict clippy, and serialized workspace library tests; external integrations, accessibility, load, E2E, and compliance claims still require separate evidence. The environment is reproducible through both Nix and Docker configurations.
 
 **Key Achievements:**
 - All Rust tooling pinned to specific versions

@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
     Frame, Terminal,
 };
 use reqwest::Client;
@@ -57,6 +57,7 @@ struct App {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct Document {
     id: String,
     title: String,
@@ -121,7 +122,11 @@ impl App {
                         content: d["content"].as_str().unwrap_or("").to_string(),
                         tags: d["tags"]
                             .as_array()
-                            .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                            .map(|a| {
+                                a.iter()
+                                    .filter_map(|v| v.as_str().map(String::from))
+                                    .collect()
+                            })
                             .unwrap_or_default(),
                     })
                     .collect();
@@ -214,7 +219,9 @@ fn render_documents(f: &mut Frame, app: &App, area: Rect) {
         .enumerate()
         .map(|(i, doc)| {
             let style = if i == app.selected {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
@@ -224,7 +231,11 @@ fn render_documents(f: &mut Frame, app: &App, area: Rect) {
 
     let list = List::new(items)
         .block(Block::default().title("Documents").borders(Borders::ALL))
-        .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
+        .highlight_style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        );
 
     let mut state = ListState::default();
     state.select(Some(app.selected));
@@ -236,7 +247,9 @@ fn render_document_view(f: &mut Frame, app: &App, area: Rect) {
         let text = vec![
             Line::from(Span::styled(
                 &doc.title,
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
             )),
             Line::from(""),
             Line::from(doc.content.as_str()),
@@ -298,7 +311,9 @@ fn render_help(f: &mut Frame, _app: &App, area: Rect) {
         Line::from(""),
         Line::from(Span::styled(
             "Tachyon TUI Help",
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
         Line::from("Navigation:"),

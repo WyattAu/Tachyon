@@ -182,6 +182,7 @@ mod imp {
             );
 
             let mut builder = aws_sdk_s3::config::Builder::new()
+                .behavior_version(aws_sdk_s3::config::BehaviorVersion::latest())
                 .credentials_provider(credentials)
                 .region(aws_sdk_s3::config::Region::new(region.clone()));
 

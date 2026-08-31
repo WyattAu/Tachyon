@@ -392,7 +392,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
             configs: config.sso_oidc.clone(),
             pool: pool.clone(),
             jwt_secret: config.jwt.signing_secret().to_string(),
-            http_client: reqwest::Client::new(),
+            http_client: http_client.clone(),
             csrf_store: crate::csrf_store::CsrfStoreType::new(
                 config.rate_limit.redis_url.as_deref(),
             ),

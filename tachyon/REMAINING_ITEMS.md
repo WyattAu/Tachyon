@@ -1,6 +1,6 @@
 # Tachyon Remaining Items
 
-**Version:** 5.0.0 | **Last Updated:** 2026-05-01 | **Codebase:** 278 Rust files, ~92K lines
+**Version:** 5.0.0 | **Last Updated:** 2026-08-30 | **Codebase:** 278 Rust files, ~92K lines
 
 ---
 
@@ -41,12 +41,23 @@
 
 ---
 
+## 2. Verification Note
+
+This file is a historical remediation register. Items marked `[PASS]` below are not open findings; all other entries require explicit deployment or integration evidence before being considered closed.
+
 ## 2. Infrastructure / External Dependencies
 
-### 2.1 Email Delivery Is a No-Op
+### 2.0 Current audit status (2026-08-30)
+- Document export performs ownership/admin authorization in the same database query as the export payload and returns `403 Forbidden` for unauthorized callers.
+- Document list, full-text search, semantic search, and API v2 document reads/lists now apply owner/admin-or-public visibility filtering. Focused authorization regression coverage verifies anonymous/cross-tenant denial and owner/admin allowance; full HTTP route authorization still requires database-backed tests.
+- Test harness defaults are now aligned on PostgreSQL port 5432; the route harness still requires `TEST_DATABASE_URL`/PostgreSQL and is not counted as passed when the service is unavailable.
+- `cargo audit --json` reports 12 advisory entries. Directly controlled `ammonia`, `quick-xml` (application paths), `git2`, and Wasmtime dependencies are upgraded; remaining findings are transitive or require feature/framework migrations.
+- Release remains blocked on the `lopdf` PDF stack, legacy `rustls-webpki`, `quinn-proto`, `rkyv`, `crossbeam-epoch`, `h2`, and `rsa` advisories until each dependency path is remediated or formally risk-accepted.
+
+### 2.1 Email Delivery Requires Configuration
 - **Priority:** High
 - **Effort:** Medium (1-3 days)
-- **Description:** `EmailService::send()` in `crates/server/src/email.rs:43` logs and returns `Ok(())` when `smtp_url` is `None`. No actual SMTP/SES/Resend integration exists. Password reset, email verification, and notification emails are silently dropped in production.
+- **Description:** `EmailService::send()` now returns an explicit configuration error when `smtp_url` is `None`; delivery still requires a configured SMTP provider and has not been verified against a real external service.
 - **Dependencies:** None
 - **Files:** `crates/server/src/email.rs`
 
@@ -58,6 +69,7 @@
 - **Files:** `crates/server/src/truelayer.rs`, `crates/server/src/routes/billing.rs`
 
 ### 2.3 OAuth2 CSRF State Not Validated
+- **Status:** [PASS] Existing implementation includes state storage/validation tests; deployment review still required.
 - **Priority:** Critical
 - **Effort:** Small (< 1 day)
 - **Description:** The `state` parameter in `CallbackQuery` (`crates/server/src/routes/oauth2.rs:59`) is parsed but never validated against the value sent in the authorize redirect. This makes OAuth2 flows vulnerable to CSRF attacks.
@@ -90,16 +102,17 @@
 ## 3. Feature Gaps
 
 ### 3.1 XSS Sanitization in Markdown Renderer Output
+- **Status:** [PASS] Renderer now escapes raw HTML, text, attributes, and embed payloads; regression tests cover XSS text.
 - **Priority:** Critical
 - **Effort:** Medium (1-3 days)
 - **Description:** The penetration testing report (VERSION.md:419) flagged XSS in content and title as Medium severity. While `sanitize_string()` exists in `crates/server/src/validation/common.rs:69`, the markdown renderer (`crates/renderer/`) does not sanitize HTML output. Raw HTML blocks in markdown pass through unescaped.
 - **Dependencies:** ammonia or similar HTML sanitizer crate
 - **Files:** `crates/renderer/src/`, `crates/server/src/validation/common.rs`
 
-### 3.2 RBAC Integration Tests Are Stubs
+### 3.2 RBAC Integration Tests Are Mostly Unit-Level
 - **Priority:** Medium
 - **Effort:** Medium (1-3 days)
-- **Description:** `crates/testing/src/integration/rbac.rs:7` is a placeholder `test_rbac_integration_stub()`. Real RBAC enforcement across routes (documents, spaces, teams, organizations) is not tested at the integration level.
+- **Description:** `crates/testing/src/integration/rbac.rs` now contains focused role, permission, and authorization-boundary tests, including document-export cross-tenant decisions. Real HTTP route enforcement across documents, spaces, teams, and organizations still requires database-backed integration tests.
 - **Dependencies:** Test database setup
 - **Files:** `crates/testing/src/integration/rbac.rs`
 
@@ -124,14 +137,16 @@
 - **Dependencies:** None
 - **Files:** `crates/testing/src/benchmarks/{search,repository,rbac,database}_bench.rs`
 
-### 3.6 Document Persistence Not End-to-End Verified
+### 3.6 Document Persistence and Collection Isolation Need DB Verification
+- **Status:** Open release blocker; local unit/integration tests do not replace a production-like PostgreSQL persistence drill.
 - **Priority:** High
 - **Effort:** Small (< 1 day)
-- **Description:** VERSION.md:486 notes "API creates documents in memory but doesn't persist to database (repository layer implementation needed)." The Go Deep pass (v4.1.0) addressed comments/billing/presence, but the core document CRUD routes may still have gaps between in-memory handling and actual PostgreSQL persistence for all fields.
+- **Description:** Document list, full-text search, and semantic search now filter private/restricted results to the owner or administrator, while public results remain guest-visible. The repository persists document records, but complete CRUD, pagination, search, and cross-tenant behavior still requires a real PostgreSQL integration run.
 - **Dependencies:** Integration test suite against real DB
 - **Files:** `crates/server/src/routes/document/`
 
 ### 3.7 Large Payload Error Handling
+- **Status:** Partially addressed: PDF export now enforces a 10 MiB input and 100,000-line limit; upload routes have separate multipart limits. Generic body-limit error normalization remains open.
 - **Priority:** Low
 - **Effort:** Small (< 1 day)
 - **Description:** Penetration testing flagged missing proper error responses for oversized requests (VERSION.md:423). Body limits exist (1MB general, 50MB uploads) but error messages to the client are generic.
@@ -141,7 +156,7 @@
 ### 3.8 No Actual SMTP Integration
 - **Priority:** High
 - **Effort:** Medium (1-3 days)
-- **Description:** The `smtp_url` config field exists but no SMTP client code is implemented. `EmailService` has `#[allow(dead_code)]` on `client` and `from_address` fields (`email.rs:23,27`).
+- **Description:** SMTP client code and failure handling are implemented, but real-provider delivery, retry behavior, and operational monitoring remain unverified.
 - **Dependencies:** SMTP provider (SES, Resend, SendGrid, or self-hosted)
 - **Files:** `crates/server/src/email.rs`
 
@@ -292,16 +307,18 @@
 ## 8. Security Considerations
 
 ### 8.1 OAuth2 CSRF State Validation Missing
+- **Status:** [PASS] Duplicate historical finding; current implementation has state storage/validation tests.
 - **Priority:** Critical
 - **Effort:** Small (< 1 day)
-- **Description:** (Duplicate of 2.3) OAuth2 callback accepts any `state` parameter without validation. An attacker can craft a callback URL to hijack OAuth tokens.
+- **Description:** Historical finding retained for traceability. Do not interpret this duplicate entry as an open defect.
 - **Dependencies:** Session/cookie storage for CSRF nonce
 - **Files:** `crates/server/src/routes/oauth2.rs:59`
 
 ### 8.2 XSS in Rendered Markdown
+- **Status:** [PASS] Duplicate historical finding; current renderer tests cover escaped raw HTML and text.
 - **Priority:** Critical
 - **Effort:** Medium (1-3 days)
-- **Description:** (Duplicate of 3.1) Raw HTML in markdown passes through unescaped in the renderer output.
+- **Description:** Historical finding retained for traceability. Do not interpret this duplicate entry as an open defect.
 - **Dependencies:** HTML sanitizer crate
 - **Files:** `crates/renderer/src/`
 
@@ -338,6 +355,7 @@
 ## 9. Technical Debt
 
 ### 9.1 Excessive `#[allow(dead_code)]` Annotations (100+)
+- **Status:** Partially reduced; remaining suppressions require ownership and cleanup before release hardening is complete.
 - **Priority:** Medium
 - **Effort:** Large (3-7 days)
 - **Description:** Over 100 `#[allow(dead_code)]` annotations across the codebase, concentrated in `crates/frontend/src/api/` (billing, documents, teams, spaces, files, auth, search, projects, templates, settings, plugins, graph), `crates/server/src/websocket/`, `crates/server/src/email.rs`, `crates/search/src/api.rs`, `crates/desktop/src-tauri/src/commands.rs`, and `crates/testing/src/unit/`. These indicate unused structs, fields, and functions that should be either wired in or removed.
@@ -384,6 +402,7 @@
 ## 10. Operational
 
 ### 10.1 No Database Backup Strategy
+- **Status:** Open release blocker; no restore drill was performed in this local pass.
 - **Priority:** High
 - **Effort:** Medium (1-3 days)
 - **Description:** No automated PostgreSQL backup, point-in-time recovery, or backup verification is configured. `docker-compose.prod.yml` has volume persistence but no `pg_dump` cron or WAL archiving.
@@ -446,7 +465,7 @@
 | Priority | Count | Key Items |
 |----------|-------|-----------|
 | ~~**Critical**~~ | ~~2~~ | ~~OAuth2 CSRF~~ [PASS], ~~XSS in markdown~~ [PASS] (already had ammonia) |
-| **High** | 5 | Email no-op, ~~CORS defaults~~ [PASS], document persistence, ~~brute-force~~ [PASS], DB backups, accessibility audit |
+| **High** | 5 | Email no-op, document persistence, DB backups, accessibility audit, external integration verification |
 | **Medium** | 28 | Stubs, testing gaps, CSP, RBAC tests, load testing, docs, monitoring, SSL |
 | **Low** | 12 | Dead code, edition mismatch, port consistency, large files, CONTRIBUTING.md |
 

@@ -2,7 +2,7 @@ use crate::commands::Command;
 use crate::error::{CliError, CliResult};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const REGISTRY_URL: &str = "https://registry.tachyon.dev";
 const DEFAULT_PLUGINS_DIR: &str = ".tachyon/plugins";
@@ -18,6 +18,7 @@ pub struct PluginInfo {
     pub tags: Vec<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RegistryIndex {
     version: String,
@@ -25,6 +26,7 @@ struct RegistryIndex {
     plugins: Vec<RegistryPluginEntry>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RegistryPluginEntry {
     id: String,
@@ -44,6 +46,12 @@ struct RegistryPluginEntry {
 
 /// Plugin list command
 pub struct PluginListCommand;
+
+impl Default for PluginListCommand {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl PluginListCommand {
     pub fn new() -> Self {

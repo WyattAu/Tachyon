@@ -177,6 +177,9 @@ fn is_formatting_marker(chars: &[char], pos: usize) -> bool {
 /// PDF exporter.
 pub struct PdfExporter;
 
+const MAX_PDF_INPUT_BYTES: usize = 10 * 1024 * 1024;
+const MAX_PDF_INPUT_LINES: usize = 100_000;
+
 impl PdfExporter {
     /// Export a single document to PDF bytes.
     #[cfg(feature = "pdf-export")]
@@ -185,6 +188,17 @@ impl PdfExporter {
         config: &PdfExportConfig,
     ) -> ImportExportResult<Vec<u8>> {
         use std::io::Cursor;
+
+        if document.content.len() > MAX_PDF_INPUT_BYTES {
+            return Err(ImportExportError::export(
+                "PDF input exceeds the 10 MiB safety limit".to_string(),
+            ));
+        }
+        if document.content.lines().count() > MAX_PDF_INPUT_LINES {
+            return Err(ImportExportError::export(
+                "PDF input exceeds the line-count safety limit".to_string(),
+            ));
+        }
 
         let plain = markdown_to_plaintext(&document.content);
 
@@ -291,6 +305,7 @@ fn load_builtin_font_family() -> ImportExportResult<fonts::FontFamily<fonts::Fon
 mod tests {
     use super::*;
 
+    #[allow(dead_code)]
     fn test_doc(title: &str, content: &str) -> PdfExportDocument {
         PdfExportDocument {
             title: title.to_string(),
@@ -334,6 +349,18 @@ mod tests {
         assert!(!plain.contains("<!--"));
         assert!(plain.contains("before"));
         assert!(plain.contains("after"));
+    }
+
+    #[test]
+    fn test_pdf_input_limits_are_enforced_without_parsing() {
+        let document = PdfExportDocument {
+            title: "large".to_string(),
+            content: "x".repeat(MAX_PDF_INPUT_BYTES + 1),
+            author: None,
+            created_at: None,
+        };
+        let result = PdfExporter::export(&document, &PdfExportConfig::default());
+        assert!(result.is_err());
     }
 
     #[test]

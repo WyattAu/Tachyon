@@ -22,6 +22,14 @@ impl RequestMetrics {
         } else {
             self.failed_requests.fetch_add(1, Ordering::Relaxed);
         }
+
+        // Mirror into the `metrics` facade so /metrics/prometheus is populated.
+        metrics::counter!("tachyon_requests_total").increment(1);
+        metrics::histogram!("tachyon_request_duration_seconds")
+            .record(duration_ms as f64 / 1000.0);
+        if status >= 400 {
+            metrics::counter!("tachyon_requests_failed").increment(1);
+        }
     }
 
     pub fn snapshot(&self) -> MetricsSnapshot {

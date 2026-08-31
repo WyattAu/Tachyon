@@ -260,7 +260,7 @@ fn parse_confluence_xml(xml_bytes: &[u8]) -> ImportExportResult<Vec<ConfluencePa
             }
             Ok(Event::Text(ref e)) => {
                 let text = e
-                    .unescape()
+                    .decode()
                     .map_err(|e| ImportExportError::import(format!("XML decode error: {}", e)))?;
                 if let Some(ref mut page) = current_page {
                     if in_body {

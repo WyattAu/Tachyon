@@ -196,6 +196,7 @@ static EN_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
     m.insert("docs.draft", "Draft");
     m.insert("docs.published", "Published");
     m.insert("docs.archived", "Archived");
+    add_extended_english(&mut m);
     m
 });
 
@@ -237,8 +238,110 @@ static ZH_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock
     m.insert("docs.draft", "草稿");
     m.insert("docs.published", "已发布");
     m.insert("docs.archived", "已归档");
+    add_extended_chinese(&mut m);
     m
 });
+
+fn add_extended_english(m: &mut HashMap<&'static str, &'static str>) {
+    for (key, value) in [
+        ("login.tachyon", "Tachyon"),
+        ("login.subtitle", "Knowledge management for teams"),
+        ("login.sign_in_title", "Sign in"),
+        ("login.server_url", "Server URL"),
+        ("login.username_email", "Username or email"),
+        ("login.password", "Password"),
+        ("login.remember_me", "Remember me"),
+        ("login.forgot_password", "Forgot password?"),
+        ("login.signing_in", "Signing in..."),
+        ("login.or", "or"),
+        ("login.continue_as_guest", "Continue as guest"),
+        ("login.getting_started", "Getting started"),
+        ("dashboard.good_morning", "Good morning"),
+        ("dashboard.good_afternoon", "Good afternoon"),
+        ("dashboard.good_evening", "Good evening"),
+        ("dashboard.welcome_back", "Welcome back"),
+        ("dashboard.new_document", "New Document"),
+        ("dashboard.total_documents", "Total Documents"),
+        ("settings.title", "Settings"),
+        ("settings.profile", "Profile"),
+        ("settings.account", "Account"),
+        ("settings.preferences", "Preferences"),
+        ("settings.danger_zone", "Danger Zone"),
+        ("settings.display_name", "Display name"),
+        ("settings.email", "Email"),
+        ("settings.avatar", "Avatar"),
+        ("settings.save_profile", "Save profile"),
+        ("settings.change_password", "Change password"),
+        ("settings.logout", "Log out"),
+        ("settings.appearance", "Appearance"),
+        ("settings.theme", "Theme"),
+        ("settings.language", "Language"),
+        ("not_found.title", "Page not found"),
+        (
+            "not_found.message",
+            "The requested page could not be found.",
+        ),
+        ("not_found.go_home", "Go home"),
+        ("onboarding.welcome", "Welcome to Tachyon"),
+        ("onboarding.get_started", "Get started"),
+        ("editor.bold", "Bold"),
+        ("editor.italic", "Italic"),
+        ("editor.preview", "Preview"),
+        ("dropzone.label", "Drop files here"),
+        ("import.source", "Import source"),
+    ] {
+        m.insert(key, value);
+    }
+}
+
+fn add_extended_chinese(m: &mut HashMap<&'static str, &'static str>) {
+    for (key, value) in [
+        ("login.tachyon", "Tachyon"),
+        ("login.subtitle", "团队知识管理"),
+        ("login.sign_in_title", "登录"),
+        ("login.server_url", "服务器地址"),
+        ("login.username_email", "用户名或邮箱"),
+        ("login.password", "密码"),
+        ("login.remember_me", "记住我"),
+        ("login.forgot_password", "忘记密码？"),
+        ("login.signing_in", "登录中..."),
+        ("login.or", "或"),
+        ("login.continue_as_guest", "以访客身份继续"),
+        ("login.getting_started", "开始使用"),
+        ("dashboard.good_morning", "早上好"),
+        ("dashboard.good_afternoon", "下午好"),
+        ("dashboard.good_evening", "晚上好"),
+        ("dashboard.welcome_back", "欢迎回来"),
+        ("dashboard.new_document", "新建文档"),
+        ("dashboard.total_documents", "文档总数"),
+        ("settings.title", "设置"),
+        ("settings.profile", "个人资料"),
+        ("settings.account", "账户"),
+        ("settings.preferences", "偏好设置"),
+        ("settings.danger_zone", "危险区域"),
+        ("settings.display_name", "显示名称"),
+        ("settings.email", "邮箱"),
+        ("settings.avatar", "头像"),
+        ("settings.save_profile", "保存资料"),
+        ("settings.change_password", "修改密码"),
+        ("settings.logout", "退出登录"),
+        ("settings.appearance", "外观"),
+        ("settings.theme", "主题"),
+        ("settings.language", "语言"),
+        ("not_found.title", "页面未找到"),
+        ("not_found.message", "找不到请求的页面。"),
+        ("not_found.go_home", "返回首页"),
+        ("onboarding.welcome", "欢迎使用 Tachyon"),
+        ("onboarding.get_started", "开始使用"),
+        ("editor.bold", "粗体"),
+        ("editor.italic", "斜体"),
+        ("editor.preview", "预览"),
+        ("dropzone.label", "将文件拖到这里"),
+        ("import.source", "导入来源"),
+    ] {
+        m.insert(key, value);
+    }
+}
 
 /// Japanese translations.
 static JA_TRANSLATIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
