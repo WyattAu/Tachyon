@@ -9,12 +9,12 @@ import { Rate, Counter, Trend } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'ws://localhost:8080';
 const RECONNECT_CYCLES = parseInt(__ENV.RECONNECT_CYCLES || '10', 10);
+const ROOM = __ENV.WS_ROOM || 'loadtest-room';
 const HEARTBEAT_INTERVAL_MS = parseInt(__ENV.HEARTBEAT_INTERVAL_MS || '25000', 10);
 
 const connectErrors = new Rate('ws_connect_errors');
 const disconnectErrors = new Rate('ws_disconnect_errors');
 const reconnectSuccess = new Rate('ws_reconnect_success');
-let connectionCount = 0;
 const heartbeatMissed = new Rate('ws_heartbeat_missed');
 const broadcastReceived = new Rate('ws_broadcast_received');
 const connectionDuration = new Trend('ws_connection_duration');
@@ -37,7 +37,7 @@ function makeBroadcastPayload(clientId) {
 }
 
 function stressConnection(clientId) {
-  const url = `${BASE_URL}/ws`;
+  const url = `${BASE_URL}/ws/${ROOM}`;
   const startTime = Date.now();
 
   const res = ws.connect(url, null, function (socket) {
@@ -81,7 +81,6 @@ function stressConnection(clientId) {
     'ws connected': (r) => r && r.status === 101,
   });
   reconnectSuccess.add(connected ? 1 : 0);
-  connectionCount += 1;
 }
 
 export const options = {
@@ -133,7 +132,7 @@ export function handleSummary(data) {
   let out = '\n=== WebSocket Stress Test Summary ===\n';
   out += `Connection errors: ${(connErr ? connErr.values.rate * 100 : 0).toFixed(2)}%\n`;
   out += `Disconnect errors: ${(discErr ? discErr.values.rate * 100 : 0).toFixed(2)}%\n`;
-  out += `Reconnect/connection success: ${(reconnect ? reconnect.values.rate * 100 : 0).toFixed(2)}%\n`;
+  out += `Connection success: ${(reconnect ? reconnect.values.rate * 100 : 0).toFixed(2)}%\n`;
   out += `Heartbeat missed: ${(hbMiss ? hbMiss.values.rate * 100 : 0).toFixed(2)}%\n`;
   out += `Broadcasts received: ${broadcast ? broadcast.values.count : 0}\n`;
   if (connDur) {
