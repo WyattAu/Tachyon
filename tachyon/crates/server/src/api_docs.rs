@@ -27,8 +27,8 @@ pub(crate) fn openapi_spec() -> &'static OpenApiSpec {
             email = "support@tachyon.local"
         ),
         license(
-            name = "MIT",
-            url = "https://opensource.org/licenses/MIT"
+            name = "Apache-2.0",
+            url = "https://opensource.org/licenses/Apache-2.0"
         )
     ),
     servers(

@@ -7,7 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tachyon_database::DatabasePool;
 
-use crate::pagination::{CursorPage, CursorParams};
+
 
 #[derive(Clone)]
 pub struct AnalyticsState {
@@ -29,6 +29,7 @@ pub struct DateRangeQuery {
     pub start_date: Option<String>,
     pub end_date: Option<String>,
     pub granularity: Option<String>,
+    pub days: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]

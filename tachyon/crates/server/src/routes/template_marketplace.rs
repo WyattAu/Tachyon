@@ -1,4 +1,8 @@
 //! Template marketplace API scaffolding.
+//!
+//! **SCAFFOLDING STATUS:** This module provides only type definitions and a stub
+//! `query_marketplace()` that always returns an empty list. It is not wired into
+//! the production router and has no database backing.
 
 use serde::{Deserialize, Serialize};
 

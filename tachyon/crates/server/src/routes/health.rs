@@ -577,7 +577,19 @@ pub struct DebugHtmlRequest {
 
 /// POST /debug/html — receives captured page HTML from the desktop WebView
 /// and writes it to /tmp/tachyon-debug-page.html for inspection.
+///
+/// **Security note:** This endpoint is only available when TACHYON_SECURITY_DEVELOPMENT=true.
+/// It writes to a fixed path and should never be exposed in production.
 pub async fn debug_capture_html(body: String) -> Result<Json<serde_json::Value>, StatusCode> {
+    // Refuse in production — this endpoint writes arbitrary content to the filesystem
+    if !std::env::var("TACHYON_SECURITY_DEVELOPMENT")
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false)
+    {
+        tracing::warn!("[debug] /debug/html requested in production mode — rejecting");
+        return Err(StatusCode::FORBIDDEN);
+    }
+
     let html_path = "/tmp/tachyon-debug-page.html";
     let meta_path = "/tmp/tachyon-debug-page-meta.json";
 

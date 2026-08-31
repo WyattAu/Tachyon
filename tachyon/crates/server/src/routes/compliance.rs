@@ -1,4 +1,10 @@
 //! SOC 2 Type II compliance scaffolding — audit trails and evidence collection.
+//!
+//! **SCAFFOLDING STATUS:** The checklist is a static list of items with hardcoded
+//! statuses. The SOC 2 report generation in `soc2.rs` does use real audit events,
+//! but the compliance controls themselves are not enforced programmatically.
+//! Achieving real SOC 2 Type II compliance requires external auditor engagement
+//! and verified control implementation.
 
 use serde::{Deserialize, Serialize};
 

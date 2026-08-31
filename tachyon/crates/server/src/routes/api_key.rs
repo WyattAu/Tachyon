@@ -54,7 +54,7 @@ fn generate_api_key() -> (String, String, String) {
     use rand::Rng;
     let mut rng = rand::thread_rng();
 
-    let bytes: [u8; 32] = rng.gen();
+    let bytes: [u8; 32] = rng.r#gen();
     let hex = hex::encode(bytes);
     let api_key = format!("tk_{}", hex);
 

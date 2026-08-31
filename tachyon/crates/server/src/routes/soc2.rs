@@ -1,5 +1,9 @@
 //! SOC 2 compliance API endpoints.
 //!
+//! **SCAFFOLDING STATUS:** The evidence collection uses real audit events, but
+//! the checklist is static and controls are not enforced programmatically.
+//! This is NOT a substitute for actual SOC 2 Type II certification.
+//!
 //! Provides evidence collection, checklist status, and report generation
 //! for SOC 2 Type II compliance.
 

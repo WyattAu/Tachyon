@@ -25,6 +25,7 @@ pub mod password_reset;
 pub mod permissions;
 pub mod plugin;
 pub mod presence;
+pub mod query_logger;
 pub mod rbac;
 pub mod refresh_token;
 pub mod repository;
@@ -97,6 +98,7 @@ pub use saved_search::{
     CreateSavedSearchRequest, SavedSearch, SavedSearchRepository, UpdateSavedSearchRequest,
 };
 pub use schema::DatabasePool;
+pub use query_logger::{PoolMetrics, SlowQueryLogger};
 pub use search::{
     FacetCount, GlobalSearchResponse, ProjectSearchResult, SearchFacets, SearchFilters,
     SearchHighlight, SearchRepository, SearchResponse, SearchResult,

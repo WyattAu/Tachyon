@@ -1,4 +1,10 @@
 //! GDPR automated data portability — data export and right to be forgotten.
+//!
+//! **SCAFFOLDING STATUS:** This module returns hardcoded placeholder data.
+//! It does NOT query the actual database for user data or perform real deletions.
+//! Do NOT rely on this for real GDPR compliance. Use the audit logging module
+//! for actual activity tracking, and implement real data export/deletion against
+//! the database repositories before claiming GDPR compliance.
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

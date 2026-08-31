@@ -210,7 +210,7 @@ pub struct AppState {
     pub oidc_state: Option<crate::sso::OidcState>,
     pub saml_state: Option<crate::sso::SamlState>,
     pub ldap_state: Option<crate::sso::LdapState>,
-    pub scim_state: crate::routes::scim::ScimState,
+    pub scim_state: Option<crate::routes::scim::ScimState>,
 }
 
 /// Initialize application state from a [`ServerConfig`].
@@ -419,11 +419,10 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         jwt_secret: config.jwt.signing_secret().to_string(),
     });
 
-    let scim_state = crate::routes::scim::ScimState {
+    let scim_state = std::env::var("TACHYON_SCIM_BEARER_TOKEN").ok().map(|token| crate::routes::scim::ScimState {
         pool: pool.clone(),
-        bearer_token: std::env::var("TACHYON_SCIM_BEARER_TOKEN")
-            .unwrap_or_else(|_| "tachyon-scim-token".to_string()),
-    };
+        bearer_token: token,
+    });
 
     {
         let cleanup_crdt = crdt_connection_manager.clone();
@@ -592,6 +591,17 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         compression::CompressionLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,
     };
 
+    // Canvas router (knowledge graph visual editor)
+    let canvas_state = crate::routes::canvas::CanvasState { pool: pool.clone() };
+    let canvas_router = crate::routes::canvas::create_canvas_router().with_state(canvas_state);
+
+    // API key management router
+    let api_key_state = crate::routes::api_key::ApiKeyState {
+        pool: pool.clone(),
+        audit_logger: audit_logger.clone(),
+    };
+    let api_key_router = crate::routes::api_key::create_api_key_router().with_state(api_key_state);
+
     let document_router = create_document_router().with_state(document_state.clone());
     let user_router = create_user_router().with_state(user_state.clone());
     let session_router = create_session_router().with_state(session_state);
@@ -709,7 +719,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let siem_router = crate::routes::siem::create_siem_router().with_state(siem_state);
 
-    let scim_router = crate::routes::scim::create_scim_router().with_state(scim_state);
+    let scim_router = scim_state.map(|s| crate::routes::scim::create_scim_router().with_state(s));
 
     let soc2_state = crate::routes::soc2::Soc2State {
         audit_logger: audit_logger.clone(),
@@ -718,6 +728,47 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let e2e_state = crate::routes::e2e_encryption::E2eState { pool: pool.clone() };
     let e2e_router = crate::routes::e2e_encryption::create_e2e_router().with_state(e2e_state);
+
+    // Analytics router (admin dashboard metrics)
+    let analytics_state = crate::routes::analytics::AnalyticsState::new(pool.clone());
+    let analytics_router = crate::routes::analytics::create_analytics_router().with_state(analytics_state);
+
+    // Magic link authentication router
+    let magic_link_base_url = config.magic_link.base_url.clone().unwrap_or_else(|| config.site.base_url.clone());
+    let magic_link_state = crate::routes::magic_link::MagicLinkState {
+        pool: pool.clone(),
+        client: http_client.clone(),
+        audit_logger: audit_logger.clone(),
+        jwt_secrets: config.jwt.secrets.clone(),
+        token_expiration_secs: config.jwt.expiration_secs,
+        jwt_issuer: config.jwt.issuer.clone(),
+        jwt_audience: config.jwt.audience.clone(),
+        base_url: magic_link_base_url,
+        ttl_secs: config.magic_link.ttl_secs as i64,
+    };
+    let magic_link_router = crate::routes::magic_link::create_magic_link_router().with_state(magic_link_state);
+
+    // Self-serve signup router
+    let signup_state = crate::routes::signup::SignupState {
+        pool: pool.clone(),
+        audit_logger: audit_logger.clone(),
+    };
+    let signup_router = crate::routes::signup::create_signup_router().with_state(signup_state);
+
+    // Chat platform integration router (Slack/Discord webhooks)
+    let chat_platform_config = crate::integrations::chat_platforms::ChatPlatformConfig::default();
+    let chat_dispatcher = crate::integrations::chat_platforms::ChatPlatformDispatcher::new(http_client.clone(), chat_platform_config);
+    let chat_platform_state = crate::routes::chat_platform::ChatPlatformState {
+        dispatcher: Some(chat_dispatcher),
+    };
+    let chat_platform_router = crate::routes::chat_platform::create_chat_platform_router().with_state(chat_platform_state);
+
+    // Query stats router (admin DB monitoring)
+    let query_stats_state = crate::routes::query_stats::QueryStatsState {
+        pool: pool.clone(),
+        query_logger: std::sync::Arc::new(tachyon_database::SlowQueryLogger::new(100)),
+    };
+    let query_stats_router = crate::routes::query_stats::create_query_stats_router().with_state(query_stats_state);
 
     let mut api_v1 = Router::new()
         .merge(document_router)
@@ -759,11 +810,21 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .merge(push_router)
         .merge(flashcard_router)
         .merge(e2e_router)
-        .merge(scim_router)
-        .merge(blog_router);
+        .merge(blog_router)
+        .merge(canvas_router)
+        .merge(api_key_router)
+        .merge(analytics_router)
+        .merge(magic_link_router)
+        .merge(signup_router)
+        .merge(chat_platform_router)
+        .merge(query_stats_router);
 
     if let Some(sms_otp_router) = sms_otp_router {
         api_v1 = api_v1.merge(sms_otp_router);
+    }
+
+    if let Some(scim_router) = scim_router {
+        api_v1 = api_v1.merge(scim_router);
     }
 
     if let Some(oidc_state) = oidc_state {

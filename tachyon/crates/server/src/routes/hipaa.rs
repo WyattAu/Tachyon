@@ -1,4 +1,9 @@
 //! HIPAA compliance framework scaffolding for healthcare knowledge bases.
+//!
+//! **SCAFFOLDING STATUS:** This module returns hardcoded compliance status values
+//! (e.g., `phi_encryption_at_rest: true`). It does NOT verify actual encryption,
+//! enforce PHI access controls, or produce real audit trails. Do NOT rely on this
+//! for real HIPAA compliance.
 
 use serde::{Deserialize, Serialize};
 

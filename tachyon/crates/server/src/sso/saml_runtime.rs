@@ -126,15 +126,47 @@ pub async fn saml_acs(
         ));
     }
 
-    // 2. XML-DSig verification (structural check -- full crypto verification requires xmldsig-rs)
-    if let Some(ref cert_ref) = parsed.signature_cert_reference {
-        debug!(
-            certificate_reference = cert_ref,
-            "SAML response signature reference"
-        );
+    // 2. Certificate verification: compare assertion's X509Certificate against configured IdP certificate
+    if let Some(ref idp_cert) = state.config.certificate {
+        match &parsed.signature_cert_reference {
+            Some(assertion_cert) => {
+                // Normalize: strip PEM headers/whitespace for comparison
+                let normalize = |c: &str| -> String {
+                    c.replace("-----BEGIN CERTIFICATE-----", "")
+                        .replace("-----END CERTIFICATE-----", "")
+                        .replace('\n', "")
+                        .replace('\r', "")
+                        .replace(' ', "")
+                };
+                let normalized_idp = normalize(idp_cert);
+                let normalized_assertion = normalize(assertion_cert);
+                if normalized_idp != normalized_assertion {
+                    warn!(
+                        "SAML assertion rejected: certificate mismatch (IdP cert does not match assertion cert)"
+                    );
+                    return Err(ServerError::bad_request(
+                        "SAML assertion signature certificate does not match the configured IdP certificate",
+                    ));
+                }
+                debug!("SAML assertion certificate verified against IdP certificate");
+            }
+            None => {
+                warn!("SAML assertion rejected: no X509Certificate in signature but IdP certificate is configured");
+                return Err(ServerError::bad_request(
+                    "SAML assertion signature does not contain an X509Certificate",
+                ));
+            }
+        }
     } else {
-        warn!("SAML assertion has Signature element but no X509Certificate reference");
-        // Still proceed -- some IdPs use different certificate distribution methods
+        // No IdP certificate configured — log warning but allow (migration path)
+        if parsed.signature_cert_reference.is_none() {
+            warn!("SAML assertion has Signature element but no X509Certificate reference, and no IdP certificate configured");
+        } else {
+            debug!(
+                certificate_reference = parsed.signature_cert_reference.as_ref().unwrap(),
+                "SAML response signature reference (no IdP certificate configured for verification)"
+            );
+        }
     }
 
     // 3. Validate Conditions timestamps

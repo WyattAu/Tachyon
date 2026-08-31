@@ -1,9 +1,19 @@
+use serde::Serialize;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 const DEFAULT_THRESHOLD_MS: u64 = 100;
 const MAX_QUERY_LOG_LENGTH: usize = 200;
+
+/// Snapshot of the connection pool metrics.
+#[derive(Debug, Clone, Serialize)]
+pub struct PoolMetrics {
+    pub size: u32,
+    pub idle: u32,
+    pub active: u32,
+    pub max_connections: u32,
+}
 
 #[derive(Debug)]
 struct SlowQueryLoggerInner {

@@ -149,6 +149,18 @@ impl DatabasePool {
         Ok(result.rows_affected())
     }
 
+    /// Get pool metrics snapshot
+    pub fn pool_metrics(&self) -> crate::query_logger::PoolMetrics {
+        let size = self.pool.size();
+        let idle = self.pool.num_idle() as u32;
+        crate::query_logger::PoolMetrics {
+            size,
+            idle,
+            active: size - idle,
+            max_connections: self.config.max_connections,
+        }
+    }
+
     /// Get database statistics
     pub async fn statistics(&self) -> DatabaseResult<serde_json::Value> {
         let mut stats = serde_json::Map::new();

@@ -3,10 +3,13 @@
 
 pub mod activity;
 pub mod ai_routes;
+pub mod analytics;
+pub mod api_key;
 pub mod billing;
 pub mod blog;
 pub mod canvas;
 pub mod catalog;
+pub mod chat_platform;
 pub mod collaboration;
 pub mod comments;
 pub mod compliance;
@@ -35,6 +38,7 @@ pub mod organization;
 pub mod password_reset;
 pub mod plugin;
 pub mod push;
+pub mod query_stats;
 pub mod repository;
 pub mod review;
 pub mod role;
