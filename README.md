@@ -116,6 +116,7 @@ just dev       # lint + test + build
 | `TACHYON_PORT` | `8080` | Server port |
 | `DATABASE_URL` | `postgres://...` | PostgreSQL connection string |
 | `TACHYON_JWT_SECRET` | (required) | JWT signing secret (min 32 chars) |
+| `TACHYON_CORS_ORIGINS` | `http://localhost:8080` | Comma-separated allowed origins; never use `*` in production |
 | `TACHYON_GUEST_LOGIN_ENABLED` | `false` | Enable guest auto-login |
 | `TACHYON_PUBLIC_NOTES_ENABLED` | `false` | Allow public document access |
 | `TACHYON_SITE_TITLE` | `Tachyon` | Site title for SEO |

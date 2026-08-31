@@ -593,7 +593,7 @@ pub async fn v2_search(
         date_to: None,
     };
 
-    match crate::routes::search::search(Query(req), State(state.search_state.clone()), None).await {
+    match crate::routes::search::search(Query(req), State(state.search_state.clone())).await {
         Ok(Json(response)) => {
             let data = serde_json::to_value(&response).unwrap_or_default();
             Json(v2_ok(data)).into_response()

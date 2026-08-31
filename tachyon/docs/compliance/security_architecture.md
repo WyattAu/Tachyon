@@ -206,7 +206,7 @@ Client                              Server
 1. **Production**: Wildcard (`*`) origin rejected by config validation — must specify explicit origins
 2. **Development**: Wildcard allowed with warning
 3. **Credentials**: `allow_credentials` cannot be true when using wildcard origin (enforced by tower-http)
-4. **Trusted origins**: `TACHYON_CORS_ALLOWED_ORIGINS` adds to the security policy enforcement origins
+4. **Trusted origins**: `TACHYON_CORS_ORIGINS` configures the allowed frontend origins
 5. **Preflight**: All CORS preflight requests include `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`
 
 **Source:** `tachyon/crates/server/src/lib.rs:715-774`, `tachyon/crates/server/src/middleware/cors.rs`

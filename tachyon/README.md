@@ -78,7 +78,8 @@ Configure via environment variables or a `.env` file:
 | `TACHYON_PORT` | Server bind port | `8080` |
 | `TACHYON_JWT_SECRET` | JWT signing secret (min 32 chars) | `change-this-secret-key-in-production` |
 | `TACHYON_JWT_EXPIRATION` | Token expiration in seconds | `86400` |
-| `TACHYON_CORS_ORIGINS` | Allowed CORS origins | `*` |
+| `TACHYON_CORS_ORIGINS` | Comma-separated allowed origins | `http://localhost:8080` |
+| `TACHYON_SECURITY_DEVELOPMENT` | Development mode; set `false` in production | `true` |
 | `TACHYON_GUEST_LOGIN_ENABLED` | Enable guest auto-login | `false` |
 | `TACHYON_BASE_URL` | Canonical base URL | `http://localhost:8080` |
 

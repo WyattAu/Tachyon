@@ -177,7 +177,7 @@ pub struct ApiKeyConfig {
 pub struct CorsConfig {
     /// Enable CORS
     pub enabled: bool,
-    /// Allowed origins (use "*" for any)
+    /// Allowed origins. Use "*" only for intentional development scenarios.
     pub allowed_origins: Vec<String>,
     /// Allowed methods
     pub allowed_methods: Vec<String>,
@@ -323,6 +323,15 @@ fn default_cors_allowed_origins() -> Vec<String> {
     vec!["http://localhost:8080".to_string()]
 }
 
+fn parse_cors_origins(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|origin| !origin.is_empty())
+        .map(String::from)
+        .collect()
+}
+
 fn default_max_request_size_bytes() -> usize {
     10 * 1024 * 1024
 }
@@ -341,7 +350,7 @@ impl SecurityConfig {
     }
 
     pub fn is_development(&self) -> bool {
-        self.development || self.environment == "development"
+        self.development
     }
 }
 
@@ -625,7 +634,7 @@ impl Default for CorsConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            allowed_origins: vec!["*".to_string()],
+            allowed_origins: default_cors_allowed_origins(),
             allowed_methods: vec![
                 "GET".to_string(),
                 "POST".to_string(),
@@ -1114,6 +1123,19 @@ impl ServerConfig {
             }
         }
 
+        // CORS accepts the canonical Tachyon name plus legacy deployment names.
+        // The first configured variable wins; an empty value leaves the safe default.
+        let cors_origins = std::env::var("TACHYON_CORS_ORIGINS")
+            .or_else(|_| std::env::var("TACHYON_CORS_ALLOWED_ORIGINS"))
+            .or_else(|_| std::env::var("CORS_ORIGINS"));
+        if let Ok(value) = cors_origins {
+            let origins = parse_cors_origins(&value);
+            if !origins.is_empty() {
+                config.cors.allowed_origins = origins.clone();
+                config.security.cors_allowed_origins = origins;
+            }
+        }
+
         if let Ok(site_title) = std::env::var("TACHYON_SITE_TITLE") {
             config.site.title = site_title;
         }
@@ -1228,6 +1250,11 @@ impl ServerConfig {
         }
         if let Ok(val) = std::env::var("TACHYON_SECURITY_DEVELOPMENT") {
             config.security.development = val != "0" && val != "false";
+            config.security.environment = if config.security.development {
+                "development".to_string()
+            } else {
+                "production".to_string()
+            };
         }
         if let Ok(val) = std::env::var("TACHYON_SECURITY_FRAME_ANCESTORS") {
             config.security.frame_ancestors = val;
@@ -1522,6 +1549,46 @@ mod tests {
         assert!(result.is_err());
         let errors = result.unwrap_err();
         assert!(errors.iter().any(|e| e.contains("max_concurrent_sessions")));
+    }
+
+    #[test]
+    #[serial]
+    fn test_cors_origins_from_env() {
+        unsafe {
+            std::env::set_var(
+                "TACHYON_CORS_ORIGINS",
+                "https://docs.example.com, https://app.example.com",
+            );
+        }
+        let config = ServerConfig::from_env();
+        assert_eq!(
+            config.cors.allowed_origins,
+            vec![
+                "https://docs.example.com".to_string(),
+                "https://app.example.com".to_string()
+            ]
+        );
+        assert_eq!(
+            config.security.cors_allowed_origins,
+            config.cors.allowed_origins
+        );
+        unsafe {
+            std::env::remove_var("TACHYON_CORS_ORIGINS");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_production_disables_development_mode() {
+        unsafe {
+            std::env::set_var("TACHYON_SECURITY_DEVELOPMENT", "false");
+        }
+        let config = ServerConfig::from_env();
+        assert!(!config.security.is_development());
+        assert_eq!(config.security.environment, "production");
+        unsafe {
+            std::env::remove_var("TACHYON_SECURITY_DEVELOPMENT");
+        }
     }
 
     #[test]

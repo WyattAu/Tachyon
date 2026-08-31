@@ -112,7 +112,7 @@
 
 | Variable | Description | Default |
 |---|---|---|
-| `TACHYON_CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins | `http://localhost:8080` |
+| `TACHYON_CORS_ORIGINS` | Comma-separated allowed origins | `http://localhost:8080` |
 
 > **Production:** Set specific origins. Wildcard `*` is rejected when `TACHYON_SECURITY_DEVELOPMENT=false`.
 
@@ -146,7 +146,7 @@
 ### Security
 
 - **JWT secrets:** Set `TACHYON_JWT_SECRETS` to a comma-separated list of at least 64-character random strings. The first secret signs new tokens; all are validated. Rotate by prepending a new secret and removing the old one after all tokens expire.
-- **CORS:** Set `TACHYON_CORS_ALLOWED_ORIGINS` to your exact frontend origin(s). Never use `*` in production.
+- **CORS:** Set `TACHYON_CORS_ORIGINS` to your exact frontend origin(s). Never use `*` in production.
 - **PostgreSQL password:** Set `POSTGRES_PASSWORD` in your `.env` file (used by both `postgres` and `server` services).
 - **TLS termination:** Place a reverse proxy (nginx, Caddy, Cloudflare) in front of the server. If terminating TLS at the server, set `TACHYON_TLS_ENABLED=1` and provide cert/key paths.
 - **Development mode:** Set `TACHYON_SECURITY_DEVELOPMENT=false` in production to enable strict CSP, HSTS, and reject wildcard CORS.

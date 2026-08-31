@@ -26,12 +26,12 @@ Users acting outside intended permissions — accessing other users' data, escal
 ### Gaps
 - **No object-level authorization checks in middleware**: The middleware verifies identity but does not validate that the authenticated user owns or has access to the specific resource ID in the URL. This is currently left to route handlers.
 - **No centralized resource ownership enforcement**: Each handler must independently verify ownership. Inconsistent implementation across handlers could lead to IDOR.
-- **CORS wildcard in default config**: `CorsConfig::default()` uses `allowed_origins: ["*"]` — safe only in development.
+- **CORS policy**: `CorsConfig::default()` uses the explicit localhost origin; production validation rejects wildcard origins when development mode is disabled.
 
 ### Recommendations
 1. Add a middleware layer or extractor that validates resource ownership (e.g., `require_owner("document_id")`) to prevent IDOR systematically.
 2. Ensure all route handlers use the RBAC system consistently — audit every handler for ownership checks.
-3. Production config validation already blocks CORS `*` — keep this enforced. Document that `TACHYON_CORS_ALLOWED_ORIGINS` must be set in production.
+3. Production config validation blocks CORS `*` when development mode is disabled. Set `TACHYON_CORS_ORIGINS` to exact frontend origins in staging and production.
 
 ---
 
@@ -102,7 +102,7 @@ Flawed architecture or design patterns that create security vulnerabilities.
 ### What Tachyon Already Does
 - **Layered security architecture**: Authentication → RBAC → Rate limiting → Security headers → Input validation — multiple independent layers.
 - **Separation of concerns**: Auth middleware, validation, and business logic are separated into distinct modules.
-- **Fail-safe defaults**: Security headers enabled by default, CORS wildcard blocked in production, JWT validation fails closed.
+- **Fail-safe defaults**: Security headers enabled by default, CORS defaults to an explicit localhost origin, wildcard origins are blocked in production, and JWT validation fails closed.
 - **Brute-force protection** (`middleware/rate_limit.rs`): `LoginAttemptTracker` with progressive lockout (5→60s, 10→5m, 20→15m, 50→1h, 100→24h).
 - **Per-endpoint rate limits**: Login (5/min), register (3/min), password-reset (3/min).
 - **Request tracing**: `x-request-id` on every response for forensic correlation.
@@ -137,7 +137,7 @@ Insecure default configurations, incomplete setup, open cloud storage, misconfig
   - `Cross-Origin-Embedder-Policy: require-corp` / `credentialless`.
   - `Cross-Origin-Opener-Policy: same-origin`.
   - `Cross-Origin-Resource-Policy: same-origin`.
-- **Environment-aware configuration** (`config.rs`): Development mode relaxes CSP, disables HSTS; production mode enforces strict headers.
+- **Environment-aware configuration** (`config.rs`): Development mode relaxes CSP, disables HSTS; production mode enforces strict headers and rejects wildcard CORS.
 - **Configuration validation** (`config.rs:validate()`): Checks for default JWT secrets, TLS cert requirements, CORS wildcard in production, max request size limits, session expiry bounds.
 - **Configurable via environment variables**: All security settings overridable without code changes.
 

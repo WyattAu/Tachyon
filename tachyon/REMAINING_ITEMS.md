@@ -84,11 +84,12 @@ This file is a historical remediation register. Items marked `[PASS]` below are 
 - **Files:** `crates/server/src/middleware/rate_limit.rs`
 
 ### 2.5 CORS Defaults to Permissive
+- **Status:** [PASS] Default is the explicit localhost origin; configured wildcard origins are rejected when development mode is disabled.
 - **Priority:** High
 - **Effort:** Small (< 1 day)
-- **Description:** Default `CorsConfig` uses `"*"` for `allowed_origins`. Production deployments must explicitly set allowed origins, but there is no startup validation to enforce this when `TACHYON_CORS_ALLOWED_ORIGINS` is unset.
+- **Description:** `CorsConfig` now defaults to `http://localhost:8080`, parses `TACHYON_CORS_ORIGINS` (with legacy aliases), and fails validation for `*` in production mode.
 - **Dependencies:** None
-- **Files:** `crates/server/src/config.rs`, `crates/server/src/lib.rs:651`
+- **Files:** `crates/server/src/config.rs`, `crates/server/src/lib.rs`
 
 ### 2.6 Tauri Desktop EGL Display Issue
 - **Priority:** Medium
@@ -472,7 +473,7 @@ This file is a historical remediation register. Items marked `[PASS]` below are 
 **Fixed in v0.53:**
 - [PASS] OAuth2 CSRF state validation (DashMap with 10-min TTL, 6 tests)
 - [PASS] XSS sanitization already present via ammonia (6 proof tests added)
-- [PASS] CORS wildcard now errors in production (warns in development)
+- [PASS] CORS defaults to an explicit origin, parses deployment configuration, and rejects wildcard origins in production
 - [PASS] Brute-force protection: `LoginAttemptTracker` with progressive backoff (7 tests)
 
 **Recommended Sprint Order:**

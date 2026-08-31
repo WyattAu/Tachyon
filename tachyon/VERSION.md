@@ -2,9 +2,9 @@
 
 ## Current Status
 - **Version:** 22.0.0
-- **Phase:** Production-Ready — Full monorepo with 16 crates, 1,555+ unit tests, CI/CD pipeline, staging server live
-- **Status:** Active development — all core infrastructure complete, 0 compilation errors, 0 clippy warnings
-- **Last Updated:** 2026-05-28
+- **Phase:** Staging Validated — Full monorepo with 18 workspace members, targeted tests passing, staging server live
+- **Status:** Active development — production gates remain (TLS/DNS, external security scan, soak, backups, CI/CD)
+- **Last Updated:** 2026-08-31
 - **Codebase:** 279+ Rust files, ~97K lines, 25 DB migrations, 29 route modules, 32 DB modules
 - **Staging:** Live at http://192.168.1.3:8080 (TrueNAS Docker, PostgreSQL 16)
 

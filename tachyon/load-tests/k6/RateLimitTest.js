@@ -15,6 +15,13 @@ const rateLimitHeaders = new Rate('rate_limit_headers_present');
 const retryAfterValid = new Rate('retry_after_valid_present');
 const limitRecovery = new Rate('limit_recovery');
 
+function getHeader(headers, name) {
+  const key = Object.keys(headers).find((candidate) =>
+    candidate.toLowerCase() === name.toLowerCase(),
+  );
+  return key === undefined ? undefined : headers[key];
+}
+
 export const options = {
   scenarios: {
     // Scenario 1: Burst requests to trigger rate limiting (single VU, sequential)
@@ -52,24 +59,24 @@ export function burstTest() {
     rateLimited.add(1);
     check(res, {
       '429 includes X-RateLimit-Limit header': (r) =>
-        r.headers['X-RateLimit-Limit'] !== undefined,
+        getHeader(r.headers, 'X-RateLimit-Limit') !== undefined,
       '429 includes X-RateLimit-Remaining header': (r) =>
-        r.headers['X-RateLimit-Remaining'] !== undefined,
+        getHeader(r.headers, 'X-RateLimit-Remaining') !== undefined,
       '429 includes X-RateLimit-Reset header': (r) =>
-        r.headers['X-RateLimit-Reset'] !== undefined,
+        getHeader(r.headers, 'X-RateLimit-Reset') !== undefined,
       '429 includes Retry-After header': (r) =>
-        r.headers['Retry-After'] !== undefined,
+        getHeader(r.headers, 'Retry-After') !== undefined,
     });
     rateLimitHeaders.add(1);
 
-    const retryAfter = parseInt(res.headers['Retry-After'], 10);
+    const retryAfter = parseInt(getHeader(res.headers, 'Retry-After'), 10);
     if (!isNaN(retryAfter) && retryAfter > 0) {
       retryAfterValid.add(1);
     }
   } else {
     check(res, {
       'non-429 response includes rate limit headers': (r) =>
-        r.headers['X-RateLimit-Limit'] !== undefined,
+        getHeader(r.headers, 'X-RateLimit-Limit') !== undefined,
     });
   }
 
@@ -86,7 +93,7 @@ export function multiIpTest() {
   check(res, {
     'multi-ip response < 500': (r) => r.status < 500,
     'multi-ip has rate limit headers': (r) =>
-      r.headers['X-RateLimit-Limit'] !== undefined,
+      getHeader(r.headers, 'X-RateLimit-Limit') !== undefined,
   });
 
   sleep(Math.random() * 0.2 + 0.05);
@@ -99,7 +106,7 @@ export function setup() {
   }
 
   // Check if rate limiting is enabled
-  const hasRateLimitHeader = res.headers['X-RateLimit-Limit'] !== undefined;
+  const hasRateLimitHeader = getHeader(res.headers, 'X-RateLimit-Limit') !== undefined;
   if (!hasRateLimitHeader) {
     console.warn('WARNING: Rate limiting may not be enabled (no X-RateLimit-Limit header)');
     console.warn('Set TACHYON_RATE_LIMIT_ENABLED=true to enable');

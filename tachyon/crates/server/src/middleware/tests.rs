@@ -24,6 +24,7 @@ fn test_config() -> crate::config::ServerConfig {
     let mut config = crate::config::ServerConfig::default();
     config.jwt.secrets = vec!["a-sufficiently-long-secret-key-for-tests-32ch".to_string()];
     config.security.development = true;
+    config.cors.allowed_origins = vec!["http://example.com".to_string()];
     config
 }
 

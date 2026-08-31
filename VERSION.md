@@ -1,8 +1,8 @@
 # Tachyon Project Version Tracking
 
 **Document ID:** TACHYON-VER-V4.0
-**Date:** 2026-05-28
-**Status:** PRODUCTION READY - v20.0.0 CI GREEN
+**Date:** 2026-08-31
+**Status:** STAGING VALIDATED - PRODUCTION GATES PENDING
 
 ---
 
@@ -15,7 +15,7 @@
 | **Deployment Modes** | Desktop, Server, Static |
 | **Primary Languages** | Rust, Leptos |
 | **Current Version** | 20.0.0 |
-| **Project Status** | PRODUCTION READY (CI GREEN) |
+| **Project Status** | STAGING VALIDATED; PRODUCTION GATES PENDING |
 
 ---
 

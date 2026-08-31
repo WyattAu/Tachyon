@@ -16,7 +16,7 @@ tags: [config, reference]
 | `RUST_LOG` | `info` | Log level filter |
 | `TACHYON_HOST` | `0.0.0.0` | Server bind address |
 | `TACHYON_PORT` | `8080` | Server bind port |
-| `TACHYON_CORS_ORIGINS` | `*` | Allowed CORS origins |
+| `TACHYON_CORS_ORIGINS` | `http://localhost:8080` | Comma-separated allowed origins; never use `*` in production |
 | `UPLOAD_DIR` | `./uploads` | File upload directory |
 | `MAX_UPLOAD_SIZE` | `50MB` | Maximum file upload size |
 
