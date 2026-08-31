@@ -127,12 +127,12 @@ export function handleSummary(data) {
   const recovery = data.metrics.limit_recovery;
 
   let out = '\n=== Rate Limit Test Summary ===\n';
-  out += `Rate limited (429): ${(rl ? rl.values.count : 0)} requests\n`;
+  out += `Rate limited (429): ${(rl ? (rl.values.passes ?? 0) : 0)} responses\n`;
   out += `Headers present: ${(headers ? headers.values.rate * 100 : 0).toFixed(1)}%\n`;
   out += `Valid Retry-After: ${(retry ? retry.values.rate * 100 : 0).toFixed(1)}%\n`;
   out += `Limit recovery: ${(recovery ? recovery.values.rate * 100 : 0).toFixed(1)}%\n`;
 
-  if (rl && rl.values.count === 0) {
+  if (rl && (rl.values.passes ?? 0) === 0) {
     out += '\nWARNING: No 429 responses detected. Rate limiting may be disabled.\n';
     out += 'Set TACHYON_RATE_LIMIT_ENABLED=true and TACHYON_RATE_LIMIT_DEFAULT_REQUESTS_PER_MINUTE=100\n';
   }
