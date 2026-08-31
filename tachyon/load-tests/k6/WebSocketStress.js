@@ -3,6 +3,7 @@
 // Usage: k6 run --execution-fragment 'scenarios: { ws: { executor: "constant-vus", vus: 20, duration: "2m" } }' load-tests/k6/WebSocketStress.js
 
 import ws from 'k6/ws';
+import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Counter, Trend } from 'k6/metrics';
 
@@ -13,6 +14,7 @@ const HEARTBEAT_INTERVAL_MS = parseInt(__ENV.HEARTBEAT_INTERVAL_MS || '25000', 1
 const connectErrors = new Rate('ws_connect_errors');
 const disconnectErrors = new Rate('ws_disconnect_errors');
 const reconnectSuccess = new Rate('ws_reconnect_success');
+let connectionCount = 0;
 const heartbeatMissed = new Rate('ws_heartbeat_missed');
 const broadcastReceived = new Rate('ws_broadcast_received');
 const connectionDuration = new Trend('ws_connection_duration');
@@ -75,9 +77,11 @@ function stressConnection(clientId) {
     }, HEARTBEAT_INTERVAL_MS);
   });
 
-  check(res, {
+  const connected = check(res, {
     'ws connected': (r) => r && r.status === 101,
   });
+  reconnectSuccess.add(connected ? 1 : 0);
+  connectionCount += 1;
 }
 
 export const options = {
@@ -98,7 +102,6 @@ export const options = {
 
 export function setup() {
   // Verify server is reachable
-  const http = require('k6/http');
   const healthUrl = BASE_URL.replace('ws://', 'http://').replace('wss://', 'https://');
   const res = http.get(`${healthUrl}/health`);
   if (res.status !== 200) {
@@ -130,7 +133,7 @@ export function handleSummary(data) {
   let out = '\n=== WebSocket Stress Test Summary ===\n';
   out += `Connection errors: ${(connErr ? connErr.values.rate * 100 : 0).toFixed(2)}%\n`;
   out += `Disconnect errors: ${(discErr ? discErr.values.rate * 100 : 0).toFixed(2)}%\n`;
-  out += `Reconnect success: ${(reconnect ? reconnect.values.rate * 100 : 0).toFixed(2)}%\n`;
+  out += `Reconnect/connection success: ${(reconnect ? reconnect.values.rate * 100 : 0).toFixed(2)}%\n`;
   out += `Heartbeat missed: ${(hbMiss ? hbMiss.values.rate * 100 : 0).toFixed(2)}%\n`;
   out += `Broadcasts received: ${broadcast ? broadcast.values.count : 0}\n`;
   if (connDur) {

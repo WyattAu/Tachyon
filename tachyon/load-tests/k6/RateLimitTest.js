@@ -122,8 +122,8 @@ export function teardown(data) {
 
 export function handleSummary(data) {
   const rl = data.metrics.rate_limited;
-  const headers = data.metrics.rate_limit_headers;
-  const retry = data.metrics.retry_after_valid;
+  const headers = data.metrics.rate_limit_headers_present;
+  const retry = data.metrics.retry_after_valid_present;
   const recovery = data.metrics.limit_recovery;
 
   let out = '\n=== Rate Limit Test Summary ===\n';
