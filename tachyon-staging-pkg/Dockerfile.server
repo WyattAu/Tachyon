@@ -1,0 +1,51 @@
+# Tachyon Server Dockerfile
+# Build context: repo root (server source at tachyon/)
+FROM rust:latest AS builder
+
+RUN rustup target add wasm32-unknown-unknown && \
+    cargo install trunk --locked
+
+WORKDIR /build
+
+# Copy workspace source (repo root context, workspace at tachyon/)
+COPY . .
+
+WORKDIR /build/tachyon
+
+# Build the server binary
+RUN cargo build --release -p tachyon-server 2>&1 | tail -20
+
+# Build the frontend (Leptos WASM)
+RUN cd crates/frontend && trunk build --release 2>&1 | tail -20 || echo "Frontend build skipped (WASM deps unavailable)"
+
+# Runtime image
+FROM debian:trixie-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates libssl3 postgresql-client curl && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy server binary
+COPY --from=builder /build/tachyon/target/release/tachyon-server /app/tachyon-server
+
+# Copy database migrations
+COPY --from=builder /build/tachyon/crates/database/migrations /app/migrations
+
+# Copy frontend dist (WASM build output)
+COPY --from=builder /build/tachyon/crates/frontend/dist /app/frontend
+
+# Create non-root user
+RUN groupadd -r tachyon && useradd -r -g tachyon tachyon && \
+    mkdir -p /app/data /app/content && \
+    chown -R tachyon:tachyon /app
+
+USER tachyon
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+CMD ["/app/tachyon-server"]

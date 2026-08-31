@@ -1,0 +1,45 @@
+groups:
+  - name: tachyon
+    rules:
+      # NOTE: HighErrorRate, DatabasePoolExhaustion, LowCacheHitRate, and
+      # InstanceDown are managed in grafana/provisioning/alerts.yml to avoid
+      # duplicate alert names. The rules below cover metrics not present there.
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[1m])) * 1000 > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High P99 latency detected"
+          description: >
+            The P99 latency is {{ $value | humanize }}ms (threshold: 200ms).
+            This has been ongoing for more than 5 minutes.
+            Instance: {{ $labels.instance }}, Job: {{ $labels.job }}.
+
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{fstype!=""} / node_filesystem_size_bytes{fstype!=""}) * 100 < 20
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space is running low"
+          description: >
+            Available disk space is {{ $value | humanize }}% (threshold: 20%).
+            Mount point: {{ $labels.mountpoint }}.
+            Instance: {{ $labels.instance }}.
+
+      - alert: WebSocketConnectionDrop
+        expr: |
+          (websocket_connections_active - websocket_connections_active offset 5m) / websocket_connections_active offset 5m * 100 < -50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Significant WebSocket connection drop"
+          description: >
+            WebSocket active connections dropped by more than 50% over the last 5 minutes.
+            Current connections: {{ $value }}.
+            Instance: {{ $labels.instance }}.

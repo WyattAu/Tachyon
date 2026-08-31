@@ -1,0 +1,704 @@
+// Auto-sync commits implementation
+// Handles automatic Git commits and synchronization
+
+use chrono::{DateTime, Utc};
+use git2::{Repository, Signature, Time};
+use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use tachyon_core::{ErrorResult, TachyonError};
+use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
+
+/// Commit queue entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommitQueueEntry {
+    /// Entry ID
+    pub id: String,
+    /// File path that changed
+    pub path: String,
+    /// Commit message
+    pub message: String,
+    /// Timestamp
+    pub timestamp: DateTime<Utc>,
+    /// Committed flag
+    pub committed: bool,
+}
+
+/// Sync status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SyncStatus {
+    /// Not syncing
+    Idle,
+    /// Sync in progress
+    Syncing,
+    /// Sync completed successfully
+    Success,
+    /// Sync failed
+    Failed,
+}
+
+/// Sync result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncResult {
+    /// Sync status
+    pub status: SyncStatus,
+    /// Number of commits made
+    pub commits_made: u32,
+    /// Number of files synced
+    pub files_synced: u32,
+    /// Error message if failed
+    pub error: Option<String>,
+}
+
+/// Sync configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncConfig {
+    /// Auto-sync enabled
+    pub auto_sync_enabled: bool,
+    /// Sync interval in seconds
+    pub sync_interval_seconds: u64,
+    /// Maximum commit queue size
+    pub max_queue_size: usize,
+    /// Commit message template
+    pub commit_message_template: String,
+}
+
+impl Default for SyncConfig {
+    fn default() -> Self {
+        Self {
+            auto_sync_enabled: true,
+            sync_interval_seconds: 30,
+            max_queue_size: 100,
+            commit_message_template: "Auto-sync: Update {filename}".to_string(),
+        }
+    }
+}
+
+/// Auto-sync manager
+#[derive(Clone)]
+pub struct AutoSyncManager {
+    repository_path: Option<PathBuf>,
+    config: SyncConfig,
+    commit_queue: Arc<RwLock<VecDeque<CommitQueueEntry>>>,
+    /// Reserved for future use: handle to the background sync task.
+    sync_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
+    is_syncing: Arc<RwLock<bool>>,
+}
+
+impl AutoSyncManager {
+    /// Create a new auto-sync manager
+    ///
+    /// # Arguments
+    /// * `config` - Sync configuration
+    pub fn new(config: SyncConfig) -> Self {
+        Self {
+            repository_path: None,
+            config,
+            commit_queue: Arc::new(RwLock::new(VecDeque::new())),
+            sync_handle: Arc::new(Mutex::new(None)),
+            is_syncing: Arc::new(RwLock::new(false)),
+        }
+    }
+
+    /// Set the repository path
+    ///
+    /// # Arguments
+    /// * `path` - Repository path
+    pub fn set_repository_path(&mut self, path: PathBuf) {
+        self.repository_path = Some(path);
+    }
+
+    /// Initialize the Git repository
+    ///
+    /// # Returns
+    /// Error if initialization fails
+    pub fn initialize_repository(&self) -> ErrorResult<()> {
+        let path = self
+            .repository_path
+            .as_ref()
+            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?;
+
+        // Check if repository already exists
+        if Repository::open(path).is_ok() {
+            return Ok(());
+        }
+
+        // Initialize new repository
+        Repository::init(path).map_err(|e| {
+            TachyonError::git(
+                "INIT_ERROR",
+                format!("Failed to initialize repository: {}", e),
+            )
+        })?;
+
+        Ok(())
+    }
+
+    /// Add a file change to the commit queue
+    ///
+    /// # Arguments
+    /// * `path` - File path that changed
+    pub async fn queue_file_change(&self, path: impl AsRef<str>) -> ErrorResult<()> {
+        let path_ref = path.as_ref();
+
+        // Check queue size
+        {
+            let mut queue = self.commit_queue.write().await;
+            if queue.len() >= self.config.max_queue_size {
+                queue.pop_front();
+            }
+
+            let entry = CommitQueueEntry {
+                id: uuid::Uuid::new_v4().to_string(),
+                path: path_ref.to_string(),
+                message: self.generate_commit_message(path_ref),
+                timestamp: Utc::now(),
+                committed: false,
+            };
+
+            queue.push_back(entry);
+        }
+
+        Ok(())
+    }
+
+    /// Generate a commit message for a file change
+    ///
+    /// # Arguments
+    /// * `path` - File path
+    fn generate_commit_message(&self, path: &str) -> String {
+        let filename = Path::new(path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("file");
+
+        self.config
+            .commit_message_template
+            .replace("{filename}", filename)
+            .replace("{path}", path)
+    }
+
+    /// Commit pending changes
+    ///
+    /// # Returns
+    /// Sync result with commit information
+    pub async fn commit_pending(&self) -> ErrorResult<SyncResult> {
+        let path = self
+            .repository_path
+            .as_ref()
+            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?
+            .clone();
+
+        // Drain the commit queue — we must take ownership of entries
+        // to move them into the blocking thread.
+        let entries: Vec<CommitQueueEntry> = {
+            let mut queue = self.commit_queue.write().await;
+            queue.drain(..).collect()
+        };
+
+        if entries.is_empty() {
+            return Ok(SyncResult {
+                status: SyncStatus::Success,
+                commits_made: 0,
+                files_synced: 0,
+                error: None,
+            });
+        }
+
+        // All git2 operations must run on a blocking thread because
+        // git2::Repository is not Send/Sync.
+        let result = tokio::task::spawn_blocking(move || {
+            let repo = Repository::open(&path).map_err(|e| {
+                TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e))
+            })?;
+
+            let mut commits_made = 0u32;
+            let mut files_synced = 0u32;
+
+            for entry in &entries {
+                match Self::commit_file_sync(&repo, entry) {
+                    Ok(_) => {
+                        commits_made += 1;
+                        files_synced += 1;
+                    }
+                    Err(e) => {
+                        return Ok::<_, TachyonError>(SyncResult {
+                            status: SyncStatus::Failed,
+                            commits_made,
+                            files_synced,
+                            error: Some(e.to_string()),
+                        });
+                    }
+                }
+            }
+
+            Ok(SyncResult {
+                status: SyncStatus::Success,
+                commits_made,
+                files_synced,
+                error: None,
+            })
+        })
+        .await
+        .map_err(|e| TachyonError::internal("JOIN_ERROR", format!("Task join error: {}", e)))??;
+
+        Ok(result)
+    }
+
+    /// Commit a single file (synchronous, for use inside spawn_blocking)
+    ///
+    /// # Arguments
+    /// * `repo` - Git repository
+    /// * `entry` - Commit queue entry
+    fn commit_file_sync(repo: &Repository, entry: &CommitQueueEntry) -> ErrorResult<()> {
+        let path = Path::new(&entry.path);
+
+        // Check if file exists
+        if !path.exists() {
+            return Err(TachyonError::not_found(format!("File: {}", entry.path)));
+        }
+
+        // Get repository relative path
+        let repo_path = repo.path().parent().ok_or_else(|| {
+            TachyonError::internal("REPO_PATH_ERROR", "Failed to get repository path")
+        })?;
+
+        let relative_path = path
+            .strip_prefix(repo_path)
+            .map_err(|_| TachyonError::validation("PATH_ERROR", "File is not in repository"))?;
+
+        // Get index
+        let mut index = repo
+            .index()
+            .map_err(|e| TachyonError::git("INDEX_ERROR", format!("Failed to get index: {}", e)))?;
+
+        // Add file to index
+        index.add_path(relative_path).map_err(|e| {
+            TachyonError::git("ADD_ERROR", format!("Failed to add file to index: {}", e))
+        })?;
+
+        // Write index
+        index.write().map_err(|e| {
+            TachyonError::git("WRITE_INDEX_ERROR", format!("Failed to write index: {}", e))
+        })?;
+
+        // Get tree ID
+        let tree_id = index
+            .write_tree()
+            .map_err(|e| TachyonError::git("TREE_ERROR", format!("Failed to write tree: {}", e)))?;
+
+        let tree = repo.find_tree(tree_id).map_err(|e| {
+            TachyonError::git("FIND_TREE_ERROR", format!("Failed to find tree: {}", e))
+        })?;
+
+        // Get HEAD commit if exists
+        let parent_commit = match repo.head() {
+            Ok(head) => {
+                let commit = head.peel_to_commit().map_err(|e| {
+                    TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e))
+                })?;
+                Some(commit)
+            }
+            Err(_) => None,
+        };
+
+        // Create signature
+        let time = Time::new(
+            entry.timestamp.timestamp(),
+            entry.timestamp.timestamp_subsec_nanos() as i32, // git2 expects i32
+        );
+        let signature = Signature::new("Tachyon Auto-Sync", "auto-sync@tachyon.io", &time)
+            .map_err(|e| {
+                TachyonError::git(
+                    "SIGNATURE_ERROR",
+                    format!("Failed to create signature: {}", e),
+                )
+            })?;
+
+        // Create commit
+        let mut parents = Vec::new();
+        if let Some(ref parent) = parent_commit {
+            parents.push(parent);
+        }
+
+        repo.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            &entry.message,
+            &tree,
+            parents.as_slice(),
+        )
+        .map_err(|e| TachyonError::git("COMMIT_ERROR", format!("Failed to commit: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Push commits to remote repository
+    ///
+    /// # Returns
+    /// Sync result with push information
+    pub async fn push_to_remote(
+        &self,
+        remote_name: &str,
+        branch_name: &str,
+    ) -> ErrorResult<SyncResult> {
+        let path = self
+            .repository_path
+            .as_ref()
+            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?
+            .clone();
+        let remote_name = remote_name.to_string();
+        let branch_name = branch_name.to_string();
+
+        // All git2 operations run on a blocking thread (Repository is not Send)
+        tokio::task::spawn_blocking(move || {
+            let repo = Repository::open(&path).map_err(|e| {
+                TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e))
+            })?;
+
+            // Find remote
+            let mut remote = repo.find_remote(&remote_name).map_err(|e| {
+                TachyonError::git("REMOTE_ERROR", format!("Failed to find remote: {}", e))
+            })?;
+
+            // Push to remote
+            remote
+                .push(
+                    &[format!(
+                        "refs/heads/{}:refs/heads/{}",
+                        branch_name, branch_name
+                    )],
+                    None,
+                )
+                .map_err(|e| TachyonError::git("PUSH_ERROR", format!("Failed to push: {}", e)))?;
+
+            Ok::<_, TachyonError>(SyncResult {
+                status: SyncStatus::Success,
+                commits_made: 0,
+                files_synced: 0,
+                error: None,
+            })
+        })
+        .await
+        .map_err(|e| TachyonError::internal("JOIN_ERROR", format!("Task join error: {}", e)))?
+    }
+
+    /// Pull changes from remote repository
+    ///
+    /// # Returns
+    /// Sync result with pull information
+    pub async fn pull_from_remote(
+        &self,
+        remote_name: &str,
+        branch_name: &str,
+    ) -> ErrorResult<SyncResult> {
+        let path = self
+            .repository_path
+            .as_ref()
+            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?
+            .clone();
+        let remote_name = remote_name.to_string();
+        let branch_name = branch_name.to_string();
+
+        // All git2 operations run on a blocking thread (Repository is not Send)
+        tokio::task::spawn_blocking(move || {
+            let repo = Repository::open(&path).map_err(|e| {
+                TachyonError::git("OPEN_ERROR", format!("Failed to open repository: {}", e))
+            })?;
+
+            // Find remote
+            let mut remote = repo.find_remote(&remote_name).map_err(|e| {
+                TachyonError::git("REMOTE_ERROR", format!("Failed to find remote: {}", e))
+            })?;
+
+            // Fetch from remote
+            remote
+                .fetch(&[&branch_name], None, None)
+                .map_err(|e| TachyonError::git("FETCH_ERROR", format!("Failed to fetch: {}", e)))?;
+
+            // Get fetch head
+            let fetch_head = repo
+                .find_reference(&format!("refs/remotes/{}/{}", remote_name, branch_name))
+                .map_err(|e| {
+                    TachyonError::git(
+                        "FETCH_HEAD_ERROR",
+                        format!("Failed to find FETCH_HEAD: {}", e),
+                    )
+                })?;
+
+            let fetch_commit = fetch_head.peel_to_commit().map_err(|e| {
+                TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e))
+            })?;
+
+            // Merge into HEAD
+            let head = repo.head().map_err(|e| {
+                TachyonError::git("HEAD_ERROR", format!("Failed to get HEAD: {}", e))
+            })?;
+
+            let _head_commit = head.peel_to_commit().map_err(|e| {
+                TachyonError::git("PEEL_ERROR", format!("Failed to peel to commit: {}", e))
+            })?;
+
+            let annotated_fetch = repo.find_annotated_commit(fetch_commit.id()).map_err(|e| {
+                TachyonError::git(
+                    "ANNOTATED_ERROR",
+                    format!("Failed to find annotated commit: {}", e),
+                )
+            })?;
+
+            // Perform merge with the fetched commit
+            let mut merge_opts = git2::MergeOptions::new();
+            repo.merge(&[&annotated_fetch], Some(&mut merge_opts), None)
+                .map_err(|e| TachyonError::git("MERGE_ERROR", format!("Failed to merge: {}", e)))?;
+
+            Ok::<_, TachyonError>(SyncResult {
+                status: SyncStatus::Success,
+                commits_made: 0,
+                files_synced: 0,
+                error: None,
+            })
+        })
+        .await
+        .map_err(|e| TachyonError::internal("JOIN_ERROR", format!("Task join error: {}", e)))?
+    }
+
+    /// Get the sync status
+    ///
+    /// # Returns
+    /// Current sync status
+    pub async fn get_sync_status(&self) -> SyncStatus {
+        let is_syncing = *self.is_syncing.read().await;
+        if is_syncing {
+            SyncStatus::Syncing
+        } else {
+            SyncStatus::Idle
+        }
+    }
+
+    /// Get the commit queue size
+    ///
+    /// # Returns
+    /// Number of pending commits
+    pub async fn get_queue_size(&self) -> usize {
+        self.commit_queue.read().await.len()
+    }
+
+    /// Clear the commit queue
+    pub async fn clear_queue(&self) {
+        self.commit_queue.write().await.clear();
+    }
+
+    /// Start a file watcher on the configured repository path.
+    ///
+    /// Spawns a background task that watches for file changes using a
+    /// polling approach (compatible with all platforms including those
+    /// where `notify` crate may not be available in Tauri context).
+    ///
+    /// # Arguments
+    /// * `interval_secs` - Polling interval in seconds (default: 5)
+    ///
+    /// # Returns
+    /// AbortHandle for the spawned task, or error if no repository is configured.
+    pub fn start_file_watcher(
+        &self,
+        interval_secs: Option<u64>,
+    ) -> ErrorResult<tokio::task::AbortHandle> {
+        let repo_path = self
+            .repository_path
+            .clone()
+            .ok_or_else(|| TachyonError::validation("NO_REPOSITORY", "Repository path not set"))?;
+
+        let commit_queue = self.commit_queue.clone();
+        let interval = interval_secs.unwrap_or(5);
+        let commit_template = self.config.commit_message_template.clone();
+
+        let handle = tokio::spawn(async move {
+            let mut last_snapshots: std::collections::HashMap<String, u64> =
+                std::collections::HashMap::new();
+
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
+
+                // Walk the repository and detect changes by comparing modification times
+                let mut changed_files = Vec::new();
+                if let Ok(entries) = std::fs::read_dir(&repo_path) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if !path.is_file() {
+                            continue;
+                        }
+                        // Only watch markdown files
+                        let ext = path
+                            .extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| e.to_lowercase());
+                        match ext.as_deref() {
+                            Some("md") | Some("markdown") => {}
+                            _ => continue,
+                        }
+
+                        let path_str = path.to_string_lossy().to_string();
+                        let mtime = entry
+                            .metadata()
+                            .ok()
+                            .and_then(|m| m.modified().ok())
+                            .map(|t| {
+                                t.duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_secs()
+                            })
+                            .unwrap_or(0);
+
+                        match last_snapshots.get(&path_str) {
+                            Some(&prev) if prev == mtime => {} // Unchanged
+                            _ => {
+                                // New or modified file
+                                last_snapshots.insert(path_str.clone(), mtime);
+                                changed_files.push(path_str);
+                            }
+                        }
+                    }
+                }
+
+                // Queue changed files for commit
+                for file_path in changed_files {
+                    let filename = Path::new(&file_path)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("file");
+
+                    let message = commit_template
+                        .replace("{filename}", filename)
+                        .replace("{path}", &file_path);
+
+                    let entry = CommitQueueEntry {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        path: file_path,
+                        message,
+                        timestamp: chrono::Utc::now(),
+                        committed: false,
+                    };
+
+                    let mut queue = commit_queue.write().await;
+                    if queue.len() >= 100 {
+                        queue.pop_front();
+                    }
+                    queue.push_back(entry);
+                }
+            }
+        });
+
+        let abort_handle = handle.abort_handle();
+
+        // Store the abort handle
+        {
+            let mut sync_handle = self.sync_handle.lock().map_err(|e| {
+                TachyonError::internal("LOCK_ERROR", format!("Failed to acquire lock: {}", e))
+            })?;
+            // We don't store JoinHandle in sync_handle anymore since it's not Clone.
+            // Instead, we track whether a watcher is active via the is_watching flag.
+            *sync_handle = Some(handle);
+        }
+
+        Ok(abort_handle)
+    }
+
+    /// Stop the file watcher if running.
+    pub fn stop_file_watcher(&self) -> ErrorResult<()> {
+        let mut sync_handle = self.sync_handle.lock().map_err(|e| {
+            TachyonError::internal("LOCK_ERROR", format!("Failed to acquire lock: {}", e))
+        })?;
+
+        if let Some(handle) = sync_handle.take() {
+            handle.abort();
+        }
+        Ok(())
+    }
+
+    /// Check if the file watcher is running.
+    pub fn is_watching(&self) -> bool {
+        self.sync_handle
+            .lock()
+            .map(|h| h.is_some())
+            .unwrap_or(false)
+    }
+}
+
+impl Default for AutoSyncManager {
+    fn default() -> Self {
+        Self::new(SyncConfig::default())
+    }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sync_config_default() {
+        let config = SyncConfig::default();
+        assert!(config.auto_sync_enabled);
+        assert_eq!(config.sync_interval_seconds, 30);
+        assert_eq!(config.max_queue_size, 100);
+        assert!(config.commit_message_template.contains("{filename}"));
+    }
+
+    #[test]
+    fn test_commit_queue_entry() {
+        let entry = CommitQueueEntry {
+            id: "test-id".to_string(),
+            path: "/path/to/file.txt".to_string(),
+            message: "Test commit".to_string(),
+            timestamp: Utc::now(),
+            committed: false,
+        };
+
+        assert_eq!(entry.id, "test-id");
+        assert_eq!(entry.path, "/path/to/file.txt");
+        assert_eq!(entry.message, "Test commit");
+        assert!(!entry.committed);
+    }
+
+    #[test]
+    fn test_sync_result() {
+        let result = SyncResult {
+            status: SyncStatus::Success,
+            commits_made: 5,
+            files_synced: 5,
+            error: None,
+        };
+
+        assert_eq!(result.status, SyncStatus::Success);
+        assert_eq!(result.commits_made, 5);
+        assert_eq!(result.files_synced, 5);
+        assert!(result.error.is_none());
+    }
+
+    #[test]
+    fn test_generate_commit_message() {
+        let config = SyncConfig {
+            commit_message_template: "Update {filename}".to_string(),
+            ..Default::default()
+        };
+
+        let manager = AutoSyncManager::new(config);
+        let message = manager.generate_commit_message("/path/to/file.txt");
+
+        assert!(message.contains("file.txt"));
+        assert!(message.contains("Update"));
+    }
+
+    #[test]
+    fn test_auto_sync_manager_default() {
+        let manager = AutoSyncManager::default();
+        assert!(manager.repository_path.is_none());
+        assert!(manager.config.auto_sync_enabled);
+    }
+}

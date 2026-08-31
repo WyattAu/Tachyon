@@ -1,0 +1,82 @@
+// Components module
+
+pub mod activity_feed;
+pub mod app_shell;
+pub mod attachments;
+pub mod auth_guard;
+pub mod breadcrumbs;
+pub mod catalog;
+pub mod client_search;
+pub mod collaborative_cursors;
+pub mod command_palette;
+pub mod common;
+pub mod conflict_resolver;
+pub mod drop_zone;
+pub mod editor_preview;
+pub mod editor_search;
+pub mod editor_settings;
+pub mod editor_split;
+pub mod editor_toolbar;
+pub mod empty_state;
+pub mod encryption_indicator;
+pub mod error_boundary;
+pub mod image_preview;
+pub mod keyboard;
+pub mod language_picker;
+pub mod layout;
+pub mod loading;
+pub mod markdown_preview;
+pub mod mobile_nav;
+pub mod native_editor;
+pub mod onboarding;
+pub mod online_status;
+pub mod outliner;
+pub mod pdf_annotation;
+pub mod pdf_viewer;
+pub mod presence_indicators;
+pub mod review_panel;
+pub mod role_badge;
+pub mod skeleton;
+pub mod slash_commands;
+pub mod table_of_contents;
+pub mod template_selector;
+pub mod theme_toggle;
+pub mod update_banner;
+pub mod upload_progress;
+pub mod user_avatar;
+pub mod version_diff;
+pub mod version_history;
+pub mod wikilink_autocomplete;
+
+pub use activity_feed::{Activity, ActivityFeed};
+pub use app_shell::AppShell;
+pub use auth_guard::{AuthGuard, provide_auth_context};
+pub use breadcrumbs::{BreadcrumbItem, Breadcrumbs};
+#[allow(unused_imports)]
+pub use catalog::CatalogPage;
+pub use client_search::ClientSearch;
+pub use command_palette::CommandPalette;
+pub use conflict_resolver::ConflictResolver;
+pub use editor_preview::EditorPreview;
+pub use editor_search::EditorSearch;
+pub use editor_toolbar::EditorToolbar;
+pub use empty_state::{EmptyDocuments, EmptySearch};
+pub use error_boundary::AppErrorBoundary;
+pub use keyboard::FocusTrap;
+#[allow(unused_imports)]
+pub use language_picker::LanguagePicker;
+pub use loading::ButtonSpinner;
+pub use markdown_preview::MarkdownPreview;
+pub use native_editor::NativeEditor;
+pub use onboarding::{OnboardingWizard, should_show_onboarding};
+pub use online_status::OnlineStatusIndicator;
+pub use outliner::OutlinerView;
+pub use pdf_annotation::{
+    AnnotationListPanel, AnnotationToolbar, ExportAnnotationsDialog, StickyNoteInput,
+};
+pub use pdf_viewer::PdfViewer;
+pub use review_panel::ReviewPanel;
+pub use table_of_contents::TableOfContents;
+pub use template_selector::TemplateSelector;
+pub use theme_toggle::{ThemeInitializer, ThemeToggle};
+pub use version_history::VersionHistory;

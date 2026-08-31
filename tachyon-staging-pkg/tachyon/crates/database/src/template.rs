@@ -1,0 +1,406 @@
+// Document Template Repository
+// Template management for reusable document structures
+
+use crate::error::{DatabaseError, DatabaseResult};
+use crate::schema::DatabasePool;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, Row, query, query_as};
+use tracing::{debug, info, instrument};
+
+const TEMPLATE_SELECT_SQL: &str = r#"
+    SELECT 
+        id::text as id,
+        name,
+        description,
+        content,
+        category,
+        tags::text as tags,
+        created_at,
+        updated_at,
+        created_by::text as created_by
+    FROM document_templates
+"#;
+
+/// A reusable document template stored in the `document_templates` table.
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct DocumentTemplate {
+    /// Primary key (UUID).
+    pub id: String,
+    /// Human-readable template name (unique).
+    pub name: String,
+    /// Optional short description.
+    pub description: Option<String>,
+    /// Template body content (Markdown / richtext).
+    pub content: String,
+    /// Free-form category label for grouping.
+    pub category: Option<String>,
+    /// JSON-encoded array of tag strings.
+    pub tags: String,
+    /// Row-creation timestamp.
+    pub created_at: DateTime<Utc>,
+    /// Last-update timestamp.
+    pub updated_at: DateTime<Utc>,
+    /// User ID of the creator (UUID string).
+    pub created_by: String,
+}
+
+impl DocumentTemplate {
+    /// Deserialize the `tags` JSON column into a `Vec<String>`.
+    pub fn parse_tags(&self) -> DatabaseResult<Vec<String>> {
+        serde_json::from_str(&self.tags)
+            .map_err(|e| DatabaseError::SerializationError(e.to_string()))
+    }
+
+    /// Serialize a tag slice to a JSON string for storage.
+    pub fn serialize_tags(tags: &[String]) -> DatabaseResult<String> {
+        serde_json::to_string(tags).map_err(|e| DatabaseError::SerializationError(e.to_string()))
+    }
+}
+
+/// Request body for creating a new document template.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateTemplateRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub content: String,
+    pub category: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub created_by: String,
+}
+
+/// Partial update payload for an existing template.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateTemplateRequest {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub content: Option<String>,
+    pub category: Option<String>,
+    pub tags: Option<Vec<String>>,
+}
+
+/// Repository for persisting and querying document templates.
+#[derive(Clone)]
+pub struct TemplateRepository {
+    pool: DatabasePool,
+}
+
+impl TemplateRepository {
+    /// Create a new template repository backed by `pool`.
+    pub fn new(pool: DatabasePool) -> Self {
+        Self { pool }
+    }
+
+    /// Insert a new template. Returns the persisted row.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::Duplicate` if a template with the same name already exists.
+    #[instrument(skip(self, req))]
+    pub async fn create(&self, req: CreateTemplateRequest) -> DatabaseResult<DocumentTemplate> {
+        let id = uuid::Uuid::new_v4().to_string();
+        let now = Utc::now();
+        let tags = DocumentTemplate::serialize_tags(&req.tags.unwrap_or_default())?;
+
+        let insert_sql = r#"
+            INSERT INTO document_templates (
+                id, name, description, content, category, tags, created_at, updated_at, created_by
+            ) VALUES ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7, $8, $9::uuid)
+            RETURNING id::text as id, name, description, content, category, tags::text as tags, created_at, updated_at, created_by::text as created_by
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let template: DocumentTemplate = query_as(insert_sql)
+            .bind(&id)
+            .bind(&req.name)
+            .bind(&req.description)
+            .bind(&req.content)
+            .bind(&req.category)
+            .bind(&tags)
+            .bind(now)
+            .bind(now)
+            .bind(&req.created_by)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| {
+                if e.to_string().contains("duplicate key")
+                    || e.to_string().contains("UNIQUE constraint")
+                {
+                    DatabaseError::duplicate(
+                        "template",
+                        format!("Template '{}' already exists", req.name),
+                    )
+                } else {
+                    DatabaseError::QueryError(e.to_string())
+                }
+            })?;
+
+        info!("Template created: {}", req.name);
+        Ok(template)
+    }
+
+    /// Retrieve a template by its UUID.
+    #[instrument(skip(self))]
+    pub async fn get_by_id(&self, id: &str) -> DatabaseResult<DocumentTemplate> {
+        let select_sql = format!("{} WHERE id = $1::uuid", TEMPLATE_SELECT_SQL);
+
+        let mut conn = self.pool.acquire().await?;
+        let template: Option<DocumentTemplate> = query_as(&select_sql)
+            .bind(id)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        template.ok_or_else(|| DatabaseError::not_found("template", id))
+    }
+
+    /// Retrieve a template by its unique name.
+    #[instrument(skip(self))]
+    pub async fn get_by_name(&self, name: &str) -> DatabaseResult<DocumentTemplate> {
+        let select_sql = format!("{} WHERE name = $1", TEMPLATE_SELECT_SQL);
+
+        let mut conn = self.pool.acquire().await?;
+        let template: Option<DocumentTemplate> = query_as(&select_sql)
+            .bind(name)
+            .fetch_optional(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        template.ok_or_else(|| DatabaseError::not_found("template", name))
+    }
+
+    /// List templates, optionally filtered by `category`.
+    #[instrument(skip(self))]
+    pub async fn list(
+        &self,
+        category: Option<&str>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> DatabaseResult<Vec<DocumentTemplate>> {
+        let limit = limit.unwrap_or(50);
+        let offset = offset.unwrap_or(0);
+
+        let select_sql = match category {
+            Some(_) => format!(
+                "{} WHERE category = $1 ORDER BY name ASC LIMIT $2 OFFSET $3",
+                TEMPLATE_SELECT_SQL
+            ),
+            None => format!(
+                "{} ORDER BY name ASC LIMIT $1 OFFSET $2",
+                TEMPLATE_SELECT_SQL
+            ),
+        };
+
+        let mut conn = self.pool.acquire().await?;
+
+        let templates: Vec<DocumentTemplate> = if let Some(cat) = category {
+            query_as(&select_sql)
+                .bind(cat)
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?
+        } else {
+            query_as(&select_sql)
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?
+        };
+
+        debug!("Found {} templates", templates.len());
+        Ok(templates)
+    }
+
+    /// Apply a partial update to an existing template.
+    #[instrument(skip(self, req))]
+    pub async fn update(
+        &self,
+        id: &str,
+        req: UpdateTemplateRequest,
+    ) -> DatabaseResult<DocumentTemplate> {
+        let existing = self.get_by_id(id).await?;
+        let now = Utc::now();
+
+        let name = req.name.unwrap_or(existing.name);
+        let description = req.description.or(existing.description);
+        let content = req.content.unwrap_or(existing.content);
+        let category = req.category.or(existing.category);
+        let tags = match req.tags {
+            Some(t) => DocumentTemplate::serialize_tags(&t)?,
+            None => existing.tags,
+        };
+
+        let update_sql = r#"
+            UPDATE document_templates SET
+                name = $1, description = $2, content = $3, category = $4, tags = $5::jsonb, updated_at = $6
+            WHERE id = $7::uuid
+            RETURNING id::text as id, name, description, content, category, tags::text as tags, created_at, updated_at, created_by::text as created_by
+        "#;
+
+        let mut conn = self.pool.acquire().await?;
+        let template: DocumentTemplate = query_as(update_sql)
+            .bind(&name)
+            .bind(&description)
+            .bind(&content)
+            .bind(&category)
+            .bind(&tags)
+            .bind(now)
+            .bind(id)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        info!("Template updated: {}", id);
+        Ok(template)
+    }
+
+    /// Permanently delete a template by UUID.
+    #[instrument(skip(self))]
+    pub async fn delete(&self, id: &str) -> DatabaseResult<()> {
+        let delete_sql = "DELETE FROM document_templates WHERE id = $1::uuid";
+
+        let mut conn = self.pool.acquire().await?;
+        let result = query(delete_sql)
+            .bind(id)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::not_found("template", id));
+        }
+
+        info!("Template deleted: {}", id);
+        Ok(())
+    }
+
+    /// Return all distinct category values currently in use.
+    #[instrument(skip(self))]
+    pub async fn list_categories(&self) -> DatabaseResult<Vec<String>> {
+        let select_sql = "SELECT DISTINCT category FROM document_templates WHERE category IS NOT NULL ORDER BY category";
+
+        let mut conn = self.pool.acquire().await?;
+        let rows = query(select_sql)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(|e| DatabaseError::QueryError(e.to_string()))?;
+
+        Ok(rows.iter().filter_map(|r| r.get("category")).collect())
+    }
+
+    /// Count templates, optionally filtered by `category`.
+    #[instrument(skip(self))]
+    pub async fn count(&self, category: Option<&str>) -> DatabaseResult<i64> {
+        let count_sql = match category {
+            Some(_) => "SELECT COUNT(*) as count FROM document_templates WHERE category = $1",
+            None => "SELECT COUNT(*) as count FROM document_templates",
+        };
+
+        let mut conn = self.pool.acquire().await?;
+        let row = if let Some(cat) = category {
+            query(count_sql)
+                .bind(cat)
+                .fetch_one(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?
+        } else {
+            query(count_sql)
+                .fetch_one(&mut *conn)
+                .await
+                .map_err(|e| DatabaseError::QueryError(e.to_string()))?
+        };
+
+        Ok(row.get("count"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn make_test_template(tags: &str) -> DocumentTemplate {
+        DocumentTemplate {
+            id: "test-id".into(),
+            name: "Test Template".into(),
+            description: None,
+            content: "# Hello".into(),
+            category: Some("productivity".into()),
+            tags: tags.into(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            created_by: "user-1".into(),
+        }
+    }
+
+    #[test]
+    fn test_serialize_tags() {
+        let tags = vec!["meeting".to_string(), "notes".to_string()];
+        let json = DocumentTemplate::serialize_tags(&tags).unwrap();
+        assert_eq!(json, r#"["meeting","notes"]"#);
+    }
+
+    #[test]
+    fn test_serialize_tags_empty() {
+        let tags: Vec<String> = vec![];
+        let json = DocumentTemplate::serialize_tags(&tags).unwrap();
+        assert_eq!(json, "[]");
+    }
+
+    #[test]
+    fn test_parse_tags_valid() {
+        let template = make_test_template(r#"["meeting","notes"]"#);
+        let tags = template.parse_tags().unwrap();
+        assert_eq!(tags, vec!["meeting", "notes"]);
+    }
+
+    #[test]
+    fn test_parse_tags_empty_array() {
+        let template = make_test_template("[]");
+        let tags = template.parse_tags().unwrap();
+        assert!(tags.is_empty());
+    }
+
+    #[test]
+    fn test_parse_tags_invalid_json() {
+        let template = make_test_template("not json");
+        assert!(template.parse_tags().is_err());
+    }
+
+    #[test]
+    fn test_template_struct_fields() {
+        let template = make_test_template(r#"["tag1"]"#);
+        assert_eq!(template.name, "Test Template");
+        assert_eq!(template.category.as_deref(), Some("productivity"));
+        assert_eq!(template.created_by, "user-1");
+    }
+
+    #[test]
+    fn test_create_template_request_fields() {
+        let req = CreateTemplateRequest {
+            name: "My Template".into(),
+            description: Some("A template".into()),
+            content: "# Title".into(),
+            category: Some("general".into()),
+            tags: Some(vec!["doc".into()]),
+            created_by: "user-1".into(),
+        };
+        assert_eq!(req.name, "My Template");
+        assert_eq!(req.tags.as_deref(), Some(["doc".to_string()].as_slice()));
+    }
+
+    #[test]
+    fn test_update_template_request_all_none() {
+        let req = UpdateTemplateRequest {
+            name: None,
+            description: None,
+            content: None,
+            category: None,
+            tags: None,
+        };
+        assert!(req.name.is_none());
+        assert!(req.tags.is_none());
+    }
+}

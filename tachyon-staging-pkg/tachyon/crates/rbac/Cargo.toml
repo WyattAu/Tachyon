@@ -1,0 +1,40 @@
+[package]
+name = "tachyon-rbac"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Role-Based Access Control (RBAC) for Tachyon"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Workspace dependencies
+tachyon-core = { path = "../core" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+# NOTE: anyhow removed — zero imports; uses thiserror for error handling
+tracing = { workspace = true }
+dashmap = { workspace = true }
+
+# NOTE: casbin removed — zero imports; RBAC engine implemented from scratch
+# RBAC Policy Engine is custom (PolicyEngine, PolicyRule, Enforcer)
+
+# Async support
+async-trait = "0.1"
+
+# Error handling
+thiserror = "2"
+
+# Database integration (used by rbac storage layer)
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "chrono"] }
+
+# Additional utilities
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[features]
+default = []
+staging = []

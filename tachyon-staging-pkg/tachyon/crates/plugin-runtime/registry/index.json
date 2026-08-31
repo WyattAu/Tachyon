@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-06-09T00:00:00Z",
+  "plugins": [
+    {
+      "id": "tachyon/mermaid-renderer",
+      "name": "Mermaid Diagram Renderer",
+      "description": "Renders Mermaid code blocks to SVG diagram placeholders in Tachyon documents",
+      "author": "Tachyon Team",
+      "version": "0.1.0",
+      "license": "MIT",
+      "download_url": "https://registry.tachyon.dev/plugins/mermaid-renderer/0.1.0/mermaid-renderer.wasm",
+      "checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "size_bytes": 0,
+      "min_tachyon_version": "0.1.0",
+      "extension_points": ["document.render"],
+      "tags": ["diagrams", "mermaid", "rendering", "visualization"],
+      "featured": true
+    },
+    {
+      "id": "tachyon/csv-table-renderer",
+      "name": "CSV Table Renderer",
+      "description": "Renders CSV and TSV code blocks as HTML tables in Tachyon documents",
+      "author": "Tachyon Team",
+      "version": "0.1.0",
+      "license": "MIT",
+      "download_url": "https://registry.tachyon.dev/plugins/csv-table-renderer/0.1.0/csv-table-renderer.wasm",
+      "checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "size_bytes": 0,
+      "min_tachyon_version": "0.1.0",
+      "extension_points": ["document.render"],
+      "tags": ["tables", "csv", "tsv", "rendering", "data"],
+      "featured": false
+    }
+  ]
+}

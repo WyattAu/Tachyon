@@ -1,0 +1,146 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: tachyon_test
+          POSTGRES_PASSWORD: tachyon_test
+          POSTGRES_DB: tachyon_test
+        ports:
+          - '5433:5432'
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install trunk and wasm-opt
+        run: |
+          TMPDIR=/tmp cargo install trunk --version 0.21.14 --locked
+          sudo apt-get update && sudo apt-get install -y binaryen
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: e2e-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: e2e-${{ runner.os }}-cargo-
+
+      - name: Build WASM frontend
+        working-directory: tachyon/crates/frontend
+        run: trunk build --release
+
+      - name: Verify WASM frontend artifacts
+        run: |
+          if [ ! -f "tachyon/crates/frontend/dist/index.html" ]; then
+            echo "::error::WASM frontend build failed - index.html not found"
+            exit 1
+          fi
+          echo "WASM frontend build verified: $(ls tachyon/crates/frontend/dist/ | wc -l) files"
+
+      - name: Build server
+        working-directory: tachyon
+        run: cargo build --release -p tachyon-server
+
+      - name: Start server
+        working-directory: tachyon
+        env:
+          DATABASE_URL: postgres://tachyon_test:tachyon_test@localhost:5433/tachyon_test
+          TACHYON_STATIC_DIR: crates/frontend/dist
+          TACHYON_PORT: 8080
+          TACHYON_JWT_SECRET: e2e-ci-secret-key-must-be-at-least-32-chars-long
+          RUST_LOG: warn
+        run: |
+          cargo run --release -p tachyon-server &
+          SERVER_READY=false
+          for i in $(seq 1 120); do
+            if curl -sf http://localhost:8080/health; then
+              echo "Server ready after ${i}s"
+              SERVER_READY=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$SERVER_READY" != "true" ]; then
+            echo "::error::Server failed to start within 120 seconds"
+            exit 1
+          fi
+
+      - name: Verify server health
+        run: |
+          HTTP_CODE=$(curl -sf -o /dev/null -w '%{http_code}' http://localhost:8080/health)
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "::error::Server health check returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "Server health check passed (HTTP $HTTP_CODE)"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-v1.49.0
+
+      - name: Install Playwright
+        working-directory: tachyon/e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run smoke tests (fast)
+        working-directory: tachyon/e2e
+        env:
+          E2E_BASE_URL: http://localhost:8080
+        run: npx playwright test --config=playwright.smoke.config.ts --reporter=list
+        timeout-minutes: 5
+
+      - name: Run full E2E suite
+        working-directory: tachyon/e2e
+        env:
+          E2E_BASE_URL: http://localhost:8080
+        run: npx playwright test --reporter=list --retries=2
+
+      - name: Cleanup
+        if: always()
+        run: kill $(pgrep -f tachyon-server) 2>/dev/null || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-report
+          path: |
+            tachyon/e2e/playwright-report/
+            tachyon/e2e/test-results/
+          retention-days: 7

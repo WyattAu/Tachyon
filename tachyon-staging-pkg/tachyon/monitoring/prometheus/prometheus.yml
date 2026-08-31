@@ -1,0 +1,69 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+  external_labels:
+    monitor: "tachyon"
+
+rule_files:
+  - "alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  - job_name: "tachyon"
+    metrics_path: "/metrics/prometheus"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["tachyon-server:8080"]
+        labels:
+          service: "tachyon"
+          env: "production"
+
+  - job_name: "tachyon-app"
+    metrics_path: "/metrics/app"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["tachyon-server:8080"]
+        labels:
+          service: "tachyon"
+          env: "production"
+
+  - job_name: "nginx"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["nginx-exporter:9113"]
+        labels:
+          service: "nginx"
+          env: "production"
+
+  - job_name: "postgres"
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+        labels:
+          service: "postgres"
+          env: "production"
+
+  - job_name: "node"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: "node"
+          env: "production"
+
+  - job_name: "prometheus"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["localhost:9090"]

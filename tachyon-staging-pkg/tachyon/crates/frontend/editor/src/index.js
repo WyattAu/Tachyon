@@ -1,0 +1,1013 @@
+// Tachyon Editor — ProseMirror-based Markdown editor
+//
+// Exposes `window.TachyonEditor` with the following API:
+//   create(container, options) → editorView
+//   getMarkdown(editorView) → string
+//   setMarkdown(editorView, markdown) → void
+//   setOnChange(editorView, callback) → void
+//   setEditable(editorView, editable) → void
+//   focus(editorView) → void
+//   destroy(editorView) → void
+//   connectCollaboration(editorView, options) → { disconnect() }
+//   getCollaborationInfo(editorView) → { connected, users }
+
+import { Schema } from 'prosemirror-model';
+import { EditorState, Plugin, PluginKey } from 'prosemirror-state';
+import { EditorView } from 'prosemirror-view';
+import { baseKeymap, toggleMark, setBlockType, wrapIn, toggleStrongmark } from 'prosemirror-commands';
+import { keymap } from 'prosemirror-keymap';
+import { history, undo, redo } from 'prosemirror-history';
+import { inputRules, wrappingInputRule, textblockTypeInputRule, InputRule } from 'prosemirror-inputrules';
+import { gapCursor } from 'prosemirror-gapcursor';
+import {
+  wrapInList,
+  splitListItem,
+  liftListItem,
+  sinkListItem,
+} from 'prosemirror-schema-list';
+import {
+  addColumnBefore,
+  addColumnAfter,
+  deleteColumn,
+  addRowBefore,
+  addRowAfter,
+  deleteRow,
+  mergeCells,
+  splitCell,
+  setCellAttr,
+  toggleHeaderRow,
+  toggleHeaderColumn,
+  goToNextCell,
+  deleteTable,
+  tableEditing,
+} from 'prosemirror-tables';
+import {
+  defaultMarkdownParser,
+  defaultMarkdownSerializer,
+  schema as markdownSchema,
+} from 'prosemirror-markdown';
+
+// ─── Yjs Collaboration Imports ───────────────────────────────────
+import * as Y from 'yjs';
+import { ySyncPlugin, yCursorPlugin, yUndoPlugin, undo as yUndo, redo as yRedo } from 'y-prosemirror';
+import { WebsocketProvider } from 'y-websocket';
+
+// ─── OnChange plugin key ──────────────────────────────────────────
+const onChangeKey = new PluginKey('onChange');
+
+// ─── Schema extensions ─────────────────────────────────────────────
+// Extend the basic markdown schema with tables and strikethrough.
+
+const tachyonSchema = new Schema({
+  nodes: {
+    doc: { content: 'block+' },
+
+    paragraph: {
+      content: 'inline*',
+      group: 'block',
+      parseDOM: [{ tag: 'p' }],
+      toDOM() { return ['p', 0]; },
+    },
+
+    blockquote: {
+      content: 'block+',
+      group: 'block',
+      defining: true,
+      parseDOM: [{ tag: 'blockquote' }],
+      toDOM() { return ['blockquote', 0]; },
+    },
+
+    horizontal_rule: {
+      group: 'block',
+      parseDOM: [{ tag: 'hr' }],
+      toDOM() { return ['hr']; },
+    },
+
+    heading: {
+      attrs: { level: { default: 1 } },
+      content: 'inline*',
+      group: 'block',
+      defining: true,
+      parseDOM: [
+        { tag: 'h1', attrs: { level: 1 } },
+        { tag: 'h2', attrs: { level: 2 } },
+        { tag: 'h3', attrs: { level: 3 } },
+        { tag: 'h4', attrs: { level: 4 } },
+        { tag: 'h5', attrs: { level: 5 } },
+        { tag: 'h6', attrs: { level: 6 } },
+      ],
+      toDOM(node) { return [`h${node.attrs.level}`, 0]; },
+    },
+
+    code_block: {
+      content: 'text*',
+      marks: '',
+      group: 'block',
+      code: true,
+      defining: true,
+      attrs: { params: { default: '' } },
+      parseDOM: [{ tag: 'pre', preserveWhitespace: 'full' }],
+      toDOM(node) { return ['pre', ['code', 0]]; },
+    },
+
+    ordered_list: {
+      content: 'list_item+',
+      group: 'block',
+      attrs: { order: { default: 1 }, tight: { default: false } },
+      parseDOM: [
+        {
+          tag: 'ol',
+          getAttrs(dom, fragment) {
+            return {
+              order: dom.hasAttribute('start') ? +dom.getAttribute('start') : 1,
+              tight: dom.hasAttribute('data-tight'),
+            };
+          },
+        },
+      ],
+      toDOM(node) {
+        return ['ol', { start: node.attrs.order == 1 ? null : node.attrs.order,
+                        'data-tight': node.attrs.tight ? 'true' : null }, 0];
+      },
+    },
+
+    bullet_list: {
+      content: 'list_item+',
+      group: 'block',
+      attrs: { tight: { default: false } },
+      parseDOM: [{ tag: 'ul', getAttrs: (dom) => ({ tight: dom.hasAttribute('data-tight') }) }],
+      toDOM(node) {
+        return ['ul', { 'data-tight': node.attrs.tight ? 'true' : null }, 0];
+      },
+    },
+
+    list_item: {
+      content: 'paragraph block*',
+      parseDOM: [{ tag: 'li' }],
+      toDOM() { return ['li', 0]; },
+      defining: true,
+    },
+
+    text: { group: 'inline' },
+
+    hard_break: {
+      inline: true,
+      group: 'inline',
+      selectable: false,
+      parseDOM: [{ tag: 'br' }],
+      toDOM() { return ['br']; },
+    },
+
+    // Tables
+    table: {
+      content: 'table_row+',
+      tableRole: 'table',
+      isolating: true,
+      group: 'block',
+      parseDOM: [{ tag: 'table' }],
+      toDOM() { return ['table', ['tbody', 0]]; },
+    },
+
+    table_row: {
+      content: 'table_cell+',
+      tableRole: 'row',
+      parseDOM: [{ tag: 'tr' }],
+      toDOM() { return ['tr', 0]; },
+    },
+
+    table_cell: {
+      content: 'inline*',
+      tableRole: 'cell',
+      isolating: true,
+      parseDOM: [{ tag: 'td' }],
+      toDOM() { return ['td', 0]; },
+    },
+
+    table_header: {
+      content: 'inline*',
+      tableRole: 'header_cell',
+      isolating: true,
+      parseDOM: [{ tag: 'th' }],
+      toDOM() { return ['th', 0]; },
+    },
+  },
+
+  marks: {
+    em: {
+      parseDOM: [
+        { tag: 'i' },
+        { tag: 'em' },
+        { style: 'font-style=italic' },
+      ],
+      toDOM() { return ['em', 0]; },
+    },
+
+    strong: {
+      parseDOM: [
+        { tag: 'strong' },
+        { tag: 'b' },
+        { style: 'font-weight=bold' },
+        { style: 'font-weight=700' },
+      ],
+      toDOM() { return ['strong', 0]; },
+    },
+
+    code: {
+      parseDOM: [{ tag: 'code' }],
+      toDOM() { return ['code', 0]; },
+    },
+
+    link: {
+      attrs: {
+        href: { default: null },
+        title: { default: null },
+      },
+      inclusive: false,
+      parseDOM: [
+        {
+          tag: 'a[href]',
+          getAttrs(dom) {
+            return { href: dom.getAttribute('href'), title: dom.getAttribute('title') };
+          },
+        },
+      ],
+      toDOM(mark) {
+        return ['a', { href: mark.attrs.href, title: mark.attrs.title }, 0];
+      },
+    },
+
+    strikethrough: {
+      parseDOM: [{ tag: 's' }, { tag: 'del' }, { tag: 'strike' }],
+      toDOM() { return ['s', 0]; },
+    },
+  },
+});
+
+// ─── Markdown parser/serializer ────────────────────────────────────
+
+// We use prosemirror-markdown's default parser/serializer as a base.
+// It works with the standard schema, but we can use it with our schema
+// since our node types are a superset. For production, we'd build a
+// custom parser/serializer that maps our extensions (tables, strikethrough).
+
+const tachyonParser = defaultMarkdownParser;
+
+function serializeToMarkdown(doc) {
+  return defaultMarkdownSerializer.serialize(doc);
+}
+
+// ─── Input rules ───────────────────────────────────────────────────
+// Markdown-style auto-formatting rules.
+
+const tachyonInputRules = inputRules({
+  rules: [
+    // Heading: "# " at start of line
+    textblockTypeInputRule(/^(#{1,6})\s$/, tachyonSchema.nodes.heading,
+      (match) => ({ level: match[1].length })),
+    // Code block: "```"
+    textblockTypeInputRule(/^```$/, tachyonSchema.nodes.code_block),
+    // Bullet list: "- " or "* "
+    wrappingInputRule(/^\s*([-*])\s$/, tachyonSchema.nodes.bullet_list),
+    // Ordered list: "1. "
+    wrappingInputRule(/^\s*(\d+)\.\s$/, tachyonSchema.nodes.ordered_list,
+      (match) => ({ order: +match[1] })),
+    // Blockquote: "> "
+    wrappingInputRule(/^\s*>\s$/, tachyonSchema.nodes.blockquote),
+    // Horizontal rule: "---" or "***"
+    new InputRule(/^---$|^(\*\*\*)$/, (state, match, start, end) => {
+      return state.tr.replaceWith(start, end, tachyonSchema.nodes.horizontal_rule.create());
+    }),
+  ],
+});
+
+// ─── Keymap ────────────────────────────────────────────────────────
+
+function buildKeymap(collaborative = false) {
+  const keys = {};
+
+  // Undo/Redo — use Yjs collaborative undo when in collab mode
+  if (collaborative) {
+    keys['Mod-z'] = yUndo;
+    keys['Mod-y'] = yRedo;
+    keys['Mod-Shift-z'] = yRedo;
+  } else {
+    keys['Mod-z'] = undo;
+    keys['Mod-y'] = redo;
+    keys['Mod-Shift-z'] = redo;
+  }
+
+  // Lists
+  keys['Enter'] = splitListItem(tachyonSchema.nodes.list_item);
+  keys['Mod-['] = liftListItem(tachyonSchema.nodes.list_item);
+  keys['Mod-]'] = sinkListItem(tachyonSchema.nodes.list_item);
+
+  // Tables
+  keys['Tab'] = goToNextCell(1);
+  keys['Shift-Tab'] = goToNextCell(-1);
+
+  return keymap(keys);
+}
+
+// ─── OnChange plugin ──────────────────────────────────────────────
+// Calls the registered callback whenever the document changes.
+
+function createOnChangePlugin(callback) {
+  return new Plugin({
+    key: onChangeKey,
+    state: {
+      init() { return { callback }; },
+      apply(tr, value) { return value; },
+    },
+    view() {
+      return {
+        update(view, prevState) {
+          if (view.state.doc !== prevState.doc) {
+            const cb = onChangeKey.getState(view.state)?.callback;
+            if (cb) {
+              cb(serializeToMarkdown(view.state.doc));
+            }
+          }
+        },
+      };
+    },
+  });
+}
+
+// ─── Plugins ───────────────────────────────────────────────────────
+
+function createPlugins(options = {}) {
+  const plugins = [
+    buildKeymap(false),
+    keymap(baseKeymap),
+    history(), // Only used in non-collaborative mode
+    gapCursor(),
+    tableEditing(),
+    tachyonInputRules,
+    createOnChangePlugin(options.onChange || null),
+    createWikilinkPlugin(),
+  ];
+  return plugins;
+}
+
+// ─── Public API ────────────────────────────────────────────────────
+
+/**
+ * Create a new ProseMirror editor instance.
+ *
+ * @param {HTMLElement} container - DOM element to mount the editor in.
+ * @param {Object} options
+ * @param {string} options.content - Initial markdown content.
+ * @param {Function} options.onChange - Callback fired on every edit: (markdown: string) => void.
+ * @param {boolean} options.editable - Whether the editor is editable (default: true).
+ * @param {string} options.placeholder - Placeholder text (default: "Start writing...").
+ * @param {string} options.className - Extra CSS class for the editor element.
+ * @returns {EditorView} The ProseMirror EditorView instance.
+ */
+function create(container, options = {}) {
+  const {
+    content = '',
+    onChange,
+    editable = true,
+    placeholder = 'Start writing...',
+    className = '',
+  } = options;
+
+  let doc;
+  try {
+    doc = tachyonParser.parse(content || '');
+  } catch (e) {
+    console.warn('TachyonEditor: failed to parse markdown, using empty document:', e);
+    doc = tachyonSchema.node('doc', null, [
+      tachyonSchema.node('paragraph'),
+    ]);
+  }
+
+  const state = EditorState.create({
+    doc,
+    plugins: createPlugins({ onChange }),
+  });
+
+  const view = new EditorView(container, {
+    state,
+    editable: () => editable,
+    attributes: {
+      class: [
+        'tachyon-editor',
+        'ProseMirror',
+        'prose',
+        'prose-lg',
+        'focus:outline-none',
+        'min-h-[200px]',
+        'p-4',
+        className,
+      ].filter(Boolean).join(' '),
+      'data-placeholder': placeholder,
+    },
+  });
+
+  // Track the active editor for toolbar command dispatch
+  _activeEditorView = view;
+
+  return view;
+}
+
+/**
+ * Get the current markdown content from an editor instance.
+ * @param {EditorView} view
+ * @returns {string}
+ */
+function getMarkdown(view) {
+  return serializeToMarkdown(view.state.doc);
+}
+
+/**
+ * Replace the editor content with new markdown.
+ * @param {EditorView} view
+ * @param {string} markdown
+ */
+function setMarkdown(view, markdown) {
+  try {
+    const doc = tachyonParser.parse(markdown || '');
+    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content);
+    view.dispatch(tr);
+  } catch (e) {
+    console.warn('TachyonEditor: failed to parse markdown for setContent:', e);
+  }
+}
+
+/**
+ * Update the onChange callback.
+ * @param {EditorView} view
+ * @param {Function} callback
+ */
+function setOnChange(view, callback) {
+  const currentState = onChangeKey.getState(view.state);
+  if (currentState) {
+    const newState = { ...currentState, callback };
+    const tr = view.state.tr;
+    tr.setMeta(onChangeKey, newState);
+    view.dispatch(tr);
+  }
+}
+
+/**
+ * Set whether the editor is editable.
+ * @param {EditorView} view
+ * @param {boolean} editable
+ */
+function setEditable(view, editable) {
+  view.updateState(view.state.reconfigure({ editable: () => editable }));
+}
+
+/**
+ * Focus the editor.
+ * @param {EditorView} view
+ */
+function focus(view) {
+  view.focus();
+}
+
+/**
+ * Destroy the editor and clean up DOM.
+ * @param {EditorView} view
+ */
+function destroy(view) {
+  if (_activeEditorView === view) {
+    _activeEditorView = null;
+  }
+  view.destroy();
+}
+
+// ─── Wikilink Autocomplete Plugin ────────────────────────────────────
+// Triggers on [[ and shows a dropdown of document suggestions.
+
+const wikilinkKey = new PluginKey('wikilink');
+
+function createWikilinkPlugin() {
+  let open = false;
+  let query = '';
+  let selectedIndex = 0;
+  let suggestions = [];
+  let dropdown = null;
+  let debounceTimer = null;
+
+  function getApiBaseUrl() {
+    // Derive from current page location
+    const loc = window.location;
+    const origin = loc.origin;
+    // If running in Tauri embedded mode, use the embedded server port
+    return origin + '/api/v1';
+  }
+
+  async function fetchSuggestions(q) {
+    if (!q || q.length < 1) {
+      suggestions = [];
+      return;
+    }
+    try {
+      const base = getApiBaseUrl();
+      const url = `${base}/search/suggest?q=${encodeURIComponent(q)}&limit=8`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        suggestions = await resp.json();
+      } else {
+        suggestions = [];
+      }
+    } catch (e) {
+      // Silently fail — autocomplete is a nice-to-have
+      suggestions = [];
+    }
+  }
+
+  function createDropdown(view) {
+    removeDropdown();
+    dropdown = document.createElement('div');
+    dropdown.className = 'tachyon-wikilink-dropdown';
+    dropdown.style.cssText = 'position:absolute;z-index:100;min-width:220px;max-width:350px;max-height:240px;overflow-y:auto;background:white;border:1px solid #d1d5db;border-radius:0.5rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:14px;display:none;';
+    document.body.appendChild(dropdown);
+  }
+
+  function removeDropdown() {
+    if (dropdown) {
+      dropdown.remove();
+      dropdown = null;
+    }
+    open = false;
+    selectedIndex = 0;
+  }
+
+  function renderDropdown() {
+    if (!dropdown) return;
+    if (!open || suggestions.length === 0) {
+      dropdown.style.display = 'none';
+      return;
+    }
+    dropdown.style.display = 'block';
+    dropdown.innerHTML = suggestions.map((title, i) => {
+      const cls = i === selectedIndex
+        ? 'background:#eff6ff;color:#1d4ed8;cursor:pointer;padding:6px 12px;'
+        : 'background:white;color:#374151;cursor:pointer;padding:6px 12px;';
+      return `<div class="tachyon-wl-item" data-index="${i}" style="${cls}">${escapeHtml(title)}</div>`;
+    }).join('');
+
+    // Attach click handlers
+    dropdown.querySelectorAll('.tachyon-wl-item').forEach(el => {
+      el.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = parseInt(el.dataset.index, 10);
+        selectSuggestion(view, suggestions[idx]);
+      });
+    });
+  }
+
+  function positionDropdown(view) {
+    if (!dropdown || !open) return;
+    // Get the cursor position in the editor
+    const { from } = view.state.selection;
+    const coords = view.coordsAtPos(from);
+    dropdown.style.left = coords.left + 'px';
+    dropdown.style.top = (coords.bottom + 4) + 'px';
+  }
+
+  function selectSuggestion(view, title) {
+    // Find the [[ marker position
+    const { from } = view.state.selection;
+    const $head = view.state.selection.$head;
+    let bracketStart = from;
+    // Search backwards for [[
+    for (let i = from - 1; i >= 0; i--) {
+      const ch = view.state.doc.textBetween(i, i + 1);
+      if (ch === '[' && i > 0 && view.state.doc.textBetween(i - 1, i) === '[') {
+        bracketStart = i - 1;
+        break;
+      }
+      if (ch === '\n' || ch === undefined) break;
+    }
+
+    // Insert the wikilink: [[Document Title]]
+    const tr = view.state.tr
+      .delete(bracketStart, from)
+      .insertText(`[[${title}]]`, bracketStart);
+    view.dispatch(tr);
+    removeDropdown();
+    view.focus();
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  return new Plugin({
+    key: wikilinkKey,
+    view() {
+      return {
+        update(view, prevState) {
+          // Check if we're inside a [[ ... ]] pattern
+          const { from } = view.state.selection;
+          const $head = view.state.selection.$head;
+          const textBefore = $head.parent.textContent.slice(0, $head.parentOffset);
+
+          // Find last [[ in the current text node
+          const lastBracket = textBefore.lastIndexOf('[[');
+          if (lastBracket === -1) {
+            if (open) removeDropdown();
+            return;
+          }
+
+          // Extract query after [[
+          const afterBracket = textBefore.slice(lastBracket + 2);
+          // If there's a ]] after [[, we're not in a wikilink
+          if (afterBracket.includes(']]')) {
+            if (open) removeDropdown();
+            return;
+          }
+
+          query = afterBracket.trim();
+          open = true;
+
+          // Debounce suggestion fetch
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            fetchSuggestions(query).then(() => {
+              selectedIndex = 0;
+              createDropdown(view);
+              renderDropdown();
+              positionDropdown(view);
+            });
+          }, 150);
+        },
+        destroy() {
+          removeDropdown();
+          if (debounceTimer) clearTimeout(debounceTimer);
+        },
+      };
+    },
+    props: {
+      handleKeyDown(view, event) {
+        if (!open) return false;
+
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+          renderDropdown();
+          return true;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          selectedIndex = Math.max(selectedIndex - 1, 0);
+          renderDropdown();
+          return true;
+        }
+        if (event.key === 'Enter' && suggestions.length > 0) {
+          event.preventDefault();
+          selectSuggestion(view, suggestions[selectedIndex]);
+          return true;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          removeDropdown();
+          return true;
+        }
+        if (event.key === 'Tab' && suggestions.length > 0) {
+          event.preventDefault();
+          selectSuggestion(view, suggestions[selectedIndex]);
+          return true;
+        }
+
+        return false;
+      },
+    },
+  });
+}
+
+// ─── Collaboration State ──────────────────────────────────────────
+// Tracks active collaboration connections keyed by editor instance.
+
+const collabKey = new PluginKey('collaboration');
+
+// Map of editor view -> { ydoc, provider, awareness }
+const _activeCollaborations = new WeakMap();
+
+// ─── Collaboration ────────────────────────────────────────────────
+
+/**
+ * Connect a ProseMirror editor to the CRDT collaboration server.
+ *
+ * @param {EditorView} view - The ProseMirror EditorView instance.
+ * @param {Object} options
+ * @param {string} options.documentId - The document ID to collaborate on.
+ * @param {string} options.userId - The current user's ID.
+ * @param {string} options.userName - The current user's display name.
+ * @param {string} options.serverUrl - WebSocket server URL (e.g., "ws://localhost:8080").
+ * @param {string} [options.color] - User's cursor color (auto-assigned if not provided).
+ * @param {Function} [options.onUsersChange] - Callback fired when active users change: (users: Array) => void.
+ * @returns {{ disconnect: Function, awareness: any }} Handle to disconnect from collaboration.
+ */
+function connectCollaboration(view, options) {
+  const {
+    documentId,
+    userId,
+    userName,
+    serverUrl,
+    color = null,
+    onUsersChange = null,
+  } = options;
+
+  if (!documentId || !userId) {
+    console.warn('TachyonEditor: connectCollaboration requires documentId and userId');
+    return { disconnect: () => {}, awareness: null };
+  }
+
+  // Check if already connected
+  if (_activeCollaborations.has(view)) {
+    console.warn('TachyonEditor: collaboration already connected for this editor');
+    return _activeCollaborations.get(view);
+  }
+
+  // Create a Yjs document for this collaboration session
+  const ydoc = new Y.Doc();
+  const yxml = ydoc.getXmlFragment('prosemirror');
+
+  // Connect to the WebSocket server
+  const wsUrl = `${serverUrl}/ws/crdt`;
+  const provider = new WebsocketProvider(wsUrl, documentId, ydoc, {
+    connect: true,
+    params: { documentId, userId, userName },
+  });
+
+  // Get awareness instance for presence (cursors, selections)
+  const awareness = provider.awareness;
+
+  // Set local user state
+  awareness.setLocalStateField('user', {
+    name: userName,
+    color: color || getUserColor(userId),
+  });
+
+  // Listen for awareness changes (other users joining/leaving)
+  function handleAwarenessChange() {
+    if (onUsersChange) {
+      const states = awareness.getStates();
+      const users = [];
+      states.forEach((state, clientId) => {
+        if (clientId !== awareness.clientID && state.user) {
+          users.push({
+            clientId,
+            name: state.user.name,
+            color: state.user.color,
+          });
+        }
+      });
+      onUsersChange(users);
+    }
+  }
+
+  awareness.on('change', handleAwarenessChange);
+
+  // Reconfigure the editor state with collaboration plugins.
+  // We need to replace the history plugin with yUndoPlugin since
+  // Yjs manages undo/redo collaboratively.
+  const collabPlugins = [
+    ySyncPlugin(yxml),
+    yCursorPlugin(awareness),
+    yUndoPlugin(),
+    // Re-add non-history plugins (history is replaced by yUndo)
+    buildKeymap(true), // true = use yjs undo/redo
+    keymap(baseKeymap),
+    gapCursor(),
+    tableEditing(),
+    tachyonInputRules,
+    createOnChangePlugin(null), // onChange is handled by the collaboration sync
+    createWikilinkPlugin(),
+  ];
+
+  // Store onChange callback from the original state to re-attach
+  const origOnChange = onChangeKey.getState(view.state)?.callback || null;
+
+  const newState = EditorState.create({
+    doc: view.state.doc,
+    plugins: collabPlugins,
+  });
+
+  view.updateState(newState);
+
+  // Re-attach onChange AFTER updateState so it takes effect on the new state.
+  if (origOnChange) {
+    setOnChange(view, origOnChange);
+  }
+
+  // Create cleanup handle
+  const collabHandle = {
+    awareness,
+    disconnect() {
+      awareness.off('change', handleAwarenessChange);
+      provider.disconnect();
+      _activeCollaborations.delete(view);
+
+      // Reconfigure editor back to non-collaborative state
+      const offlinePlugins = createPlugins({ onChange: origOnChange });
+      const offlineState = EditorState.create({
+        doc: view.state.doc,
+        plugins: offlinePlugins,
+      });
+      view.updateState(offlineState);
+
+      ydoc.destroy();
+    },
+  };
+
+  _activeCollaborations.set(view, collabHandle);
+  return collabHandle;
+}
+
+/**
+ * Get collaboration info for an editor.
+ * @param {EditorView} view
+ * @returns {{ connected: boolean, users: Array, documentId: string|null }}
+ */
+function getCollaborationInfo(view) {
+  const collab = _activeCollaborations.get(view);
+  if (!collab || !collab.awareness) {
+    return { connected: false, users: [], documentId: null };
+  }
+
+  const states = collab.awareness.getStates();
+  const users = [];
+  states.forEach((state, clientId) => {
+    if (state.user) {
+      users.push({
+        clientId,
+        name: state.user.name,
+        color: state.user.color,
+        isLocal: clientId === collab.awareness.clientID,
+      });
+    }
+  });
+
+  return {
+    connected: true,
+    users,
+    documentId: collab.awareness.clientID,
+  };
+}
+
+/**
+ * Generate a consistent color for a user based on their ID.
+ * @param {string} userId
+ * @returns {string} CSS color string
+ */
+function getUserColor(userId) {
+  const colors = [
+    '#f97316', '#ef4444', '#a855f7', '#3b82f6', '#10b981',
+    '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6', '#14b8a6',
+  ];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// ─── Global editor reference ──────────────────────────────────────────
+// Track the most recently created editor for toolbar command dispatch.
+let _activeEditorView = null;
+
+/**
+ * Toggle CRDT collaboration mode for the active editor.
+ * Called from Rust via js_sys::eval when the user clicks "Collaborate".
+ *
+ * This function:
+ * 1. Connects to the CRDT WebSocket at /ws/crdt
+ * 2. Sets up Yjs + y-prosemirror + y-websocket + awareness
+ * 3. Dispatches CustomEvent('tachyon:crdt-users') whenever the user list changes
+ *    so the Rust/Leptos side can update the collaborator avatars.
+ *
+ * @param {Object} options
+ * @param {string} options.documentId - Document ID to collaborate on.
+ * @param {string} options.userId - Current user's ID.
+ * @param {string} options.userName - Current user's display name.
+ */
+function toggleCollaboration(options) {
+  const view = _activeEditorView;
+  if (!view) {
+    console.warn('TachyonEditor: no active editor to collaborate on');
+    return;
+  }
+
+  // Derive WebSocket URL from current page origin.
+  // window.location.origin returns "http://host:port" but WebSocket
+  // requires "ws://" or "wss://" protocol.
+  const origin = window.location.origin || '';
+  const serverUrl = origin
+    .replace(/^http:/, 'ws:')
+    .replace(/^https:/, 'wss:');
+
+  // Wrap the connectCollaboration with an onUsersChange callback
+  // that dispatches a CustomEvent for the Rust side to listen for.
+  const onUsersChange = (users) => {
+    // Include the local user in the list for display
+    const allUsers = [...users, {
+      clientId: 'local',
+      name: options.userName,
+      color: getUserColor(options.userId),
+      isLocal: true,
+    }];
+    window.dispatchEvent(new CustomEvent('tachyon:crdt-users', {
+      detail: JSON.stringify(allUsers),
+    }));
+  };
+
+  connectCollaboration(view, {
+    documentId: options.documentId,
+    userId: options.userId,
+    userName: options.userName,
+    serverUrl,
+    onUsersChange,
+  });
+}
+
+/**
+ * Disconnect CRDT collaboration for the active editor.
+ * Called from Rust via js_sys::eval when the user disables collaboration.
+ */
+function disconnectCollaboration() {
+  const view = _activeEditorView;
+  if (!view) return;
+
+  const collab = _activeCollaborations.get(view);
+  if (collab) {
+    collab.disconnect();
+    // Notify Rust side that collaborators list is empty
+    window.dispatchEvent(new CustomEvent('tachyon:crdt-users', {
+      detail: JSON.stringify([]),
+    }));
+  }
+}
+
+// ─── Export ────────────────────────────────────────────────────────
+
+const TachyonEditor = {
+  create,
+  getMarkdown,
+  setMarkdown,
+  setOnChange,
+  setEditable,
+  focus,
+  destroy,
+  connectCollaboration,
+  toggleCollaboration,
+  disconnectCollaboration,
+  getCollaborationInfo,
+  dispatchCommand(view, commandName) {
+    // If view is null/undefined, use the active editor
+    const v = view || _activeEditorView;
+    if (!v) return false;
+
+    const { state, dispatch } = v;
+    const schema = state.schema;
+
+    switch (commandName) {
+      case 'bold':
+        return toggleMark(schema.marks.strong)(state, dispatch);
+      case 'italic':
+        return toggleMark(schema.marks.em)(state, dispatch);
+      case 'code':
+        return toggleMark(schema.marks.code)(state, dispatch);
+      case 'strikethrough':
+        return toggleMark(schema.marks.strikethrough)(state, dispatch);
+      case 'h1':
+        return setBlockType(schema.nodes.heading, { level: 1 })(state, dispatch);
+      case 'h2':
+        return setBlockType(schema.nodes.heading, { level: 2 })(state, dispatch);
+      case 'h3':
+        return setBlockType(schema.nodes.heading, { level: 3 })(state, dispatch);
+      case 'bullet_list':
+        return wrapIn(schema.nodes.bullet_list)(state, dispatch);
+      case 'ordered_list':
+        return wrapIn(schema.nodes.ordered_list)(state, dispatch);
+      case 'blockquote':
+        return wrapIn(schema.nodes.blockquote)(state, dispatch);
+      case 'code_block':
+        return setBlockType(schema.nodes.code_block)(state, dispatch);
+      case 'horizontal_rule':
+        {
+          const tr = state.tr.replaceSelectionWith(
+            schema.nodes.horizontal_rule.create()
+          );
+          dispatch(tr);
+          return true;
+        }
+      case 'undo':
+        return undo(state, dispatch);
+      case 'redo':
+        return redo(state, dispatch);
+      default:
+        console.warn('TachyonEditor: unknown command:', commandName);
+        return false;
+    }
+  },
+  schema: tachyonSchema,
+};
+
+export default TachyonEditor;

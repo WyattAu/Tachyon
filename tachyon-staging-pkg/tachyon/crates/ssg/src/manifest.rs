@@ -1,0 +1,347 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+fn default_theme() -> String {
+    "auto".to_string()
+}
+fn default_true() -> bool {
+    true
+}
+fn default_footer() -> String {
+    "Built with Tachyon".to_string()
+}
+fn default_language() -> String {
+    "en".to_string()
+}
+fn default_version() -> String {
+    "main".to_string()
+}
+fn default_code_theme() -> String {
+    "github-dark".to_string()
+}
+
+fn default_highlighting_mode() -> String {
+    "client".to_string()
+}
+
+fn default_site_id() -> String {
+    "default".to_string()
+}
+
+/// Site-wide configuration for static site generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SiteConfig {
+    /// Site title (displayed in header, title tags, RSS feed)
+    pub title: String,
+    /// Site description (used in meta tags, OG, RSS)
+    pub description: String,
+    /// Base URL for canonical links and sitemap (e.g., `<https://docs.example.com>`)
+    pub base_url: String,
+    /// Optional site logo URL (used in header)
+    pub logo_url: Option<String>,
+    /// Optional favicon URL
+    pub favicon_url: Option<String>,
+    /// Theme variant: "light", "dark", or "auto"
+    #[serde(default = "default_theme")]
+    pub theme: String,
+    /// Optional custom CSS (appended after built-in styles)
+    pub custom_css: Option<String>,
+    /// Optional Google Analytics / Plausible tracking ID
+    pub tracking_id: Option<String>,
+    /// Navigation bar links
+    #[serde(default)]
+    pub nav_links: Vec<NavLink>,
+    /// Footer text
+    #[serde(default = "default_footer")]
+    pub footer: String,
+    /// Include author metadata in rendered pages
+    #[serde(default)]
+    pub show_author: bool,
+    /// Include "last updated" timestamps
+    #[serde(default = "default_true")]
+    pub show_updated_at: bool,
+    /// Group documents by their first tag (creates category pages)
+    #[serde(default)]
+    pub group_by_tag: bool,
+    /// Site language code (ISO 639-1, e.g., "en", "zh", "ja")
+    #[serde(default = "default_language")]
+    pub language: String,
+    /// Available translations (language codes)
+    #[serde(default)]
+    pub translations: Vec<TranslationConfig>,
+    /// Custom color theme
+    #[serde(default)]
+    pub color_theme: Option<ColorTheme>,
+    /// Optional `[menu]` section in site.toml (supports `[[menu.main]]` entries)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub menu: Option<MenuConfig>,
+    /// Sidebar menu items (used to generate collapsible sidebar navigation).
+    /// Populated from `[[menu_items]]` or `[[menu.main]]` in site.toml.
+    #[serde(default)]
+    pub menu_items: Vec<SidebarItem>,
+    /// Enable Pagefind client-side search integration
+    #[serde(default = "default_true")]
+    pub pagefind_enabled: bool,
+    /// Available documentation versions
+    #[serde(default)]
+    pub versions: Vec<VersionConfig>,
+    /// Default version identifier (defaults to "main")
+    #[serde(default = "default_version")]
+    pub default_version: String,
+    /// Enable Mermaid diagram rendering
+    #[serde(default = "default_true")]
+    pub mermaid_enabled: bool,
+    /// Enable syntax highlighting in code blocks via Highlight.js
+    #[serde(default = "default_true")]
+    pub syntax_highlighting_enabled: bool,
+    /// Code syntax highlighting theme (e.g., "github-dark", "monokai", "dracula", "one-dark-pro")
+    /// See: <https://highlightjs.org/static/demo/>
+    #[serde(default = "default_code_theme")]
+    pub code_theme: String,
+    /// Syntax highlighting mode: "client" (Highlight.js CDN), "server" (tree-sitter at build time), "both"
+    #[serde(default = "default_highlighting_mode")]
+    pub highlighting_mode: String,
+    /// Generate robots.txt in output
+    #[serde(default = "default_true")]
+    pub robots_txt: bool,
+    /// Default Open Graph image URL (used in og:image and twitter:image meta tags)
+    pub og_image: Option<String>,
+    /// Enable image optimization (compress and convert images in input dir)
+    #[serde(default)]
+    pub image_optimization_enabled: bool,
+    /// Directory name containing translation YAML files (relative to input dir)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub translations_dir: Option<String>,
+    /// Site identifier for multi-site deployments.
+    #[serde(default = "default_site_id")]
+    pub site_id: String,
+    /// Slug used in output directory names for multi-site builds.
+    #[serde(default)]
+    pub site_slug: String,
+}
+
+impl SiteConfig {
+    /// Merge `[menu]` section into `menu_items` if `menu_items` is empty.
+    ///
+    /// This allows site.toml to use either `[[menu_items]]` directly or the
+    /// more structured `[[menu.main]]` syntax. When both are present,
+    /// `menu_items` takes priority.
+    pub fn resolve_menu(&mut self) {
+        if self.menu_items.is_empty()
+            && let Some(ref menu) = self.menu
+        {
+            let mut items = menu.main.clone();
+            // Sort by weight (ascending), stable sort preserves TOML order for ties
+            items.sort_by_key(|i| i.weight.unwrap_or(0));
+            self.menu_items = items;
+        }
+    }
+}
+
+impl Default for SiteConfig {
+    fn default() -> Self {
+        Self {
+            title: "Tachyon Docs".to_string(),
+            description: "A knowledge base built with Tachyon".to_string(),
+            base_url: "https://docs.example.com".to_string(),
+            logo_url: None,
+            favicon_url: None,
+            theme: "auto".to_string(),
+            custom_css: None,
+            tracking_id: None,
+            nav_links: vec![],
+            footer: "Built with Tachyon".to_string(),
+            show_author: false,
+            show_updated_at: true,
+            group_by_tag: false,
+            language: "en".to_string(),
+            translations: vec![],
+            color_theme: None,
+            menu: None,
+            menu_items: vec![],
+            pagefind_enabled: true,
+            versions: vec![],
+            default_version: "main".to_string(),
+            mermaid_enabled: true,
+            syntax_highlighting_enabled: true,
+            code_theme: default_code_theme(),
+            highlighting_mode: default_highlighting_mode(),
+            robots_txt: true,
+            og_image: None,
+            image_optimization_enabled: false,
+            translations_dir: None,
+            site_id: default_site_id(),
+            site_slug: String::new(),
+        }
+    }
+}
+
+/// A navigation link in the site header.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NavLink {
+    pub label: String,
+    pub href: String,
+}
+
+/// A sidebar menu item, supporting one level of nesting.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SidebarItem {
+    #[serde(alias = "name")]
+    pub label: String,
+    #[serde(alias = "url")]
+    pub href: String,
+    /// Sort weight (lower = earlier; only used during deserialization)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weight: Option<i32>,
+    #[serde(default)]
+    pub children: Vec<SidebarItem>,
+}
+
+/// Optional `[menu]` section in `site.toml` for structured navigation.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MenuConfig {
+    /// Primary sidebar entries (`[[menu.main]]` in TOML)
+    #[serde(default)]
+    pub main: Vec<SidebarItem>,
+}
+
+/// Configuration for a translated version of the site.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TranslationConfig {
+    /// ISO 639-1 language code (e.g., "zh", "ja", "de")
+    pub language: String,
+    /// Display name (e.g., "中文", "日本語")
+    pub name: String,
+    /// Base URL for this language version
+    pub base_url: String,
+}
+
+/// Configuration for a documentation version.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionConfig {
+    /// Version identifier (e.g., "1.0", "2.0", "main")
+    pub version: String,
+    /// Display title (e.g., "v1.0", "v2.0", "Latest")
+    pub title: String,
+    /// Per-version base URL override
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+    /// Whether this is the latest released version
+    #[serde(default)]
+    pub is_latest: bool,
+}
+
+/// Key-value map of translatable UI strings.
+///
+/// Structure: `key -> language -> translated_string`.
+/// e.g., `"on_this_page" -> { "en": "On this page", "zh": "在此页上" }`
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Translations {
+    pub strings: HashMap<String, HashMap<String, String>>,
+}
+
+/// Predefined color themes for the generated site.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ColorTheme {
+    /// Primary color (hex, e.g., "#2563eb")
+    pub primary: String,
+    /// Secondary color (hex)
+    pub secondary: String,
+    /// Accent color (hex)
+    pub accent: String,
+    /// Background color for code blocks
+    pub code_bg: String,
+    /// Font family for body text
+    pub font_family: Option<String>,
+    /// Font family for headings
+    pub heading_font_family: Option<String>,
+    /// Dark mode primary color override
+    #[serde(default)]
+    pub dark_primary: Option<String>,
+    /// Dark mode secondary color override
+    #[serde(default)]
+    pub dark_secondary: Option<String>,
+    /// Dark mode accent color override
+    #[serde(default)]
+    pub dark_accent: Option<String>,
+    /// Dark mode code background color override
+    #[serde(default)]
+    pub dark_code_bg: Option<String>,
+}
+
+impl Default for ColorTheme {
+    fn default() -> Self {
+        Self {
+            primary: "#2563eb".to_string(),
+            secondary: "#7c3aed".to_string(),
+            accent: "#06b6d4".to_string(),
+            code_bg: "#1f2937".to_string(),
+            font_family: None,
+            heading_font_family: None,
+            dark_primary: None,
+            dark_secondary: None,
+            dark_accent: None,
+            dark_code_bg: None,
+        }
+    }
+}
+
+/// A document to be included in the static site.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SsgDocument {
+    /// URL slug (used as filename: `{slug}.html`)
+    pub slug: String,
+    /// Document title
+    pub title: String,
+    /// Raw markdown content
+    pub content: String,
+    /// Optional description (for meta tag, falls back to first 160 chars)
+    pub description: Option<String>,
+    /// Author display name
+    pub author: Option<String>,
+    /// Tags
+    #[serde(default)]
+    pub tags: Vec<String>,
+    /// Creation timestamp
+    pub created_at: DateTime<Utc>,
+    /// Last updated timestamp
+    pub updated_at: DateTime<Utc>,
+    /// Sort order (lower = earlier in listings)
+    #[serde(default)]
+    pub order: i32,
+    /// Document language code (for i18n filtering)
+    #[serde(default = "default_language")]
+    pub language: String,
+    /// Document version identifier (defaults to "main")
+    #[serde(default = "default_version")]
+    pub version: String,
+    /// Hide breadcrumbs on this page
+    #[serde(default)]
+    pub hide_breadcrumbs: bool,
+    /// Optional site identifier for multi-site builds. Documents without a site_id
+    /// belong to the default site.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub site_id: Option<String>,
+}
+
+/// Result of a site build.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BuildResult {
+    /// Number of document pages generated
+    pub pages: usize,
+    /// Number of category index pages (if group_by_tag)
+    pub category_pages: usize,
+    /// Total files written (pages + index + sitemap + rss + assets)
+    pub total_files: usize,
+    /// Build duration in milliseconds
+    pub build_time_ms: u64,
+    /// Output size in bytes (if written to disk)
+    pub output_size_bytes: u64,
+    /// List of generated page slugs
+    pub generated_pages: Vec<String>,
+    /// Number of languages generated
+    pub languages: usize,
+    /// Number of versions generated
+    pub versions_built: usize,
+}

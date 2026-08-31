@@ -1,0 +1,85 @@
+name: Backup
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: false
+        type: string
+        default: 'manual'
+
+concurrency:
+  group: backup-${{ inputs.environment || 'scheduled' }}
+  cancel-in-progress: false
+
+jobs:
+  backup-database:
+    name: Backup Database
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    environment:
+      name: ${{ inputs.environment || 'staging' }}
+    steps:
+      - name: Generate backup via SSH
+        if: vars.BACKUP_ENABLED == 'true'
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.BACKUP_HOST }}
+          username: ${{ secrets.BACKUP_SSH_USER }}
+          key: ${{ secrets.BACKUP_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+            BACKUP_DIR="/opt/tachyon/backups"
+            mkdir -p "$BACKUP_DIR"
+            pg_dump \
+              -Fc \
+              -f "${BACKUP_DIR}/tachyon-${TIMESTAMP}.dump" \
+              "${TACHYON_DATABASE_URL:-postgres://localhost/tachyon}"
+            # Retain last 30 backups
+            ls -t "${BACKUP_DIR}"/tachyon-*.dump | tail -n +31 | xargs -r rm --
+            echo "Backup completed: tachyon-${TIMESTAMP}.dump"
+            echo "Total backups: $(ls "${BACKUP_DIR}"/tachyon-*.dump | wc -l)"
+
+      - name: Backup skipped (not configured)
+        if: vars.BACKUP_ENABLED != 'true'
+        run: |
+          echo "::warning::Database backup is not configured."
+          echo "To enable, set the following repository variables and secrets:"
+          echo "  Variables: BACKUP_ENABLED=true"
+          echo "  Secrets: BACKUP_HOST, BACKUP_SSH_USER, BACKUP_SSH_KEY"
+          echo "  The target server must have pg_dump installed and network"
+          echo "  access to the PostgreSQL instance."
+
+  backup-configuration:
+    name: Backup Configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Archive Configuration Files
+        env:
+          ENVIRONMENT: ${{ inputs.environment || 'scheduled' }}
+        run: |
+          TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          tar -czf "/tmp/config-${ENVIRONMENT}-${TIMESTAMP}.tar.gz" \
+            .env.example \
+            docker-compose.yml \
+            docker-compose.prod.yml \
+            nginx/
+          echo "Archive size: $(du -h /tmp/config-${ENVIRONMENT}-${TIMESTAMP}.tar.gz | cut -f1)"
+
+      - name: Upload Configuration Backup
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: config-${{ inputs.environment || 'scheduled' }}-${{ github.run_number }}
+          path: /tmp/config-${{ inputs.environment || 'scheduled' }}-*.tar.gz
+          retention-days: 7

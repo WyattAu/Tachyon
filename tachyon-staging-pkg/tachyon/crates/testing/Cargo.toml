@@ -1,0 +1,94 @@
+[package]
+name = "tachyon-testing"
+version.workspace = true
+license = { workspace = true }
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "tachyon_testing"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tachyon-fuzz"
+path = "src/fuzz/harness.rs"
+
+[[bench]]
+name = "repository_bench"
+harness = false
+
+[[bench]]
+name = "search_bench"
+harness = false
+
+[[bench]]
+name = "rbac_bench"
+harness = false
+
+[[bench]]
+name = "database_bench"
+harness = false
+
+[dependencies]
+# Core workspace dependencies
+tachyon-core = { path = "../core" }
+tachyon-server = { path = "../server" }
+tachyon-desktop = { path = "../desktop" }
+tachyon-rbac = { path = "../rbac" }
+tachyon-search = { path = "../search" }
+tachyon-database = { path = "../database" }
+tachyon-renderer = { path = "../renderer" }
+tachyon-desktop-app = { path = "../desktop/src-tauri", optional = true }
+
+# Async Runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error Handling & Logging
+anyhow = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+# Date/Time Handling
+chrono = { workspace = true }
+
+# Testing Frameworks
+proptest = { workspace = true }
+mockall = { workspace = true }
+testcontainers = { workspace = true }
+testcontainers-modules = { workspace = true }
+wiremock = { workspace = true }
+serial_test = { workspace = true }
+tokio-test = { workspace = true }
+rand = { workspace = true }
+quickcheck = { workspace = true }
+tempfile = "3"
+tower = "0.5"
+
+# Fuzzing Support
+libfuzzer-sys = "0.4"
+arbitrary = "1.3"
+pulldown-cmark = { workspace = true }
+jsonwebtoken = "9"
+
+# Additional dependencies used by test utilities
+uuid = "1"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }
+axum = { version = "0.8", features = ["macros"] }
+http-body-util = "0.1"
+hyper = "1"
+
+[dev-dependencies]
+# Benchmarking
+criterion = { workspace = true }
+
+[features]
+default = []
+integration-tests = []
+fuzz-tests = []
+benchmark-tests = []
+desktop-tests = ["dep:tachyon-desktop-app"]

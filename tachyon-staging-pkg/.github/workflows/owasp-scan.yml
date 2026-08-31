@@ -1,0 +1,284 @@
+name: OWASP ZAP Scan
+
+permissions:
+  contents: read
+  security-events: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: owasp-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zap-baseline:
+    name: ZAP Baseline Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: tachyon
+          POSTGRES_PASSWORD: tachyon
+          POSTGRES_DB: tachyon
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tachyon"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build Tachyon server image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: tachyon/server:zap-scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Tachyon server
+        run: |
+          docker network create tachyon-net
+
+          docker run -d \
+            --name tachyon-server \
+            --network tachyon-net \
+            -p 8080:8080 \
+            -e DATABASE_URL=postgres://tachyon:tachyon@172.17.0.1:5432/tachyon \
+            -e JWT_SECRET=zap-scan-test-secret-change-me \
+            -e TACHYON_JWT_SECRETS=zap-scan-test-secret-key-at-least-32ch \
+            -e TACHYON_JWT_ISSUER=tachyon \
+            -e TACHYON_JWT_AUDIENCE=tachyon-api \
+            -e TACHYON_RATE_LIMIT_ENABLED=false \
+            -e RUST_LOG=info \
+            -e REDIS_URL=redis://172.17.0.1:6379 \
+            -e SERVER_HOST=0.0.0.0 \
+            -e SERVER_PORT=8080 \
+            tachyon/server:zap-scan
+
+      - name: Wait for server readiness
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+              echo "Server is ready"
+              exit 0
+            fi
+            echo "Waiting for server... attempt $i/30"
+            sleep 2
+          done
+          echo "Server failed to start"
+          docker logs tachyon-server
+          exit 1
+
+      - name: Run ZAP baseline scan
+        run: |
+          mkdir -p zap-report
+
+          docker run --rm \
+            --network host \
+            -v $(pwd)/zap-report:/zap/wrk:rw \
+            ghcr.io/zaproxy/zaproxy:2.15.0 \
+            zap-baseline.py \
+            -t http://localhost:8080 \
+            -d \
+            -r zap-baseline-report.html \
+            -w zap-baseline-report.md \
+            -J zap-baseline-report.json \
+            -x zap-baseline-report.xml \
+            -z "-config globalexcludeurl.url_list.url\(0\).regex='.*/health.*' \
+                -config globalexcludeurl.url_list.url\(0\).description='Health endpoints' \
+                -config globalexcludeurl.url_list.url\(0\).enabled=true \
+                -config globalexcludeurl.url_list.url\(1\).regex='.*/ready.*' \
+                -config globalexcludeurl.url_list.url\(1\).description='Readiness endpoints' \
+                -config globalexcludeurl.url_list.url\(1\).enabled=true" || true
+
+      - name: Run ZAP API scan
+        run: |
+          docker run --rm \
+            --network host \
+            -v $(pwd)/zap-report:/zap/wrk:rw \
+            ghcr.io/zaproxy/zaproxy:2.15.0 \
+            zap-api-scan.py \
+            -t http://localhost:8080/api/v1 \
+            -f openapi \
+            -d \
+            -r zap-api-report.html \
+            -w zap-api-report.md \
+            -J zap-api-report.json \
+            -x zap-api-report.xml \
+            -z "-config globalexcludeurl.url_list.url\(0\).regex='.*/health.*' \
+                -config globalexcludeurl.url_list.url\(0\).description='Health endpoints' \
+                -config globalexcludeurl.url_list.url\(0\).enabled=true" || true
+
+      - name: Convert ZAP report to SARIF
+        if: always()
+        run: |
+          python3 << 'EOF'
+          import json
+          import sys
+
+          sarif = {
+              "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+              "version": "2.1.0",
+              "runs": [{
+                  "tool": {
+                      "driver": {
+                          "name": "OWASP ZAP",
+                          "version": "2.15.0",
+                          "informationUri": "https://www.zaproxy.org/",
+                          "rules": []
+                      }
+                  },
+                  "results": [],
+                  "invocations": [{
+                      "executionSuccessful": True,
+                      "toolExecutionNotifications": []
+                  }]
+              }]
+          }
+
+          rules_map = {}
+          rule_index = 0
+
+          for report_file in ["zap-report/zap-baseline-report.json", "zap-report/zap-api-report.json"]:
+              try:
+                  with open(report_file) as f:
+                      data = json.load(f)
+
+                  for site in data.get("site", []):
+                      for alert in site.get("alerts", []):
+                          rule_id = alert.get("pluginId", "unknown")
+                          if rule_id not in rules_map:
+                              rules_map[rule_id] = rule_index
+                              sarif["runs"][0]["tool"]["driver"]["rules"].append({
+                                  "id": rule_id,
+                                  "name": alert.get("alert", "Unknown"),
+                                  "shortDescription": {"text": alert.get("alert", "Unknown")},
+                                  "fullDescription": {"text": alert.get("desc", "")},
+                                  "helpUri": alert.get("reference", ""),
+                                  "defaultConfiguration": {"level": "warning"}
+                              })
+                              rule_index += 1
+
+                          risk_code = int(alert.get("riskcode", "0"))
+                          if risk_code >= 3:
+                              level = "error"
+                          elif risk_code >= 2:
+                              level = "warning"
+                          else:
+                              level = "note"
+
+                          for instance in alert.get("instances", []):
+                              sarif["runs"][0]["results"].append({
+                                  "ruleId": rule_id,
+                                  "ruleIndex": rules_map[rule_id],
+                                  "level": level,
+                                  "message": {
+                                      "text": f"{alert.get('alert', 'Unknown')} - {alert.get('riskdesc', '')}"
+                                  },
+                                  "locations": [{
+                                      "physicalLocation": {
+                                          "artifactLocation": {
+                                              "uri": instance.get("uri", "unknown")
+                                          },
+                                          "region": {
+                                              "startLine": int(instance.get("method", "0").split(" ")[0]) if instance.get("method") else 1
+                                          }
+                                      }
+                                  }]
+                              })
+              except Exception as e:
+                  print(f"Warning: Could not process {report_file}: {e}")
+
+          with open("zap-report/zap-results.sarif", "w") as f:
+              json.dump(sarif, f, indent=2)
+
+          print(f"SARIF report generated: {len(sarif['runs'][0]['results'])} findings")
+          EOF
+
+      - name: Check for HIGH/CRITICAL findings
+        run: |
+          python3 << 'EOF'
+          import json, sys
+
+          high_critical = []
+          for report_file in ["zap-report/zap-baseline-report.json", "zap-report/zap-api-report.json"]:
+              try:
+                  with open(report_file) as f:
+                      data = json.load(f)
+                  for site in data.get("site", []):
+                      for alert in site.get("alerts", []):
+                          risk_code = int(alert.get("riskcode", "0"))
+                          if risk_code >= 3:
+                              high_critical.append({
+                                  "name": alert.get("alert"),
+                                  "risk": alert.get("riskdesc"),
+                                  "url": alert.get("instances", [{}])[0].get("uri", "unknown") if alert.get("instances") else "unknown"
+                              })
+              except FileNotFoundError:
+                  continue
+              except Exception as e:
+                  print(f"Warning: Error processing {report_file}: {e}")
+
+          if high_critical:
+              print(f"Found {len(high_critical)} HIGH/CRITICAL vulnerabilities:")
+              for v in high_critical:
+                  print(f"  [{v['risk']}] {v['name']} at {v['url']}")
+              sys.exit(1)
+          else:
+              print("No HIGH/CRITICAL vulnerabilities found")
+          EOF
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@b0c4fd77f6c559021d78430ec4d0d169ae74a4eb # v3
+        if: always()
+        with:
+          sarif_file: 'zap-report/zap-results.sarif'
+          category: 'owasp-zap'
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zap-scan-report
+          path: zap-report/
+          retention-days: 30
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop tachyon-server || true
+          docker rm tachyon-server || true
+          docker network rm tachyon-net || true

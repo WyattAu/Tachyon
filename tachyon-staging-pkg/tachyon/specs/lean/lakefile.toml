@@ -1,0 +1,10 @@
+name = "TachyonProofs"
+version = "0.1.0"
+defaultTargets = ["tachyonproofs"]
+
+[[lean_lib]]
+name = "TachyonProofs"
+
+[[lean_exe]]
+name = "tachyonproofs"
+root = "Main"

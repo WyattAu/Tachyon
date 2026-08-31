@@ -1,0 +1,313 @@
+# Tachyon Production Docker Compose — Hardened
+#
+# Usage:
+#   cp .env.production.example .env.production   # edit values
+#   docker compose -f docker-compose.production.yml up -d
+#
+# Security features:
+#   - no-new-privileges, read_only, non-root user (1000:1000)
+#   - Resource limits (CPU / memory) on every service
+#   - Health checks on every service
+#   - Network isolation (frontend / backend / database)
+#   - tmpfs for writeable paths
+#   - Restart unless-stopped
+#   - Structured JSON logging with rotation
+#   - Secrets via env_file
+
+version: "3.8"
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+x-security: &default-security
+  security_opt:
+    - no-new-privileges:true
+
+# ── Networks ───────────────────────────────────────────────────────────────────
+
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  backend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+  database:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+
+# ── Volumes ────────────────────────────────────────────────────────────────────
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  certbot_webroot:
+    driver: local
+  certs:
+    driver: local
+
+# ── Secrets (env-file based) ───────────────────────────────────────────────────
+
+x-db-env: &db-env
+  POSTGRES_USER: ${POSTGRES_USER:-tachyon}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+  POSTGRES_DB: ${POSTGRES_DB:-tachyon}
+
+x-backend-env: &backend-env
+  RUST_LOG: ${RUST_LOG:-warn}
+  LOG_FORMAT: ${LOG_FORMAT:-json}
+  TACHYON_DATABASE_URL: postgresql://${POSTGRES_USER:-tachyon}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tachyon}
+  TACHYON_REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+  TACHYON_BIND_ADDRESS: 0.0.0.0:8080
+  TACHYON_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+  JWT_EXPIRATION: ${JWT_EXPIRATION:-86400}
+  TACHYON_CORS_ORIGINS: ${CORS_ORIGINS:-}
+  METRICS_ENABLED: ${METRICS_ENABLED:-true}
+  HEALTH_CHECK_ENABLED: "true"
+
+# ── Services ───────────────────────────────────────────────────────────────────
+
+services:
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    <<: [*default-restart, *default-security]
+    user: "70:70"
+    environment:
+      <<: *db-env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    tmpfs:
+      - /var/run/postgresql:size=64M,mode=1777
+      - /tmp:size=64M,mode=1777
+    command: >
+      postgres
+        -c config_file=/etc/postgresql/postgresql.conf
+        -c hba_file=/etc/postgresql/pg_hba.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tachyon} -d ${POSTGRES_DB:-tachyon}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging: *default-logging
+    networks:
+      - database
+
+  # ── Redis ─────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    <<: [*default-restart, *default-security]
+    user: "999:999"
+    read_only: true
+    tmpfs:
+      - /data:size=256M,mode=750
+      - /tmp:size=32M,mode=1777
+    command: >
+      redis-server
+        --appendonly yes
+        --requirepass ${REDIS_PASSWORD:-changeme}
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+        --bind 0.0.0.0
+        --protected-mode yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+    logging: *default-logging
+    networks:
+      - database
+
+  # ── Backend ───────────────────────────────────────────────────────────────────
+  backend:
+    image: ${REGISTRY:-tachyon}/server:${VERSION:-latest}
+    <<: [*default-restart, *default-security]
+    user: "1000:1000"
+    read_only: true
+    environment:
+      <<: *backend-env
+    tmpfs:
+      - /tmp:size=64M,mode=1777
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      mode: replicated
+      replicas: ${BACKEND_REPLICAS:-2}
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+    logging: *default-logging
+    networks:
+      - backend
+      - database
+
+  # ── Frontend ──────────────────────────────────────────────────────────────────
+  frontend:
+    image: ${REGISTRY:-tachyon}/frontend:${VERSION:-latest}
+    <<: [*default-restart, *default-security]
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=32M,mode=1777
+      - /var/cache/nginx:size=32M,mode=750
+      - /var/run:size=16M,mode=750
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    logging: *default-logging
+    networks:
+      - frontend
+
+  # ── Nginx (reverse-proxy / TLS termination) ──────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    <<: [*default-restart, *default-security]
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      EMAIL: ${EMAIL:-admin@localhost}
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl.conf:/etc/nginx/ssl.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot_webroot:/var/www/certbot:ro
+      - certs:/etc/nginx/ssl:ro
+    tmpfs:
+      - /var/cache/nginx:size=64M,mode=750
+      - /var/run:size=16M,mode=750
+      - /tmp:size=16M,mode=1777
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    logging: *default-logging
+    networks:
+      - frontend
+      - backend
+
+  # ── Certbot (Let's Encrypt) ──────────────────────────────────────────────────
+  certbot:
+    image: certbot/certbot
+    <<: [*default-restart, *default-security]
+    user: "1000:1000"
+    read_only: true
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      EMAIL: ${EMAIL:-admin@localhost}
+    volumes:
+      - certbot_webroot:/var/www/certbot
+      - certs:/etc/letsencrypt
+    tmpfs:
+      - /tmp:size=16M,mode=1777
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        trap exit TERM
+        if [ ! -f "/etc/letsencrypt/nginx/fullchain.pem" ]; then
+          echo "Obtaining initial certificate for $$DOMAIN ..."
+          certbot certonly --webroot -w /var/www/certbot \
+            --email "$$EMAIL" --agree-tos --no-eff-email \
+            -d "$$DOMAIN" --non-interactive \
+            --deploy-hook "mkdir -p /etc/letsencrypt/nginx && cp -L /etc/letsencrypt/live/$$DOMAIN/fullchain.pem /etc/letsencrypt/live/$$DOMAIN/privkey.pem /etc/letsencrypt/nginx/"
+        fi
+        while :; do
+          certbot renew
+          sleep 12h &
+          wait "$$!"
+        done
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+    logging: *default-logging
+    networks:
+      - frontend

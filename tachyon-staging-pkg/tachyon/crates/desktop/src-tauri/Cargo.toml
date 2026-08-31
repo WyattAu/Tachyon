@@ -1,0 +1,92 @@
+[package]
+name = "tachyon-desktop-app"
+version = "0.1.0"
+description = "Tauri App for Tachyon desktop client"
+authors = ["Tachyon Team"]
+license = "MIT"
+repository = "https://github.com/tachyon/tachyon"
+rust-version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "tachyon_desktop_app"
+# staticlib is NOT needed for Linux/Windows Tauri builds (only iOS/macOS).
+# Including it triples intermediate artifact size and causes OOM during LTO
+# when heavy dependencies like wasmtime and tree-sitter are present.
+crate-type = ["cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri framework
+tauri = { version = "2.10.0", features = ["protocol-asset", "devtools"] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-log = "2"
+
+# Screenshot support (Linux/GTK only — webkit2gtk is already a Tauri transitive dep)
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "2.0"
+cairo-rs = { version = "0.18", features = ["png"] }
+gdk = "0.18"
+gtk = "0.18"
+
+# Workspace dependencies
+tachyon-core = { path = "../../core" }
+tachyon-import-export = { path = "../../import-export" }
+tachyon-storage = { path = "../../storage" }
+
+# Embedded server (optional — pulls in wasmtime, 10 tree-sitter grammars,
+# sqlx×4, tantivy, async-graphql, ldap3, etc. Only enable when the
+# desktop app needs to run the full server in-process.)
+tachyon-server = { path = "../../server", optional = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Async Runtime
+tokio = { workspace = true }
+
+# Axum (needed for embedded server's axum::serve — optional)
+axum = { version = "0.8", optional = true }
+
+# Error Handling & Logging
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# Git operations
+git2 = { workspace = true }
+
+# File system operations
+walkdir = { workspace = true }
+
+# Open files/URLs in system default app
+open = "5"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Hashing for local authentication
+sha2 = "0.10"
+hex = "0.4"
+
+# Base64 for screenshot encoding
+base64 = "0.22"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+tray-icon = ["tauri/tray-icon"]
+# Embed the full tachyon-server in the desktop app.
+# WARNING: This pulls in wasmtime, tree-sitter grammars, sqlx, tantivy,
+# async-graphql, and many other heavy crates. Build requires significant
+# RAM (~16GB+) and disk space (~10GB+).
+embedded-server = ["dep:tachyon-server", "dep:axum"]

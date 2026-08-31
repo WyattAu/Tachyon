@@ -1,0 +1,413 @@
+//! Syntax highlighting with tree-sitter
+//!
+//! This module provides syntax highlighting for multiple programming languages
+//! using tree-sitter parser library.
+
+use crate::error::{RendererError, RendererResult};
+use crate::types::{Language, SyntaxTheme};
+use std::collections::HashMap;
+use std::sync::Arc;
+use tracing::{debug, trace};
+use tree_sitter::{Language as TsLanguage, Parser as TsParser, Query, Tree};
+use tree_sitter_highlight::{Highlight, HighlightConfiguration, HighlightEvent, Highlighter};
+
+/// Syntax highlighter for code blocks
+pub struct SyntaxHighlighter {
+    /// Theme for syntax highlighting
+    theme: SyntaxTheme,
+
+    /// Cached highlight configurations
+    configurations: Arc<parking_lot::RwLock<HashMap<String, HighlightConfiguration>>>,
+
+    /// Custom CSS classes for highlights
+    custom_css_classes: Option<String>,
+}
+
+impl SyntaxHighlighter {
+    /// Create a new syntax highlighter with default theme
+    pub fn new() -> Self {
+        Self::with_theme(SyntaxTheme::default())
+    }
+
+    /// Create a new syntax highlighter with specified theme
+    pub fn with_theme(theme: SyntaxTheme) -> Self {
+        Self {
+            theme,
+            configurations: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+            custom_css_classes: None,
+        }
+    }
+
+    /// Highlight code with specified language
+    pub fn highlight<S: AsRef<str>>(&self, code: S, language: Language) -> RendererResult<String> {
+        let code = code.as_ref();
+        trace!("Highlighting code for language: {:?}", language);
+
+        let language_str = language.as_str();
+        let config = self.get_or_create_config(language, language_str)?;
+
+        let mut highlighter = Highlighter::new();
+        let highlights = highlighter
+            .highlight(&config, code.as_bytes(), None, |lang| {
+                self.get_language_source(lang)
+            })
+            .map_err(|e| RendererError::syntax_highlight(format!("Highlight error: {}", e)))?;
+
+        let html = self.highlights_to_html(highlights, code, language_str);
+        debug!("Highlighted {} characters of {} code", code.len(), language_str);
+
+        Ok(html)
+    }
+
+    /// Get or create highlight configuration for a language
+    fn get_or_create_config(
+        &self,
+        language: Language,
+        language_str: &str,
+    ) -> RendererResult<HighlightConfiguration> {
+        {
+            let configs = self.configurations.read();
+            if let Some(config) = configs.get(language_str) {
+                return Ok(config.clone());
+            }
+        }
+
+        let language_source = self.get_language_source(language_str)?;
+        let ts_language = TsLanguage::from_source(&language_source)
+            .map_err(|e| {
+                RendererError::language_parser_unavailable(format!(
+                    "Failed to load {}: {}",
+                    language_str, e
+                ))
+            })?;
+
+        let mut config = HighlightConfiguration::new(ts_language, language_str, "", "", "")
+            .map_err(|e| {
+                RendererError::language_parser_unavailable(format!(
+                    "Failed to create config for {}: {}",
+                    language_str, e
+                ))
+            })?;
+
+        config.configure(&self.get_highlight_names(language_str));
+        let config = config;
+
+        let mut configs = self.configurations.write();
+        configs.insert(language_str.to_string(), config.clone());
+
+        Ok(config)
+    }
+
+    /// Get tree-sitter language source for a language
+    fn get_language_source(&self, language_str: &str) -> RendererResult<String> {
+        match language_str {
+            "rust" => Ok(tree_sitter_rust::LANGUAGE.into()),
+            "python" => Ok(tree_sitter_python::LANGUAGE.into()),
+            "javascript" => Ok(tree_sitter_javascript::LANGUAGE.into()),
+            "typescript" => Ok(tree_sitter_typescript::LANGUAGE_TSX.into()),
+            "json" => Ok(tree_sitter_json::language().into()),
+            "toml" => Ok(tree_sitter_toml::language().into()),
+            "yaml" => Ok(tree_sitter_yaml::LANGUAGE.into()),
+            "html" => Ok(tree_sitter_html::LANGUAGE.into()),
+            "css" => Ok(tree_sitter_css::LANGUAGE.into()),
+            "sql" => Ok(tree_sitter_sql::language().into()),
+            "bash" => Ok(tree_sitter_bash::LANGUAGE.into()),
+            "markdown" => Ok(tree_sitter_markdown::language().into()),
+            _ => Err(RendererError::unsupported_language(language_str.to_string())),
+        }
+    }
+
+    /// Get highlight names for a language
+    fn get_highlight_names(&self, _language_str: &str) -> Vec<String> {
+        vec![
+            "attribute".to_string(),
+            "constant".to_string(),
+            "function.builtin".to_string(),
+            "function".to_string(),
+            "keyword".to_string(),
+            "operator".to_string(),
+            "property".to_string(),
+            "punctuation".to_string(),
+            "punctuation.bracket".to_string(),
+            "punctuation.delimiter".to_string(),
+            "string".to_string(),
+            "string.special".to_string(),
+            "tag".to_string(),
+            "type".to_string(),
+            "type.builtin".to_string(),
+            "variable".to_string(),
+            "variable.builtin".to_string(),
+            "variable.parameter".to_string(),
+        ]
+    }
+
+    /// Convert highlights to HTML
+    fn highlights_to_html(&self, highlights: Vec<HighlightEvent>, code: &str, lang: &str) -> String {
+        let mut html = String::new();
+        let chars: Vec<char> = code.chars().collect();
+        let mut current_pos = 0;
+
+        let css_class_prefix = self.custom_css_classes
+            .as_ref()
+            .map(|s| format!("{}-", s))
+            .unwrap_or_else(|| "syntax-".to_string());
+
+        html.push_str(&format!("<pre><code class=\"language-{}\">", lang));
+
+        for event in highlights {
+            match event {
+                HighlightEvent::HighlightStart(highlight) => {
+                    let class_name = self.highlight_to_class_name(highlight.0, &css_class_prefix);
+                    html.push_str(&format!("<span class=\"{}\">", class_name));
+                }
+                HighlightEvent::HighlightEnd => {
+                    html.push_str("</span>");
+                }
+                HighlightEvent::Source { start, end } => {
+                    for i in start..end {
+                        if i < chars.len() {
+                            let c = chars[i];
+                            match c {
+                                '<' => html.push_str("<"),
+                                '>' => html.push_str(">"),
+                                '&' => html.push_str("&"),
+                                '"' => html.push_str("\""),
+                                '\'' => html.push_str("'"),
+                                _ => html.push(c),
+                            }
+                        }
+                    }
+                    current_pos = end;
+                }
+            }
+        }
+
+        html.push_str("</code></pre>");
+        html
+    }
+
+    /// Convert highlight index to CSS class name
+    fn highlight_to_class_name(&self, highlight: u8, prefix: &str) -> String {
+        let names = [
+            "attribute",
+            "constant",
+            "function",
+            "keyword",
+            "method",
+            "number",
+            "operator",
+            "property",
+            "punctuation",
+            "string",
+            "tag",
+            "type",
+            "variable",
+        ];
+
+        let index = highlight as usize % names.len();
+        format!("{}{}", prefix, names[index])
+    }
+
+    /// Parse code with tree-sitter and return the syntax tree
+    pub fn parse<S: AsRef<str>>(&self, code: S, language: Language) -> RendererResult<Tree> {
+        let code = code.as_ref();
+        let language_str = language.as_str();
+        let language_source = self.get_language_source(language_str)?;
+        let ts_language = TsLanguage::from_source(&language_source)
+            .map_err(|e| {
+                RendererError::language_parser_unavailable(format!(
+                    "Failed to load {}: {}",
+                    language_str, e
+                ))
+            })?;
+
+        let mut parser = TsParser::new();
+        parser.set_language(&ts_language)
+            .map_err(|e| {
+                RendererError::language_parser_unavailable(format!(
+                    "Failed to set language for {}: {}",
+                    language_str, e
+                ))
+            })?;
+
+        parser
+            .parse(code, None)
+            .ok_or_else(|| {
+                RendererError::syntax_highlight(format!("Failed to parse {}", language_str))
+            })
+    }
+
+    /// Set custom CSS classes prefix
+    pub fn set_custom_css_classes<S: Into<String>>(&mut self, prefix: S) {
+        self.custom_css_classes = Some(prefix.into());
+    }
+
+    /// Clear custom CSS classes
+    pub fn clear_custom_css_classes(&mut self) {
+        self.custom_css_classes = None;
+    }
+
+    /// Get current theme
+    pub fn theme(&self) -> SyntaxTheme {
+        self.theme
+    }
+
+    /// Set theme
+    pub fn set_theme(&mut self, theme: SyntaxTheme) {
+        self.theme = theme;
+    }
+}
+
+impl Default for SyntaxHighlighter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Syntax query for custom highlighting
+pub struct SyntaxQuery {
+    /// The query string
+    query: String,
+
+    /// Language for the query
+    language: Language,
+}
+
+impl SyntaxQuery {
+    /// Create a new syntax query
+    pub fn new<S: Into<String>>(query: S, language: Language) -> Self {
+        Self {
+            query: query.into(),
+            language,
+        }
+    }
+
+    /// Execute the query on code
+    pub fn execute<S: AsRef<str>>(
+        &self,
+        code: S,
+    ) -> RendererResult<Vec<QueryMatch>> {
+        let code = code.as_ref();
+        let highlighter = SyntaxHighlighter::new();
+        let tree = highlighter.parse(code, self.language)?;
+
+        let language_source = highlighter.get_language_source(self.language.as_str())?;
+        let ts_language = TsLanguage::from_source(&language_source)
+            .map_err(|e| {
+                RendererError::language_parser_unavailable(format!(
+                    "Failed to load language: {}",
+                    e
+                ))
+            })?;
+
+        let query = Query::new(&ts_language, &self.query)
+            .map_err(|e| {
+                RendererError::syntax_highlight(format!("Query error: {}", e))
+            })?;
+
+        let root_node = tree.root_node();
+        let mut cursor = tree_sitter::QueryCursor::new();
+        let matches = cursor.matches(&query, root_node, code.as_bytes());
+
+        let mut results = Vec::new();
+        for mat in matches {
+            let captures: Vec<QueryCapture> = mat
+                .captures
+                .iter()
+                .map(|c| QueryCapture {
+                    index: c.index,
+                    start_byte: c.node.byte_range().start,
+                    end_byte: c.node.byte_range().end,
+                })
+                .collect();
+            results.push(QueryMatch {
+                pattern_index: mat.pattern_index,
+                captures,
+            });
+        }
+
+        Ok(results)
+    }
+}
+
+/// Query match result
+#[derive(Debug, Clone)]
+pub struct QueryMatch {
+    /// Pattern index
+    pub pattern_index: usize,
+
+    /// Captures
+    pub captures: Vec<QueryCapture>,
+}
+
+/// Query capture result
+#[derive(Debug, Clone)]
+pub struct QueryCapture {
+    /// Capture index
+    pub index: u32,
+
+    /// Start byte position
+    pub start_byte: usize,
+
+    /// End byte position
+    pub end_byte: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_highlight_rust() {
+        let highlighter = SyntaxHighlighter::new();
+        let code = r#"fn main() {
+    println!("Hello, world!");
+}"#;
+
+        let result = highlighter.highlight(code, Language::Rust);
+        assert!(result.is_ok());
+        let html = result.unwrap();
+        assert!(html.contains("<pre>"));
+        assert!(html.contains("language-rust"));
+        assert!(html.contains("fn"));
+    }
+
+    #[test]
+    fn test_highlight_python() {
+        let highlighter = SyntaxHighlighter::new();
+        let code = r#"def main():
+    print("Hello, world!")"#;
+
+        let result = highlighter.highlight(code, Language::Python);
+        assert!(result.is_ok());
+        let html = result.unwrap();
+        assert!(html.contains("language-python"));
+    }
+
+    #[test]
+    fn test_parse_rust() {
+        let highlighter = SyntaxHighlighter::new();
+        let code = "fn main() {}";
+        let tree = highlighter.parse(code, Language::Rust);
+        assert!(tree.is_ok());
+    }
+
+    #[test]
+    fn test_unsupported_language() {
+        let highlighter = SyntaxHighlighter::new();
+        let code = "some code";
+        let result = highlighter.highlight(code, Language::from_str("unknown").unwrap());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_custom_css_classes() {
+        let mut highlighter = SyntaxHighlighter::new();
+        highlighter.set_custom_css_classes("custom");
+        let code = "fn main() {}";
+        let result = highlighter.highlight(code, Language::Rust);
+        assert!(result.is_ok());
+        let html = result.unwrap();
+        assert!(html.contains("custom-"));
+    }
+}

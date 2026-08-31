@@ -1,0 +1,2319 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::buffer::TextBuffer;
+use crate::cursor::{Cursor, Cursors, Selection, SelectionKind};
+use crate::highlight::{HighlightProvider, HighlightSpan};
+use crate::language::Language;
+use crate::search::{Search, SearchResult};
+use crate::sync_queue::{OfflineSyncQueue, SyncStatus};
+use crate::theme::SyntaxTheme;
+use crate::transaction::{EditKind, Transaction, UndoStack};
+use yrs::updates::decoder::Decode;
+use yrs::updates::encoder::Encode;
+use yrs::{Doc, GetString, ReadTxn, Text, TextRef, Transact, Update};
+
+/// A foldable region in the document.
+/// `start_line` is the line with the fold marker (e.g., heading).
+/// `end_line` is the last line of the foldable content.
+#[derive(Debug, Clone, Default)]
+pub struct FoldRegion {
+    pub start_line: usize,
+    pub end_line: usize,
+    pub kind: FoldKind,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum FoldKind {
+    #[default]
+    Heading,
+    CodeBlock,
+    Blockquote,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WikilinkState {
+    pub active: bool,
+    pub query: String,
+    pub start_line: usize,
+    pub start_col: usize,
+}
+
+fn current_timestamp() -> u64 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        js_sys::Date::now() as u64
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0)
+    }
+}
+
+pub struct Editor {
+    buffer: TextBuffer,
+    cursors: Cursors,
+    undo_stack: UndoStack,
+    highlighter: Box<dyn HighlightProvider>,
+    theme: SyntaxTheme,
+    search: Search,
+    is_dirty: bool,
+    tab_size: usize,
+    current_search_results: Vec<SearchResult>,
+    current_search_index: usize,
+    in_code_block: bool,
+    /// Detected language for syntax highlighting (auto-detected from content or set manually).
+    language: Language,
+    scroll_offset_lines: usize,
+    scroll_offset_cols: usize,
+    /// Desired column for vertical navigation (like Neovim's curswant).
+    /// Preserved across up/down moves so cursor doesn't jump to col 0 on shorter lines.
+    /// Cleared on horizontal movement or mouse click.
+    desired_col: Option<usize>,
+    /// Timestamp of last edit for undo grouping.
+    /// Consecutive character inserts within UNDO_GROUP_MS are merged into one undo step.
+    #[allow(dead_code)]
+    last_edit_timestamp: f64,
+    /// Fold regions — computed from content, cached until content changes.
+    fold_regions: Vec<FoldRegion>,
+    /// Set of line indices that are currently folded (collapsed).
+    folded_lines: std::collections::HashSet<usize>,
+    /// CRDT document — source of truth for collaboration sync.
+    /// All local edits are mirrored here; remote updates rebuild the rope.
+    crdt_doc: Doc,
+    crdt_text: TextRef,
+    /// Tracks the last encoded state vector for incremental updates.
+    last_encoded_state: Vec<u8>,
+    /// Offline sync queue — buffers CRDT updates when no server connection.
+    offline_queue: OfflineSyncQueue,
+}
+
+impl Editor {
+    fn default_highlighter() -> Box<dyn HighlightProvider> {
+        #[cfg(feature = "native-tree-sitter")]
+        {
+            Box::new(crate::highlight::composite::CompositeHighlighter::new())
+        }
+        #[cfg(not(feature = "native-tree-sitter"))]
+        {
+            Box::new(crate::highlight::RegexHighlighter::new())
+        }
+    }
+
+    pub fn new() -> Self {
+        let crdt_doc = Doc::new();
+        let crdt_text = crdt_doc.get_or_insert_text("content");
+        let last_encoded_state = crdt_doc.transact().state_vector().encode_v1();
+        Self {
+            buffer: TextBuffer::new(),
+            cursors: Cursors::new(),
+            undo_stack: UndoStack::new(1000),
+            highlighter: Self::default_highlighter(),
+            theme: SyntaxTheme::dark(),
+            search: Search::new(),
+            is_dirty: false,
+            tab_size: 2,
+            current_search_results: Vec::new(),
+            current_search_index: 0,
+            in_code_block: false,
+            language: Language::Markdown,
+            scroll_offset_lines: 0,
+            scroll_offset_cols: 0,
+            desired_col: None,
+            crdt_doc,
+            crdt_text,
+            last_encoded_state,
+            offline_queue: OfflineSyncQueue::new(),
+            last_edit_timestamp: 0.0,
+            fold_regions: Vec::new(),
+            folded_lines: std::collections::HashSet::new(),
+        }
+    }
+
+    pub fn with_content(content: &str) -> Self {
+        let mut editor = Self::new();
+        editor.set_content(content);
+        editor
+    }
+
+    pub fn buffer(&self) -> &TextBuffer {
+        &self.buffer
+    }
+
+    pub fn buffer_mut(&mut self) -> &mut TextBuffer {
+        &mut self.buffer
+    }
+
+    #[deprecated(note = "Use cursors() to access multi-cursor state")]
+    #[allow(deprecated)]
+    pub fn cursor(&self) -> &Cursor {
+        &self.cursors.entries[self.cursors.active].0
+    }
+
+    #[deprecated(note = "Use cursors() to access multi-cursor state")]
+    #[allow(deprecated)]
+    pub fn selection(&self) -> &Selection {
+        &self.cursors.entries[self.cursors.active].1
+    }
+
+    fn active_cursor(&self) -> Cursor {
+        self.cursors.entries[self.cursors.active].0
+    }
+
+    fn active_selection(&self) -> Selection {
+        self.cursors.entries[self.cursors.active].1.clone()
+    }
+
+    fn update_active_cursor(&mut self, cursor: Cursor) {
+        self.cursors.entries[self.cursors.active].0 = cursor;
+    }
+
+    fn update_active_selection(&mut self, selection: Selection) {
+        self.cursors.entries[self.cursors.active].1 = selection;
+    }
+
+    pub fn cursors(&self) -> &Cursors {
+        &self.cursors
+    }
+
+    pub fn cursors_mut(&mut self) -> &mut Cursors {
+        &mut self.cursors
+    }
+
+    pub fn add_cursor(&mut self, cursor: Cursor, selection: Selection) -> usize {
+        self.cursors.add(cursor, selection)
+    }
+
+    pub fn remove_cursor(&mut self, index: usize) {
+        self.cursors.remove(index)
+    }
+
+    pub fn active_cursor_index(&self) -> usize {
+        self.cursors.active_index()
+    }
+
+    pub fn set_active_cursor(&mut self, index: usize) {
+        self.cursors.set_active(index)
+    }
+
+    pub fn cursor_count(&self) -> usize {
+        self.cursors.len()
+    }
+
+    /// Add a cursor at the next occurrence of the current selection text.
+    /// If no selection, uses the word at cursor.
+    /// Returns true if a new cursor was added.
+    pub fn add_cursor_at_next_occurrence(&mut self) -> bool {
+        let sel_text = self.get_selected_text();
+        let query = if let Some(ref s) = sel_text {
+            if !s.is_empty() && !s.contains('\n') {
+                s.clone()
+            } else {
+                return false;
+            }
+        } else {
+            // Get word at cursor
+            let cursor = self.active_cursor();
+            let line = self.buffer.line(cursor.line);
+            let chars: Vec<char> = line.chars().collect();
+            let mut start = cursor.col.min(chars.len());
+            while start > 0
+                && chars
+                    .get(start - 1)
+                    .map(|c| {
+                        !c.is_whitespace()
+                            && !matches!(
+                                c,
+                                '(' | ')'
+                                    | '['
+                                    | ']'
+                                    | '{'
+                                    | '}'
+                                    | ','
+                                    | ';'
+                                    | ':'
+                                    | '.'
+                                    | '"'
+                                    | '\''
+                            )
+                    })
+                    .unwrap_or(false)
+            {
+                start -= 1;
+            }
+            let mut end = cursor.col.min(chars.len());
+            while end < chars.len()
+                && chars
+                    .get(end)
+                    .map(|c| {
+                        !c.is_whitespace()
+                            && !matches!(
+                                c,
+                                '(' | ')'
+                                    | '['
+                                    | ']'
+                                    | '{'
+                                    | '}'
+                                    | ','
+                                    | ';'
+                                    | ':'
+                                    | '.'
+                                    | '"'
+                                    | '\''
+                            )
+                    })
+                    .unwrap_or(false)
+            {
+                end += 1;
+            }
+            if end > start {
+                chars[start..end].iter().collect()
+            } else {
+                return false;
+            }
+        };
+
+        // Find next occurrence after current cursor
+        let current = self.active_cursor();
+        let results = self.search.find(&query, &self.buffer);
+        for result in &results {
+            let pos = Cursor::new(result.line, result.start_col);
+            // Skip if it's the same as current cursor position
+            if pos.line == current.line && pos.col == current.col {
+                continue;
+            }
+            // Skip if it's inside an existing selection
+            let mut inside_existing = false;
+            for (_c, s) in self.cursors.iter() {
+                if !s.is_empty() {
+                    let (start, end) = s.normalize();
+                    if pos.line >= start.line
+                        && pos.col >= start.col
+                        && pos.line <= end.line
+                        && pos.col <= end.col
+                    {
+                        inside_existing = true;
+                        break;
+                    }
+                }
+            }
+            if !inside_existing {
+                self.add_cursor(pos, Selection::caret(pos));
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Clear all cursors except the active one.
+    pub fn clear_extra_cursors(&mut self) {
+        let active = self.cursors.active().0;
+        let active_sel = self.cursors.active().1;
+        self.cursors.clear(active, active_sel);
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.is_dirty
+    }
+
+    /// Detected language for syntax highlighting.
+    pub fn language(&self) -> Language {
+        self.language
+    }
+
+    /// Set language explicitly (overrides auto-detection).
+    pub fn set_language(&mut self, language: Language) {
+        self.language = language;
+        self.in_code_block = false;
+    }
+
+    /// Get a reference to the current syntax theme.
+    pub fn theme(&self) -> &SyntaxTheme {
+        &self.theme
+    }
+
+    /// Set the syntax theme.
+    pub fn set_theme(&mut self, theme: SyntaxTheme) {
+        self.theme = theme;
+    }
+
+    /// Swap the highlight backend (e.g. regex -> tree-sitter at runtime).
+    pub fn set_highlighter(&mut self, backend: Box<dyn HighlightProvider>) {
+        self.highlighter = backend;
+        self.in_code_block = false;
+    }
+
+    pub fn set_content(&mut self, content: &str) {
+        self.buffer = TextBuffer::from_str(content);
+        self.cursors
+            .clear(Cursor::zero(), Selection::caret(Cursor::zero()));
+        self.undo_stack.clear();
+        self.is_dirty = false;
+        self.current_search_results.clear();
+        self.in_code_block = false;
+        self.folded_lines.clear();
+        self.compute_fold_regions();
+        self.sync_rope_to_yrs();
+    }
+
+    /// Set content with auto-language detection from file extension.
+    pub fn set_content_with_filename(&mut self, content: &str, filename: &str) {
+        self.language = Language::from_extension(crate::language::extract_extension(filename));
+        self.set_content(content);
+    }
+
+    pub fn content(&self) -> String {
+        self.buffer.to_string()
+    }
+
+    // ─── CRDT Sync Methods ───────────────────────────────────────────────
+
+    /// Mirror the current rope content into the CRDT document.
+    /// Called after local edits so the CRDT layer stays in sync.
+    fn sync_rope_to_yrs(&mut self) {
+        let content = self.buffer.to_string();
+        let len = self.crdt_text.len(&self.crdt_doc.transact());
+        let content_len = content.chars().count();
+        let mut txn = self.crdt_doc.transact_mut();
+        if len > 0 {
+            self.crdt_text.remove_range(&mut txn, 0, len);
+        }
+        if content_len > 0 {
+            self.crdt_text.insert(&mut txn, 0, &content);
+        }
+    }
+
+    /// Rebuild the rope from the CRDT document content.
+    /// Called after applying remote updates.
+    fn sync_rope_from_yrs(&mut self) {
+        let txn = self.crdt_doc.transact();
+        let content = self.crdt_text.get_string(&txn);
+        drop(txn);
+        self.buffer = TextBuffer::from_str(&content);
+    }
+
+    /// Encode the CRDT document state as an incremental update.
+    /// Returns the binary diff since the last call to `encode_update`.
+    /// Returns empty Vec if no changes.
+    pub fn encode_update(&mut self) -> Vec<u8> {
+        let txn = self.crdt_doc.transact();
+        let current_sv = txn.state_vector();
+        let update = txn.encode_diff_v1(
+            &yrs::StateVector::decode_v1(&self.last_encoded_state).unwrap_or_default(),
+        );
+        self.last_encoded_state = current_sv.encode_v1();
+        update
+    }
+
+    /// Apply a remote CRDT update (binary) and rebuild the rope.
+    /// Returns true if the rope content changed.
+    pub fn apply_remote_update(&mut self, update: &[u8]) -> bool {
+        let old_content = self.buffer.to_string();
+        let decoded = match Update::decode_v1(update) {
+            Ok(u) => u,
+            Err(_) => return false,
+        };
+        let result = self.crdt_doc.transact_mut().apply_update(decoded);
+        match result {
+            Ok(()) => {
+                self.sync_rope_from_yrs();
+                let new_content = self.buffer.to_string();
+                let mut cursor = self.active_cursor();
+                let max_line = self.buffer.len_lines().saturating_sub(1);
+                if cursor.line > max_line {
+                    cursor.line = max_line;
+                    cursor.col = self.buffer.line_len(max_line);
+                } else {
+                    cursor.col = cursor.col.min(self.buffer.line_len(cursor.line));
+                }
+                self.update_active_cursor(cursor);
+                self.update_active_selection(Selection::caret(self.active_cursor()));
+                old_content != new_content
+            }
+            Err(_) => false,
+        }
+    }
+
+    /// Get the full CRDT document state as a binary update.
+    /// Used for initial sync when joining a collaboration session.
+    pub fn encode_full_state(&self) -> Vec<u8> {
+        self.crdt_doc
+            .transact()
+            .encode_state_as_update_v1(&yrs::StateVector::default())
+    }
+
+    /// Get the current CRDT state vector (for requesting incremental updates).
+    pub fn state_vector(&self) -> Vec<u8> {
+        self.crdt_doc.transact().state_vector().encode_v1()
+    }
+
+    // ─── Offline Sync Methods ────────────────────────────────────────────
+
+    /// Get a reference to the offline sync queue.
+    pub fn offline_queue(&self) -> &OfflineSyncQueue {
+        &self.offline_queue
+    }
+
+    /// Get a mutable reference to the offline sync queue.
+    pub fn offline_queue_mut(&mut self) -> &mut OfflineSyncQueue {
+        &mut self.offline_queue
+    }
+
+    /// Check if the editor is in offline mode.
+    pub fn is_offline(&self) -> bool {
+        self.offline_queue.status() == SyncStatus::Offline
+    }
+
+    /// Transition to online mode. Returns pending updates that should
+    /// be sent to the server.
+    ///
+    /// Call this when connectivity is restored. The returned updates
+    /// are in chronological order (oldest first).
+    pub fn go_online(&mut self) -> Vec<Vec<u8>> {
+        self.offline_queue.set_status(SyncStatus::Syncing);
+        let updates: Vec<Vec<u8>> = self
+            .offline_queue
+            .drain_batch(64)
+            .into_iter()
+            .map(|u| u.data)
+            .collect();
+        if self.offline_queue.is_empty() {
+            self.offline_queue.set_status(SyncStatus::Online);
+        }
+        updates
+    }
+
+    /// Transition to offline mode. Subsequent local edits will be
+    /// automatically queued for later transmission.
+    pub fn go_offline(&mut self) {
+        self.offline_queue.set_status(SyncStatus::Offline);
+    }
+
+    /// Flush all pending updates as a single merged update.
+    /// Useful for efficient resync when coming back online.
+    /// Returns `None` if no pending updates.
+    pub fn flush_pending(&mut self) -> Option<Vec<u8>> {
+        self.offline_queue.merge_all()
+    }
+
+    /// Commit the current CRDT state as a local update.
+    /// If offline, the update is queued. Returns the queued sequence
+    /// number if queued, or None if online (update should be sent
+    /// directly to the server).
+    pub fn commit_local_update(&mut self) -> Option<u64> {
+        let update = self.encode_update();
+        if update.is_empty() {
+            return None;
+        }
+
+        if self.is_offline() {
+            let ts = current_timestamp();
+            Some(self.offline_queue.enqueue(update, ts))
+        } else {
+            // Online — caller should send the update to the server.
+            // Store it back so encode_update can be called again.
+            None
+        }
+    }
+
+    /// Notify the queue that a batch of updates was synced successfully.
+    pub fn notify_synced(&mut self, count: u64) {
+        self.offline_queue.mark_synced(count);
+        if self.offline_queue.is_empty() {
+            self.offline_queue.set_status(SyncStatus::Online);
+        }
+    }
+
+    /// Notify the queue that an update failed to sync.
+    pub fn notify_sync_failed(&mut self, data: Vec<u8>, seq: u64, timestamp_ms: u64) {
+        use crate::sync_queue::QueuedUpdate;
+        self.offline_queue.mark_failed(QueuedUpdate {
+            seq,
+            data,
+            timestamp_ms,
+        });
+    }
+
+    fn push_transaction(&mut self, kind: EditKind, start: Cursor, end: Cursor) {
+        let is_char_insert = matches!(&kind, EditKind::Insert { text } if text.chars().count() == 1 && !text.contains('\n'));
+
+        // Undo grouping: merge consecutive single-character inserts
+        if is_char_insert
+            && let Some(last) = self.undo_stack.last_mut()
+            && matches!(&last.kind, EditKind::Insert { text } if text.chars().count() == 1 && !text.contains('\n'))
+            && last.end.line == start.line
+            && last.end.col == start.col
+        {
+            // Merge into previous transaction
+            if let EditKind::Insert {
+                text: ref mut prev_text,
+            } = last.kind
+            {
+                prev_text.push_str(&kind.text());
+            }
+            last.end = end;
+            self.is_dirty = true;
+            self.sync_rope_to_yrs();
+            return;
+        }
+
+        let tx = Transaction {
+            kind,
+            start,
+            end,
+            timestamp: current_timestamp(),
+        };
+        self.undo_stack.push(tx);
+        self.is_dirty = true;
+        self.sync_rope_to_yrs();
+    }
+
+    pub fn insert_text(&mut self, text: &str) {
+        let selection = self.active_selection();
+        if !selection.is_empty() {
+            self.delete_selection();
+        }
+
+        let cursor = self.active_cursor();
+        let start = cursor;
+        self.buffer.insert(cursor.line, cursor.col, text);
+
+        let lines_added = text.matches('\n').count();
+        let last_line_len = text.rsplit('\n').next().map(|l| l.len()).unwrap_or(0);
+
+        let new_cursor = if lines_added > 0 {
+            Cursor::new(cursor.line + lines_added, last_line_len)
+        } else {
+            Cursor::new(cursor.line, cursor.col + text.chars().count())
+        };
+        self.update_active_cursor(new_cursor);
+
+        self.push_transaction(
+            EditKind::Insert {
+                text: text.to_string(),
+            },
+            start,
+            new_cursor,
+        );
+
+        self.update_active_selection(Selection::caret(new_cursor));
+    }
+
+    pub fn delete_selection(&mut self) -> Option<String> {
+        let selection = self.active_selection();
+        if selection.is_empty() {
+            return None;
+        }
+
+        let (start, end) = selection.normalize();
+        let deleted = self
+            .buffer
+            .delete_range(start.line, start.col, end.line, end.col);
+        self.update_active_cursor(start);
+        self.update_active_selection(Selection::caret(start));
+
+        if !deleted.is_empty() {
+            self.push_transaction(
+                EditKind::Delete {
+                    text: deleted.clone(),
+                },
+                start,
+                start,
+            );
+        }
+
+        Some(deleted)
+    }
+
+    pub fn delete_backwards(&mut self) {
+        if !self.active_selection().is_empty() {
+            self.delete_selection();
+            return;
+        }
+
+        let cursor = self.active_cursor();
+        if cursor.col > 0 {
+            let start = Cursor::new(cursor.line, cursor.col - 1);
+            let deleted = self
+                .buffer
+                .delete_range(start.line, start.col, cursor.line, cursor.col);
+            let new_cursor = Cursor::new(cursor.line, cursor.col - 1);
+            self.update_active_cursor(new_cursor);
+            self.update_active_selection(Selection::caret(new_cursor));
+            if !deleted.is_empty() {
+                self.push_transaction(EditKind::Delete { text: deleted }, new_cursor, new_cursor);
+            }
+        } else if cursor.line > 0 {
+            let prev_line_len = self.buffer.line_len(cursor.line - 1);
+            let start = Cursor::new(cursor.line - 1, prev_line_len);
+            let deleted = self
+                .buffer
+                .delete_range(start.line, start.col, cursor.line, cursor.col);
+            let new_cursor = Cursor::new(cursor.line - 1, prev_line_len);
+            self.update_active_cursor(new_cursor);
+            self.update_active_selection(Selection::caret(new_cursor));
+            if !deleted.is_empty() {
+                self.push_transaction(EditKind::Delete { text: deleted }, new_cursor, new_cursor);
+            }
+        }
+    }
+
+    pub fn delete_forwards(&mut self) {
+        if !self.active_selection().is_empty() {
+            self.delete_selection();
+            return;
+        }
+
+        let cursor = self.active_cursor();
+        let line_len = self.buffer.line_len(cursor.line);
+        if cursor.col < line_len {
+            let start = cursor;
+            let deleted =
+                self.buffer
+                    .delete_range(cursor.line, cursor.col, cursor.line, cursor.col + 1);
+            self.update_active_selection(Selection::caret(cursor));
+            if !deleted.is_empty() {
+                self.push_transaction(EditKind::Delete { text: deleted }, start, cursor);
+            }
+        } else if cursor.line < self.buffer.len_lines() - 1 {
+            let start = cursor;
+            let deleted = self
+                .buffer
+                .delete_range(cursor.line, cursor.col, cursor.line + 1, 0);
+            self.update_active_selection(Selection::caret(cursor));
+            if !deleted.is_empty() {
+                self.push_transaction(EditKind::Delete { text: deleted }, start, cursor);
+            }
+        }
+    }
+
+    pub fn delete_word_backwards(&mut self) {
+        let start = self.active_cursor();
+        let mut cursor = start;
+        cursor.move_word_left(&self.buffer);
+        if cursor != start {
+            let deleted = self
+                .buffer
+                .delete_range(cursor.line, cursor.col, start.line, start.col);
+            self.update_active_cursor(cursor);
+            self.update_active_selection(Selection::caret(cursor));
+            if !deleted.is_empty() {
+                self.push_transaction(EditKind::Delete { text: deleted }, start, cursor);
+            }
+        }
+    }
+
+    pub fn delete_word_forwards(&mut self) {
+        let start = self.active_cursor();
+        let mut cursor = start;
+        cursor.move_word_right(&self.buffer);
+        if cursor != start {
+            let deleted = self
+                .buffer
+                .delete_range(start.line, start.col, cursor.line, cursor.col);
+            let end = Cursor::new(start.line, start.col);
+            self.update_active_cursor(end);
+            self.update_active_selection(Selection::caret(end));
+            if !deleted.is_empty() {
+                self.push_transaction(EditKind::Delete { text: deleted }, start, end);
+            }
+        }
+    }
+
+    pub fn delete_line(&mut self) {
+        let cursor = self.active_cursor();
+        let line = cursor.line;
+        let line_text = self.buffer.line_content_with_newline(line);
+        let start = Cursor::new(line, 0);
+
+        let mut new_cursor = cursor;
+        if line < self.buffer.len_lines() - 1 {
+            self.buffer.delete_range(line, 0, line + 1, 0);
+        } else if line > 0 {
+            let prev_len = self.buffer.line_len(line - 1);
+            self.buffer
+                .delete_range(line - 1, prev_len, line, self.buffer.line_len(line));
+            new_cursor.line = line - 1;
+            new_cursor.col = prev_len;
+        } else {
+            self.buffer.delete_range(0, 0, 0, self.buffer.line_len(0));
+            new_cursor.col = 0;
+        }
+
+        self.update_active_cursor(new_cursor);
+        self.update_active_selection(Selection::caret(new_cursor));
+        self.push_transaction(EditKind::Delete { text: line_text }, start, new_cursor);
+    }
+
+    pub fn indent_line(&mut self, line: usize) {
+        let indent = " ".repeat(self.tab_size);
+        self.buffer.insert(line, 0, &indent);
+        let cursor = self.active_cursor();
+        if cursor.line == line && cursor.col > 0 {
+            let new_cursor = Cursor::new(cursor.line, cursor.col + self.tab_size);
+            self.update_active_cursor(new_cursor);
+        }
+        self.is_dirty = true;
+        self.sync_rope_to_yrs();
+    }
+
+    pub fn unindent_line(&mut self, line: usize) {
+        let current_indent = self.buffer.indent_level(line);
+        let remove = current_indent.min(self.tab_size);
+        if remove > 0 {
+            self.buffer.delete_range(line, 0, line, remove);
+            let cursor = self.active_cursor();
+            if cursor.line == line {
+                let new_cursor = Cursor::new(cursor.line, cursor.col.saturating_sub(remove));
+                self.update_active_cursor(new_cursor);
+            }
+            self.is_dirty = true;
+            self.sync_rope_to_yrs();
+        }
+    }
+
+    pub fn indent_selection(&mut self) {
+        let (start, end) = self.active_selection().normalize();
+        let start_line = start.line;
+        let end_line = if end.col > 0 {
+            end.line
+        } else {
+            end.line.saturating_sub(1)
+        };
+
+        for line in start_line..=end_line.min(self.buffer.len_lines() - 1) {
+            self.indent_line(line);
+        }
+    }
+
+    pub fn unindent_selection(&mut self) {
+        let (start, end) = self.active_selection().normalize();
+        let start_line = start.line;
+        let end_line = if end.col > 0 {
+            end.line
+        } else {
+            end.line.saturating_sub(1)
+        };
+
+        for line in start_line..=end_line.min(self.buffer.len_lines() - 1) {
+            self.unindent_line(line);
+        }
+    }
+
+    pub fn toggle_line_comment(&mut self) {
+        let cursor = self.active_cursor();
+        let line = cursor.line;
+        let line_text = self.buffer.line(line);
+        let stripped = line_text.trim_start_matches('\n');
+
+        if stripped.starts_with("// ") || stripped == "//" {
+            let full_prefix_len = line_text.len() - stripped.len();
+            let comment_len = if stripped == "//" { 2 } else { 3 };
+            self.buffer
+                .delete_range(line, full_prefix_len, line, full_prefix_len + comment_len);
+            let new_cursor = Cursor::new(line, cursor.col.saturating_sub(comment_len));
+            self.update_active_cursor(new_cursor);
+        } else {
+            let indent = self.buffer.indent_level(line);
+            self.buffer.insert(line, indent, "// ");
+            if cursor.col >= indent {
+                let new_cursor = Cursor::new(line, cursor.col + 3);
+                self.update_active_cursor(new_cursor);
+            }
+        }
+        self.is_dirty = true;
+        self.sync_rope_to_yrs();
+    }
+
+    pub fn duplicate_line(&mut self) {
+        let cursor = self.active_cursor();
+        let line = cursor.line;
+        let line_text = self.buffer.line_content_with_newline(line);
+        if !line_text.ends_with('\n') {
+            self.buffer.insert(line, self.buffer.line_len(line), "\n");
+        }
+        self.buffer
+            .insert(line + 1, 0, line_text.trim_end_matches('\n'));
+        self.buffer
+            .insert(line + 1, self.buffer.line_len(line + 1), "\n");
+        let new_cursor = Cursor::new(cursor.line + 1, cursor.col);
+        self.update_active_cursor(new_cursor);
+        self.update_active_selection(Selection::caret(new_cursor));
+        self.is_dirty = true;
+        self.sync_rope_to_yrs();
+    }
+
+    pub fn move_line_up(&mut self) {
+        let cursor = self.active_cursor();
+        if cursor.line == 0 {
+            return;
+        }
+        let line = cursor.line;
+        let current_text = self.buffer.line(line).trim_end_matches('\n').to_string();
+        let prev_text = self
+            .buffer
+            .line(line - 1)
+            .trim_end_matches('\n')
+            .to_string();
+        let current_col = cursor.col;
+
+        let replacement = format!("{}\n{}\n", current_text, prev_text);
+
+        self.buffer.delete_range(line - 1, 0, line + 1, 0);
+        self.buffer.insert(line - 1, 0, &replacement);
+
+        let new_cursor = Cursor::new(
+            cursor.line - 1,
+            current_col.min(self.buffer.line_len(cursor.line - 1)),
+        );
+        self.update_active_cursor(new_cursor);
+    }
+
+    pub fn move_line_down(&mut self) {
+        let cursor = self.active_cursor();
+        if cursor.line >= self.buffer.len_lines() - 1 {
+            return;
+        }
+        let line = cursor.line;
+        let current_text = self.buffer.line(line).trim_end_matches('\n').to_string();
+        let next_text = self
+            .buffer
+            .line(line + 1)
+            .trim_end_matches('\n')
+            .to_string();
+        let current_col = cursor.col;
+
+        let replacement = format!("{}\n{}\n", next_text, current_text);
+        self.buffer.delete_range(line, 0, line + 2, 0);
+        self.buffer.insert(line, 0, &replacement);
+
+        let new_cursor = Cursor::new(
+            cursor.line + 1,
+            current_col.min(self.buffer.line_len(cursor.line + 1)),
+        );
+        self.update_active_cursor(new_cursor);
+    }
+
+    pub fn get_wikilink_state(&self) -> Option<WikilinkState> {
+        let cursor = self.active_cursor();
+        let line_text = self.buffer.line(cursor.line);
+        let trimmed = line_text.trim_end_matches('\n');
+        let before_cursor = &trimmed[..cursor.col.min(trimmed.len())];
+
+        if let Some(start) = before_cursor.rfind("[[") {
+            let after_start = &before_cursor[start + 2..];
+            if after_start.contains("]]") {
+                return None;
+            }
+            Some(WikilinkState {
+                active: true,
+                query: after_start.to_string(),
+                start_line: cursor.line,
+                start_col: start,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn insert_wikilink(&mut self, title: &str, alias: Option<&str>) {
+        if let Some(wl_state) = self.get_wikilink_state() {
+            let replacement = match alias {
+                Some(a) => format!("[[{}|{}]]", title, a),
+                None => format!("[[{}]]", title),
+            };
+
+            let cursor = Cursor::new(wl_state.start_line, wl_state.start_col);
+            let end = Cursor::new(cursor.line, wl_state.start_col + 2 + wl_state.query.len());
+            self.update_active_cursor(cursor);
+            self.update_active_selection(Selection::range(cursor, end));
+            self.delete_selection();
+
+            self.insert_text(&replacement);
+        }
+    }
+
+    pub fn undo(&mut self) -> bool {
+        let tx = match self.undo_stack.pop_undo() {
+            Some(t) => t,
+            None => return false,
+        };
+
+        let inverse = match tx.kind {
+            EditKind::Insert { text } => {
+                let end = tx.end;
+                self.buffer
+                    .delete_range(tx.start.line, tx.start.col, end.line, end.col);
+                self.update_active_cursor(tx.start);
+                EditKind::Delete { text }
+            }
+            EditKind::Delete { text } => {
+                self.buffer.insert(tx.start.line, tx.start.col, &text);
+                let lines_added = text.matches('\n').count();
+                let new_cursor = if lines_added > 0 {
+                    let last_line_len = text.rsplit('\n').next().map(|l| l.len()).unwrap_or(0);
+                    Cursor::new(tx.start.line + lines_added, last_line_len)
+                } else {
+                    Cursor::new(tx.start.line, tx.start.col + text.chars().count())
+                };
+                self.update_active_cursor(new_cursor);
+                EditKind::Insert { text }
+            }
+            EditKind::Replace { old_text, new_text } => {
+                let end = tx.end;
+                self.buffer
+                    .delete_range(tx.start.line, tx.start.col, end.line, end.col);
+                self.buffer.insert(tx.start.line, tx.start.col, &old_text);
+                let lines_added = old_text.matches('\n').count();
+                let new_cursor = if lines_added > 0 {
+                    let last_line_len = old_text.rsplit('\n').next().map(|l| l.len()).unwrap_or(0);
+                    Cursor::new(tx.start.line + lines_added, last_line_len)
+                } else {
+                    Cursor::new(tx.start.line, tx.start.col + old_text.chars().count())
+                };
+                self.update_active_cursor(new_cursor);
+                EditKind::Replace {
+                    old_text: new_text,
+                    new_text: old_text,
+                }
+            }
+        };
+
+        self.undo_stack.push_redo(Transaction {
+            kind: inverse,
+            start: tx.start,
+            end: self.active_cursor(),
+            timestamp: tx.timestamp,
+        });
+
+        self.update_active_selection(Selection::caret(self.active_cursor()));
+        true
+    }
+
+    pub fn redo(&mut self) -> bool {
+        let tx = match self.undo_stack.pop_redo() {
+            Some(t) => t,
+            None => return false,
+        };
+
+        let inverse = match &tx.kind {
+            EditKind::Insert { text } => {
+                self.buffer.insert(tx.start.line, tx.start.col, text);
+                let lines_added = text.matches('\n').count();
+                let new_cursor = if lines_added > 0 {
+                    let last_line_len = text.rsplit('\n').next().map(|l| l.len()).unwrap_or(0);
+                    Cursor::new(tx.start.line + lines_added, last_line_len)
+                } else {
+                    Cursor::new(tx.start.line, tx.start.col + text.chars().count())
+                };
+                self.update_active_cursor(new_cursor);
+                EditKind::Delete { text: text.clone() }
+            }
+            EditKind::Delete { text } => {
+                self.buffer.insert(tx.start.line, tx.start.col, text);
+                self.update_active_cursor(tx.start);
+                EditKind::Insert { text: text.clone() }
+            }
+            EditKind::Replace { old_text, new_text } => {
+                self.buffer.insert(tx.start.line, tx.start.col, new_text);
+                let lines_added = new_text.matches('\n').count();
+                let new_cursor = if lines_added > 0 {
+                    let last_line_len = new_text.rsplit('\n').next().map(|l| l.len()).unwrap_or(0);
+                    Cursor::new(tx.start.line + lines_added, last_line_len)
+                } else {
+                    Cursor::new(tx.start.line, tx.start.col + new_text.chars().count())
+                };
+                self.update_active_cursor(new_cursor);
+                EditKind::Replace {
+                    old_text: new_text.clone(),
+                    new_text: old_text.clone(),
+                }
+            }
+        };
+
+        self.undo_stack.push_undo(Transaction {
+            kind: inverse,
+            start: tx.start,
+            end: self.active_cursor(),
+            timestamp: tx.timestamp,
+        });
+
+        self.update_active_selection(Selection::caret(self.active_cursor()));
+        true
+    }
+
+    pub fn can_undo(&self) -> bool {
+        self.undo_stack.can_undo()
+    }
+
+    pub fn can_redo(&self) -> bool {
+        self.undo_stack.can_redo()
+    }
+
+    pub fn select_all(&mut self) {
+        let mut cursor = self.active_cursor();
+        cursor.move_to_buffer_end(&self.buffer);
+        let end = cursor;
+        let start = Cursor::zero();
+        self.update_active_cursor(cursor);
+        self.update_active_selection(Selection::range(start, end));
+    }
+
+    pub fn select_word(&mut self) {
+        let cursor = self.active_cursor();
+        let line_text = self.buffer.line(cursor.line);
+        let chars: Vec<char> = line_text.chars().collect();
+        let col = cursor.col.min(chars.len());
+
+        if col >= chars.len() {
+            self.update_active_selection(Selection::caret(cursor));
+            return;
+        }
+
+        let is_word_char = |c: char| c.is_alphanumeric() || c == '_';
+
+        let mut start = col;
+        while start > 0 && is_word_char(chars[start - 1]) {
+            start -= 1;
+        }
+
+        let mut end = col;
+        while end < chars.len() && is_word_char(chars[end]) {
+            end += 1;
+        }
+
+        self.update_active_selection(Selection::range(
+            Cursor::new(cursor.line, start),
+            Cursor::new(cursor.line, end),
+        ));
+    }
+
+    pub fn select_line(&mut self) {
+        let cursor = self.active_cursor();
+        let line = cursor.line;
+        self.update_active_selection(Selection::range(
+            Cursor::new(line, 0),
+            Cursor::new(line, self.buffer.line_len(line)),
+        ));
+    }
+
+    pub fn extend_selection_to(&mut self, cursor: Cursor) {
+        let selection = self.active_selection();
+        if selection.is_empty() {
+            let current = self.active_cursor();
+            let mut sel = selection;
+            sel.anchor = current;
+            self.update_active_selection(sel);
+        }
+        let mut sel = self.active_selection();
+        sel.cursor = cursor;
+        sel.kind = SelectionKind::Range;
+        self.update_active_selection(sel);
+    }
+
+    pub fn move_cursor_left(&mut self) {
+        self.desired_col = None;
+        let selection = self.active_selection();
+        if selection.kind != SelectionKind::Caret {
+            let (start, _) = selection.normalize();
+            self.update_active_cursor(start);
+            self.update_active_selection(Selection::caret(start));
+            return;
+        }
+        let mut cursor = self.active_cursor();
+        cursor.move_left(&self.buffer);
+        self.update_active_cursor(cursor);
+        self.update_active_selection(Selection::caret(cursor));
+    }
+
+    pub fn move_cursor_right(&mut self) {
+        self.desired_col = None;
+        let selection = self.active_selection();
+        if selection.kind != SelectionKind::Caret {
+            let (_, end) = selection.normalize();
+            self.update_active_cursor(end);
+            self.update_active_selection(Selection::caret(end));
+            return;
+        }
+        let mut cursor = self.active_cursor();
+        cursor.move_right(&self.buffer);
+        self.update_active_cursor(cursor);
+        self.update_active_selection(Selection::caret(cursor));
+    }
+
+    pub fn move_cursor_up(&mut self) {
+        let selection = self.active_selection();
+        if selection.kind != SelectionKind::Caret {
+            let (start, _) = selection.normalize();
+            self.desired_col = None;
+            self.update_active_cursor(start);
+            self.update_active_selection(Selection::caret(start));
+            return;
+        }
+        let cursor = self.active_cursor();
+        // Set desired_col on first vertical move (cleared on horizontal move)
+        if self.desired_col.is_none() {
+            self.desired_col = Some(cursor.col);
+        }
+        if cursor.line > 0 {
+            let target_col = self.desired_col.unwrap_or(cursor.col);
+            let new_col = target_col.min(self.buffer.line_len(cursor.line - 1));
+            self.update_active_cursor(Cursor::new(cursor.line - 1, new_col));
+            // Keep desired_col — NOT clamped, so next move uses original column
+            self.update_active_selection(Selection::caret(Cursor::new(cursor.line - 1, new_col)));
+        }
+    }
+
+    pub fn move_cursor_down(&mut self) {
+        let selection = self.active_selection();
+        if selection.kind != SelectionKind::Caret {
+            let (_, end) = selection.normalize();
+            self.desired_col = None;
+            self.update_active_cursor(end);
+            self.update_active_selection(Selection::caret(end));
+            return;
+        }
+        let cursor = self.active_cursor();
+        if self.desired_col.is_none() {
+            self.desired_col = Some(cursor.col);
+        }
+        if cursor.line < self.buffer.len_lines() - 1 {
+            let target_col = self.desired_col.unwrap_or(cursor.col);
+            let new_col = target_col.min(self.buffer.line_len(cursor.line + 1));
+            self.update_active_cursor(Cursor::new(cursor.line + 1, new_col));
+            self.update_active_selection(Selection::caret(Cursor::new(cursor.line + 1, new_col)));
+        }
+    }
+
+    pub fn move_cursor_home(&mut self) {
+        let cursor = self.active_cursor();
+        let line_text = self.buffer.line(cursor.line);
+        let first_non_ws = line_text
+            .chars()
+            .position(|c| !c.is_whitespace())
+            .unwrap_or(0);
+
+        let new_cursor = if cursor.col == first_non_ws {
+            Cursor::new(cursor.line, 0)
+        } else {
+            Cursor::new(cursor.line, first_non_ws)
+        };
+        self.update_active_cursor(new_cursor);
+        self.update_active_selection(Selection::caret(new_cursor));
+    }
+
+    pub fn move_cursor_end(&mut self) {
+        let mut cursor = self.active_cursor();
+        cursor.move_end(&self.buffer);
+        self.update_active_cursor(cursor);
+        self.update_active_selection(Selection::caret(cursor));
+    }
+
+    pub fn move_cursor_to(&mut self, line: usize, col: usize) {
+        self.desired_col = None;
+        let cursor = Cursor::new(
+            line.min(self.buffer.len_lines() - 1),
+            col.min(self.buffer.line_len(line.min(self.buffer.len_lines() - 1))),
+        );
+        self.update_active_cursor(cursor);
+        self.update_active_selection(Selection::caret(cursor));
+    }
+
+    pub fn page_up(&mut self, page_size: usize) {
+        let cursor = self.active_cursor();
+        let new_line = cursor.line.saturating_sub(page_size);
+        self.move_cursor_to(new_line, cursor.col);
+    }
+
+    pub fn page_down(&mut self, page_size: usize) {
+        let cursor = self.active_cursor();
+        let new_line = (cursor.line + page_size).min(self.buffer.len_lines() - 1);
+        self.move_cursor_to(new_line, cursor.col);
+    }
+
+    /// Move cursor left by one word (Ctrl+Left).
+    /// Uses VS Code-style word boundaries: stops at word separators.
+    pub fn move_cursor_word_left(&mut self) {
+        self.desired_col = None;
+        let mut cursor = self.active_cursor();
+        cursor.move_word_left(self.buffer());
+        self.update_active_cursor(cursor);
+        self.update_active_selection(Selection::caret(cursor));
+    }
+
+    /// Move cursor right by one word (Ctrl+Right).
+    /// Uses VS Code-style word boundaries: stops at word separators.
+    pub fn move_cursor_word_right(&mut self) {
+        self.desired_col = None;
+        let mut cursor = self.active_cursor();
+        cursor.move_word_right(self.buffer());
+        self.update_active_cursor(cursor);
+        self.update_active_selection(Selection::caret(cursor));
+    }
+
+    /// Join current line with the next line.
+    /// Collapses whitespace between them to a single space.
+    /// Cursor placed at the join point.
+    /// (Ctrl+J in VS Code / JetBrains)
+    pub fn join_lines(&mut self) {
+        let cursor = self.active_cursor();
+        let last_line = self.buffer.len_lines().saturating_sub(1);
+        if cursor.line >= last_line {
+            return;
+        }
+
+        let current_line = cursor.line;
+        let current_text = self.buffer.line(current_line).to_string();
+        let next_text = self.buffer.line(current_line + 1).to_string();
+
+        // Trim trailing whitespace from current line, trim leading from next
+        let current_trimmed = current_text.trim_end_matches(|c: char| c.is_whitespace());
+        let next_trimmed = next_text.trim_start_matches(|c: char| c.is_whitespace());
+
+        // Compute join column: end of trimmed current line
+        let join_col = current_trimmed.len();
+
+        // Replace both lines with joined content
+        let joined = if current_trimmed.is_empty() || next_trimmed.is_empty() {
+            format!("{}\n", next_trimmed)
+        } else {
+            format!("{} {}\n", current_trimmed, next_trimmed)
+        };
+
+        let end_of_next = self.buffer.line_len(current_line + 1);
+        self.buffer
+            .delete_range(current_line, 0, current_line + 1, end_of_next);
+        self.buffer.insert(current_line, 0, &joined);
+
+        let new_cursor = Cursor::new(current_line, join_col);
+        self.update_active_cursor(new_cursor);
+        self.update_active_selection(Selection::caret(new_cursor));
+        self.is_dirty = true;
+        self.sync_rope_to_yrs();
+    }
+
+    pub fn find(&mut self, query: &str) -> Vec<SearchResult> {
+        self.current_search_results = self.search.find(query, &self.buffer);
+        self.current_search_index = 0;
+        // Move cursor to first match
+        if let Some(result) = self.current_search_results.first() {
+            let cursor = Cursor::new(result.line, result.start_col);
+            self.update_active_cursor(cursor);
+            self.update_active_selection(Selection::caret(cursor));
+        }
+        self.current_search_results.clone()
+    }
+
+    pub fn search_match_count(&self) -> usize {
+        self.current_search_results.len()
+    }
+
+    pub fn search_current_index(&self) -> usize {
+        self.current_search_index
+    }
+
+    /// Get all search results for rendering highlights in the frontend.
+    /// Returns (line, start_col, end_col, is_current) for each match.
+    pub fn search_highlights(&self) -> Vec<(usize, usize, usize, bool)> {
+        self.current_search_results
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                (
+                    r.line,
+                    r.start_col,
+                    r.end_col,
+                    i == self.current_search_index,
+                )
+            })
+            .collect()
+    }
+
+    pub fn set_search_case_sensitive(&mut self, value: bool) {
+        self.search.set_case_sensitive(value);
+        // Re-run search with current query if results exist
+        if !self.current_search_results.is_empty() {
+            // Caller should re-call find() after changing options
+        }
+    }
+
+    pub fn set_search_whole_word(&mut self, value: bool) {
+        self.search.set_whole_word(value);
+    }
+
+    pub fn set_search_regex(&mut self, value: bool) {
+        self.search.set_regex(value);
+    }
+
+    pub fn find_next(&mut self) {
+        if self.current_search_results.is_empty() {
+            return;
+        }
+        self.current_search_index =
+            (self.current_search_index + 1) % self.current_search_results.len();
+        if let Some(result) = self.current_search_results.get(self.current_search_index) {
+            let cursor = Cursor::new(result.line, result.start_col);
+            self.update_active_cursor(cursor);
+            self.update_active_selection(Selection::caret(cursor));
+        }
+    }
+
+    pub fn find_previous(&mut self) {
+        if self.current_search_results.is_empty() {
+            return;
+        }
+        self.current_search_index = if self.current_search_index == 0 {
+            self.current_search_results.len() - 1
+        } else {
+            self.current_search_index - 1
+        };
+        if let Some(result) = self.current_search_results.get(self.current_search_index) {
+            let cursor = Cursor::new(result.line, result.start_col);
+            self.update_active_cursor(cursor);
+            self.update_active_selection(Selection::caret(cursor));
+        }
+    }
+
+    pub fn replace_next(&mut self, replacement: &str) -> bool {
+        if self.current_search_results.is_empty() {
+            return false;
+        }
+        let result = match self.current_search_results.get(self.current_search_index) {
+            Some(r) => r.clone(),
+            None => return false,
+        };
+
+        match self
+            .search
+            .replace_next(&mut self.buffer, replacement, &result)
+        {
+            Some(tx) => {
+                self.undo_stack.push(tx);
+                let cursor = Cursor::new(result.line, result.start_col + replacement.len());
+                self.update_active_cursor(cursor);
+                self.update_active_selection(Selection::caret(cursor));
+                self.is_dirty = true;
+                self.sync_rope_to_yrs();
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn replace_all(&mut self, query: &str, replacement: &str) -> usize {
+        let txs = self
+            .search
+            .replace_all(&mut self.buffer, query, replacement);
+        let count = txs.len();
+        for tx in txs {
+            self.undo_stack.push(tx);
+        }
+        if count > 0 {
+            self.is_dirty = true;
+            self.sync_rope_to_yrs();
+        }
+        count
+    }
+
+    pub fn highlight_line(&mut self, line_idx: usize) -> Vec<HighlightSpan> {
+        if line_idx >= self.buffer.len_lines() {
+            return Vec::new();
+        }
+        let line = self.buffer.line(line_idx);
+        let line_text = line.trim_end_matches('\n');
+        self.highlighter
+            .highlight_line(line_text, &mut self.in_code_block)
+    }
+
+    pub fn rehighlight_all(&mut self) -> Vec<Vec<HighlightSpan>> {
+        self.in_code_block = false;
+        let mut all_spans = Vec::with_capacity(self.buffer.len_lines());
+        for i in 0..self.buffer.len_lines() {
+            all_spans.push(self.highlight_line(i));
+        }
+        all_spans
+    }
+
+    pub fn scroll_offset(&self) -> (usize, usize) {
+        (self.scroll_offset_lines, self.scroll_offset_cols)
+    }
+
+    pub fn set_scroll_offset(&mut self, lines: usize, cols: usize) {
+        self.scroll_offset_lines = lines;
+        self.scroll_offset_cols = cols;
+    }
+
+    /// Compute fold regions from document content.
+    /// Detects Markdown headings and fenced code blocks.
+    pub fn compute_fold_regions(&mut self) {
+        self.fold_regions.clear();
+        let total = self.buffer.len_lines();
+        let mut i = 0;
+        let mut in_code_block = false;
+        let mut code_start = 0;
+
+        while i < total {
+            let line = self.buffer.line(i);
+            let trimmed = line.trim_end_matches('\n');
+
+            // Fenced code blocks (```)
+            if trimmed.starts_with("```") {
+                if !in_code_block {
+                    in_code_block = true;
+                    code_start = i;
+                } else {
+                    self.fold_regions.push(FoldRegion {
+                        start_line: code_start,
+                        end_line: i,
+                        kind: FoldKind::CodeBlock,
+                    });
+                    in_code_block = false;
+                }
+                i += 1;
+                continue;
+            }
+
+            // Headings (# to ######)
+            if !in_code_block {
+                let hash_count = trimmed.chars().take_while(|&c| c == '#').count();
+                if (1..=6).contains(&hash_count)
+                    && trimmed.len() > hash_count
+                    && trimmed.as_bytes()[hash_count] == b' '
+                {
+                    // Find the end of this heading's section
+                    let mut end = i;
+                    while end + 1 < total {
+                        let next = self.buffer.line(end + 1);
+                        let next_trimmed = next.trim_end_matches('\n');
+                        // Stop at same-level or higher heading, or end of document
+                        let next_hash = next_trimmed.chars().take_while(|&c| c == '#').count();
+                        if next_hash >= 1
+                            && next_hash <= hash_count
+                            && next_trimmed.len() > next_hash
+                            && next_trimmed
+                                .as_bytes()
+                                .get(next_hash)
+                                .is_some_and(|&b| b == b' ')
+                        {
+                            break;
+                        }
+                        end += 1;
+                    }
+                    if end > i {
+                        self.fold_regions.push(FoldRegion {
+                            start_line: i,
+                            end_line: end,
+                            kind: FoldKind::Heading,
+                        });
+                    }
+                }
+            }
+
+            i += 1;
+        }
+    }
+
+    /// Get fold regions for the current view.
+    pub fn fold_regions(&self) -> &[FoldRegion] {
+        &self.fold_regions
+    }
+
+    /// Toggle fold on a line. Returns true if the line was folded, false if unfolded.
+    pub fn toggle_fold(&mut self, line: usize) -> bool {
+        // Check if this line starts a fold region
+        if let Some(region) = self.fold_regions.iter().find(|r| r.start_line == line) {
+            let end = region.end_line;
+            if self.folded_lines.contains(&line) {
+                // Unfold: remove this line and all lines in the region from folded set
+                self.folded_lines.remove(&line);
+                for l in (line + 1)..=end {
+                    self.folded_lines.remove(&l);
+                }
+                false
+            } else {
+                // Fold: add this line and all lines in the region to folded set
+                self.folded_lines.insert(line);
+                for l in (line + 1)..=end {
+                    self.folded_lines.insert(l);
+                }
+                true
+            }
+        } else {
+            false
+        }
+    }
+
+    /// Check if a line is folded (should be hidden in the view).
+    pub fn is_line_folded(&self, line: usize) -> bool {
+        self.folded_lines.contains(&line)
+    }
+
+    /// Get the number of visible (non-folded) lines.
+    pub fn visible_line_count(&self) -> usize {
+        let total = self.buffer.len_lines();
+        if self.folded_lines.is_empty() {
+            return total;
+        }
+        (0..total).filter(|&l| !self.is_line_folded(l)).count()
+    }
+
+    /// Map a logical line index to a visible line index (skipping folded lines).
+    pub fn logical_to_visible(&self, line: usize) -> usize {
+        if self.folded_lines.is_empty() {
+            return line;
+        }
+        (0..line).filter(|&l| !self.is_line_folded(l)).count()
+    }
+
+    /// Map a visible line index back to a logical line index.
+    pub fn visible_to_logical(&self, visible: usize) -> usize {
+        if self.folded_lines.is_empty() {
+            return visible;
+        }
+        let mut count = 0;
+        for l in 0..self.buffer.len_lines() {
+            if !self.is_line_folded(l) {
+                if count == visible {
+                    return l;
+                }
+                count += 1;
+            }
+        }
+        self.buffer.len_lines().saturating_sub(1)
+    }
+
+    /// Fold the region containing the cursor.
+    pub fn fold_at_cursor(&mut self) -> bool {
+        let cursor_line = self.active_cursor().line;
+        // Find the nearest fold region that contains or starts at this line
+        if let Some(region) = self.fold_regions.iter().find(|r| {
+            r.start_line == cursor_line || (cursor_line > r.start_line && cursor_line <= r.end_line)
+        }) {
+            let start = region.start_line;
+            let end = region.end_line;
+            if !self.folded_lines.contains(&start) {
+                self.folded_lines.insert(start);
+                for l in (start + 1)..=end {
+                    self.folded_lines.insert(l);
+                }
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Unfold the region containing the cursor.
+    pub fn unfold_at_cursor(&mut self) -> bool {
+        let cursor_line = self.active_cursor().line;
+        // Find the nearest fold region that starts at a folded line before or at cursor
+        if let Some(region) = self
+            .fold_regions
+            .iter()
+            .find(|r| self.folded_lines.contains(&r.start_line) && cursor_line >= r.start_line)
+        {
+            let start = region.start_line;
+            let end = region.end_line;
+            self.folded_lines.remove(&start);
+            for l in (start + 1)..=end {
+                self.folded_lines.remove(&l);
+            }
+            return true;
+        }
+        false
+    }
+
+    /// Fold all regions in the document.
+    pub fn fold_all(&mut self) {
+        self.compute_fold_regions();
+        for region in &self.fold_regions {
+            self.folded_lines.insert(region.start_line);
+            for l in (region.start_line + 1)..=region.end_line {
+                self.folded_lines.insert(l);
+            }
+        }
+    }
+
+    /// Unfold all regions in the document.
+    pub fn unfold_all(&mut self) {
+        self.folded_lines.clear();
+    }
+
+    pub fn auto_indent_newline(&mut self) {
+        let cursor = self.active_cursor();
+        let line = cursor.line;
+        let indent = self.buffer.indent_level(line);
+        let line_text = self.buffer.line(line);
+        let trimmed = line_text.trim_start_matches('\n').trim_start();
+
+        let extra_indent = if trimmed.starts_with(['{', '(', '[']) {
+            self.tab_size
+        } else {
+            0
+        };
+
+        let new_indent = " ".repeat(indent + extra_indent);
+        self.insert_text(&format!("\n{}", new_indent));
+    }
+
+    pub fn auto_close_bracket(&mut self, bracket: char) {
+        let pairs: &[(char, char)] =
+            &[('(', ')'), ('[', ']'), ('{', '}'), ('"', '"'), ('\'', '\'')];
+        let closing = pairs
+            .iter()
+            .find(|&&(open, _)| open == bracket)
+            .map(|&(_, close)| close);
+
+        if let Some(close) = closing {
+            // Insert opening bracket via insert_text (respects undo, handles selection)
+            self.insert_text(&bracket.to_string());
+            // Insert closing bracket at cursor (between the pair)
+            let cursor = self.active_cursor();
+            self.buffer
+                .insert(cursor.line, cursor.col, &close.to_string());
+        } else {
+            self.insert_text(&bracket.to_string());
+        }
+    }
+
+    /// Find the matching bracket for the character at the given position.
+    /// Returns (matching_line, matching_col) if found, or None.
+    pub fn find_matching_bracket(&self, line: usize, col: usize) -> Option<(usize, usize)> {
+        let line_text = self.buffer.line(line).trim_end_matches('\n').to_string();
+        if col >= line_text.chars().count() {
+            return None;
+        }
+        let ch = line_text.chars().nth(col)?;
+        let (open, close) = match ch {
+            '(' | ')' => ('(', ')'),
+            '[' | ']' => ('[', ']'),
+            '{' | '}' => ('{', '}'),
+            _ => return None,
+        };
+
+        let is_open = ch == open;
+        let total_lines = self.buffer.len_lines();
+
+        if is_open {
+            // Search forward
+            let mut depth = 1usize;
+            let mut cur_line = line;
+            let mut cur_col = col + 1;
+            while cur_line < total_lines {
+                let lt = self
+                    .buffer
+                    .line(cur_line)
+                    .trim_end_matches('\n')
+                    .to_string();
+                let chars: Vec<char> = lt.chars().collect();
+                while cur_col < chars.len() {
+                    let c = chars[cur_col];
+                    if c == open {
+                        depth += 1;
+                    } else if c == close {
+                        depth -= 1;
+                        if depth == 0 {
+                            return Some((cur_line, cur_col));
+                        }
+                    }
+                    cur_col += 1;
+                }
+                cur_line += 1;
+                cur_col = 0;
+            }
+        } else {
+            // Search backward
+            let mut depth = 1usize;
+            let mut cur_line = line;
+            let mut cur_col = col.saturating_sub(1);
+            loop {
+                let lt = self
+                    .buffer
+                    .line(cur_line)
+                    .trim_end_matches('\n')
+                    .to_string();
+                let chars: Vec<char> = lt.chars().collect();
+                while cur_col < chars.len() {
+                    let c = chars[cur_col];
+                    if c == close {
+                        depth += 1;
+                    } else if c == open {
+                        depth -= 1;
+                        if depth == 0 {
+                            return Some((cur_line, cur_col));
+                        }
+                    }
+                    cur_col = cur_col.wrapping_sub(1);
+                }
+                if cur_line == 0 {
+                    break;
+                }
+                cur_line -= 1;
+                let prev_lt = self
+                    .buffer
+                    .line(cur_line)
+                    .trim_end_matches('\n')
+                    .to_string();
+                cur_col = prev_lt.chars().count().saturating_sub(1);
+            }
+        }
+        None
+    }
+
+    /// Get the currently selected text as a string, or None if no selection.
+    pub fn get_selected_text(&self) -> Option<String> {
+        let sel = self.active_selection();
+        if sel.is_empty() {
+            return None;
+        }
+        let (start, end) = sel.normalize();
+        if start.line == end.line {
+            let line_text = self
+                .buffer
+                .line(start.line)
+                .trim_end_matches('\n')
+                .to_string();
+            let chars: Vec<char> = line_text.chars().collect();
+            if start.col >= chars.len() || end.col > chars.len() {
+                return None;
+            }
+            Some(chars[start.col..end.col].iter().collect())
+        } else {
+            let mut result = String::new();
+            for line_idx in start.line..=end.line {
+                let lt = self
+                    .buffer
+                    .line(line_idx)
+                    .trim_end_matches('\n')
+                    .to_string();
+                let chars: Vec<char> = lt.chars().collect();
+                if line_idx == start.line && line_idx == end.line {
+                    if start.col < chars.len() && end.col <= chars.len() {
+                        result.push_str(&chars[start.col..end.col].iter().collect::<String>());
+                    }
+                } else if line_idx == start.line {
+                    if start.col < chars.len() {
+                        result.push_str(&chars[start.col..].iter().collect::<String>());
+                    }
+                } else if line_idx == end.line {
+                    if end.col <= chars.len() {
+                        result.push_str(&chars[..end.col].iter().collect::<String>());
+                    }
+                } else {
+                    result.push_str(&lt);
+                }
+                if line_idx < end.line {
+                    result.push('\n');
+                }
+            }
+            Some(result)
+        }
+    }
+
+    pub fn current_line(&self) -> usize {
+        self.active_cursor().line
+    }
+
+    pub fn current_line_text(&self) -> String {
+        let cursor = self.active_cursor();
+        self.buffer
+            .line(cursor.line)
+            .trim_end_matches('\n')
+            .to_string()
+    }
+
+    pub fn line_count(&self) -> usize {
+        self.buffer.len_lines()
+    }
+
+    pub fn word_count(&self) -> usize {
+        let text = self.buffer.to_string();
+        text.split_whitespace().count()
+    }
+
+    pub fn char_count(&self) -> usize {
+        self.buffer.len_chars()
+    }
+}
+
+impl Default for Editor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+#[allow(deprecated)]
+mod tests {
+    use super::*;
+    use crate::highlight::HighlightToken;
+    use crate::theme::SyntaxTheme;
+
+    #[test]
+    fn new_editor_is_empty() {
+        let editor = Editor::new();
+        assert_eq!(editor.content(), "");
+        assert!(!editor.is_dirty());
+        assert_eq!(editor.line_count(), 1);
+    }
+
+    #[test]
+    fn with_content() {
+        let editor = Editor::with_content("hello\nworld");
+        assert_eq!(editor.content(), "hello\nworld");
+        assert_eq!(editor.line_count(), 2);
+    }
+
+    #[test]
+    fn insert_text_basic() {
+        let mut editor = Editor::new();
+        editor.insert_text("hello");
+        assert_eq!(editor.content(), "hello");
+        assert_eq!(editor.cursor(), &Cursor::new(0, 5));
+    }
+
+    #[test]
+    fn insert_multiline() {
+        let mut editor = Editor::new();
+        editor.insert_text("hello\nworld");
+        assert_eq!(editor.cursor(), &Cursor::new(1, 5));
+        assert_eq!(editor.line_count(), 2);
+    }
+
+    #[test]
+    fn delete_backwards_basic() {
+        let mut editor = Editor::with_content("hello");
+        editor.move_cursor_to(0, 5);
+        editor.delete_backwards();
+        assert_eq!(editor.content(), "hell");
+        assert_eq!(editor.cursor(), &Cursor::new(0, 4));
+    }
+
+    #[test]
+    fn delete_backwards_at_line_start() {
+        let mut editor = Editor::with_content("hello\nworld");
+        editor.move_cursor_to(1, 0);
+        editor.delete_backwards();
+        assert_eq!(editor.content(), "helloworld");
+        assert_eq!(editor.cursor(), &Cursor::new(0, 5));
+    }
+
+    #[test]
+    fn delete_forwards_basic() {
+        let mut editor = Editor::with_content("hello");
+        editor.move_cursor_to(0, 0);
+        editor.delete_forwards();
+        assert_eq!(editor.content(), "ello");
+    }
+
+    #[test]
+    fn undo_insert() {
+        let mut editor = Editor::new();
+        editor.insert_text("hello");
+        assert!(editor.can_undo());
+        editor.undo();
+        assert_eq!(editor.content(), "");
+        assert!(!editor.can_undo());
+    }
+
+    #[test]
+    fn undo_redo() {
+        let mut editor = Editor::new();
+        editor.insert_text("hello");
+        editor.undo();
+        assert_eq!(editor.content(), "");
+        assert!(editor.can_redo());
+        editor.redo();
+        assert_eq!(editor.content(), "hello");
+    }
+
+    #[test]
+    fn select_all() {
+        let mut editor = Editor::with_content("hello\nworld");
+        editor.select_all();
+        assert!(!editor.selection().is_empty());
+        let (start, end) = editor.selection().normalize();
+        assert_eq!(start, Cursor::new(0, 0));
+        assert_eq!(end, Cursor::new(1, 5));
+    }
+
+    #[test]
+    fn delete_selection() {
+        let mut editor = Editor::with_content("hello world");
+        editor.cursors.entries[0].1 = Selection::range(Cursor::new(0, 0), Cursor::new(0, 5));
+        editor.delete_selection();
+        assert_eq!(editor.content(), " world");
+    }
+
+    #[test]
+    fn find_and_replace() {
+        let mut editor = Editor::with_content("hello world hello");
+        let results = editor.find("hello");
+        assert_eq!(results.len(), 2);
+        editor.replace_all("hello", "hi");
+        assert_eq!(editor.content(), "hi world hi");
+    }
+
+    #[test]
+    fn highlight_basic() {
+        let mut editor = Editor::with_content("# Title\nhello **bold**");
+        let spans = editor.rehighlight_all();
+        assert_eq!(spans.len(), 2);
+        assert!(spans[0].iter().any(|s| s.token == HighlightToken::Heading1));
+        assert!(spans[1].iter().any(|s| s.token == HighlightToken::Bold));
+    }
+
+    #[test]
+    fn auto_indent_newline() {
+        let mut editor = Editor::with_content("  hello");
+        editor.move_cursor_to(0, 7);
+        editor.auto_indent_newline();
+        assert_eq!(editor.content(), "  hello\n  ");
+    }
+
+    #[test]
+    fn indent_unindent_line() {
+        let mut editor = Editor::with_content("hello");
+        editor.indent_line(0);
+        assert!(editor.content().starts_with("  "));
+        editor.unindent_line(0);
+        assert_eq!(editor.content(), "hello");
+    }
+
+    #[test]
+    fn duplicate_line() {
+        let mut editor = Editor::with_content("hello\n");
+        editor.move_cursor_to(0, 0);
+        editor.duplicate_line();
+        assert_eq!(editor.content(), "hello\nhello\n");
+    }
+
+    #[test]
+    fn word_count() {
+        let editor = Editor::with_content("hello world foo");
+        assert_eq!(editor.word_count(), 3);
+    }
+
+    #[test]
+    fn char_count() {
+        let editor = Editor::with_content("hello");
+        assert_eq!(editor.char_count(), 5);
+    }
+
+    #[test]
+    fn move_line_up_down() {
+        let mut editor = Editor::with_content("first\nsecond\nthird\n");
+        editor.move_cursor_to(2, 0);
+        editor.move_line_up();
+        assert_eq!(editor.content(), "first\nthird\nsecond\n");
+        editor.move_line_up();
+        assert_eq!(editor.content(), "third\nfirst\nsecond\n");
+    }
+
+    #[test]
+    fn delete_word_backwards() {
+        let mut editor = Editor::with_content("hello world");
+        editor.move_cursor_to(0, 11);
+        editor.delete_word_backwards();
+        assert_eq!(editor.content(), "hello ");
+    }
+
+    #[test]
+    fn delete_word_forwards() {
+        let mut editor = Editor::with_content("hello world");
+        editor.move_cursor_to(0, 0);
+        editor.delete_word_forwards();
+        assert_eq!(editor.content(), "world");
+    }
+
+    #[test]
+    fn select_word() {
+        let mut editor = Editor::with_content("hello world");
+        editor.move_cursor_to(0, 2);
+        editor.select_word();
+        let (start, end) = editor.selection().normalize();
+        assert_eq!(start, Cursor::new(0, 0));
+        assert_eq!(end, Cursor::new(0, 5));
+    }
+
+    #[test]
+    fn insert_with_selection_replaces() {
+        let mut editor = Editor::with_content("hello world");
+        editor.cursors.entries[0].1 = Selection::range(Cursor::new(0, 0), Cursor::new(0, 5));
+        editor.insert_text("hi");
+        assert_eq!(editor.content(), "hi world");
+    }
+
+    #[test]
+    fn page_up_down() {
+        let mut editor = Editor::with_content("1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n");
+        editor.move_cursor_to(8, 0);
+        editor.page_up(3);
+        assert_eq!(editor.cursor().line, 5);
+        editor.page_down(3);
+        assert_eq!(editor.cursor().line, 8);
+    }
+
+    #[test]
+    fn crdt_sync_on_insert() {
+        let mut editor = Editor::new();
+        editor.insert_text("hello");
+        let update = editor.encode_update();
+        // After inserting text, there should be a non-empty CRDT update
+        assert!(!update.is_empty());
+    }
+
+    #[test]
+    fn crdt_sync_on_delete() {
+        let mut editor = Editor::with_content("hello");
+        editor.move_cursor_to(0, 5);
+        editor.delete_backwards();
+        let update = editor.encode_update();
+        assert!(!update.is_empty());
+    }
+
+    #[test]
+    fn crdt_set_content_syncs() {
+        let mut editor = Editor::with_content("initial");
+        let update1 = editor.encode_update();
+        editor.set_content("replaced");
+        let update2 = editor.encode_update();
+        // Both should produce updates
+        assert!(!update1.is_empty());
+        assert!(!update2.is_empty());
+    }
+
+    #[test]
+    fn crdt_remote_update() {
+        let mut editor_a = Editor::new();
+        editor_a.insert_text("hello world");
+
+        let update = editor_a.encode_update();
+        assert!(!update.is_empty());
+
+        let mut editor_b = Editor::new();
+        let changed = editor_b.apply_remote_update(&update);
+        assert!(changed);
+        assert_eq!(editor_b.content(), "hello world");
+    }
+
+    #[test]
+    fn crdt_full_state() {
+        let mut editor = Editor::new();
+        editor.insert_text("hello\nworld");
+        // encode_update captures the changes since last state
+        let update = editor.encode_update();
+        assert!(!update.is_empty());
+
+        let mut editor_b = Editor::new();
+        let changed = editor_b.apply_remote_update(&update);
+        assert!(changed);
+        assert_eq!(editor_b.content(), "hello\nworld");
+    }
+
+    #[test]
+    fn crdt_state_vector_roundtrip() {
+        let mut editor = Editor::new();
+        editor.insert_text("test content");
+        let sv = editor.state_vector();
+        assert!(!sv.is_empty());
+    }
+
+    #[test]
+    fn crdt_consecutive_updates() {
+        let mut editor_a = Editor::new();
+        editor_a.insert_text("hello");
+        let update1 = editor_a.encode_update();
+
+        editor_a.insert_text(" world");
+        let update2 = editor_a.encode_update();
+
+        let mut editor_b = Editor::new();
+        editor_b.apply_remote_update(&update1);
+        assert_eq!(editor_b.content(), "hello");
+
+        editor_b.apply_remote_update(&update2);
+        assert_eq!(editor_b.content(), "hello world");
+    }
+
+    #[test]
+    fn test_get_wikilink_state_active() {
+        let mut editor = Editor::with_content("[[hello");
+        editor.move_cursor_to(0, 7);
+        let state = editor.get_wikilink_state();
+        assert!(state.is_some());
+        let s = state.unwrap();
+        assert!(s.active);
+        assert_eq!(s.query, "hello");
+        assert_eq!(s.start_line, 0);
+        assert_eq!(s.start_col, 0);
+    }
+
+    #[test]
+    fn test_get_wikilink_state_closed() {
+        let mut editor = Editor::with_content("[[hello]]");
+        editor.move_cursor_to(0, 9);
+        let state = editor.get_wikilink_state();
+        assert!(state.is_none());
+    }
+
+    #[test]
+    fn test_get_wikilink_state_no_open() {
+        let mut editor = Editor::with_content("some random text");
+        editor.move_cursor_to(0, 16);
+        let state = editor.get_wikilink_state();
+        assert!(state.is_none());
+    }
+
+    #[test]
+    fn test_insert_wikilink() {
+        let mut editor = Editor::with_content("[[hel");
+        editor.move_cursor_to(0, 5);
+        editor.insert_wikilink("Hello World", None);
+        assert_eq!(editor.content(), "[[Hello World]]");
+    }
+
+    #[test]
+    fn test_insert_wikilink_with_alias() {
+        let mut editor = Editor::with_content("some [[hel");
+        editor.move_cursor_to(0, 10);
+        editor.insert_wikilink("Hello World", Some("hw"));
+        assert_eq!(editor.content(), "some [[Hello World|hw]]");
+    }
+
+    #[test]
+    fn test_insert_wikilink_no_state() {
+        let mut editor = Editor::with_content("no wikilink here");
+        editor.move_cursor_to(0, 17);
+        editor.insert_wikilink("Hello", None);
+        assert_eq!(editor.content(), "no wikilink here");
+    }
+
+    // ─── Offline Sync Integration Tests ─────────────────────────────────
+
+    #[test]
+    fn offline_queue_starts_empty() {
+        let editor = Editor::new();
+        assert!(editor.offline_queue().is_empty());
+        assert!(editor.is_offline());
+    }
+
+    #[test]
+    fn go_offline_queues_edits() {
+        let mut editor = Editor::with_content("hello");
+        editor.go_offline();
+        assert!(editor.is_offline());
+
+        editor.insert_text(" world");
+        let seq = editor.commit_local_update();
+        assert!(seq.is_some()); // Queued because offline
+        assert_eq!(editor.offline_queue().len(), 1);
+    }
+
+    #[test]
+    fn go_online_drains_queue() {
+        let mut editor = Editor::with_content("hello");
+        editor.go_offline();
+
+        editor.insert_text(" world");
+        editor.commit_local_update();
+        assert_eq!(editor.offline_queue().len(), 1);
+
+        // Go online — should drain the queue
+        let updates = editor.go_online();
+        assert_eq!(updates.len(), 1);
+        assert!(editor.offline_queue().is_empty());
+    }
+
+    #[test]
+    fn online_does_not_queue() {
+        let mut editor = Editor::with_content("hello");
+        // Default status is Offline, so go online first
+        editor.offline_queue_mut().set_status(SyncStatus::Online);
+
+        editor.insert_text(" world");
+        let seq = editor.commit_local_update();
+        assert!(seq.is_none()); // Not queued — online
+    }
+
+    #[test]
+    fn flush_pending_merges_all() {
+        let mut editor = Editor::with_content("hello");
+        editor.go_offline();
+
+        for i in 0..5 {
+            editor.insert_text(&format!(" {i}"));
+            editor.commit_local_update();
+        }
+        assert_eq!(editor.offline_queue().len(), 5);
+
+        let merged = editor.flush_pending();
+        assert!(merged.is_some());
+        assert!(editor.offline_queue().is_empty());
+    }
+
+    #[test]
+    fn offline_then_online_convergence() {
+        // Editor A edits offline, then syncs to Editor B
+        let mut editor_a = Editor::with_content("start");
+        editor_a.go_offline();
+
+        editor_a.insert_text(" more");
+        editor_a.commit_local_update();
+
+        // Flush all pending into one merged update
+        let merged = editor_a.flush_pending().unwrap();
+
+        // Apply to editor B
+        let mut editor_b = Editor::new();
+        let changed = editor_b.apply_remote_update(&merged);
+        assert!(changed);
+        assert_eq!(editor_b.content(), editor_a.content());
+    }
+
+    #[test]
+    fn notify_sync_failed_re_enqueues() {
+        let mut editor = Editor::with_content("hello");
+        editor.go_offline();
+
+        editor.insert_text(" world");
+        let seq = editor.commit_local_update().unwrap();
+        let updates = editor.go_online();
+        assert_eq!(updates.len(), 1);
+
+        // Simulate failure — re-enqueue
+        let ts = editor.offline_queue().synced_count(); // Use any u64
+        editor.notify_sync_failed(updates[0].clone(), seq, ts);
+        assert_eq!(editor.offline_queue().len(), 1);
+        assert_eq!(editor.offline_queue().failed_count(), 1);
+    }
+
+    #[test]
+    fn notify_synced_transitions_to_online() {
+        let mut editor = Editor::with_content("hello");
+        editor.go_offline();
+
+        editor.insert_text(" world");
+        editor.commit_local_update();
+
+        let updates = editor.go_online();
+        assert_eq!(updates.len(), 1);
+
+        editor.notify_synced(1);
+        assert_eq!(editor.offline_queue().status(), SyncStatus::Online);
+    }
+
+    #[test]
+    fn editor_has_default_dark_theme() {
+        let e = Editor::new();
+        assert_eq!(e.theme().name(), "dark");
+    }
+
+    #[test]
+    fn editor_theme_switch() {
+        let mut e = Editor::new();
+        e.set_theme(SyntaxTheme::light());
+        assert_eq!(e.theme().name(), "light");
+    }
+}

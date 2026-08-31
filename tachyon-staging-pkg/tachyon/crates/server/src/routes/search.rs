@@ -1,0 +1,1133 @@
+// Search API Routes
+// Full-text search with faceted filtering and saved searches
+
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
+use crate::error::ServerError;
+use crate::pagination::CursorPage;
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::Json,
+};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap};
+use std::sync::Arc;
+use tachyon_core::id::{DocumentId, RepositoryId, UserId};
+use tachyon_database::{
+    CreateSavedSearchRequest, DatabasePool, DocumentRepository, SavedSearch, SavedSearchRepository,
+    SearchFilters, SearchRepository, UpdateSavedSearchRequest,
+};
+use tachyon_search::{
+    IndexManager, QueryEngine, ResultAggregator, SearchDocument, SearchRequest, SearchResponseItem,
+};
+use tokio::sync::Mutex;
+use tracing::{info, warn};
+#[allow(unused_imports)] // used in derive macros below
+use utoipa::IntoParams;
+
+fn visible_to_caller(
+    visibility: &str,
+    author_id: &str,
+    caller_id: Option<&str>,
+    is_admin: bool,
+) -> bool {
+    is_admin || visibility == "public" || caller_id == Some(author_id)
+}
+
+#[derive(Clone)]
+pub struct SearchState {
+    pub pool: DatabasePool,
+    pub search_repo: SearchRepository,
+    pub saved_search_repo: SavedSearchRepository,
+    pub index_manager: Option<Arc<Mutex<IndexManager>>>,
+    pub audit_logger: AuditLogger,
+}
+
+impl SearchState {
+    pub fn new(pool: DatabasePool) -> Self {
+        Self {
+            search_repo: SearchRepository::new(pool.clone()),
+            saved_search_repo: SavedSearchRepository::new(pool.clone()),
+            pool,
+            index_manager: None,
+            audit_logger: AuditLogger::disabled(),
+        }
+    }
+
+    pub fn with_index_manager(mut self, index_manager: Arc<Mutex<IndexManager>>) -> Self {
+        self.index_manager = Some(index_manager);
+        self
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
+    }
+
+    pub async fn index_document(&self, doc: SearchDocument) {
+        if let Some(ref mgr) = self.index_manager {
+            let guard = mgr.lock().await;
+            if let Err(e) = guard.index_document(&doc).await {
+                warn!("Failed to index document in Tantivy: {}", e);
+            }
+        }
+    }
+
+    pub async fn delete_from_index(&self, doc_id: &str) {
+        if let Some(ref mgr) = self.index_manager {
+            let guard = mgr.lock().await;
+            if let Err(e) = guard.delete_document(doc_id).await {
+                warn!("Failed to delete document from Tantivy: {}", e);
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+pub struct SearchQuery {
+    pub q: String,
+    #[serde(default = "default_page")]
+    pub page: i64,
+    #[serde(default = "default_page_size")]
+    pub page_size: i64,
+    pub content_type: Option<String>,
+    pub status: Option<String>,
+    pub visibility: Option<String>,
+    pub project_id: Option<String>,
+    pub author_id: Option<String>,
+    pub tags: Option<String>,
+    pub date_from: Option<String>,
+    pub date_to: Option<String>,
+}
+
+fn default_page() -> i64 {
+    1
+}
+
+fn default_page_size() -> i64 {
+    20
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SearchResultsResponse {
+    pub results: Vec<SearchResultItem>,
+    pub total: i64,
+    pub page: i64,
+    pub page_size: i64,
+    pub facets: SearchFacetsResponse,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SearchResultItem {
+    pub id: String,
+    pub title: String,
+    pub slug: Option<String>,
+    pub description: Option<String>,
+    pub status: String,
+    pub visibility: String,
+    pub tags: Vec<String>,
+    pub author_id: String,
+    pub project_id: Option<String>,
+    pub word_count: i32,
+    pub rank: f64,
+    pub headline: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SearchFacetsResponse {
+    pub content_types: Vec<FacetItem>,
+    pub statuses: Vec<FacetItem>,
+    pub visibilities: Vec<FacetItem>,
+    pub tags: Vec<FacetItem>,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct FacetItem {
+    pub value: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct GlobalSearchResultsResponse {
+    pub documents: SearchResultsResponse,
+    pub projects: Vec<ProjectSearchResultItem>,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct ProjectSearchResultItem {
+    pub id: String,
+    pub name: String,
+    pub slug: String,
+    pub description: Option<String>,
+    pub project_type: String,
+    pub status: String,
+    pub rank: f64,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SavedSearchResponse {
+    pub id: String,
+    pub user_id: String,
+    pub name: String,
+    pub query: String,
+    pub filters: Option<SearchFilters>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<SavedSearch> for SavedSearchResponse {
+    fn from(s: SavedSearch) -> Self {
+        let filters = s.parse_filters().ok().flatten();
+        Self {
+            id: s.id,
+            user_id: s.user_id,
+            name: s.name,
+            query: s.query,
+            filters,
+            created_at: s.created_at.to_rfc3339(),
+            updated_at: s.updated_at.to_rfc3339(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CreateSavedSearchBody {
+    pub name: String,
+    pub query: String,
+    pub filters: Option<SearchFilters>,
+}
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateSavedSearchBody {
+    pub name: Option<String>,
+    pub query: Option<String>,
+    pub filters: Option<SearchFilters>,
+}
+
+async fn search_tantivy(
+    state: &SearchState,
+    query: &str,
+    page: usize,
+    page_size: usize,
+) -> Option<Vec<SearchResponseItem>> {
+    let mgr_arc = state.index_manager.as_ref()?;
+    let guard = mgr_arc.lock().await;
+    let engine = QueryEngine::new(guard.clone());
+    drop(guard);
+
+    let request = SearchRequest::new(query).with_pagination(page, page_size);
+
+    match engine.search(&request).await {
+        Ok(response) => Some(response.results),
+        Err(e) => {
+            warn!("Tantivy search failed: {}", e);
+            None
+        }
+    }
+}
+
+/// Full-text search across documents with faceted filtering.
+///
+/// `GET /search?q=&page=&page_size=&content_type=&status=&visibility=&project_id=&author_id=&tags=&date_from=&date_to=`
+///
+/// Fuses results from PostgreSQL full-text search and Tantivy index.
+/// Response: 200 with `SearchResultsResponse` containing `results`, `total`, `page`, `page_size`, `facets`.
+#[utoipa::path(
+    get,
+    path = "/api/v1/search",
+    params(SearchQuery),
+    responses(
+        (status = 200, description = "Search results", body = SearchResultsResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
+pub async fn search(
+    Query(query): Query<SearchQuery>,
+    State(state): State<SearchState>,
+    auth: Option<axum::Extension<crate::middleware::AuthContext>>,
+) -> Result<Json<SearchResultsResponse>, ServerError> {
+    info!(
+        "Search request: q='{}', page={}, page_size={}",
+        query.q, query.page, query.page_size
+    );
+
+    let caller_id = auth.as_ref().map(|axum::Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth.as_ref().is_some_and(|axum::Extension(ctx)| ctx.is_admin());
+
+    let filters = SearchFilters {
+        content_type: query.content_type,
+        status: query.status,
+        visibility: query.visibility,
+        project_id: query.project_id,
+        author_id: query.author_id,
+        tags: query
+            .tags
+            .as_ref()
+            .map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+        date_from: query.date_from.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
+        date_to: query.date_to.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
+    };
+
+    let page = query.page.max(1);
+    let page_size = query.page_size.clamp(1, 100);
+    let fetch_limit = (page_size * 3).min(300);
+
+    match state
+        .search_repo
+        .search(&query.q, &filters, 1, fetch_limit)
+        .await
+    {
+        Ok(pg_response) => {
+            let total = pg_response.total;
+            let facets_source = pg_response.facets;
+            let pg_results = pg_response.results;
+
+            let pg_metadata_map: HashMap<String, &_> = pg_results
+                .iter()
+                .map(|r| (r.document.id.clone(), r))
+                .collect();
+
+            let pg_items: Vec<SearchResponseItem> = pg_results
+                .iter()
+                .map(|r| SearchResponseItem {
+                    document_id: DocumentId::parse_str(&r.document.id).unwrap_or_default(),
+                    title: r.document.title.clone(),
+                    snippet: r.headline.clone().unwrap_or_default(),
+                    score: r.rank as f32,
+                    highlights: Vec::new(),
+                    author_id: UserId::parse_str(&r.document.author_id).unwrap_or_default(),
+                    repository_id: r
+                        .document
+                        .project_id
+                        .as_ref()
+                        .and_then(|id| RepositoryId::parse_str(id).ok()),
+                    tags: r.document.parse_tags().unwrap_or_default(),
+                    created_at: r.document.created_at,
+                })
+                .collect();
+
+            let tantivy_items = search_tantivy(&state, &query.q, 1, fetch_limit as usize)
+                .await
+                .unwrap_or_default();
+
+            let aggregator = ResultAggregator::default();
+            let fused = aggregator.fuse_results(vec![pg_items, tantivy_items]);
+
+            let results: Vec<SearchResultItem> = fused
+                .into_iter()
+                .map(|item| {
+                    let id_str = item.document_id.to_string();
+                    if let Some(pg_r) = pg_metadata_map.get(&id_str) {
+                        let tags = pg_r.document.parse_tags().unwrap_or_default();
+                        SearchResultItem {
+                            id: pg_r.document.id.clone(),
+                            title: pg_r.document.title.clone(),
+                            slug: pg_r.document.slug.clone(),
+                            description: pg_r.document.description.clone(),
+                            status: pg_r.document.status.clone(),
+                            visibility: pg_r.document.visibility.clone(),
+                            tags,
+                            author_id: pg_r.document.author_id.clone(),
+                            project_id: pg_r.document.project_id.clone(),
+                            word_count: pg_r.document.word_count,
+                            rank: item.score as f64,
+                            headline: pg_r.headline.clone(),
+                            created_at: pg_r.document.created_at.to_rfc3339(),
+                            updated_at: pg_r.document.updated_at.to_rfc3339(),
+                        }
+                    } else {
+                        SearchResultItem {
+                            id: id_str,
+                            title: item.title,
+                            slug: None,
+                            description: if item.snippet.is_empty() {
+                                None
+                            } else {
+                                Some(item.snippet)
+                            },
+                            status: "draft".to_string(),
+                            visibility: "private".to_string(),
+                            tags: item.tags,
+                            author_id: item.author_id.to_string(),
+                            project_id: item.repository_id.map(|id| id.to_string()),
+                            word_count: 0,
+                            rank: item.score as f64,
+                            headline: if item.highlights.is_empty() {
+                                None
+                            } else {
+                                Some(item.highlights.join(" "))
+                            },
+                            created_at: item.created_at.to_rfc3339(),
+                            updated_at: item.created_at.to_rfc3339(),
+                        }
+                    }
+                })
+                .collect();
+
+            let start = ((page - 1) * page_size) as usize;
+            let paginated: Vec<SearchResultItem> = results
+                .into_iter()
+                .skip(start)
+                .take(page_size as usize)
+                .collect();
+
+            let facets = SearchFacetsResponse {
+                content_types: facets_source
+                    .content_types
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                statuses: facets_source
+                    .statuses
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                visibilities: facets_source
+                    .visibilities
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                tags: facets_source
+                    .tags
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+            };
+
+            Ok(Json(SearchResultsResponse {
+                results: paginated,
+                total,
+                page,
+                page_size,
+                facets,
+            }))
+        }
+        Err(e) => {
+            warn!("Search failed: {}", e);
+            Err(ServerError::internal(format!("Search failed: {}", e)))
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/search/global",
+    params(SearchQuery),
+    responses(
+        (status = 200, description = "Global search results", body = GlobalSearchResultsResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
+pub async fn global_search(
+    Query(query): Query<SearchQuery>,
+    State(state): State<SearchState>,
+    auth: Option<axum::Extension<crate::middleware::AuthContext>>,
+) -> Result<Json<GlobalSearchResultsResponse>, ServerError> {
+    info!("Global search request: q='{}'", query.q);
+
+    let caller_id = auth.as_ref().map(|axum::Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth.as_ref().is_some_and(|axum::Extension(ctx)| ctx.is_admin());
+
+    let filters = SearchFilters {
+        content_type: query.content_type,
+        status: query.status,
+        visibility: query.visibility,
+        project_id: query.project_id,
+        author_id: query.author_id,
+        tags: query
+            .tags
+            .as_ref()
+            .map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+        date_from: query.date_from.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
+        date_to: query.date_to.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
+    };
+
+    let caller_id = auth.as_ref().map(|axum::Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth.as_ref().is_some_and(|axum::Extension(ctx)| ctx.is_admin());
+    let page = query.page.max(1);
+    let page_size = query.page_size.clamp(1, 100);
+
+    match state
+        .search_repo
+        .global_search(&query.q, &filters, page, page_size)
+        .await
+    {
+        Ok(response) => {
+            let doc_results: Vec<SearchResultItem> = response
+                .documents
+                .results
+                .into_iter()
+                .filter(|r| {
+                    visible_to_caller(
+                        &r.document.visibility,
+                        &r.document.author_id,
+                        caller_id,
+                        is_admin,
+                    )
+                })
+                .map(|r| {
+                    let tags = r.document.parse_tags().unwrap_or_default();
+                    SearchResultItem {
+                        id: r.document.id,
+                        title: r.document.title,
+                        slug: r.document.slug,
+                        description: r.document.description,
+                        status: r.document.status,
+                        visibility: r.document.visibility,
+                        tags,
+                        author_id: r.document.author_id,
+                        project_id: r.document.project_id,
+                        word_count: r.document.word_count,
+                        rank: r.rank,
+                        headline: r.headline,
+                        created_at: r.document.created_at.to_rfc3339(),
+                        updated_at: r.document.updated_at.to_rfc3339(),
+                    }
+                })
+                .collect();
+
+            let facets = SearchFacetsResponse {
+                content_types: response
+                    .documents
+                    .facets
+                    .content_types
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                statuses: response
+                    .documents
+                    .facets
+                    .statuses
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                visibilities: response
+                    .documents
+                    .facets
+                    .visibilities
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+                tags: response
+                    .documents
+                    .facets
+                    .tags
+                    .into_iter()
+                    .map(|f| FacetItem {
+                        value: f.value,
+                        count: f.count,
+                    })
+                    .collect(),
+            };
+
+            let projects: Vec<ProjectSearchResultItem> = response
+                .projects
+                .into_iter()
+                .map(|p| ProjectSearchResultItem {
+                    id: p.id,
+                    name: p.name,
+                    slug: p.slug,
+                    description: p.description,
+                    project_type: p.project_type,
+                    status: p.status,
+                    rank: p.rank,
+                })
+                .collect();
+
+            Ok(Json(GlobalSearchResultsResponse {
+                documents: SearchResultsResponse {
+                    results: doc_results,
+                    total: response.documents.total,
+                    page: response.documents.page,
+                    page_size: response.documents.page_size,
+                    facets,
+                },
+                projects,
+            }))
+        }
+        Err(e) => {
+            warn!("Global search failed: {}", e);
+            Err(ServerError::internal(format!(
+                "Global search failed: {}",
+                e
+            )))
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/search/saved",
+    request_body = CreateSavedSearchBody,
+    responses(
+        (status = 200, description = "Saved search created", body = SavedSearchResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
+pub async fn create_saved_search(
+    State(state): State<SearchState>,
+    Json(body): Json<CreateSavedSearchBody>,
+) -> Result<Json<SavedSearchResponse>, ServerError> {
+    info!("Creating saved search: {}", body.name);
+
+    let user_id = tachyon_core::generate_user_id();
+
+    let request = CreateSavedSearchRequest {
+        user_id: user_id.to_string(),
+        name: body.name,
+        query: body.query,
+        filters: body.filters,
+    };
+
+    match state.saved_search_repo.create(request).await {
+        Ok(saved) => {
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::SavedSearchCreated,
+                        AuditSeverity::Low,
+                        "saved_search_create",
+                        format!("Saved search '{}' created", saved.name),
+                    )
+                    .with_target(&saved.id, "saved_search"),
+                )
+                .await;
+            Ok(Json(SavedSearchResponse::from(saved)))
+        }
+        Err(e) => {
+            warn!("Failed to create saved search: {}", e);
+            Err(ServerError::internal(format!(
+                "Failed to create saved search: {}",
+                e
+            )))
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/search/saved",
+    responses(
+        (status = 200, description = "List of saved searches", body = Vec<SavedSearchResponse>),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
+pub async fn list_saved_searches(
+    State(state): State<SearchState>,
+) -> Result<Json<Vec<SavedSearchResponse>>, ServerError> {
+    let user_id = tachyon_core::generate_user_id();
+
+    match state
+        .saved_search_repo
+        .list_by_user(&user_id.to_string())
+        .await
+    {
+        Ok(searches) => {
+            let response: Vec<SavedSearchResponse> = searches
+                .into_iter()
+                .map(SavedSearchResponse::from)
+                .collect();
+            Ok(Json(response))
+        }
+        Err(e) => {
+            warn!("Failed to list saved searches: {}", e);
+            Err(ServerError::internal(format!(
+                "Failed to list saved searches: {}",
+                e
+            )))
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/search/saved/{id}",
+    params(
+        ("id" = String, Path, description = "Saved search ID"),
+    ),
+    responses(
+        (status = 200, description = "Saved search found", body = SavedSearchResponse),
+        (status = 404, description = "Not found"),
+    ),
+    tag = "search",
+)]
+pub async fn get_saved_search(
+    Path(id): Path<String>,
+    State(state): State<SearchState>,
+) -> Result<Json<SavedSearchResponse>, ServerError> {
+    match state.saved_search_repo.get_by_id(&id).await {
+        Ok(saved) => Ok(Json(SavedSearchResponse::from(saved))),
+        Err(e) => {
+            warn!("Failed to get saved search: {}", e);
+            Err(ServerError::not_found("saved_search", &id))
+        }
+    }
+}
+
+#[utoipa::path(
+    put,
+    path = "/api/v1/search/saved/{id}",
+    params(
+        ("id" = String, Path, description = "Saved search ID"),
+    ),
+    request_body = UpdateSavedSearchBody,
+    responses(
+        (status = 200, description = "Saved search updated", body = SavedSearchResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
+pub async fn update_saved_search(
+    Path(id): Path<String>,
+    State(state): State<SearchState>,
+    Json(body): Json<UpdateSavedSearchBody>,
+) -> Result<Json<SavedSearchResponse>, ServerError> {
+    info!("Updating saved search: {}", id);
+
+    let request = UpdateSavedSearchRequest {
+        name: body.name,
+        query: body.query,
+        filters: body.filters,
+    };
+
+    match state.saved_search_repo.update(&id, request).await {
+        Ok(saved) => {
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::SavedSearchUpdated,
+                        AuditSeverity::Low,
+                        "saved_search_update",
+                        format!("Saved search '{}' updated", id),
+                    )
+                    .with_target(&id, "saved_search"),
+                )
+                .await;
+            Ok(Json(SavedSearchResponse::from(saved)))
+        }
+        Err(e) => {
+            warn!("Failed to update saved search: {}", e);
+            Err(ServerError::internal(format!(
+                "Failed to update saved search: {}",
+                e
+            )))
+        }
+    }
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/v1/search/saved/{id}",
+    params(
+        ("id" = String, Path, description = "Saved search ID"),
+    ),
+    responses(
+        (status = 204, description = "Saved search deleted"),
+        (status = 404, description = "Not found"),
+    ),
+    tag = "search",
+)]
+pub async fn delete_saved_search(
+    Path(id): Path<String>,
+    State(state): State<SearchState>,
+) -> Result<StatusCode, ServerError> {
+    info!("Deleting saved search: {}", id);
+
+    match state.saved_search_repo.delete(&id).await {
+        Ok(()) => {
+            let _ = state
+                .audit_logger
+                .log(
+                    AuditEvent::new(
+                        AuditEventType::SavedSearchDeleted,
+                        AuditSeverity::Low,
+                        "saved_search_delete",
+                        format!("Saved search '{}' deleted", id),
+                    )
+                    .with_target(&id, "saved_search"),
+                )
+                .await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            warn!("Failed to delete saved search: {}", e);
+            Err(ServerError::not_found("saved_search", &id))
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/search/reindex",
+    responses(
+        (status = 200, description = "Reindex complete"),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
+pub async fn reindex_tantivy(
+    State(state): State<SearchState>,
+) -> Result<Json<serde_json::Value>, ServerError> {
+    info!("Starting Tantivy reindex");
+
+    let mgr_arc = state
+        .index_manager
+        .as_ref()
+        .ok_or_else(|| ServerError::internal("Tantivy search index is not available"))?;
+
+    let doc_repo = DocumentRepository::new(state.pool.clone());
+    let documents = doc_repo
+        .list_all(None, None)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to fetch documents: {}", e)))?;
+
+    let search_docs: Vec<SearchDocument> = documents
+        .iter()
+        .filter_map(|m| {
+            let doc_id = DocumentId::parse_str(&m.id).ok()?;
+            let author_id = UserId::parse_str(&m.author_id).ok()?;
+            Some(SearchDocument {
+                id: doc_id,
+                title: m.title.clone(),
+                content: m.content.clone().unwrap_or_default(),
+                author_id,
+                repository_id: m
+                    .project_id
+                    .as_ref()
+                    .and_then(|id| RepositoryId::parse_str(id).ok()),
+                tags: m.parse_tags().unwrap_or_default(),
+                created_at: m.created_at,
+                updated_at: m.updated_at,
+                custom_fields: BTreeMap::new(),
+            })
+        })
+        .collect();
+
+    let total = search_docs.len();
+
+    let guard = mgr_arc.lock().await;
+    if let Err(e) = guard.clear_index().await {
+        warn!("Failed to clear Tantivy index: {}", e);
+    }
+
+    let indexed = guard
+        .batch_index(&search_docs)
+        .await
+        .map_err(|e| ServerError::internal(format!("Failed to reindex documents: {}", e)))?;
+
+    info!(
+        "Tantivy reindex complete: {}/{} documents indexed",
+        indexed, total
+    );
+
+    Ok(Json(serde_json::json!({
+        "indexed": indexed,
+        "total": total,
+        "status": "success",
+    })))
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestResponse {
+    pub query: String,
+    pub suggestions: Vec<tachyon_search::types::Suggestion>,
+}
+
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+pub struct SuggestQuery {
+    pub q: String,
+    #[serde(default = "default_suggest_limit")]
+    pub limit: usize,
+}
+
+fn default_suggest_limit() -> usize {
+    10
+}
+
+/// Get search suggestions (autocomplete) from the Tantivy index.
+///
+/// `GET /search/suggest?q=&limit=`
+///
+/// Query params: `q` (required), `limit` (default 10).
+/// Response: 200 with `SuggestResponse` containing `query` and `suggestions`, or 503 if index unavailable.
+#[utoipa::path(
+    get,
+    path = "/api/v1/search/suggest",
+    params(SuggestQuery),
+    responses(
+        (status = 200, description = "Search suggestions"),
+        (status = 500, description = "Search index unavailable"),
+    ),
+    tag = "search",
+)]
+pub async fn suggest(
+    Query(query): Query<SuggestQuery>,
+    State(state): State<SearchState>,
+) -> Result<Json<SuggestResponse>, ServerError> {
+    let mgr_arc = state
+        .index_manager
+        .as_ref()
+        .ok_or_else(|| ServerError::internal("Tantivy search index is not available"))?;
+
+    let guard = mgr_arc.lock().await;
+    let engine = QueryEngine::new(guard.clone());
+    drop(guard);
+
+    let suggestions = engine
+        .suggest(&query.q, query.limit)
+        .await
+        .unwrap_or_default();
+
+    Ok(Json(SuggestResponse {
+        query: query.q,
+        suggestions,
+    }))
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SearchCursorPage {
+    pub data: Vec<SearchResultItem>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<CursorPage<SearchResultItem>> for SearchCursorPage {
+    fn from(page: CursorPage<SearchResultItem>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/search/cursor",
+    params(SearchQuery),
+    responses(
+        (status = 200, description = "Search results (cursor paginated)", body = SearchCursorPage),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "search",
+)]
+pub async fn search_cursor(
+    Query(query): Query<SearchQuery>,
+    State(state): State<SearchState>,
+    auth: Option<axum::Extension<crate::middleware::AuthContext>>,
+) -> Result<Json<SearchCursorPage>, ServerError> {
+    info!(
+        "Search cursor request: q='{}', page_size={}",
+        query.q, query.page_size
+    );
+
+    let caller_id = auth.as_ref().map(|axum::Extension(ctx)| ctx.user_id.as_str());
+    let is_admin = auth.as_ref().is_some_and(|axum::Extension(ctx)| ctx.is_admin());
+
+    let filters = SearchFilters {
+        content_type: query.content_type.clone(),
+        status: query.status.clone(),
+        visibility: query.visibility.clone(),
+        project_id: query.project_id.clone(),
+        author_id: query.author_id.clone(),
+        tags: query
+            .tags
+            .as_ref()
+            .map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+        date_from: query.date_from.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
+        date_to: query.date_to.as_ref().and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(d)
+                .ok()
+                .map(|d| d.with_timezone(&chrono::Utc))
+        }),
+    };
+
+    let limit = query.page_size.clamp(1, 100) as usize;
+    let fetch_limit = (limit + 1) as i64;
+
+    match state
+        .search_repo
+        .search(&query.q, &filters, 1, fetch_limit)
+        .await
+    {
+        Ok(pg_response) => {
+            let total = pg_response.total;
+            let pg_results = pg_response.results;
+
+            let tantivy_items = search_tantivy(&state, &query.q, 1, fetch_limit as usize)
+                .await
+                .unwrap_or_default();
+
+            let aggregator = ResultAggregator::default();
+            let fused = aggregator.fuse_results(vec![
+                pg_results
+                    .iter()
+                    .map(|r| SearchResponseItem {
+                        document_id: DocumentId::parse_str(&r.document.id).unwrap_or_default(),
+                        title: r.document.title.clone(),
+                        snippet: r.headline.clone().unwrap_or_default(),
+                        score: r.rank as f32,
+                        highlights: Vec::new(),
+                        author_id: UserId::parse_str(&r.document.author_id).unwrap_or_default(),
+                        repository_id: r
+                            .document
+                            .project_id
+                            .as_ref()
+                            .and_then(|id| RepositoryId::parse_str(id).ok()),
+                        tags: r.document.parse_tags().unwrap_or_default(),
+                        created_at: r.document.created_at,
+                    })
+                    .collect(),
+                tantivy_items,
+            ]);
+
+            let pg_metadata_map: HashMap<String, &_> = pg_results
+                .iter()
+                .map(|r| (r.document.id.clone(), r))
+                .collect();
+
+            let results: Vec<SearchResultItem> = fused
+                .into_iter()
+                .map(|item| {
+                    let id_str = item.document_id.to_string();
+                    if let Some(pg_r) = pg_metadata_map.get(&id_str) {
+                        let tags = pg_r.document.parse_tags().unwrap_or_default();
+                        SearchResultItem {
+                            id: pg_r.document.id.clone(),
+                            title: pg_r.document.title.clone(),
+                            slug: pg_r.document.slug.clone(),
+                            description: pg_r.document.description.clone(),
+                            status: pg_r.document.status.clone(),
+                            visibility: pg_r.document.visibility.clone(),
+                            tags,
+                            author_id: pg_r.document.author_id.clone(),
+                            project_id: pg_r.document.project_id.clone(),
+                            word_count: pg_r.document.word_count,
+                            rank: item.score as f64,
+                            headline: pg_r.headline.clone(),
+                            created_at: pg_r.document.created_at.to_rfc3339(),
+                            updated_at: pg_r.document.updated_at.to_rfc3339(),
+                        }
+                    } else {
+                        SearchResultItem {
+                            id: id_str,
+                            title: item.title,
+                            slug: None,
+                            description: if item.snippet.is_empty() {
+                                None
+                            } else {
+                                Some(item.snippet)
+                            },
+                            status: "draft".to_string(),
+                            visibility: "private".to_string(),
+                            tags: item.tags,
+                            author_id: item.author_id.to_string(),
+                            project_id: item.repository_id.map(|id| id.to_string()),
+                            word_count: 0,
+                            rank: item.score as f64,
+                            headline: if item.highlights.is_empty() {
+                                None
+                            } else {
+                                Some(item.highlights.join(" "))
+                            },
+                            created_at: item.created_at.to_rfc3339(),
+                            updated_at: item.created_at.to_rfc3339(),
+                        }
+                    }
+                })
+                .collect();
+
+            let has_extra = results.len() > limit;
+            let mut results = results;
+            if has_extra {
+                results.truncate(limit);
+            }
+
+            let first_id = results.first().map(|r| r.id.clone());
+            let last_id = results.last().map(|r| r.id.clone());
+
+            let page = CursorPage::new(results, has_extra, false)
+                .with_cursors(first_id.as_deref(), last_id.as_deref(), "asc")
+                .with_total_count(total);
+
+            Ok(Json(SearchCursorPage::from(page)))
+        }
+        Err(e) => {
+            warn!("Search cursor failed: {}", e);
+            Err(ServerError::internal(format!("Search failed: {}", e)))
+        }
+    }
+}
+
+pub fn create_search_router() -> axum::Router<SearchState> {
+    use axum::routing::{delete, get, post, put};
+
+    axum::Router::new()
+        .route("/search", get(search))
+        .route("/search/cursor", get(search_cursor))
+        .route("/search/global", get(global_search))
+        .route("/search/suggest", get(suggest))
+        .route("/search/reindex", post(reindex_tantivy))
+        .route("/search/saved", post(create_saved_search))
+        .route("/search/saved", get(list_saved_searches))
+        .route("/search/saved/{id}", get(get_saved_search))
+        .route("/search/saved/{id}", put(update_saved_search))
+        .route("/search/saved/{id}", delete(delete_saved_search))
+}

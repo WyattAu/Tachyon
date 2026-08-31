@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# wasm-opt wrapper for Trunk.
+# Strips DWARF debug info from the WASM file using wasm-strip,
+# then copies to the output path.
+# Usage: wasm-opt <input.wasm> --output=<output.wasm> [-O level]
+set -e
+
+INPUT=""
+OUTPUT=""
+LEVEL=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --output=*) OUTPUT="${1#*=}"; shift ;;
+        -O) LEVEL="$2"; shift 2 ;;
+        -*) shift ;; # Skip other wasm-opt flags
+        *) INPUT="$1"; shift ;;
+    esac
+done
+
+if [[ -z "$INPUT" ]]; then
+    echo "Usage: wasm-opt <input.wasm> --output=<output.wasm> [-O level]" >&2
+    exit 1
+fi
+
+if [[ -z "$OUTPUT" ]]; then
+    echo "Usage: wasm-opt <input.wasm> --output=<output.wasm> [-O level]" >&2
+    exit 1
+fi
+
+# Ensure output directory exists
+mkdir -p "$(dirname "$OUTPUT")"
+
+# Try wasm-strip first (produces much smaller output), fall back to cp
+TOOL=""
+if command -v wasm-strip &>/dev/null 2>&1; then
+    TOOL="wasm-strip"
+elif command -v wasm-opt &>/dev/null 2>&1; then
+    TOOL="wasm-opt"
+else
+    TOOL="cp"
+fi
+
+case "$TOOL" in
+    wasm-strip)
+        # wasm-strip removes DWARF debug info and produces a clean .wasm
+        wasm-strip "$INPUT" -o "$OUTPUT" 2>/dev/null || cp "$INPUT" "$OUTPUT"
+        echo "Stripped WASM: $(wc -c < "$OUTPUT") bytes"
+        ;;
+    wasm-opt)
+        # wasm-opt can strip with -O1 (no optimization)
+        wasm-opt -O1 "$INPUT" -o "$OUTPUT" 2>/dev/null || cp "$INPUT" "$OUTPUT"
+        echo "Optimized WASM: $(wc -c < "$OUTPUT") bytes"
+        ;;
+    *)
+        # Just copy
+        cp "$INPUT" "$OUTPUT"
+        echo "Copied WASM: $(wc -c < "$OUTPUT") bytes"
+        ;;
+esac

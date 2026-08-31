@@ -1,0 +1,199 @@
+name: SBOM Generation
+
+on:
+  push:
+    branches: [main, develop, 'release/*']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: sbom-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+jobs:
+  rust-sbom:
+    name: Rust SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: sbom-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+
+      - name: Install cargo-cyclonedx
+        run: cargo install cargo-cyclonedx --version 0.5.0 --locked
+
+      - name: Generate CycloneDX SBOM
+        working-directory: tachyon
+        run: |
+          mkdir -p .cyclonedx
+          cargo cyclonedx --format json --output-dir .cyclonedx
+
+      - name: Upload Rust SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rust-sbom-cyclonedx
+          path: tachyon/.cyclonedx/
+          retention-days: 90
+
+  docker-sbom:
+    name: Docker SBOM (Syft)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [rust-sbom]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build Docker image for SBOM
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: tachyon:sbom-scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Generate Syft SBOM for Docker image
+        run: |
+          syft tachyon:sbom-scan -o cyclonedx-json=sbom-docker-cyclonedx.json
+          syft tachyon:sbom-scan -o spdx-json=sbom-docker-spdx.json
+
+      - name: Upload Docker SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: docker-sbom-syft
+          path: |
+            sbom-docker-cyclonedx.json
+            sbom-docker-spdx.json
+          retention-days: 90
+
+  merge-sbom:
+    name: Merge SBOMs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [rust-sbom, docker-sbom]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Download Rust SBOM
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: rust-sbom-cyclonedx
+          path: sbom-rust/
+
+      - name: Download Docker SBOM
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: docker-sbom-syft
+          path: sbom-docker/
+
+      - name: Install Syft for merge
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Merge CycloneDX SBOMs
+        run: |
+          python3 -c '
+          import json, glob, os
+
+          merged = {
+              "bomFormat": "CycloneDX",
+              "specVersion": "1.5",
+              "version": 1,
+              "metadata": {
+                  "timestamp": "",
+                  "tools": [
+                      {"vendor": "cargo-cyclonedx", "name": "cargo-cyclonedx"},
+                      {"vendor": "anchore", "name": "syft"}
+                  ],
+                  "component": {
+                      "name": "tachyon",
+                      "type": "application",
+                      "version": "latest"
+                  }
+              },
+              "components": [],
+              "dependencies": []
+          }
+
+          for sbom_file in glob.glob("sbom-rust/*.json") + glob.glob("sbom-docker/sbom-docker-cyclonedx.json"):
+              try:
+                  with open(sbom_file) as f:
+                      data = json.load(f)
+                  if "components" in data:
+                      merged["components"].extend(data["components"])
+                  if "dependencies" in data:
+                      merged["dependencies"].extend(data["dependencies"])
+              except Exception as e:
+                  print(f"Warning: Could not merge {sbom_file}: {e}")
+
+          # Deduplicate components by bom-ref
+          seen = set()
+          unique_components = []
+          for comp in merged["components"]:
+              ref = comp.get("bom-ref", comp.get("name", ""))
+              if ref not in seen:
+                  seen.add(ref)
+                  unique_components.append(comp)
+          merged["components"] = unique_components
+
+          with open("tachyon-sbom-cyclonedx.json", "w") as f:
+              json.dump(merged, f, indent=2)
+
+          print(f"Merged SBOM: {len(merged[\"components\"])} components")
+          '
+
+      - name: Upload merged SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom-merged
+          path: tachyon-sbom-cyclonedx.json
+          retention-days: 90
+
+      - name: Upload SBOM to GitHub Release
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2
+        with:
+          tag_name: sbom-latest
+          name: SBOM - Latest
+          files: tachyon-sbom-cyclonedx.json
+          prerelease: true
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true

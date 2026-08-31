@@ -1,0 +1,89 @@
+# Tachyon -- one-command deploy
+#
+#   cp .env.example .env   # edit .env as needed
+#   docker compose up -d
+#
+# The server binary serves the WASM frontend from /dist (SPA fallback built
+# into axum) so no separate frontend container is required.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tachyon
+      POSTGRES_PASSWORD: tachyon
+      POSTGRES_DB: tachyon
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tachyon"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tachyon
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tachyon
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  server:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://tachyon:tachyon@postgres:5432/tachyon
+    ports:
+      - "3000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # NOTE: Healthcheck disabled -- scratch image has no shell/wget.
+    # Monitor via docker logs or external health endpoint.
+    # healthcheck:
+    #   test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    networks:
+      - tachyon
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  tachyon:

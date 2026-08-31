@@ -1,0 +1,65 @@
+[package]
+name = "tachyon-import-export"
+version = "0.1.0"
+license = { workspace = true }
+edition.workspace = true
+description = "Import/export functionality for Tachyon knowledge management system"
+
+[lib]
+name = "tachyon_import_export"
+path = "src/lib.rs"
+
+[dependencies]
+# Core
+tachyon-core = { path = "../core" }
+tachyon-renderer = { path = "../renderer" }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# Archive handling
+zip = "2"
+
+# File system
+walkdir = "2"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+
+# Utilities
+regex = "1"
+uuid = { version = "1", features = ["v4", "v7"] }
+
+# HTTP client (for Confluence API import)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Base64 encoding (for Confluence API auth)
+base64 = "0.22"
+
+# URL encoding (for Notion OAuth)
+urlencoding = "2"
+
+# Async runtime (for Confluence API client)
+tokio = { version = "1", features = ["time"] }
+
+# PDF generation (optional)
+genpdf = { version = "0.2", features = ["images"], optional = true }
+printpdf = { version = "0.3", optional = true }
+
+# DOCX import/export (optional)
+quick-xml = { version = "0.41", features = ["serialize"] }
+
+[features]
+pdf-export = ["dep:genpdf", "dep:printpdf"]
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,971 @@
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::Json,
+};
+use serde::Deserialize;
+use tachyon_database::{DatabasePool, GraphEdge, GraphNode, GraphRepository};
+use tracing::{debug, info};
+
+use crate::audit::{AuditEvent, AuditEventType, AuditLogger, AuditSeverity};
+use crate::error::ServerError;
+use crate::pagination::{CursorPage, CursorParams};
+
+#[derive(Clone)]
+pub struct NodeState {
+    pub pool: DatabasePool,
+    pub audit_logger: AuditLogger,
+}
+
+impl NodeState {
+    pub fn new(pool: DatabasePool) -> Self {
+        Self {
+            pool,
+            audit_logger: AuditLogger::disabled(),
+        }
+    }
+
+    pub fn with_audit_logger(mut self, logger: AuditLogger) -> Self {
+        self.audit_logger = logger;
+        self
+    }
+
+    fn repo(&self) -> GraphRepository {
+        GraphRepository::new(self.pool.clone())
+    }
+}
+
+// ============================================================================
+// Query Parameters
+// ============================================================================
+
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+pub struct NodeQuery {
+    pub page: Option<usize>,
+    pub page_size: Option<usize>,
+    pub node_type: Option<String>,
+    pub search: Option<String>,
+    pub project_id: Option<String>,
+}
+
+// ============================================================================
+// Request Types
+// ============================================================================
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CreateNodeRequest {
+    pub name: String,
+    pub node_type: Option<String>,
+    pub description: Option<String>,
+    pub content: Option<String>,
+    pub visibility: Option<String>,
+    pub weight: Option<f64>,
+    pub properties: Option<serde_json::Value>,
+    pub project_id: Option<String>,
+    pub document_id: Option<String>,
+    pub slug: Option<String>,
+}
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateNodeRequest {
+    pub name: Option<String>,
+    pub slug: Option<String>,
+    pub description: Option<String>,
+    pub content: Option<String>,
+    pub visibility: Option<String>,
+    pub weight: Option<f64>,
+    pub properties: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CreateEdgeRequest {
+    pub source_id: String,
+    pub target_id: String,
+    pub edge_type: Option<String>,
+    pub label: Option<String>,
+    pub description: Option<String>,
+    pub weight: Option<f64>,
+    pub confidence: Option<f64>,
+    pub properties: Option<serde_json::Value>,
+    pub project_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GraphQueryRequest {
+    pub source_id: String,
+    pub direction: Option<String>,
+    pub edge_type: Option<String>,
+    pub depth: Option<u32>,
+    pub target_id: Option<String>,
+    /// ISO 8601 timestamp for point-in-time graph query.
+    /// If provided, only nodes/edges active at this time are returned.
+    pub at: Option<String>,
+}
+
+// ============================================================================
+// Response Types
+// ============================================================================
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct NodeListResponse {
+    pub nodes: Vec<GraphNode>,
+    pub total: i64,
+    pub page: usize,
+    pub page_size: usize,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct EdgeListResponse {
+    pub edges: Vec<GraphEdge>,
+    pub total: usize,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct NodeCursorPage {
+    pub data: Vec<GraphNode>,
+    pub has_next: bool,
+    pub has_prev: bool,
+    pub next_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
+    pub total_count: Option<i64>,
+}
+
+impl From<CursorPage<GraphNode>> for NodeCursorPage {
+    fn from(page: CursorPage<GraphNode>) -> Self {
+        Self {
+            data: page.data,
+            has_next: page.has_next,
+            has_prev: page.has_prev,
+            next_cursor: page.next_cursor,
+            prev_cursor: page.prev_cursor,
+            total_count: page.total_count,
+        }
+    }
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct GraphQueryResponse {
+    pub nodes: Vec<GraphNode>,
+    pub edges: Vec<GraphEdge>,
+    pub node_count: usize,
+    pub edge_count: usize,
+}
+
+// ============================================================================
+// Handlers
+// ============================================================================
+
+/// Create a new graph node.
+///
+/// `POST /nodes`
+///
+/// Request body: JSON with `name` (required), optional `node_type`, `description`, `content`, `visibility`, `weight`, `properties`, `project_id`, `document_id`, `slug`.
+/// Response: 200 with `GraphNode`, or 400/409/500 on error.
+#[utoipa::path(
+    post,
+    path = "/nodes",
+    request_body(content = CreateNodeRequest, description = "Node creation request"),
+    responses(
+        (status = 200, description = "Node created", body = tachyon_database::GraphNode),
+        (status = 400, description = "Validation error"),
+        (status = 409, description = "Conflict"),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn create_node(
+    State(state): State<NodeState>,
+    Json(req): Json<CreateNodeRequest>,
+) -> Result<Json<GraphNode>, ServerError> {
+    info!("Creating new node: {}", req.name);
+
+    if req.name.trim().is_empty() {
+        return Err(ServerError::bad_request("Name cannot be empty"));
+    }
+
+    let node = GraphNode {
+        id: uuid::Uuid::new_v4().to_string(),
+        node_type: req.node_type.unwrap_or_else(|| "document".into()),
+        name: req.name,
+        slug: req.slug,
+        description: req.description,
+        content: req.content,
+        visibility: req.visibility.unwrap_or_else(|| "public".into()),
+        weight: req.weight.unwrap_or(1.0),
+        properties: req.properties.unwrap_or(serde_json::json!({})),
+        project_id: req.project_id,
+        document_id: req.document_id,
+        created_by: None,
+        is_active: true,
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+        deactivated_at: None,
+    };
+
+    let created = state.repo().create_node(&node).await?;
+
+    info!("Node created: {}", created.id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::NodeCreated,
+                AuditSeverity::Low,
+                "node_create",
+                format!("Node '{}' created", created.name),
+            )
+            .with_target(&created.id, "node")
+            .with_metadata("name", serde_json::json!(created.name)),
+        )
+        .await;
+    Ok(Json(created))
+}
+
+/// Get a graph node by ID.
+///
+/// `GET /nodes/{node_id}`
+///
+/// Response: 200 with `GraphNode`, or 404 on error.
+#[utoipa::path(
+    get,
+    path = "/nodes/{node_id}",
+    params(
+        ("node_id" = String, Path, description = "Node ID"),
+    ),
+    responses(
+        (status = 200, description = "Node details", body = tachyon_database::GraphNode),
+        (status = 404, description = "Node not found"),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn get_node(
+    Path(node_id): Path<String>,
+    State(state): State<NodeState>,
+) -> Result<Json<GraphNode>, ServerError> {
+    debug!("Getting node: {}", node_id);
+
+    let node = state.repo().get_node_by_id(&node_id).await?;
+
+    Ok(Json(node))
+}
+
+#[utoipa::path(
+    put,
+    path = "/nodes/{node_id}",
+    params(
+        ("node_id" = String, Path, description = "Node ID"),
+    ),
+    request_body(content = UpdateNodeRequest, description = "Node update request"),
+    responses(
+        (status = 200, description = "Node updated", body = tachyon_database::GraphNode),
+        (status = 404, description = "Node not found"),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn update_node(
+    Path(node_id): Path<String>,
+    State(state): State<NodeState>,
+    Json(req): Json<UpdateNodeRequest>,
+) -> Result<Json<GraphNode>, ServerError> {
+    info!("Updating node: {}", node_id);
+
+    let updated = state
+        .repo()
+        .update_node(
+            &node_id,
+            req.name.as_deref(),
+            req.slug.as_deref(),
+            req.description.as_deref(),
+            req.content.as_deref(),
+            req.visibility.as_deref(),
+            req.weight,
+            req.properties.as_ref(),
+        )
+        .await?;
+
+    info!("Node updated: {}", node_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::NodeUpdated,
+                AuditSeverity::Low,
+                "node_update",
+                format!("Node '{}' updated", node_id),
+            )
+            .with_target(&node_id, "node"),
+        )
+        .await;
+    Ok(Json(updated))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/nodes/{node_id}",
+    params(
+        ("node_id" = String, Path, description = "Node ID"),
+    ),
+    responses(
+        (status = 204, description = "Node deleted"),
+        (status = 404, description = "Node not found"),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn delete_node(
+    Path(node_id): Path<String>,
+    State(state): State<NodeState>,
+) -> Result<StatusCode, ServerError> {
+    info!("Deleting node: {}", node_id);
+
+    state.repo().deactivate_node(&node_id).await?;
+
+    info!("Node deactivated: {}", node_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::NodeDeleted,
+                AuditSeverity::Medium,
+                "node_delete",
+                format!("Node '{}' deactivated", node_id),
+            )
+            .with_target(&node_id, "node"),
+        )
+        .await;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    get,
+    path = "/nodes",
+    params(
+        NodeQuery,
+    ),
+    responses(
+        (status = 200, description = "List of nodes", body = NodeListResponse),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn list_nodes(
+    Query(query): Query<NodeQuery>,
+    State(state): State<NodeState>,
+) -> Result<Json<NodeListResponse>, ServerError> {
+    debug!("Listing nodes with filters: {:?}", query);
+
+    let page = query.page.unwrap_or(1).max(1);
+    let page_size = query.page_size.unwrap_or(20).clamp(1, 100);
+
+    let (nodes, total) = state
+        .repo()
+        .list_nodes(
+            query.node_type.as_deref(),
+            query.project_id.as_deref(),
+            query.search.as_deref(),
+            page,
+            page_size,
+        )
+        .await?;
+
+    Ok(Json(NodeListResponse {
+        nodes,
+        total,
+        page,
+        page_size,
+    }))
+}
+
+#[utoipa::path(
+    post,
+    path = "/edges",
+    request_body(content = CreateEdgeRequest, description = "Edge creation request"),
+    responses(
+        (status = 200, description = "Edge created", body = tachyon_database::GraphEdge),
+        (status = 400, description = "Validation error"),
+    ),
+    tag = "edges",
+    security(("bearer_auth" = [])),
+)]
+pub async fn create_edge(
+    State(state): State<NodeState>,
+    Json(req): Json<CreateEdgeRequest>,
+) -> Result<Json<GraphEdge>, ServerError> {
+    info!("Creating edge from {} to {}", req.source_id, req.target_id);
+
+    if req.source_id == req.target_id {
+        return Err(ServerError::bad_request(
+            "Source and target cannot be the same",
+        ));
+    }
+
+    state.repo().get_node_by_id(&req.source_id).await?;
+
+    state.repo().get_node_by_id(&req.target_id).await?;
+
+    let edge = GraphEdge {
+        id: uuid::Uuid::new_v4().to_string(),
+        source_id: req.source_id,
+        target_id: req.target_id,
+        edge_type: req.edge_type.unwrap_or_else(|| "related_to".into()),
+        label: req.label,
+        description: req.description,
+        weight: req.weight.unwrap_or(1.0),
+        confidence: req.confidence,
+        properties: req.properties.unwrap_or(serde_json::json!({})),
+        project_id: req.project_id,
+        created_by: None,
+        is_active: true,
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+        deactivated_at: None,
+    };
+
+    let created = state.repo().create_edge(&edge).await?;
+
+    info!("Edge created: {}", created.id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::EdgeCreated,
+                AuditSeverity::Low,
+                "edge_create",
+                format!(
+                    "Edge created: {} -> {}",
+                    created.source_id, created.target_id
+                ),
+            )
+            .with_target(&created.id, "edge"),
+        )
+        .await;
+    Ok(Json(created))
+}
+
+#[utoipa::path(
+    get,
+    path = "/nodes/{node_id}/edges",
+    params(
+        ("node_id" = String, Path, description = "Node ID"),
+    ),
+    responses(
+        (status = 200, description = "Edges for node", body = EdgeListResponse),
+        (status = 404, description = "Node not found"),
+    ),
+    tag = "edges",
+    security(("bearer_auth" = [])),
+)]
+pub async fn get_node_edges(
+    Path(node_id): Path<String>,
+    State(state): State<NodeState>,
+) -> Result<Json<EdgeListResponse>, ServerError> {
+    debug!("Getting edges for node: {}", node_id);
+
+    let edges = state.repo().get_node_edges(&node_id).await?;
+
+    let total = edges.len();
+
+    Ok(Json(EdgeListResponse { edges, total }))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/edges/{edge_id}",
+    params(
+        ("edge_id" = String, Path, description = "Edge ID"),
+    ),
+    responses(
+        (status = 204, description = "Edge deleted"),
+        (status = 404, description = "Edge not found"),
+    ),
+    tag = "edges",
+    security(("bearer_auth" = [])),
+)]
+pub async fn delete_edge(
+    Path(edge_id): Path<String>,
+    State(state): State<NodeState>,
+) -> Result<StatusCode, ServerError> {
+    info!("Deleting edge: {}", edge_id);
+
+    state.repo().delete_edge(&edge_id).await?;
+
+    info!("Edge deleted: {}", edge_id);
+    let _ = state
+        .audit_logger
+        .log(
+            AuditEvent::new(
+                AuditEventType::EdgeDeleted,
+                AuditSeverity::Medium,
+                "edge_delete",
+                format!("Edge '{}' deleted", edge_id),
+            )
+            .with_target(&edge_id, "edge"),
+        )
+        .await;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Query the graph: traverse neighbors or find shortest path.
+///
+/// `POST /graph/query`
+///
+/// Request body: JSON with `source_id` (required), optional `direction` ("incoming"/"outgoing"/"both"),
+/// `edge_type`, `depth` (default 3, max 5), `target_id` (for shortest path), `at` (point-in-time timestamp).
+/// If `target_id` is provided, returns the shortest path between source and target.
+/// Otherwise, returns all neighbors up to `depth` hops.
+/// Response: 200 with `GraphQueryResponse` containing `nodes`, `edges`, `node_count`, `edge_count`.
+#[utoipa::path(
+    post,
+    path = "/graph/query",
+    request_body(content = GraphQueryRequest, description = "Graph query request"),
+    responses(
+        (status = 200, description = "Graph query result", body = GraphQueryResponse),
+    ),
+    tag = "graph",
+    security(("bearer_auth" = [])),
+)]
+pub async fn query_graph(
+    State(state): State<NodeState>,
+    Json(req): Json<GraphQueryRequest>,
+) -> Result<Json<GraphQueryResponse>, ServerError> {
+    info!("Querying graph from source: {}", req.source_id);
+
+    let max_depth = req.depth.unwrap_or(3).min(5);
+    let direction = req.direction.as_deref().unwrap_or("both");
+
+    if let Some(ref target_id) = req.target_id {
+        let path = state
+            .repo()
+            .get_shortest_path(&req.source_id, target_id, max_depth)
+            .await?;
+
+        let mut nodes = Vec::new();
+        if let Ok(fetched) = state.repo().get_nodes_by_ids_batch(&path).await {
+            nodes = fetched;
+        }
+
+        let mut edges = Vec::new();
+        for i in 0..path.len().saturating_sub(1) {
+            let between = state
+                .repo()
+                .list_edges(Some(&path[i]), Some(&path[i + 1]), None, None)
+                .await?;
+            edges.extend(between);
+        }
+
+        nodes.sort_by(|a, b| a.id.cmp(&b.id));
+        edges.sort_by(|a, b| a.id.cmp(&b.id));
+
+        return Ok(Json(GraphQueryResponse {
+            node_count: nodes.len(),
+            edge_count: edges.len(),
+            nodes,
+            edges,
+        }));
+    }
+
+    let edges = state
+        .repo()
+        .get_neighbors(
+            &req.source_id,
+            direction,
+            req.edge_type.as_deref(),
+            max_depth,
+        )
+        .await?;
+
+    let mut node_ids: Vec<String> = edges
+        .iter()
+        .flat_map(|e| [e.source_id.clone(), e.target_id.clone()])
+        .collect();
+    node_ids.sort();
+    node_ids.dedup();
+
+    let nodes = state
+        .repo()
+        .get_nodes_by_ids_batch(&node_ids)
+        .await
+        .unwrap_or_default();
+
+    Ok(Json(GraphQueryResponse {
+        node_count: nodes.len(),
+        edge_count: edges.len(),
+        nodes,
+        edges,
+    }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/graph/stats",
+    responses(
+        (status = 200, description = "Graph statistics", body = serde_json::Value),
+    ),
+    tag = "graph",
+    security(("bearer_auth" = [])),
+)]
+pub async fn get_graph_stats(
+    State(state): State<NodeState>,
+) -> Result<Json<serde_json::Value>, ServerError> {
+    debug!("Getting graph stats");
+
+    let stats = state.repo().get_graph_stats().await?;
+
+    Ok(Json(stats))
+}
+
+/// Query the graph state at a specific point in time.
+///
+/// Returns all nodes and edges that were active at the given ISO 8601 timestamp.
+#[utoipa::path(
+    get,
+    path = "/graph/at",
+    params(
+        ("at" = String, Query, description = "ISO 8601 timestamp"),
+    ),
+    responses(
+        (status = 200, description = "Graph state at time", body = GraphQueryResponse),
+        (status = 400, description = "Missing or invalid timestamp"),
+    ),
+    tag = "graph",
+    security(("bearer_auth" = [])),
+)]
+pub async fn get_graph_at_time(
+    Query(params): Query<std::collections::HashMap<String, String>>,
+    State(state): State<NodeState>,
+) -> Result<Json<GraphQueryResponse>, ServerError> {
+    let at_str = params.get("at").ok_or_else(|| {
+        ServerError::bad_request("Missing required query parameter: at (ISO 8601 timestamp)")
+    })?;
+
+    let at: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(at_str)
+        .map(|dt| dt.with_timezone(&chrono::Utc))
+        .map_err(|e| ServerError::bad_request(format!("Invalid timestamp format: {}", e)))?;
+
+    info!("Querying graph state at: {}", at);
+
+    let (nodes, edges) = state.repo().get_graph_at_time(at).await?;
+
+    Ok(Json(GraphQueryResponse {
+        node_count: nodes.len(),
+        edge_count: edges.len(),
+        nodes,
+        edges,
+    }))
+}
+
+/// Compute the diff of the graph between two timestamps.
+///
+/// Returns added/removed nodes and edges between `from` and `to` timestamps.
+#[utoipa::path(
+    get,
+    path = "/graph/diff",
+    params(
+        ("from" = String, Query, description = "ISO 8601 start timestamp"),
+        ("to" = String, Query, description = "ISO 8601 end timestamp"),
+    ),
+    responses(
+        (status = 200, description = "Graph diff between timestamps", body = serde_json::Value),
+        (status = 400, description = "Missing or invalid timestamps"),
+    ),
+    tag = "graph",
+    security(("bearer_auth" = [])),
+)]
+pub async fn get_graph_diff(
+    Query(params): Query<std::collections::HashMap<String, String>>,
+    State(state): State<NodeState>,
+) -> Result<Json<serde_json::Value>, ServerError> {
+    let from_str = params.get("from").ok_or_else(|| {
+        ServerError::bad_request("Missing required query parameter: from (ISO 8601 timestamp)")
+    })?;
+
+    let to_str = params.get("to").ok_or_else(|| {
+        ServerError::bad_request("Missing required query parameter: to (ISO 8601 timestamp)")
+    })?;
+
+    let from: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(from_str)
+        .map(|dt| dt.with_timezone(&chrono::Utc))
+        .map_err(|e| ServerError::bad_request(format!("Invalid 'from' timestamp: {}", e)))?;
+
+    let to: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(to_str)
+        .map(|dt| dt.with_timezone(&chrono::Utc))
+        .map_err(|e| ServerError::bad_request(format!("Invalid 'to' timestamp: {}", e)))?;
+
+    if from >= to {
+        return Err(ServerError::bad_request(
+            "'from' timestamp must be before 'to' timestamp",
+        ));
+    }
+
+    info!("Computing graph diff: {} → {}", from, to);
+
+    let diff = state.repo().get_graph_diff(from, to).await?;
+
+    Ok(Json(
+        serde_json::to_value(diff).unwrap_or(serde_json::json!({})),
+    ))
+}
+
+#[utoipa::path(
+    get,
+    path = "/nodes/cursor",
+    params(
+        CursorParams,
+    ),
+    responses(
+        (status = 200, description = "Nodes (cursor paginated)", body = NodeCursorPage),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn list_nodes_cursor(
+    Query(params): Query<CursorParams>,
+    State(state): State<NodeState>,
+) -> Result<Json<NodeCursorPage>, ServerError> {
+    let limit = params.limit();
+    let direction = params.direction();
+    let cursor_str = params.after.as_deref().or(params.before.as_deref());
+    let fetch_limit = limit + 1;
+
+    let (nodes, total) = state
+        .repo()
+        .list_nodes(None, None, None, 1, fetch_limit)
+        .await?;
+
+    let has_extra = nodes.len() > limit;
+    let mut nodes = nodes;
+    if has_extra {
+        nodes.truncate(limit);
+    }
+
+    let first_id = nodes.first().map(|n| n.id.clone());
+    let last_id = nodes.last().map(|n| n.id.clone());
+    let has_prev = cursor_str.is_some();
+
+    let page = CursorPage::new(nodes, has_extra, has_prev)
+        .with_cursors(first_id.as_deref(), last_id.as_deref(), direction)
+        .with_total_count(total);
+
+    Ok(Json(NodeCursorPage::from(page)))
+}
+
+/// Get orphan nodes (nodes with zero incoming and outgoing edges).
+///
+/// `GET /nodes/orphans`
+#[utoipa::path(
+    get,
+    path = "/nodes/orphans",
+    responses(
+        (status = 200, description = "Orphan nodes", body = NodeListResponse),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn get_orphan_nodes(
+    State(state): State<NodeState>,
+) -> Result<Json<NodeListResponse>, ServerError> {
+    debug!("Finding orphan nodes");
+
+    let orphans = state.repo().get_orphan_nodes().await?;
+    let total = orphans.len() as i64;
+
+    Ok(Json(NodeListResponse {
+        nodes: orphans,
+        total,
+        page: 1,
+        page_size: total as usize,
+    }))
+}
+
+/// Create a daily note document for today's date.
+///
+/// `POST /nodes/daily/{date}`
+///
+/// The date parameter should be in ISO 8601 format (e.g., 2026-05-31).
+/// If a daily note node already exists for the given date, returns it unchanged.
+#[utoipa::path(
+    post,
+    path = "/nodes/daily/{date}",
+    params(
+        ("date" = String, Path, description = "Date in ISO 8601 format (e.g., 2026-05-31)"),
+    ),
+    responses(
+        (status = 200, description = "Daily note created or existing", body = tachyon_database::GraphNode),
+        (status = 400, description = "Invalid date format"),
+    ),
+    tag = "nodes",
+    security(("bearer_auth" = [])),
+)]
+pub async fn create_daily_note(
+    Path(date_str): Path<String>,
+    State(state): State<NodeState>,
+) -> Result<Json<GraphNode>, ServerError> {
+    info!("Creating daily note for: {}", date_str);
+
+    let date = chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d").map_err(|e| {
+        ServerError::bad_request(format!("Invalid date format '{}': {}", date_str, e))
+    })?;
+
+    let title = format!("Daily Note — {}", date.format("%A, %B %d, %Y"));
+    let slug = format!("daily-{}", date_str);
+
+    let existing = state.repo().get_node_by_slug(&slug).await;
+
+    if let Ok(existing) = existing {
+        return Ok(Json(existing));
+    }
+
+    let node = GraphNode {
+        id: uuid::Uuid::new_v4().to_string(),
+        node_type: "daily_note".to_string(),
+        name: title,
+        slug: Some(slug),
+        description: Some(format!("Auto-created daily note for {}", date_str)),
+        content: None,
+        visibility: "private".to_string(),
+        weight: 1.0,
+        properties: serde_json::json!({
+            "date": date_str,
+            "year": date.format("%Y").to_string(),
+            "month": date.format("%m").to_string(),
+            "day": date.format("%d").to_string(),
+            "weekday": date.format("%A").to_string(),
+        }),
+        project_id: None,
+        document_id: None,
+        created_by: None,
+        is_active: true,
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+        deactivated_at: None,
+    };
+
+    let created = state.repo().create_node(&node).await?;
+    Ok(Json(created))
+}
+
+// ============================================================================
+// Router
+// ============================================================================
+
+pub fn create_node_router() -> axum::Router<NodeState> {
+    use axum::routing::{delete, get, post, put};
+
+    axum::Router::new()
+        .route("/nodes", post(create_node))
+        .route("/nodes", get(list_nodes))
+        .route("/nodes/cursor", get(list_nodes_cursor))
+        .route("/nodes/orphans", get(get_orphan_nodes))
+        .route("/nodes/daily/{date}", post(create_daily_note))
+        .route("/nodes/{node_id}", get(get_node))
+        .route("/nodes/{node_id}", put(update_node))
+        .route("/nodes/{node_id}", delete(delete_node))
+        .route("/edges", post(create_edge))
+        .route("/nodes/{node_id}/edges", get(get_node_edges))
+        .route("/edges/{edge_id}", delete(delete_edge))
+        .route("/graph/query", post(query_graph))
+        .route("/graph/stats", get(get_graph_stats))
+        .route("/graph/at", get(get_graph_at_time))
+        .route("/graph/diff", get(get_graph_diff))
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_node_request_construction() {
+        let req = CreateNodeRequest {
+            name: "Test Node".into(),
+            node_type: Some("concept".into()),
+            description: Some("A test concept".into()),
+            content: None,
+            visibility: None,
+            weight: None,
+            properties: None,
+            project_id: None,
+            document_id: None,
+            slug: None,
+        };
+        assert_eq!(req.name, "Test Node");
+        assert_eq!(req.node_type.as_deref(), Some("concept"));
+    }
+
+    #[test]
+    fn test_create_edge_request_construction() {
+        let req = CreateEdgeRequest {
+            source_id: "node-1".into(),
+            target_id: "node-2".into(),
+            edge_type: Some("references".into()),
+            label: None,
+            description: None,
+            weight: None,
+            confidence: None,
+            properties: None,
+            project_id: None,
+        };
+        assert_eq!(req.source_id, "node-1");
+        assert_eq!(req.target_id, "node-2");
+    }
+
+    #[test]
+    fn test_update_node_request_construction() {
+        let req = UpdateNodeRequest {
+            name: Some("Updated Name".into()),
+            slug: None,
+            description: None,
+            content: None,
+            visibility: None,
+            weight: Some(2.5),
+            properties: None,
+        };
+        assert_eq!(req.name.as_deref(), Some("Updated Name"));
+        assert_eq!(req.weight, Some(2.5));
+    }
+
+    #[test]
+    fn test_graph_query_request_construction() {
+        let req = GraphQueryRequest {
+            source_id: "node-1".into(),
+            direction: Some("outgoing".into()),
+            edge_type: None,
+            depth: Some(2),
+            target_id: Some("node-2".into()),
+            at: None,
+        };
+        assert_eq!(req.source_id, "node-1");
+        assert_eq!(req.depth, Some(2));
+        assert!(req.target_id.is_some());
+    }
+
+    #[test]
+    fn test_node_list_response_construction() {
+        let resp = NodeListResponse {
+            nodes: vec![],
+            total: 0,
+            page: 1,
+            page_size: 20,
+        };
+        assert_eq!(resp.total, 0);
+        assert_eq!(resp.page, 1);
+    }
+
+    #[test]
+    fn test_edge_list_response_construction() {
+        let resp = EdgeListResponse {
+            edges: vec![],
+            total: 0,
+        };
+        assert_eq!(resp.total, 0);
+    }
+}

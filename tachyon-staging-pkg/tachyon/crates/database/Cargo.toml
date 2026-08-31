@@ -1,0 +1,49 @@
+[package]
+name = "tachyon-database"
+version = "0.1.0"
+license = { workspace = true }
+rust-version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# Core Types
+tachyon-core = { path = "../core" }
+# NOTE: tachyon-rbac removed — zero imports; database crate implements RBAC storage directly via sqlx
+
+# Async Runtime
+tokio = { workspace = true }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "migrate", "json"] }
+
+# UUID generation
+uuid = { workspace = true, features = ["v4"] }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Date/Time Handling
+chrono = { workspace = true }
+
+# Error Handling
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Slug generation
+slug = "0.1"
+
+# OpenAPI schema generation
+utoipa = { version = "5", features = ["chrono", "uuid"] }
+
+[features]
+staging = []
+sqlite = ["sqlx/sqlite"]
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+serial_test = { workspace = true }
+pretty_assertions = "1.4"
+assert_matches = "1.5"

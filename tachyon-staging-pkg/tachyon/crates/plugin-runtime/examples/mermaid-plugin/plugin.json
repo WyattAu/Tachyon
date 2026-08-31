@@ -1,0 +1,16 @@
+{
+  "id": "tachyon/mermaid-renderer",
+  "name": "Mermaid Diagram Renderer",
+  "description": "Renders Mermaid code blocks to SVG diagram placeholders in Tachyon documents",
+  "author": "Tachyon Team",
+  "license": "MIT",
+  "version": "0.1.0",
+  "compatibility": {
+    "min_tachyon_version": "0.1.0",
+    "required_capabilities": [],
+    "requires_network": false,
+    "requires_filesystem": false
+  },
+  "extension_points": ["document.render"],
+  "tags": ["diagrams", "mermaid", "rendering", "visualization"]
+}

@@ -1,0 +1,412 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: check-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: check-${{ runner.os }}-cargo-
+
+      - name: Install Tauri system dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev
+
+      - name: Check workspace
+        working-directory: tachyon
+        run: cargo check --workspace --all-features
+
+      - name: Check WASM compilation
+        working-directory: tachyon
+        run: cargo check -p tachyon-editor --target wasm32-unknown-unknown
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: lint-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: lint-${{ runner.os }}-cargo-
+
+      - name: Check formatting
+        working-directory: tachyon
+        run: cargo fmt --all -- --check
+
+      - name: Install Tauri system dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev
+
+      - name: Run clippy
+        working-directory: tachyon
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: tachyon
+          POSTGRES_PASSWORD: tachyon
+          POSTGRES_DB: tachyon_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: test-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: test-${{ runner.os }}-cargo-
+
+      - name: Run workspace library tests
+        working-directory: tachyon
+        run: cargo test --workspace --all-features --lib -- --test-threads=1
+
+      - name: Run integration tests
+        working-directory: tachyon
+        env:
+          DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
+          TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
+        run: cargo test --workspace --all-features --test integration -- --test-threads=1
+
+  build:
+    name: Build Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [check, lint, test]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: build-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: build-${{ runner.os }}-cargo-
+
+      - name: Build backend
+        working-directory: tachyon
+        run: cargo build --release -p tachyon-server
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tachyon-server
+          path: tachyon/target/release/tachyon-server
+          retention-days: 7
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [check, lint]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: wasm-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: wasm-${{ runner.os }}-cargo-
+
+      - name: Install trunk
+        run: TMPDIR=/tmp cargo install trunk --version 0.21.14 --locked
+
+      - name: Build frontend
+        working-directory: tachyon/crates/frontend
+        run: trunk build --release
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: frontend-dist
+          path: tachyon/crates/frontend/dist
+          retention-days: 7
+
+  benchmark-lib:
+    name: Library Benchmarks (libbench)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 30
+    needs: [build]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: build-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: build-${{ runner.os }}-cargo-
+
+      - name: Run benchmarks
+        working-directory: tachyon
+        run: TMPDIR=/tmp cargo bench -p tachyon-benchmarks -- --output-format bencher | tee benchmark-results.txt
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: benchmark-results
+          path: tachyon/benchmark-results.txt
+          retention-days: 30
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: tachyon
+          POSTGRES_PASSWORD: tachyon
+          POSTGRES_DB: tachyon_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Cache tarpaulin binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cargo/bin/cargo-tarpaulin
+          key: cargo-tarpaulin-bin-v1
+
+      - name: Install tarpaulin
+        run: command -v cargo-tarpaulin || cargo install cargo-tarpaulin --version 0.31.0 --locked
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: cov-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: cov-${{ runner.os }}-cargo-
+
+      - name: Generate coverage
+        working-directory: tachyon
+        env:
+          DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
+          TEST_DATABASE_URL: postgres://tachyon:tachyon@localhost:5432/tachyon_test
+        run: cargo tarpaulin --workspace --exclude tachyon-testing --exclude tachyon-benchmarks --exclude tachyon-frontend --exclude tachyon-cli --exclude tachyon-desktop --exclude tachyon-desktop-app --lib --out xml --output-dir coverage/
+
+      - name: Check minimum coverage (60%)
+        working-directory: tachyon
+        run: |
+          COVERAGE=$(grep -oP 'line-rate="\K[^"]+' coverage/coverage.xml | head -1)
+          THRESHOLD=0.60
+          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+            echo "Coverage ${COVERAGE} is below threshold ${THRESHOLD}"
+            exit 1
+          fi
+          echo "Coverage ${COVERAGE} meets threshold ${THRESHOLD}"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-report
+          path: tachyon/coverage/
+          retention-days: 14
+
+  link-check:
+    name: Check Documentation Links
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Check for broken .specs/ references
+        run: |
+          COUNT=$(rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ .knowledge_graph/ ROADMAP.md --type md --files-with-matches 2>/dev/null | wc -l)
+          if [ "$COUNT" -gt 0 ]; then
+            echo "::warning::Found $COUNT files with .specs/ references"
+            rg '\.specs/' docs/ .adrs/ .reports/ .patterns/ .knowledge_graph/ ROADMAP.md --type md --files-with-matches
+          fi
+          echo "Link check complete"
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [build, build-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: tachyon:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  mutation:
+    name: Mutation Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: mutation-${{ runner.os }}-cargo-nocache-${{ github.run_id }}
+          restore-keys: |
+            mutation-${{ runner.os }}-cargo-
+
+      - name: Install cargo-mutants
+        run: |
+          cargo install cargo-mutants@27.0.0 --locked
+
+      - name: Run mutation tests
+        working-directory: tachyon
+        run: cargo mutants --no-times --file crates/core/src/ --file crates/database/src/ --file crates/search/src/ -- --test-threads=1
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: mutation-results
+          path: tachyon/mutants.out/
+          retention-days: 30
+
+  benchmarks-criterion:
+    name: Criterion Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tachyon/target
+          key: bench-${{ runner.os }}-cargo-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: bench-${{ runner.os }}-cargo-
+
+      - name: Restore criterion baseline
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: tachyon/target/criterion
+          key: criterion-baseline-${{ runner.os }}
+
+      - name: Run benchmarks
+        working-directory: tachyon
+        run: cargo bench --workspace --bench search --bench renderer --bench rbac -- --save-baseline main
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: criterion-reports
+          path: tachyon/target/criterion/
+          retention-days: 90

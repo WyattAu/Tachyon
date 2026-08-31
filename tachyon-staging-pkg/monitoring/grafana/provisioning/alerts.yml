@@ -1,0 +1,93 @@
+apiVersion: 1
+
+groups:
+  - name: tachyon-critical-alerts
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) /
+            sum(rate(http_requests_total[5m]))
+          ) * 100 > 1
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Error rate above 1%"
+          description: "The 5xx error rate is {{ $value | printf \"%.2f\" }}% (threshold: 1%)"
+          runbook_url: "https://docs.tachyon.local/runbooks/performance-degradation.html"
+
+      - alert: DatabasePoolExhaustion
+        expr: |
+          db_pool_connections_active / db_pool_connections_max > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Database pool utilization above 90%"
+          description: "Pool utilization is {{ $value | printf \"%.0f\" }}% (threshold: 90%)"
+          runbook_url: "https://docs.tachyon.local/runbooks/performance-degradation.html"
+
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Memory usage above 80%"
+          description: "Memory usage is {{ $value | printf \"%.0f\" }}% (threshold: 80%)"
+
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Instance {{ $labels.instance }} is down"
+          description: >
+            Instance {{ $labels.instance }} (job: {{ $labels.job }}) has been
+            unreachable for more than 1 minute.
+          runbook_url: "https://docs.tachyon.local/runbooks/service-down.html"
+
+  - name: tachyon-warning-alerts
+    rules:
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            sum(rate(cache_hits_total[10m])) /
+            sum(rate(cache_requests_total[10m]))
+          ) * 100 < 50
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Cache hit rate below 50%"
+          description: "Cache hit rate is {{ $value | printf \"%.0f\" }}% (threshold: 50%)"
+
+      - alert: DatabasePoolWarning
+        expr: |
+          db_pool_connections_active / db_pool_connections_max > 0.75
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Database pool utilization above 75%"
+          description: "Pool utilization is {{ $value | printf \"%.0f\" }}% (threshold: 75%)"
+
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000 > 300
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "P95 latency above 300ms"
+          description: "P95 latency is {{ $value | printf \"%.0f\" }}ms (threshold: 300ms)"

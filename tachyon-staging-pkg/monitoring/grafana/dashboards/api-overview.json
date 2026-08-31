@@ -1,0 +1,182 @@
+{
+  "dashboard": {
+    "uid": "tachyon-api-overview",
+    "title": "Tachyon API Overview",
+    "tags": ["tachyon", "api"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "type": "graph",
+        "title": "Request Rate",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[1m])",
+            "legendFormat": "{{method}} {{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "requests/sec", "logBase": 1, "show": true},
+          {"format": "short", "logBase": 1, "show": true}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "rightSide": true},
+        "description": "Request rate in requests per second across all endpoints"
+      },
+      {
+        "id": 2,
+        "type": "graph",
+        "title": "Error Rate (%)",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{status=~\"5..\"}[1m]) / rate(http_requests_total[1m]) * 100",
+            "legendFormat": "error rate",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "error rate", "logBase": 1, "show": true, "min": 0},
+          {"format": "short", "logBase": 1, "show": true}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "rightSide": true},
+        "description": "Percentage of requests returning 5xx status codes",
+        "thresholds": [
+          {"value": 1, "colorMode": "ok", "op": "lt", "fill": true, "line": true, "yaxis": "left"}
+        ]
+      },
+      {
+        "id": 3,
+        "type": "graph",
+        "title": "P50 / P95 / P99 Latency (ms)",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[1m])) * 1000",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[1m])) * 1000",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[1m])) * 1000",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms", "label": "latency", "logBase": 1, "show": true, "min": 0},
+          {"format": "short", "logBase": 1, "show": true}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "rightSide": true},
+        "description": "Request latency percentiles in milliseconds"
+      },
+      {
+        "id": 4,
+        "type": "graph",
+        "title": "Active WebSocket Connections",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "websocket_connections_active",
+            "legendFormat": "active connections",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "connections", "logBase": 1, "show": true, "min": 0},
+          {"format": "short", "logBase": 1, "show": true}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "rightSide": true},
+        "description": "Number of currently active WebSocket connections"
+      },
+      {
+        "id": 5,
+        "type": "graph",
+        "title": "Database Pool Utilization (%)",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "db_pool_connections_active / db_pool_connections_max * 100",
+            "legendFormat": "pool utilization",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "utilization", "logBase": 1, "show": true, "min": 0, "max": 100},
+          {"format": "short", "logBase": 1, "show": true}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "rightSide": true},
+        "description": "Database connection pool utilization as a percentage of max connections",
+        "thresholds": [
+          {"value": 80, "colorMode": "warning", "op": "gt", "fill": true, "line": true, "yaxis": "left"}
+        ]
+      },
+      {
+        "id": 6,
+        "type": "graph",
+        "title": "Cache Hit Rate (%)",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(cache_hits_total[1m]) / rate(cache_requests_total[1m]) * 100",
+            "legendFormat": "hit rate",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "hit rate", "logBase": 1, "show": true, "min": 0, "max": 100},
+          {"format": "short", "logBase": 1, "show": true}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "rightSide": true},
+        "description": "Cache hit rate as a percentage of total cache requests"
+      },
+      {
+        "id": 7,
+        "type": "piechart",
+        "title": "HTTP Status Code Distribution",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[1m])) by (status)",
+            "legendFormat": "{{status}}",
+            "refId": "A"
+          }
+        ],
+        "pieType": "pie",
+        "legend": {"show": true, "values": true},
+        "description": "Distribution of HTTP status codes over the last minute"
+      },
+      {
+        "id": 8,
+        "type": "bargauge",
+        "title": "Request Rate by Endpoint (Top 10)",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "topk(10, sum(rate(http_requests_total[1m])) by (endpoint))",
+            "legendFormat": "{{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "orientation": "horizontal",
+        "displayMode": "lcd",
+        "legend": {"show": true, "values": true, "calcs": ["mean"]},
+        "description": "Top 10 endpoints by request rate"
+      }
+    ]
+  },
+  "overwrite": false,
+  "inputs": []
+}

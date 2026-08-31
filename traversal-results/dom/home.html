@@ -1,0 +1,1159 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tachyon - A deterministic, high-performance knowledge management system with sub-15ms rendering and real-time collaboration.">
+    <meta name="theme-color" content="#2563eb">
+    <title>Tachyon - Knowledge Management System</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <!-- Tailwind CSS: tauri:// asset protocol only serves trunk-generated
+         files (index.html, *.js, *.wasm), not arbitrary files from dist.
+         In desktop mode, load from the backend HTTP server instead.
+         In web/dev mode, the dev server serves it from public/. -->
+    <script>
+        if (window.__TAURI__) {
+            // Desktop: load tailwind from backend server (cross-origin HTTP)
+            var s = document.createElement('script');
+            s.src = (window.tachyonApiUrl || 'http://localhost:8080/api/v1').replace(/\/api\/v1\/?$/, '') + '/tailwind.js';
+            s.onerror = function() { console.warn('[Tachyon] Tailwind CSS load failed'); };
+            document.write(s.outerHTML);
+        } else {
+            // Web: synchronous load from same origin (dev server serves public/)
+            document.write('<script src="/tailwind.js"><\/script>');
+        }
+    </script><script src="/tailwind.js"></script>
+    <script>
+        tailwind.config = { prefix: '' };
+    </script>
+    <!-- Debug: capture WASM loading errors (only when TACHYON_DEBUG >= 1) -->
+    <script>
+        // These run BEFORE trunk's module script, so they catch init failures.
+        // Tauri debug hooks relay console output to the debug log.
+        window.addEventListener('error', function(e) {
+            console.error('[Tachyon] window.error:', e.message, e.filename, e.lineno);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('[Tachyon] unhandledrejection:', e.reason);
+        });
+    </script>
+    <!-- Set API URL before WASM boots. Tauri on_page_load sets this via eval()
+    but there's a race: WASM may read it first. This inline script ensures it's
+    available immediately. Overridden by on_page_load eval if TACHYON_API_URL is set. -->
+    <script>
+        window.tachyonApiUrl = window.tachyonApiUrl || "http://localhost:8080/api/v1";
+    </script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                        display: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        'amoebic': '60% 40% 30% 70% / 60% 30% 70% 40%',
+                        'amoebic-alt': '30% 70% 70% 30% / 30% 30% 70% 70%',
+                        'amoebic-sm': '40% 60% 50% 50% / 50% 40% 60% 50%',
+                    },
+                    boxShadow: {
+                        'spatial': '4px 4px 0px 0px',
+                        'spatial-lg': '8px 8px 0px 0px',
+                        'spatial-xl': '12px 12px 0px 0px',
+                        'spatial-sm': '2px 2px 0px 0px',
+                        'spatial-accent': '4px 4px 0px 0px',
+                    },
+                    transitionTimingFunction: {
+                        'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        'spring-bounce': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        'spatial': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    },
+                },
+            },
+            plugins: [
+                // Prose classes for document rendering
+                function({ addUtilities }) {
+                    const newUtilities = {
+                        '.prose': {
+                            'color': '#374151',
+                            'line-height': '1.75',
+                            'max-width': '65ch',
+                        },
+                        '.prose-sm': {
+                            'font-size': '0.875rem',
+                            'line-height': '1.7142857',
+                        },
+                    }
+                    addUtilities(newUtilities)
+                },
+            ],
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            html {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+            body {
+                @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+            }
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb {
+                @apply bg-gray-300 dark:bg-gray-600 rounded;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                @apply bg-gray-400 dark:bg-gray-500;
+            }
+
+            /* Spatial Materialism: noise texture overlay */
+            body::before {
+                content: '';
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                pointer-events: none;
+                z-index: 9999;
+                opacity: 0.025;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+                background-repeat: repeat;
+                background-size: 256px 256px;
+            }
+
+            /* Amoebic containers */
+            .amoebic {
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            }
+            .amoebic-alt {
+                border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            }
+
+            /* Brutalist structure exposure */
+            .brutalist {
+                border: 2px solid currentColor;
+                border-radius: 0 !important;
+            }
+
+            /* Spatial depth layers */
+            .spatial-1 { box-shadow: 2px 2px 0px 0px rgba(0,0,0,0.15); }
+            .spatial-2 { box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.15); }
+            .spatial-3 { box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.12); }
+            .dark .spatial-1 { box-shadow: 2px 2px 0px 0px rgba(255,255,255,0.08); }
+            .dark .spatial-2 { box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.08); }
+            .dark .spatial-3 { box-shadow: 8px 8px 0px 0px rgba(255,255,255,0.06); }
+
+            /* Spring transition utility */
+            .transition-spring { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+            .transition-spatial { transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        }
+    </style>
+    <style>
+        @media print {
+            nav, .no-print, button, input, textarea, select,
+            .sidebar, .toolbar, .command-palette {
+                display: none !important;
+            }
+            main, .content, article {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            body {
+                font-size: 12pt;
+                line-height: 1.6;
+                color: #000;
+                background: #fff;
+            }
+            a[href]::after {
+                content: " (" attr(href) ")";
+                font-size: 0.8em;
+                color: #666;
+            }
+            h1, h2, h3, h4 {
+                page-break-after: avoid;
+            }
+            img, figure {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+    <style>
+        /* ── Design System Tokens ── */
+        :root {
+            /* ── Brand Overrides (White-Label) ── */
+            --brand-primary: #3B82F6;
+            --brand-secondary: #10B981;
+            --brand-logo: url('/logo.svg');
+
+            --color-primary-50: #eff6ff;
+            --color-primary-100: #dbeafe;
+            --color-primary-200: #bfdbfe;
+            --color-primary-300: #93c5fd;
+            --color-primary-400: #60a5fa;
+            --color-primary-500: #3b82f6;
+            --color-primary-600: #2563eb;
+            --color-primary-700: #1d4ed8;
+            --color-primary-800: #1e40af;
+            --color-primary-900: #1e3a8a;
+            --color-primary-950: #172554;
+
+            --color-gray-50: #f9fafb;
+            --color-gray-100: #f3f4f6;
+            --color-gray-200: #e5e7eb;
+            --color-gray-300: #d1d5db;
+            --color-gray-400: #9ca3af;
+            --color-gray-500: #6b7280;
+            --color-gray-600: #4b5563;
+            --color-gray-700: #374151;
+            --color-gray-800: #1f2937;
+            --color-gray-900: #111827;
+            --color-gray-950: #030712;
+
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-error: #ef4444;
+            --color-info: #3b82f6;
+
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.25rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --space-10: 2.5rem;
+            --space-12: 3rem;
+            --space-16: 4rem;
+            --space-20: 5rem;
+            --space-24: 6rem;
+            --space-32: 8rem;
+
+            --text-xs: 0.75rem;
+            --text-sm: 0.875rem;
+            --text-base: 1rem;
+            --text-lg: 1.125rem;
+            --text-xl: 1.25rem;
+            --text-2xl: 1.5rem;
+            --text-3xl: 1.875rem;
+            --text-4xl: 2.25rem;
+
+            --radius-sm: 0.25rem;
+            --radius-md: 0.375rem;
+            --radius-lg: 0.5rem;
+            --radius-xl: 0.75rem;
+            --radius-2xl: 1rem;
+            --radius-full: 9999px;
+
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+            --transition-fast: 150ms ease;
+            --transition-normal: 200ms ease;
+            --transition-slow: 300ms ease;
+
+            --radius-amoebic: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            --radius-amoebic-alt: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            --radius-brutalist: 0px;
+            --radius-sharp: 2px;
+
+            --shadow-spatial-1: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+            --shadow-spatial-2: 4px 4px 0px 0px rgba(0, 0, 0, 0.15);
+            --shadow-spatial-3: 8px 8px 0px 0px rgba(0, 0, 0, 0.12);
+
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --ease-spatial: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .dark {
+            --shadow-spatial-1: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+            --shadow-spatial-2: 4px 4px 0px 0px rgba(255, 255, 255, 0.08);
+            --shadow-spatial-3: 8px 8px 0px 0px rgba(255, 255, 255, 0.06);
+        }
+
+        /* ── Animations ── */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateX(-8px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes scale-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
+        .animate-slide-in { animation: slide-in 0.2s ease-out; }
+        .animate-scale-in { animation: scale-in 0.15s ease-out; }
+
+        /* ── Reduced Motion ── */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 0; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        * { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+        .dark * { scrollbar-color: #4b5563 transparent; }
+
+        /* ── Focus ── */
+        :focus-visible {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+            border-radius: 0;
+        }
+
+        /* ── Native Editor ── */
+        .native-editor {
+            position: relative;
+            overflow-y: auto;
+            overflow-x: auto;
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            scroll-behavior: smooth;
+            cursor: text;
+            color: #111827;
+            background-color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 22px;
+            white-space: pre;
+        }
+        .native-editor.dragging {
+            cursor: grabbing;
+            user-select: none;
+        }
+        .dark .native-editor {
+            color: #e5e7eb;
+            background-color: #111827;
+        }
+        .native-editor:focus {
+            outline: none;
+        }
+
+        .editor-line {
+            display: flex;
+            position: absolute;
+            left: 0;
+            right: 0;
+            white-space: pre;
+        }
+        .editor-line.active-line {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        .dark .editor-line.active-line {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .line-number {
+            width: 50px;
+            min-width: 50px;
+            text-align: right;
+            padding-right: 12px;
+            color: #6b7280;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .dark .line-number {
+            color: #4b5563;
+        }
+
+        .line-content {
+            flex: 1;
+            white-space: pre;
+            min-width: 0;
+        }
+        .line-content.word-wrap {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .editor-cursor {
+            position: absolute;
+            width: 2px;
+            background: #1f2937;
+            animation: editor-cursor-blink 1s step-end infinite;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .dark .editor-cursor {
+            background: #e5e7eb;
+        }
+        @keyframes editor-cursor-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .editor-selection {
+            background: rgba(0, 120, 215, 0.2);
+            position: absolute;
+            z-index: 5;
+            pointer-events: none;
+            border-radius: 1px;
+        }
+        .dark .editor-selection {
+            background: rgba(96, 165, 250, 0.25);
+        }
+
+        .editor-placeholder {
+            position: absolute;
+            top: 0;
+            left: 62px;
+            color: #9ca3af;
+            pointer-events: none;
+            user-select: none;
+        }
+        .dark .editor-placeholder {
+            color: #4b5563;
+        }
+
+        .editor-scroll-spacer {
+            width: 1px;
+            pointer-events: none;
+            visibility: hidden;
+        }
+
+        .native-editor-wrapper {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+        .native-editor-wrapper .native-editor {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .editor-indent-guide {
+            background: rgba(0, 0, 0, 0.08);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .dark .editor-indent-guide {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .editor-bracket-match {
+            background: rgba(0, 120, 215, 0.3);
+            border-radius: 2px;
+            z-index: 6;
+            pointer-events: none;
+        }
+        .dark .editor-bracket-match {
+            background: rgba(96, 165, 250, 0.35);
+        }
+
+        .search-highlight {
+            background: rgba(255, 215, 0, 0.3);
+            border-radius: 2px;
+        }
+        .dark .search-highlight {
+            background: rgba(255, 215, 0, 0.2);
+        }
+        .search-highlight-current {
+            background: rgba(255, 140, 0, 0.5);
+            border-radius: 2px;
+            border: 1px solid rgba(255, 140, 0, 0.6);
+        }
+        .dark .search-highlight-current {
+            background: rgba(255, 140, 0, 0.35);
+            border-color: rgba(255, 140, 0, 0.5);
+        }
+
+        .find-replace-panel {
+            display: flex;
+            flex-direction: column;
+            background: #1e1e2e;
+            border-bottom: 1px solid #444;
+            padding: 6px 8px;
+            gap: 4px;
+            font-size: 13px;
+            z-index: 100;
+        }
+
+        .dark .find-replace-panel {
+            background: #1e1e2e;
+            border-bottom-color: #444;
+        }
+
+        .find-row, .replace-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .find-input {
+            flex: 1;
+            min-width: 120px;
+            padding: 3px 8px;
+            border: 1px solid #555;
+            border-radius: 2px;
+            background: #2d2d3f;
+            color: #e0e0e0;
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .find-input:focus {
+            border-color: #60a5fa;
+        }
+
+        .find-count {
+            color: #888;
+            font-size: 11px;
+            white-space: nowrap;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .find-btn {
+            padding: 2px 6px;
+            border: 1px solid #555;
+            border-radius: 2px;
+            background: #2d2d3f;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .find-btn:hover {
+            background: #3d3d5f;
+        }
+
+        .find-btn-active {
+            background: #3b5998;
+            border-color: #60a5fa;
+            color: #fff;
+        }
+
+        .replace-btn {
+            background: #2d3f2d;
+        }
+
+        .replace-btn:hover {
+            background: #3d5f3d;
+        }
+
+        .editor-status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2px 12px;
+            font-size: 11px;
+            color: #6b7280;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .dark .editor-status-bar {
+            background: #1f2937;
+            border-top-color: #374151;
+            color: #9ca3af;
+        }
+        .editor-status-bar .status-left { }
+        .editor-status-bar .status-right { opacity: 0.7; }
+
+        /* ── Syntax Highlight Tokens ── */
+        .ed-text { color: inherit; }
+        .ed-whitespace { color: transparent; }
+
+        .ed-h1 { font-weight: 700; font-size: 1.4em; color: #1e40af; }
+        .ed-h2 { font-weight: 700; font-size: 1.25em; color: #1e40af; }
+        .ed-h3 { font-weight: 700; font-size: 1.1em; color: #1e40af; }
+        .ed-h4 { font-weight: 700; font-size: 1em; color: #374151; }
+        .ed-h5 { font-weight: 700; font-size: 0.95em; color: #374151; }
+        .ed-h6 { font-weight: 700; font-size: 0.9em; color: #6b7280; }
+
+        .dark .ed-h1 { color: #60a5fa; }
+        .dark .ed-h2 { color: #60a5fa; }
+        .dark .ed-h3 { color: #93c5fd; }
+        .dark .ed-h4 { color: #d1d5db; }
+        .dark .ed-h5 { color: #d1d5db; }
+        .dark .ed-h6 { color: #9ca3af; }
+
+        .ed-bold { font-weight: 700; }
+        .ed-italic { font-style: italic; }
+        .ed-bold-italic { font-weight: 700; font-style: italic; }
+        .ed-strikethrough { text-decoration: line-through; color: #6b7280; }
+        .dark .ed-strikethrough { color: #9ca3af; }
+
+        .ed-code-inline {
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            background: rgba(0, 0, 0, 0.06);
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 0.9em;
+            color: #be185d;
+        }
+        .dark .ed-code-inline {
+            background: rgba(255, 255, 255, 0.08);
+            color: #f472b6;
+        }
+
+        .ed-code-block {
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .dark .ed-code-block {
+            background: #1f2937;
+            color: #d1d5db;
+        }
+
+        /* Code syntax highlight tokens (One Dark inspired) */
+        .ed-keyword { color: #c678dd; }
+        .ed-string, .ed-character, .ed-embedded { color: #98c379; }
+        .ed-number, .ed-boolean { color: #d19a66; }
+        .ed-comment { color: #5c6370; font-style: italic; }
+        .ed-function, .ed-function-builtin { color: #61afef; }
+        .ed-type, .ed-type-builtin, .ed-constructor { color: #e5c07b; }
+        .ed-variable, .ed-variable-parameter { color: #e06c75; }
+        .ed-operator { color: #56b6c2; }
+        .ed-property, .ed-attribute, .ed-code-tag, .ed-label { color: #e06c75; }
+        .ed-constant { color: #e5c07b; }
+        .ed-string-escape, .ed-string-special { color: #56b6c2; }
+        .ed-punctuation, .ed-punctuation-bracket, .ed-punctuation-delimiter { color: #abb2bf; }
+        .ed-conditional, .ed-repeat, .ed-define, .ed-include { color: #c678dd; }
+        .ed-variable-builtin { color: #e5c07b; }
+
+        .ed-link { color: #2563eb; text-decoration: underline; }
+        .dark .ed-link { color: #60a5fa; }
+        .ed-link-url { color: #6b7280; font-style: italic; }
+        .dark .ed-link-url { color: #9ca3af; }
+        .ed-link-text { color: #2563eb; text-decoration: underline; }
+        .dark .ed-link-text { color: #60a5fa; }
+
+        .ed-image { color: #059669; }
+        .ed-image-url { color: #6b7280; font-style: italic; }
+        .ed-image-alt { color: #059669; }
+
+        .ed-wiki-link { color: #7c3aed; text-decoration: underline; }
+        .dark .ed-wiki-link { color: #a78bfa; }
+
+        .ed-blockquote {
+            border-left: 3px solid #d1d5db;
+            padding-left: 8px;
+            color: #6b7280;
+        }
+        .dark .ed-blockquote {
+            border-left-color: #4b5563;
+            color: #9ca3af;
+        }
+
+        .ed-list-marker { color: #059669; font-weight: 600; }
+        .dark .ed-list-marker { color: #34d399; }
+        .ed-task-marker { color: #059669; font-weight: 600; }
+        .dark .ed-task-marker { color: #34d399; }
+        .ed-list-item { color: inherit; }
+
+        .ed-hr { color: #d1d5db; }
+        .dark .ed-hr { color: #4b5563; }
+
+        .ed-table-header { font-weight: 700; color: #374151; }
+        .dark .ed-table-header { color: #d1d5db; }
+        .ed-table-cell { color: inherit; }
+        .ed-table-border { color: #d1d5db; }
+        .dark .ed-table-border { color: #4b5563; }
+
+        .ed-frontmatter { color: #6b7280; font-style: italic; }
+        .dark .ed-frontmatter { color: #9ca3af; }
+
+        .ed-tag { color: #2563eb; }
+        .dark .ed-tag { color: #60a5fa; }
+
+        /* ── Admonition Syntax Highlighting ── */
+        .ed-admonition-header {
+            color: #1e40af;
+            font-weight: 700;
+        }
+        .dark .ed-admonition-header {
+            color: #60a5fa;
+        }
+        .ed-admonition-content {
+            color: #374151;
+        }
+        .dark .ed-admonition-content {
+            color: #d1d5db;
+        }
+
+        /* ── Admonition Preview Styling ── */
+        .admonition {
+            border: 1px solid #d1d5db;
+            border-left: 4px solid #6b7280;
+            border-radius: 0;
+            padding: 12px 16px;
+            margin: 16px 0;
+            background: #f9fafb;
+        }
+        .dark .admonition {
+            background: #1f2937;
+            border-color: #374151;
+        }
+        .admonition-title {
+            font-weight: 700;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        .admonition-content {
+            font-size: 0.9375rem;
+            line-height: 1.6;
+        }
+        .admonition-note {
+            border-left-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .dark .admonition-note {
+            background: #1e3a5f;
+        }
+        .admonition-note .admonition-title {
+            color: #2563eb;
+        }
+        .dark .admonition-note .admonition-title {
+            color: #60a5fa;
+        }
+        .admonition-tip {
+            border-left-color: #10b981;
+            background: #ecfdf5;
+        }
+        .dark .admonition-tip {
+            background: #1a3a2a;
+        }
+        .admonition-tip .admonition-title {
+            color: #059669;
+        }
+        .dark .admonition-tip .admonition-title {
+            color: #34d399;
+        }
+        .admonition-info {
+            border-left-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .dark .admonition-info {
+            background: #1e3a5f;
+        }
+        .admonition-info .admonition-title {
+            color: #2563eb;
+        }
+        .dark .admonition-info .admonition-title {
+            color: #60a5fa;
+        }
+        .admonition-warning {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+        .dark .admonition-warning {
+            background: #3b2e1a;
+        }
+        .admonition-warning .admonition-title {
+            color: #d97706;
+        }
+        .dark .admonition-warning .admonition-title {
+            color: #fbbf24;
+        }
+        .admonition-danger {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+        .dark .admonition-danger {
+            background: #3b1a1a;
+        }
+        .admonition-danger .admonition-title {
+            color: #dc2626;
+        }
+        .dark .admonition-danger .admonition-title {
+            color: #f87171;
+        }
+        .admonition-caution {
+            border-left-color: #eab308;
+            background: #fefce8;
+        }
+        .dark .admonition-caution {
+            background: #3b3a1a;
+        }
+        .admonition-caution .admonition-title {
+            color: #ca8a04;
+        }
+        .dark .admonition-caution .admonition-title {
+            color: #facc15;
+        }
+
+        /* ── Editor Toolbar ── */
+        .editor-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 4px 8px;
+            border-bottom: 2px solid #111827;
+            background: #f9fafb;
+            overflow-x: auto;
+            flex-shrink: 0;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+        .dark .editor-toolbar {
+            border-bottom-color: #f9fafb;
+            background: #1f2937;
+        }
+
+        .editor-toolbar-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 28px;
+            padding: 2px 6px;
+            border: 2px solid transparent;
+            border-radius: 0;
+            background: transparent;
+            color: #374151;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 150ms var(--ease-spring);
+            white-space: nowrap;
+        }
+        @media (max-width: 767px) {
+            .editor-toolbar-btn {
+                min-width: 44px;
+                min-height: 44px;
+                height: 44px;
+                padding: 4px 8px;
+                font-size: 14px;
+            }
+            input, textarea, select {
+                font-size: 16px !important;
+            }
+        }
+        .editor-toolbar-btn:hover:not(:disabled) {
+            background: #f9fafb;
+            border-color: #111827;
+            box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+            transform: translate(-1px, -1px);
+        }
+        .dark .editor-toolbar-btn { color: #d1d5db; }
+        .dark .editor-toolbar-btn:hover:not(:disabled) {
+            background: #374151;
+            border-color: #f9fafb;
+            box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+            transform: translate(-1px, -1px);
+        }
+        .editor-toolbar-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .editor-toolbar-sep {
+            width: 2px;
+            height: 20px;
+            background: #111827;
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
+        .dark .editor-toolbar-sep { background: #f9fafb; }
+
+        /* ── Editor Search ── */
+        .editor-search {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: white;
+            border: 2px solid #111827;
+            border-radius: 0;
+            padding: 10px;
+            box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.15);
+            z-index: 50;
+            min-width: 340px;
+        }
+        .dark .editor-search {
+            background: #1f2937;
+            border-color: #f9fafb;
+            box-shadow: 4px 4px 0px 0px rgba(255, 255, 255, 0.08);
+        }
+
+        .editor-search-input {
+            flex: 1;
+            padding: 4px 8px;
+            border: 2px solid #111827;
+            border-radius: 0;
+            font-size: 13px;
+            outline: none;
+            min-width: 0;
+            transition: box-shadow 150ms var(--ease-spring);
+        }
+        .dark .editor-search-input {
+            background: #111827;
+            border-color: #f9fafb;
+            color: #e5e7eb;
+        }
+        .editor-search-input:focus {
+            box-shadow: 2px 2px 0px 0px rgba(37, 99, 235, 0.4);
+            transform: translate(-1px, -1px);
+        }
+
+        .editor-search-count { font-size: 11px; color: #6b7280; white-space: nowrap; min-width: 60px; text-align: center; }
+        .dark .editor-search-count { color: #9ca3af; }
+
+        .editor-search-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 26px; height: 26px; border: 2px solid #111827; border-radius: 0;
+            background: transparent; cursor: pointer; font-size: 12px; color: #374151;
+            transition: all 150ms var(--ease-spring);
+        }
+        .dark .editor-search-btn { border-color: #f9fafb; color: #d1d5db; }
+        .editor-search-btn:hover {
+            background: #f9fafb; box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15); transform: translate(-1px, -1px);
+        }
+        .dark .editor-search-btn:hover {
+            background: #374151; box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+        }
+
+        .editor-search-toggle { display: flex; align-items: center; gap: 2px; font-size: 11px; color: #6b7280; cursor: pointer; user-select: none; }
+        .dark .editor-search-toggle { color: #9ca3af; }
+        .editor-search-toggle input[type="checkbox"] { margin: 0; width: 14px; height: 14px; cursor: pointer; }
+
+        .editor-search-action-btn {
+            padding: 4px 10px; border: 2px solid #111827; border-radius: 0;
+            background: transparent; cursor: pointer; font-size: 12px; color: #374151;
+            white-space: nowrap; transition: all 150ms var(--ease-spring);
+        }
+        .dark .editor-search-action-btn { border-color: #f9fafb; color: #d1d5db; }
+        .editor-search-action-btn:hover {
+            background: #f9fafb; box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15); transform: translate(-1px, -1px);
+        }
+        .dark .editor-search-action-btn:hover {
+            background: #374151; box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+        }
+
+        /* ── Editor Preview ── */
+        .editor-preview { flex: 1; overflow-y: auto; padding: 24px; background: white; }
+        .dark .editor-preview { background: #111827; }
+
+        /* ── Editor Split View ── */
+        .editor-split-container { display: flex; flex-direction: column; height: 100%; }
+        .editor-split-controls {
+            display: flex; align-items: center; gap: 2px; padding: 4px 8px;
+            border-bottom: 2px solid #111827; background: #f9fafb;
+        }
+        .dark .editor-split-controls { border-bottom-color: #f9fafb; background: #1f2937; }
+
+        .editor-split-btn {
+            padding: 4px 10px; border: 2px solid transparent; border-radius: 0;
+            background: transparent; font-size: 12px; color: #6b7280; cursor: pointer;
+            transition: all 150ms var(--ease-spring);
+        }
+        .editor-split-btn:hover {
+            background: #f9fafb; color: #374151; border-color: #111827;
+            box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15); transform: translate(-1px, -1px);
+        }
+        .editor-split-btn.active {
+            background: #dbeafe; color: #1d4ed8; border-color: #111827;
+            box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.15);
+        }
+        .dark .editor-split-btn { color: #9ca3af; }
+        .dark .editor-split-btn:hover {
+            background: #374151; color: #d1d5db; border-color: #f9fafb;
+            box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+        }
+        .dark .editor-split-btn.active {
+            background: #1e3a8a; color: #60a5fa; border-color: #f9fafb;
+            box-shadow: 2px 2px 0px 0px rgba(255, 255, 255, 0.08);
+        }
+
+        .editor-split-content { display: flex; flex: 1; overflow: hidden; }
+        .editor-split-content.split-edit .editor-pane { flex: 1; }
+        .editor-split-content.split-preview .editor-pane { flex: 1; }
+        .editor-split-content.split-both .editor-pane { flex: 1; min-width: 0; }
+        .editor-split-divider {
+            width: 4px;
+            background: #374151;
+            flex-shrink: 0;
+            cursor: col-resize;
+            transition: background 0.15s;
+            position: relative;
+        }
+        .editor-split-divider:hover,
+        .editor-split-divider.dragging {
+            background: #3B82F6;
+        }
+        .editor-split-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 2px;
+            height: 30px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 1px;
+        }
+        .dark .editor-split-divider { background: #6b7280; }
+        .dark .editor-split-divider:hover,
+        .dark .editor-split-divider.dragging { background: #60a5fa; }
+
+        .editor-pane { display: flex; flex-direction: column; overflow: hidden; }
+        .editor-pane-full { width: 100%; }
+        .editor-pane-left { border-right: none; }
+        .editor-pane-right { border-left: none; }
+
+        /* Slash command menu */
+        .slash-command-menu {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-height: 240px;
+            overflow-y: auto;
+            min-width: 180px;
+            padding: 4px 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .dark .slash-command-menu {
+            background: #1f2937;
+            border-color: #374151;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        .slash-command-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .slash-command-item:hover,
+        .slash-command-item.selected {
+            background: #f3f4f6;
+        }
+        .dark .slash-command-item:hover,
+        .dark .slash-command-item.selected {
+            background: #374151;
+        }
+        .slash-command-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #111827;
+            min-width: 32px;
+        }
+        .dark .slash-command-label { color: #f9fafb; }
+        .slash-command-desc {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .dark .slash-command-desc { color: #9ca3af; }
+
+        /* ── Wiki-link styling ── */
+        .wikilink-content a.wikilink,
+        a.wikilink {
+            color: #2563eb;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.15s ease, text-decoration-color 0.15s ease;
+        }
+        .wikilink-content a.wikilink:hover,
+        a.wikilink:hover {
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .dark .wikilink-content a.wikilink,
+        .dark a.wikilink {
+            color: #60a5fa;
+        }
+        .dark .wikilink-content a.wikilink:hover,
+        .dark a.wikilink:hover {
+            color: #93c5fd;
+        }
+    </style>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#3B82F6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tachyon">
+    
+<script type="module">
+import init, * as bindings from '/tachyon-frontend-80d485d6ee3f1864.js';
+const wasm = await init({ module_or_path: '/tachyon-frontend-80d485d6ee3f1864_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+    <base href="/">
+    <script>
+        // Tauri desktop detection and API URL configuration.
+        // When running inside Tauri, the __TAURI__ global is injected.
+        // The frontend's ApiClient reads window.tachyonApiUrl to determine
+        // the backend API base URL. In desktop mode, we default to the
+        // local server but allow configuration via Tauri's IPC commands.
+        (function() {
+            if (window.__TAURI__) {
+                window.__TACHYON_DESKTOP__ = true;
+                // In desktop mode, the user runs `tachyon serve` on the default port.
+                // If not set by the user, default to the local server.
+                if (!window.tachyonApiUrl) {
+                    window.tachyonApiUrl = 'http://localhost:8080/api/v1';
+                }
+            }
+        })();
+    </script>
+<link rel="modulepreload" href="/tachyon-frontend-80d485d6ee3f1864.js" crossorigin="anonymous" integrity="sha384-E59bTrJF8BJDH6auUXeSuD0lQMS2VO5Khs5dlqbvPQZcyEv5rU0cout8T6Xwcm86"><link rel="preload" href="/tachyon-frontend-80d485d6ee3f1864_bg.wasm" crossorigin="anonymous" integrity="sha384-lmYVHimQk75TkNGtQphs1X9dQjr4QsyinhOPhsf9LZdNYkXAAXH0/3DiWpZ2MlkM" as="fetch" type="application/wasm"></head>
+<body>
+    <div id="app">
+        <noscript>
+            <div style="max-width:800px;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;">
+                <h1 style="font-size:2rem;font-weight:700;margin-bottom:0.5rem;">Tachyon</h1>
+                <p style="color:#666;margin-bottom:1.5rem;">A high-performance knowledge management platform</p>
+                <nav style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+                    <a href="/documents" style="display:block;padding:1.5rem;border:1px solid #e5e7eb;border-radius:0.5rem;text-decoration:none;color:inherit;">
+                        <h2 style="font-size:1.1rem;margin-bottom:0.25rem;">Documents</h2>
+                        <p style="color:#666;font-size:0.875rem;">View and manage your documents</p>
+                    </a>
+                    <a href="/search" style="display:block;padding:1.5rem;border:1px solid #e5e7eb;border-radius:0.5rem;text-decoration:none;color:inherit;">
+                        <h2 style="font-size:1.1rem;margin-bottom:0.25rem;">Search</h2>
+                        <p style="color:#666;font-size:0.875rem;">Search across all content</p>
+                    </a>
+                    <a href="/catalog" style="display:block;padding:1.5rem;border:1px solid #e5e7eb;border-radius:0.5rem;text-decoration:none;color:inherit;">
+                        <h2 style="font-size:1.1rem;margin-bottom:0.25rem;">Catalog</h2>
+                        <p style="color:#666;font-size:0.875rem;">Browse the project catalog</p>
+                    </a>
+                </nav>
+                <p style="margin-top:2rem;color:#999;font-size:0.875rem;">JavaScript is required for the full interactive experience.</p>
+            </div>
+        </noscript>
+    </div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
+
+
+<style><!----></style><!----><div class="min-h-screen bg-gray-50 dark:bg-gray-950"><a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-none focus:text-sm focus:font-medium">Skip to main content</a><div style="display: none;" class="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden transition-opacity duration-200"><!----></div><!----><aside class="fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out -translate-x-full md:translate-x-0 transition-all duration-300 bg-white dark:bg-gray-950 border-r-2 border-gray-900 dark:border-gray-100" id="main-nav" role="navigation" aria-label="Main navigation"><div class="h-full flex flex-col"><!----><div class="p-4 border-b border-gray-200 dark:border-gray-700"><div class="flex items-center justify-between"><div class="flex items-center"><div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center"><span class="text-white font-bold text-lg">T</span></div><span class="ml-3 text-lg font-semibold text-gray-900 dark:text-white">Tachyon</span></div><button class="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" aria-label="Close sidebar"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div></div><!----><nav class="flex-1 p-2 space-y-1 overflow-y-auto no-print"><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/" title="Home" aria-label="Home"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.52l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><!----></svg><span class="ml-3">Home</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/dashboard" title="Dashboard" aria-label="Dashboard"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect height="9" rx="1" width="7" x="3" y="3"></rect><rect height="5" rx="1" width="7" x="14" y="3"></rect><rect height="9" rx="1" width="7" x="14" y="12"></rect><rect height="5" rx="1" width="7" x="3" y="16"></rect><!----></svg><span class="ml-3">Dashboard</span></a><!----><div class="pt-2 pb-1 px-2"><span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Server</span></div><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/documents" title="Documents" aria-label="Documents"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.70.706l3.58 3.58A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path><path d="M14 2v5a1 1 0 0 0 1 1h5"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path><!----></svg><span class="ml-3">Documents</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/spaces" title="Spaces" aria-label="Spaces"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path><!----></svg><span class="ml-3">Spaces</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/graph" title="Graph" aria-label="Graph"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6a9 9 0 0 0-9 9V3"></path><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><!----></svg><span class="ml-3">Graph</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/tags" title="Tags" aria-label="Tags"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.58 2.58A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .586 1.41l8.70 8.70a2.42 2.42 0 0 0 3.42 0l6.58-6.58a2.42 2.42 0 0 0 0-3.42z"></path><circle cx="7.5" cy="7.5" fill="currentColor" r=".5"></circle><!----></svg><span class="ml-3">Tags</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/teams" title="Teams" aria-label="Teams"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.12a4 4 0 0 1 0 7.74"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle><!----></svg><span class="ml-3">Teams</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/search" title="Search" aria-label="Search"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle><!----></svg><span class="ml-3">Search</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/import" title="Import" aria-label="Import"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m17 8-5-5-5 5"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><!----></svg><span class="ml-3">Import</span></a><!----><div class="pt-2 pb-1 px-2"><span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Local</span></div><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/local" title="Local Documents" aria-label="Local Documents"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"></path><!----></svg><span class="ml-3">Local Documents</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/servers" title="Server Connections" aria-label="Server Connections"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect height="8" rx="2" ry="2" width="20" x="2" y="2"></rect><rect height="8" rx="2" ry="2" width="20" x="2" y="14"></rect><line x1="6" x2="6.01" y1="6" y2="6"></line><line x1="6" x2="6.01" y1="18" y2="18"></line><!----></svg><span class="ml-3">Server Connections</span></a><!----><div class="pt-2 pb-1 px-2"><span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Admin</span></div><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/catalog" title="Catalog" aria-label="Catalog"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path><path d="M12 22V12"></path><polyline points="3.29 7 12 12 20.71 7"></polyline><path d="m7.5 4.27 9 5.15"></path><!----></svg><span class="ml-3">Catalog</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/templates" title="Templates" aria-label="Templates"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect height="7" rx="1" width="18" x="3" y="3"></rect><rect height="7" rx="1" width="9" x="3" y="14"></rect><rect height="7" rx="1" width="5" x="16" y="14"></rect><!----></svg><span class="ml-3">Templates</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/plugins" title="Plugins" aria-label="Plugins"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.01 3.01 1 1 0 0 0-.474 1.68l1.68 1.68a2.41 2.41 0 0 1 0 3.41L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.01 3.01 1 1 0 0 1 .474 1.68l-1.68 1.68a2.41 2.41 0 0 1-3.41 0L8.61 19.61a1 1 0 0 0-1.68.47 2.5 2.5 0 1 1-3.01-3.01 1 1 0 0 0 .474-1.68l-1.68-1.68a2.41 2.41 0 0 1 0-3.41L4.39 8.61a1 1 0 0 1 1.68.47 2.5 2.5 0 1 0 3.01-3.01 1 1 0 0 1-.474-1.68l1.68-1.68a2.41 2.41 0 0 1 3.41 0z"></path><!----></svg><span class="ml-3">Plugins</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/ssg" title="Static Site" aria-label="Static Site"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path><!----></svg><span class="ml-3">Static Site</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/billing" title="Billing" aria-label="Billing"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect height="14" rx="2" width="20" x="2" y="5"></rect><line x1="2" x2="22" y1="10" y2="10"></line><!----></svg><span class="ml-3">Billing</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/audit" title="Audit Log" aria-label="Audit Log"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12h-5"></path><path d="M15 8h-5"></path><path d="M19 17V5a2 2 0 0 0-2-2H4"></path><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"></path><!----></svg><span class="ml-3">Audit Log</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/admin/roles" title="Admin" aria-label="Admin"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><!----></svg><span class="ml-3">Admin</span></a><!----><div class="pt-2 pb-1 px-2"><span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Account</span></div><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/settings" title="Settings" aria-label="Settings"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.67 4.13a2.34 2.34 0 0 1 4.65 0 2.34 2.34 0 0 0 3.31 1.91 2.34 2.34 0 0 1 2.33 4.03 2.34 2.34 0 0 0 0 3.83 2.34 2.34 0 0 1-2.33 4.03 2.34 2.34 0 0 0-3.31 1.91 2.34 2.34 0 0 1-4.65 0 2.34 2.34 0 0 0-3.32-1.91 2.34 2.34 0 0 1-2.33-4.03 2.34 2.34 0 0 0 0-3.83A2.34 2.34 0 0 1 6.35 6.05a2.34 2.34 0 0 0 3.31-1.91"></path><circle cx="12" cy="12" r="3"></circle><!----></svg><span class="ml-3">Settings</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/settings/branding" title="Branding" aria-label="Branding"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"></path><circle cx="13.5" cy="6.5" fill="currentColor" r=".5"></circle><circle cx="17.5" cy="10.5" fill="currentColor" r=".5"></circle><circle cx="6.5" cy="12.5" fill="currentColor" r=".5"></circle><circle cx="8.5" cy="7.5" fill="currentColor" r=".5"></circle><!----></svg><span class="ml-3">Branding</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/settings/themes" title="Themes" aria-label="Themes"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m14.62 17.89-10.68-2.91"></path><path d="M18.37 2.62a1 1 0 1 1 3.00 3.00L17.36 9.64a.5.5 0 0 0 0 .707l.944.94a2.41 2.41 0 0 1 0 3.40l-.944.94a.5.5 0 0 1-.707 0L8.35 7.34a.5.5 0 0 1 0-.707l.944-.944a2.41 2.41 0 0 1 3.40 0l.944.94a.5.5 0 0 0 .707 0z"></path><path d="M9 8c-1.80 2.71-3.97 3.46-6.58 3.94a.507.50 0 0 0-.302.81l7.32 8.88a1 1 0 0 0 1.18.204C12.73 20.40 16 16.79 16 15"></path><!----></svg><span class="ml-3">Themes</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/settings/webhooks" title="Webhooks" aria-label="Webhooks"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path><!----></svg><span class="ml-3">Webhooks</span></a><a class="flex items-center p-3 rounded-none transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-spring" href="/profile" title="Profile" aria-label="Profile"><svg class="" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle><!----></svg><span class="ml-3">Profile</span></a></nav><!----><div class="hidden md:block p-2 border-t border-gray-200 dark:border-gray-700 no-print"><button class="w-full p-3 min-h-[44px] text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-none flex items-center justify-center" aria-label="Toggle sidebar"><svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button></div></div></aside><!----><div class="md:ml-64 transition-all duration-300"><!----><header class="sticky top-0 z-20 bg-white dark:bg-gray-950 border-b-2 border-gray-900 dark:border-gray-100 spatial-1 no-print" role="banner"><div class="px-4 md:px-6 py-4 flex items-center justify-between"><div class="flex items-center gap-3"><button class="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" aria-label="Open menu"><svg class="w-6 h-6" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button><h1 class="text-xl font-semibold text-gray-900 dark:text-white">Tachyon</h1></div><div class="flex items-center space-x-4"><button class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-200 dark:border-gray-600 transition-colors" aria-label="Search documents"><svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span class="hidden md:inline">Local Docs</span><kbd class="hidden md:inline text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded px-1.5 py-0.5 font-mono">Ctrl+K</kbd></button><button class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded border border-gray-200 dark:border-gray-600 transition-colors" aria-label="Open search (Cmd+K)"><svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg><span class="hidden md:inline">Search...</span><kbd class="hidden md:inline text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded px-1.5 py-0.5 font-mono">⌘K</kbd></button><a href="/api/docs" target="_blank" rel="noopener noreferrer" class="hidden sm:inline text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">API Docs</a><!----><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-500"><!----></div><span class="text-xs text-gray-500 dark:text-gray-400">Online</span><!----><!----></div><!----><button class="p-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-none hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors" aria-label="Theme: System" title="Current: System (click to switch)"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><g><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v4h8V6zm-3 7h2v2H9v-2zm-4 3h10a1 1 0 011 1v1a1 1 0 01-1 1H5a1 1 0 01-1-1v-1a1 1 0 011-1z" clip-rule="evenodd"></path></g></svg></button><div class="relative"><button class="relative p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" aria-haspopup="true" aria-expanded="false" aria-controls="notification-panel" aria-label="Notifications"><svg class="h-5 w-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg><span><!----></span></button><div style="display: none;" class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-none shadow-lg border-2 border-gray-900 dark:border-gray-100 z-50" id="notification-panel" role="menu" tabindex="-1" aria-live="assertive"><div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"><span class="text-sm font-semibold text-gray-900 dark:text-white">Notifications</span><span><!----></span></div><div class="max-h-64 overflow-y-auto"><div class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">No notifications</div></div></div></div><!----><!----><a class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" href="/login">Sign In</a></div></div></header><!----><main class="p-4 sm:p-6" id="main-content" role="main"><div><h1 class="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Welcome to Tachyon</h1><p class="text-gray-600 dark:text-gray-400 mb-8">A high - performance knowledge management platform</p><!----><h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Quick Links</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><a class="block bg-white dark:bg-gray-800 rounded-none shadow p-6 border-2 border-gray-900 dark:border-gray-100 hover:border-blue-500 dark:hover:border-blue-500 transition-colors" href="/documents"><div class="flex items-center mb-3"><div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-none flex items-center justify-center mr-3"><svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><h3 class="text-lg font-semibold text-gray-900 dark:text-white">Documents</h3></div><p class="text-gray-500 dark:text-gray-400">View and manage your documents</p></a><a class="block bg-white dark:bg-gray-800 rounded-none shadow p-6 border-2 border-gray-900 dark:border-gray-100 hover:border-blue-500 dark:hover:border-blue-500 transition-colors" href="/search"><div class="flex items-center mb-3"><div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-none flex items-center justify-center mr-3"><svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><h3 class="text-lg font-semibold text-gray-900 dark:text-white">Search</h3></div><p class="text-gray-500 dark:text-gray-400">Search across all content</p></a><a class="block bg-white dark:bg-gray-800 rounded-none shadow p-6 border-2 border-gray-900 dark:border-gray-100 hover:border-blue-500 dark:hover:border-blue-500 transition-colors" href="/catalog"><div class="flex items-center mb-3"><div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-none flex items-center justify-center mr-3"><svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><h3 class="text-lg font-semibold text-gray-900 dark:text-white">Catalog</h3></div><p class="text-gray-500 dark:text-gray-400">Browse the project catalog</p></a></div></div></main></div><div style="display: none;" class="fixed inset-0 z-50 bg-black/50"><!----></div><div style="display: none;" class="fixed inset-0 z-50 flex items-start sm:justify-center pt-[10vh] sm:pt-[20vh] px-4"><div><div class="w-full max-w-lg bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 spatial-3 overflow-hidden" role="dialog" aria-modal="true" aria-label="Command palette"><div class="flex items-center px-4 border-b border-gray-200 dark:border-gray-700"><svg class="h-5 w-5 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg><input class="w-full min-h-[44px] px-3 py-3 bg-transparent text-gray-900 dark:text-gray-100 outline-none" type="text" placeholder="Search documents, commands..." aria-label="Search commands"><kbd class="text-xs text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 flex-shrink-0">ESC</kbd></div><div class="max-h-80 overflow-y-auto py-2" role="listbox" aria-label="Command results"><div><div class="px-4 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Navigation</div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100" role="option" aria-selected="true"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Dashboard</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Documents</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Graph</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Search</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Settings</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Go to Catalog</span></button><div class="px-4 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Actions</div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></g></svg><span>Create Document</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></g></svg><span>Toggle Dark Mode</span></button><div style="display:none"><!----></div><button class="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50" role="option" aria-selected="false"><svg class="h-4 w-4 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></g></svg><span>Sign Out</span></button><!----></div></div><div class="px-4 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400 text-center"><span class="hidden sm:inline">↑↓ Navigate · ↵ Select · Esc Close</span><span class="sm:hidden">Tap to select</span></div></div></div></div><div style="display: none;" class="fixed inset-0 z-50 bg-black/50"><!----></div><div style="display: none;" class="fixed inset-0 z-50 flex items-start sm:justify-center pt-[10vh] sm:pt-[15vh] px-4"><div class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-none border-2 border-gray-900 dark:border-gray-100 spatial-3 overflow-hidden" role="dialog" aria-label="Search local documents"><div class="flex items-center px-4 border-b border-gray-200 dark:border-gray-700 gap-3"><svg class="h-5 w-5 text-gray-400 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg><input class="w-full min-h-[44px] px-3 py-3 bg-transparent text-gray-900 dark:text-gray-100 outline-none placeholder-gray-400" id="client-search-input" type="text" placeholder="Search local documents..." aria-label="Search local documents"><!----><!----><!----><!----></div><div class="max-h-96 overflow-y-auto"><div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Type to search your local documents</div></div><div class="px-4 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400 text-center flex items-center justify-center gap-3"><span>Searching local documents</span><span class="text-gray-300 dark:text-gray-600">·</span><span>Esc to close</span></div></div></div><!----><!----></div></body></html>

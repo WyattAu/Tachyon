@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tachyon
+      POSTGRES_USER: tachyon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tachyon -d tachyon"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      DATABASE_URL: postgres://tachyon:${POSTGRES_PASSWORD:-changeme}@postgres:5432/tachyon
+      TACHYON_JWT_SECRETS: ${TACHYON_JWT_SECRETS:?Set TACHYON_JWT_SECRETS in .env}
+      TACHYON_HOST: 0.0.0.0
+      TACHYON_PORT: "8080"
+      TACHYON_LOG_FORMAT: json
+      TACHYON_LOG_LEVEL: ${TACHYON_LOG_LEVEL:-info}
+      TACHYON_SECURITY_DEVELOPMENT: "false"
+      TACHYON_DB_MAX_CONNECTIONS: ${TACHYON_DB_MAX_CONNECTIONS:-20}
+      TACHYON_DB_MIN_CONNECTIONS: ${TACHYON_DB_MIN_CONNECTIONS:-5}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  pgdata:

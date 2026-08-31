@@ -1,0 +1,1185 @@
+{
+  "timestamp": "2026-06-14T05:26:33.069Z",
+  "baseUrl": "http://192.168.1.191:8080",
+  "totalRoutes": 25,
+  "summary": {
+    "ok": 25,
+    "auth_required": 0,
+    "empty": 0,
+    "not_found": 0,
+    "server_error": 0,
+    "error": 0
+  },
+  "totalA11yIssues": 0,
+  "results": [
+    {
+      "index": 0,
+      "path": "/",
+      "name": "home",
+      "auth": false,
+      "url": "http://192.168.1.191:8080/",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/home.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/home.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "warning",
+          "text": "Error with Permissions-Policy header: Unrecognized feature: 'ambient-light-sensor'."
+        },
+        {
+          "type": "warning",
+          "text": "Error with Permissions-Policy header: Unrecognized feature: 'battery'."
+        },
+        {
+          "type": "warning",
+          "text": "Error with Permissions-Policy header: Unrecognized feature: 'document-domain'."
+        },
+        {
+          "type": "warning",
+          "text": "Error with Permissions-Policy header: Unrecognized feature: 'execution-while-not-rendered'."
+        },
+        {
+          "type": "warning",
+          "text": "Error with Permissions-Policy header: Unrecognized feature: 'execution-while-out-of-viewport'."
+        },
+        {
+          "type": "warning",
+          "text": "Error with Permissions-Policy header: Unrecognized feature: 'navigation-override'."
+        },
+        {
+          "type": "warning",
+          "text": "Error with Permissions-Policy header: Unrecognized feature: 'publickey-credentials'."
+        },
+        {
+          "type": "warning",
+          "text": "Error with Permissions-Policy header: Unrecognized feature: 'wake-lock'."
+        },
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/ 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Connecting to 'http://localhost:8080/api/v1/documents?page=1&page_size=100&' violates the following Content Security Policy directive: \"connect-src 'self' ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com\". The action has been blocked."
+        },
+        {
+          "type": "error",
+          "text": "Fetch API cannot load http://localhost:8080/api/v1/documents?page=1&page_size=100&. Refused to connect because it violates the document's Content Security Policy."
+        },
+        {
+          "type": "error",
+          "text": "Connecting to 'http://localhost:8080/api/v1/notifications/unread-count' violates the following Content Security Policy directive: \"connect-src 'self' ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com\". The action has been blocked."
+        },
+        {
+          "type": "error",
+          "text": "Fetch API cannot load http://localhost:8080/api/v1/notifications/unread-count. Refused to connect because it violates the document's Content Security Policy."
+        },
+        {
+          "type": "error",
+          "text": "Connecting to 'http://localhost:8080/api/v1/notifications?include_read=true&limit=10&' violates the following Content Security Policy directive: \"connect-src 'self' ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com\". The action has been blocked."
+        },
+        {
+          "type": "error",
+          "text": "Fetch API cannot load http://localhost:8080/api/v1/notifications?include_read=true&limit=10&. Refused to connect because it violates the document's Content Security Policy."
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3832,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 338,
+      "linkCount": 29,
+      "buttonCount": 16,
+      "inputCount": 2,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 1,
+      "path": "/login",
+      "name": "login",
+      "auth": false,
+      "url": "http://192.168.1.191:8080/login",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/login.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/login.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/login 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3842,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 2,
+      "path": "/register",
+      "name": "register",
+      "auth": false,
+      "url": "http://192.168.1.191:8080/register",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/register.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/register.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/register 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3851,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 342,
+      "linkCount": 30,
+      "buttonCount": 17,
+      "inputCount": 7,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 3,
+      "path": "/local",
+      "name": "local",
+      "auth": false,
+      "url": "http://192.168.1.191:8080/local",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/local.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/local.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/local 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3844,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 323,
+      "linkCount": 27,
+      "buttonCount": 16,
+      "inputCount": 2,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 4,
+      "path": "/servers",
+      "name": "servers",
+      "auth": false,
+      "url": "http://192.168.1.191:8080/servers",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/servers.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/servers.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/servers 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3839,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 323,
+      "linkCount": 26,
+      "buttonCount": 17,
+      "inputCount": 2,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 5,
+      "path": "/dashboard",
+      "name": "dashboard",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/dashboard",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/dashboard.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/dashboard.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/dashboard 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3858,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 6,
+      "path": "/documents",
+      "name": "documents",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/documents",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/documents.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/documents.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/documents 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3927,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 7,
+      "path": "/documents/test-doc/edit",
+      "name": "document-edit",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/documents/test-doc/edit",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/document-edit.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/document-edit.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/documents/test-doc/edit 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 4035,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 8,
+      "path": "/documents/test-doc",
+      "name": "document-view",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/documents/test-doc",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/document-view.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/document-view.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/documents/test-doc 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3932,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 9,
+      "path": "/graph",
+      "name": "graph",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/graph",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/graph.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/graph.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/graph 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 5035,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 10,
+      "path": "/teams",
+      "name": "teams",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/teams",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/teams.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/teams.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/teams 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3907,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 11,
+      "path": "/teams/test-team",
+      "name": "team-view",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/teams/test-team",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/team-view.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/team-view.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/teams/test-team 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3952,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 12,
+      "path": "/search",
+      "name": "search",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/search",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/search.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/search.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/search 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3941,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 13,
+      "path": "/catalog",
+      "name": "catalog",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/catalog",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/catalog.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/catalog.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/catalog 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3980,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 14,
+      "path": "/tags",
+      "name": "tags",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/tags",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/tags.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/tags.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/tags 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3829,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 15,
+      "path": "/settings",
+      "name": "settings",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/settings",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/settings.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/settings.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/settings 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3867,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 16,
+      "path": "/admin/roles",
+      "name": "admin-roles",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/admin/roles",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/admin-roles.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/admin-roles.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/admin/roles 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3852,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 17,
+      "path": "/templates",
+      "name": "templates",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/templates",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/templates.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/templates.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/templates 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3858,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 18,
+      "path": "/plugins",
+      "name": "plugins",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/plugins",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/plugins.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/plugins.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/plugins 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3860,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 19,
+      "path": "/spaces",
+      "name": "spaces",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/spaces",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/spaces.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/spaces.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/spaces 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3862,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 20,
+      "path": "/ssg",
+      "name": "ssg",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/ssg",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/ssg.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/ssg.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/ssg 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3897,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 21,
+      "path": "/billing",
+      "name": "billing",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/billing",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/billing.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/billing.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/billing 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3906,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 22,
+      "path": "/audit",
+      "name": "audit",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/audit",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/audit.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/audit.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/audit 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 4890,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 23,
+      "path": "/profile",
+      "name": "profile",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/profile",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/profile.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/profile.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/profile 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 4143,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    },
+    {
+      "index": 24,
+      "path": "/onboarding",
+      "name": "onboarding",
+      "auth": true,
+      "url": "http://192.168.1.191:8080/login?return=/onboarding",
+      "status": "ok",
+      "httpStatus": 200,
+      "domSnapshot": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/dom/onboarding.html",
+      "screenshotPath": "/home/wyatt/dev/src/github.com/WyattAu/Tachyon/traversal-results/screenshots/onboarding.png",
+      "errors": [],
+      "warnings": [],
+      "consoleMessages": [
+        {
+          "type": "error",
+          "text": "[Tachyon] window.error: Uncaught ReferenceError: tailwind is not defined http://192.168.1.191:8080/onboarding 47"
+        },
+        {
+          "type": "warning",
+          "text": "The `integrity` attribute is currently ignored for preload destinations that do not support subresource integrity. See https://crbug.com/981419 for more information"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        }
+      ],
+      "networkErrors": [],
+      "loadTime": 3916,
+      "hasContent": true,
+      "title": "Tachyon - Knowledge Management System",
+      "elementCount": 375,
+      "linkCount": 30,
+      "buttonCount": 20,
+      "inputCount": 6,
+      "imageCount": 0,
+      "a11yIssues": []
+    }
+  ]
+}

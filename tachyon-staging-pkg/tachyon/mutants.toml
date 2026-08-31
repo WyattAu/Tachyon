@@ -1,0 +1,14 @@
+[default]
+baseline = "cargo test --workspace --exclude tachyon-frontend --exclude tachyon-testing --lib"
+exclude = [
+    "tachyon-desktop",
+    "tachyon-desktop-app",
+    "tachyon-frontend",
+    "tachyon-testing",
+]
+minimum_score = 80.0
+exclude_from_mutants = [
+    "tachyon-cli",
+    "tachyon-ssg",
+    "tachyon-storage",
+]

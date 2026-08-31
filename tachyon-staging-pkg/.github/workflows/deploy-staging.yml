@@ -1,0 +1,184 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Staging Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=staging
+
+      - name: Build and push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile.server
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=staging
+          cache-to: type=gha,scope=staging,mode=max
+          build-args: |
+            RUSTFLAGS=-C target-cpu=x86-64-v3
+
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build-and-push
+    permissions:
+      contents: read
+      packages: write
+    environment:
+      name: staging
+    steps:
+      - name: Check prerequisites
+        id: check
+        run: |
+          if [ -z "${{ secrets.STAGING_HOST }}" ]; then
+            echo "STAGING_HOST secret not configured - skipping deployment"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        if: steps.check.outputs.skip != 'true'
+
+      - name: Log in to Container Registry
+        if: steps.check.outputs.skip != 'true'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set deployment version
+        if: steps.check.outputs.skip != 'true'
+        id: deploy-vars
+        run: |
+          echo "version=${{ needs.build-and-push.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          echo "prev_version=staging-previous" >> "$GITHUB_OUTPUT"
+
+      - name: Tag previous image for rollback
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging || true
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-previous || true
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-previous || true
+
+      - name: Deploy via SSH
+        if: steps.check.outputs.skip != 'true'
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/tachyon
+            export REGISTRY=${{ env.REGISTRY }}
+            export IMAGE_NAME=${{ env.IMAGE_NAME }}
+            export VERSION=${{ steps.deploy-vars.outputs.version }}
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull backend frontend
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: deploy
+    if: needs.deploy.result == 'success'
+    steps:
+      - name: Check prerequisites
+        id: check
+        run: |
+          if [ -z "${{ secrets.STAGING_HOST }}" ]; then
+            echo "STAGING_HOST secret not configured - skipping health check"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check /health endpoint
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          MAX_RETRIES=10
+          RETRY_INTERVAL=5
+          for i in $(seq 1 $MAX_RETRIES); do
+            if curl -sf "https://${{ secrets.STAGING_HOST }}/health" | jq -e '.status == "healthy"' >/dev/null 2>&1; then
+              echo "Health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Waiting... (attempt $i/$MAX_RETRIES)"
+            sleep $RETRY_INTERVAL
+          done
+          echo "::error::Health check failed after $MAX_RETRIES attempts"
+          exit 1
+
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [deploy, health-check]
+    if: always() && needs.deploy.result == 'success' && needs.health-check.result == 'failure'
+    environment:
+      name: staging
+    steps:
+      - name: Rollback to previous image
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/tachyon
+            export REGISTRY=${{ env.REGISTRY }}
+            export IMAGE_NAME=${{ env.IMAGE_NAME }}
+            echo "Rolling back to staging-previous..."
+            docker pull $REGISTRY/$IMAGE_NAME:staging-previous
+            docker tag $REGISTRY/$IMAGE_NAME:staging-previous $REGISTRY/$IMAGE_NAME:staging
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+            echo "Rollback complete"

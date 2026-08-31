@@ -1,0 +1,1658 @@
+// Server configuration module
+// Manages server configuration for HTTP/2, TLS, and authentication
+
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap};
+use std::time::Duration;
+
+/// Supported database backends.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum DatabaseBackend {
+    #[default]
+    Postgresql,
+    Sqlite,
+    Mysql,
+}
+
+/// Server configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerConfig {
+    /// Server host
+    pub host: String,
+    /// Server port
+    pub port: u16,
+    /// Database backend type
+    #[serde(default)]
+    pub database_backend: DatabaseBackend,
+    /// Database URL (PostgreSQL connection string)
+    pub database_url: String,
+    /// Legacy database path (for backwards compatibility)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub database_path: Option<String>,
+    /// Cache size in MB
+    pub cache_size_mb: usize,
+    /// Enable TLS
+    pub enable_tls: bool,
+    /// TLS certificate path
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tls_cert_path: Option<String>,
+    /// TLS key path
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tls_key_path: Option<String>,
+    /// JWT configuration
+    pub jwt: JwtConfig,
+    /// API key configuration
+    pub api_keys: ApiKeyConfig,
+    /// CORS configuration
+    pub cors: CorsConfig,
+    /// WebSocket configuration
+    pub websocket: WebSocketConfig,
+    /// Guest login configuration
+    pub guest: GuestConfig,
+    /// Rate limiting configuration
+    pub rate_limit: RateLimitConfig,
+    /// Security headers configuration
+    pub security: SecurityConfig,
+    /// Site configuration for SEO and SSR
+    pub site: SiteConfig,
+    /// Logging configuration
+    pub log: LogConfig,
+    /// OAuth2 configuration
+    pub oauth2: OAuth2Config,
+    /// OIDC SSO provider configurations (keyed by provider name)
+    #[serde(default)]
+    pub sso_oidc: HashMap<String, crate::sso::OidcConfig>,
+    /// SAML 2.0 SSO configuration
+    #[serde(default)]
+    pub sso_saml: Option<crate::sso::SamlConfig>,
+    /// LDAP SSO configuration
+    #[serde(default)]
+    pub sso_ldap: Option<crate::sso::LdapConfig>,
+    /// TrueLayer payment configuration
+    pub truelayer: TrueLayerConfig,
+    /// Magic link (passwordless) authentication configuration
+    pub magic_link: MagicLinkConfig,
+    /// SMS OTP authentication configuration
+    pub sms_otp: SmsOtpConfig,
+    /// SMTP URL for email delivery (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smtp_url: Option<String>,
+    /// From address for outgoing emails (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smtp_from: Option<String>,
+    /// SMTP username for authentication
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smtp_username: Option<String>,
+    /// SMTP password for authentication
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smtp_password: Option<String>,
+    /// SMTP port override
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smtp_port: Option<u16>,
+    /// Whether to use TLS for SMTP connections
+    #[serde(default = "default_true")]
+    pub smtp_tls: bool,
+    /// HTTP API URL for email delivery fallback (e.g., Mailgun/SendGrid)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email_http_api_url: Option<String>,
+    /// API key for HTTP email delivery
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email_http_api_key: Option<String>,
+    /// Database connection pool maximum connections
+    pub db_max_connections: u32,
+    /// Database connection pool minimum connections
+    pub db_min_connections: u32,
+    /// Database connection acquire timeout in milliseconds
+    pub db_acquire_timeout_ms: u64,
+    /// Database connection idle timeout in seconds
+    pub db_idle_timeout_secs: u64,
+    /// Redis URL for pub/sub message relay (horizontal scaling).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub redis_pubsub_url: Option<String>,
+    /// CDN edge caching configuration.
+    #[serde(default)]
+    pub cdn: CdnConfig,
+    /// White-label branding configuration
+    #[serde(default)]
+    pub brand: BrandConfig,
+    /// Read replica URLs for search/analytics offloading.
+    #[serde(default)]
+    pub read_replica_urls: Vec<String>,
+    /// Whether the database is behind PgBouncer (affects connection settings).
+    #[serde(default)]
+    pub pgbouncer_enabled: bool,
+}
+
+/// JWT configuration for token-based authentication
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JwtConfig {
+    /// JWT signing secrets. The first entry is used for signing new tokens;
+    /// all entries are tried when validating existing tokens (enables rotation).
+    pub secrets: Vec<String>,
+    /// Token expiration time in seconds
+    pub expiration_secs: u64,
+    /// Issuer for JWT claims
+    pub issuer: String,
+    /// Audience for JWT claims
+    pub audience: String,
+    /// Enable JWT key rotation detection logging.
+    /// When true and multiple secrets are configured, validates against all
+    /// secrets and logs when a non-primary secret is used.
+    #[serde(default = "default_jwt_rotation_enabled")]
+    pub rotation_enabled: bool,
+}
+
+fn default_jwt_rotation_enabled() -> bool {
+    true
+}
+
+impl JwtConfig {
+    /// The active signing key (always the first secret).
+    pub fn signing_secret(&self) -> &str {
+        self.secrets.first().map(|s| s.as_str()).unwrap_or("")
+    }
+
+    /// Whether rotation is effectively active (enabled AND multiple secrets configured).
+    pub fn is_rotation_active(&self) -> bool {
+        self.rotation_enabled && self.secrets.len() > 1
+    }
+}
+
+/// API key configuration for service account authentication
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiKeyConfig {
+    /// Enable API key authentication
+    pub enabled: bool,
+    /// Header name for API key (default: "X-API-Key")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header_name: Option<String>,
+    /// Prefix for API keys (e.g., "tchk_")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_prefix: Option<String>,
+}
+
+/// CORS configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CorsConfig {
+    /// Enable CORS
+    pub enabled: bool,
+    /// Allowed origins (use "*" for any)
+    pub allowed_origins: Vec<String>,
+    /// Allowed methods
+    pub allowed_methods: Vec<String>,
+    /// Allowed headers
+    pub allowed_headers: Vec<String>,
+    /// Exposed headers
+    pub exposed_headers: Vec<String>,
+    /// Allow credentials
+    pub allow_credentials: bool,
+    /// Max age for preflight requests (seconds)
+    pub max_age_secs: Option<u64>,
+}
+
+/// WebSocket configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebSocketConfig {
+    /// Enable WebSocket support
+    pub enabled: bool,
+    /// WebSocket path
+    pub path: String,
+    /// Maximum message size in bytes
+    pub max_message_size: usize,
+    /// Connection timeout in seconds
+    pub connection_timeout_secs: u64,
+    /// Heartbeat interval in seconds
+    pub heartbeat_interval_secs: u64,
+    /// Maximum concurrent connections
+    pub max_connections: usize,
+    /// Maximum concurrent connections across all rooms (cluster-wide soft limit).
+    pub max_cluster_connections: usize,
+}
+
+/// Guest login and public access configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GuestConfig {
+    /// Enable guest login (auto-authenticate as guest user)
+    pub guest_login_enabled: bool,
+    /// Enable public notes access (no authentication required)
+    pub public_notes_enabled: bool,
+    /// Guest user ID (for auto-authentication)
+    pub guest_user_id: String,
+}
+
+/// Rate limiting configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RateLimitConfig {
+    /// Enable rate limiting
+    pub enabled: bool,
+    /// Redis URL for distributed rate limiting (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub redis_url: Option<String>,
+    /// Default requests per minute
+    pub default_requests_per_minute: u32,
+    /// Cleanup interval for in-memory store (seconds)
+    pub cleanup_interval_secs: u64,
+    /// Per-endpoint rate limits
+    #[serde(default)]
+    pub endpoint_limits: BTreeMap<String, EndpointRateLimit>,
+}
+
+/// Per-endpoint rate limit
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EndpointRateLimit {
+    /// Maximum requests allowed
+    pub max_requests: u32,
+    /// Time window in seconds
+    pub window_secs: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct EndpointRateLimitJsonEntry {
+    max: u32,
+    window: u64,
+}
+
+/// Security configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityConfig {
+    /// Enable security headers
+    pub enable_security_headers: bool,
+    /// Whether the server is in development mode (affects CSP and other headers)
+    #[serde(default = "default_true")]
+    pub development: bool,
+    /// Environment mode (affects CSP and other headers)
+    pub environment: String,
+    /// Enable HSTS (Strict Transport Security)
+    #[serde(default = "default_true")]
+    pub hsts_enabled: bool,
+    /// Enable HSTS (Strict Transport Security) — legacy alias
+    #[serde(default)]
+    pub enable_hsts: bool,
+    /// HSTS max age in seconds
+    pub hsts_max_age: u64,
+    /// HSTS include subdomains
+    pub hsts_include_subdomains: bool,
+    /// HSTS preload
+    pub hsts_preload: bool,
+    /// Content Security Policy report-only mode
+    pub csp_report_only: bool,
+    /// Custom CSP directives (override defaults)
+    #[serde(default)]
+    pub csp_directives: BTreeMap<String, String>,
+    /// Enable Content-Security-Policy header
+    #[serde(default = "default_true")]
+    pub csp_enabled: bool,
+    /// Override default CSP with a custom value
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub csp_custom: Option<String>,
+    /// Enable Permissions-Policy header
+    #[serde(default = "default_true")]
+    pub permissions_policy: bool,
+    /// Enable Cross-Origin-Embedder-Policy header
+    pub coep_enabled: bool,
+    /// Allowed frame ancestors for CSP (e.g., "'none'", "'self'", `<https://example.com>`)
+    #[serde(default = "default_frame_ancestors")]
+    pub frame_ancestors: String,
+    /// Trusted origins for CORS (in addition to configured origins)
+    #[serde(default)]
+    pub trusted_origins: Vec<String>,
+    /// Allowed CORS origins for security policy enforcement
+    #[serde(default = "default_cors_allowed_origins")]
+    pub cors_allowed_origins: Vec<String>,
+    /// Maximum request body size in bytes
+    #[serde(default = "default_max_request_size_bytes")]
+    pub max_request_size_bytes: usize,
+    /// Session expiry time in hours
+    #[serde(default = "default_session_expiry_hours")]
+    pub session_expiry_hours: u64,
+    /// Maximum number of concurrent sessions per user
+    #[serde(default = "default_max_concurrent_sessions")]
+    pub max_concurrent_sessions: usize,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_frame_ancestors() -> String {
+    "'none'".to_string()
+}
+
+fn default_cors_allowed_origins() -> Vec<String> {
+    vec!["http://localhost:8080".to_string()]
+}
+
+fn default_max_request_size_bytes() -> usize {
+    10 * 1024 * 1024
+}
+
+fn default_session_expiry_hours() -> u64 {
+    24
+}
+
+fn default_max_concurrent_sessions() -> usize {
+    100
+}
+
+impl SecurityConfig {
+    pub fn is_hsts_enabled(&self) -> bool {
+        self.hsts_enabled || self.enable_hsts
+    }
+
+    pub fn is_development(&self) -> bool {
+        self.development || self.environment == "development"
+    }
+}
+
+/// Site configuration for SEO and server-side rendering
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SiteConfig {
+    /// Site title (e.g., "Tachyon")
+    pub title: String,
+    /// Site description for meta tags
+    pub description: String,
+    /// Canonical base URL (e.g., `<https://tachyon.dev>`)
+    pub base_url: String,
+    /// Theme color for mobile browsers
+    pub theme_color: String,
+    /// OG image URL (default site-wide image)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub og_image: Option<String>,
+    /// Custom template directory path (overrides defaults)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub template_dir: Option<String>,
+}
+
+/// Logging configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogConfig {
+    /// Log format: "text" (default) or "json" (for production)
+    pub format: String,
+    /// Log level override (e.g., "info", "debug", "warn")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level: Option<String>,
+}
+
+/// TrueLayer configuration for open banking payments
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrueLayerConfig {
+    /// Enable TrueLayer payment processing
+    pub enabled: bool,
+    /// TrueLayer client ID
+    pub client_id: String,
+    /// TrueLayer client secret
+    pub client_secret: String,
+    /// Environment: "sandbox" or "production"
+    pub environment: String,
+    /// TrueLayer merchant account ID
+    pub merchant_account_id: String,
+    /// Webhook secret for signature verification
+    pub webhook_secret: String,
+}
+
+impl Default for TrueLayerConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            client_id: String::new(),
+            client_secret: String::new(),
+            environment: "sandbox".to_string(),
+            merchant_account_id: String::new(),
+            webhook_secret: String::new(),
+        }
+    }
+}
+
+/// Magic link (passwordless) authentication configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MagicLinkConfig {
+    /// Enable magic link authentication
+    pub enabled: bool,
+    /// Token time-to-live in seconds (default: 900 = 15 minutes)
+    pub ttl_secs: u64,
+    /// Base URL for magic link callbacks (default: uses site.base_url)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+}
+
+impl Default for MagicLinkConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            ttl_secs: 900,
+            base_url: None,
+        }
+    }
+}
+
+/// SMS OTP authentication configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SmsOtpConfig {
+    pub enabled: bool,
+    pub ttl_secs: u64,
+    pub provider: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twilio_account_sid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twilio_auth_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twilio_from_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sms_api_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sms_api_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sms_from_number: Option<String>,
+}
+
+impl Default for SmsOtpConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            ttl_secs: 300,
+            provider: "twilio".to_string(),
+            twilio_account_sid: None,
+            twilio_auth_token: None,
+            twilio_from_number: None,
+            sms_api_url: None,
+            sms_api_key: None,
+            sms_from_number: None,
+        }
+    }
+}
+
+/// White-label branding configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BrandConfig {
+    /// Company or product name displayed in the UI
+    pub company_name: String,
+    /// URL to the logo image (SVG recommended, 200x50px)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logo_url: Option<String>,
+    /// URL to the favicon (SVG or ICO, 32x32px minimum)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub favicon_url: Option<String>,
+    /// Primary brand color (hex, e.g., "#3B82F6")
+    pub primary_color: String,
+    /// Secondary brand color (hex, e.g., "#10B981")
+    pub secondary_color: String,
+    /// Custom CSS injected into the page head
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_css: Option<String>,
+    /// Custom domain for white-label deployments
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_domain: Option<String>,
+}
+
+impl Default for BrandConfig {
+    fn default() -> Self {
+        Self {
+            company_name: "Tachyon".to_string(),
+            logo_url: None,
+            favicon_url: None,
+            primary_color: "#3B82F6".to_string(),
+            secondary_color: "#10B981".to_string(),
+            custom_css: None,
+            custom_domain: None,
+        }
+    }
+}
+
+/// CDN edge caching configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CdnConfig {
+    /// CDN provider name (cloudflare, fastly, custom).
+    pub provider: String,
+    /// CDN base URL for static assets (e.g., https://cdn.example.com).
+    pub base_url: Option<String>,
+    /// Cache TTL for static assets in seconds.
+    pub static_ttl_secs: u64,
+    /// Cache TTL for API responses in seconds.
+    pub api_ttl_secs: u64,
+    /// Whether CDN proxy is active.
+    pub enabled: bool,
+}
+
+impl Default for CdnConfig {
+    fn default() -> Self {
+        Self {
+            provider: "cloudflare".to_string(),
+            base_url: std::env::var("TACHYON_CDN_BASE_URL").ok(),
+            static_ttl_secs: 3600,
+            api_ttl_secs: 60,
+            enabled: std::env::var("TACHYON_CDN_ENABLED")
+                .map(|v| v == "true" || v == "1")
+                .unwrap_or(false),
+        }
+    }
+}
+
+/// OAuth2 provider configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct OAuth2Config {
+    /// Enable OAuth2 authentication
+    pub enabled: bool,
+    /// Google OAuth2 client ID
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub google_client_id: Option<String>,
+    /// Google OAuth2 client secret
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub google_client_secret: Option<String>,
+    /// GitHub OAuth2 client ID
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub github_client_id: Option<String>,
+    /// GitHub OAuth2 client secret
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub github_client_secret: Option<String>,
+    /// OAuth2 redirect base URL (e.g., "http://localhost:8080")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub redirect_base_url: Option<String>,
+}
+
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            host: "0.0.0.0".to_string(),
+            port: 8080,
+            database_backend: DatabaseBackend::default(),
+            database_url: "postgres://tachyon:tachyon@127.0.0.1:5433/tachyon".to_string(),
+            database_path: None,
+            cache_size_mb: 256,
+            enable_tls: false,
+            tls_cert_path: None,
+            tls_key_path: None,
+            jwt: JwtConfig::default(),
+            api_keys: ApiKeyConfig::default(),
+            cors: CorsConfig::default(),
+            websocket: WebSocketConfig::default(),
+            guest: GuestConfig::default(),
+            rate_limit: RateLimitConfig::default(),
+            security: SecurityConfig::default(),
+            site: SiteConfig::default(),
+            log: LogConfig::default(),
+            oauth2: OAuth2Config::default(),
+            sso_oidc: HashMap::new(),
+            sso_saml: None,
+            sso_ldap: None,
+            truelayer: TrueLayerConfig::default(),
+            magic_link: MagicLinkConfig::default(),
+            sms_otp: SmsOtpConfig::default(),
+            smtp_url: None,
+            smtp_from: None,
+            smtp_username: None,
+            smtp_password: None,
+            smtp_port: None,
+            smtp_tls: true,
+            email_http_api_url: None,
+            email_http_api_key: None,
+            db_max_connections: 10,
+            db_min_connections: 2,
+            db_acquire_timeout_ms: 5000,
+            db_idle_timeout_secs: 600,
+            redis_pubsub_url: None,
+            cdn: CdnConfig::default(),
+            brand: BrandConfig::default(),
+            read_replica_urls: Vec::new(),
+            pgbouncer_enabled: false,
+        }
+    }
+}
+
+impl Default for JwtConfig {
+    fn default() -> Self {
+        Self {
+            secrets: vec!["change-this-secret-key-in-production".to_string()],
+            expiration_secs: 24 * 60 * 60, // 24 hours
+            issuer: "tachyon-server".to_string(),
+            audience: "tachyon-client".to_string(),
+            rotation_enabled: true,
+        }
+    }
+}
+
+impl Default for ApiKeyConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            header_name: Some("X-API-Key".to_string()),
+            key_prefix: Some("tchk_".to_string()),
+        }
+    }
+}
+
+impl Default for CorsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            allowed_origins: vec!["*".to_string()],
+            allowed_methods: vec![
+                "GET".to_string(),
+                "POST".to_string(),
+                "PUT".to_string(),
+                "DELETE".to_string(),
+                "PATCH".to_string(),
+                "OPTIONS".to_string(),
+            ],
+            allowed_headers: vec![
+                "Content-Type".to_string(),
+                "Authorization".to_string(),
+                "Accept".to_string(),
+                "X-API-Key".to_string(),
+                "X-Request-ID".to_string(),
+            ],
+            exposed_headers: vec![],
+            allow_credentials: false,
+            max_age_secs: Some(3600), // 1 hour
+        }
+    }
+}
+
+impl Default for WebSocketConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            path: "/ws".to_string(),
+            max_message_size: 10 * 1024 * 1024, // 10MB
+            connection_timeout_secs: 300,       // 5 minutes
+            heartbeat_interval_secs: 30,        // 30 seconds
+            max_connections: 1000,
+            max_cluster_connections: 10_000,
+        }
+    }
+}
+
+impl Default for GuestConfig {
+    fn default() -> Self {
+        Self {
+            guest_login_enabled: false,
+            public_notes_enabled: false,
+            guest_user_id: "00000000-0000-0000-0000-000000000099".to_string(),
+        }
+    }
+}
+
+impl Default for RateLimitConfig {
+    fn default() -> Self {
+        let mut endpoint_limits = BTreeMap::new();
+
+        endpoint_limits.insert(
+            "/api/v1/auth/login".to_string(),
+            EndpointRateLimit {
+                max_requests: 5,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/register".to_string(),
+            EndpointRateLimit {
+                max_requests: 3,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/refresh".to_string(),
+            EndpointRateLimit {
+                max_requests: 10,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/guest".to_string(),
+            EndpointRateLimit {
+                max_requests: 3,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/password-reset".to_string(),
+            EndpointRateLimit {
+                max_requests: 3,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/magic-link/request".to_string(),
+            EndpointRateLimit {
+                max_requests: 3,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/magic-link/verify".to_string(),
+            EndpointRateLimit {
+                max_requests: 10,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/sms-otp/request".to_string(),
+            EndpointRateLimit {
+                max_requests: 3,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/auth/sms-otp/verify".to_string(),
+            EndpointRateLimit {
+                max_requests: 10,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/api/v1/documents".to_string(),
+            EndpointRateLimit {
+                max_requests: 100,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/health".to_string(),
+            EndpointRateLimit {
+                max_requests: 1000,
+                window_secs: 60,
+            },
+        );
+        endpoint_limits.insert(
+            "/ready".to_string(),
+            EndpointRateLimit {
+                max_requests: 1000,
+                window_secs: 60,
+            },
+        );
+
+        Self {
+            enabled: true,
+            redis_url: None,
+            default_requests_per_minute: 1000,
+            cleanup_interval_secs: 60,
+            endpoint_limits,
+        }
+    }
+}
+
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        Self {
+            enable_security_headers: true,
+            development: true,
+            environment: "development".to_string(),
+            hsts_enabled: true,
+            enable_hsts: true,
+            hsts_max_age: 31536000,
+            hsts_include_subdomains: true,
+            hsts_preload: true,
+            csp_report_only: false,
+            csp_directives: BTreeMap::new(),
+            csp_enabled: true,
+            csp_custom: None,
+            permissions_policy: true,
+            coep_enabled: true,
+            frame_ancestors: "'none'".to_string(),
+            trusted_origins: Vec::new(),
+            cors_allowed_origins: default_cors_allowed_origins(),
+            max_request_size_bytes: default_max_request_size_bytes(),
+            session_expiry_hours: default_session_expiry_hours(),
+            max_concurrent_sessions: default_max_concurrent_sessions(),
+        }
+    }
+}
+
+impl Default for SiteConfig {
+    fn default() -> Self {
+        Self {
+            title: "Tachyon".to_string(),
+            description: "A deterministic, high-performance knowledge management system."
+                .to_string(),
+            base_url: "http://localhost:8080".to_string(),
+            theme_color: "#2563eb".to_string(),
+            og_image: None,
+            template_dir: None,
+        }
+    }
+}
+
+impl Default for LogConfig {
+    fn default() -> Self {
+        Self {
+            format: "text".to_string(),
+            level: None,
+        }
+    }
+}
+
+pub fn static_dir() -> String {
+    std::env::var("TACHYON_STATIC_DIR").unwrap_or_else(|_| "dist".to_string())
+}
+
+impl ServerConfig {
+    /// Create a new server configuration
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Get the server bind address
+    pub fn bind_address(&self) -> String {
+        format!("{}:{}", self.host, self.port)
+    }
+
+    /// Get the WebSocket full path
+    pub fn websocket_path(&self) -> String {
+        self.websocket.path.clone()
+    }
+
+    /// Get JWT token expiration as Duration
+    pub fn jwt_expiration(&self) -> Duration {
+        Duration::from_secs(self.jwt.expiration_secs)
+    }
+
+    /// Get API key header name
+    pub fn api_key_header(&self) -> String {
+        self.api_keys
+            .header_name
+            .clone()
+            .unwrap_or_else(|| "X-API-Key".to_string())
+    }
+
+    /// Validate configuration
+    ///
+    /// # Returns
+    /// `Ok(())` if all checks pass, `Err(Vec<String>)` with all error messages otherwise.
+    pub fn validate(&self) -> Result<(), Vec<String>> {
+        let mut errors = Vec::new();
+        let mut warnings = Vec::new();
+
+        if self.host.is_empty() {
+            errors.push("Host cannot be empty".to_string());
+        }
+
+        if self.port == 0 {
+            errors.push("Port must be greater than 0".to_string());
+        }
+
+        if !self.database_url.is_empty()
+            && !self.database_url.starts_with("postgres://")
+            && !self.database_url.starts_with("postgresql://")
+        {
+            errors.push("Database URL must start with postgres:// or postgresql://".to_string());
+        }
+
+        if self.enable_tls {
+            if self.tls_cert_path.is_none()
+                || self.tls_cert_path.as_ref().is_none_or(|p| p.is_empty())
+            {
+                errors.push("TLS certificate path required when TLS is enabled".to_string());
+            }
+            if self.tls_key_path.is_none()
+                || self.tls_key_path.as_ref().is_none_or(|p| p.is_empty())
+            {
+                errors.push("TLS key path required when TLS is enabled".to_string());
+            }
+        }
+
+        if self.jwt.secrets.is_empty() {
+            errors.push("At least one JWT secret must be configured".to_string());
+        }
+
+        for (i, secret) in self.jwt.secrets.iter().enumerate() {
+            if secret.len() < 32 {
+                errors.push(format!(
+                    "JWT secret #{} must be at least 32 characters",
+                    i + 1
+                ));
+            } else if secret.len() < 64 {
+                warnings.push(format!(
+                    "JWT secret #{} is less than 64 characters; consider using a longer secret for better security",
+                    i + 1
+                ));
+            }
+
+            if secret == "change-this-secret-key-in-production" {
+                errors.push(format!(
+                    "JWT secret #{} must be changed from default value. Set TACHYON_JWT_SECRETS or TACHYON_JWT_SECRET environment variable.",
+                    i + 1
+                ));
+            }
+        }
+
+        if self.jwt.expiration_secs == 0 {
+            errors.push("JWT expiration must be greater than 0".to_string());
+        }
+
+        if self.cache_size_mb == 0 {
+            errors.push("Cache size must be greater than 0".to_string());
+        }
+
+        if self.db_max_connections < self.db_min_connections {
+            errors.push(
+                "Database max_connections must be greater than or equal to min_connections"
+                    .to_string(),
+            );
+        }
+
+        if self.db_acquire_timeout_ms == 0 {
+            errors.push("Database acquire timeout must be greater than 0".to_string());
+        }
+
+        if self.cors.enabled {
+            for origin in &self.cors.allowed_origins {
+                if origin != "*"
+                    && !origin.starts_with("http://")
+                    && !origin.starts_with("https://")
+                {
+                    warnings.push(format!(
+                        "CORS origin '{}' does not look like a valid URL",
+                        origin
+                    ));
+                }
+            }
+            if self.cors.allowed_origins.contains(&"*".to_string()) {
+                if self.security.is_development() {
+                    warnings.push(
+                        "CORS is enabled with wildcard origin - this should be restricted in production"
+                            .to_string(),
+                    );
+                } else {
+                    errors.push(
+                        "CORS wildcard origin (*) is not allowed in production. Set TACHYON_CORS_ALLOWED_ORIGINS to specific origins.".to_string(),
+                    );
+                }
+            }
+        }
+
+        if self.security.max_request_size_bytes == 0 {
+            errors.push("Security max_request_size_bytes must be greater than 0".to_string());
+        }
+        if self.security.max_request_size_bytes > 100 * 1024 * 1024 {
+            warnings.push(
+                "Security max_request_size_bytes exceeds 100MB; consider a smaller limit"
+                    .to_string(),
+            );
+        }
+        if self.security.session_expiry_hours == 0 {
+            errors.push("Security session_expiry_hours must be greater than 0".to_string());
+        }
+        if self.security.session_expiry_hours > 720 {
+            warnings.push(
+                "Security session_expiry_hours exceeds 30 days; consider a shorter expiry"
+                    .to_string(),
+            );
+        }
+        if self.security.max_concurrent_sessions == 0 {
+            errors.push("Security max_concurrent_sessions must be greater than 0".to_string());
+        }
+
+        if let Some(ref level) = self.log.level {
+            const VALID_LEVELS: &[&str] = &["trace", "debug", "info", "warn", "error"];
+            if !VALID_LEVELS.contains(&level.as_str()) {
+                warnings.push(format!(
+                    "Log level '{}' is not a standard value (expected: trace, debug, info, warn, error)",
+                    level
+                ));
+            }
+        }
+
+        for w in &warnings {
+            tracing::warn!(config_warning = %w, "Configuration warning");
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+}
+
+/// Load configuration from environment variables
+///
+/// # Returns
+/// Server configuration loaded from environment
+impl ServerConfig {
+    pub fn from_env() -> Self {
+        let mut config = Self::default();
+
+        if let Ok(host) = std::env::var("TACHYON_HOST") {
+            config.host = host;
+        }
+
+        if let Ok(port) = std::env::var("TACHYON_PORT")
+            && let Ok(p) = port.parse::<u16>()
+        {
+            config.port = p;
+        }
+
+        if let Ok(db_path) = std::env::var("TACHYON_DATABASE_PATH") {
+            config.database_path = Some(db_path);
+        }
+
+        if let Ok(db_url) = std::env::var("DATABASE_URL") {
+            config.database_url = db_url;
+        }
+
+        if let Ok(backend) = std::env::var("TACHYON_DATABASE_BACKEND") {
+            match backend.to_lowercase().as_str() {
+                "postgresql" | "postgres" => config.database_backend = DatabaseBackend::Postgresql,
+                "sqlite" => config.database_backend = DatabaseBackend::Sqlite,
+                "mysql" => config.database_backend = DatabaseBackend::Mysql,
+                _ => {}
+            }
+        }
+
+        if let Ok(tls_enabled) = std::env::var("TACHYON_TLS_ENABLED") {
+            config.enable_tls = tls_enabled == "1" || tls_enabled == "true";
+        }
+
+        if let Ok(cert_path) = std::env::var("TACHYON_TLS_CERT_PATH") {
+            config.tls_cert_path = Some(cert_path);
+        }
+
+        if let Ok(key_path) = std::env::var("TACHYON_TLS_KEY_PATH") {
+            config.tls_key_path = Some(key_path);
+        }
+
+        let jwt_secrets = if let Ok(secrets_csv) = std::env::var("TACHYON_JWT_SECRETS") {
+            secrets_csv
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+        } else if let Ok(secret) = std::env::var("TACHYON_JWT_SECRET") {
+            vec![secret]
+        } else {
+            vec!["change-this-secret-key-in-production".to_string()]
+        };
+        if jwt_secrets.is_empty() {
+            config.jwt.secrets = jwt_secrets;
+            return config;
+        }
+        config.jwt.secrets = jwt_secrets;
+
+        if let Ok(jwt_expiration) = std::env::var("TACHYON_JWT_EXPIRATION")
+            && let Ok(exp) = jwt_expiration.parse::<u64>()
+        {
+            config.jwt.expiration_secs = exp;
+        }
+
+        if let Ok(rotation) = std::env::var("TACHYON_JWT_ROTATION_ENABLED") {
+            config.jwt.rotation_enabled = rotation != "0" && rotation != "false";
+        }
+
+        if let Ok(guest_login) = std::env::var("TACHYON_GUEST_LOGIN_ENABLED") {
+            config.guest.guest_login_enabled = guest_login == "1" || guest_login == "true";
+        }
+
+        if let Ok(public_notes) = std::env::var("TACHYON_PUBLIC_NOTES_ENABLED") {
+            config.guest.public_notes_enabled = public_notes == "1" || public_notes == "true";
+        }
+
+        if let Ok(guest_user_id) = std::env::var("TACHYON_GUEST_USER_ID") {
+            config.guest.guest_user_id = guest_user_id;
+        }
+
+        if let Ok(rate_limit_enabled) = std::env::var("TACHYON_RATE_LIMIT_ENABLED") {
+            config.rate_limit.enabled = rate_limit_enabled != "0" && rate_limit_enabled != "false";
+        }
+
+        if let Ok(redis_url) = std::env::var("TACHYON_RATE_LIMIT_REDIS_URL") {
+            config.rate_limit.redis_url = Some(redis_url);
+        }
+
+        if let Ok(json_str) = std::env::var("TACHYON_RATE_LIMIT_ENDPOINTS")
+            && let Ok(parsed) = serde_json::from_str::<
+                std::collections::HashMap<String, EndpointRateLimitJsonEntry>,
+            >(&json_str)
+        {
+            for (path, entry) in parsed {
+                config.rate_limit.endpoint_limits.insert(
+                    path,
+                    EndpointRateLimit {
+                        max_requests: entry.max,
+                        window_secs: entry.window,
+                    },
+                );
+            }
+        }
+
+        if let Ok(site_title) = std::env::var("TACHYON_SITE_TITLE") {
+            config.site.title = site_title;
+        }
+
+        if let Ok(site_description) = std::env::var("TACHYON_SITE_DESCRIPTION") {
+            config.site.description = site_description;
+        }
+
+        if let Ok(base_url) = std::env::var("TACHYON_BASE_URL") {
+            config.site.base_url = base_url;
+        }
+
+        if let Ok(template_dir) = std::env::var("TACHYON_TEMPLATE_DIR") {
+            config.site.template_dir = Some(template_dir);
+        }
+
+        // Logging configuration
+        if let Ok(log_format) = std::env::var("LOG_FORMAT") {
+            config.log.format = log_format;
+        }
+        if let Ok(log_format) = std::env::var("TACHYON_LOG_FORMAT") {
+            config.log.format = log_format;
+        }
+        if let Ok(log_level) = std::env::var("TACHYON_LOG_LEVEL") {
+            config.log.level = Some(log_level);
+        }
+        if let Ok(log_filter) = std::env::var("TACHYON_LOG_FILTER") {
+            config.log.level = Some(log_filter);
+        }
+
+        // OAuth2 configuration
+        if let Ok(enabled) = std::env::var("TACHYON_OAUTH2_ENABLED") {
+            config.oauth2.enabled = enabled == "1" || enabled == "true";
+        }
+        if let Ok(id) = std::env::var("TACHYON_GOOGLE_CLIENT_ID") {
+            config.oauth2.google_client_id = Some(id);
+        }
+        if let Ok(secret) = std::env::var("TACHYON_GOOGLE_CLIENT_SECRET") {
+            config.oauth2.google_client_secret = Some(secret);
+        }
+        if let Ok(id) = std::env::var("TACHYON_GITHUB_CLIENT_ID") {
+            config.oauth2.github_client_id = Some(id);
+        }
+        if let Ok(secret) = std::env::var("TACHYON_GITHUB_CLIENT_SECRET") {
+            config.oauth2.github_client_secret = Some(secret);
+        }
+        if let Ok(url) = std::env::var("TACHYON_OAUTH2_REDIRECT_BASE_URL") {
+            config.oauth2.redirect_base_url = Some(url);
+        }
+
+        // TrueLayer configuration
+        if let Ok(enabled) = std::env::var("TRUELAYER_ENABLED") {
+            config.truelayer.enabled = enabled == "1" || enabled == "true";
+        }
+        if let Ok(id) = std::env::var("TRUELAYER_CLIENT_ID") {
+            config.truelayer.client_id = id;
+        }
+        if let Ok(secret) = std::env::var("TRUELAYER_CLIENT_SECRET") {
+            config.truelayer.client_secret = secret;
+        }
+        if let Ok(env) = std::env::var("TRUELAYER_ENV") {
+            config.truelayer.environment = env;
+        }
+        if let Ok(id) = std::env::var("TRUELAYER_MERCHANT_ACCOUNT_ID") {
+            config.truelayer.merchant_account_id = id;
+        }
+        if let Ok(secret) = std::env::var("TRUELAYER_WEBHOOK_SECRET") {
+            config.truelayer.webhook_secret = secret;
+        }
+
+        // Security configuration
+        if let Ok(val) = std::env::var("TACHYON_SMTP_URL") {
+            config.smtp_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMTP_FROM") {
+            config.smtp_from = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMTP_USERNAME") {
+            config.smtp_username = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMTP_PASSWORD") {
+            config.smtp_password = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMTP_PORT")
+            && let Ok(p) = val.parse::<u16>()
+        {
+            config.smtp_port = Some(p);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMTP_TLS") {
+            config.smtp_tls = val != "0" && val != "false";
+        }
+        if let Ok(val) = std::env::var("TACHYON_EMAIL_HTTP_API_URL") {
+            config.email_http_api_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_EMAIL_HTTP_API_KEY") {
+            config.email_http_api_key = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_CSP_ENABLED") {
+            config.security.csp_enabled = val != "0" && val != "false";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_CSP_CUSTOM") {
+            config.security.csp_custom = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_PERMISSIONS_POLICY") {
+            config.security.permissions_policy = val != "0" && val != "false";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_COEP_ENABLED") {
+            config.security.coep_enabled = val == "1" || val == "true";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_HSTS_ENABLED") {
+            config.security.hsts_enabled = val != "0" && val != "false";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_DEVELOPMENT") {
+            config.security.development = val != "0" && val != "false";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_FRAME_ANCESTORS") {
+            config.security.frame_ancestors = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_TRUSTED_ORIGINS") {
+            config.security.trusted_origins = val
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES")
+            && let Ok(v) = val.parse::<usize>()
+        {
+            config.security.max_request_size_bytes = v;
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS")
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.security.session_expiry_hours = v;
+        }
+        if let Ok(val) = std::env::var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS")
+            && let Ok(v) = val.parse::<usize>()
+        {
+            config.security.max_concurrent_sessions = v;
+        }
+
+        // Database pool configuration
+        if let Ok(val) = std::env::var("TACHYON_DB_MAX_CONNECTIONS")
+            && let Ok(v) = val.parse::<u32>()
+        {
+            config.db_max_connections = v;
+        }
+        if let Ok(val) = std::env::var("TACHYON_DB_MIN_CONNECTIONS")
+            && let Ok(v) = val.parse::<u32>()
+        {
+            config.db_min_connections = v;
+        }
+        if let Ok(val) = std::env::var("TACHYON_DB_ACQUIRE_TIMEOUT_MS")
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.db_acquire_timeout_ms = v;
+        }
+        if let Ok(val) = std::env::var("TACHYON_DB_IDLE_TIMEOUT_SECS")
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.db_idle_timeout_secs = v;
+        }
+
+        config.redis_pubsub_url = std::env::var("TACHYON_REDIS_PUBSUB_URL").ok();
+
+        // CDN configuration
+        if let Ok(val) = std::env::var("TACHYON_CDN_PROVIDER") {
+            config.cdn.provider = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_CDN_BASE_URL") {
+            config.cdn.base_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_CDN_STATIC_TTL_SECS")
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.cdn.static_ttl_secs = v;
+        }
+        if let Ok(val) = std::env::var("TACHYON_CDN_API_TTL_SECS")
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.cdn.api_ttl_secs = v;
+        }
+        if let Ok(val) = std::env::var("TACHYON_CDN_ENABLED") {
+            config.cdn.enabled = val == "true" || val == "1";
+        }
+
+        // Brand configuration
+        if let Ok(val) = std::env::var("TACHYON_BRAND_COMPANY_NAME") {
+            config.brand.company_name = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_LOGO_URL") {
+            config.brand.logo_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_FAVICON_URL") {
+            config.brand.favicon_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_PRIMARY_COLOR") {
+            config.brand.primary_color = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_SECONDARY_COLOR") {
+            config.brand.secondary_color = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_CUSTOM_CSS") {
+            config.brand.custom_css = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_BRAND_CUSTOM_DOMAIN") {
+            config.brand.custom_domain = Some(val);
+        }
+
+        // Read replica configuration
+        config.read_replica_urls = std::env::var("TACHYON_READ_REPLICA_URLS")
+            .unwrap_or_default()
+            .split(',')
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect();
+
+        // PgBouncer configuration
+        if let Ok(val) = std::env::var("TACHYON_PGBOUNCER_ENABLED") {
+            config.pgbouncer_enabled = val == "true" || val == "1";
+        }
+
+        // SMS OTP configuration
+        if let Ok(val) = std::env::var("TACHYON_SMS_OTP_ENABLED") {
+            config.sms_otp.enabled = val == "1" || val == "true";
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMS_OTP_TTL_SECS")
+            && let Ok(v) = val.parse::<u64>()
+        {
+            config.sms_otp.ttl_secs = v;
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMS_PROVIDER") {
+            config.sms_otp.provider = val;
+        }
+        if let Ok(val) = std::env::var("TACHYON_TWILIO_ACCOUNT_SID") {
+            config.sms_otp.twilio_account_sid = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_TWILIO_AUTH_TOKEN") {
+            config.sms_otp.twilio_auth_token = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_TWILIO_FROM_NUMBER") {
+            config.sms_otp.twilio_from_number = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMS_API_URL") {
+            config.sms_otp.sms_api_url = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMS_API_KEY") {
+            config.sms_otp.sms_api_key = Some(val);
+        }
+        if let Ok(val) = std::env::var("TACHYON_SMS_FROM_NUMBER") {
+            config.sms_otp.sms_from_number = Some(val);
+        }
+
+        config
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+
+    #[test]
+    fn test_server_config_default() {
+        let config = ServerConfig::default();
+        assert_eq!(config.host, "0.0.0.0");
+        assert_eq!(config.port, 8080);
+        assert!(!config.enable_tls);
+    }
+
+    #[test]
+    fn test_bind_address() {
+        let config = ServerConfig {
+            host: "127.0.0.1".to_string(),
+            port: 3000,
+            ..Default::default()
+        };
+        assert_eq!(config.bind_address(), "127.0.0.1:3000");
+    }
+
+    #[test]
+    fn test_config_validation_valid() {
+        let mut config = ServerConfig::default();
+        config.jwt.secrets = vec!["a-properly-long-secret-key-for-testing".to_string()];
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_config_validation_invalid_host() {
+        let mut config = ServerConfig::default();
+        config.jwt.secrets = vec!["a-properly-long-secret-key-for-testing".to_string()];
+        config.host = String::new();
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_config_validation_tls_missing_cert() {
+        let config = ServerConfig {
+            enable_tls: true,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_jwt_expiration_duration() {
+        let config = ServerConfig::default();
+        let duration = config.jwt_expiration();
+        assert_eq!(duration, Duration::from_secs(24 * 60 * 60));
+    }
+
+    #[test]
+    fn test_api_key_header() {
+        let config = ServerConfig::default();
+        assert_eq!(config.api_key_header(), "X-API-Key");
+    }
+
+    #[test]
+    fn test_websocket_path() {
+        let config = ServerConfig::default();
+        assert_eq!(config.websocket_path(), "/ws");
+    }
+
+    #[test]
+    #[serial]
+    fn test_static_dir_default() {
+        unsafe {
+            std::env::remove_var("TACHYON_STATIC_DIR");
+        }
+        assert_eq!(static_dir(), "dist");
+    }
+
+    #[test]
+    #[serial]
+    fn test_static_dir_from_env() {
+        unsafe {
+            std::env::set_var("TACHYON_STATIC_DIR", "/var/www/html");
+        }
+        assert_eq!(static_dir(), "/var/www/html");
+        unsafe {
+            std::env::remove_var("TACHYON_STATIC_DIR");
+        }
+    }
+
+    #[test]
+    fn test_db_pool_config_defaults() {
+        let config = ServerConfig::default();
+        assert_eq!(config.db_max_connections, 10);
+        assert_eq!(config.db_min_connections, 2);
+        assert_eq!(config.db_acquire_timeout_ms, 5000);
+        assert_eq!(config.db_idle_timeout_secs, 600);
+    }
+
+    #[test]
+    fn test_db_pool_config_from_env() {
+        unsafe {
+            std::env::set_var("TACHYON_DB_MAX_CONNECTIONS", "20");
+            std::env::set_var("TACHYON_DB_MIN_CONNECTIONS", "5");
+        }
+        let config = ServerConfig::from_env();
+        assert_eq!(config.db_max_connections, 20);
+        assert_eq!(config.db_min_connections, 5);
+        unsafe {
+            std::env::remove_var("TACHYON_DB_MAX_CONNECTIONS");
+            std::env::remove_var("TACHYON_DB_MIN_CONNECTIONS");
+        }
+    }
+
+    #[test]
+    fn test_security_config_defaults() {
+        let config = SecurityConfig::default();
+        assert_eq!(config.cors_allowed_origins, vec!["http://localhost:8080"]);
+        assert_eq!(config.max_request_size_bytes, 10 * 1024 * 1024);
+        assert_eq!(config.session_expiry_hours, 24);
+        assert_eq!(config.max_concurrent_sessions, 100);
+    }
+
+    #[test]
+    fn test_security_config_validation_max_request_size_zero() {
+        let mut config = ServerConfig::default();
+        config.jwt.secrets = vec!["a-properly-long-secret-key-for-testing".to_string()];
+        config.security.max_request_size_bytes = 0;
+        let result = config.validate();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("max_request_size_bytes")));
+    }
+
+    #[test]
+    fn test_security_config_validation_session_expiry_zero() {
+        let mut config = ServerConfig::default();
+        config.jwt.secrets = vec!["a-properly-long-secret-key-for-testing".to_string()];
+        config.security.session_expiry_hours = 0;
+        let result = config.validate();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("session_expiry_hours")));
+    }
+
+    #[test]
+    fn test_security_config_validation_max_concurrent_sessions_zero() {
+        let mut config = ServerConfig::default();
+        config.jwt.secrets = vec!["a-properly-long-secret-key-for-testing".to_string()];
+        config.security.max_concurrent_sessions = 0;
+        let result = config.validate();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("max_concurrent_sessions")));
+    }
+
+    #[test]
+    #[serial]
+    fn test_security_config_from_env() {
+        unsafe {
+            std::env::set_var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES", "5242880");
+            std::env::set_var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS", "48");
+            std::env::set_var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS", "50");
+        }
+        let config = ServerConfig::from_env();
+        assert_eq!(config.security.max_request_size_bytes, 5242880);
+        assert_eq!(config.security.session_expiry_hours, 48);
+        assert_eq!(config.security.max_concurrent_sessions, 50);
+        unsafe {
+            std::env::remove_var("TACHYON_SECURITY_MAX_REQUEST_SIZE_BYTES");
+            std::env::remove_var("TACHYON_SECURITY_SESSION_EXPIRY_HOURS");
+            std::env::remove_var("TACHYON_SECURITY_MAX_CONCURRENT_SESSIONS");
+        }
+    }
+
+    #[test]
+    fn test_cdn_config_defaults() {
+        // The default reads env vars, so we just test the constructed values
+        let config = CdnConfig {
+            provider: "cloudflare".to_string(),
+            base_url: None,
+            static_ttl_secs: 3600,
+            api_ttl_secs: 60,
+            enabled: false,
+        };
+        assert_eq!(config.provider, "cloudflare");
+        assert_eq!(config.static_ttl_secs, 3600);
+        assert_eq!(config.api_ttl_secs, 60);
+        assert!(!config.enabled);
+        assert!(config.base_url.is_none());
+    }
+
+    #[test]
+    #[serial]
+    fn test_cdn_config_from_env() {
+        unsafe {
+            std::env::set_var("TACHYON_CDN_PROVIDER", "fastly");
+            std::env::set_var("TACHYON_CDN_BASE_URL", "https://cdn.example.com");
+            std::env::set_var("TACHYON_CDN_ENABLED", "true");
+        }
+        let config = ServerConfig::from_env();
+        assert_eq!(config.cdn.provider, "fastly");
+        assert_eq!(
+            config.cdn.base_url.as_deref(),
+            Some("https://cdn.example.com")
+        );
+        assert!(config.cdn.enabled);
+        unsafe {
+            std::env::remove_var("TACHYON_CDN_PROVIDER");
+            std::env::remove_var("TACHYON_CDN_BASE_URL");
+            std::env::remove_var("TACHYON_CDN_ENABLED");
+        }
+    }
+
+    #[test]
+    fn test_read_replica_urls_defaults() {
+        let config = ServerConfig::default();
+        assert!(config.read_replica_urls.is_empty());
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_replica_urls_from_env() {
+        unsafe {
+            std::env::set_var(
+                "TACHYON_READ_REPLICA_URLS",
+                "postgres://replica1:5432/db,postgres://replica2:5432/db",
+            );
+        }
+        let config = ServerConfig::from_env();
+        assert_eq!(config.read_replica_urls.len(), 2);
+        assert_eq!(config.read_replica_urls[0], "postgres://replica1:5432/db");
+        assert_eq!(config.read_replica_urls[1], "postgres://replica2:5432/db");
+        unsafe {
+            std::env::remove_var("TACHYON_READ_REPLICA_URLS");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_replica_urls_empty_env() {
+        unsafe {
+            std::env::set_var("TACHYON_READ_REPLICA_URLS", "");
+        }
+        let config = ServerConfig::from_env();
+        assert!(config.read_replica_urls.is_empty());
+        unsafe {
+            std::env::remove_var("TACHYON_READ_REPLICA_URLS");
+        }
+    }
+
+    #[test]
+    fn test_pgbouncer_enabled_default() {
+        let config = ServerConfig::default();
+        assert!(!config.pgbouncer_enabled);
+    }
+
+    #[test]
+    #[serial]
+    fn test_pgbouncer_enabled_from_env() {
+        unsafe {
+            std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "true");
+        }
+        let config = ServerConfig::from_env();
+        assert!(config.pgbouncer_enabled);
+        unsafe {
+            std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+        }
+
+        unsafe {
+            std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "1");
+        }
+        let config = ServerConfig::from_env();
+        assert!(config.pgbouncer_enabled);
+        unsafe {
+            std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+        }
+
+        unsafe {
+            std::env::set_var("TACHYON_PGBOUNCER_ENABLED", "false");
+        }
+        let config = ServerConfig::from_env();
+        assert!(!config.pgbouncer_enabled);
+        unsafe {
+            std::env::remove_var("TACHYON_PGBOUNCER_ENABLED");
+        }
+    }
+}

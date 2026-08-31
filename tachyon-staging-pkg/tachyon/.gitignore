@@ -1,0 +1,9 @@
+# Integration test compose file (local only)
+docker-compose.integration.yml
+
+e2e/node_modules/
+e2e/playwright-report/
+
+# Database files
+*.db
+data/

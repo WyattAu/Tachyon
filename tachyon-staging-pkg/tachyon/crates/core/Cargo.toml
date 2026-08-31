@@ -1,0 +1,58 @@
+[package]
+name = "tachyon-core"
+version = "0.1.0"
+license = { workspace = true }
+edition.workspace = true
+description = "Core library for Tachyon knowledge management system"
+
+[lib]
+name = "tachyon_core"
+path = "src/lib.rs"
+
+[dependencies]
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error Handling & Logging
+anyhow = "1"
+tracing = "0.1"
+# NOTE: once_cell removed -- zero imports; core uses std::sync::LazyLock
+# NOTE: tracing-subscriber removed -- only needed in binaries (cli/server/ssg)
+thiserror = "2"
+
+# Core Logic
+git2 = { version = "0.21", features = ["vendored-openssl", "vendored-libgit2"] }
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Authentication
+salting = { workspace = true }
+rand = "0.8"
+
+# Cryptography
+cryptkit = { workspace = true }
+
+# File System Monitoring
+notify = "6.0"
+
+# Markdown Processing
+pulldown-cmark = { version = "0.9", features = ["simd"] }
+
+# Hashing - provided by cryptkit
+
+# CRDT (base64 encoding for binary Yjs updates)
+base64 = "0.22"
+
+# Utilities
+dashmap = "5"
+walkdir = "2"
+regex = "1.11"
+hex = "0.4"
+
+[dev-dependencies]
+proptest = { workspace = true }
+# For testing only

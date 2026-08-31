@@ -1,0 +1,77 @@
+[workspace]
+members = ["crates/core", "crates/server", "crates/desktop", "crates/desktop/src-tauri", "crates/renderer", "crates/rbac", "crates/search", "crates/database", "crates/storage", "crates/testing", "crates/cli", "crates/frontend", "crates/import-export", "crates/ssg", "crates/plugin-runtime", "crates/editor", "crates/benchmarks", "crates/tui"]
+resolver = "2"
+package.version = "0.1.0"
+package.edition = "2024"
+package.rust-version = "1.85"
+package.license = "Apache-2.0"
+
+[workspace.dependencies]
+# Shared Wyatt crates
+salting = { path = "../../salting" }
+tokenkit = { path = "../../tokenkit" }
+cryptkit = { path = "../../cryptkit" }
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+bytes = "1.11.1"  # Pinned for security fix (RUSTSEC-2026-0007)
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error Handling & Logging
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+thiserror = "2"
+
+# Date/Time Handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID generation
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Core Logic
+git2 = "0.21"
+rusqlite = { version = "0.29", features = ["bundled"] } # Bundled is crucial for Windows
+tantivy = "0.25"
+pulldown-cmark = { version = "0.9", features = ["simd"] }
+#minijinja = { version = "1", features = ["source"] }
+dashmap = "5"
+walkdir = "2"
+
+# CRDT
+yrs = "0.25"
+
+# Server Logic
+axum = { version = "0.8", features = ["macros", "ws"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "compression-full", "limit"] }
+notify = "6"
+rust-embed = "8"
+clap = { version = "4", features = ["derive"] }
+
+# Desktop Logic
+tauri = { version = "2.0.0-beta", features = [] }
+tauri-build = { version = "2.0.0-beta", features = [] }
+
+# Testing
+proptest = "1.4"
+mockall = "0.12"
+testcontainers = "0.15"
+testcontainers-modules = { version = "0.3", features = ["postgres", "redis"] }
+wiremock = "0.5"
+serial_test = "3.0"
+tokio-test = "0.4"
+criterion = "0.5"
+cargo-fuzz = "0.11"
+rand = "0.8"
+quickcheck = "1.0"
+
+# Release profile optimized for WASM bundle size
+[profile.release]
+opt-level = "z"       # Optimize for size
+lto = true            # Link-Time Optimization (15-30% reduction)
+codegen-units = 1     # Better optimization (slower compile)
+panic = "abort"       # Remove unwinding code
+strip = true          # Strip debug symbols

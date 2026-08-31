@@ -1,0 +1,77 @@
+# Dependency Specification: git2-rs
+# Generated: 2026-02-11T17:30:00Z
+# Version: 0.18.3
+
+[metadata]
+name = "git2"
+version = "0.18.3"
+language = "rust"
+registry = "https://crates.io"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "232e6a7bfe35766bf715e55a88b39a700596c0ccfd88cd3680b4cdb40d66ef70"
+license = "MIT AND Apache-2.0"
+repository = "https://github.com/rust-lang/git2-rs"
+homepage = "https://github.com/rust-lang/git2-rs"
+documentation = "https://docs.rs/git2"
+authors = ["The Rust Project Developers"]
+
+[rationale]
+criticality = "HIGH"
+justification = """
+git2-rs is the Git bindings library used throughout Tachyon for repository
+operations and version control functionality. It provides:
+- Complete Git protocol implementation
+- Support for local and remote repository operations
+- High-level Rust API over libgit2
+- Integration with Tachyon's document repository system
+
+This is a core dependency for repository and version control functionality.
+"""
+
+[security]
+audit_status = "PENDING"
+last_audit_date = "2026-02-11"
+known_vulnerabilities = []
+cvss_score = "N/A"
+notes = """
+git2-rs includes native bindings to libgit2, which is written in C.
+Potential concerns:
+- Memory safety issues in libgit2 could affect Rust wrapper
+- Use of openssl-sys and libgit2-sys requires careful vetting
+Recommendation: Keep updated with latest security patches
+"""
+
+[dependencies]
+native = ["libgit2", "openssl-sys"]
+transitive = ["libc", "bitflags", "url", "openssl-probe"]
+
+[features]
+enabled = []
+default_features = true
+description = "Default features include all protocol support"
+
+[alternatives]
+considered = [
+    {name = "gitoxide", reason = "Pure Rust alternative, but git2-rs has wider adoption"},
+    {name = "libgit2-sys", reason = "Lower-level, git2-rs provides better Rust API"},
+]
+selected = "git2"
+selection_reason = "Mature, well-maintained, comprehensive feature set"
+
+[maintenance]
+maintainer_status = "ACTIVE"
+last_commit = "2024"
+release_frequency = "QUARTERLY"
+deprecation_risk = "LOW"
+
+[compatibility]
+rust_version = ">=1.60"
+platforms = ["Linux", "Windows", "macOS"]
+target_arch = ["x86_64", "aarch64", "arm"]
+native_build_required = true
+
+[verification]
+build_verified = true
+test_coverage = "HIGH"
+ci_status = "PASSING"
+native_library_version = "libgit2 1.8.x"

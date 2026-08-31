@@ -1,0 +1,132 @@
+[package]
+name = "tachyon-frontend"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Leptos-based frontend for Tachyon knowledge management system"
+authors = ["Tachyon Team"]
+license = "MIT"
+
+[lib]
+name = "tachyon_frontend"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+# Note: Frontend is built with trunk for WASM output
+# The binary target is not needed for CSR mode
+
+[dependencies]
+# Workspace dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true, features = ["wasmbind"] }
+
+# Leptos framework - CSR (Client-Side Rendering) mode
+leptos = { version = "0.8", features = ["csr"] }
+leptos_router = { version = "0.8" }
+# NOTE: leptos_meta removed — zero imports in the codebase
+
+# HTTP client for API calls
+gloo-net = { version = "0.6", features = ["json", "websocket"] }
+gloo-timers = "0.3"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "Document",
+    "Element",
+    "EventTarget",
+    "HtmlElement",
+    "HtmlInputElement",
+    "HtmlSelectElement",
+    "HtmlTextAreaElement",
+    "HtmlDivElement",
+    "HtmlAnchorElement",
+    "HtmlButtonElement",
+    "HtmlPreElement",
+    "Navigator",
+    "Window",
+    "Storage",
+    "Blob",
+    "BlobPropertyBag",
+    "File",
+    "FileList",
+    "FormData",
+    "DataTransfer",
+    "DragEvent",
+    "KeyboardEvent",
+    "MouseEvent",
+    "ClipboardEvent",
+    "InputEvent",
+    "CompositionEvent",
+    "Url",
+    "Selection",
+    "Range",
+    "DomRect",
+    "ScrollIntoViewOptions",
+    "ScrollBehavior",
+    "ScrollLogicalPosition",
+    "WheelEvent",
+    "IdbFactory",
+    "IdbDatabase",
+    "IdbObjectStore",
+    "IdbTransaction",
+    "IdbRequest",
+    "IdbCursor",
+    "IdbCursorWithValue",
+    "IdbOpenDbRequest",
+    "IdbVersionChangeEvent",
+    "IdbIndex",
+    "IdbKeyRange",
+    "IdbTransactionMode",
+    "MediaQueryList",
+    "MediaQueryListEvent",
+    "ResizeObserver",
+    "ResizeObserverEntry",
+    "ResizeObserverSize",
+    "IntersectionObserver",
+    "IntersectionObserverEntry",
+    "IntersectionObserverInit",
+    "CanvasRenderingContext2d",
+    "HtmlCanvasElement",
+    "ImageBitmap",
+    "ImageBitmapOptions",
+] }
+js-sys = "0.3"
+
+# WASM ↔ JS serialization (for Tauri IPC bridge)
+serde-wasm-bindgen = "0.6"
+
+# WASM utilities
+console_error_panic_hook = "0.1"
+log = "0.4"
+# NOTE: wasm-logger removed — zero imports; log crate used with console_error_panic_hook backend
+
+# UUID - with js feature for WASM support
+uuid = { version = "1.11", features = ["v4", "serde", "js"] }
+
+# Base64 encoding for push notification VAPID keys
+base64 = "0.22"
+
+# Hex encoding for key fingerprints
+hex = "0.4"
+
+# Native editor engine
+tachyon-editor = { path = "../editor" }
+
+# Markdown rendering (WASM-compatible, no SIMD)
+pulldown-cmark = "0.9"
+
+# UI Components & Utilities
+lepticons = "0.12.0"
+leptos-use = "0.18.3"
+
+[features]
+staging = []
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Window", "Document", "Element"] }
+console_log = "1.0"
+pretty_assertions = "1.4"

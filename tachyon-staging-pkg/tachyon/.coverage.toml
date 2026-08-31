@@ -1,0 +1,77 @@
+[default]
+# Minimum coverage threshold (0.0 to 1.0)
+minimum_coverage = 0.80
+
+# Coverage targets per module
+[modules]
+tachyon_database = 0.80
+tachyon_server = 0.80
+tachyon_core = 0.80
+tachyon_rbac = 0.80
+tachyon_search = 0.80
+
+# Files or patterns to exclude from coverage
+[exclude]
+files = [
+    "tests/*",
+    "benches/*",
+    "examples/*",
+    "**/main.rs",
+    "**/error.rs",
+]
+
+# Coverage output configuration
+[output]
+# Output formats: html, xml, lcov, json
+formats = ["html", "xml", "lcov"]
+
+# Output directory
+directory = "coverage"
+
+# Generate badge
+badge = true
+
+# Report configuration
+[report]
+# Show uncovered lines
+show_uncovered = true
+
+# Show line numbers
+show_line_numbers = true
+
+# Group by module
+group_by_module = true
+
+# Critical crates with higher thresholds
+[critical_crates]
+tachyon_core = 0.80
+tachyon_rbac = 0.80
+tachyon_server = 0.80
+tachyon_database = 0.80
+
+# CI configuration
+[ci]
+# Fail build if coverage below threshold
+fail_under_threshold = true
+
+# Post coverage comment on PR
+post_pr_comment = true
+
+# Update coverage badge
+update_badge = true
+
+# Ignore patterns for coverage
+[ignore]
+# Ignore test utility code
+test_utilities = [
+    "test_utils",
+    "test_fixtures",
+    "test_factories",
+]
+
+# Ignore trivially simple code
+simple_code = [
+    "getters",
+    "setters",
+    "constructors",
+]

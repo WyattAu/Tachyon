@@ -1,0 +1,143 @@
+[package]
+name = "tachyon-server"
+version = "0.1.0"
+license = { workspace = true }
+edition.workspace = true
+description = "JIT documentation server for Tachyon knowledge management system"
+
+[lib]
+name = "tachyon_server"
+path = "src/lib.rs"
+
+[dependencies]
+# Core libraries
+tachyon-core = { path = "../core" }
+tachyon-rbac = { path = "../rbac" }
+tachyon-database = { path = "../database" }
+tachyon-renderer = { path = "../renderer" }
+tachyon-search = { path = "../search" }
+tachyon-import-export = { path = "../import-export" }
+tachyon-plugin-runtime = { path = "../plugin-runtime" }
+tachyon-ssg = { path = "../ssg" }
+printpdf = { version = "0.3", optional = true }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "json"] }
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP Server
+axum = { version = "0.8", features = ["tracing", "macros", "ws", "multipart"] }
+tower = { version = "0.5", features = ["full"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "compression-full", "limit", "fs"] }
+
+# WebSocket (uses axum built-in WS)
+futures-util = "0.3"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# Authentication
+jsonwebtoken = "9"
+tokenkit = { workspace = true }
+cryptkit = { workspace = true }
+
+# Error Handling & Logging
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+base64 = "0.22"
+getrandom = "0.3"
+rand = { workspace = true }
+
+# Validation & Security
+regex = "1"
+url = "2"
+html-escape = "0.2"
+sha2 = "0.10"
+sha1 = "0.10"
+hmac = "0.12"
+hex = "0.4"
+subtle = "2.6"
+base32 = "0.5"
+
+# HTTP Client (for webhook delivery)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Email delivery
+lettre = { version = "0.11", features = ["tokio1-rustls-tls", "smtp-transport", "builder", "pool"], default-features = false }
+
+# URL encoding (for OAuth2)
+urlencoding = "2"
+
+# OpenAPI Documentation
+utoipa = "5"
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
+# GraphQL
+async-graphql = { version = "7", features = ["chrono"] }
+async-graphql-axum = "7"
+
+# Metrics
+metrics = "0.24"
+metrics-exporter-prometheus = "0.18"
+
+# Redis
+deadpool-redis = "0.18"
+
+# Async trait support
+async-trait = "0.1"
+
+# LDAP
+ldap3 = { version = "0.12", default-features = false, features = ["tls-rustls-ring", "sync"] }
+
+# CRDT
+yrs = { workspace = true }
+dashmap = { workspace = true }
+
+# XML parsing (SAML)
+quick-xml = "0.41"
+
+# Archive handling (for Confluence ZIP imports)
+zip = "2"
+
+# Inflate (SAML Deflate decoding)
+flate2 = "1"
+
+# Error types
+thiserror = { workspace = true }
+
+# S3 Storage (optional)
+aws-sdk-s3 = { version = "1", optional = true }
+aws-config = { version = "1", optional = true }
+
+[features]
+staging = []
+s3-storage = ["dep:aws-sdk-s3", "dep:aws-config"]
+pdf-export = ["tachyon-import-export/pdf-export", "dep:printpdf"]
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+wiremock = { workspace = true }
+serial_test = { workspace = true }
+proptest = { workspace = true }
+pretty_assertions = "1.4"
+assert_matches = "1.5"
+hyper = "1"
+http-body-util = "0.1"
+tempfile = "3"
+bytes = "1"
+# WebSocket client for integration tests
+tokio-tungstenite = "0.26"
+
+[[test]]
+name = "integration"
+path = "tests/integration/mod.rs"
+required-features = []

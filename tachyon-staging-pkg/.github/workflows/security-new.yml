@@ -1,0 +1,142 @@
+name: Security
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+      
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-audit-${{ hashFiles('tachyon/Cargo.lock') }}
+      
+      - name: Cache cargo-audit binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: cargo-audit-bin-v1
+      
+      - name: Install cargo-audit
+        run: command -v cargo-audit || cargo install cargo-audit --version 0.21.0 --locked
+      
+      - name: Run audit
+        working-directory: tachyon
+        run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2026-0097 --ignore RUSTSEC-2026-0002
+        # RUSTSEC-2023-0071: rsa Marvin Attack (medium severity)
+        # Transitive dep via sqlx-mysql -> rsa. No fixed version available.
+        # We use PostgreSQL, not MySQL; this code path is never exercised.
+        # RUSTSEC-2026-0097: rand 0.7.3 unsound with custom logger calling thread_rng()
+        # Only affects wiremock (dev-dep) -> http-types -> rand 0.7.3.
+        # Not exploitable in our codebase, not in production builds.
+        # RUSTSEC-2026-0002: lru 0.12.5 IterMut violates Stacked Borrows
+        # Transitive dep via tantivy. IterMut not used in our search paths.
+
+      - name: Run cargo-deny
+        working-directory: tachyon
+        run: |
+          command -v cargo-deny || cargo install cargo-deny --version 2.46.4 --locked
+          cargo deny check
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      
+      - name: Dependency Review
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+
+  secrets-scan:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+      
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@37b77001d0174ebec2fcca2bd83ff83a6d45a3ab # v3.95.3
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          extra_args: --only-verified
+
+  sast:
+    name: SAST Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: returntocorp/semgrep:1.67.0
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config p/security-audit \
+            --config p/secrets \
+            --config p/owasp-top-ten \
+            --error \
+            --timeout 60 \
+            --exclude-rule generic.nginx.security.request-host-used.request-host-used \
+            --exclude-rule generic.nginx.security.possible-h2c-smuggling.possible-nginx-h2c-smuggling \
+            --exclude-rule generic.nginx.security.header-redefinition.header-redefinition \
+            --exclude 'tachyon/crates/frontend/public/editor.js'
+
+  container-scan:
+    name: Container Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        include:
+          - dockerfile: Dockerfile
+            tag: tachyon/server:scan
+          - dockerfile: Dockerfile.server
+            tag: tachyon/server-exact:scan
+          - dockerfile: Dockerfile.frontend
+            tag: tachyon/frontend:scan
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      
+      - name: Build image (${{ matrix.dockerfile }})
+        run: docker build -f ${{ matrix.dockerfile }} -t ${{ matrix.tag }} .
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: '${{ matrix.tag }}'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'

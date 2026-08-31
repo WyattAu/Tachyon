@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "playwright": "^1.60.0"
+  },
+  "name": "tachyon",
+  "version": "1.0.0",
+  "description": "[![CI](https://github.com/WyattAu/Tachyon/actions/workflows/ci.yml/badge.svg)](https://github.com/WyattAu/Tachyon/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE) [![Rust](https://img.shields.io/badge/rust-1.85+-orange.svg)](https://www.rust-lang.org/) [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://wyattau.github.io/Tachyon)",
+  "main": "e2e-test.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WyattAu/Tachyon.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/WyattAu/Tachyon/issues"
+  },
+  "homepage": "https://github.com/WyattAu/Tachyon#readme"
+}

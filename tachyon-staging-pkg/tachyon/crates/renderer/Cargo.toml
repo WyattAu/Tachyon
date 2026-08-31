@@ -1,0 +1,83 @@
+[package]
+name = "tachyon-renderer"
+version.workspace = true
+rust-version.workspace = true
+description = "Document rendering engine for Tachyon"
+license = "MIT OR Apache-2.0"
+edition.workspace = true
+
+[dependencies]
+# Core dependencies
+tachyon-core = { path = "../core" }
+
+# NOTE: tokio removed — renderer is entirely synchronous
+# NOTE: serde_yaml removed — zero imports; uses serde/serde_json only
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling & Logging
+anyhow = { workspace = true }
+thiserror.workspace = true
+tracing = { workspace = true }
+
+# Markdown parsing
+pulldown-cmark = { workspace = true, features = [
+    "simd",
+    "serde",
+] }
+
+# Template engine
+minijinja = { version = "2", features = [
+    "loader",
+    "debug",
+    "preserve_order",
+] }
+
+# Syntax highlighting
+tree-sitter = "0.25"
+tree-sitter-highlight = "0.25"
+tree-sitter-rust = "0.24"
+tree-sitter-python = "0.25"
+tree-sitter-javascript = "0.25"
+tree-sitter-typescript = "0.23"
+# NOTE: tree-sitter-toml removed — incompatible tree-sitter version; highlighting skipped
+tree-sitter-yaml = "0.7"
+tree-sitter-css = "0.25"
+tree-sitter-bash = "0.25"
+tree-sitter-json = "0.21"
+tree-sitter-html = "0.23"
+# NOTE: tree-sitter-markdown removed — incompatible tree-sitter version; highlighting skipped
+
+# LaTeX rendering
+katex = { version = "0.2", default-features = false }
+
+# HTML sanitization
+ammonia = ">=4.1.4, <5"
+
+# Wikilink parsing
+regex = "1"
+
+# Caching
+lru = ">=0.12.5, <0.13"
+parking_lot = "0.12"
+
+# Hashing
+sha2 = "0.10"
+
+# Time handling
+time = { version = "0.3", features = ["serde", "formatting"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "renderer_bench"
+harness = false
+path = "benches/renderer_bench.rs"
+
+[features]
+staging = []

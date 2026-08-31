@@ -1,0 +1,225 @@
+use crate::error::ServerError;
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::Json,
+};
+use serde::{Deserialize, Serialize};
+
+use super::DocumentState;
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct TemplateResponse {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub content: String,
+    pub category: Option<String>,
+    pub tags: Vec<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub created_by: String,
+}
+
+impl From<tachyon_database::DocumentTemplate> for TemplateResponse {
+    fn from(t: tachyon_database::DocumentTemplate) -> Self {
+        let tags = t.parse_tags().unwrap_or_default();
+        Self {
+            id: t.id,
+            name: t.name,
+            description: t.description,
+            content: t.content,
+            category: t.category,
+            tags,
+            created_at: t.created_at.to_rfc3339(),
+            updated_at: t.updated_at.to_rfc3339(),
+            created_by: t.created_by,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct CreateTemplateBody {
+    pub name: String,
+    pub description: Option<String>,
+    pub content: String,
+    pub category: Option<String>,
+    pub tags: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct UpdateTemplateBody {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub content: Option<String>,
+    pub category: Option<String>,
+    pub tags: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+pub struct TemplateQuery {
+    pub category: Option<String>,
+}
+
+/// List document templates.
+///
+/// `GET /api/v1/templates`
+///
+/// Supports an optional `category` query parameter to filter results.
+#[utoipa::path(
+    get,
+    path = "/api/v1/templates",
+    params(TemplateQuery),
+    responses(
+        (status = 200, description = "List of templates", body = Vec<TemplateResponse>),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "templates",
+)]
+pub async fn list_templates(
+    Query(query): Query<TemplateQuery>,
+    State(state): State<DocumentState>,
+) -> Result<Json<Vec<TemplateResponse>>, ServerError> {
+    let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
+    let templates = repo
+        .list(query.category.as_deref(), Some(50), None)
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to list templates: {}", e)))?;
+
+    Ok(Json(
+        templates.into_iter().map(TemplateResponse::from).collect(),
+    ))
+}
+
+/// Get a template by ID.
+///
+/// `GET /api/v1/templates/{template_id}`
+#[utoipa::path(
+    get,
+    path = "/api/v1/templates/{template_id}",
+    params(
+        ("template_id" = String, Path, description = "Template ID"),
+    ),
+    responses(
+        (status = 200, description = "Template found", body = TemplateResponse),
+        (status = 404, description = "Template not found"),
+    ),
+    tag = "templates",
+)]
+pub async fn get_template(
+    Path(template_id): Path<String>,
+    State(state): State<DocumentState>,
+) -> Result<Json<TemplateResponse>, ServerError> {
+    let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
+    let template = repo
+        .get_by_id(&template_id)
+        .await
+        .map_err(|e| ServerError::not_found("Template", &format!("{}", e)))?;
+
+    Ok(Json(TemplateResponse::from(template)))
+}
+
+/// Create a new document template.
+///
+/// `POST /api/v1/templates`
+#[utoipa::path(
+    post,
+    path = "/api/v1/templates",
+    request_body = CreateTemplateBody,
+    responses(
+        (status = 200, description = "Template created", body = TemplateResponse),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "templates",
+)]
+pub async fn create_template(
+    State(state): State<DocumentState>,
+    Json(body): Json<CreateTemplateBody>,
+) -> Result<Json<TemplateResponse>, ServerError> {
+    let user_id = tachyon_core::generate_user_id();
+    let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
+
+    let template = repo
+        .create(tachyon_database::CreateTemplateRequest {
+            name: body.name,
+            description: body.description,
+            content: body.content,
+            category: body.category,
+            tags: body.tags,
+            created_by: user_id.to_string(),
+        })
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to create template: {}", e)))?;
+
+    tracing::info!("Created template: {}", template.name);
+    Ok(Json(TemplateResponse::from(template)))
+}
+
+/// Update a document template.
+///
+/// `PUT /api/v1/templates/{template_id}`
+///
+/// Accepts partial updates for name, description, content, category, and tags.
+#[utoipa::path(
+    put,
+    path = "/api/v1/templates/{template_id}",
+    params(
+        ("template_id" = String, Path, description = "Template ID"),
+    ),
+    request_body = UpdateTemplateBody,
+    responses(
+        (status = 200, description = "Template updated", body = TemplateResponse),
+        (status = 404, description = "Template not found"),
+    ),
+    tag = "templates",
+)]
+pub async fn update_template(
+    Path(template_id): Path<String>,
+    State(state): State<DocumentState>,
+    Json(body): Json<UpdateTemplateBody>,
+) -> Result<Json<TemplateResponse>, ServerError> {
+    let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
+
+    let template = repo
+        .update(
+            &template_id,
+            tachyon_database::UpdateTemplateRequest {
+                name: body.name,
+                description: body.description,
+                content: body.content,
+                category: body.category,
+                tags: body.tags,
+            },
+        )
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to update template: {}", e)))?;
+
+    Ok(Json(TemplateResponse::from(template)))
+}
+
+/// Delete a document template.
+///
+/// `DELETE /api/v1/templates/{template_id}`
+#[utoipa::path(
+    delete,
+    path = "/api/v1/templates/{template_id}",
+    params(
+        ("template_id" = String, Path, description = "Template ID"),
+    ),
+    responses(
+        (status = 204, description = "Template deleted"),
+        (status = 404, description = "Template not found"),
+    ),
+    tag = "templates",
+)]
+pub async fn delete_template(
+    Path(template_id): Path<String>,
+    State(state): State<DocumentState>,
+) -> Result<StatusCode, ServerError> {
+    let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
+    repo.delete(&template_id)
+        .await
+        .map_err(|e| ServerError::not_found("Template", &format!("{}", e)))?;
+
+    Ok(StatusCode::NO_CONTENT)
+}

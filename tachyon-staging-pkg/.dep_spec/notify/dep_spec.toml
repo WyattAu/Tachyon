@@ -1,0 +1,99 @@
+# Dependency Specification: notify
+# Generated: 2026-02-11T17:30:00Z
+# Version: 6.1.1
+
+[metadata]
+name = "notify"
+version = "6.1.1"
+language = "rust"
+registry = "https://crates.io"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e933bf8059c1cb0ebdd0e3315fcdaf751b7e3ce3ae5569239f813d894a3228c"
+license = "MIT"
+repository = "https://github.com/notify-rs/notify"
+homepage = "https://github.com/notify-rs/notify"
+documentation = "https://docs.rs/notify"
+authors = ["Fernando Fernandez <ferfer@hotmail.com>", "Guillaume Gomez <guillaume1.gomez@gmail.com>"]
+
+[rationale]
+criticality = "MEDIUM"
+justification = """
+notify is a library for watching file system changes used throughout Tachyon for
+real-time document synchronization and change detection. It provides:
+- Cross-platform file system watching
+- Efficient event-based notifications
+- Support for multiple backends (inotify, FSEvents, kqueue)
+- Integration with Tachyon's document change tracking
+
+This is a core dependency for real-time synchronization functionality.
+"""
+
+[security]
+audit_status = "PENDING"
+last_audit_date = "2026-02-11"
+known_vulnerabilities = []
+cvss_score = "N/A"
+notes = """
+notify includes native bindings to OS-specific file system APIs.
+Potential concerns:
+- Different behavior across platforms (Linux, macOS, Windows)
+- Resource consumption with large directory trees
+Recommendation: Test thoroughly on all target platforms
+"""
+
+[dependencies]
+native = []
+transitive = [
+    "bitflags", "crossbeam-channel", "filetime", "kqueue",
+    "libc", "log", "mio", "serde", "walkdir"
+]
+
+[platform_backends]
+linux = "inotify"
+macos = "fsevent"
+windows = "read-directory-changes"
+freebsd = "kqueue"
+
+[features]
+enabled = []
+default_features = true
+description = "Default features include all platform backends"
+macos_feature = "macos_fsevent"
+linux_feature = "linux_inotify"
+windows_feature = "windows_read_dir_changes"
+
+[alternatives]
+considered = [
+    {name = "watch", reason = "Less mature, fewer features"},
+    {name = "debouncer", reason = "Debouncing wrapper, not a full solution"},
+]
+selected = "notify"
+selection_reason = "Most mature, cross-platform, active development"
+
+[maintenance]
+maintainer_status = "ACTIVE"
+last_commit = "2024"
+release_frequency = "MONTHLY"
+deprecation_risk = "LOW"
+
+[compatibility]
+rust_version = ">=1.60"
+platforms = ["Linux", "Windows", "macOS", "FreeBSD"]
+target_arch = ["x86_64", "aarch64", "arm"]
+native_build_required = false
+
+[verification]
+build_verified = true
+test_coverage = "MEDIUM"
+ci_status = "PASSING"
+platform_tests = "MULTI-PLATFORM"
+
+[performance]
+event_latency = "LOW"
+memory_usage = "LOW"
+scalability = "HIGH"
+edge_cases = [
+    "Large directory trees (>100k files)",
+    "Rapid file creation/deletion",
+    "Symbolic links",
+]

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tachyon - Deterministic Knowledge Management</title>
+  <meta name="description" content="Deterministic, high-performance knowledge management system built with Rust">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #38bdf8;
+      --accent-hover: #7dd3fc;
+      --border: #334155;
+      --code-bg: #1a2332;
+      --font: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
+      --max-width: 1120px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.03;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-repeat: repeat;
+        background-size: 256px 256px;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); }
+
+    code {
+      font-family: var(--font-mono);
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+
+    .container {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Nav */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 2px solid var(--border);
+    }
+
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+
+    nav .brand {
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--text-primary);
+    }
+
+    nav .brand span { color: var(--accent); }
+
+    nav ul {
+      display: flex;
+      list-style: none;
+      gap: 28px;
+    }
+
+    nav ul a {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    nav ul a:hover { color: var(--text-primary); }
+
+    /* Hero */
+    .hero {
+      padding: 160px 0 100px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.8rem, 6vw, 4.2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 span { color: var(--accent); }
+
+    .hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 400px;
+        height: 400px;
+        border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, transparent 70%);
+        pointer-events: none;
+        animation: morph 8s ease-in-out infinite alternate;
+    }
+
+    .hero::after {
+        content: '';
+        position: absolute;
+        bottom: -50px;
+        left: -50px;
+        width: 300px;
+        height: 300px;
+        border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.05) 0%, transparent 70%);
+        pointer-events: none;
+        animation: morph 10s ease-in-out infinite alternate-reverse;
+    }
+
+    @keyframes morph {
+        0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+        50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+        100% { border-radius: 40% 60% 50% 50% / 40% 50% 60% 50%; }
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 36px;
+      line-height: 1.6;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 22px;
+      border-radius: 2px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+      box-shadow: 3px 3px 0px 0px var(--bg-primary);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      color: var(--bg-primary);
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0px 0px var(--bg-primary);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-primary);
+      border: 2px solid var(--text-muted);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--text-muted);
+      color: var(--text-primary);
+    }
+
+    /* Sections */
+    section {
+      padding: 80px 0;
+    }
+
+    section:nth-child(even) {
+      background: var(--bg-secondary);
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .section-subtitle {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      margin-bottom: 48px;
+      max-width: 560px;
+    }
+
+    .section-header { margin-bottom: 48px; }
+
+    /* Features Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--bg-primary);
+      border: 2px solid var(--text-muted);
+      border-radius: 2px;
+      padding: 24px;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 4px 4px 0px 0px var(--bg-tertiary);
+    }
+
+    .feature-card:hover { border-color: var(--accent); transform: translate(-2px, -2px); box-shadow: 6px 6px 0px 0px var(--accent); }
+
+    .feature-card h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+
+    /* Architecture */
+    .arch-diagram {
+      background: var(--code-bg);
+      border: 2px solid var(--text-muted);
+      border-radius: 2px;
+      padding: 32px;
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      line-height: 1.7;
+      overflow-x: auto;
+      white-space: pre;
+      color: var(--text-secondary);
+      text-align: center;
+      box-shadow: 4px 4px 0px 0px var(--bg-tertiary);
+    }
+
+    .arch-diagram .tier-label { color: var(--accent); font-weight: 600; }
+    .arch-diagram .component { color: var(--text-primary); }
+    .arch-diagram .protocol { color: var(--text-muted); }
+
+    /* Quick Start */
+    .quickstart-blocks {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .quickstart-block h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--text-secondary);
+    }
+
+    .quickstart-block pre {
+      background: var(--code-bg);
+      border: 2px solid var(--border);
+      border-radius: 2px;
+      padding: 18px 22px;
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      line-height: 1.65;
+      overflow-x: auto;
+      color: var(--text-secondary);
+      box-shadow: 3px 3px 0px 0px var(--bg-tertiary);
+    }
+
+    .quickstart-block pre .prompt { color: var(--text-muted); }
+    .quickstart-block pre .cmd { color: var(--accent); }
+
+    /* Tech Stack */
+    .tech-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .tech-tag {
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      border-radius: 2px;
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      transition: border-color 0.15s;
+    }
+
+    .tech-tag:hover { border-color: var(--accent); color: var(--text-primary); box-shadow: 2px 2px 0px 0px var(--accent); transform: translate(-1px, -1px); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+    /* Footer */
+    footer {
+      padding: 48px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    footer .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    footer .footer-left {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    footer .footer-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+
+    footer .footer-links a {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      transition: color 0.15s;
+    }
+
+    footer .footer-links a:hover { color: var(--text-primary); }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      nav ul { gap: 16px; }
+      .hero { padding: 120px 0 64px; }
+      .hero h1 { font-size: 2.2rem; }
+      .hero p { font-size: 1.05rem; }
+      section { padding: 56px 0; }
+      .features-grid { grid-template-columns: 1fr; }
+      .arch-diagram { font-size: 0.78rem; padding: 20px; }
+      footer .container { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="container">
+      <a href="https://github.com/WyattAu/Tachyon" class="brand">Tachyon<span>.</span></a>
+      <ul>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#quickstart">Quick Start</a></li>
+        <li><a href="https://github.com/WyattAu/Tachyon">GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="container">
+      <h1>Tachyon<span>.</span></h1>
+      <p>Deterministic, high-performance knowledge management system built with Rust.</p>
+      <div class="hero-actions">
+        <a href="https://github.com/WyattAu/Tachyon" class="btn btn-primary">GitHub Repository</a>
+        <a href="https://wyattau.github.io/Tachyon/getting-started.html" class="btn btn-secondary">Documentation</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Features</h2>
+        <p class="section-subtitle">A complete knowledge management platform with modern capabilities.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <h3>Markdown-First Editing</h3>
+          <p>Full CommonMark and GFM support with KaTeX math rendering and syntax highlighting out of the box.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Real-Time Collaboration</h3>
+          <p>CRDT-based conflict resolution via Yrs with WebSocket relay for seamless multi-user editing.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Full-Text Search</h3>
+          <p>Tantivy BM25 ranking combined with PostgreSQL tsvector for fast, accurate search across all content.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Role-Based Access Control</h3>
+          <p>Fine-grained permissions with comprehensive audit logging for team and enterprise environments.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Static Site Generation</h3>
+          <p>Internationalization, RSS feeds, sitemaps, and SEO optimization built into the build pipeline.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Plugin System</h3>
+          <p>WASM sandboxed plugins via Wasmtime for safe, portable extensibility without compromising security.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Multi-Platform Targets</h3>
+          <p>Desktop, web, and CLI deployment from a single codebase with native performance on each platform.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Offline-First Architecture</h3>
+          <p>Local-first data with a persistent sync queue that reconciles changes when connectivity is restored.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Architecture</h2>
+        <p class="section-subtitle">Three-tier architecture designed for performance and reliability.</p>
+      </div>
+      <div class="arch-diagram"><span class="tier-label">Presentation Tier</span>    <span class="protocol">+---------------------+    +---------------------+    +---------------------+</span>
+ <span class="protocol">|</span> <span class="component">Browser (Leptos WASM)</span> <span class="protocol">|</span>    <span class="protocol">|</span>    <span class="component">Desktop (Tauri)</span>    <span class="protocol">|</span>    <span class="protocol">|</span>      <span class="component">CLI (Clap)</span>       <span class="protocol">|</span>
+ <span class="protocol">+----------+----------</span>    <span class="protocol">+----------+----------</span>    <span class="protocol">+----------+----------</span>
+            <span class="protocol">|</span>                          <span class="protocol">|</span>                          <span class="protocol">|</span>
+            <span class="protocol">+--------------------------+--------------------------+</span>
+                                       <span class="protocol">|</span>
+                                       <span class="protocol">|  HTTP / WebSocket</span>
+                                       <span class="protocol">v</span>
+<span class="tier-label">Application Tier</span>       <span class="protocol">+---------------------------------------------+</span>
+                         <span class="protocol">|</span>           <span class="component">Axum 0.8 Server</span>                <span class="protocol">|</span>
+                         <span class="protocol">|</span>  <span class="component">+-----------+</span> <span class="component">+------------+</span> <span class="component">+-----------+</span>  <span class="protocol">|</span>
+                         <span class="protocol">|</span>  <span class="component">| Tantivy   |</span> <span class="component">| Yrs / CRDT |</span> <span class="component">| Wasmtime  |</span>  <span class="protocol">|</span>
+                         <span class="protocol">|</span>  <span class="component">| Search    |</span> <span class="component">| Sync Engine|</span> <span class="component">| Plugins   |</span>  <span class="protocol">|</span>
+                         <span class="protocol">|</span>  <span class="component">+-----------+</span> <span class="component">+------------+</span> <span class="component">+-----------+</span>  <span class="protocol">|</span>
+                         <span class="protocol">+----------------------+----------------------</span>
+                                                <span class="protocol">|</span>
+                                                <span class="protocol">|  SQLx (async)</span>
+                                                <span class="protocol">v</span>
+<span class="tier-label">Data Tier</span>               <span class="protocol">+---------------------------------------------+</span>
+                           <span class="protocol">|</span>            <span class="component">PostgreSQL 16</span>                 <span class="protocol">|</span>
+                           <span class="protocol">|</span>  <span class="component">Documents</span>  <span class="component">Users</span>  <span class="component">Permissions</span>  <span class="component">Audit Log</span>  <span class="protocol">|</span>
+                           <span class="protocol">+---------------------------------------------</span></div>
+    </div>
+  </section>
+
+  <section id="quickstart">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Quick Start</h2>
+        <p class="section-subtitle">Get up and running in under a minute.</p>
+      </div>
+      <div class="quickstart-blocks">
+        <div class="quickstart-block">
+          <h3>Install via Cargo</h3>
+<pre><span class="prompt">$</span> <span class="cmd">cargo install</span> --git https://github.com/WyattAu/Tachyon tachyon-cli
+<span class="prompt">$</span> <span class="cmd">tachyon</span> init my-wiki
+<span class="prompt">$</span> <span class="cmd">tachyon</span> serve</pre>
+        </div>
+        <div class="quickstart-block">
+          <h3>Run with Docker Compose</h3>
+<pre><span class="prompt">$</span> <span class="cmd">git clone</span> https://github.com/WyattAu/Tachyon.git
+<span class="prompt">$</span> <span class="cmd">cd</span> Tachyon
+<span class="prompt">$</span> <span class="cmd">docker compose</span> up -d</pre>
+        </div>
+        <div class="quickstart-block">
+          <h3>Develop with Nix</h3>
+<pre><span class="prompt">$</span> <span class="cmd">nix develop</span>
+<span class="prompt">$</span> <span class="cmd">cargo build</span> --manifest-path tachyon/Cargo.toml
+<span class="prompt">$</span> <span class="cmd">cargo test</span> --manifest-path tachyon/Cargo.toml</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="techstack">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Technology Stack</h2>
+        <p class="section-subtitle">Built on a modern, memory-safe foundation.</p>
+      </div>
+      <div class="tech-grid">
+        <span class="tech-tag">Rust 2024</span>
+        <span class="tech-tag">Axum 0.8</span>
+        <span class="tech-tag">Leptos 0.8</span>
+        <span class="tech-tag">PostgreSQL 16</span>
+        <span class="tech-tag">Tantivy</span>
+        <span class="tech-tag">Yrs / CRDT</span>
+        <span class="tech-tag">Wasmtime</span>
+        <span class="tech-tag">SQLx</span>
+        <span class="tech-tag">Tauri</span>
+        <span class="tech-tag">Clap</span>
+        <span class="tech-tag">KaTeX</span>
+        <span class="tech-tag">tree-sitter</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="footer-left">Apache-2.0 License</div>
+      <ul class="footer-links">
+        <li><a href="https://github.com/WyattAu/Tachyon">GitHub</a></li>
+        <li><a href="https://wyattau.github.io/Tachyon/getting-started.html">Documentation</a></li>
+        <li><a href="https://github.com/WyattAu/Tachyon/blob/main/LICENSE">License</a></li>
+      </ul>
+    </div>
+  </footer>
+
+</body>
+</html>
