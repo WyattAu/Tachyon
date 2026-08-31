@@ -8,7 +8,7 @@ pub struct QueryStatsState {
     pub query_logger: Arc<tachyon_database::SlowQueryLogger>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct QueryStatsResponse {
     pub pool: tachyon_database::PoolMetrics,
     pub slow_query_count: u64,
@@ -17,6 +17,15 @@ pub struct QueryStatsResponse {
     pub slow_query_threshold_ms: u64,
 }
 
+#[utoipa::path(
+    get,
+    path = "/admin/query-stats",
+    responses(
+        (status = 200, description = "Query statistics", body = QueryStatsResponse),
+    ),
+    tag = "admin",
+    security(("bearer_auth" = [])),
+)]
 pub async fn query_stats_handler(State(state): State<QueryStatsState>) -> Json<QueryStatsResponse> {
     let pool = state.pool.pool_metrics();
     Json(QueryStatsResponse {

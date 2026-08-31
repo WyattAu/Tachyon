@@ -7,7 +7,7 @@ const DEFAULT_THRESHOLD_MS: u64 = 100;
 const MAX_QUERY_LOG_LENGTH: usize = 200;
 
 /// Snapshot of the connection pool metrics.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct PoolMetrics {
     pub size: u32,
     pub idle: u32,

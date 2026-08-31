@@ -15,7 +15,7 @@ pub struct SignupState {
     pub audit_logger: AuditLogger,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct SignupRequest {
     pub username: String,
     pub email: String,
@@ -24,7 +24,7 @@ pub struct SignupRequest {
     pub plan: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SignupResponse {
     pub success: bool,
     pub user_id: String,
@@ -33,12 +33,23 @@ pub struct SignupResponse {
     pub message: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct SignupErrorResponse {
     pub code: String,
     pub message: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/signup",
+    request_body(content = SignupRequest, description = "Signup request"),
+    responses(
+        (status = 200, description = "Account created", body = SignupResponse),
+        (status = 400, description = "Validation error", body = SignupErrorResponse),
+        (status = 409, description = "Email already registered", body = SignupErrorResponse),
+    ),
+    tag = "auth",
+)]
 pub async fn signup(
     State(state): State<SignupState>,
     Json(req): Json<SignupRequest>,
