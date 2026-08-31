@@ -15,7 +15,8 @@ This starts:
 - **Grafana** (port 3000) — pre-configured dashboards
 - **PostgreSQL Exporter** (port 9187) — database metrics
 - **Node Exporter** (port 9100) — host system metrics
-- **Nginx Exporter** (port 9113) — nginx proxy metrics
+
+The optional Nginx exporter and metrics-only Nginx sidecar are enabled together with `--profile metrics-only` when an Nginx metrics endpoint is available. The PostgreSQL exporter expects an already-running PostgreSQL service on the shared `tachyon-network`; it is not defined by this Compose file. For native staging, point Prometheus at the host-reachable staging URL instead of the Docker-only `tachyon-server:8080` target.
 
 ## Access
 

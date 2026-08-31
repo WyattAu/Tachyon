@@ -57,9 +57,9 @@ Staging is running on the user-provided CachyOS host:
 - Persistence: dedicated PostgreSQL-backed instance
 - Process supervision: user-level systemd service
 - Smoke: **12/12 checks, 0% failures**
-- Application load: **25 VUs, 0% expected-response failures**
-- Rate limit: **21 observed 429s, 100% rate-limit headers, 100% valid Retry-After**
-- WebSocket: **10 VUs / 10 seconds, 37 cycles, 100% connection success, p95 connect 47ms**
+- Application load: **25-VU profile exposed a staging gate** — 96.94% transport requests were rate-limited because the harness shared one client identity; latency thresholds passed, but this is not a capacity pass.
+- Rate limit: **117 observed 429s, 100% rate-limit headers, 100% valid Retry-After**; recovery was not confirmed within the test teardown window.
+- WebSocket: **5 VUs / 10 seconds, 100% connection success, p95 connect ≈30ms** after the rate-limit window cleared; broadcast semantics remain unverified.
 
 These are LAN/debug-or-staging measurements, not production capacity claims. A 24-hour soak, TLS endpoint, external network path, and multi-instance test are still required.
 
@@ -70,13 +70,15 @@ These are LAN/debug-or-staging measurements, not production capacity claims. A 2
 | Runtime quality fixes | **Complete** | Targeted tests and live checks above |
 | Local compilation | **Complete** | Workspace `cargo check` passed |
 | Staging deployment | **Complete** | CachyOS service live on `:8082` |
-| HTTP smoke/load validation | **Complete** | k6 smoke and 25-VU run passed |
-| Rate-limit validation | **Complete** | Dedicated k6 run observed 429/header/recovery behavior |
+| HTTP smoke validation | **Complete** | k6 smoke: 21/21 checks, 0 failed requests |
+| High-concurrency HTTP load | **Open gate** | 25-VU run met latency thresholds but 96.94% of requests were rate-limited; rerun with isolated identities and an explicit traffic policy |
+| Rate-limit validation | **Baseline complete** | Dedicated k6 run observed 117 `429`s, complete headers, and valid `Retry-After`; recovery timing remains open |
 | WebSocket lifecycle validation | **Baseline complete** | Connection stability measured; protocol-specific broadcast semantics need deeper tests |
 | Explicit CORS defaults | **Complete and active** | Safe localhost default, explicit env parsing, production wildcard rejection; verified on staging with allow/deny origin checks |
 | Production TLS/DNS | **Pending** | Configure reverse proxy and certificate; verify from an external client |
 | CI/CD end-to-end deployment | **Pending** | Configure secrets and prove push → image → deploy → health |
 | 24-hour soak and resource profile | **Pending** | Run k6 soak; record RSS, DB pool, Redis, errors, and reconnects |
+| Dependency/security audit | **Pending remediation** | `cargo audit` reports 12 advisories; existing release register tracks transitive/framework blockers |
 | OWASP ZAP against live staging | **Pending** | Scan the deployed HTTPS surface and remediate high findings |
 | Backup/restore drill | **Pending** | Restore PostgreSQL backup into an isolated database and exercise recovery |
 | Production release | **Blocked** | Requires all preceding production gates plus rollback rehearsal |
@@ -85,12 +87,12 @@ These are LAN/debug-or-staging measurements, not production capacity claims. A 2
 
 ### Phase A — Harden staging into a repeatable environment
 
-1. Rebuild/restart the staging service from the current commit so the CORS hardening is active.
-2. Add a documented deployment script or CI job that packages/builds the native staging artifact without manual shell quoting.
-3. Record service configuration, database location, migration version, log location, and rollback command in the deployment runbook.
+1. ~~Rebuild/restart the staging service from the current commit so the CORS hardening is active.~~ **Complete:** `./deploy.sh` now performs this reproducibly.
+2. ~~Add a documented deployment script or CI job that packages/builds the native staging artifact without manual shell quoting.~~ **Complete:** native release packaging, remote build polling, atomic activation, and health checks are implemented.
+3. ~~Record service configuration, database location, migration version, log location, and rollback command in the deployment runbook.~~ **Complete:** `DEPLOY.md` and the checked-in systemd/rollback scripts document the path.
 4. Keep staging isolated from unrelated containers and retain a dedicated database/volume.
 
-**Exit:** a clean host or reboot can reproduce the service and health checks without ad-hoc process management.
+**Exit:** reproducible deployment is complete; production validation remains open.
 
 ### Phase B — Production validation
 

@@ -1,44 +1,98 @@
-#!/bin/bash
-# Deploy latest Tachyon to server
-# Run from repo root: bash deploy.sh
+#!/usr/bin/env bash
+# Reproducible Tachyon staging deployment to the authorized CachyOS host.
+# Usage: ./deploy.sh [ssh-host]
 
-SERVER="wyatt@192.168.1.191"
-REMOTE_DIR="/home/wyatt/tachyon-server"
+set -euo pipefail
 
-echo "=== Deploying Tachyon to ${SERVER} ==="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SSH_HOST="${1:-${TACHYON_STAGING_HOST:-wyatt@192.168.1.191}}"
+REMOTE_ROOT="${TACHYON_STAGING_ROOT:-$HOME/tachyon-staging}"
+REVISION="$(git -C "$SCRIPT_DIR" rev-parse --short HEAD)"
+BUILD_LOG="${REMOTE_ROOT}/build-${REVISION}.log"
+BUILD_STATUS="${REMOTE_ROOT}/build-${REVISION}.status"
+RELEASE_DIR="${REMOTE_ROOT}/releases/${REVISION}"
+SERVICE_FILE="${SCRIPT_DIR}/scripts/tachyon-staging.service"
+APP_URL="${TACHYON_STAGING_URL:-http://192.168.1.191:8082}"
 
-# 1. Sync source code
-echo "[1/5] Syncing source code..."
-rsync -avz --exclude target --exclude node_modules --exclude .git --exclude traversal-results \
-  tachyon/ ${SERVER}:${REMOTE_DIR}/
+log() { printf '[deploy] %s\n' "$*"; }
+die() { printf '[deploy] ERROR: %s\n' "$*" >&2; exit 1; }
 
-# 2. Build server binary on remote
-echo "[2/5] Building server binary (this may take a few minutes)..."
-ssh ${SERVER} "cd ${REMOTE_DIR} && cargo build --release -p tachyon-server"
+command -v ssh >/dev/null || die "ssh is required"
+command -v scp >/dev/null || die "scp is required"
+command -v tar >/dev/null || die "tar is required"
+[[ -f "$SERVICE_FILE" ]] || die "missing service unit: $SERVICE_FILE"
+[[ -d "$SCRIPT_DIR/tachyon" ]] || die "run from the Tachyon repository root"
 
-# 3. Build WASM frontend on remote
-echo "[3/5] Building WASM frontend..."
-ssh ${SERVER} "cd ${REMOTE_DIR}/crates/frontend && ~/.cargo/bin/trunk build --release"
+log "Checking SSH access to ${SSH_HOST}"
+ssh -o ConnectTimeout=10 "$SSH_HOST" true
 
-# 4. Restart server
-echo "[4/5] Restarting server..."
-ssh ${SERVER} "killall -9 tachyon-server 2>/dev/null; sleep 2; \
-  DATABASE_URL='postgres://tachyon:tachyon@localhost:5434/tachyon' \
-  TACHYON_JWT_SECRET='deploy-secret-key-for-cachyos-server-at-least-64-chars-long-for-production-use' \
-  TACHYON_JWT_SECRETS='deploy-secret-key-for-cachyos-server-at-least-64-chars-long-for-production-use' \
-  TACHYON_SERVER_HOST=0.0.0.0 \
-  TACHYON_SERVER_PORT=8080 \
-  RUST_LOG=info \
-  TACHYON_ADMIN_PASSWORD=admin123 \
-  TACHYON_STATIC_DIR=${REMOTE_DIR}/crates/frontend/dist \
-  nohup ${REMOTE_DIR}/target/release/tachyon-server > /tmp/tachyon-server.log 2>&1 &"
+log "Preparing release ${REVISION} on ${SSH_HOST}"
+ssh "$SSH_HOST" "mkdir -p '$RELEASE_DIR' '$REMOTE_ROOT/releases' \"\$HOME/.config/systemd/user\""
 
-# 5. Verify
-echo "[5/5] Verifying server health..."
-sleep 5
-ssh ${SERVER} "curl -sf http://localhost:8080/health | python3 -m json.tool"
+log "Packaging Tachyon workspace and local dependencies"
+# Cargo.toml uses ../../{salting,tokenkit,cryptkit}; preserve that layout remotely.
+tar czf - \
+  --exclude='tachyon/target' \
+  --exclude='tachyon/crates/frontend/dist' \
+  --exclude='tachyon/node_modules' \
+  --exclude='tachyon/.tachyon/search_index' \
+  --exclude='tachyon/reports/*.log' \
+  --exclude='.git' \
+  --exclude='*/target' \
+  --exclude='*/.direnv' \
+  -C "$SCRIPT_DIR" tachyon \
+  | ssh "$SSH_HOST" "tar xzf - -C '$RELEASE_DIR'"
+tar czf - \
+  --exclude='.git' \
+  --exclude='*/target' \
+  --exclude='*/.direnv' \
+  -C "$(dirname "$SCRIPT_DIR")" salting tokenkit cryptkit \
+  | ssh "$SSH_HOST" "tar xzf - -C '$REMOTE_ROOT/releases'"
 
-echo ""
-echo "=== Deployment complete ==="
-echo "Server: http://192.168.1.191:8080"
-echo "Health: http://192.168.1.191:8080/health"
+log "Installing deployment environment without exposing secrets"
+ssh "$SSH_HOST" "install -m 600 /tmp/tachyon-staging.env \"\$HOME/.config/tachyon-staging.env\""
+ssh "$SSH_HOST" "test -s \"\$HOME/.config/tachyon-staging.env\""
+
+log "Building release binary on CachyOS"
+if ! ssh "$SSH_HOST" "test -x '$RELEASE_DIR/tachyon/target/release/tachyon-server'"; then
+  BUILD_STATE="$(ssh "$SSH_HOST" "cat '$BUILD_STATUS' 2>/dev/null || true")"
+  if [[ "$BUILD_STATE" == "failed" ]]; then
+    ssh "$SSH_HOST" "tail -80 '$BUILD_LOG'" || true
+    die "remote release build previously failed"
+  fi
+  if [[ "$BUILD_STATE" != "started" ]]; then
+    ssh "$SSH_HOST" "rm -f '$BUILD_STATUS' '$BUILD_LOG'; printf started > '$BUILD_STATUS'; nohup bash -c 'cd \"$RELEASE_DIR/tachyon\" && cargo build --release -p tachyon-server --bin tachyon-server >\"$BUILD_LOG\" 2>&1; rc=\$?; if [ \"\$rc\" -eq 0 ]; then printf success >\"$BUILD_STATUS\"; else printf failed >\"$BUILD_STATUS\"; fi' </dev/null >/dev/null 2>&1 &"
+  fi
+  for attempt in $(seq 1 180); do
+    if ssh "$SSH_HOST" "test -x '$RELEASE_DIR/tachyon/target/release/tachyon-server'"; then
+      break
+    fi
+    BUILD_STATE="$(ssh "$SSH_HOST" "cat '$BUILD_STATUS' 2>/dev/null || true")"
+    if [[ "$BUILD_STATE" == "failed" ]]; then
+      ssh "$SSH_HOST" "tail -80 '$BUILD_LOG'" || true
+      die "remote release build failed"
+    fi
+    sleep 2
+    [[ "$attempt" -lt 180 ]] || die "remote release build did not finish; resume with ./deploy.sh"
+  done
+fi
+
+log "Installing persistent user service"
+scp -q "$SERVICE_FILE" "$SSH_HOST:/tmp/tachyon-staging.service"
+ssh "$SSH_HOST" "install -m 644 /tmp/tachyon-staging.service \"\$HOME/.config/systemd/user/tachyon-staging.service\""
+ssh "$SSH_HOST" "ln -sfn '$RELEASE_DIR' '$REMOTE_ROOT/current'"
+ssh "$SSH_HOST" "systemctl --user daemon-reload"
+ssh "$SSH_HOST" "systemctl --user enable tachyon-staging.service"
+ssh "$SSH_HOST" "systemctl --user restart tachyon-staging.service"
+
+log "Waiting for staging health checks"
+for attempt in $(seq 1 30); do
+  if curl -fsS "$APP_URL/health" >/dev/null 2>&1 \
+    && curl -fsS "$APP_URL/ready" >/dev/null 2>&1 \
+    && curl -fsS "$APP_URL/metrics/prometheus" >/dev/null 2>&1; then
+    log "Staging is healthy: $APP_URL"
+    exit 0
+  fi
+  sleep 2
+  [[ "$attempt" -lt 30 ]] || die "staging did not become healthy; inspect systemctl --user status tachyon-staging"
+done

@@ -179,12 +179,13 @@ This file is a historical remediation register. Items marked `[PASS]` below are 
 - **Dependencies:** None
 - **Files:** `e2e/tests/`
 
-### 4.3 No Load/Stress Testing
+### 4.3 Load/Stress Testing
+- **Status:** Partially verified: k6 smoke, rate-limit, WebSocket lifecycle, and a 25-VU HTTP profile have been run against CachyOS staging. The 25-VU profile met latency thresholds but produced 96.94% rate-limited requests because all VUs shared one client identity; this is not a capacity pass.
 - **Priority:** Medium
 - **Effort:** Medium (1-3 days)
-- **Description:** Initial benchmarks (200 concurrent requests) showed sub-ms latency. No sustained load tests, connection pool exhaustion tests, or memory leak detection under load have been performed.
-- **Dependencies:** Load testing tool (k6, hey, wrk)
-- **Files:** N/A (new test infrastructure needed)
+- **Description:** Run sustained load with isolated identities and an explicit rate-limit policy, then add connection-pool exhaustion, memory-growth, and 24-hour soak measurements.
+- **Dependencies:** Dedicated load-test identities and staging traffic policy
+- **Files:** `load-tests/k6/`, `ROADMAP.md`
 
 ### 4.4 Test Cleanup Is Incomplete
 - **Priority:** Low

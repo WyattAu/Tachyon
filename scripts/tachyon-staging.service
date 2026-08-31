@@ -1,0 +1,14 @@
+[Unit]
+Description=Tachyon staging server
+After=default.target
+
+[Service]
+WorkingDirectory=%h/tachyon-staging/current/tachyon
+EnvironmentFile=%h/.config/tachyon-staging.env
+ExecStart=%h/tachyon-staging/current/tachyon/target/release/tachyon-server
+Restart=always
+RestartSec=3
+TimeoutStopSec=40
+
+[Install]
+WantedBy=default.target

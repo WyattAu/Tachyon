@@ -51,8 +51,6 @@ services:
       DATA_SOURCE_NAME: "postgresql://tachyon:tachyon@postgres:5432/tachyon?sslmode=disable"
     ports:
       - "9187:9187"
-    depends_on:
-      - postgres
     networks:
       - tachyon-monitoring
       - tachyon-network
@@ -76,6 +74,8 @@ services:
 
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:1.1.0
+    profiles:
+      - metrics-only
     container_name: tachyon-nginx-exporter
     restart: unless-stopped
     command:
