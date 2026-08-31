@@ -11,6 +11,33 @@ const API = `${BASE_URL}/api/v1`;
 let cachedToken = '';
 let tokenExpiry = 0;
 
+function configuredTokens() {
+  if (__ENV.TEST_TOKENS_JSON) {
+    try {
+      const tokens = JSON.parse(__ENV.TEST_TOKENS_JSON);
+      if (
+        !Array.isArray(tokens) ||
+        tokens.length === 0 ||
+        tokens.some((token) => typeof token !== 'string' || !token)
+      ) {
+        throw new Error('must be a non-empty string array');
+      }
+      return tokens;
+    } catch (error) {
+      throw new Error(`TEST_TOKENS_JSON must be a JSON string array: ${error.message}`);
+    }
+  }
+
+  if (__ENV.TEST_TOKENS) {
+    const tokens = __ENV.TEST_TOKENS.split(',').map((token) => token.trim()).filter(Boolean);
+    if (tokens.length > 0) {
+      return tokens;
+    }
+  }
+
+  return [];
+}
+
 function getAuthToken() {
   const now = Date.now();
   if (cachedToken && now < tokenExpiry) {
@@ -84,12 +111,17 @@ function readOperation() {
       );
       check(res, { 'search ok': (r) => r.status === 200 });
     },
-    () => {
-      // Unauthenticated list — exercises the anonymous path (no token needed).
+  ];
+
+  // A token-pool run measures isolated authenticated identities. Anonymous
+  // probes intentionally remain available for the shared-user compatibility
+  // profile, but would all share the load generator's IP in a pool run.
+  if (!__ENV.TEST_TOKENS_JSON && !__ENV.TEST_TOKENS) {
+    ops.push(() => {
       const res = http.get(`${API}/documents?page=1&page_size=5`);
       check(res, { 'anon list ok': (r) => r.status === 200 || r.status === 401 });
-    },
-  ];
+    });
+  }
   ops[Math.floor(Math.random() * ops.length)]();
 }
 
@@ -167,6 +199,11 @@ export const options = {
 // One login in setup(), shared with every VU via the setup payload. At 50 VUs
 // the per-IP login rate limit would 429 the per-VU bootstrap logins.
 export function setup() {
+  const tokens = configuredTokens();
+  if (tokens.length > 0) {
+    return { tokens };
+  }
+
   const res = http.post(`${API}/auth/login`, JSON.stringify({
     username: __ENV.TEST_USERNAME || 'loadtest',
     password: __ENV.TEST_PASSWORD || 'LoadTest123!',
@@ -174,14 +211,14 @@ export function setup() {
     headers: { 'Content-Type': 'application/json' },
   });
   if (res.status === 200 && res.json('access_token')) {
-    return { token: res.json('access_token') };
+    return { tokens: [res.json('access_token')] };
   }
-  return { token: '' };
+  return { tokens: [] };
 }
 
 export default function (data) {
-  if (!cachedToken && data && data.token) {
-    cachedToken = data.token;
+  if (!cachedToken && data && data.tokens && data.tokens.length > 0) {
+    cachedToken = data.tokens[(__VU - 1) % data.tokens.length];
     tokenExpiry = Date.now() + 3500 * 1000;
   }
 
@@ -191,10 +228,23 @@ export default function (data) {
     readOperation();
   } else if (roll < 0.7) {
     writeOperation();
-  } else if (roll < 0.9 && !__ENV.TEST_SKIP_AUTHOPS) {
+  } else if (
+    roll < 0.9 &&
+    !__ENV.TEST_SKIP_AUTHOPS &&
+    !__ENV.TEST_TOKENS_JSON &&
+    !__ENV.TEST_TOKENS
+  ) {
     authOperation();
   } else {
-    navigationOperation();
+    // Health is a low-rate monitoring endpoint in staging. Exclude it from
+    // isolated capacity runs so the probe policy does not become a false
+    // application-load failure; the dedicated smoke/rate-limit tests cover it.
+    if (__ENV.TEST_TOKENS_JSON || __ENV.TEST_TOKENS) {
+      const res = http.get(`${BASE_URL}/ready`);
+      check(res, { 'ready ok': (r) => r.status === 200 || r.status === 503 });
+    } else {
+      navigationOperation();
+    }
   }
 
   sleep(Math.random() * 0.5 + 0.1);

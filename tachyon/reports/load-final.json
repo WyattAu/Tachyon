@@ -122,7 +122,7 @@
         }
     },
     "setup_data": {
-        "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIwMWEwNTQ5NS1mNTQ0LTcyNjAtYTcwNi0yNDA4ZDU5ZTE5YmEiLCJpc3MiOiJ0YWNoeW9uLXNlcnZlciIsImF1ZCI6InRhY2h5b24tY2xpZW50IiwiZXhwIjoxNzg4MjU2NDAxLCJpYXQiOjE3ODgxNzAwMDEsInJvbGUiOiJyZWFkZXIiLCJwZXJtaXNzaW9ucyI6W10sInRlYW1faWQiOm51bGx9.mKfEh_5l6SQAETqvT99rwHq_gA4SaES8hlW2hiLBu9o"
+        "token": "[REDACTED]"
     },
     "root_group": {
         "name": "",

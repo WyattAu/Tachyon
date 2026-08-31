@@ -14,6 +14,8 @@ This runbook describes the supported deployment path for Tachyon. The repository
 
 The environment file must contain, at minimum:
 
+The database pool settings are applied by the server when it initializes the pool. For concurrent staging validation, the checked-in systemd unit additionally sets `TACHYON_DB_MAX_CONNECTIONS=40`, `TACHYON_DB_MIN_CONNECTIONS=5`, and `TACHYON_DB_IDLE_TIMEOUT_SECS=600`; override those only after checking PostgreSQL capacity.
+
 ```dotenv
 DATABASE_URL=postgres://tachyon:<password>@127.0.0.1:<port>/tachyon
 TACHYON_JWT_SECRETS=<64-character-random-secret>

@@ -23,7 +23,15 @@ Run the orchestrator script:
 
 ```bash
 BASE_URL=http://localhost:8080 k6 run load-tests/k6/smoke.js
+# Shared-user fallback (subject to the configured login/user rate limits)
 BASE_URL=http://localhost:8080 k6 run load-tests/k6/LoadTest.js
+
+# Preferred for concurrency: one pre-provisioned token per VU (do not commit or print tokens).
+# Supply at least as many tokens as VUs for strict one-identity-per-VU isolation.
+BASE_URL=http://localhost:8080 \\
+  TEST_TOKENS_JSON='["token-vu-1","token-vu-2"]' \\
+  TEST_SKIP_AUTHOPS=true \\
+  k6 run load-tests/k6/LoadTest.js
 BASE_URL=http://localhost:8080 k6 run load-tests/k6/StressTest.js
 BASE_URL=http://localhost:8080 k6 run load-tests/k6/SoakTest.js
 BASE_URL=http://localhost:8080 k6 run load-tests/k6/SpikeTest.js
@@ -38,7 +46,9 @@ BASE_URL=http://localhost:8080 k6 run load-tests/k6/RateLimitTest.js
 | `BASE_URL` | `http://localhost:8080` | Server URL (use `ws://` for WebSocket tests) |
 | `K6_BINARY` | `k6` | Path to k6 binary |
 | `TEST_USERNAME` | `loadtest` | Username for authenticated load tests |
-| `TEST_PASSWORD` | `LoadTest123!` | Password for authenticated load tests |
+| `TEST_PASSWORD` | `LoadTest123!` | Password for the shared-user fallback |
+| `TEST_TOKENS` | unset | Comma-separated pre-provisioned bearer tokens; VU N selects token `(N-1) % token_count` |
+| `TEST_TOKENS_JSON` | unset | JSON string array of pre-provisioned bearer tokens; takes precedence over `TEST_TOKENS` |
 | `RATE_LIMIT` | `100` | Expected rate limit threshold |
 | `RECONNECT_CYCLES` | `10` | WebSocket reconnect cycles |
 | `HEARTBEAT_INTERVAL_MS` | `25000` | WebSocket heartbeat interval |

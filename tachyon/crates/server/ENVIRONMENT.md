@@ -153,7 +153,7 @@
 
 ### Performance
 
-- **Connection pool:** Increase `TACHYON_DB_MAX_CONNECTIONS` for high-traffic deployments (default: 10).
+- **Connection pool:** `TACHYON_DB_MAX_CONNECTIONS`, `TACHYON_DB_MIN_CONNECTIONS`, `TACHYON_DB_ACQUIRE_TIMEOUT_MS`, and `TACHYON_DB_IDLE_TIMEOUT_SECS` are applied to the SQLx pool. Increase the maximum only after checking PostgreSQL capacity; the native staging unit uses 40 max / 5 min connections for concurrency validation.
 - **Redis:** Set `TACHYON_RATE_LIMIT_REDIS_URL` and `TACHYON_REDIS_PUBSUB_URL` for distributed rate limiting and WebSocket scaling across multiple server instances.
 - **Read replicas:** Set `TACHYON_READ_REPLICA_URLS` to offload search/analytics queries.
 

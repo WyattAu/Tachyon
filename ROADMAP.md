@@ -57,7 +57,7 @@ Staging is running on the user-provided CachyOS host:
 - Persistence: dedicated PostgreSQL-backed instance
 - Process supervision: user-level systemd service
 - Smoke: **12/12 checks, 0% failures**
-- Application load: **25-VU profile exposed a staging gate** — 96.94% transport requests were rate-limited because the harness shared one client identity; latency thresholds passed, but this is not a capacity pass.
+- Application load: **scoped 25-VU profile passed with 50 isolated bearer-token identities** — 0% HTTP failures, 100% checks, p95 66.31ms, p99 109.71ms over 20 seconds. This is not evidence for stress, soak, or production capacity.
 - Rate limit: **117 observed 429s, 100% rate-limit headers, 100% valid Retry-After**; recovery was not confirmed within the test teardown window.
 - WebSocket: **5 VUs / 10 seconds, 100% connection success, p95 connect ≈30ms** after the rate-limit window cleared; broadcast semantics remain unverified.
 
@@ -71,7 +71,7 @@ These are LAN/debug-or-staging measurements, not production capacity claims. A 2
 | Local compilation | **Complete** | Workspace `cargo check` passed |
 | Staging deployment | **Complete** | CachyOS service live on `:8082` |
 | HTTP smoke validation | **Complete** | k6 smoke: 21/21 checks, 0 failed requests |
-| High-concurrency HTTP load | **Open gate** | 25-VU run met latency thresholds but 96.94% of requests were rate-limited; rerun with isolated identities and an explicit traffic policy |
+| High-concurrency HTTP load | **Scoped pass** | 25 VUs / 20s with 50 isolated bearer tokens: 0% HTTP failures, 100% checks, p95 66.31ms, p99 109.71ms; broader stress/soak and production-capacity evidence remain open |
 | Rate-limit validation | **Baseline complete** | Dedicated k6 run observed 117 `429`s, complete headers, and valid `Retry-After`; recovery timing remains open |
 | WebSocket lifecycle validation | **Baseline complete** | Connection stability measured; protocol-specific broadcast semantics need deeper tests |
 | Explicit CORS defaults | **Complete and active** | Safe localhost default, explicit env parsing, production wildcard rejection; verified on staging with allow/deny origin checks |
@@ -159,7 +159,7 @@ Maintain KISS at boundaries, DRY shared policy code rather than duplicating beha
 
 ## 8. Decision log
 
-- **2026-08-31:** Staging is considered validated for smoke, baseline HTTP load, rate limiting, and WebSocket connection lifecycle; production readiness remains gated by TLS, external tests, soak, security scan, backups, and CI/CD.
+- **2026-08-31:** Staging is validated for smoke, a scoped isolated-identity 25-VU HTTP profile, baseline rate limiting, and WebSocket connection lifecycle; production readiness remains gated by TLS, external tests, stress/soak, security scan, backups, and CI/CD.
 - **2026-08-31:** CORS now defaults to `http://localhost:8080`, accepts explicit comma-separated origins, and rejects wildcard origins when development mode is disabled.
 - **2026-08-31:** Superseded planning documents are archived; this file is the only active roadmap.
 - **2026-06-09—2026-08-31:** Runtime quality fixes and test-harness corrections were validated incrementally; historical reports remain in `reports/` and the git history.

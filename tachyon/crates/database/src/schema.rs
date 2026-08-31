@@ -40,7 +40,7 @@ impl DatabasePool {
             .max_connections(config.max_connections)
             .min_connections(config.min_connections)
             .acquire_timeout(std::time::Duration::from_secs(config.connection_timeout))
-            .idle_timeout(std::time::Duration::from_secs(300))
+            .idle_timeout(std::time::Duration::from_secs(config.idle_timeout))
             .test_before_acquire(config.enable_query_logging)
             .connect(database_url);
 

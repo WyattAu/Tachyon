@@ -178,7 +178,7 @@ pub async fn create_document(
         if let Ok(mut conn) = state.pool.acquire().await
             && let Err(e) = sqlx::query("UPDATE documents SET outgoing_links = $1 WHERE id = $2")
                 .bind(&links_json)
-                .bind(doc.id.to_string())
+                .bind(doc.id.as_uuid())
                 .execute(&mut *conn)
                 .await
         {
@@ -525,7 +525,7 @@ pub async fn update_document(
         if let Ok(mut conn) = state.pool.acquire().await
             && let Err(e) = sqlx::query("UPDATE documents SET outgoing_links = $1 WHERE id = $2")
                 .bind(&links_json)
-                .bind(&document_id)
+                .bind(doc_id.as_uuid())
                 .execute(&mut *conn)
                 .await
         {

@@ -7,7 +7,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SSH_HOST="${1:-${TACHYON_STAGING_HOST:-wyatt@192.168.1.191}}"
 REMOTE_ROOT="${TACHYON_STAGING_ROOT:-$HOME/tachyon-staging}"
-REVISION="$(git -C "$SCRIPT_DIR" rev-parse --short HEAD)"
+BASE_REVISION="$(git -C "$SCRIPT_DIR" rev-parse --short HEAD)"
+if git -C "$SCRIPT_DIR" diff --quiet && git -C "$SCRIPT_DIR" diff --cached --quiet; then
+  REVISION="$BASE_REVISION"
+else
+  REVISION="${BASE_REVISION}-dirty-$(date +%s)"
+fi
 BUILD_LOG="${REMOTE_ROOT}/build-${REVISION}.log"
 BUILD_STATUS="${REMOTE_ROOT}/build-${REVISION}.status"
 RELEASE_DIR="${REMOTE_ROOT}/releases/${REVISION}"

@@ -711,8 +711,10 @@ pub struct DatabaseConfig {
     pub max_connections: u32,
     /// Minimum connection pool size
     pub min_connections: u32,
-    /// Connection timeout in seconds
+    /// Connection and pool acquire timeout in seconds
     pub connection_timeout: u64,
+    /// Idle connection timeout in seconds
+    pub idle_timeout: u64,
     /// Enable PostgreSQL extensions
     pub enable_extensions: bool,
     /// Enable query logging
@@ -736,6 +738,10 @@ impl Default for DatabaseConfig {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(30),
+            idle_timeout: std::env::var("TACHYON_DB_IDLE_TIMEOUT_SECS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(300),
             enable_extensions: true,
             enable_query_logging: std::env::var("TACHYON_DB_QUERY_LOGGING")
                 .ok()
@@ -769,6 +775,12 @@ impl DatabaseConfig {
     /// Set connection timeout
     pub fn with_connection_timeout(mut self, timeout_seconds: u64) -> Self {
         self.connection_timeout = timeout_seconds;
+        self
+    }
+
+    /// Set idle connection timeout
+    pub fn with_idle_timeout(mut self, timeout_seconds: u64) -> Self {
+        self.idle_timeout = timeout_seconds;
         self
     }
 

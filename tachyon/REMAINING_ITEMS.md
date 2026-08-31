@@ -180,11 +180,11 @@ This file is a historical remediation register. Items marked `[PASS]` below are 
 - **Files:** `e2e/tests/`
 
 ### 4.3 Load/Stress Testing
-- **Status:** Partially verified: k6 smoke, rate-limit, WebSocket lifecycle, and a 25-VU HTTP profile have been run against CachyOS staging. The 25-VU profile met latency thresholds but produced 96.94% rate-limited requests because all VUs shared one client identity; this is not a capacity pass.
+- **Status:** Scoped capacity pass: k6 smoke, rate-limit, WebSocket lifecycle, and a 25-VU / 20-second HTTP profile passed against CachyOS staging with 50 isolated bearer-token identities. The scoped run recorded 0% HTTP failures, 100% checks, p95 66.31ms, and p99 109.71ms; broader stress, resource profiling, explicit rate-limit recovery, and 24-hour soak evidence remain open.
 - **Priority:** Medium
 - **Effort:** Medium (1-3 days)
-- **Description:** Run sustained load with isolated identities and an explicit rate-limit policy, then add connection-pool exhaustion, memory-growth, and 24-hour soak measurements.
-- **Dependencies:** Dedicated load-test identities and staging traffic policy
+- **Description:** Run sustained stress with an explicit traffic policy, then add connection-pool exhaustion, memory-growth, and 24-hour soak measurements.
+- **Dependencies:** Staging traffic policy and retained load-test reports
 - **Files:** `load-tests/k6/`, `ROADMAP.md`
 
 ### 4.4 Test Cleanup Is Incomplete
@@ -269,12 +269,13 @@ This file is a historical remediation register. Items marked `[PASS]` below are 
 
 ## 7. Performance Opportunities
 
-### 7.1 No Database Connection Pool Tuning
+### 7.1 Database Connection Pool Tuning
+- **Status:** [PASS] Explicit pool configuration is wired from server settings into `DatabasePool`; staging uses 40 maximum / 5 minimum connections with a 5-second acquire timeout and 600-second idle timeout. The isolated 25-VU profile passed without pool starvation.
 - **Priority:** Medium
 - **Effort:** Small (< 1 day)
-- **Description:** `DatabasePool` uses sqlx default pool settings. No explicit configuration for `max_connections`, `min_connections`, `acquire_timeout`, or `idle_timeout`. Under load these defaults may be suboptimal.
-- **Dependencies:** Load testing data
-- **Files:** `crates/database/src/schema.rs`
+- **Description:** Continue tuning from sustained workload and production-like measurements; values are not universal production recommendations.
+- **Dependencies:** Production-scale workload data
+- **Files:** `crates/database/src/schema.rs`, `crates/database/src/types.rs`, `crates/server/src/lib.rs`
 
 ### 7.2 No Response Caching for Read-Heavy Endpoints
 - **Priority:** Low

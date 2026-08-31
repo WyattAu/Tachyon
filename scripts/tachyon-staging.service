@@ -5,6 +5,12 @@ After=default.target
 [Service]
 WorkingDirectory=%h/tachyon-staging/current/tachyon
 EnvironmentFile=%h/.config/tachyon-staging.env
+# Explicit pool sizing prevents the default 10-connection pool from starving
+# concurrent document/search requests during staging validation.
+Environment=TACHYON_DB_MAX_CONNECTIONS=40
+Environment=TACHYON_DB_MIN_CONNECTIONS=5
+Environment=TACHYON_DB_ACQUIRE_TIMEOUT_MS=5000
+Environment=TACHYON_DB_IDLE_TIMEOUT_SECS=600
 ExecStart=%h/tachyon-staging/current/tachyon/target/release/tachyon-server
 Restart=always
 RestartSec=3

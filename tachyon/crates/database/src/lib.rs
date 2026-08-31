@@ -157,6 +157,14 @@ pub async fn init(database_url: &str) -> DatabaseResult<DatabasePool> {
     DatabasePool::new(database_url).await
 }
 
+/// Initialize the database with an explicit pool configuration.
+pub async fn init_with_config(
+    database_url: &str,
+    config: DatabaseConfig,
+) -> DatabaseResult<DatabasePool> {
+    DatabasePool::with_config(database_url, config).await
+}
+
 /// Initialize the database with the given connection URL and run migrations
 ///
 /// # Arguments
@@ -169,6 +177,16 @@ pub async fn init(database_url: &str) -> DatabaseResult<DatabasePool> {
 /// Returns error if database connection, migration, or initialization fails
 pub async fn init_with_migrations(database_url: &str) -> DatabaseResult<DatabasePool> {
     let pool = DatabasePool::new(database_url).await?;
+    migrations::run_migrations(&pool).await?;
+    Ok(pool)
+}
+
+/// Initialize the database with an explicit pool configuration and run migrations.
+pub async fn init_with_config_and_migrations(
+    database_url: &str,
+    config: DatabaseConfig,
+) -> DatabaseResult<DatabasePool> {
+    let pool = DatabasePool::with_config(database_url, config).await?;
     migrations::run_migrations(&pool).await?;
     Ok(pool)
 }

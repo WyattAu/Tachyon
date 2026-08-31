@@ -251,8 +251,7 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
     use crate::routes::user::UserState;
     use crate::routes::webhook::WebhookState;
     use crate::websocket::CrdtConnectionManager;
-    use tachyon_database::init;
-    use tachyon_database::init_with_migrations;
+    use tachyon_database::{DatabaseConfig, init_with_config, init_with_config_and_migrations};
 
     let database_url = if config.database_url.is_empty() {
         config
@@ -263,13 +262,19 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         &config.database_url
     };
 
+    let pool_config = DatabaseConfig::new()
+        .with_max_connections(config.db_max_connections)
+        .with_min_connections(config.db_min_connections)
+        .with_connection_timeout(config.db_acquire_timeout_ms.div_ceil(1000))
+        .with_idle_timeout(config.db_idle_timeout_secs);
+
     let pool = if std::env::var("TACHYON_SKIP_MIGRATIONS").is_ok() {
         tracing::warn!("TACHYON_SKIP_MIGRATIONS is set -- skipping database migrations");
-        init(database_url)
+        init_with_config(database_url, pool_config)
             .await
             .map_err(|e| anyhow::anyhow!("Failed to initialize database: {}", e))?
     } else {
-        init_with_migrations(database_url)
+        init_with_config_and_migrations(database_url, pool_config)
             .await
             .map_err(|e| anyhow::anyhow!("Failed to initialize database: {}", e))?
     };
@@ -939,17 +944,19 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     router = router.merge(swagger_ui);
     router = router.merge(swagger_routes);
 
-    let auth_state = crate::middleware::AuthState::new(config.clone(), pool.clone());
-    let auth_layer =
-        axum::middleware::from_fn_with_state(auth_state, crate::middleware::auth_middleware);
-    router = router.layer(auth_layer);
-
+    // Register rate limiting first so authentication is the outer layer and
+    // populates AuthContext before rate_limit_middleware derives its key.
     if config.rate_limit.enabled {
         router = router.layer(axum::middleware::from_fn_with_state(
             rate_limit_state,
             crate::middleware::rate_limit_middleware,
         ));
     }
+
+    let auth_state = crate::middleware::AuthState::new(config.clone(), pool.clone());
+    let auth_layer =
+        axum::middleware::from_fn_with_state(auth_state, crate::middleware::auth_middleware);
+    router = router.layer(auth_layer);
 
     router.fallback_service(static_service)
 }
