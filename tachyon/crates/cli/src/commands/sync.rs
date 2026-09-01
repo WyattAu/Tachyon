@@ -133,6 +133,7 @@ pub struct PushCommand {
     pub input: PathBuf,
     pub database_url: Option<String>,
     pub dry_run: bool,
+    pub check: bool,
     pub force: bool,
 }
 impl PushCommand {
@@ -141,11 +142,16 @@ impl PushCommand {
             input,
             database_url,
             dry_run,
+            check: false,
             force: false,
         }
     }
     pub fn with_force(mut self, force: bool) -> Self {
         self.force = force;
+        self
+    }
+    pub fn with_check(mut self, check: bool) -> Self {
+        self.check = check;
         self
     }
     fn database_url(&self) -> CliResult<String> {
@@ -163,9 +169,35 @@ impl Command for PushCommand {
             if !self.input.is_dir() { return Err(CliError::io(&self.input, "not a directory")); }
             let manifest = read_manifest(&self.input)?;
             let (docs, summary) = ObsidianImporter::import_from_dir(&self.input).map_err(|e| CliError::generic(format!("Failed to scan vault: {e}")))?;
-            println!("Found {} document(s): {} imported, {} skipped, {} failed", summary.total_files, summary.imported, summary.skipped, summary.failed);
-            if self.dry_run { for doc in &docs { println!("  {} -> {}", doc.source_path, doc.title); } println!("Dry run: no documents changed."); return Ok(()); }
-            let pool = init_with_migrations(&self.database_url()?).await.map_err(|e| CliError::database(format!("Failed to connect: {e}")))?; let repo = DocumentRepository::new(pool); let mut updated = 0;
+            println!("Found {} document(s): {} imported, {} skipped, {} failed", summary.total_files, summary.imported, summary.skipped, summary.failed);            if self.dry_run {
+                for doc in &docs {
+                    println!("  {} -> {}", doc.source_path, doc.title);
+                }
+                println!("Dry run: no documents changed.");
+                return Ok(());
+            }
+            let pool = init_with_migrations(&self.database_url()?)
+                .await
+                .map_err(|e| CliError::database(format!("Failed to connect: {e}")))?;
+            let repo = DocumentRepository::new(pool);
+            if self.check {
+                let mut conflicts = 0;
+                for doc in &docs {
+                    let slug = doc.effective_slug();
+                    if let Some(entry) = manifest.documents.get(&slug) {
+                        if let Some(current) = repo.get_by_slug(&slug).await.map_err(|e| CliError::database(format!("Failed to find '{slug}': {e}")))? {
+                            let server_hash = current.content_hash.unwrap_or_else(|| compute_content_hash(current.content.as_deref().unwrap_or("")));
+                            if server_hash != entry.content_hash {
+                                println!("CONFLICT {slug}: server changed since pull");
+                                conflicts += 1;
+                            }
+                        }
+                    }
+                }
+                if conflicts > 0 { return Err(CliError::invalid_argument(format!("{conflicts} conflict(s) found; no documents changed"))); }
+                println!("Sync check passed: no conflicts found; no documents changed.");
+                return Ok(());
+            }            let mut updated = 0;
             for doc in docs {
                 let slug = doc.effective_slug(); let content = doc.content.clone(); let hash = compute_content_hash(&content); let existing = repo.get_by_slug(&slug).await.map_err(|e| CliError::database(format!("Failed to find '{slug}': {e}")))?;
                 if let Some(mut current) = existing {

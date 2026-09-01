@@ -6,8 +6,8 @@ Tachyon vaults are plain Markdown directories, so they can be opened in VS Code,
 
 ```bash
 export DATABASE_URL=postgresql://...
-tachyon pull ./vault
-tachyon push ./vault --dry-run
+tachyon pull ./vaulttachyon push ./vault --dry-run
+tachyon push ./vault --check
 tachyon push ./vault
 ```
 
@@ -15,7 +15,7 @@ tachyon push ./vault
 
 `push` parses YAML frontmatter, tags, embeds, and Obsidian wiki-links using the existing import pipeline. Existing documents are updated by slug. New documents are currently reported but not created because author/project ownership context must be supplied explicitly; use the authenticated import API for new-document creation until that context is configured.
 
-Always run `--dry-run` before pushing a large change. Push does not delete documents that are absent locally. When a pulled document has changed on the server, push stops with a conflict; resolve it locally or use `--force` only after reviewing the overwrite.
+Always run `--dry-run` before pushing a large change. Push does not delete documents that are absent locally. Use `--check` for a read-only server conflict scan. When a pulled document has changed on the server, push stops with a conflict; resolve it locally or use `--force` only after reviewing the overwrite.
 
 ## VS Code
 

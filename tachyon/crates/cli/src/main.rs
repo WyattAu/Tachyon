@@ -144,6 +144,8 @@ enum Commands {
         #[arg(long)]
         dry_run: bool,
         #[arg(long)]
+        check: bool,
+        #[arg(long)]
         force: bool,
     },
 
@@ -337,8 +339,10 @@ fn main() {
             directory,
             database_url,
             dry_run,
+            check,
             force,
         } => PushCommand::new(directory, database_url, dry_run)
+            .with_check(check)
             .with_force(force)
             .execute(),
 
