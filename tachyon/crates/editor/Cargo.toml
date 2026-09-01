@@ -13,6 +13,7 @@ serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 tracing = "0.1"
 yrs = "0.25"
+walkdir = { workspace = true }
 
 # tree-sitter highlighting (native-only; excluded on wasm32)
 tree-sitter = { version = "0.25", optional = true }
@@ -26,6 +27,9 @@ tree-sitter-yaml = { version = "0.7", optional = true }
 tree-sitter-css = { version = "0.25", optional = true }
 tree-sitter-bash = { version = "0.25", optional = true }
 tree-sitter-html = { version = "0.23", optional = true }
+
+[dev-dependencies]
+tempfile = "3"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tree-sitter-highlight-wasm = "0.25"

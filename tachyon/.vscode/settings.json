@@ -1,0 +1,13 @@
+{
+  "rust-analyzer.linkedProjects": ["${workspaceFolder}/Cargo.toml"],
+  "files.associations": {
+    "*.md": "markdown"
+  },
+  "yaml.schemas": {
+    "${workspaceFolder}/docs/frontmatter.schema.json": "/*.md"
+  },
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "editor.defaultFormatter": "yzhang.markdown-all-in-one"
+  }
+}

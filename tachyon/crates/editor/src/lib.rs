@@ -5,6 +5,7 @@ pub mod cursor;
 pub mod editor;
 pub mod highlight;
 pub mod language;
+pub mod lsp;
 pub mod outliner;
 pub mod search;
 pub mod sync_queue;
@@ -18,6 +19,7 @@ pub use highlight::{
     HighlightProvider, HighlightSpan, HighlightToken, RegexHighlighter, css_class,
 };
 pub use language::{Language, extract_extension};
+pub use lsp::{EditorDiagnostic, EditorDocument, VaultIndex};
 pub use search::SearchResult;
 pub use sync_queue::{OfflineSyncQueue, QueuedUpdate, SyncQueueSummary, SyncStatus};
 pub use theme::{SyntaxTheme, SyntaxThemeBuilder};
