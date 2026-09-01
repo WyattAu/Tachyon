@@ -5,6 +5,7 @@ pub mod gui;
 pub mod init;
 pub mod plugin;
 pub mod serve;
+pub mod sync;
 
 // Re-export command handlers
 pub use build::BuildCommand;
@@ -12,6 +13,7 @@ pub use gui::GuiCommand;
 pub use init::InitCommand;
 pub use plugin::{PluginInfoCommand, PluginInstallCommand, PluginListCommand};
 pub use serve::ServeCommand;
+pub use sync::{PullCommand, PushCommand};
 
 use crate::error::CliResult;
 

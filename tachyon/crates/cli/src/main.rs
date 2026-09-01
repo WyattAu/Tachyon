@@ -3,7 +3,7 @@
 use clap::{Parser, Subcommand};
 use tachyon_cli::commands::{
     BuildCommand, Command, GuiCommand, InitCommand, PluginInfoCommand, PluginInstallCommand,
-    PluginListCommand, ServeCommand,
+    PluginListCommand, PullCommand, PushCommand, ServeCommand,
 };
 use tachyon_cli::{CliError, CliResult, VERSION};
 
@@ -123,6 +123,26 @@ enum Commands {
         /// Release mode (use built binary instead of cargo tauri dev)
         #[arg(long)]
         release: bool,
+    },
+
+    /// Pull documents into a local markdown vault
+    Pull {
+        #[arg(value_name = "DIRECTORY", default_value = ".")]
+        directory: std::path::PathBuf,
+        #[arg(long)]
+        database_url: Option<String>,
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Push a local markdown vault into Tachyon
+    Push {
+        #[arg(value_name = "DIRECTORY", default_value = ".")]
+        directory: std::path::PathBuf,
+        #[arg(long)]
+        database_url: Option<String>,
+        #[arg(long)]
+        dry_run: bool,
     },
 
     /// Plugin development commands
@@ -303,6 +323,14 @@ fn main() {
                 release,
             );
             cmd.execute()
+        }
+
+        Commands::Pull { directory, database_url, force } => {
+            PullCommand::new(directory, database_url, force).execute()
+        }
+
+        Commands::Push { directory, database_url, dry_run } => {
+            PushCommand::new(directory, database_url, dry_run).execute()
         }
 
         Commands::Build {
