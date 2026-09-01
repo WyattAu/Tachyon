@@ -6,6 +6,8 @@ pub mod editor;
 pub mod highlight;
 pub mod language;
 pub mod lsp;
+#[cfg(feature = "lsp")]
+pub mod lsp_server;
 pub mod outliner;
 pub mod search;
 pub mod sync_queue;

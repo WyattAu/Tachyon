@@ -1,0 +1,29 @@
+{
+  "name": "tachyon-vscode",
+  "displayName": "Tachyon Editor",
+  "description": "Wiki-link intelligence for Tachyon Markdown vaults.",
+  "version": "0.1.0",
+  "private": true,
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onLanguage:markdown"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "tachyon.pull", "title": "Tachyon: Pull Vault" },
+      { "command": "tachyon.push", "title": "Tachyon: Push Vault" }
+    ],
+    "configuration": {
+      "title": "Tachyon",
+      "properties": {
+        "tachyon.lspCommand": {
+          "type": "string",
+          "default": "tachyon-lsp",
+          "description": "Executable used to start the Tachyon LSP server."
+        }
+      }
+    }
+  },
+  "scripts": { "check": "node --check extension.js" },
+  "dependencies": { "vscode-languageclient": "^9.0.1" }
+}

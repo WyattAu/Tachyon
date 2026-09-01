@@ -15,6 +15,11 @@ tracing = "0.1"
 yrs = "0.25"
 walkdir = { workspace = true }
 
+# Optional stdio LSP transport for external editors.
+lsp-types = { version = "0.97", optional = true }
+serde_json = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+
 # tree-sitter highlighting (native-only; excluded on wasm32)
 tree-sitter = { version = "0.25", optional = true }
 tree-sitter-highlight = { version = "0.25", optional = true }
@@ -39,6 +44,7 @@ js-sys = "0.3"
 
 [features]
 staging = []
+lsp = ["dep:lsp-types", "dep:serde_json", "dep:tokio"]
 native-tree-sitter = [
   "dep:tree-sitter",
   "dep:tree-sitter-highlight",
