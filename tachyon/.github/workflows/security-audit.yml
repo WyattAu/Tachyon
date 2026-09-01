@@ -1,0 +1,54 @@
+name: security-audit
+
+on:
+  push:
+    branches: [main]
+    paths: ["tachyon/**", ".github/workflows/security-audit.yml"]
+  pull_request:
+    paths: ["tachyon/**", ".github/workflows/security-audit.yml"]
+  workflow_dispatch:
+
+jobs:
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-audit-${{ hashFiles('tachyon/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-audit-
+
+      - name: Run cargo audit
+        working-directory: tachyon
+        run: |
+          cargo install cargo-audit --locked || true
+          cargo audit --json > audit-report.json || true
+          cargo audit || true
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cargo-audit-report
+          path: tachyon/audit-report.json
+
+  security-probe:
+    # Lightweight OWASP-style probe against a live staging target.
+    # Runs only when a staging URL is configured (repo/environment variable).
+    runs-on: ubuntu-latest
+    if: ${{ vars.TACHYON_STAGING_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run OWASP security probe against staging
+        env:
+          TACHYON_STAGING_URL: ${{ vars.TACHYON_STAGING_URL }}
+        run: bash tachyon/scripts/security-audit.sh "$TACHYON_STAGING_URL"
