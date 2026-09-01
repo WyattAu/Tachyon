@@ -1,0 +1,75 @@
+# Prometheus configuration for native staging deployment
+# Targets host-reachable services instead of Docker service names
+#
+# Usage:
+#   Prometheus -\-\-config.file=prometheus-native.yml
+#
+# This config is used when Tachyon runs natively (systemd) rather than in Docker.
+# Update the targets below to match your deployment environment.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+  external_labels:
+    monitor: "tachyon"
+    env: "staging"
+
+rule_files:
+  - "alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - localhost:9093
+
+scrape_configs:
+  # Tachyon server metrics (native deployment)
+  - job_name: "tachyon"
+    metrics_path: "/metrics/prometheus"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["localhost:8082"]
+        labels:
+          service: "tachyon"
+          env: "staging"
+
+  # Tachyon custom app metrics
+  - job_name: "tachyon-app"
+    metrics_path: "/metrics/app"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["localhost:8082"]
+        labels:
+          service: "tachyon"
+          env: "staging"
+
+  # Node exporter for system metrics
+  - job_name: "node"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["localhost:9100"]
+        labels:
+          service: "node"
+          env: "staging"
+
+  # PostgreSQL exporter
+  - job_name: "postgres"
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["localhost:9187"]
+        labels:
+          service: "postgres"
+          env: "staging"
+
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["localhost:9090"]
