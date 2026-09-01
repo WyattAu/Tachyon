@@ -68,7 +68,8 @@ if ! ssh "$SSH_HOST" "test -x '$RELEASE_DIR/tachyon/target/release/tachyon-serve
   if [[ "$BUILD_STATE" != "started" ]]; then
     ssh "$SSH_HOST" "rm -f '$BUILD_STATUS' '$BUILD_LOG'; printf started > '$BUILD_STATUS'; nohup bash -c 'cd \"$RELEASE_DIR/tachyon\" && cargo build --release -p tachyon-server --bin tachyon-server >\"$BUILD_LOG\" 2>&1; rc=\$?; if [ \"\$rc\" -eq 0 ]; then printf success >\"$BUILD_STATUS\"; else printf failed >\"$BUILD_STATUS\"; fi' </dev/null >/dev/null 2>&1 &"
   fi
-  for attempt in $(seq 1 180); do
+  # Cold builds on the CachyOS host take ~12 min; allow up to ~25 min before giving up.
+  for attempt in $(seq 1 750); do
     if ssh "$SSH_HOST" "test -x '$RELEASE_DIR/tachyon/target/release/tachyon-server'"; then
       break
     fi
@@ -78,7 +79,7 @@ if ! ssh "$SSH_HOST" "test -x '$RELEASE_DIR/tachyon/target/release/tachyon-serve
       die "remote release build failed"
     fi
     sleep 2
-    [[ "$attempt" -lt 180 ]] || die "remote release build did not finish; resume with ./deploy.sh"
+    [[ "$attempt" -lt 750 ]] || die "remote release build did not finish; resume with ./deploy.sh"
   done
 fi
 
@@ -91,13 +92,14 @@ ssh "$SSH_HOST" "systemctl --user enable tachyon-staging.service"
 ssh "$SSH_HOST" "systemctl --user restart tachyon-staging.service"
 
 log "Waiting for staging health checks"
-for attempt in $(seq 1 30); do
+for attempt in $(seq 1 60); do
   if curl -fsS "$APP_URL/health" >/dev/null 2>&1 \
     && curl -fsS "$APP_URL/ready" >/dev/null 2>&1 \
     && curl -fsS "$APP_URL/metrics/prometheus" >/dev/null 2>&1; then
     log "Staging is healthy: $APP_URL"
+    log "Active release: $(ssh "$SSH_HOST" "readlink '$REMOTE_ROOT/current'")"
     exit 0
   fi
   sleep 2
-  [[ "$attempt" -lt 30 ]] || die "staging did not become healthy; inspect systemctl --user status tachyon-staging"
+  [[ "$attempt" -lt 60 ]] || die "staging did not become healthy; inspect: ssh '$SSH_HOST' systemctl --user status tachyon-staging"
 done
