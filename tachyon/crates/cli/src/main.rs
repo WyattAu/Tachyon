@@ -143,6 +143,8 @@ enum Commands {
         database_url: Option<String>,
         #[arg(long)]
         dry_run: bool,
+        #[arg(long)]
+        force: bool,
     },
 
     /// Plugin development commands
@@ -325,13 +327,20 @@ fn main() {
             cmd.execute()
         }
 
-        Commands::Pull { directory, database_url, force } => {
-            PullCommand::new(directory, database_url, force).execute()
-        }
+        Commands::Pull {
+            directory,
+            database_url,
+            force,
+        } => PullCommand::new(directory, database_url, force).execute(),
 
-        Commands::Push { directory, database_url, dry_run } => {
-            PushCommand::new(directory, database_url, dry_run).execute()
-        }
+        Commands::Push {
+            directory,
+            database_url,
+            dry_run,
+            force,
+        } => PushCommand::new(directory, database_url, dry_run)
+            .with_force(force)
+            .execute(),
 
         Commands::Build {
             repo_path,
