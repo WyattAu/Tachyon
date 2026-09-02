@@ -135,7 +135,10 @@ pub fn ReviewPanel(document_id: String) -> impl IntoView {
         ev.prevent_default();
         let doc_id = doc_id_for_new.clone();
         let set_rc = set_rc_for_new;
-        let client = api_client_for_submit.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        let client = api_client_for_submit
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
 
         wasm_bindgen_futures::spawn_local(async move {
             // Use the author from localStorage or a default
@@ -296,7 +299,10 @@ fn ReviewItem(
         }
         let doc_id = doc_id_approve.clone();
         let rid = review_id_approve.clone();
-        let api = api_approve.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        let api = api_approve
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
         let set_rc = set_rc_approve;
         wasm_bindgen_futures::spawn_local(async move {
             let _ = api
@@ -342,7 +348,10 @@ fn ReviewItem(
         }
         let doc_id = doc_id_changes.clone();
         let rid = review_id_changes.clone();
-        let api = api_changes.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        let api = api_changes
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
         let set_rc = set_rc_changes;
         wasm_bindgen_futures::spawn_local(async move {
             let _ = api

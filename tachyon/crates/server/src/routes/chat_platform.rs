@@ -1,5 +1,5 @@
 use crate::error::ServerError;
-use axum::{extract::State, response::Json, routing::post, Router};
+use axum::{Router, extract::State, response::Json, routing::post};
 use serde::Serialize;
 
 #[derive(Clone)]
@@ -41,17 +41,11 @@ pub async fn test_chat_platforms(
         )
     };
 
-    Ok(Json(ChatTestResponse {
-        results,
-        message,
-    }))
+    Ok(Json(ChatTestResponse { results, message }))
 }
 
 pub fn create_chat_platform_router() -> Router<ChatPlatformState> {
-    Router::new().route(
-        "/admin/integrations/chat/test",
-        post(test_chat_platforms),
-    )
+    Router::new().route("/admin/integrations/chat/test", post(test_chat_platforms))
 }
 
 #[cfg(test)]
@@ -61,14 +55,12 @@ mod tests {
     #[test]
     fn test_chat_test_response_serialization() {
         let response = ChatTestResponse {
-            results: vec![
-                crate::integrations::chat_platforms::DeliveryResult {
-                    platform: "slack".to_string(),
-                    success: true,
-                    status_code: Some(200),
-                    error: None,
-                },
-            ],
+            results: vec![crate::integrations::chat_platforms::DeliveryResult {
+                platform: "slack".to_string(),
+                success: true,
+                status_code: Some(200),
+                error: None,
+            }],
             message: "Test notification sent successfully to 1 platform(s).".to_string(),
         };
         let json = serde_json::to_string(&response).unwrap();

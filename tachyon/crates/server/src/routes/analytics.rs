@@ -7,8 +7,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tachyon_database::DatabasePool;
 
-
-
 #[derive(Clone)]
 pub struct AnalyticsState {
     pub pool: DatabasePool,
@@ -118,19 +116,16 @@ pub struct ApiActivityResponse {
 pub async fn get_overview(
     State(state): State<AnalyticsState>,
 ) -> Result<Json<AnalyticsOverview>, (StatusCode, String)> {
-    let total_documents: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*)::bigint FROM documents WHERE deleted_at IS NULL",
-    )
-    .fetch_one(state.pool.inner())
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let total_documents: (i64,) =
+        sqlx::query_as("SELECT COUNT(*)::bigint FROM documents WHERE deleted_at IS NULL")
+            .fetch_one(state.pool.inner())
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let total_users: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*)::bigint FROM users",
-    )
-    .fetch_one(state.pool.inner())
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let total_users: (i64,) = sqlx::query_as("SELECT COUNT(*)::bigint FROM users")
+        .fetch_one(state.pool.inner())
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let storage: (Option<i64>,) = sqlx::query_as(
         "SELECT COALESCE(SUM(LENGTH(content)), 0)::bigint FROM documents WHERE deleted_at IS NULL",
@@ -139,12 +134,10 @@ pub async fn get_overview(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let active_spaces: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*)::bigint FROM spaces",
-    )
-    .fetch_one(state.pool.inner())
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let active_spaces: (i64,) = sqlx::query_as("SELECT COUNT(*)::bigint FROM spaces")
+        .fetch_one(state.pool.inner())
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(AnalyticsOverview {
         total_documents: total_documents.0,
@@ -175,9 +168,9 @@ pub async fn get_document_activity(
             .format("%Y-%m-%d")
             .to_string()
     });
-    let end_date = query.end_date.unwrap_or_else(|| {
-        chrono::Utc::now().format("%Y-%m-%d").to_string()
-    });
+    let end_date = query
+        .end_date
+        .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
 
     let rows: Vec<(String, i64, i64, i64)> = sqlx::query_as(
         r#"
@@ -262,9 +255,9 @@ pub async fn get_user_activity(
             .format("%Y-%m-%d")
             .to_string()
     });
-    let end_date = query.end_date.unwrap_or_else(|| {
-        chrono::Utc::now().format("%Y-%m-%d").to_string()
-    });
+    let end_date = query
+        .end_date
+        .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
 
     let rows: Vec<(String, i64)> = sqlx::query_as(
         r#"
@@ -325,9 +318,9 @@ pub async fn get_search_activity(
             .format("%Y-%m-%d")
             .to_string()
     });
-    let end_date = query.end_date.unwrap_or_else(|| {
-        chrono::Utc::now().format("%Y-%m-%d").to_string()
-    });
+    let end_date = query
+        .end_date
+        .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
 
     let rows: Vec<(String, i64)> = sqlx::query_as(
         r#"
@@ -388,9 +381,9 @@ pub async fn get_api_activity(
             .format("%Y-%m-%d")
             .to_string()
     });
-    let end_date = query.end_date.unwrap_or_else(|| {
-        chrono::Utc::now().format("%Y-%m-%d").to_string()
-    });
+    let end_date = query
+        .end_date
+        .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
 
     let rows: Vec<(String, i64, i64, i64)> = sqlx::query_as(
         r#"
@@ -427,12 +420,14 @@ pub async fn get_api_activity(
 
     let entries: Vec<ApiRequestVolume> = rows
         .into_iter()
-        .map(|(date, total_requests, successful, failed)| ApiRequestVolume {
-            date,
-            total_requests,
-            successful,
-            failed,
-        })
+        .map(
+            |(date, total_requests, successful, failed)| ApiRequestVolume {
+                date,
+                total_requests,
+                successful,
+                failed,
+            },
+        )
         .collect();
 
     let total = entries.len();
@@ -463,7 +458,8 @@ mod tests {
 
     #[test]
     fn test_date_range_query_with_values() {
-        let json = r#"{"start_date": "2025-01-01", "end_date": "2025-01-31", "granularity": "day"}"#;
+        let json =
+            r#"{"start_date": "2025-01-01", "end_date": "2025-01-31", "granularity": "day"}"#;
         let query: DateRangeQuery = serde_json::from_str(json).unwrap();
         assert_eq!(query.start_date.as_deref(), Some("2025-01-01"));
         assert_eq!(query.end_date.as_deref(), Some("2025-01-31"));
@@ -486,14 +482,12 @@ mod tests {
     #[test]
     fn test_daily_activity_response_serialization() {
         let response = DailyActivityResponse {
-            entries: vec![
-                DailyActivity {
-                    date: "2025-01-01".to_string(),
-                    created: 5,
-                    updated: 10,
-                    deleted: 1,
-                },
-            ],
+            entries: vec![DailyActivity {
+                date: "2025-01-01".to_string(),
+                created: 5,
+                updated: 10,
+                deleted: 1,
+            }],
             total: 1,
         };
         let json = serde_json::to_string(&response).unwrap();

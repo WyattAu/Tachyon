@@ -89,6 +89,7 @@ pub use plugin::{CreatePluginRequest, Plugin, PluginRepository, UpdatePluginRequ
 pub use presence::{
     PRESENCE_TTL_SECS, Presence, PresenceRepository, UpdatePresenceRequest, UpsertPresenceRequest,
 };
+pub use query_logger::{PoolMetrics, SlowQueryLogger};
 pub use rbac::{
     AuditLogRepository, PolicyRepository, RolePermissionRepository, UserRoleRepository,
 };
@@ -98,7 +99,6 @@ pub use saved_search::{
     CreateSavedSearchRequest, SavedSearch, SavedSearchRepository, UpdateSavedSearchRequest,
 };
 pub use schema::DatabasePool;
-pub use query_logger::{PoolMetrics, SlowQueryLogger};
 pub use search::{
     FacetCount, GlobalSearchResponse, ProjectSearchResult, SearchFacets, SearchFilters,
     SearchHighlight, SearchRepository, SearchResponse, SearchResult,

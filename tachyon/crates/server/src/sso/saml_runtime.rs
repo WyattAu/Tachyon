@@ -151,7 +151,9 @@ pub async fn saml_acs(
                 debug!("SAML assertion certificate verified against IdP certificate");
             }
             None => {
-                warn!("SAML assertion rejected: no X509Certificate in signature but IdP certificate is configured");
+                warn!(
+                    "SAML assertion rejected: no X509Certificate in signature but IdP certificate is configured"
+                );
                 return Err(ServerError::bad_request(
                     "SAML assertion signature does not contain an X509Certificate",
                 ));
@@ -160,7 +162,9 @@ pub async fn saml_acs(
     } else {
         // No IdP certificate configured — log warning but allow (migration path)
         if parsed.signature_cert_reference.is_none() {
-            warn!("SAML assertion has Signature element but no X509Certificate reference, and no IdP certificate configured");
+            warn!(
+                "SAML assertion has Signature element but no X509Certificate reference, and no IdP certificate configured"
+            );
         } else {
             debug!(
                 certificate_reference = parsed.signature_cert_reference.as_ref().unwrap(),

@@ -1,4 +1,4 @@
-use crate::audit::{api_key_created, api_key_revoked, AuditContext};
+use crate::audit::{AuditContext, api_key_created, api_key_revoked};
 use crate::error::ServerError;
 use axum::{
     extract::{Extension, Path, Query, State},

@@ -304,8 +304,9 @@ impl User {
     /// # Returns
     /// Result containing the password hash or error
     pub fn hash_password(password: &str) -> Result<String, TachyonError> {
-        salting::hash_password_with_params(password, &salting::Argon2Params::low_memory())
-            .map_err(|e| TachyonError::internal("PASSWORD_HASH", format!("Password hashing error: {}", e)))
+        salting::hash_password_with_params(password, &salting::Argon2Params::low_memory()).map_err(
+            |e| TachyonError::internal("PASSWORD_HASH", format!("Password hashing error: {}", e)),
+        )
     }
 
     /// Verify a password against the stored hash.
@@ -319,11 +320,12 @@ impl User {
     /// # Returns
     /// Result indicating if password is valid
     pub fn verify_password(password: &str, hash: &str) -> Result<bool, TachyonError> {
-        salting::verify_password(password, hash)
-            .map_err(|e| TachyonError::authentication(
+        salting::verify_password(password, hash).map_err(|e| {
+            TachyonError::authentication(
                 "PASSWORD_VERIFICATION_FAILED",
                 format!("Password verification error: {}", e),
-            ))
+            )
+        })
     }
 
     /// Set the password for this user

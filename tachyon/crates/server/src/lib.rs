@@ -419,10 +419,12 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         jwt_secret: config.jwt.signing_secret().to_string(),
     });
 
-    let scim_state = std::env::var("TACHYON_SCIM_BEARER_TOKEN").ok().map(|token| crate::routes::scim::ScimState {
-        pool: pool.clone(),
-        bearer_token: token,
-    });
+    let scim_state = std::env::var("TACHYON_SCIM_BEARER_TOKEN")
+        .ok()
+        .map(|token| crate::routes::scim::ScimState {
+            pool: pool.clone(),
+            bearer_token: token,
+        });
 
     {
         let cleanup_crdt = crdt_connection_manager.clone();
@@ -731,10 +733,15 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     // Analytics router (admin dashboard metrics)
     let analytics_state = crate::routes::analytics::AnalyticsState::new(pool.clone());
-    let analytics_router = crate::routes::analytics::create_analytics_router().with_state(analytics_state);
+    let analytics_router =
+        crate::routes::analytics::create_analytics_router().with_state(analytics_state);
 
     // Magic link authentication router
-    let magic_link_base_url = config.magic_link.base_url.clone().unwrap_or_else(|| config.site.base_url.clone());
+    let magic_link_base_url = config
+        .magic_link
+        .base_url
+        .clone()
+        .unwrap_or_else(|| config.site.base_url.clone());
     let magic_link_state = crate::routes::magic_link::MagicLinkState {
         pool: pool.clone(),
         client: http_client.clone(),
@@ -746,7 +753,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         base_url: magic_link_base_url,
         ttl_secs: config.magic_link.ttl_secs as i64,
     };
-    let magic_link_router = crate::routes::magic_link::create_magic_link_router().with_state(magic_link_state);
+    let magic_link_router =
+        crate::routes::magic_link::create_magic_link_router().with_state(magic_link_state);
 
     // Self-serve signup router
     let signup_state = crate::routes::signup::SignupState {
@@ -757,18 +765,23 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     // Chat platform integration router (Slack/Discord webhooks)
     let chat_platform_config = crate::integrations::chat_platforms::ChatPlatformConfig::default();
-    let chat_dispatcher = crate::integrations::chat_platforms::ChatPlatformDispatcher::new(http_client.clone(), chat_platform_config);
+    let chat_dispatcher = crate::integrations::chat_platforms::ChatPlatformDispatcher::new(
+        http_client.clone(),
+        chat_platform_config,
+    );
     let chat_platform_state = crate::routes::chat_platform::ChatPlatformState {
         dispatcher: Some(chat_dispatcher),
     };
-    let chat_platform_router = crate::routes::chat_platform::create_chat_platform_router().with_state(chat_platform_state);
+    let chat_platform_router =
+        crate::routes::chat_platform::create_chat_platform_router().with_state(chat_platform_state);
 
     // Query stats router (admin DB monitoring)
     let query_stats_state = crate::routes::query_stats::QueryStatsState {
         pool: pool.clone(),
         query_logger: std::sync::Arc::new(tachyon_database::SlowQueryLogger::new(100)),
     };
-    let query_stats_router = crate::routes::query_stats::create_query_stats_router().with_state(query_stats_state);
+    let query_stats_router =
+        crate::routes::query_stats::create_query_stats_router().with_state(query_stats_state);
 
     let mut api_v1 = Router::new()
         .merge(document_router)
