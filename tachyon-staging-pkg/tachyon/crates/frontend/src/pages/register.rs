@@ -1,5 +1,6 @@
 use crate::api::ApiClient;
 use crate::components::ButtonSpinner;
+use crate::password_strength::calc_password_strength;
 use leptos::ev;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -13,71 +14,6 @@ fn is_valid_email(email: &str) -> bool {
         Some(dot > 0 && dot < domain.len() - 1 && at > 0)
     })()
     .unwrap_or(false)
-}
-
-#[derive(Clone, Copy, PartialEq)]
-enum PasswordStrength {
-    Weak,
-    Medium,
-    Strong,
-}
-
-impl PasswordStrength {
-    fn label(&self) -> &'static str {
-        match self {
-            PasswordStrength::Weak => "Weak",
-            PasswordStrength::Medium => "Medium",
-            PasswordStrength::Strong => "Strong",
-        }
-    }
-
-    fn color_class(&self) -> &'static str {
-        match self {
-            PasswordStrength::Weak => "bg-red-500",
-            PasswordStrength::Medium => "bg-yellow-500",
-            PasswordStrength::Strong => "bg-green-500",
-        }
-    }
-
-    fn text_color(&self) -> &'static str {
-        match self {
-            PasswordStrength::Weak => "text-red-500",
-            PasswordStrength::Medium => "text-yellow-500",
-            PasswordStrength::Strong => "text-green-500",
-        }
-    }
-
-    fn width_pct(&self) -> &'static str {
-        match self {
-            PasswordStrength::Weak => "w-1/3",
-            PasswordStrength::Medium => "w-2/3",
-            PasswordStrength::Strong => "w-full",
-        }
-    }
-}
-
-fn calc_password_strength(password: &str) -> PasswordStrength {
-    let mut score = 0u8;
-    if password.len() >= 8 {
-        score += 1;
-    }
-    if password.len() >= 12 {
-        score += 1;
-    }
-    if password.chars().any(|c| c.is_uppercase()) {
-        score += 1;
-    }
-    if password.chars().any(|c| c.is_ascii_digit()) {
-        score += 1;
-    }
-    if password.chars().any(|c| !c.is_alphanumeric()) {
-        score += 1;
-    }
-    match score {
-        0..=2 => PasswordStrength::Weak,
-        3 => PasswordStrength::Medium,
-        _ => PasswordStrength::Strong,
-    }
 }
 
 #[component]

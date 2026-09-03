@@ -12,6 +12,7 @@ mod i18n;
 mod markdown;
 pub mod offline;
 mod pages;
+mod password_strength;
 pub mod pdf_annotation_types;
 pub mod pdf_document_view;
 pub mod push;
