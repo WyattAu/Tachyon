@@ -14,10 +14,6 @@ static JAVASCRIPT_PROTOCOL_REGEX: LazyLock<Regex> =
 
 static DATA_URI_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^\s*data:").unwrap());
 
-static EMAIL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").unwrap()
-});
-
 static UUID_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$").unwrap()
 });
@@ -129,7 +125,7 @@ pub fn validate_email(email: &str) -> ValidationResult<()> {
     if email.len() > 254 {
         return Err(ValidationError::TooLong { max: 254 });
     }
-    if !EMAIL_REGEX.is_match(email) {
+    if !validkit::is_valid_email(email) {
         return Err(ValidationError::InvalidEmail);
     }
     Ok(())

@@ -19,10 +19,9 @@ impl LocalStorage {
     }
 
     fn safe_path(&self, key: &str) -> Result<PathBuf, StorageError> {
-        if key.contains("..") || key.contains('\0') || key.starts_with('/') {
-            return Err(StorageError::InvalidKey(key.to_string()));
-        }
-        Ok(self.base_path.join(key))
+        let key = validkit::ObjectKey::parse(key)
+            .map_err(|_| StorageError::InvalidKey(key.to_string()))?;
+        Ok(self.base_path.join(key.as_str()))
     }
 }
 

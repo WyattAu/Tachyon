@@ -7,13 +7,7 @@ use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
 
 fn is_valid_email(email: &str) -> bool {
-    (|| {
-        let at = email.find('@')?;
-        let domain = email.get(at + 1..)?;
-        let dot = domain.find('.')?;
-        Some(dot > 0 && dot < domain.len() - 1 && at > 0)
-    })()
-    .unwrap_or(false)
+    validkit::is_valid_email(email)
 }
 
 fn get_return_url() -> String {

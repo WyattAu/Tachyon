@@ -22,14 +22,10 @@ const UPLOAD_ALLOWED_EXTENSIONS: &[&str] = &[
 const MAX_UPLOAD_SIZE: usize = 50 * 1024 * 1024;
 
 async fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, ServerError> {
-    if let Err(e) = tachyon_core::validate_path(relative) {
-        return Err(ServerError::bad_request(format!(
-            "Path validation failed: {}",
-            e
-        )));
-    }
+    let key = validkit::ObjectKey::parse(relative.strip_prefix('/').unwrap_or(relative))
+        .map_err(|e| ServerError::bad_request(format!("Path validation failed: {}", e)))?;
 
-    let joined = root.join(relative.strip_prefix('/').unwrap_or(relative));
+    let joined = root.join(key.as_str());
 
     let canonical = tokio::fs::canonicalize(&joined).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
