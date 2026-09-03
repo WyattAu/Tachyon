@@ -151,7 +151,7 @@ pub fn copy_static_assets(
 /// Optimize a single image file.
 /// Re-encodes with reduced quality for web delivery.
 fn optimize_image(src: &Path, dest: &Path) -> Result<(), String> {
-    let img = image::open(src).map_err(|e| format!("Failed to open image: {}", e))?;
+    let data = std::fs::read(src).map_err(|e| format!("Failed to read image: {}", e))?;
 
     let ext = dest
         .extension()
@@ -159,40 +159,18 @@ fn optimize_image(src: &Path, dest: &Path) -> Result<(), String> {
         .unwrap_or("png")
         .to_lowercase();
 
-    let mut buf = std::io::BufWriter::new(
-        std::fs::File::create(dest)
-            .map_err(|e| format!("Failed to create output file {}: {}", dest.display(), e))?,
-    );
+    let format = match ext.as_str() {
+        "jpg" | "jpeg" => media_kit::encode::OutFormat::Jpeg(80),
+        "webp" => media_kit::encode::OutFormat::WebP(Some(80.0)),
+        _ => media_kit::encode::OutFormat::Png,
+    };
 
-    match ext.as_str() {
-        "jpg" | "jpeg" => {
-            img.write_to(&mut buf, image::ImageFormat::Jpeg)
-                .map_err(|e| format!("Failed to encode JPEG: {}", e))?;
-        }
-        "png" => {
-            img.write_to(&mut buf, image::ImageFormat::Png)
-                .map_err(|e| format!("Failed to encode PNG: {}", e))?;
-        }
-        "webp" => {
-            // image crate 0.25 does not support WebP encoding;
-            // fall back to PNG encoding
-            let png_dest = dest.with_extension("png");
-            let mut png_buf =
-                std::io::BufWriter::new(std::fs::File::create(&png_dest).map_err(|e| {
-                    format!("Failed to create output file {}: {}", png_dest.display(), e)
-                })?);
-            img.write_to(&mut png_buf, image::ImageFormat::Png)
-                .map_err(|e| format!("Failed to encode PNG: {}", e))?;
-            // Remove the original .webp dest if it differs
-            if png_dest != dest {
-                let _ = std::fs::remove_file(dest);
-            }
-        }
-        _ => {
-            // Unknown format, just copy as-is
-            std::fs::copy(src, dest).map_err(|e| format!("Failed to copy: {}", e))?;
-        }
-    }
+    let optimized = media_kit::pipeline::Pipeline::new(format)
+        .run(&data)
+        .map_err(|e| format!("Failed to optimize image: {}", e))?;
+
+    std::fs::write(dest, optimized)
+        .map_err(|e| format!("Failed to write output file {}: {}", dest.display(), e))?;
 
     Ok(())
 }
