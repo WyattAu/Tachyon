@@ -83,7 +83,7 @@ impl Renderer {
         let render_result = self
             .markdown
             .parse(content, self.config.format)
-            .map_err(|e| RendererError::markdown_parse(e.to_string()))?;
+            .map_err(RendererError::from)?;
 
         let sanitized_content = sanitize_html(&render_result.content);
         let render_result = render_result.with_content(sanitized_content);
@@ -144,5 +144,19 @@ mod tests {
         let renderer = Renderer::new(RenderConfig::default());
         let result = renderer.render("# Hello World", None).unwrap();
         assert!(result.content.contains("Hello"));
+    }
+
+    #[test]
+    fn test_code_block_preserves_class_attribute() {
+        let md = r#"```json
+{"key": "value"}
+```"#;
+        let renderer = Renderer::new(RenderConfig::default());
+        let result = renderer.render(md, None).unwrap();
+        assert!(
+            result.content.contains(r#"class="language-json""#),
+            "Expected code block to have class=\"language-json\", got: {}",
+            &result.content
+        );
     }
 }

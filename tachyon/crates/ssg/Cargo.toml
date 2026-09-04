@@ -13,6 +13,7 @@ path = "src/bin/ssg_cli.rs"
 tachyon-core = { path = "../core" }
 tachyon-renderer = { path = "../renderer" }
 tachyon-import-export = { path = "../import-export" }
+docs-pipeline = { path = "../../../../docs-pipeline" }
 
 # Serialization
 serde = { workspace = true }

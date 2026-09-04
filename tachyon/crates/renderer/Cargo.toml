@@ -10,23 +10,18 @@ edition.workspace = true
 # Core dependencies
 tachyon-core = { path = "../core" }
 
-# NOTE: tokio removed — renderer is entirely synchronous
-# NOTE: serde_yaml removed — zero imports; uses serde/serde_json only
+# Published docs pipeline: markdown rendering, syntax highlighting,
+# sanitization, LaTeX, and embeds. This crate re-exports it as a thin layer
+# and adds Tachyon-specific caching and templating.
+docs-pipeline = { path = "../../../../docs-pipeline" }
 
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Error handling & Logging
-anyhow = { workspace = true }
 thiserror.workspace = true
 tracing = { workspace = true }
-
-# Markdown parsing
-pulldown-cmark = { workspace = true, features = [
-    "simd",
-    "serde",
-] }
 
 # Template engine
 minijinja = { version = "2", features = [
@@ -34,30 +29,6 @@ minijinja = { version = "2", features = [
     "debug",
     "preserve_order",
 ] }
-
-# Syntax highlighting
-tree-sitter = "0.25"
-tree-sitter-highlight = "0.25"
-tree-sitter-rust = "0.24"
-tree-sitter-python = "0.25"
-tree-sitter-javascript = "0.25"
-tree-sitter-typescript = "0.23"
-# NOTE: tree-sitter-toml removed — incompatible tree-sitter version; highlighting skipped
-tree-sitter-yaml = "0.7"
-tree-sitter-css = "0.25"
-tree-sitter-bash = "0.25"
-tree-sitter-json = "0.21"
-tree-sitter-html = "0.23"
-# NOTE: tree-sitter-markdown removed — incompatible tree-sitter version; highlighting skipped
-
-# LaTeX rendering
-katex = { version = "0.2", default-features = false }
-
-# HTML sanitization
-ammonia = ">=4.1.4, <5"
-
-# Wikilink parsing
-regex = "1"
 
 # Caching
 lru = ">=0.12.5, <0.13"

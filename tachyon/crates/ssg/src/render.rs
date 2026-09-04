@@ -2,18 +2,11 @@ use crate::error::SsgResult;
 use crate::manifest::{SiteConfig, SsgDocument, Translations};
 use std::sync::LazyLock;
 
-static TOC_HEADING_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
-    regex::Regex::new(r#"<h([1-6])[^>]*id="([^"]*)"[^>]*>(.*?)</h[1-6]>"#).unwrap()
-});
-
-static HTML_STRIP_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"<[^>]+>").unwrap());
-
-static HEADING_ID_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r#"<(h[23])(\s[^>]*)?>([\s\S]*?)</h[23]>"#).unwrap());
-
-static INLINE_TOC_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r#"<h([23])[^>]*id="([^"]*)"[^>]*>(.*?)</h[23]>"#).unwrap());
+// TOC extraction over rendered HTML and code-block highlighting are provided
+// by the published docs-pipeline crate; the wrappers below keep the ssg
+// call sites stable.
+pub use docs_pipeline::HtmlTocEntry as TocEntry;
+use docs_pipeline::extract_inline_toc as extract_inline_toc_html;
 
 static CODE_BLOCK_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(r#"<pre([^>]*)>\s*<code([^>]*)>([\s\S]*?)</code>\s*</pre>"#).unwrap()
@@ -54,11 +47,8 @@ static CODE_GROUP_BARE_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
         .unwrap()
 });
 
-static LANGUAGE_CLASS_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r#"class="language-([^"]*)""#).unwrap());
-
-static CODE_CONTENT_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r#"<code[^>]*>([\s\S]*?)</code>"#).unwrap());
+static HEADING_ID_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"<(h[23])(\s[^>]*)?>([\s\S]*?)</h[23]>"#).unwrap());
 
 static MERMAID_CODE_BLOCK_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(
@@ -74,26 +64,12 @@ static ADMONITION_BLOCKQUOTE_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     .unwrap()
 });
 
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct TocEntry {
-    pub level: u8,
-    pub id: String,
-    pub title: String,
-}
-
 pub fn extract_toc(html: &str) -> Vec<TocEntry> {
-    TOC_HEADING_REGEX
-        .captures_iter(html)
-        .map(|cap| TocEntry {
-            level: cap[1].parse().unwrap_or(2),
-            id: cap[2].to_string(),
-            title: strip_html_tags(&cap[3]),
-        })
-        .collect()
+    docs_pipeline::extract_toc_from_html(html)
 }
 
 fn strip_html_tags(html: &str) -> String {
-    HTML_STRIP_REGEX.replace_all(html, "").to_string()
+    docs_pipeline::strip_html_tags(html)
 }
 
 pub(crate) fn add_heading_ids(html: &str) -> String {
@@ -125,14 +101,7 @@ pub(crate) fn add_heading_ids(html: &str) -> String {
 }
 
 pub(crate) fn extract_inline_toc(html: &str) -> Vec<TocEntry> {
-    INLINE_TOC_REGEX
-        .captures_iter(html)
-        .map(|cap| TocEntry {
-            level: cap[1].parse().unwrap_or(2),
-            id: cap[2].to_string(),
-            title: strip_html_tags(&cap[3]),
-        })
-        .collect()
+    extract_inline_toc_html(html)
 }
 
 pub(crate) fn render_inline_toc(toc: &[TocEntry]) -> String {
@@ -178,60 +147,8 @@ pub(crate) fn add_copy_buttons(html: &str) -> String {
 }
 
 pub(crate) fn highlight_code_blocks(html: &str, theme_name: &str) -> String {
-    use tachyon_renderer::SyntaxHighlighter;
-    use tachyon_renderer::types::SyntaxTheme;
-
-    let theme = match theme_name {
-        "light" | "one-light" | "github" => SyntaxTheme::Light,
-        "high-contrast" | "highcontrast" | "hc" => SyntaxTheme::HighContrast,
-        _ => SyntaxTheme::Dark,
-    };
-
-    let highlighter = SyntaxHighlighter::with_theme(theme);
-
-    CODE_BLOCK_REGEX.replace_all(html, |caps: &regex::Captures| {
-        let _pre_attrs = caps.get(1).map(|m| m.as_str()).unwrap_or("");
-        let code_attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
-        let code_html = &caps[3];
-
-        let lang = LANGUAGE_CLASS_REGEX
-            .captures(code_attrs)
-            .and_then(|c| c.get(1))
-            .map(|m| m.as_str());
-
-        let Some(lang) = lang else {
-            return caps[0].to_string();
-        };
-
-        let raw = html_decode(code_html);
-
-        match highlighter.highlight(&raw, lang) {
-            Ok(highlighted) => {
-                format!(
-                    r#"<div class="code-block-wrapper"><pre class="syntax-highlight" data-language="{}"><code class="language-{}">{}</code></pre><button class="code-copy-btn" onclick="(function(b){{var c=b.parentElement.querySelector('code');navigator.clipboard.writeText(c.textContent).then(function(){{b.textContent='Copied!';setTimeout(function(){{b.textContent='Copy'}},2000)}})}})(this)" aria-label="Copy code to clipboard">Copy</button></div>"#,
-                    lang, lang, extract_inner_code(&highlighted)
-                )
-            }
-            Err(_) => caps[0].to_string(),
-        }
-    })
-    .to_string()
-}
-
-fn extract_inner_code(html: &str) -> String {
-    CODE_CONTENT_REGEX
-        .captures(html)
-        .and_then(|c| c.get(1).map(|m| m.as_str().to_string()))
-        .unwrap_or_else(|| html.to_string())
-}
-
-fn html_decode(s: &str) -> String {
-    s.replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&amp;", "&")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&#x27;", "'")
+    let theme = docs_pipeline::SyntaxTheme::from_theme_name(theme_name);
+    docs_pipeline::highlight_code_blocks(html, theme)
 }
 
 pub(crate) fn extract_code_titles(html: &str) -> String {
@@ -1211,6 +1128,18 @@ mod tests_highlight {
     }
 
     #[test]
+    fn highlight_toml_code_block_restored() {
+        let html = r#"<pre><code class="language-toml">[package]
+name = "x"</code></pre>"#;
+        let result = highlight_code_blocks(html, "dark");
+        assert!(
+            result.contains("data-language=\"toml\""),
+            "TOML highlighting restored via docs-pipeline, got: {}",
+            result
+        );
+    }
+
+    #[test]
     fn highlight_preserves_unknown_language() {
         let html = r#"<pre><code class="language-brainfuck">+++[>+++<-]</code></pre>"#;
         let result = highlight_code_blocks(html, "dark");
@@ -1222,11 +1151,5 @@ mod tests_highlight {
         let html = r#"<pre><code>some plain text</code></pre>"#;
         let result = highlight_code_blocks(html, "dark");
         assert_eq!(result, html);
-    }
-
-    #[test]
-    fn html_decode_roundtrip() {
-        assert_eq!(html_decode("&lt;script&gt;"), "<script>");
-        assert_eq!(html_decode("&amp;"), "&");
     }
 }

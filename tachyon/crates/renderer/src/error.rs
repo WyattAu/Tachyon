@@ -216,6 +216,29 @@ impl From<serde_json::Error> for RendererError {
     }
 }
 
+impl From<docs_pipeline::Error> for RendererError {
+    fn from(err: docs_pipeline::Error) -> Self {
+        match err {
+            docs_pipeline::Error::MarkdownParse(m) => RendererError::MarkdownParse(m),
+            docs_pipeline::Error::MarkdownToHtml(m) => RendererError::MarkdownToHtml(m),
+            docs_pipeline::Error::SyntaxHighlight(m) => RendererError::SyntaxHighlight(m),
+            docs_pipeline::Error::UnsupportedLanguage(l) => RendererError::UnsupportedLanguage(l),
+            docs_pipeline::Error::LanguageParserUnavailable(l) => {
+                RendererError::LanguageParserUnavailable(l)
+            }
+            docs_pipeline::Error::LatexRender(m) => RendererError::LatexRender(m),
+            docs_pipeline::Error::InvalidLatex(m) => RendererError::InvalidLatex(m),
+            docs_pipeline::Error::UnknownLatexCommand(c) => RendererError::UnknownLatexCommand(c),
+            docs_pipeline::Error::Io(e) => RendererError::Io(e),
+            docs_pipeline::Error::Serialization(m) => RendererError::Serialization(m),
+            docs_pipeline::Error::Deserialization(m) => RendererError::Deserialization(m),
+            docs_pipeline::Error::InvalidInput(m) => RendererError::InvalidInput(m),
+            docs_pipeline::Error::Timeout(ms) => RendererError::Timeout(ms),
+            docs_pipeline::Error::Internal(m) => RendererError::Internal(m),
+        }
+    }
+}
+
 impl From<minijinja::Error> for RendererError {
     fn from(err: minijinja::Error) -> Self {
         match err.kind() {
