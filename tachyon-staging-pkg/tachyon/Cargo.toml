@@ -8,10 +8,10 @@ package.license = "Apache-2.0"
 
 [workspace.dependencies]
 # Shared Wyatt crates
-salting = { path = "../../salting" }
-tokenkit = { path = "../../tokenkit" }
-cryptkit = { path = "../../cryptkit" }
-media-kit = { path = "../../media-kit", features = ["webp-lossy"] }
+salting = { path = "../../../salting" }
+tokenkit = { path = "../../../tokenkit" }
+cryptkit = { path = "../../../cryptkit" }
+media-kit = { path = "../../../media-kit", features = ["webp-lossy"] }
 
 # Async Runtime
 tokio = { version = "1", features = ["full"] }
