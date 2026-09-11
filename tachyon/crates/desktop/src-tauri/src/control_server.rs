@@ -271,9 +271,14 @@ fn get_window(app: &tauri::AppHandle) -> Result<tauri::WebviewWindow, (u16, Valu
 fn eval_dispatch(app: &tauri::AppHandle, js: &str) -> DispatchResult {
     let window = get_window(app)?;
     let eval_id = uuid::Uuid::new_v4().simple().to_string();
+    // The user JS runs inside eval() so expression completion values are
+    // captured (`"1+1"` → 2, not undefined). JSON embedding makes the code
+    // string injection-safe regardless of quotes/newlines.
+    let code_json = serde_json::to_string(js)
+        .map_err(|e| (500, json!({"error": format!("code encode failed: {}", e)})))?;
     let wrapped = format!(
         r#"(function() {{
-            var EVAL_ID = "{eval_id}";
+            var EVAL_ID = {eval_id};
             function done(ok, result) {{
                 try {{
                     window.__TAURI__.core.invoke('control_event', {{ payload: {{
@@ -282,7 +287,7 @@ fn eval_dispatch(app: &tauri::AppHandle, js: &str) -> DispatchResult {
                 }} catch (e) {{ console.error('control callback failed: ' + e); }}
             }}
             try {{
-                var r = (function() {{ {js} }})();
+                var r = (function() {{ return eval({code}); }})();
                 if (r && typeof r.then === 'function') {{
                     r.then(function(v) {{ done(true, v); }}, function(e) {{ done(false, e && e.message ? e.message : e); }});
                 }} else {{
@@ -292,8 +297,8 @@ fn eval_dispatch(app: &tauri::AppHandle, js: &str) -> DispatchResult {
                 done(false, e && e.message ? e.message : String(e));
             }}
         }})();"#,
-        eval_id = eval_id,
-        js = js
+        eval_id = serde_json::to_string(&eval_id).unwrap_or_default(),
+        code = code_json
     );
     window
         .eval(&wrapped)
@@ -330,13 +335,13 @@ fn click(app: &tauri::AppHandle, body: &Value) -> DispatchResult {
     let sel_js = selector.replace('\\', "\\\\").replace('"', "\\\"");
     let js = format!(
         r#"(function() {{
-            var el = document.querySelector("{}");
-            if (!el) return "NOT_FOUND: {}";
+            var el = document.querySelector("{sel}");
+            if (!el) return "NOT_FOUND: {sel}";
             el.scrollIntoView({{ block: "center" }});
             el.click();
-            return "CLICKED: {}";
+            return "CLICKED: {sel}";
         }})()"#,
-        sel_js, selector, selector
+        sel = sel_js
     );
     eval_dispatch(app, &js)
 }

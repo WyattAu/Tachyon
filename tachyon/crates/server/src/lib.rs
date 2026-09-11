@@ -978,7 +978,34 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .nest("/api/v2", api_v2)
         .layer(
             ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
+                .layer(
+                    TraceLayer::new_for_http().make_span_with(|request: &axum::extract::Request| {
+                        // Redact the query string in the span's recorded URI —
+                        // tower-http's default span would leak credentials
+                        // (token=...) into every DEBUG-level span line.
+                        let uri = request.uri();
+                        let redacted_uri = match uri.query() {
+                            Some(q) => {
+                                let redacted = crate::middleware::request_tracing::redact_query(
+                                    Some(q),
+                                )
+                                .unwrap_or_default();
+                                axum::http::Uri::builder()
+                                    .path_and_query(format!("{}?{}", uri.path(), redacted))
+                                    .build()
+                                    .map(|u| u.to_string())
+                                    .unwrap_or_else(|_| uri.to_string())
+                            }
+                            None => uri.to_string(),
+                        };
+                        tracing::info_span!(
+                            "request",
+                            method = %request.method(),
+                            uri = %redacted_uri,
+                            version = ?request.version()
+                        )
+                    }),
+                )
                 .layer(axum::middleware::from_fn_with_state(
                     crate::middleware::request_tracing::RequestTracingState {
                         metrics: metrics.clone(),
