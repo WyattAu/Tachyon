@@ -13,7 +13,12 @@ impl RequestMetrics {
         Self::default()
     }
 
-    pub fn record_request(&self, duration_ms: u64, status: u16) {
+    /// Record a request with per-route labels.
+    ///
+    /// `route` should already be normalized (dynamic ID segments replaced,
+    /// see `normalize_route` in `request_tracing.rs`) to keep label
+    /// cardinality bounded. `status` is bucketed to its class (2xx/4xx/5xx).
+    pub fn record_request(&self, duration_ms: u64, status: u16, method: &str, route: &str) {
         self.total_requests.fetch_add(1, Ordering::Relaxed);
         self.total_request_duration_ms
             .fetch_add(duration_ms, Ordering::Relaxed);
@@ -24,10 +29,16 @@ impl RequestMetrics {
         }
 
         // Mirror into the `metrics` facade so /metrics/prometheus is populated.
-        metrics::counter!("tachyon_requests_total").increment(1);
-        metrics::histogram!("tachyon_request_duration_seconds").record(duration_ms as f64 / 1000.0);
+        let status_class: &'static str = match status {
+            200..=299 => "2xx",
+            300..=399 => "3xx",
+            400..=499 => "4xx",
+            _ => "5xx",
+        };
+        metrics::counter!("tachyon_requests_total", "method" => method.to_string(), "route" => route.to_string(), "status" => status_class).increment(1);
+        metrics::histogram!("tachyon_request_duration_seconds", "method" => method.to_string(), "route" => route.to_string()).record(duration_ms as f64 / 1000.0);
         if status >= 400 {
-            metrics::counter!("tachyon_requests_failed").increment(1);
+            metrics::counter!("tachyon_requests_failed", "route" => route.to_string(), "status" => status_class).increment(1);
         }
     }
 

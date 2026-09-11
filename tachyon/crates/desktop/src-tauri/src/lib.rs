@@ -3,6 +3,8 @@
 
 // Module declarations
 mod commands;
+#[cfg(debug_assertions)]
+mod control_server;
 mod events;
 mod file_dialog;
 mod filesystem;
@@ -11,6 +13,16 @@ mod state;
 mod sync;
 #[cfg(feature = "tray-icon")]
 mod tray;
+
+/// Release-build stub: the debug control plane does not exist in release
+/// binaries, so the setup() call must still compile.
+#[cfg(not(debug_assertions))]
+mod control_server {
+    pub fn start_control_server(_app: tauri::AppHandle) -> Option<u16> {
+        tracing::debug!("debug control plane disabled (release build)");
+        None
+    }
+}
 
 // Re-export public API
 pub use events::{
@@ -107,7 +119,74 @@ fn fix_webkit_dmabuf_on_nvidia() {
 // Usage:
 //   TACHYON_DEBUG=1 ./tachyon-desktop-app   # hooks + DOM snapshots
 //   TACHYON_DEBUG=2 ./tachyon-desktop-app   # hooks + DOM + automated traversal
+//
+// Test-fixture env vars (used by injected JS and traverse_routes):
+//   TACHYON_TEST_SERVER    — API base URL       (default http://127.0.0.1:8080)
+//   TACHYON_TEST_USER      — login username     (default admin)
+//   TACHYON_TEST_PASSWORD  — login password     (default admin)
+//   TACHYON_TEST_DOC_ID    — document used by EDITOR_TEST
+//   TACHYON_TEST_ROUTES    — comma-separated traverse route list
 // ---------------------------------------------------------------------------
+
+/// API base URL used by injected debug/login JS.
+fn test_server_url() -> String {
+    std::env::var("TACHYON_TEST_SERVER").unwrap_or_else(|_| "http://127.0.0.1:8080".to_string())
+}
+
+/// Login username used by injected traversal JS.
+fn test_username() -> String {
+    std::env::var("TACHYON_TEST_USER").unwrap_or_else(|_| "admin".to_string())
+}
+
+/// Login password used by injected traversal JS.
+fn test_password() -> String {
+    std::env::var("TACHYON_TEST_PASSWORD").unwrap_or_else(|_| "admin".to_string())
+}
+
+/// Document UUID exercised by the EDITOR_TEST traversal step.
+fn test_doc_id() -> String {
+    std::env::var("TACHYON_TEST_DOC_ID")
+        .unwrap_or_else(|_| "019e99be-39dc-70e1-9007-27c23d519f5d".to_string())
+}
+
+/// Traverse route list: `TACHYON_TEST_ROUTES` (comma-separated) or defaults.
+fn test_routes() -> Vec<String> {
+    match std::env::var("TACHYON_TEST_ROUTES") {
+        Ok(v) if !v.trim().is_empty() => v
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect(),
+        _ => vec![
+            "/".to_string(),
+            "/documents".to_string(),
+            format!("/documents/{}", test_doc_id()),
+            format!("/documents/{}/edit", test_doc_id()),
+            "/dashboard".to_string(),
+            "/settings".to_string(),
+        ],
+    }
+}
+
+/// Prepare an injected JS string for eval.
+///
+/// 1. Replaces `__TACHYON_*__` fixture placeholders with env-driven values.
+/// 2. Defines `window.__TACHYON_TEST_ROUTES` so injected scripts can use the
+///    configured route list instead of hardcoded document IDs.
+fn inject_test_config(js: &str) -> String {
+    let routes: Vec<String> = test_routes()
+        .iter()
+        .map(|r| format!("\"{}\"", r.replace('\\', "\\\\").replace('"', "\\\"")))
+        .collect();
+    let prelude = format!("window.__TACHYON_TEST_ROUTES = [{}];\n", routes.join(","));
+    prelude
+        + js
+            .replace("__TACHYON_TEST_SERVER__", &test_server_url())
+            .replace("__TACHYON_TEST_USER__", &test_username())
+            .replace("__TACHYON_TEST_PASSWORD__", &test_password())
+            .replace("__TACHYON_TEST_DOC_ID__", &test_doc_id())
+            .as_str()
+}
 
 /// Ctrl+Shift+D: captures full page HTML + metadata and saves to /tmp/tachyon-debug-page-N.html
 /// Each press increments the counter. Uses Tauri IPC to write files directly.
@@ -214,7 +293,7 @@ static DEBUG_CAPTURE_HTML_JS: &str = r##"
         badge.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:orange;color:#000;padding:8px 16px;font-size:14px;';
         document.body.appendChild(badge);
         window.__TAURI__.core.invoke('traverse_routes', {
-            routes: ['/', '/documents', '/documents/019e99be-39dc-70e1-9007-27c23d519f5d', '/documents/019e99be-39dc-70e1-9007-27c23d519f5d/edit', '/dashboard', '/settings']
+            routes: (window.__TACHYON_TEST_ROUTES || ['/', '/documents', '/documents/__TACHYON_TEST_DOC_ID__', '/documents/__TACHYON_TEST_DOC_ID__/edit', '/dashboard', '/settings'])
         }).then(function(msg) {
             badge.textContent = 'Traverse started! ' + msg;
             setTimeout(function() { badge.remove(); }, 5000);
@@ -778,11 +857,11 @@ static DEBUG_TRAVERSE_JS: &str = r##"
             return false;
         }
         var userVal = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-        userVal.call(user, 'admin');
+        userVal.call(user, '__TACHYON_TEST_USER__');
         user.dispatchEvent(new Event('input', { bubbles: true }));
         user.dispatchEvent(new Event('change', { bubbles: true }));
         await delay(200);
-        userVal.call(pass, 'admin');
+        userVal.call(pass, '__TACHYON_TEST_PASSWORD__');
         pass.dispatchEvent(new Event('input', { bubbles: true }));
         pass.dispatchEvent(new Event('change', { bubbles: true }));
         await delay(200);
@@ -1251,147 +1330,88 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_log::Builder::default().build());
 
-    // Build the command handler list — include debug_report when debug is on
-    if debug_level >= 1 {
-        builder = builder.invoke_handler(tauri::generate_handler![
-            commands::get_state,
-            commands::set_server_url,
-            commands::authenticate,
-            commands::logout,
-            commands::is_authenticated,
-            commands::is_connected,
-            commands::has_repository,
-            commands::open_file_dialog,
-            commands::save_file_dialog,
-            commands::read_file,
-            commands::write_file,
-            commands::file_exists,
-            commands::delete_file,
-            commands::create_directory,
-            commands::set_repository_path,
-            commands::initialize_repository,
-            commands::commit_pending,
-            commands::push_to_remote,
-            commands::pull_from_remote,
-            commands::get_sync_status,
-            commands::get_queue_size,
-            commands::clear_queue,
-            commands::queue_file_change,
-            commands::enable_auto_sync,
-            commands::disable_auto_sync,
-            commands::start_file_watcher,
-            commands::stop_file_watcher,
-            commands::is_file_watching,
-            commands::show_error_dialog,
-            commands::show_warning_dialog,
-            commands::show_info_dialog,
-            import_export::import_obsidian_vault,
-            import_export::import_markdown_zip,
-            import_export::export_html,
-            commands::get_embedded_server_port,
-            commands::start_embedded_server,
-            commands::stop_embedded_server,
-            commands::get_local_db_stats,
-            commands::init_local_database,
-            commands::get_local_tags,
-            commands::search_local_documents,
-            commands::sync_enqueue,
-            commands::sync_queue_summary,
-            commands::sync_queue_pending,
-            commands::sync_mark_synced,
-            commands::sync_mark_failed,
-            commands::sync_purge_synced,
-            commands::set_connection_status,
-            commands::is_online,
-            commands::authenticate_offline,
-            commands::read_vault,
-            commands::read_markdown_file,
-            commands::write_markdown_file,
-            commands::list_vault_files,
-            commands::watch_directory,
-            commands::stop_directory_watch,
-            commands::is_directory_watched,
-            commands::get_app_data_dir,
-            commands::open_path,
-            // Debug
-            commands::debug_report,
-            commands::capture_dom_file,
-            commands::save_screenshot,
-            commands::capture_screenshot,
-            commands::traverse_routes,
-            // API proxy (bypasses WebView CORS for tauri:// origin)
-            commands::api_proxy,
-        ]);
-    } else {
-        builder = builder.invoke_handler(tauri::generate_handler![
-            commands::get_state,
-            commands::set_server_url,
-            commands::authenticate,
-            commands::logout,
-            commands::is_authenticated,
-            commands::is_connected,
-            commands::has_repository,
-            commands::open_file_dialog,
-            commands::save_file_dialog,
-            commands::read_file,
-            commands::write_file,
-            commands::file_exists,
-            commands::delete_file,
-            commands::create_directory,
-            commands::set_repository_path,
-            commands::initialize_repository,
-            commands::commit_pending,
-            commands::push_to_remote,
-            commands::pull_from_remote,
-            commands::get_sync_status,
-            commands::get_queue_size,
-            commands::clear_queue,
-            commands::queue_file_change,
-            commands::enable_auto_sync,
-            commands::disable_auto_sync,
-            commands::start_file_watcher,
-            commands::stop_file_watcher,
-            commands::is_file_watching,
-            commands::show_error_dialog,
-            commands::show_warning_dialog,
-            commands::show_info_dialog,
-            import_export::import_obsidian_vault,
-            import_export::import_markdown_zip,
-            import_export::export_html,
-            commands::get_embedded_server_port,
-            commands::start_embedded_server,
-            commands::stop_embedded_server,
-            commands::get_local_db_stats,
-            commands::init_local_database,
-            commands::get_local_tags,
-            commands::search_local_documents,
-            commands::sync_enqueue,
-            commands::sync_queue_summary,
-            commands::sync_queue_pending,
-            commands::sync_mark_synced,
-            commands::sync_mark_failed,
-            commands::sync_purge_synced,
-            commands::set_connection_status,
-            commands::is_online,
-            commands::authenticate_offline,
-            commands::read_vault,
-            commands::read_markdown_file,
-            commands::write_markdown_file,
-            commands::list_vault_files,
-            commands::watch_directory,
-            commands::stop_directory_watch,
-            commands::is_directory_watched,
-            commands::get_app_data_dir,
-            commands::open_path,
-            // Screenshots
-            commands::save_screenshot,
-            commands::capture_screenshot,
-            // API proxy (bypasses WebView CORS for tauri:// origin)
-            commands::api_proxy,
-            // Debug: write files to /tmp/ from WebView
-            commands::write_debug_file,
-        ]);
-    }
+    // Single unified command registration.
+    // NOTE: previously this was split into debug-level branches, which caused
+    // registration mismatches: `write_debug_file` was missing when
+    // TACHYON_DEBUG>=1 (breaking Ctrl+Shift+D file writes), and
+    // `debug_report`/`capture_dom_file`/`traverse_routes` were missing at
+    // debug=0 (breaking the screenshot path's internal DOM capture).
+    // All commands are now always registered; behavioral gating happens at
+    // runtime via `debug_report`/capture internals, not via registration.
+    builder = builder.invoke_handler(tauri::generate_handler![
+        commands::get_state,
+        commands::set_server_url,
+        commands::authenticate,
+        commands::logout,
+        commands::is_authenticated,
+        commands::is_connected,
+        commands::has_repository,
+        commands::open_file_dialog,
+        commands::save_file_dialog,
+        commands::read_file,
+        commands::write_file,
+        commands::file_exists,
+        commands::delete_file,
+        commands::create_directory,
+        commands::set_repository_path,
+        commands::initialize_repository,
+        commands::commit_pending,
+        commands::push_to_remote,
+        commands::pull_from_remote,
+        commands::get_sync_status,
+        commands::get_queue_size,
+        commands::clear_queue,
+        commands::queue_file_change,
+        commands::enable_auto_sync,
+        commands::disable_auto_sync,
+        commands::start_file_watcher,
+        commands::stop_file_watcher,
+        commands::is_file_watching,
+        commands::show_error_dialog,
+        commands::show_warning_dialog,
+        commands::show_info_dialog,
+        import_export::import_obsidian_vault,
+        import_export::import_markdown_zip,
+        import_export::export_html,
+        commands::get_embedded_server_port,
+        commands::start_embedded_server,
+        commands::stop_embedded_server,
+        commands::get_local_db_stats,
+        commands::init_local_database,
+        commands::get_local_tags,
+        commands::search_local_documents,
+        commands::sync_enqueue,
+        commands::sync_queue_summary,
+        commands::sync_queue_pending,
+        commands::sync_mark_synced,
+        commands::sync_mark_failed,
+        commands::sync_purge_synced,
+        commands::set_connection_status,
+        commands::is_online,
+        commands::authenticate_offline,
+        commands::read_vault,
+        commands::read_markdown_file,
+        commands::write_markdown_file,
+        commands::list_vault_files,
+        commands::watch_directory,
+        commands::stop_directory_watch,
+        commands::is_directory_watched,
+        commands::get_app_data_dir,
+        commands::open_path,
+        // Screenshots
+        commands::save_screenshot,
+        commands::capture_screenshot,
+        // API proxy (bypasses WebView CORS for tauri:// origin)
+        commands::api_proxy,
+        // Debug: write files to /tmp/ from WebView
+        commands::write_debug_file,
+        // Debug telemetry (runtime-gated by TACHYON_DEBUG where behavior matters)
+        commands::debug_report,
+        commands::capture_dom_file,
+        commands::traverse_routes,
+        // Debug control plane (HTTP plane compiled only into debug builds)
+        commands::control_event,
+    ]);
 
     builder = builder.manage(embedded_server);
 
@@ -1444,7 +1464,7 @@ pub fn run() {
                 let _ = writeln!(f, "{{\"type\":\"page_loaded\",\"url\":\"{}\",\"debug_level\":{}}}", url, dl);
             }
 
-            if let Err(e) = webview.eval(DEBUG_HOOKS_JS) {
+            if let Err(e) = webview.eval(inject_test_config(DEBUG_HOOKS_JS)) {
                 tracing::error!("[debug] hooks eval failed: {}", e);
                 if let Ok(mut f) = std::fs::OpenOptions::new().append(true).open("/tmp/tachyon-debug.jsonl") {
                     let _ = writeln!(f, "{{\"type\":\"eval_error\",\"msg\":\"{}\"}}", e);
@@ -1453,12 +1473,12 @@ pub fn run() {
 
             // Ctrl+Shift+D: capture full page HTML to /tmp/tachyon-debug-page.html
             // Always injected (even without TACHYON_DEBUG) for manual debugging.
-            if let Err(e) = webview.eval(DEBUG_CAPTURE_HTML_JS) {
+            if let Err(e) = webview.eval(inject_test_config(DEBUG_CAPTURE_HTML_JS)) {
                 tracing::warn!("[debug] capture_html eval failed: {}", e);
             }
 
             // Auto-login + auto-traverse: login first, then invoke traverse_routes (pure JS, no OS input)
-            if let Err(e) = webview.eval(r##"
+            if let Err(e) = webview.eval(inject_test_config(r##"
             (function() {
                 var FLAG = 'tachyon_traverse_done';
                 if (sessionStorage.getItem(FLAG)) return;
@@ -1468,10 +1488,10 @@ pub fn run() {
                      return new Promise(function(resolve) {
                          // Always login fresh — server may have restarted with new JWT secret
                          localStorage.removeItem('tachyon_token');
-                         fetch('http://127.0.0.1:8080/api/v1/auth/login', {
+                         fetch('__TACHYON_TEST_SERVER__/api/v1/auth/login', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({username: 'admin', password: 'admin123'})
+                            body: JSON.stringify({username: '__TACHYON_TEST_USER__', password: '__TACHYON_TEST_PASSWORD__'})
                         }).then(function(r) { return r.json(); }).then(function(data) {
                             if (data.success && data.access_token) {
                                 localStorage.setItem('tachyon_token', data.access_token);
@@ -1485,7 +1505,7 @@ pub fn run() {
                 doLogin().then(function() {
                     console.log('AUTO: invoking traverse_routes');
                     window.__TAURI__.core.invoke('traverse_routes', {
-                        routes: ['/', 'EDITOR_TEST', '/documents', '/dashboard', '/settings', '/spaces', '/graph', '/search', '/catalog', '/tags', '/teams', '/templates', '/plugins', '/ssg', '/billing', '/audit', '/admin/roles', '/local', '/servers']
+                        routes: (window.__TACHYON_TEST_ROUTES || ['/', 'EDITOR_TEST', '/documents', '/dashboard', '/settings', '/spaces', '/graph', '/search', '/catalog', '/tags', '/teams', '/templates', '/plugins', '/ssg', '/billing', '/audit', '/admin/roles', '/local', '/servers'])
                     }).then(function(msg) {
                         console.log('TRAVERSE: ' + msg);
                     }).catch(function(err) {
@@ -1493,12 +1513,12 @@ pub fn run() {
                     });
                 });
             })();
-            "##) {
+            "##)) {
                 tracing::warn!("[debug] auto-login eval failed: {}", e);
             }
 
             if dl >= 2 {
-                if let Err(e) = webview.eval(DEBUG_TRAVERSE_JS) {
+                if let Err(e) = webview.eval(inject_test_config(DEBUG_TRAVERSE_JS)) {
                     tracing::error!("[debug] traversal eval failed: {}", e);
                     if let Ok(mut f) = std::fs::OpenOptions::new().append(true).open("/tmp/tachyon-debug.jsonl") {
                         let _ = writeln!(f, "{{\"type\":\"traverse_eval_error\",\"msg\":\"{}\"}}", e);
@@ -1529,6 +1549,13 @@ pub fn run() {
             #[cfg(feature = "tray-icon")]
             if let Err(e) = tray::setup_tray(app) {
                 tracing::warn!("Failed to set up system tray: {}", e);
+            }
+
+            // Debug control plane: token-gated localhost HTTP server that
+            // lets agents/CI drive the app (navigate/click/type/screenshot).
+            // No-op in release builds and when TACHYON_DEBUG < 1.
+            if let Some(port) = control_server::start_control_server(app.handle().clone()) {
+                tracing::info!("debug control plane on 127.0.0.1:{}", port);
             }
 
             Ok(())

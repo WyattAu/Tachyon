@@ -1331,11 +1331,65 @@ pub async fn authenticate_offline(
 // ineffective per CSP Level 3 spec). webview.eval() bypasses CSP entirely.
 // ---------------------------------------------------------------------------
 
+/// Maximum size of /tmp/tachyon-debug.jsonl before rotation (10 MB).
+const DEBUG_LOG_MAX_BYTES: u64 = 10 * 1024 * 1024;
+
+/// Debug telemetry sink for the control plane: page-injected JS posts eval
+/// results and events here; `GET /control/events` drains the buffer.
+/// Registered in all builds (unified registration), but the buffer only
+/// exists in debug builds — release builds are a no-op.
+#[tauri::command]
+pub fn control_event(payload: serde_json::Value) -> Result<(), String> {
+    #[cfg(debug_assertions)]
+    crate::control_server::buffer().push(payload);
+    #[cfg(not(debug_assertions))]
+    let _ = payload;
+    Ok(())
+}
+
+/// Process-wide run identifier for correlating desktop debug events with
+/// server-side request logs. Set explicitly via `TACHYON_RUN_ID` (controller
+/// scenarios), otherwise generated once per process. Every `debug_report`
+/// line and every `api_proxy` request carries it (the latter as the
+/// `x-request-id` prefix the server already echoes into its request logs).
+pub fn run_id() -> String {
+    static RUN_ID: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    RUN_ID
+        .get_or_init(|| {
+            if let Ok(id) = std::env::var("TACHYON_RUN_ID") {
+                let id = id.trim().to_string();
+                if !id.is_empty() {
+                    return id;
+                }
+            }
+            uuid::Uuid::new_v4().simple().to_string()
+        })
+        .clone()
+}
+
+/// Rotate /tmp/tachyon-debug.jsonl when it exceeds DEBUG_LOG_MAX_BYTES.
+///
+/// Keeps one previous generation (`tachyon-debug.jsonl.1`); older data is
+/// dropped. Best-effort — rotation failures must never break event capture.
+fn maybe_rotate_debug_log() {
+    let path = "/tmp/tachyon-debug.jsonl";
+    let Ok(meta) = std::fs::metadata(path) else {
+        return; // no file yet
+    };
+    if meta.len() < DEBUG_LOG_MAX_BYTES {
+        return;
+    }
+    let rotated = "/tmp/tachyon-debug.jsonl.1";
+    let _ = std::fs::remove_file(rotated);
+    let _ = std::fs::rename(path, rotated);
+}
+
 /// Append a JSON debug event to /tmp/tachyon-debug.jsonl.
 ///
 /// Called from JS injected via `webview.eval()` in setup().
 /// Supports both single entries (`{type, ...}`) and batched arrays (`[{...}, ...]`).
-/// Each call appends one or more lines: `{"ts":"...","type":"...","data":{...}}`.
+/// Each call appends one or more lines: `{"ts":"...","type":"...","run_id":"...",...}`.
+/// The file is rotated at 10 MB and fsynced per call so crash evidence survives.
 #[tauri::command]
 pub fn debug_report(data: serde_json::Value) -> Result<(), String> {
     use std::io::Write;
@@ -1351,16 +1405,20 @@ pub fn debug_report(data: serde_json::Value) -> Result<(), String> {
         }
     };
 
+    maybe_rotate_debug_log();
+
     let mut f = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open("/tmp/tachyon-debug.jsonl")
         .map_err(|e| e.to_string())?;
 
+    let run = run_id();
     for entry in entries {
         let ts = chrono::Utc::now().to_rfc3339();
         let mut line = serde_json::Map::new();
         line.insert("ts".into(), serde_json::Value::String(ts));
+        line.insert("run_id".into(), serde_json::Value::String(run.clone()));
         if let Some(t) = entry.get("type") {
             line.insert("type".into(), t.clone());
         }
@@ -1374,6 +1432,8 @@ pub fn debug_report(data: serde_json::Value) -> Result<(), String> {
         let s = serde_json::to_string(&line).map_err(|e| e.to_string())?;
         writeln!(f, "{}", s).map_err(|e| e.to_string())?;
     }
+    // Flush to disk so evidence survives a crash of the app or the session.
+    f.sync_all().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -1412,6 +1472,11 @@ pub async fn api_proxy(
     let method_str = method.clone();
     let url = format!("{}{}", base_url.trim_end_matches('/'), path);
 
+    // Per-call action id so a single desktop↔server request can be traced
+    // end-to-end: server logs echo x-request-id, desktop debug_report lines
+    // carry run_id, so `run_id.action_id` joins both streams.
+    let action_id = uuid::Uuid::new_v4().simple().to_string();
+
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
@@ -1429,6 +1494,13 @@ pub async fn api_proxy(
     };
 
     let mut req = client.request(method, &url);
+
+    // Correlation header — server accepts and echoes x-request-id into its
+    // request logs and responses. Caller-supplied value wins if present.
+    req = req.header(
+        "x-request-id",
+        format!("{}.{}", run_id(), action_id),
+    );
 
     // Apply custom headers
     if let Some(hdrs) = &headers {
@@ -1470,7 +1542,14 @@ pub async fn api_proxy(
         .map_err(|e| format!("Request failed: {}", e))?;
     let status = response.status().as_u16();
 
-    tracing::info!("[api_proxy] {} {} → HTTP {}", method_str, url, status);
+    tracing::info!(
+        "[api_proxy] {} {} → HTTP {} [{}:{}]",
+        method_str,
+        url,
+        status,
+        run_id(),
+        action_id
+    );
 
     // Collect response headers
     let mut resp_headers = std::collections::HashMap::new();
@@ -1520,7 +1599,7 @@ pub fn capture_dom_file(route: String, html: String, filename: String) -> Result
     let path = format!("/tmp/tachyon-traverse-{}", filename);
     let meta = serde_json::json!({
         "route": route,
-        "url": html.chars().take(0).count(), // placeholder
+        "run_id": run_id(),
         "captured_at": chrono::Utc::now().to_rfc3339(),
         "html_length": html.len(),
     });
@@ -1747,7 +1826,9 @@ pub fn traverse_routes(
             // ---- EDITOR_TEST: navigate + type + backspace + enter ----
             if route == "EDITOR_TEST" {
                 tracing::info!("[traverse] step {}: EDITOR_TEST", step);
-                let edit_route = "/documents/019ea201-d2cc-74a3-ad2f-4bdcbe3b4f83/edit";
+                let doc_id = std::env::var("TACHYON_TEST_DOC_ID")
+                    .unwrap_or_else(|_| "019e99be-39dc-70e1-9007-27c23d519f5d".to_string());
+                let edit_route = format!("/documents/{}/edit", doc_id);
 
                 // Navigate to editor page via pushState + popstate
                 let _ = wv.eval(format!(
