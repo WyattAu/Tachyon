@@ -101,6 +101,27 @@ curl -s -H "$H" $B/control/report
   request-completed logging middleware — they log "Authentication failed"
   but no request-completed line.
 
+## Frontend build (AOT Tailwind — required for a styled app)
+
+The desktop webview and the staging web frontend both need the compiled CSS:
+
+```bash
+cd crates/frontend
+nix-shell -p nodejs_20 --run "./node_modules/.bin/tailwindcss -i input.css -o public/app.css --minify"
+trunk build --release
+cp public/* dist/          # this trunk version does NOT copy public/ — do it manually
+cargo build -p tachyon-desktop-app   # desktop embeds dist at compile time
+# staging: tar dist/ -> scp -> extract into ~/tachyon-deploy/dist
+```
+
+- Tailwind v3 CLI **hangs under Node >= 24**; use Node 20.
+- The desktop fix shipped in commit `3a76036` after control-plane screenshots
+  exposed a fully unstyled render (the Play CDN script loaded from a hardcoded
+  `localhost:8080` computed before `window.tachyonApiUrl` existed).
+- **Always verify screenshots visually** — a returned PNG path proves the
+  pipeline, not the rendering. The unstyled app produced valid screenshots
+  for a full session before anyone looked at the pixels.
+
 ## Endpoints
 
 | Method | Path | Body | Returns |
