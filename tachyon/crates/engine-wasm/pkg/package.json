@@ -1,0 +1,20 @@
+{
+  "name": "@wyattau/tachyon-engine",
+  "version": "0.1.0",
+  "description": "WebAssembly rendering engine for Tachyon: markdown, wiki-links, slugs",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "tachyon_engine_wasm.js",
+  "types": "tachyon_engine_wasm.d.ts",
+  "files": [
+    "tachyon_engine_wasm.js",
+    "tachyon_engine_wasm.d.ts",
+    "tachyon_engine_wasm_bg.wasm",
+    "tachyon_engine_wasm_bg.wasm.d.ts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WyattAu/Tachyon",
+    "directory": "tachyon/crates/engine-wasm"
+  }
+}

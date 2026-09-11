@@ -257,13 +257,13 @@ dependencies = [
 
 [[package]]
 name = "argon2"
-version = "0.5.3"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c3610892ee6e0cbce8ae2700349fcf8f98adb0dbfbee85aec3c9179d29cc072"
+checksum = "134c52ddac6d63c576bef8168db10c83c49c26444ecbc68060fef078925a901c"
 dependencies = [
  "base64ct",
  "blake2",
- "cpufeatures 0.2.17",
+ "cpufeatures 0.3.0",
  "password-hash",
 ]
 
@@ -1228,11 +1228,11 @@ dependencies = [
 
 [[package]]
 name = "blake2"
-version = "0.10.6"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46502ad458c9a52b69d4d4d32775c788b7a1b85e8bc9d482d92250fc0e3f8efe"
+checksum = "5b5d4d889834ee8ecfc0f8426ad30faf7cdcb10f741a8e6d7224d95325479f6f"
 dependencies = [
- "digest 0.10.7",
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -3099,7 +3099,7 @@ dependencies = [
 
 [[package]]
 name = "docs-pipeline"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "ammonia",
  "katex",
@@ -3110,7 +3110,6 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tracing",
- "tree-sitter",
  "tree-sitter-bash",
  "tree-sitter-css",
  "tree-sitter-highlight",
@@ -3291,6 +3290,7 @@ dependencies = [
  "ff",
  "generic-array",
  "group",
+ "hkdf",
  "pem-rfc7468",
  "pkcs8",
  "rand_core 0.6.4",
@@ -5426,6 +5426,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsonwebtoken"
+version = "11.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "881733cbc631fc9e472e24447ce32a64bedf2da498d6d8570b08edc87de71f65"
+dependencies = [
+ "base64 0.22.1",
+ "ed25519-dalek",
+ "getrandom 0.2.17",
+ "hmac 0.12.1",
+ "js-sys",
+ "p256",
+ "p384",
+ "pem",
+ "rand 0.8.6",
+ "rsa",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "signature",
+ "simple_asn1",
+ "zeroize",
+]
+
+[[package]]
 name = "katex"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6172,7 +6196,7 @@ dependencies = [
 
 [[package]]
 name = "media-kit"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "image 0.25.10",
  "thiserror 2.0.18",
@@ -7055,6 +7079,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "p384"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe42f1670a52a47d448f14b6a5c61dd78fce51856e68edaa38f7ae3a46b8d6b6"
+dependencies = [
+ "ecdsa",
+ "elliptic-curve",
+ "primeorder",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "pango"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7110,13 +7146,13 @@ dependencies = [
 
 [[package]]
 name = "password-hash"
-version = "0.5.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "346f04948ba92c43e8469c1ee6736c7563d71012b17d40745260fe106aac2166"
+checksum = "aab41826031698d6ffcd9cff78ef56ef998e39dc7e5067cdfebe373842d4723b"
 dependencies = [
- "base64ct",
- "rand_core 0.6.4",
- "subtle",
+ "getrandom 0.4.2",
+ "phc",
+ "rand_core 0.10.1",
 ]
 
 [[package]]
@@ -7217,6 +7253,18 @@ checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset",
  "indexmap 2.14.0",
+]
+
+[[package]]
+name = "phc"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44dc769b75f93afdddd8c7fa12d685292ddeff1e66f7f0f3a234cf1818afe892"
+dependencies = [
+ "base64ct",
+ "ctutils",
+ "getrandom 0.4.2",
+ "rand_core 0.10.1",
 ]
 
 [[package]]
@@ -8823,10 +8871,10 @@ checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
 name = "salting"
-version = "0.2.0"
+version = "1.1.0"
 dependencies = [
  "argon2",
- "rand 0.8.6",
+ "password-hash",
  "thiserror 2.0.18",
 ]
 
@@ -10176,7 +10224,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "criterion",
- "jsonwebtoken",
+ "jsonwebtoken 9.3.1",
  "serde_json",
  "tachyon-core",
  "tachyon-rbac",
@@ -10347,6 +10395,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tachyon-engine-wasm"
+version = "0.1.0"
+dependencies = [
+ "ammonia",
+ "pulldown-cmark 0.13.4",
+ "regex",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "tachyon-frontend"
 version = "0.1.0"
 dependencies = [
@@ -10513,7 +10571,7 @@ dependencies = [
  "html-escape",
  "http-body-util",
  "hyper 1.10.1",
- "jsonwebtoken",
+ "jsonwebtoken 9.3.1",
  "ldap3",
  "lettre",
  "metrics",
@@ -10617,7 +10675,7 @@ dependencies = [
  "criterion",
  "http-body-util",
  "hyper 1.10.1",
- "jsonwebtoken",
+ "jsonwebtoken 9.3.1",
  "libfuzzer-sys",
  "mockall",
  "proptest",
@@ -11466,15 +11524,14 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokenkit"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
  "uuid",
- "zeroize",
 ]
 
 [[package]]
@@ -12401,7 +12458,7 @@ dependencies = [
 
 [[package]]
 name = "validkit"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "serde",

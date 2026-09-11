@@ -1,0 +1,28 @@
+[package]
+name = "tachyon-engine-wasm"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+description = "WebAssembly bindings for the Tachyon rendering engine (SolidJS/Astro frontend core)"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+regex = "1"
+
+# Markdown -> HTML (matches docs-pipeline's renderer version)
+pulldown-cmark = "0.13"
+
+# HTML sanitization (same crate docs-pipeline uses)
+ammonia = "4"
+
+# NOTE on shared crates:
+# - docs-pipeline is NOT used here yet: its katex dep requires an engine feature
+#   (quick-js on native, wasm-js on wasm32) that cannot be split per-target from
+#   the consumer side. Once docs-pipeline gates its katex engine per-target,
+#   switch this crate back to docs-pipeline for exact render parity with SSG.
+# - tachyon-core is NOT used: it pulls git2/tokio/notify (wasm-hostile).
+#   slugify() is mirrored below — keep in sync.
