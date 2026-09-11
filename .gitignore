@@ -61,3 +61,6 @@ tachyon/.cargo/config.toml
 
 # SSG build cache (incremental builds)
 .build-cache.json
+
+# Tailwind build deps (frontend)
+tachyon/crates/frontend/node_modules/

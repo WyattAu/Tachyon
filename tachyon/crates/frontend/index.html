@@ -7,24 +7,17 @@
     <meta name="theme-color" content="#2563eb">
     <title>Tachyon - Knowledge Management System</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <!-- Tailwind CSS: tauri:// asset protocol only serves trunk-generated
-         files (index.html, *.js, *.wasm), not arbitrary files from dist.
-         In desktop mode, load from the backend HTTP server instead.
-         In web/dev mode, the dev server serves it from public/. -->
+    <!-- Tailwind CSS: AOT-compiled (public/app.css, built via
+         `bunx tailwindcss@3.4 -i input.css -o public/app.css --minify` under
+         Node 20 — the v3 CLI hangs under Node >= 24; config in
+         tailwind.config.js scans src/**/*.rs + index.html).
+         Replaces the old Tailwind Play CDN runtime-JIT approach, which broke
+         under tauri:// (cross-origin load from a hardcoded localhost URL that
+         ran before window.tachyonApiUrl existed) and produced an unstyled
+         desktop app. -->
+    <link rel="stylesheet" href="/app.css">
     <script>
-        if (window.__TAURI__) {
-            // Desktop: load tailwind from backend server (cross-origin HTTP)
-            var s = document.createElement('script');
-            s.src = (window.tachyonApiUrl || 'http://localhost:8080/api/v1').replace(/\/api\/v1\/?$/, '') + '/tailwind.js';
-            s.onerror = function() { console.warn('[Tachyon] Tailwind CSS load failed'); };
-            document.write(s.outerHTML);
-        } else {
-            // Web: synchronous load from same origin (dev server serves public/)
-            document.write('<script src="/tailwind.js"><\/script>');
-        }
-    </script>
-    <script>
-        tailwind.config = { prefix: '' };
+        window.tachyonApiUrl = window.tachyonApiUrl || "http://localhost:8080/api/v1";
     </script>
     <!-- Debug: capture WASM loading errors (only when TACHYON_DEBUG >= 1) -->
     <script>
@@ -37,123 +30,6 @@
             console.error('[Tachyon] unhandledrejection:', e.reason);
         });
     </script>
-    <!-- Set API URL before WASM boots. Tauri on_page_load sets this via eval()
-    but there's a race: WASM may read it first. This inline script ensures it's
-    available immediately. Overridden by on_page_load eval if TACHYON_API_URL is set. -->
-    <script>
-        window.tachyonApiUrl = window.tachyonApiUrl || "http://localhost:8080/api/v1";
-    </script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-                        display: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-                    },
-                    borderRadius: {
-                        'amoebic': '60% 40% 30% 70% / 60% 30% 70% 40%',
-                        'amoebic-alt': '30% 70% 70% 30% / 30% 30% 70% 70%',
-                        'amoebic-sm': '40% 60% 50% 50% / 50% 40% 60% 50%',
-                    },
-                    boxShadow: {
-                        'spatial': '4px 4px 0px 0px',
-                        'spatial-lg': '8px 8px 0px 0px',
-                        'spatial-xl': '12px 12px 0px 0px',
-                        'spatial-sm': '2px 2px 0px 0px',
-                        'spatial-accent': '4px 4px 0px 0px',
-                    },
-                    transitionTimingFunction: {
-                        'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-                        'spring-bounce': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                        'spatial': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                    },
-                },
-            },
-            plugins: [
-                // Prose classes for document rendering
-                function({ addUtilities }) {
-                    const newUtilities = {
-                        '.prose': {
-                            'color': '#374151',
-                            'line-height': '1.75',
-                            'max-width': '65ch',
-                        },
-                        '.prose-sm': {
-                            'font-size': '0.875rem',
-                            'line-height': '1.7142857',
-                        },
-                    }
-                    addUtilities(newUtilities)
-                },
-            ],
-        }
-    </script>
-    <style type="text/tailwindcss">
-        @layer base {
-            html {
-                -webkit-font-smoothing: antialiased;
-                -moz-osx-font-smoothing: grayscale;
-            }
-            body {
-                @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
-            }
-            ::-webkit-scrollbar {
-                width: 8px;
-                height: 8px;
-            }
-            ::-webkit-scrollbar-track {
-                background: transparent;
-            }
-            ::-webkit-scrollbar-thumb {
-                @apply bg-gray-300 dark:bg-gray-600 rounded;
-            }
-            ::-webkit-scrollbar-thumb:hover {
-                @apply bg-gray-400 dark:bg-gray-500;
-            }
-
-            /* Spatial Materialism: noise texture overlay */
-            body::before {
-                content: '';
-                position: fixed;
-                top: 0; left: 0; right: 0; bottom: 0;
-                pointer-events: none;
-                z-index: 9999;
-                opacity: 0.025;
-                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-                background-repeat: repeat;
-                background-size: 256px 256px;
-            }
-
-            /* Amoebic containers */
-            .amoebic {
-                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-            }
-            .amoebic-alt {
-                border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-            }
-
-            /* Brutalist structure exposure */
-            .brutalist {
-                border: 2px solid currentColor;
-                border-radius: 0 !important;
-            }
-
-            /* Spatial depth layers */
-            .spatial-1 { box-shadow: 2px 2px 0px 0px rgba(0,0,0,0.15); }
-            .spatial-2 { box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.15); }
-            .spatial-3 { box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.12); }
-            .dark .spatial-1 { box-shadow: 2px 2px 0px 0px rgba(255,255,255,0.08); }
-            .dark .spatial-2 { box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.08); }
-            .dark .spatial-3 { box-shadow: 8px 8px 0px 0px rgba(255,255,255,0.06); }
-
-            /* Spring transition utility */
-            .transition-spring { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-            .transition-spatial { transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-        }
-    </style>
     <style>
         @media print {
             nav, .no-print, button, input, textarea, select,
