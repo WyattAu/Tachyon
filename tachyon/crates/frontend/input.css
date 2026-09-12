@@ -6,6 +6,13 @@
     html {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        color-scheme: light;
+    }
+    /* Make native form controls (select, checkbox, date inputs, scrollbars)
+       render with dark UA chrome under the dark theme. Without this WebKitGTK
+       paints selects light-on-light regardless of CSS background. */
+    .dark {
+        color-scheme: dark;
     }
     body {
         @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
@@ -22,6 +29,15 @@
     }
     ::-webkit-scrollbar-thumb:hover {
         @apply bg-gray-400 dark:bg-gray-500;
+    }
+
+    /* Native form controls: the UA default (white bg, dark text) is unreadable
+       on the dark theme — seen on the SSG page's Theme select. */
+    select {
+        @apply bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100;
+    }
+    option {
+        @apply bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100;
     }
 
     /* Spatial Materialism: noise texture overlay */

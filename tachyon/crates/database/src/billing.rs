@@ -110,12 +110,17 @@ impl SubscriptionRepository {
     /// Returns `DatabaseError::NotFound` if no subscription exists.
     #[instrument(skip(self))]
     pub async fn get_by_org(&self, organization_id: &str) -> DatabaseResult<Subscription> {
+        // organization_id is a UUID column; UI placeholders like "default"
+        // are not real orgs — treat them as NotFound instead of letting the
+        // query fail with `uuid = text` (500).
+        let org_uuid = uuid::Uuid::parse_str(organization_id)
+            .map_err(|_| DatabaseError::not_found("subscription", organization_id))?;
         let sql = format!(
             "{} WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 1",
             SUB_SELECT
         );
         sqlx::query_as::<_, Subscription>(&sql)
-            .bind(organization_id)
+            .bind(org_uuid)
             .fetch_optional(self.pool.inner())
             .await?
             .ok_or_else(|| DatabaseError::not_found("subscription", organization_id))

@@ -272,7 +272,7 @@ pub use document_search::{
 };
 pub use document_templates::{
     CreateTemplateBody, TemplateQuery, TemplateResponse, UpdateTemplateBody, create_template,
-    delete_template, get_template, list_templates, update_template,
+    delete_template, get_template, list_template_categories, list_templates, update_template,
 };
 pub use document_versions::{
     CreateVersionBody, DiffLine, DiffStats, DocumentDiffResponse, RestoreVersionResponse,
@@ -326,6 +326,9 @@ pub fn create_document_router() -> axum::Router<DocumentState> {
         .route("/documents/{document_id}/export", get(export_document))
         .route("/templates", get(list_templates))
         .route("/templates", post(create_template))
+        // Static segment must be registered (it wins over the param route in
+        // matchit, but only if it exists at all).
+        .route("/templates/categories", get(list_template_categories))
         .route("/templates/{template_id}", get(get_template))
         .route("/templates/{template_id}", put(update_template))
         .route("/templates/{template_id}", delete(delete_template))

@@ -61,6 +61,32 @@ pub struct TemplateQuery {
     pub category: Option<String>,
 }
 
+/// List distinct template categories.
+///
+/// `GET /api/v1/templates/categories`
+///
+/// MUST be matched before `/templates/{template_id}` — otherwise "categories"
+/// is treated as a template ID and the DB rejects it as an invalid UUID.
+#[utoipa::path(
+    get,
+    path = "/api/v1/templates/categories",
+    responses(
+        (status = 200, description = "Distinct category list", body = Vec<String>),
+        (status = 500, description = "Internal error"),
+    ),
+    tag = "templates",
+)]
+pub async fn list_template_categories(
+    State(state): State<DocumentState>,
+) -> Result<Json<Vec<String>>, ServerError> {
+    let repo = tachyon_database::TemplateRepository::new(state.pool.clone());
+    let categories = repo
+        .list_categories()
+        .await
+        .map_err(|e| ServerError::database(format!("Failed to list template categories: {}", e)))?;
+    Ok(Json(categories))
+}
+
 /// List document templates.
 ///
 /// `GET /api/v1/templates`

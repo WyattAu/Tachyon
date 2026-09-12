@@ -54,7 +54,7 @@ pub fn plan_max_docs(plan: &str) -> usize {
         "free" => 100,
         "pro" => 10_000,
         "team" => 100_000,
-        _ => usize::MAX,
+        _ => super::types::Plan::UNLIMITED,
     }
 }
 
@@ -63,7 +63,7 @@ pub fn plan_max_members(plan: &str) -> usize {
         "free" => 1,
         "pro" => 5,
         "team" => 50,
-        _ => usize::MAX,
+        _ => super::types::Plan::UNLIMITED,
     }
 }
 

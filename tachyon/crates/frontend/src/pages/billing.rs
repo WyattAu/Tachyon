@@ -91,8 +91,12 @@ pub fn BillingPage() -> impl IntoView {
                 set_loading.set(true);
                 set_error.set(None);
 
-                if let Ok(p) = fetch_plans().await {
-                    set_plans.set(p.plans);
+                match fetch_plans().await {
+                    Ok(p) => {
+                        web_sys::console::log_1(&format!("[billing] plans ok n={}", p.plans.len()).into());
+                        set_plans.set(p.plans);
+                    }
+                    Err(e) => web_sys::console::error_1(&format!("[billing] plans fetch failed: {}", e).into()),
                 }
 
                 if let Ok(sub) = fetch_subscription("default").await {
@@ -103,8 +107,12 @@ pub fn BillingPage() -> impl IntoView {
                     set_invoices.set(inv.invoices);
                 }
 
-                if let Ok(u) = fetch_usage("default").await {
-                    set_usage.set(Some(u));
+                match fetch_usage("default").await {
+                    Ok(u) => {
+                        web_sys::console::log_1(&format!("[billing] usage ok plan={} docs={}", u.usage.plan, u.usage.documents_total).into());
+                        set_usage.set(Some(u));
+                    }
+                    Err(e) => web_sys::console::error_1(&format!("[billing] usage fetch failed: {}", e).into()),
                 }
 
                 set_loading.set(false);
@@ -256,17 +264,24 @@ pub fn BillingPage() -> impl IntoView {
                     {move || usage.get().map(|u| {
                         let u = u.usage;
                         let plans_snapshot = plans.get();
-                        let plan = plans_snapshot.iter().find(|p| p.name == u.plan);
+                        // Case-insensitive + wait-safe: if plans haven't loaded
+                        // yet the lookup misses and the u32::MAX "unlimited"
+                        // fallback would show raw numbers — fmt_max renders ∞.
+                        let plan = plans_snapshot.iter().find(|p| p.name.eq_ignore_ascii_case(&u.plan));
                         let max_docs = plan.map(|p| p.max_documents).unwrap_or(usize::MAX);
                         let max_members = plan.map(|p| p.max_members).unwrap_or(usize::MAX);
-                        let doc_pct = if max_docs > 0 { (u.documents_total as f64 / max_docs as f64 * 100.0).min(100.0) } else { 0.0 };
-                        let member_pct = if max_members > 0 { (u.members_total as f64 / max_members as f64 * 100.0).min(100.0) } else { 0.0 };
+                        // Server sends 1e9 as the JS-safe "unlimited" sentinel
+                        // (Plan::UNLIMITED); legacy u64::MAX/u32::MAX values
+                        // from older data also render as ∞.
+                        let fmt_max = |m: usize| if m >= 1_000_000_000 { "∞".to_string() } else { m.to_string() };
+                        let doc_pct = if max_docs > 0 && max_docs < 1_000_000_000 { (u.documents_total as f64 / max_docs as f64 * 100.0).min(100.0) } else { 0.0 };
+                        let member_pct = if max_members > 0 && max_members < 1_000_000_000 { (u.members_total as f64 / max_members as f64 * 100.0).min(100.0) } else { 0.0 };
                         view! {
                             <div class="space-y-5">
                                 <div>
                                     <div class="flex justify-between text-sm mb-1">
                                         <span class="text-gray-600 dark:text-gray-400">"Documents"</span>
-                                        <span class="text-gray-900 dark:text-white">{u.documents_total}"/"{max_docs}</span>
+                                        <span class="text-gray-900 dark:text-white">{u.documents_total}"/"{fmt_max(max_docs)}</span>
                                     </div>
                                     <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                         <div class="bg-blue-600 h-2 rounded-full transition-all" style={format!("width: {:.1}%", doc_pct)}></div>
@@ -275,7 +290,7 @@ pub fn BillingPage() -> impl IntoView {
                                 <div>
                                     <div class="flex justify-between text-sm mb-1">
                                         <span class="text-gray-600 dark:text-gray-400">"Members"</span>
-                                        <span class="text-gray-900 dark:text-white">{u.members_total}"/"{max_members}</span>
+                                        <span class="text-gray-900 dark:text-white">{u.members_total}"/"{fmt_max(max_members)}</span>
                                     </div>
                                     <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                         <div class="bg-green-600 h-2 rounded-full transition-all" style={format!("width: {:.1}%", member_pct)}></div>

@@ -67,6 +67,14 @@ pub enum Plan {
 }
 
 impl Plan {
+    /// JS-safe "unlimited" sentinel for plan limits.
+    ///
+    /// usize::MAX (2^64-1 on the server) loses precision crossing the JS
+    /// number boundary (becomes 1.8446744073709552e+19), which makes the
+    /// wasm client's serde deserialization of the whole plans array FAIL.
+    /// 1e9 is far above any real quota and exactly representable in f64.
+    pub const UNLIMITED: usize = 1_000_000_000;
+
     pub fn price_monthly(&self) -> u64 {
         match self {
             Plan::Free => 0,
@@ -81,7 +89,7 @@ impl Plan {
             Plan::Free => 100,
             Plan::Pro => 10_000,
             Plan::Team => 100_000,
-            Plan::Enterprise => usize::MAX,
+            Plan::Enterprise => Self::UNLIMITED,
         }
     }
 
@@ -90,7 +98,7 @@ impl Plan {
             Plan::Free => 1,
             Plan::Pro => 5,
             Plan::Team => 50,
-            Plan::Enterprise => usize::MAX,
+            Plan::Enterprise => Self::UNLIMITED,
         }
     }
 
