@@ -64,3 +64,8 @@ tachyon/.cargo/config.toml
 
 # Tailwind build deps (frontend)
 tachyon/crates/frontend/node_modules/
+
+# Tachyon web client (SolidJS/Astro)
+tachyon/apps/web/node_modules/
+tachyon/apps/web/dist/
+tachyon/apps/web/.astro/

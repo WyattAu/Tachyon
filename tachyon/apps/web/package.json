@@ -1,0 +1,27 @@
+{
+  "name": "@tachyon/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tachyon web client — Astro + SolidJS + generated OpenAPI client (ADR-113)",
+  "scripts": {
+    "dev": "astro dev --port 4321",
+    "build": "astro build",
+    "preview": "astro preview --port 4322",
+    "check": "astro check",
+    "gen:api": "openapi-typescript src/lib/api/openapi.json -o src/lib/api/schema.d.ts",
+    "typecheck": "astro check && tsc --noEmit"
+  },
+  "dependencies": {
+    "@astrojs/solid-js": "^5.0.0",
+    "astro": "^5.0.0",
+    "openapi-fetch": "^0.13.0",
+    "solid-js": "^1.9.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "tailwindcss": "^4.0.0",
+    "openapi-typescript": "^7.0.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/*
+ * Tachyon design tokens — ported from the Leptos index.html inline config
+ * (Phase A.3). Tailwind v4 CSS-first config via @theme.
+ * Aesthetic: "Spatial Materialism" — dark-first, brutalist borders,
+ * amoebic radii, spatial hard shadows, spring motion.
+ */
+@theme {
+  --font-sans: "Inter", -apple-system, "BlinkMacSystemFont", "sans-serif";
+  --font-mono: "JetBrains Mono", "Fira Code", "monospace";
+  --font-display: "Inter", -apple-system, "BlinkMacSystemFont", "sans-serif";
+
+  --radius-amoebic: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  --radius-amoebic-alt: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  --radius-amoebic-sm: 40% 60% 50% 50% / 50% 40% 60% 50%;
+
+  --shadow-spatial-sm: 2px 2px 0px 0px;
+  --shadow-spatial: 4px 4px 0px 0px;
+  --shadow-spatial-lg: 8px 8px 0px 0px;
+  --shadow-spatial-xl: 12px 12px 0px 0px;
+
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-spatial: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+  }
+}
