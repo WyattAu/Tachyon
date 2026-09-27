@@ -349,6 +349,7 @@ pub struct UserListResponse {
 
 /// Query parameters for user listing.
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct UserQuery {
     /// Page number
     pub page: Option<usize>,

@@ -37,6 +37,7 @@ pub(crate) fn visible_to_caller(
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct SemanticSearchParams {
     /// The query text to embed and search with.
     pub q: String,

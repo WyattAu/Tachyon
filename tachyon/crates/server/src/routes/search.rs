@@ -84,6 +84,7 @@ impl SearchState {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct SearchQuery {
     pub q: String,
     #[serde(default = "default_page")]
@@ -878,6 +879,7 @@ pub struct SuggestResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct SuggestQuery {
     pub q: String,
     #[serde(default = "default_suggest_limit")]

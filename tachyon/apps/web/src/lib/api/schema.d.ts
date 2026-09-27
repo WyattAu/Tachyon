@@ -116,624 +116,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get the current authenticated user's profile.
-         * @description `GET /auth/me`
-         *
-         *     Requires `Authorization: Bearer <token>` header.
-         *     Response: 200 with `UserResponse`, or 401/404 on error.
-         */
-        get: operations["get_me"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List documents with pagination and optional filters.
-         * @description `GET /api/v1/documents?page=&page_size=&author_id=&project_id=`
-         *
-         *     Query params: `page` (default 1), `page_size` (default 20, max 100), `author_id`, `project_id`.
-         *     Response: 200 with `DocumentSearchResponse` containing `results`, `total`, `page`, `page_size`.
-         */
-        get: operations["list_documents"];
-        put?: never;
-        /**
-         * Create a new document.
-         * @description `POST /api/v1/documents`
-         *
-         *     Request body: JSON with `title` (required), `content`, `project_id`, `tags`, `visibility`.
-         *     Response: 201 with the created `DocumentResponse`, or 400/401/500 on error.
-         */
-        post: operations["create_document"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/batch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["batch_operations"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/cursor": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List documents with cursor-based pagination.
-         * @description `GET /api/v1/documents/cursor?after=&before=&limit=`
-         *
-         *     Query params: `after` (cursor from previous page's `next_cursor`),
-         *       `before` (cursor from previous page's `prev_cursor`), `limit` (default 20, max 100).
-         *     Response: 200 with `CursorPage<DocumentResponse>`.
-         */
-        get: operations["list_documents_cursor"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/render": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Render markdown to HTML.
-         * @description `POST /api/v1/documents/render`
-         *
-         *     Request body: raw markdown string.
-         *     Response: 200 with `html`, `word_count`, `character_count`, `heading_count`, `code_block_count`, `render_time_ms`.
-         */
-        post: operations["render_markdown"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search documents by full-text query.
-         * @description `GET /api/v1/documents/search`
-         *
-         *     Requires a non-empty `search` query parameter. Supports `page` and `page_size` pagination.
-         */
-        get: operations["search_documents"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/{document_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get a document by ID.
-         * @description `GET /api/v1/documents/{document_id}`
-         *
-         *     Authorization: The authenticated user must be the document author (owner),
-         *     or the document must have `visibility=public`. Returns 403 otherwise.
-         *
-         *     Response: 200 with `DocumentResponse`, or 400 (invalid ID) / 403 (forbidden) / 404 on error.
-         */
-        get: operations["get_document"];
-        /**
-         * Update an existing document.
-         * @description `PUT /api/v1/documents/{document_id}`
-         *
-         *     Request body: JSON with optional `title`, `content`, `tags`, `visibility`, `status`.
-         *     Automatically creates a version snapshot when content changes.
-         *     Response: 200 with updated `DocumentResponse`, or 400/404/500 on error.
-         */
-        put: operations["update_document"];
-        post?: never;
-        /**
-         * Delete a document by ID.
-         * @description `DELETE /api/v1/documents/{document_id}`
-         *
-         *     Removes the document from the database and the Tantivy search index.
-         *     Response: 204 No Content, or 400 (invalid ID) / 404 on error.
-         */
-        delete: operations["delete_document"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/{document_id}/attachments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List attachments for a document.
-         * @description `GET /api/v1/documents/{document_id}/attachments`
-         */
-        get: operations["list_attachments"];
-        put?: never;
-        /**
-         * Upload an attachment to a document.
-         * @description `POST /api/v1/documents/{document_id}/attachments`
-         *
-         *     Accepts multipart form data with a single file field.
-         */
-        post: operations["upload_attachment"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/{document_id}/attachments/{attachment_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Download an attachment.
-         * @description `GET /api/v1/documents/{document_id}/attachments/{attachment_id}`
-         *
-         *     Returns the raw file content with appropriate `Content-Type` and `Content-Disposition` headers.
-         */
-        get: operations["download_attachment"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete an attachment.
-         * @description `DELETE /api/v1/documents/{document_id}/attachments/{attachment_id}`
-         */
-        delete: operations["delete_attachment"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/{document_id}/backlinks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get documents that link to the given document.
-         * @description `GET /api/v1/documents/{document_id}/backlinks`
-         *
-         *     Queries the `outgoing_links` JSONB column to find all documents referencing
-         *     this document by title. Returns up to 50 backlinks ordered by update time,
-         *     each with a short excerpt and link context showing where the link appears.
-         */
-        get: operations["get_backlinks"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/{document_id}/metadata": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get document metadata (key-value pairs) by ID.
-         * @description `GET /api/v1/documents/{document_id}/metadata`
-         *
-         *     Response: 200 with a JSON object of metadata fields, or 400/404 on error.
-         */
-        get: operations["get_document_metadata"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/{document_id}/versions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List document versions.
-         * @description `GET /api/v1/documents/{document_id}/versions`
-         *
-         *     Returns up to 50 most recent versions.
-         */
-        get: operations["list_versions"];
-        put?: never;
-        /**
-         * Create a new document version (snapshot).
-         * @description `POST /api/v1/documents/{document_id}/versions`
-         *
-         *     Saves a snapshot of the document content with an optional commit message.
-         */
-        post: operations["create_version"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/{document_id}/versions/{v1}/diff/{v2}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Compute a line-level diff between two document versions.
-         * @description `GET /api/v1/documents/{document_id}/versions/{v1}/diff/{v2}`
-         *
-         *     Returns old/new line arrays with `added`, `removed`, or `unchanged` type annotations
-         *     and diff statistics.
-         */
-        get: operations["diff_versions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/{document_id}/versions/{version_number}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get a specific document version.
-         * @description `GET /api/v1/documents/{document_id}/versions/{version_number}`
-         */
-        get: operations["get_version"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Full-text search across documents with faceted filtering.
-         * @description `GET /search?q=&page=&page_size=&content_type=&status=&visibility=&project_id=&author_id=&tags=&date_from=&date_to=`
-         *
-         *     Fuses results from PostgreSQL full-text search and Tantivy index.
-         *     Response: 200 with `SearchResultsResponse` containing `results`, `total`, `page`, `page_size`, `facets`.
-         */
-        get: operations["search"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/search/global": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["global_search"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/search/reindex": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["reindex_tantivy"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/search/saved": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["list_saved_searches"];
-        put?: never;
-        post: operations["create_saved_search"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/search/saved/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["get_saved_search"];
-        put: operations["update_saved_search"];
-        post?: never;
-        delete: operations["delete_saved_search"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/search/suggest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get search suggestions (autocomplete) from the Tantivy index.
-         * @description `GET /search/suggest?q=&limit=`
-         *
-         *     Query params: `q` (required), `limit` (default 10).
-         *     Response: 200 with `SuggestResponse` containing `query` and `suggestions`, or 503 if index unavailable.
-         */
-        get: operations["suggest"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List spaces with optional filters.
-         * @description `GET /spaces?owner_id=&parent_id=&visibility=&limit=&offset=`
-         *
-         *     Response: 200 with `Vec<SpaceResponse>`, or 500 on error.
-         */
-        get: operations["list_spaces"];
-        put?: never;
-        /**
-         * Create a new space.
-         * @description `POST /spaces`
-         *
-         *     Request body: JSON with `name` (required), optional `description`, `icon`, `color`, `parent_id`, `visibility`.
-         *     Response: 201 with `SpaceResponse`, or 400/500 on error.
-         */
-        post: operations["create_space"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{space_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get a space by ID.
-         * @description `GET /spaces/{space_id}`
-         *
-         *     Response: 200 with `SpaceResponse`, or 404 on error.
-         */
-        get: operations["get_space"];
-        /**
-         * Update a space by ID.
-         * @description `PUT /spaces/{space_id}`
-         *
-         *     Request body: JSON with optional `name`, `description`, `icon`, `color`, `parent_id`, `visibility`, `sort_order`.
-         *     Response: 200 with `SpaceResponse`, or 500 on error.
-         */
-        put: operations["update_space"];
-        post?: never;
-        /**
-         * Delete a space by ID.
-         * @description `DELETE /spaces/{space_id}`
-         *
-         *     Response: 204 No Content, or 404 on error.
-         */
-        delete: operations["delete_space"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List document templates.
-         * @description `GET /api/v1/templates`
-         *
-         *     Supports an optional `category` query parameter to filter results.
-         */
-        get: operations["list_templates"];
-        put?: never;
-        /**
-         * Create a new document template.
-         * @description `POST /api/v1/templates`
-         */
-        post: operations["create_template"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/templates/{template_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get a template by ID.
-         * @description `GET /api/v1/templates/{template_id}`
-         */
-        get: operations["get_template"];
-        /**
-         * Update a document template.
-         * @description `PUT /api/v1/templates/{template_id}`
-         *
-         *     Accepts partial updates for name, description, content, category, and tags.
-         */
-        put: operations["update_template"];
-        post?: never;
-        /**
-         * Delete a document template.
-         * @description `DELETE /api/v1/templates/{template_id}`
-         */
-        delete: operations["delete_template"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List all users with pagination. */
-        get: operations["list_users"];
-        put?: never;
-        /**
-         * Create a new user (admin-only, can set role).
-         * @description Unlike `/auth/register`, this endpoint allows setting an arbitrary role
-         *     and is intended for admin use.
-         */
-        post: operations["create_user"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/users/{user_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a user by ID. */
-        get: operations["get_user"];
-        /** Update a user. */
-        put: operations["update_user"];
-        post?: never;
-        /** Delete a user (soft-delete: sets is_active = false). */
-        delete: operations["delete_user"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/auth/email-verify/confirm": {
         parameters: {
             query?: never;
@@ -895,7 +277,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get the current authenticated user's profile.
+         * @description `GET /auth/me`
+         *
+         *     Requires `Authorization: Bearer <token>` header.
+         *     Response: 200 with `UserResponse`, or 401/404 on error.
+         */
+        get: operations["get_me"];
         /**
          * Update the current authenticated user's profile.
          * @description `PUT /auth/me`
@@ -1603,6 +992,237 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List documents with pagination and optional filters.
+         * @description `GET /api/v1/documents?page=&page_size=&author_id=&project_id=`
+         *
+         *     Query params: `page` (default 1), `page_size` (default 20, max 100), `author_id`, `project_id`.
+         *     Response: 200 with `DocumentSearchResponse` containing `results`, `total`, `page`, `page_size`.
+         */
+        get: operations["list_documents"];
+        put?: never;
+        /**
+         * Create a new document.
+         * @description `POST /api/v1/documents`
+         *
+         *     Request body: JSON with `title` (required), `content`, `project_id`, `tags`, `visibility`.
+         *     Response: 201 with the created `DocumentResponse`, or 400/401/500 on error.
+         */
+        post: operations["create_document"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["batch_operations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/cursor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List documents with cursor-based pagination.
+         * @description `GET /api/v1/documents/cursor?after=&before=&limit=`
+         *
+         *     Query params: `after` (cursor from previous page's `next_cursor`),
+         *       `before` (cursor from previous page's `prev_cursor`), `limit` (default 20, max 100).
+         *     Response: 200 with `CursorPage<DocumentResponse>`.
+         */
+        get: operations["list_documents_cursor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/render": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Render markdown to HTML.
+         * @description `POST /api/v1/documents/render`
+         *
+         *     Request body: raw markdown string.
+         *     Response: 200 with `html`, `word_count`, `character_count`, `heading_count`, `code_block_count`, `render_time_ms`.
+         */
+        post: operations["render_markdown"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search documents by full-text query.
+         * @description `GET /api/v1/documents/search`
+         *
+         *     Requires a non-empty `search` query parameter. Supports `page` and `page_size` pagination.
+         */
+        get: operations["search_documents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a document by ID.
+         * @description `GET /api/v1/documents/{document_id}`
+         *
+         *     Authorization: The authenticated user must be the document author (owner),
+         *     or the document must have `visibility=public`. Returns 403 otherwise.
+         *
+         *     Response: 200 with `DocumentResponse`, or 400 (invalid ID) / 403 (forbidden) / 404 on error.
+         */
+        get: operations["get_document"];
+        /**
+         * Update an existing document.
+         * @description `PUT /api/v1/documents/{document_id}`
+         *
+         *     Request body: JSON with optional `title`, `content`, `tags`, `visibility`, `status`.
+         *     Automatically creates a version snapshot when content changes.
+         *     Response: 200 with updated `DocumentResponse`, or 400/404/500 on error.
+         */
+        put: operations["update_document"];
+        post?: never;
+        /**
+         * Delete a document by ID.
+         * @description `DELETE /api/v1/documents/{document_id}`
+         *
+         *     Removes the document from the database and the Tantivy search index.
+         *     Response: 204 No Content, or 400 (invalid ID) / 404 on error.
+         */
+        delete: operations["delete_document"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{document_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List attachments for a document.
+         * @description `GET /api/v1/documents/{document_id}/attachments`
+         */
+        get: operations["list_attachments"];
+        put?: never;
+        /**
+         * Upload an attachment to a document.
+         * @description `POST /api/v1/documents/{document_id}/attachments`
+         *
+         *     Accepts multipart form data with a single file field.
+         */
+        post: operations["upload_attachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{document_id}/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download an attachment.
+         * @description `GET /api/v1/documents/{document_id}/attachments/{attachment_id}`
+         *
+         *     Returns the raw file content with appropriate `Content-Type` and `Content-Disposition` headers.
+         */
+        get: operations["download_attachment"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete an attachment.
+         * @description `DELETE /api/v1/documents/{document_id}/attachments/{attachment_id}`
+         */
+        delete: operations["delete_attachment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{document_id}/backlinks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get documents that link to the given document.
+         * @description `GET /api/v1/documents/{document_id}/backlinks`
+         *
+         *     Queries the `outgoing_links` JSONB column to find all documents referencing
+         *     this document by title. Returns up to 50 backlinks ordered by update time,
+         *     each with a short excerpt and link context showing where the link appears.
+         */
+        get: operations["get_backlinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/documents/{document_id}/conflict": {
         parameters: {
             query?: never;
@@ -1642,6 +1262,28 @@ export interface paths {
          *     Clears the conflict flag on the document.
          */
         post: operations["resolve_conflict"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{document_id}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get document metadata (key-value pairs) by ID.
+         * @description `GET /api/v1/documents/{document_id}/metadata`
+         *
+         *     Response: 200 with a JSON object of metadata fields, or 400/404 on error.
+         */
+        get: operations["get_document_metadata"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1690,6 +1332,77 @@ export interface paths {
          *     Triggers a webhook event and notification on status change.
          */
         put: operations["update_review"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{document_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List document versions.
+         * @description `GET /api/v1/documents/{document_id}/versions`
+         *
+         *     Returns up to 50 most recent versions.
+         */
+        get: operations["list_versions"];
+        put?: never;
+        /**
+         * Create a new document version (snapshot).
+         * @description `POST /api/v1/documents/{document_id}/versions`
+         *
+         *     Saves a snapshot of the document content with an optional commit message.
+         */
+        post: operations["create_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{document_id}/versions/{v1}/diff/{v2}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compute a line-level diff between two document versions.
+         * @description `GET /api/v1/documents/{document_id}/versions/{v1}/diff/{v2}`
+         *
+         *     Returns old/new line arrays with `added`, `removed`, or `unchanged` type annotations
+         *     and diff statistics.
+         */
+        get: operations["diff_versions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{document_id}/versions/{version_number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a specific document version.
+         * @description `GET /api/v1/documents/{document_id}/versions/{version_number}`
+         */
+        get: operations["get_version"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2688,6 +2401,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Full-text search across documents with faceted filtering.
+         * @description `GET /search?q=&page=&page_size=&content_type=&status=&visibility=&project_id=&author_id=&tags=&date_from=&date_to=`
+         *
+         *     Fuses results from PostgreSQL full-text search and Tantivy index.
+         *     Response: 200 with `SearchResultsResponse` containing `results`, `total`, `page`, `page_size`, `facets`.
+         */
+        get: operations["search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/global": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["global_search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/reindex": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reindex_tantivy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_saved_searches"];
+        put?: never;
+        post: operations["create_saved_search"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/saved/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_saved_search"];
+        put: operations["update_saved_search"];
+        post?: never;
+        delete: operations["delete_saved_search"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get search suggestions (autocomplete) from the Tantivy index.
+         * @description `GET /search/suggest?q=&limit=`
+         *
+         *     Query params: `q` (required), `limit` (default 10).
+         *     Response: 200 with `SuggestResponse` containing `query` and `suggestions`, or 503 if index unavailable.
+         */
+        get: operations["suggest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sessions": {
         parameters: {
             query?: never;
@@ -2772,6 +2595,70 @@ export interface paths {
         put?: never;
         post: operations["signup"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List spaces with optional filters.
+         * @description `GET /spaces?owner_id=&parent_id=&visibility=&limit=&offset=`
+         *
+         *     Response: 200 with `Vec<SpaceResponse>`, or 500 on error.
+         */
+        get: operations["list_spaces"];
+        put?: never;
+        /**
+         * Create a new space.
+         * @description `POST /spaces`
+         *
+         *     Request body: JSON with `name` (required), optional `description`, `icon`, `color`, `parent_id`, `visibility`.
+         *     Response: 201 with `SpaceResponse`, or 400/500 on error.
+         */
+        post: operations["create_space"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{space_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a space by ID.
+         * @description `GET /spaces/{space_id}`
+         *
+         *     Response: 200 with `SpaceResponse`, or 404 on error.
+         */
+        get: operations["get_space"];
+        /**
+         * Update a space by ID.
+         * @description `PUT /spaces/{space_id}`
+         *
+         *     Request body: JSON with optional `name`, `description`, `icon`, `color`, `parent_id`, `visibility`, `sort_order`.
+         *     Response: 200 with `SpaceResponse`, or 500 on error.
+         */
+        put: operations["update_space"];
+        post?: never;
+        /**
+         * Delete a space by ID.
+         * @description `DELETE /spaces/{space_id}`
+         *
+         *     Response: 204 No Content, or 404 on error.
+         */
+        delete: operations["delete_space"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2954,6 +2841,103 @@ export interface paths {
          * @description `DELETE /api/v1/teams/{team_id}/members/{user_id}`
          */
         delete: operations["remove_team_member"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List document templates.
+         * @description `GET /api/v1/templates`
+         *
+         *     Supports an optional `category` query parameter to filter results.
+         */
+        get: operations["list_templates"];
+        put?: never;
+        /**
+         * Create a new document template.
+         * @description `POST /api/v1/templates`
+         */
+        post: operations["create_template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a template by ID.
+         * @description `GET /api/v1/templates/{template_id}`
+         */
+        get: operations["get_template"];
+        /**
+         * Update a document template.
+         * @description `PUT /api/v1/templates/{template_id}`
+         *
+         *     Accepts partial updates for name, description, content, category, and tags.
+         */
+        put: operations["update_template"];
+        post?: never;
+        /**
+         * Delete a document template.
+         * @description `DELETE /api/v1/templates/{template_id}`
+         */
+        delete: operations["delete_template"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all users with pagination. */
+        get: operations["list_users"];
+        put?: never;
+        /**
+         * Create a new user (admin-only, can set role).
+         * @description Unlike `/auth/register`, this endpoint allows setting an arbitrary role
+         *     and is intended for admin use.
+         */
+        post: operations["create_user"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a user by ID. */
+        get: operations["get_user"];
+        /** Update a user. */
+        put: operations["update_user"];
+        post?: never;
+        /** Delete a user (soft-delete: sets is_active = false). */
+        delete: operations["delete_user"];
         options?: never;
         head?: never;
         patch?: never;
@@ -5072,15 +5056,15 @@ export type $defs = Record<string, never>;
 export interface operations {
     list_activity: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                limit: number | null;
-                offset: number | null;
-                target_type: string | null;
-                target_id: string | null;
-                actor_id: string | null;
+            query?: {
+                limit?: number;
+                offset?: number;
+                target_type?: string;
+                target_id?: string;
+                actor_id?: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5164,14 +5148,14 @@ export interface operations {
     };
     get_document_activity: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                start_date: string | null;
-                end_date: string | null;
-                granularity: string | null;
-                days: number | null;
+            query?: {
+                start_date?: string;
+                end_date?: string;
+                granularity?: string;
+                days?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5196,14 +5180,14 @@ export interface operations {
     };
     get_api_activity: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                start_date: string | null;
-                end_date: string | null;
-                granularity: string | null;
-                days: number | null;
+            query?: {
+                start_date?: string;
+                end_date?: string;
+                granularity?: string;
+                days?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5255,14 +5239,14 @@ export interface operations {
     };
     get_search_activity: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                start_date: string | null;
-                end_date: string | null;
-                granularity: string | null;
-                days: number | null;
+            query?: {
+                start_date?: string;
+                end_date?: string;
+                granularity?: string;
+                days?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5287,14 +5271,14 @@ export interface operations {
     };
     get_user_activity: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                start_date: string | null;
-                end_date: string | null;
-                granularity: string | null;
-                days: number | null;
+            query?: {
+                start_date?: string;
+                end_date?: string;
+                granularity?: string;
+                days?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5310,1433 +5294,6 @@ export interface operations {
             };
             /** @description Internal server error */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_me: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Current user profile */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    list_documents: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                page: number | null;
-                page_size: number | null;
-                search: string | null;
-                project_id: string | null;
-                author_id: string | null;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of documents */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentSearchResponse"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    create_document: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateDocumentRequest"];
-            };
-        };
-        responses: {
-            /** @description Document created */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentResponse"];
-                };
-            };
-            /** @description Validation error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    batch_operations: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BatchRequest"];
-            };
-        };
-        responses: {
-            /** @description Batch operation results */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BatchResponse"];
-                };
-            };
-            /** @description Validation error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    list_documents_cursor: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Cursor from the previous page's `next_cursor`. */
-                after: string | null;
-                /** @description Cursor from the previous page's `prev_cursor`. */
-                before: string | null;
-                /** @description Maximum items per page (default: 20, max: 100). */
-                limit: number | null;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Cursor-paginated list of documents */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentCursorPage"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    render_markdown: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "text/plain": string;
-            };
-        };
-        responses: {
-            /** @description Rendered markdown */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Failed to render markdown */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    search_documents: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                page: number | null;
-                page_size: number | null;
-                search: string | null;
-                project_id: string | null;
-                author_id: string | null;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Search results */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentSearchResponse"];
-                };
-            };
-            /** @description Search query is required */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Search failed */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_document: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Document found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentResponse"];
-                };
-            };
-            /** @description Forbidden — not the document owner */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Document not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    update_document: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateDocumentRequest"];
-            };
-        };
-        responses: {
-            /** @description Document updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentResponse"];
-                };
-            };
-            /** @description Document not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    delete_document: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Document deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Document not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    list_attachments: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of attachments */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AttachmentResponse"][];
-                };
-            };
-            /** @description Document not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    upload_attachment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Attachment uploaded */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AttachmentResponse"];
-                };
-            };
-            /** @description No file provided */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Document not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    download_attachment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-                /** @description Attachment ID */
-                attachment_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Attachment file content */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Attachment not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    delete_attachment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-                /** @description Attachment ID */
-                attachment_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Attachment deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Attachment not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_backlinks: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Backlinks found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BacklinksResponse"];
-                };
-            };
-            /** @description Invalid document ID */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Document not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_document_metadata: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Document metadata key-value pairs */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid document ID */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Document not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    list_versions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of versions */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["VersionResponse"][];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    create_version: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateVersionBody"];
-            };
-        };
-        responses: {
-            /** @description Version created */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["VersionResponse"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    diff_versions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-                /** @description First version number */
-                v1: number;
-                /** @description Second version number */
-                v2: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Version diff */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentDiffResponse"];
-                };
-            };
-            /** @description Version not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_version: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Document ID */
-                document_id: string;
-                /** @description Version number */
-                version_number: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Version found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["VersionResponse"];
-                };
-            };
-            /** @description Version not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    search: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                q: string;
-                page: number;
-                page_size: number;
-                content_type: string | null;
-                status: string | null;
-                visibility: string | null;
-                project_id: string | null;
-                author_id: string | null;
-                tags: string | null;
-                date_from: string | null;
-                date_to: string | null;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Search results */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SearchResultsResponse"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    global_search: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                q: string;
-                page: number;
-                page_size: number;
-                content_type: string | null;
-                status: string | null;
-                visibility: string | null;
-                project_id: string | null;
-                author_id: string | null;
-                tags: string | null;
-                date_from: string | null;
-                date_to: string | null;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Global search results */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GlobalSearchResultsResponse"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    reindex_tantivy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Reindex complete */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    list_saved_searches: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of saved searches */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SavedSearchResponse"][];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    create_saved_search: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateSavedSearchBody"];
-            };
-        };
-        responses: {
-            /** @description Saved search created */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SavedSearchResponse"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_saved_search: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Saved search ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Saved search found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SavedSearchResponse"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    update_saved_search: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Saved search ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateSavedSearchBody"];
-            };
-        };
-        responses: {
-            /** @description Saved search updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SavedSearchResponse"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    delete_saved_search: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Saved search ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Saved search deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    suggest: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                q: string;
-                limit: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Search suggestions */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Search index unavailable */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    list_spaces: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                parent_id: string | null;
-                visibility: string | null;
-                owner_id: string | null;
-                limit: number | null;
-                offset: number | null;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of spaces */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SpaceResponse"][];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    create_space: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateSpaceBody"];
-            };
-        };
-        responses: {
-            /** @description Space created */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SpaceResponse"];
-                };
-            };
-            /** @description Validation error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_space: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Space ID */
-                space_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Space found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SpaceResponse"];
-                };
-            };
-            /** @description Space not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    update_space: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Space ID */
-                space_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateSpaceBody"];
-            };
-        };
-        responses: {
-            /** @description Space updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SpaceResponse"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    delete_space: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Space ID */
-                space_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Space deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Space not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    list_templates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                category: string | null;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of templates */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TemplateResponse"][];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    create_template: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateTemplateBody"];
-            };
-        };
-        responses: {
-            /** @description Template created */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TemplateResponse"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_template: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Template ID */
-                template_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Template found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TemplateResponse"];
-                };
-            };
-            /** @description Template not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    update_template: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Template ID */
-                template_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateTemplateBody"];
-            };
-        };
-        responses: {
-            /** @description Template updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TemplateResponse"];
-                };
-            };
-            /** @description Template not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    delete_template: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Template ID */
-                template_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Template deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Template not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    list_users: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Page number */
-                page: number | null;
-                /** @description Page size */
-                page_size: number | null;
-                /** @description Role filter */
-                role: string | null;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of users */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserListResponse"];
-                };
-            };
-            /** @description Internal error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    create_user: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateUserRequest"];
-            };
-        };
-        responses: {
-            /** @description User created */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponse"];
-                };
-            };
-            /** @description Validation error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_user: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description User ID */
-                user_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description User found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponse"];
-                };
-            };
-            /** @description User not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    update_user: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description User ID */
-                user_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateUserRequest"];
-            };
-        };
-        responses: {
-            /** @description User updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponse"];
-                };
-            };
-            /** @description User not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    delete_user: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description User ID */
-                user_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description User deactivated */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid user ID */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description User not found */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7005,6 +5562,33 @@ export interface operations {
             };
         };
     };
+    get_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current user profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     update_me: {
         parameters: {
             query?: never;
@@ -7227,15 +5811,15 @@ export interface operations {
     };
     github_callback: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
+            query: {
                 code: string;
                 /** @description CSRF state nonce — must match the value generated during the authorize step. */
-                state: string | null;
-                error: string | null;
-                error_description: string | null;
+                state?: string;
+                error?: string;
+                error_description?: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -7296,15 +5880,15 @@ export interface operations {
     };
     google_callback: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
+            query: {
                 code: string;
                 /** @description CSRF state nonce — must match the value generated during the authorize step. */
-                state: string | null;
-                error: string | null;
-                error_description: string | null;
+                state?: string;
+                error?: string;
+                error_description?: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -8322,6 +6906,474 @@ export interface operations {
             };
         };
     };
+    list_documents: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                search?: string;
+                project_id?: string;
+                author_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of documents */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentSearchResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Document created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    batch_operations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Batch operation results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchResponse"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_documents_cursor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cursor from the previous page's `next_cursor`. */
+                after: string | null;
+                /** @description Cursor from the previous page's `prev_cursor`. */
+                before: string | null;
+                /** @description Maximum items per page (default: 20, max: 100). */
+                limit: number | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cursor-paginated list of documents */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentCursorPage"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    render_markdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/plain": string;
+            };
+        };
+        responses: {
+            /** @description Rendered markdown */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Failed to render markdown */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    search_documents: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                search?: string;
+                project_id?: string;
+                author_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Search results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentSearchResponse"];
+                };
+            };
+            /** @description Search query is required */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Search failed */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Document found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Forbidden — not the document owner */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Document not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Document updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Document not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Document deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Document not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_attachments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of attachments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentResponse"][];
+                };
+            };
+            /** @description Document not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    upload_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attachment uploaded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentResponse"];
+                };
+            };
+            /** @description No file provided */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Document not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    download_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+                /** @description Attachment ID */
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attachment file content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Attachment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+                /** @description Attachment ID */
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attachment deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Attachment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_backlinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Backlinks found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BacklinksResponse"];
+                };
+            };
+            /** @description Invalid document ID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Document not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_conflict_info: {
         parameters: {
             query?: never;
@@ -8401,6 +7453,41 @@ export interface operations {
             };
             /** @description Internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_document_metadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Document metadata key-value pairs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid document ID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Document not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8522,6 +7609,136 @@ export interface operations {
             };
         };
     };
+    list_versions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionResponse"][];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateVersionBody"];
+            };
+        };
+        responses: {
+            /** @description Version created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    diff_versions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+                /** @description First version number */
+                v1: number;
+                /** @description Second version number */
+                v2: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Version diff */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDiffResponse"];
+                };
+            };
+            /** @description Version not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document ID */
+                document_id: string;
+                /** @description Version number */
+                version_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Version found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionResponse"];
+                };
+            };
+            /** @description Version not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     create_edge: {
         parameters: {
             query?: never;
@@ -8584,12 +7801,12 @@ export interface operations {
     };
     list_directory: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                path: string | null;
-                all: boolean | null;
+            query?: {
+                path?: string;
+                all?: boolean;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -8621,11 +7838,11 @@ export interface operations {
     };
     read_file: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
+            query: {
                 path: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -8657,11 +7874,11 @@ export interface operations {
     };
     get_recent_files: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                limit: number | null;
+            query?: {
+                limit?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -8686,12 +7903,12 @@ export interface operations {
     };
     search_files: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
+            query: {
                 query: string;
-                path: string | null;
+                path?: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -8743,12 +7960,12 @@ export interface operations {
     };
     get_tree: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                path: string | null;
-                depth: number | null;
+            query?: {
+                path?: string;
+                depth?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -8921,15 +8138,15 @@ export interface operations {
     };
     list_nodes: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                page: number | null;
-                page_size: number | null;
-                node_type: string | null;
-                search: string | null;
-                project_id: string | null;
+            query?: {
+                page?: number;
+                page_size?: number;
+                node_type?: string;
+                search?: string;
+                project_id?: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -9109,13 +8326,13 @@ export interface operations {
     };
     list_notifications: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                limit: number | null;
-                offset: number | null;
-                include_read: boolean | null;
+            query?: {
+                limit?: number;
+                offset?: number;
+                include_read?: boolean;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -9344,14 +8561,14 @@ export interface operations {
     };
     list_organizations: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                user_id: string | null;
-                include_personal: boolean | null;
-                limit: number | null;
-                offset: number | null;
+            query?: {
+                user_id?: string;
+                include_personal?: boolean;
+                limit?: number;
+                offset?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -9654,14 +8871,14 @@ export interface operations {
     };
     list_plugins: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                enabled: boolean | null;
-                runtime_type: string | null;
-                limit: number | null;
-                offset: number | null;
+            query?: {
+                enabled?: boolean;
+                runtime_type?: string;
+                limit?: number;
+                offset?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -9850,16 +9067,16 @@ export interface operations {
     };
     list_projects: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                limit: number | null;
-                offset: number | null;
-                project_type: string | null;
-                owner_id: string | null;
-                status: string | null;
-                search: string | null;
+            query?: {
+                limit?: number;
+                offset?: number;
+                project_type?: string;
+                owner_id?: string;
+                status?: string;
+                search?: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -10608,6 +9825,287 @@ export interface operations {
             };
         };
     };
+    search: {
+        parameters: {
+            query: {
+                q: string;
+                page?: number;
+                page_size?: number;
+                content_type?: string;
+                status?: string;
+                visibility?: string;
+                project_id?: string;
+                author_id?: string;
+                tags?: string;
+                date_from?: string;
+                date_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Search results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResultsResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    global_search: {
+        parameters: {
+            query: {
+                q: string;
+                page?: number;
+                page_size?: number;
+                content_type?: string;
+                status?: string;
+                visibility?: string;
+                project_id?: string;
+                author_id?: string;
+                tags?: string;
+                date_from?: string;
+                date_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Global search results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalSearchResultsResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reindex_tantivy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reindex complete */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_saved_searches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of saved searches */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedSearchResponse"][];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_saved_search: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSavedSearchBody"];
+            };
+        };
+        responses: {
+            /** @description Saved search created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedSearchResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_saved_search: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Saved search ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved search found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedSearchResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_saved_search: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Saved search ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSavedSearchBody"];
+            };
+        };
+        responses: {
+            /** @description Saved search updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedSearchResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_saved_search: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Saved search ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved search deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    suggest: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Search suggestions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Search index unavailable */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     create_session: {
         parameters: {
             query?: never;
@@ -10799,6 +10297,169 @@ export interface operations {
             };
         };
     };
+    list_spaces: {
+        parameters: {
+            query?: {
+                parent_id?: string;
+                visibility?: string;
+                owner_id?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of spaces */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceResponse"][];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSpaceBody"];
+            };
+        };
+        responses: {
+            /** @description Space created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceResponse"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Space ID */
+                space_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Space found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceResponse"];
+                };
+            };
+            /** @description Space not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Space ID */
+                space_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSpaceBody"];
+            };
+        };
+        responses: {
+            /** @description Space updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Space ID */
+                space_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Space deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Space not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     build_site: {
         parameters: {
             query?: never;
@@ -10920,12 +10581,12 @@ export interface operations {
     };
     list_teams: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                owner_id: string | null;
-                user_id: string | null;
+            query?: {
+                owner_id?: string;
+                user_id?: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -11223,6 +10884,329 @@ export interface operations {
                 content?: never;
             };
             /** @description Member not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_templates: {
+        parameters: {
+            query?: {
+                category?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of templates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"][];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description Template created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Template ID */
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Template found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Template ID */
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description Template updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Template ID */
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Template deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_users: {
+        parameters: {
+            query?: {
+                /** @description Page number */
+                page?: number;
+                /** @description Page size */
+                page_size?: number;
+                /** @description Role filter */
+                role?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of users */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserListResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUserRequest"];
+            };
+        };
+        responses: {
+            /** @description User created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User ID */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User ID */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserRequest"];
+            };
+        };
+        responses: {
+            /** @description User updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User ID */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User deactivated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid user ID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
             404: {
                 headers: {
                     [name: string]: unknown;

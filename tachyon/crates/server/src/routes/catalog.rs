@@ -86,6 +86,7 @@ impl<T: Serialize> ApiResponse<T> {
 
 /// Pagination query parameters
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct PaginationParams {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
@@ -93,6 +94,7 @@ pub struct PaginationParams {
 
 /// Combined query parameters (pagination + filters)
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ProjectListParams {
     // Pagination
     pub limit: Option<i64>,
@@ -106,6 +108,7 @@ pub struct ProjectListParams {
 
 /// Project filter parameters
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ProjectFilters {
     pub project_type: Option<String>,
     pub owner_id: Option<String>,

@@ -87,6 +87,7 @@ pub struct UpdateSpaceBody {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct SpaceQuery {
     pub parent_id: Option<String>,
     pub visibility: Option<String>,

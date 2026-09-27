@@ -44,6 +44,7 @@ pub struct CommentResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct CommentQuery {
     pub document_id: Option<String>,
     pub parent_id: Option<String>,

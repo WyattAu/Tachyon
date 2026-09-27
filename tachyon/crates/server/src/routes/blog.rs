@@ -72,6 +72,7 @@ pub struct UpdateBlogPostRequest {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct BlogListQuery {
     pub tag: Option<String>,
     pub author: Option<String>,

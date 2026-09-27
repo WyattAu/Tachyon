@@ -10,6 +10,7 @@ pub struct FilesState {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 #[serde(rename_all = "snake_case")]
 pub struct ListQuery {
     pub path: Option<String>,
@@ -32,6 +33,7 @@ pub struct EntryInfo {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ReadQuery {
     pub path: String,
 }
@@ -46,6 +48,7 @@ pub struct ReadResponse {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct SearchQuery {
     pub query: String,
     pub path: Option<String>,
@@ -65,6 +68,7 @@ pub struct SearchResultEntry {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct TreeQuery {
     pub path: Option<String>,
     pub depth: Option<usize>,
@@ -106,6 +110,7 @@ pub struct LargestFileEntry {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct RecentQuery {
     pub limit: Option<usize>,
 }

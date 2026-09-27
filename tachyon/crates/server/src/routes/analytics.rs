@@ -23,6 +23,7 @@ impl AnalyticsState {
 // ============================================================================
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct DateRangeQuery {
     pub start_date: Option<String>,
     pub end_date: Option<String>,
@@ -31,6 +32,7 @@ pub struct DateRangeQuery {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ActivityQuery {
     pub days: Option<i32>,
 }

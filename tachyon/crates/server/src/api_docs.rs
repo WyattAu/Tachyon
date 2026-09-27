@@ -550,4 +550,57 @@ mod tests {
         assert!(json.contains("repositories"));
         assert!(json.contains("projects"));
     }
+
+    /// Router-relative path invariant: routes are nested under /api/v1, so
+    /// utoipa annotations must NOT repeat the prefix. Regression guard for
+    /// the 56 double-prefixed annotations fixed in c0ec234.
+    #[test]
+    fn openapi_paths_are_router_relative() {
+        let spec = openapi_spec();
+        let bad: Vec<&String> = spec
+            .paths
+            .paths
+            .keys()
+            .filter(|p| p.starts_with("/api/v1/") || p.starts_with("/api/v2/"))
+            .collect();
+        assert!(
+            bad.is_empty(),
+            "double-prefixed paths leaked into the spec: {bad:?}"
+        );
+    }
+
+    /// Query parameters must be documented as query params (IntoParams),
+    /// not degraded into path params.
+    #[test]
+    fn openapi_list_documents_has_query_params() {
+        let spec = openapi_spec();
+        let json = serde_json::to_value(&spec).unwrap();
+        let get = json["paths"]["/documents"]["get"].clone();
+        assert!(!get.is_null(), "GET /documents missing from spec");
+        let params = get["parameters"].as_array().cloned().unwrap_or_default();
+        let page = params
+            .iter()
+            .find(|p| p["name"] == "page")
+            .expect("GET /documents missing 'page' parameter");
+        assert_eq!(page["in"], "query", "'page' must be a query parameter");
+    }
+
+    /// GET /auth/me must be documented (frontend profile restore depends on
+    /// the generated client typing for it).
+    #[test]
+    fn openapi_auth_me_has_get_and_put() {
+        let spec = openapi_spec();
+        let json = serde_json::to_value(&spec).unwrap();
+        let me = &json["paths"]["/auth/me"];
+        assert!(me["get"].is_object(), "GET /auth/me missing from spec");
+        assert!(me["put"].is_object(), "PUT /auth/me missing from spec");
+    }
+
+    /// Dump the full spec for client-codegen snapshots (run with --nocapture).
+    #[test]
+    #[ignore = "codegen helper: cargo test -p tachyon-server --lib api_docs::tests::dump_spec -- --ignored --nocapture"]
+    fn dump_spec() {
+        let spec = openapi_spec();
+        println!("{}", serde_json::to_string_pretty(&spec).unwrap());
+    }
 }

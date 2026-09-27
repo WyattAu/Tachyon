@@ -55,6 +55,7 @@ impl NotificationState {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ListNotificationsQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,

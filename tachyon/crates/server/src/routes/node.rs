@@ -40,6 +40,7 @@ impl NodeState {
 // ============================================================================
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct NodeQuery {
     pub page: Option<usize>,
     pub page_size: Option<usize>,

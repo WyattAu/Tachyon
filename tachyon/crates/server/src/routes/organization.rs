@@ -81,6 +81,7 @@ pub struct UpdateOrganizationBody {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct OrganizationQuery {
     pub user_id: Option<String>,
     pub include_personal: Option<bool>,

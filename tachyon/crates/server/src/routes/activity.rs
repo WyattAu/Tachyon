@@ -21,6 +21,7 @@ impl ActivityState {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ListActivityQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,

@@ -74,6 +74,7 @@ pub struct UpdateMemberRequest {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct TeamQuery {
     pub owner_id: Option<String>,
     pub user_id: Option<String>,

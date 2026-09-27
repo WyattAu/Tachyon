@@ -100,6 +100,7 @@ pub struct UpdatePluginBody {
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct PluginQuery {
     pub enabled: Option<bool>,
     pub runtime_type: Option<String>,

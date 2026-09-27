@@ -102,6 +102,7 @@ pub fn create_oauth2_router() -> Router<OAuth2State> {
 // ============================================================================
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 struct CallbackQuery {
     code: String,
     /// CSRF state nonce — must match the value generated during the authorize step.
