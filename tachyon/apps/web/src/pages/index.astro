@@ -1,8 +1,22 @@
 ---
-import Base from "@/layouts/Base.astro";
-import ApiProbe from "@/components/ApiProbe";
+// SPA entry: everything renders client-side into #root (Solid app shell).
+import "@/styles/global.css";
 ---
 
-<Base title="Tachyon — API probe">
-  <ApiProbe client:only="solid-js" />
-</Base>
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Tachyon — a deterministic, high-performance knowledge management system." />
+    <meta name="theme-color" content="#2563eb" />
+    <title>Tachyon — Knowledge Management Platform</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // Astro bundles this processed module script (imports resolve at build).
+      import "../index";
+    </script>
+  </body>
+</html>

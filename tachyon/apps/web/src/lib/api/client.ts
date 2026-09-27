@@ -41,14 +41,14 @@ export function clearToken(): void {
 
 export const api = createClient<paths>({
   baseUrl: resolveBaseUrl(),
-  fetch: (input, init) => {
-    // openapi-fetch passes a Request whose headers carry Content-Type (and
-    // everything else); `init.headers` holds only extra custom options and
-    // may be absent. Headers in init would REPLACE the request's, so merge:
-    // request headers first, init headers win on conflict, then auth token.
-    const headers = new Headers(
-      input instanceof Request ? input.headers : undefined
-    );
+  // openapi-fetch passes a Request whose headers carry Content-Type (and
+  // everything else); `init.headers` holds only extra custom options and
+  // may be absent. Headers in init would REPLACE the request's, so merge:
+  // request headers first, init headers win on conflict, then auth token.
+  // (The runtime really does pass two arguments — the published type
+  // under-declares it.)
+  fetch: ((input: Request, init?: RequestInit) => {
+    const headers = new Headers(input.headers);
     if (init?.headers) {
       new Headers(init.headers).forEach((v, k) => headers.set(k, v));
     }
@@ -57,7 +57,7 @@ export const api = createClient<paths>({
       headers.set("Authorization", `Bearer ${token}`);
     }
     return fetch(input, { ...init, headers });
-  },
+  }) as unknown as (input: Request) => Promise<Response>,
 });
 
 /** Typed helpers for the hottest paths — thin, all types flow from schema. */
@@ -85,8 +85,22 @@ export async function health() {
   }
 }
 
-export async function me() {
-  const { data, error, response } = await api.GET("/auth/me");
-  if (error) throw new Error(`/auth/me ${response.status}`);
-  return data;
+export async function me(): Promise<TachyonUser> {
+  // NOTE: the OpenAPI spec double-prefixes this path ("/api/v1/auth/me" —
+  // utoipa annotation bug), so the typed GET would 404 at runtime. Plain
+  // fetch until the server annotation is fixed (tracked in
+  // feature-complete-v1.md Phase A). Runtime route: GET /api/v1/auth/me.
+  const res = await fetch(`${resolveBaseUrl()}/auth/me`, {
+    headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
+  });
+  if (!res.ok) throw new Error(`/auth/me ${res.status}`);
+  return (await res.json()) as TachyonUser;
+}
+
+interface TachyonUser {
+  id: string;
+  username: string;
+  display_name?: string | null;
+  email?: string | null;
+  [k: string]: unknown;
 }
