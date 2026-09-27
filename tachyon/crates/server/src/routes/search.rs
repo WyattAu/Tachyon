@@ -238,7 +238,7 @@ async fn search_tantivy(
 /// Response: 200 with `SearchResultsResponse` containing `results`, `total`, `page`, `page_size`, `facets`.
 #[utoipa::path(
     get,
-    path = "/api/v1/search",
+    path = "/search",
     params(SearchQuery),
     responses(
         (status = 200, description = "Search results", body = SearchResultsResponse),
@@ -432,7 +432,7 @@ pub async fn search(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/search/global",
+    path = "/search/global",
     params(SearchQuery),
     responses(
         (status = 200, description = "Global search results", body = GlobalSearchResultsResponse),
@@ -597,7 +597,7 @@ pub async fn global_search(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/search/saved",
+    path = "/search/saved",
     request_body = CreateSavedSearchBody,
     responses(
         (status = 200, description = "Saved search created", body = SavedSearchResponse),
@@ -648,7 +648,7 @@ pub async fn create_saved_search(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/search/saved",
+    path = "/search/saved",
     responses(
         (status = 200, description = "List of saved searches", body = Vec<SavedSearchResponse>),
         (status = 500, description = "Internal error"),
@@ -684,7 +684,7 @@ pub async fn list_saved_searches(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/search/saved/{id}",
+    path = "/search/saved/{id}",
     params(
         ("id" = String, Path, description = "Saved search ID"),
     ),
@@ -709,7 +709,7 @@ pub async fn get_saved_search(
 
 #[utoipa::path(
     put,
-    path = "/api/v1/search/saved/{id}",
+    path = "/search/saved/{id}",
     params(
         ("id" = String, Path, description = "Saved search ID"),
     ),
@@ -761,7 +761,7 @@ pub async fn update_saved_search(
 
 #[utoipa::path(
     delete,
-    path = "/api/v1/search/saved/{id}",
+    path = "/search/saved/{id}",
     params(
         ("id" = String, Path, description = "Saved search ID"),
     ),
@@ -802,7 +802,7 @@ pub async fn delete_saved_search(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/search/reindex",
+    path = "/search/reindex",
     responses(
         (status = 200, description = "Reindex complete"),
         (status = 500, description = "Internal error"),
@@ -896,7 +896,7 @@ fn default_suggest_limit() -> usize {
 /// Response: 200 with `SuggestResponse` containing `query` and `suggestions`, or 503 if index unavailable.
 #[utoipa::path(
     get,
-    path = "/api/v1/search/suggest",
+    path = "/search/suggest",
     params(SuggestQuery),
     responses(
         (status = 200, description = "Search suggestions"),
@@ -953,7 +953,7 @@ impl From<CursorPage<SearchResultItem>> for SearchCursorPage {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/search/cursor",
+    path = "/search/cursor",
     params(SearchQuery),
     responses(
         (status = 200, description = "Search results (cursor paginated)", body = SearchCursorPage),

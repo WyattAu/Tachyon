@@ -52,7 +52,7 @@ pub struct BatchResponse {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/documents/batch",
+    path = "/documents/batch",
     request_body = BatchRequest,
     responses(
         (status = 200, description = "Batch operation results", body = BatchResponse),

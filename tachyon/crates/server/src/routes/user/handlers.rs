@@ -199,7 +199,7 @@ pub async fn register(
 /// and is intended for admin use.
 #[utoipa::path(
     post,
-    path = "/api/v1/users",
+    path = "/users",
     request_body = CreateUserRequest,
     responses(
         (status = 200, description = "User created", body = UserResponse),
@@ -302,7 +302,7 @@ pub async fn create_user(
 /// Get a user by ID.
 #[utoipa::path(
     get,
-    path = "/api/v1/users/{user_id}",
+    path = "/users/{user_id}",
     params(
         ("user_id" = String, Path, description = "User ID"),
     ),
@@ -342,7 +342,7 @@ pub async fn get_user(
 /// Update a user.
 #[utoipa::path(
     put,
-    path = "/api/v1/users/{user_id}",
+    path = "/users/{user_id}",
     params(
         ("user_id" = String, Path, description = "User ID"),
     ),
@@ -415,7 +415,7 @@ pub async fn update_user(
 /// Delete a user (soft-delete: sets is_active = false).
 #[utoipa::path(
     delete,
-    path = "/api/v1/users/{user_id}",
+    path = "/users/{user_id}",
     params(
         ("user_id" = String, Path, description = "User ID"),
     ),
@@ -470,7 +470,7 @@ pub async fn delete_user(
 /// List all users with pagination.
 #[utoipa::path(
     get,
-    path = "/api/v1/users",
+    path = "/users",
     params(UserQuery),
     responses(
         (status = 200, description = "List of users", body = UserListResponse),
@@ -517,7 +517,7 @@ pub async fn list_users(
 /// Response: 200 with `UserResponse`, or 401/404 on error.
 #[utoipa::path(
     get,
-    path = "/api/v1/auth/me",
+    path = "/auth/me",
     responses(
         (status = 200, description = "Current user profile", body = UserResponse),
         (status = 401, description = "Unauthorized"),
@@ -1210,7 +1210,7 @@ pub async fn guest_status(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/users/cursor",
+    path = "/users/cursor",
     params(CursorParams),
     responses(
         (status = 200, description = "Users (cursor paginated)", body = UserCursorPage),

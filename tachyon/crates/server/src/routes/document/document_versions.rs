@@ -46,7 +46,7 @@ pub struct CreateVersionBody {
 /// Returns up to 50 most recent versions.
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/{document_id}/versions",
+    path = "/documents/{document_id}/versions",
     params(
         ("document_id" = String, Path, description = "Document ID"),
     ),
@@ -76,7 +76,7 @@ pub async fn list_versions(
 /// `GET /api/v1/documents/{document_id}/versions/{version_number}`
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/{document_id}/versions/{version_number}",
+    path = "/documents/{document_id}/versions/{version_number}",
     params(
         ("document_id" = String, Path, description = "Document ID"),
         ("version_number" = i32, Path, description = "Version number"),
@@ -107,7 +107,7 @@ pub async fn get_version(
 /// Saves a snapshot of the document content with an optional commit message.
 #[utoipa::path(
     post,
-    path = "/api/v1/documents/{document_id}/versions",
+    path = "/documents/{document_id}/versions",
     params(
         ("document_id" = String, Path, description = "Document ID"),
     ),
@@ -172,7 +172,7 @@ pub struct DiffStats {
 /// and diff statistics.
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/{document_id}/versions/{v1}/diff/{v2}",
+    path = "/documents/{document_id}/versions/{v1}/diff/{v2}",
     params(
         ("document_id" = String, Path, description = "Document ID"),
         ("v1" = i32, Path, description = "First version number"),
@@ -354,7 +354,7 @@ pub struct RestoreVersionResponse {
 /// effectively "restoring" the document to that earlier state.
 #[utoipa::path(
     post,
-    path = "/api/v1/documents/{document_id}/versions/{version_id}/restore",
+    path = "/documents/{document_id}/versions/{version_id}/restore",
     params(
         ("document_id" = String, Path, description = "Document ID"),
         ("version_id" = String, Path, description = "Version ID to restore"),

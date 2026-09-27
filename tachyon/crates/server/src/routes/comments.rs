@@ -118,7 +118,7 @@ fn row_to_response(r: CommentRow) -> CommentResponse {
 /// `GET /api/v1/documents/{document_id}/comments`
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/{document_id}/comments",
+    path = "/documents/{document_id}/comments",
     params(
         ("document_id" = String, Path, description = "Document ID"),
         ("parent_id" = Option<String>, Query, description = "Filter by parent comment"),
@@ -208,7 +208,7 @@ pub async fn list_comments(
 /// `POST /api/v1/documents/{document_id}/comments`
 #[utoipa::path(
     post,
-    path = "/api/v1/documents/{document_id}/comments",
+    path = "/documents/{document_id}/comments",
     params(
         ("document_id" = String, Path, description = "Document ID"),
     ),
@@ -255,7 +255,7 @@ pub async fn create_comment(
 /// `PUT /api/v1/comments/{comment_id}`
 #[utoipa::path(
     put,
-    path = "/api/v1/comments/{comment_id}",
+    path = "/comments/{comment_id}",
     params(
         ("comment_id" = String, Path, description = "Comment ID"),
     ),
@@ -304,7 +304,7 @@ pub async fn update_comment(
 /// `DELETE /api/v1/comments/{comment_id}`
 #[utoipa::path(
     delete,
-    path = "/api/v1/comments/{comment_id}",
+    path = "/comments/{comment_id}",
     params(
         ("comment_id" = String, Path, description = "Comment ID"),
     ),

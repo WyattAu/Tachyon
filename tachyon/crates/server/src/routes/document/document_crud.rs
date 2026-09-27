@@ -55,7 +55,7 @@ pub struct UpdateDocumentRequest {
 /// Response: 201 with the created `DocumentResponse`, or 400/401/500 on error.
 #[utoipa::path(
     post,
-    path = "/api/v1/documents",
+    path = "/documents",
     request_body = CreateDocumentRequest,
     responses(
         (status = 200, description = "Document created", body = DocumentResponse),
@@ -337,7 +337,7 @@ pub async fn create_document(
 /// Response: 200 with `DocumentResponse`, or 400 (invalid ID) / 403 (forbidden) / 404 on error.
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/{document_id}",
+    path = "/documents/{document_id}",
     params(
         ("document_id" = String, Path, description = "Document ID"),
     ),
@@ -416,7 +416,7 @@ pub async fn get_document(
 /// Response: 200 with updated `DocumentResponse`, or 400/404/500 on error.
 #[utoipa::path(
     put,
-    path = "/api/v1/documents/{document_id}",
+    path = "/documents/{document_id}",
     params(
         ("document_id" = String, Path, description = "Document ID"),
     ),
@@ -695,7 +695,7 @@ pub async fn update_document(
 /// Response: 204 No Content, or 400 (invalid ID) / 404 on error.
 #[utoipa::path(
     delete,
-    path = "/api/v1/documents/{document_id}",
+    path = "/documents/{document_id}",
     params(
         ("document_id" = String, Path, description = "Document ID"),
     ),
@@ -784,7 +784,7 @@ pub async fn delete_document(
 /// Response: 200 with `DocumentSearchResponse` containing `results`, `total`, `page`, `page_size`.
 #[utoipa::path(
     get,
-    path = "/api/v1/documents",
+    path = "/documents",
     params(
         DocumentQuery,
     ),
@@ -927,7 +927,7 @@ pub async fn list_documents(
 /// Response: 200 with a JSON object of metadata fields, or 400/404 on error.
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/{document_id}/metadata",
+    path = "/documents/{document_id}/metadata",
     params(
         ("document_id" = String, Path, description = "Document ID"),
     ),
@@ -998,7 +998,7 @@ pub async fn get_document_metadata(
 /// Response: 200 with `html`, `word_count`, `character_count`, `heading_count`, `code_block_count`, `render_time_ms`.
 #[utoipa::path(
     post,
-    path = "/api/v1/documents/render",
+    path = "/documents/render",
     request_body = String,
     responses(
         (status = 200, description = "Rendered markdown"),
@@ -1035,7 +1035,7 @@ pub async fn render_markdown(body: String) -> Result<Json<serde_json::Value>, Se
 /// Response: 200 with `CursorPage<DocumentResponse>`.
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/cursor",
+    path = "/documents/cursor",
     params(CursorParams),
     responses(
         (status = 200, description = "Cursor-paginated list of documents", body = DocumentCursorPage),

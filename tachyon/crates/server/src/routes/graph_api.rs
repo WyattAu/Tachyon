@@ -39,7 +39,7 @@ pub struct GraphEdgesResponse {
 /// Returns all active knowledge graph nodes with their properties.
 #[utoipa::path(
     get,
-    path = "/api/v1/graph/nodes",
+    path = "/graph/nodes",
     responses(
         (status = 200, description = "All graph nodes", body = GraphNodesResponse),
     ),
@@ -66,7 +66,7 @@ pub async fn get_graph_nodes(
 /// between nodes (e.g., wiki-links, references, dependencies).
 #[utoipa::path(
     get,
-    path = "/api/v1/graph/edges",
+    path = "/graph/edges",
     responses(
         (status = 200, description = "All graph edges", body = GraphEdgesResponse),
     ),
@@ -93,7 +93,7 @@ pub async fn get_graph_edges(
 /// other node in the knowledge graph.
 #[utoipa::path(
     get,
-    path = "/api/v1/graph/orphans",
+    path = "/graph/orphans",
     responses(
         (status = 200, description = "Orphan nodes", body = GraphNodesResponse),
     ),

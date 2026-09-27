@@ -63,7 +63,7 @@ pub struct SemanticSearchResponse {
 /// and the `pgvector` extension to be installed.
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/semantic-search",
+    path = "/documents/semantic-search",
     params(SemanticSearchParams),
     responses(
         (status = 200, description = "Semantic search results", body = SemanticSearchResponse),
@@ -158,7 +158,7 @@ pub async fn semantic_search(
 /// Requires a non-empty `search` query parameter. Supports `page` and `page_size` pagination.
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/search",
+    path = "/documents/search",
     params(
         crate::routes::document::DocumentQuery,
     ),
@@ -278,7 +278,7 @@ pub struct BacklinkItem {
 /// each with a short excerpt and link context showing where the link appears.
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/{document_id}/backlinks",
+    path = "/documents/{document_id}/backlinks",
     params(
         ("document_id" = String, Path, description = "Document ID"),
     ),

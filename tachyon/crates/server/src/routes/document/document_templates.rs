@@ -69,7 +69,7 @@ pub struct TemplateQuery {
 /// is treated as a template ID and the DB rejects it as an invalid UUID.
 #[utoipa::path(
     get,
-    path = "/api/v1/templates/categories",
+    path = "/templates/categories",
     responses(
         (status = 200, description = "Distinct category list", body = Vec<String>),
         (status = 500, description = "Internal error"),
@@ -94,7 +94,7 @@ pub async fn list_template_categories(
 /// Supports an optional `category` query parameter to filter results.
 #[utoipa::path(
     get,
-    path = "/api/v1/templates",
+    path = "/templates",
     params(TemplateQuery),
     responses(
         (status = 200, description = "List of templates", body = Vec<TemplateResponse>),
@@ -122,7 +122,7 @@ pub async fn list_templates(
 /// `GET /api/v1/templates/{template_id}`
 #[utoipa::path(
     get,
-    path = "/api/v1/templates/{template_id}",
+    path = "/templates/{template_id}",
     params(
         ("template_id" = String, Path, description = "Template ID"),
     ),
@@ -150,7 +150,7 @@ pub async fn get_template(
 /// `POST /api/v1/templates`
 #[utoipa::path(
     post,
-    path = "/api/v1/templates",
+    path = "/templates",
     request_body = CreateTemplateBody,
     responses(
         (status = 200, description = "Template created", body = TemplateResponse),
@@ -188,7 +188,7 @@ pub async fn create_template(
 /// Accepts partial updates for name, description, content, category, and tags.
 #[utoipa::path(
     put,
-    path = "/api/v1/templates/{template_id}",
+    path = "/templates/{template_id}",
     params(
         ("template_id" = String, Path, description = "Template ID"),
     ),
@@ -228,7 +228,7 @@ pub async fn update_template(
 /// `DELETE /api/v1/templates/{template_id}`
 #[utoipa::path(
     delete,
-    path = "/api/v1/templates/{template_id}",
+    path = "/templates/{template_id}",
     params(
         ("template_id" = String, Path, description = "Template ID"),
     ),

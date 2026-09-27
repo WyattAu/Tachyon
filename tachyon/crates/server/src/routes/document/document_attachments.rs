@@ -38,7 +38,7 @@ impl From<tachyon_database::Attachment> for AttachmentResponse {
 /// `GET /api/v1/documents/{document_id}/attachments`
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/{document_id}/attachments",
+    path = "/documents/{document_id}/attachments",
     params(
         ("document_id" = String, Path, description = "Document ID"),
     ),
@@ -73,7 +73,7 @@ pub async fn list_attachments(
 /// Accepts multipart form data with a single file field.
 #[utoipa::path(
     post,
-    path = "/api/v1/documents/{document_id}/attachments",
+    path = "/documents/{document_id}/attachments",
     params(
         ("document_id" = String, Path, description = "Document ID"),
     ),
@@ -128,7 +128,7 @@ pub async fn upload_attachment(
 /// Returns the raw file content with appropriate `Content-Type` and `Content-Disposition` headers.
 #[utoipa::path(
     get,
-    path = "/api/v1/documents/{document_id}/attachments/{attachment_id}",
+    path = "/documents/{document_id}/attachments/{attachment_id}",
     params(
         ("document_id" = String, Path, description = "Document ID"),
         ("attachment_id" = String, Path, description = "Attachment ID"),
@@ -165,7 +165,7 @@ pub async fn download_attachment(
 /// `DELETE /api/v1/documents/{document_id}/attachments/{attachment_id}`
 #[utoipa::path(
     delete,
-    path = "/api/v1/documents/{document_id}/attachments/{attachment_id}",
+    path = "/documents/{document_id}/attachments/{attachment_id}",
     params(
         ("document_id" = String, Path, description = "Document ID"),
         ("attachment_id" = String, Path, description = "Attachment ID"),

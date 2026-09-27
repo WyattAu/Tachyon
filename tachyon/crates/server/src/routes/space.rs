@@ -122,7 +122,7 @@ pub struct MoveDocumentBody {
 /// Response: 200 with `Vec<SpaceResponse>`, or 500 on error.
 #[utoipa::path(
     get,
-    path = "/api/v1/spaces",
+    path = "/spaces",
     params(SpaceQuery),
     responses(
         (status = 200, description = "List of spaces", body = Vec<SpaceResponse>),
@@ -231,7 +231,7 @@ pub async fn list_child_spaces(
 /// Response: 200 with `SpaceResponse`, or 404 on error.
 #[utoipa::path(
     get,
-    path = "/api/v1/spaces/{space_id}",
+    path = "/spaces/{space_id}",
     params(
         ("space_id" = String, Path, description = "Space ID"),
     ),
@@ -281,7 +281,7 @@ pub async fn get_default_space(
 /// Response: 201 with `SpaceResponse`, or 400/500 on error.
 #[utoipa::path(
     post,
-    path = "/api/v1/spaces",
+    path = "/spaces",
     request_body = CreateSpaceBody,
     responses(
         (status = 200, description = "Space created", body = SpaceResponse),
@@ -348,7 +348,7 @@ pub async fn create_space(
 /// Response: 200 with `SpaceResponse`, or 500 on error.
 #[utoipa::path(
     put,
-    path = "/api/v1/spaces/{space_id}",
+    path = "/spaces/{space_id}",
     params(
         ("space_id" = String, Path, description = "Space ID"),
     ),
@@ -406,7 +406,7 @@ pub async fn update_space(
 /// Response: 204 No Content, or 404 on error.
 #[utoipa::path(
     delete,
-    path = "/api/v1/spaces/{space_id}",
+    path = "/spaces/{space_id}",
     params(
         ("space_id" = String, Path, description = "Space ID"),
     ),
