@@ -5,6 +5,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { AppShell } from "@/components/AppShell";
 import LoginPage from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
+import DocumentsList from "@/pages/DocumentsList";
 
 /**
  * Route table — mirrors the Leptos app's 34 routes (ADR-113 parity).
@@ -72,7 +73,7 @@ const App: Component = () => (
     <Route path="/login" component={LoginPage} />
     {/* Phase B migration stubs — each replaced by its real page */}
     <Route path="/dashboard" component={shell(Dashboard)} />
-    <Route path="/documents" component={migrating("/documents")} />
+    <Route path="/documents" component={shell(DocumentsList)} />
     <Route path="/documents/:id" component={migrating("/documents/:id")} />
     <Route path="/documents/:id/edit" component={migrating("/documents/:id/edit")} />
     <Route path="/spaces" component={migrating("/spaces")} />

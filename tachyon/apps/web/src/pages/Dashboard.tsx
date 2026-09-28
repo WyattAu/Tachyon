@@ -32,16 +32,8 @@ const [docs] = createResource(async () => {
 
 const [spaces] = createResource(async () => {
   const { data } = await api.GET("/spaces", {
-    params: {
-      // list is filterable; defaults fetch everything visible to the user
-      query: {
-        parent_id: null,
-        visibility: null,
-        owner_id: null,
-        limit: null,
-        offset: null,
-      },
-    },
+    // list is filterable; omitting query params fetches everything visible
+    params: { query: {} },
   });
   return (data as unknown as unknown[] | undefined) ?? [];
 });
