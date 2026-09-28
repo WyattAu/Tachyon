@@ -1,0 +1,379 @@
+/* tslint:disable */
+/* eslint-disable */
+
+/**
+ * Internal editor model handle exposed to JS.
+ */
+export class TachyonEditor {
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * Apply a remote-update delta; true when it changed the document.
+     */
+    applyRemoteUpdate(update: Uint8Array): boolean;
+    charCount(): number;
+    /**
+     * Full document text (bridge: `content`).
+     */
+    content(): string;
+    /**
+     * Cursor position as `[line, col]` (0-based).
+     */
+    cursor(): Uint32Array;
+    /**
+     * Full-state encoding (initial sync payload).
+     */
+    encodeFullState(): Uint8Array;
+    /**
+     * Encode a local-update delta for the sync server.
+     */
+    encodeUpdate(): Uint8Array;
+    /**
+     * Insert text at the caret (bridge: `insertText`).
+     */
+    insertText(text: string): void;
+    /**
+     * Unsaved-changes flag: content differs from the last `mark_saved`.
+     */
+    isDirty(): boolean;
+    /**
+     * Named-key dispatch (bridge: `key`).
+     *
+     * Semantics frozen in contract.ts:
+     * - recognized names map to editor commands
+     * - single characters insert literally
+     * - unrecognized multi-char names are IGNORED (regression guard: a
+     *   previous bug typed "ControlEnd" into a production document)
+     */
+    key(key: string): void;
+    /**
+     * Content of one line (no trailing newline).
+     */
+    line(idx: number): string;
+    /**
+     * Number of lines in the document.
+     */
+    lineCount(): number;
+    /**
+     * Mark the current content as saved (after a successful PUT/autosave).
+     */
+    markSaved(): void;
+    constructor(content: string);
+    /**
+     * Replace the whole document (external sync / version restore).
+     * Resets cursor to start and the dirty flag (matches desktop behavior).
+     */
+    setContent(content: string): void;
+    wordCount(): number;
+}
+
+export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
+
+export interface InitOutput {
+    readonly memory: WebAssembly.Memory;
+    readonly __wbg_tachyoneditor_free: (a: number, b: number) => void;
+    readonly tachyoneditor_applyRemoteUpdate: (a: number, b: number, c: number) => number;
+    readonly tachyoneditor_charCount: (a: number) => number;
+    readonly tachyoneditor_content: (a: number, b: number) => void;
+    readonly tachyoneditor_cursor: (a: number, b: number) => void;
+    readonly tachyoneditor_encodeFullState: (a: number, b: number) => void;
+    readonly tachyoneditor_encodeUpdate: (a: number, b: number) => void;
+    readonly tachyoneditor_insertText: (a: number, b: number, c: number) => void;
+    readonly tachyoneditor_isDirty: (a: number) => number;
+    readonly tachyoneditor_key: (a: number, b: number, c: number) => void;
+    readonly tachyoneditor_line: (a: number, b: number, c: number) => void;
+    readonly tachyoneditor_lineCount: (a: number) => number;
+    readonly tachyoneditor_markSaved: (a: number) => void;
+    readonly tachyoneditor_new: (a: number, b: number) => number;
+    readonly tachyoneditor_setContent: (a: number, b: number, c: number) => void;
+    readonly tachyoneditor_wordCount: (a: number) => number;
+    readonly ts_parser_parse_with_options: (a: number, b: number, c: number, d: number) => number;
+    readonly ts_query_cursor_next_match: (a: number, b: number) => number;
+    readonly ts_query_cursor_next_capture: (a: number, b: number, c: number) => number;
+    readonly ts_query_cursor_exec: (a: number, b: number, c: number) => void;
+    readonly ts_highlight_buffer_content: (a: number) => number;
+    readonly ts_highlight_buffer_delete: (a: number) => void;
+    readonly ts_highlight_buffer_len: (a: number) => number;
+    readonly ts_highlight_buffer_line_count: (a: number) => number;
+    readonly ts_highlight_buffer_line_offsets: (a: number) => number;
+    readonly ts_highlight_buffer_new: () => number;
+    readonly ts_highlighter_add_language: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
+    readonly ts_highlighter_delete: (a: number) => void;
+    readonly ts_highlighter_highlight: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly ts_highlighter_new: (a: number, b: number, c: number) => number;
+    readonly ts_lookahead_iterator_next: (a: number) => number;
+    readonly ts_query_cursor_remove_match: (a: number, b: number) => void;
+    readonly ts_tree_cursor_current_field_name: (a: number) => number;
+    readonly ts_tree_cursor_goto_parent: (a: number) => number;
+    readonly ts_tree_cursor_goto_descendant: (a: number, b: number) => void;
+    readonly ts_tree_cursor_goto_last_child: (a: number) => number;
+    readonly ts_tree_cursor_current_descendant_index: (a: number) => number;
+    readonly ts_tree_cursor_goto_first_child: (a: number) => number;
+    readonly ts_tree_cursor_goto_next_sibling: (a: number) => number;
+    readonly ts_tree_cursor_goto_previous_sibling: (a: number) => number;
+    readonly ts_tree_cursor_goto_first_child_for_byte: (a: number, b: number) => number;
+    readonly ts_tree_cursor_goto_first_child_for_point: (a: number, b: number) => number;
+    readonly ts_tree_cursor_current_node: (a: number, b: number) => void;
+    readonly ts_tree_cursor_current_depth: (a: number) => number;
+    readonly ts_tree_cursor_init: (a: number, b: number) => void;
+    readonly ts_tree_cursor_current_field_id: (a: number) => number;
+    readonly ts_tree_cursor_reset_to: (a: number, b: number) => void;
+    readonly ts_query_cursor_set_point_range: (a: number, b: number, c: number) => number;
+    readonly ts_query_cursor_new: () => number;
+    readonly ts_language_symbol_metadata: (a: number, b: number, c: number) => void;
+    readonly ts_node_end_byte: (a: number) => number;
+    readonly ts_node_parent: (a: number, b: number) => void;
+    readonly ts_node_child_count: (a: number) => number;
+    readonly ts_language_field_id_for_name: (a: number, b: number, c: number) => number;
+    readonly ts_language_symbol_for_name: (a: number, b: number, c: number, d: number) => number;
+    readonly ts_language_subtypes: (a: number, b: number, c: number) => number;
+    readonly ts_tree_cursor_parent_node: (a: number, b: number) => void;
+    readonly ts_node_end_point: (a: number, b: number) => void;
+    readonly ts_tree_cursor_goto_next_sibling_internal: (a: number) => number;
+    readonly ts_node_symbol: (a: number) => number;
+    readonly ts_node_is_named: (a: number) => number;
+    readonly ts_node_is_missing: (a: number) => number;
+    readonly ts_tree_cursor_current_status: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+    readonly ts_query_cursor__compare_captures: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly ts_node_child_by_field_id: (a: number, b: number, c: number) => void;
+    readonly ts_query__step_is_fallible: (a: number, b: number) => number;
+    readonly ts_tree_cursor_goto_first_child_internal: (a: number) => number;
+    readonly ts_subtree_array_reverse: (a: number) => void;
+    readonly ts_subtree_array_copy: (a: number, b: number) => void;
+    readonly ts_subtree_retain: (a: number) => void;
+    readonly ts_subtree_array_delete: (a: number, b: number) => void;
+    readonly ts_subtree_release: (a: number, b: number) => void;
+    readonly ts_subtree_external_scanner_state_eq: (a: number, b: number) => number;
+    readonly ts_stack_push: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly ts_stack_pop_all: (a: number, b: number, c: number) => void;
+    readonly ts_subtree_new_node: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly ts_stack_remove_version: (a: number, b: number) => void;
+    readonly ts_stack_halt: (a: number, b: number) => void;
+    readonly ts_stack_pop_count: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_subtree_array_remove_trailing_extras: (a: number, b: number) => void;
+    readonly ts_subtree_array_clear: (a: number, b: number) => void;
+    readonly ts_stack_state: (a: number, b: number) => number;
+    readonly ts_language_next_state: (a: number, b: number, c: number) => number;
+    readonly ts_stack_merge: (a: number, b: number, c: number) => number;
+    readonly ts_stack_position: (a: number, b: number, c: number) => void;
+    readonly ts_stack_get_summary: (a: number, b: number) => number;
+    readonly ts_stack_node_count_since_error: (a: number, b: number) => number;
+    readonly ts_stack_error_cost: (a: number, b: number) => number;
+    readonly ts_stack_pop_error: (a: number, b: number, c: number) => void;
+    readonly ts_stack_print_dot_graph: (a: number, b: number, c: number) => number;
+    readonly ts_subtree_new_error_node: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_stack_is_active: (a: number, b: number) => number;
+    readonly ts_language_table_entry: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_subtree_make_mut: (a: number, b: number, c: number) => void;
+    readonly ts_language_symbol_name: (a: number, b: number) => number;
+    readonly ts_stack_renumber_version: (a: number, b: number, c: number) => void;
+    readonly ts_subtree_last_external_token: (a: number, b: number) => void;
+    readonly ts_stack_set_last_external_token: (a: number, b: number, c: number) => void;
+    readonly ts_subtree_compare: (a: number, b: number, c: number) => number;
+    readonly ts_stack_is_paused: (a: number, b: number) => number;
+    readonly ts_stack_dynamic_precedence: (a: number, b: number) => number;
+    readonly ts_language_lex_mode_for_state: (a: number, b: number, c: number) => void;
+    readonly ts_stack_can_merge: (a: number, b: number, c: number) => number;
+    readonly ts_stack_pop_pending: (a: number, b: number, c: number) => void;
+    readonly ts_lookahead_iterator_reset_state: (a: number, b: number) => number;
+    readonly ts_lookahead_iterator_current_symbol_name: (a: number) => number;
+    readonly ts_lookahead_iterator_reset: (a: number, b: number, c: number) => number;
+    readonly ts_node_grammar_symbol: (a: number) => number;
+    readonly ts_node_has_changes: (a: number) => number;
+    readonly ts_node_named_child: (a: number, b: number, c: number) => void;
+    readonly ts_node_parse_state: (a: number) => number;
+    readonly ts_node_grammar_type: (a: number) => number;
+    readonly ts_node_next_sibling: (a: number, b: number) => void;
+    readonly ts_node_prev_sibling: (a: number, b: number) => void;
+    readonly ts_node_named_child_count: (a: number) => number;
+    readonly ts_node_descendant_count: (a: number) => number;
+    readonly ts_node_next_parse_state: (a: number) => number;
+    readonly ts_node_next_named_sibling: (a: number, b: number) => void;
+    readonly ts_node_prev_named_sibling: (a: number, b: number) => void;
+    readonly ts_node_field_name_for_child: (a: number, b: number) => number;
+    readonly ts_node_first_child_for_byte: (a: number, b: number, c: number) => void;
+    readonly ts_node_child_with_descendant: (a: number, b: number, c: number) => void;
+    readonly ts_node_descendant_for_byte_range: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_node_descendant_for_point_range: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_node_field_name_for_named_child: (a: number, b: number) => number;
+    readonly ts_node_first_named_child_for_byte: (a: number, b: number, c: number) => void;
+    readonly ts_node_named_descendant_for_byte_range: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_node_named_descendant_for_point_range: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_node_edit: (a: number, b: number) => void;
+    readonly ts_node_type: (a: number) => number;
+    readonly ts_tree_cursor_new: (a: number, b: number) => void;
+    readonly ts_node_child: (a: number, b: number, c: number) => void;
+    readonly ts_node_string: (a: number) => number;
+    readonly ts_node_is_error: (a: number) => number;
+    readonly ts_node_is_extra: (a: number) => number;
+    readonly ts_node_has_error: (a: number) => number;
+    readonly ts_tree_get_changed_ranges: (a: number, b: number, c: number) => number;
+    readonly ts_tree_included_ranges: (a: number, b: number) => number;
+    readonly ts_tree_root_node_with_offset: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_tree_edit: (a: number, b: number) => void;
+    readonly ts_tree_root_node: (a: number, b: number) => void;
+    readonly ts_query_capture_quantifier_for_id: (a: number, b: number, c: number) => number;
+    readonly ts_query_delete: (a: number) => void;
+    readonly ts_query_disable_capture: (a: number, b: number, c: number) => void;
+    readonly ts_query_disable_pattern: (a: number, b: number) => void;
+    readonly ts_query_is_pattern_rooted: (a: number, b: number) => number;
+    readonly ts_query_is_pattern_guaranteed_at_step: (a: number, b: number) => number;
+    readonly ts_query_new: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly ts_parser_set_language: (a: number, b: number) => number;
+    readonly ts_lexer_set_included_ranges: (a: number, b: number, c: number) => number;
+    readonly ts_parser_print_dot_graphs: (a: number, b: number) => void;
+    readonly ts_parser_new: () => number;
+    readonly ts_parser_reset: (a: number) => void;
+    readonly ts_language_field_name_for_id: (a: number, b: number) => number;
+    readonly ts_lookahead_iterator_new: (a: number, b: number) => number;
+    readonly ts_language_symbol_type: (a: number, b: number) => number;
+    readonly ts_tree_copy: (a: number) => number;
+    readonly ts_tree_delete: (a: number) => void;
+    readonly ts_parser_delete: (a: number) => void;
+    readonly ts_tree_cursor_copy: (a: number, b: number) => void;
+    readonly ts_tree_cursor_delete: (a: number) => void;
+    readonly ts_query_cursor_delete: (a: number) => void;
+    readonly ts_external_scanner_state_copy: (a: number, b: number) => void;
+    readonly ts_external_scanner_state_data: (a: number) => number;
+    readonly ts_external_scanner_state_delete: (a: number) => void;
+    readonly ts_external_scanner_state_eq: (a: number, b: number, c: number) => number;
+    readonly ts_external_scanner_state_init: (a: number, b: number, c: number) => void;
+    readonly ts_language_abi_version: (a: number) => number;
+    readonly ts_language_delete: (a: number) => void;
+    readonly ts_language_field_count: (a: number) => number;
+    readonly ts_language_is_reserved_word: (a: number, b: number, c: number) => number;
+    readonly ts_language_is_wasm: (a: number) => number;
+    readonly ts_language_metadata: (a: number) => number;
+    readonly ts_language_name: (a: number) => number;
+    readonly ts_language_public_symbol: (a: number, b: number) => number;
+    readonly ts_language_state_count: (a: number) => number;
+    readonly ts_language_supertypes: (a: number, b: number) => number;
+    readonly ts_language_symbol_count: (a: number) => number;
+    readonly ts_lexer_delete: (a: number) => void;
+    readonly ts_lexer_finish: (a: number, b: number) => void;
+    readonly ts_lexer_included_ranges: (a: number, b: number) => number;
+    readonly ts_lexer_init: (a: number) => void;
+    readonly ts_lexer_mark_end: (a: number) => void;
+    readonly ts_lexer_reset: (a: number, b: number) => void;
+    readonly ts_lexer_set_input: (a: number, b: number) => void;
+    readonly ts_lexer_start: (a: number) => void;
+    readonly ts_lookahead_iterator_current_symbol: (a: number) => number;
+    readonly ts_lookahead_iterator_delete: (a: number) => void;
+    readonly ts_node_child_by_field_name: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_node_eq: (a: number, b: number) => number;
+    readonly ts_node_is_null: (a: number) => number;
+    readonly ts_node_language: (a: number) => number;
+    readonly ts_node_new: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly ts_node_start_byte: (a: number) => number;
+    readonly ts_node_start_point: (a: number, b: number) => void;
+    readonly ts_subtree_string: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly ts_parser_cancellation_flag: (a: number) => number;
+    readonly ts_stack_delete: (a: number) => void;
+    readonly ts_subtree_pool_delete: (a: number) => void;
+    readonly ts_parser_language: (a: number) => number;
+    readonly ts_parser_logger: (a: number, b: number) => void;
+    readonly ts_subtree_pool_new: (a: number, b: number) => void;
+    readonly ts_stack_new: (a: number) => number;
+    readonly ts_parser_parse: (a: number, b: number, c: number) => number;
+    readonly ts_range_array_get_changed_ranges: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly ts_stack_is_halted: (a: number, b: number) => number;
+    readonly ts_stack_last_external_token: (a: number, b: number, c: number) => void;
+    readonly ts_range_array_intersects: (a: number, b: number, c: number, d: number) => number;
+    readonly ts_subtree_external_scanner_state: (a: number) => number;
+    readonly ts_stack_has_advanced_since_error: (a: number, b: number) => number;
+    readonly ts_subtree_new_leaf: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly ts_subtree_new_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
+    readonly ts_subtree_set_symbol: (a: number, b: number, c: number) => void;
+    readonly ts_stack_pause: (a: number, b: number, c: number) => void;
+    readonly ts_stack_resume: (a: number, b: number, c: number) => void;
+    readonly ts_stack_record_summary: (a: number, b: number, c: number) => void;
+    readonly ts_stack_copy_version: (a: number, b: number) => number;
+    readonly ts_subtree_new_missing_leaf: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly ts_stack_clear: (a: number) => void;
+    readonly ts_subtree_compress: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_tree_new: (a: number, b: number, c: number, d: number) => number;
+    readonly ts_parser_parse_string: (a: number, b: number, c: number, d: number) => number;
+    readonly ts_parser_parse_string_encoding: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly ts_parser_set_cancellation_flag: (a: number, b: number) => void;
+    readonly ts_parser_set_included_ranges: (a: number, b: number, c: number) => number;
+    readonly ts_parser_set_logger: (a: number, b: number) => void;
+    readonly ts_parser_set_timeout_micros: (a: number, b: bigint) => void;
+    readonly ts_parser_set_wasm_store: (a: number, b: number) => void;
+    readonly ts_parser_take_wasm_store: (a: number) => number;
+    readonly ts_parser_timeout_micros: (a: number) => bigint;
+    readonly ts_query_capture_count: (a: number) => number;
+    readonly ts_query_capture_name_for_id: (a: number, b: number, c: number) => number;
+    readonly ts_query_cursor__compare_nodes: (a: number, b: number) => number;
+    readonly ts_query_cursor_did_exceed_match_limit: (a: number) => number;
+    readonly ts_query_cursor_exec_with_options: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_query_cursor_match_limit: (a: number) => number;
+    readonly ts_query_cursor_set_byte_range: (a: number, b: number, c: number) => number;
+    readonly ts_query_cursor_set_match_limit: (a: number, b: number) => void;
+    readonly ts_query_cursor_set_max_start_depth: (a: number, b: number) => void;
+    readonly ts_query_cursor_set_timeout_micros: (a: number, b: bigint) => void;
+    readonly ts_query_cursor_timeout_micros: (a: number) => bigint;
+    readonly ts_query_end_byte_for_pattern: (a: number, b: number) => number;
+    readonly ts_query_is_pattern_non_local: (a: number, b: number) => number;
+    readonly ts_query_pattern_count: (a: number) => number;
+    readonly ts_query_predicates_for_pattern: (a: number, b: number, c: number) => number;
+    readonly ts_query_start_byte_for_pattern: (a: number, b: number) => number;
+    readonly ts_query_string_count: (a: number) => number;
+    readonly ts_query_string_value_for_id: (a: number, b: number, c: number) => number;
+    readonly ts_stack_swap_versions: (a: number, b: number, c: number) => void;
+    readonly ts_stack_version_count: (a: number) => number;
+    readonly ts_subtree__print_dot_graph: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly ts_subtree_clone: (a: number, b: number) => void;
+    readonly ts_subtree_summarize_children: (a: number, b: number) => void;
+    readonly ts_subtree_edit: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_subtree_get_changed_ranges: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
+    readonly ts_subtree_print_dot_graph: (a: number, b: number, c: number) => void;
+    readonly ts_tree_cursor_goto_last_child_internal: (a: number) => number;
+    readonly ts_tree_cursor_goto_sibling_internal: (a: number, b: number) => number;
+    readonly ts_tree_cursor_goto_previous_sibling_internal: (a: number) => number;
+    readonly ts_tree_cursor_reset: (a: number, b: number) => void;
+    readonly ts_tree_language: (a: number) => number;
+    readonly ts_wasm_store_call_lex_keyword: (a: number, b: number) => number;
+    readonly ts_wasm_store_call_scanner_create: (a: number) => number;
+    readonly ts_wasm_store_call_scanner_deserialize: (a: number, b: number, c: number, d: number) => void;
+    readonly ts_wasm_store_call_scanner_destroy: (a: number, b: number) => void;
+    readonly ts_wasm_store_call_scanner_scan: (a: number, b: number, c: number) => number;
+    readonly ts_wasm_store_call_scanner_serialize: (a: number, b: number, c: number) => number;
+    readonly ts_wasm_store_start: (a: number, b: number, c: number) => number;
+    readonly ts_language_copy: (a: number) => number;
+    readonly ts_wasm_language_release: (a: number) => void;
+    readonly ts_wasm_language_retain: (a: number) => void;
+    readonly ts_wasm_store_delete: (a: number) => void;
+    readonly ts_wasm_store_has_error: (a: number) => number;
+    readonly ts_wasm_store_reset: (a: number) => void;
+    readonly ts_language_version: (a: number) => number;
+    readonly ts_lookahead_iterator_language: (a: number) => number;
+    readonly ts_wasm_store_call_lex_main: (a: number, b: number) => number;
+    readonly ts_parser_included_ranges: (a: number, b: number) => number;
+    readonly __wbindgen_export: (a: number) => void;
+    readonly __wbindgen_export2: (a: number, b: number) => number;
+    readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
+    readonly __wbindgen_export3: (a: number, b: number, c: number) => void;
+    readonly __wbindgen_export4: (a: number, b: number, c: number, d: number) => number;
+}
+
+export type SyncInitInput = BufferSource | WebAssembly.Module;
+
+/**
+ * Instantiates the given `module`, which can either be bytes or
+ * a precompiled `WebAssembly.Module`.
+ *
+ * @param {{ module: SyncInitInput }} module - Passing `SyncInitInput` directly is deprecated.
+ *
+ * @returns {InitOutput}
+ */
+export function initSync(module: { module: SyncInitInput } | SyncInitInput): InitOutput;
+
+/**
+ * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
+ * for everything else, calls `WebAssembly.instantiate` directly.
+ *
+ * @param {{ module_or_path: InitInput | Promise<InitInput> }} module_or_path - Passing `InitInput` directly is deprecated.
+ *
+ * @returns {Promise<InitOutput>}
+ */
+export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;

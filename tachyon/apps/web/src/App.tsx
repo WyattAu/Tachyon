@@ -1,4 +1,4 @@
-import { type Component } from "solid-js";
+import { type Component, ErrorBoundary } from "solid-js";
 import { Route, Router, A } from "@solidjs/router";
 import { authStore } from "@/lib/auth";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import LoginPage from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import DocumentsList from "@/pages/DocumentsList";
+import DocumentEditor from "@/pages/DocumentEditor";
 
 /**
  * Route table — mirrors the Leptos app's 34 routes (ADR-113 parity).
@@ -68,6 +69,12 @@ function shell(page: Component): Component {
 const migrating = (route: string): Component => shell(() => <Migrating route={route} />);
 
 const App: Component = () => (
+  <ErrorBoundary fallback={(err) => (
+    <div class="p-8">
+      <h1 class="text-xl font-bold text-red-600">Render error</h1>
+      <pre class="mt-2 overflow-auto text-xs">{String(err?.message ?? err)}</pre>
+    </div>
+  )}>
   <Router>
     <Route path="/" component={Home} />
     <Route path="/login" component={LoginPage} />
@@ -75,7 +82,7 @@ const App: Component = () => (
     <Route path="/dashboard" component={shell(Dashboard)} />
     <Route path="/documents" component={shell(DocumentsList)} />
     <Route path="/documents/:id" component={migrating("/documents/:id")} />
-    <Route path="/documents/:id/edit" component={migrating("/documents/:id/edit")} />
+    <Route path="/documents/:id/edit" component={shell(DocumentEditor)} />
     <Route path="/spaces" component={migrating("/spaces")} />
     <Route path="/graph" component={migrating("/graph")} />
     <Route path="/tags" component={migrating("/tags")} />
@@ -111,6 +118,7 @@ const App: Component = () => (
     <Route path="/blog/admin/new" component={migrating("/blog/admin/new")} />
     <Route path="*" component={() => <div class="p-8">404 — Not Found</div>} />
   </Router>
+  </ErrorBoundary>
 );
 
 export default App;
