@@ -10,6 +10,8 @@ import DocumentEditor from "@/pages/DocumentEditor";
 import Spaces from "@/pages/Spaces";
 import Tags from "@/pages/Tags";
 import Search from "@/pages/Search";
+import Teams from "@/pages/Teams";
+import Templates from "@/pages/Templates";
 
 /**
  * Route table — mirrors the Leptos app's 34 routes (ADR-113 parity).
@@ -89,12 +91,12 @@ const App: Component = () => (
     <Route path="/spaces" component={shell(Spaces)} />
     <Route path="/graph" component={migrating("/graph")} />
     <Route path="/tags" component={shell(Tags)} />
-    <Route path="/teams" component={migrating("/teams")} />
+    <Route path="/teams" component={shell(Teams)} />
     <Route path="/teams/:team_id" component={migrating("/teams/:team_id")} />
     <Route path="/search" component={shell(Search)} />
     <Route path="/import" component={migrating("/import")} />
     <Route path="/catalog" component={migrating("/catalog")} />
-    <Route path="/templates" component={migrating("/templates")} />
+    <Route path="/templates" component={shell(Templates)} />
     <Route path="/plugins" component={migrating("/plugins")} />
     <Route path="/ssg" component={migrating("/ssg")} />
     <Route path="/billing" component={migrating("/billing")} />
