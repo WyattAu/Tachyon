@@ -12,6 +12,11 @@ import Tags from "@/pages/Tags";
 import Search from "@/pages/Search";
 import Teams from "@/pages/Teams";
 import Templates from "@/pages/Templates";
+import Billing from "@/pages/Billing";
+import Plugins from "@/pages/Plugins";
+import Catalog from "@/pages/Catalog";
+import Audit from "@/pages/Audit";
+import Ssg from "@/pages/Ssg";
 
 /**
  * Route table — mirrors the Leptos app's 34 routes (ADR-113 parity).
@@ -95,12 +100,12 @@ const App: Component = () => (
     <Route path="/teams/:team_id" component={migrating("/teams/:team_id")} />
     <Route path="/search" component={shell(Search)} />
     <Route path="/import" component={migrating("/import")} />
-    <Route path="/catalog" component={migrating("/catalog")} />
+    <Route path="/catalog" component={shell(Catalog)} />
     <Route path="/templates" component={shell(Templates)} />
-    <Route path="/plugins" component={migrating("/plugins")} />
-    <Route path="/ssg" component={migrating("/ssg")} />
-    <Route path="/billing" component={migrating("/billing")} />
-    <Route path="/audit" component={migrating("/audit")} />
+    <Route path="/plugins" component={shell(Plugins)} />
+    <Route path="/ssg" component={shell(Ssg)} />
+    <Route path="/billing" component={shell(Billing)} />
+    <Route path="/audit" component={shell(Audit)} />
     <Route path="/admin/roles" component={migrating("/admin/roles")} />
     <Route path="/settings" component={migrating("/settings")} />
     <Route path="/settings/branding" component={migrating("/settings/branding")} />

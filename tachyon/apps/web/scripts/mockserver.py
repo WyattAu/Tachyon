@@ -78,6 +78,46 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/api/v1/activity":
             self._send(200, json.dumps({"activities": []}))
             return
+        if path == "/api/v1/billing/plans":
+            self._send(200, json.dumps({"plans": [
+                {"name": "free", "price_monthly_cents": 0, "max_documents": 100,
+                 "max_members": 1, "features": ["Basic editor", "5GB storage"]},
+                {"name": "pro", "price_monthly_cents": 1200, "max_documents": 10000,
+                 "max_members": 5, "features": ["Advanced editor", "50GB storage"]},
+            ]}))
+            return
+        if path == "/api/v1/billing/usage/default":
+            self._send(200, json.dumps({"usage": {
+                "organization_id": "default", "documents_total": 2, "members_total": 1,
+                "storage_bytes": 1048576, "plan": "free",
+                "period_start": "2026-09-01T00:00:00Z", "period_end": "2026-10-01T00:00:00Z",
+                "documents_created": 2}}))
+            return
+        if path == "/api/v1/plugins":
+            self._send(200, json.dumps([
+                {"id": "plg1", "name": "word-count", "description": "Counts words",
+                 "author": "tachyon", "enabled": True},
+            ]))
+            return
+        if path == "/api/v1/projects":
+            self._send(200, json.dumps([
+                {"id": "prj1", "name": "Apollo", "description": "Lander docs"},
+            ]))
+            return
+        if path == "/api/v1/catalog/stats":
+            self._send(200, json.dumps({"projects": 1, "components": 5, "members": 2}))
+            return
+        if path == "/api/v1/admin/audit":
+            self._send(200, json.dumps({"entries": [
+                {"id": "a1", "timestamp": "2026-09-12T10:00:00Z", "action": "document.create",
+                 "user_id": "admin", "resource": "doc/123"},
+            ]}))
+            return
+        if path == "/api/v1/ssg/config":
+            self._send(200, json.dumps({
+                "site_title": "Tachyon Docs", "site_description": "A knowledge base",
+                "base_url": "https://docs.example.com", "theme": "auto"}))
+            return
         if path == "/api/v1/tags":
             self._send(200, json.dumps({"tags": [
                 {"tag": "rust", "count": 4}, {"tag": "notes", "count": 2},
