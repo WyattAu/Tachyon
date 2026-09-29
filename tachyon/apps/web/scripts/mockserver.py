@@ -65,9 +65,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path in ("/api/v1/auth/login", "/api/v1/auth/guest") and self.command == "POST":
             self._send(200, json.dumps({"success": True, "access_token": "mock-token"}))
             return
-        if path in ("/api/v1/documents", "/api/v1/spaces", "/api/v1/activity"):
-            self._send(200, json.dumps({"results": [], "total": 0, "page": 1, "page_size": 12,
-                                        "activities": []}))
+        if path == "/api/v1/documents":
+            self._send(200, json.dumps({"results": [], "total": 0, "page": 1, "page_size": 12}))
+            return
+        if path == "/api/v1/spaces":
+            self._send(200, json.dumps([
+                {"id": "sp1", "name": "Personal", "description": "Your personal space",
+                 "icon": "user", "color": "#2563eb", "document_count": 3,
+                 "is_default": True, "parent_id": None},
+            ]))
+            return
+        if path == "/api/v1/activity":
+            self._send(200, json.dumps({"activities": []}))
+            return
+        if path == "/api/v1/tags":
+            self._send(200, json.dumps({"tags": [
+                {"tag": "rust", "count": 4}, {"tag": "notes", "count": 2},
+            ], "total": 2}))
+            return
+        if path == "/api/v1/search":
+            self._send(200, json.dumps({"results": [
+                {"id": "doc1", "title": "Search hit", "headline": "matched <mark>term</mark>",
+                 "tags": ["rust"], "status": "published", "word_count": 42,
+                 "rank": 1.0, "created_at": None, "updated_at": None},
+            ], "total": 1, "page": 1, "page_size": 20, "facets": {}}))
             return
 
         # GET /api/v1/documents/{id}
