@@ -17,6 +17,11 @@ import Plugins from "@/pages/Plugins";
 import Catalog from "@/pages/Catalog";
 import Audit from "@/pages/Audit";
 import Ssg from "@/pages/Ssg";
+import Settings from "@/pages/Settings";
+import Profile from "@/pages/Profile";
+import Servers from "@/pages/Servers";
+import Local from "@/pages/Local";
+import Import from "@/pages/Import";
 
 /**
  * Route table — mirrors the Leptos app's 34 routes (ADR-113 parity).
@@ -99,7 +104,7 @@ const App: Component = () => (
     <Route path="/teams" component={shell(Teams)} />
     <Route path="/teams/:team_id" component={migrating("/teams/:team_id")} />
     <Route path="/search" component={shell(Search)} />
-    <Route path="/import" component={migrating("/import")} />
+    <Route path="/import" component={shell(Import)} />
     <Route path="/catalog" component={shell(Catalog)} />
     <Route path="/templates" component={shell(Templates)} />
     <Route path="/plugins" component={shell(Plugins)} />
@@ -107,13 +112,13 @@ const App: Component = () => (
     <Route path="/billing" component={shell(Billing)} />
     <Route path="/audit" component={shell(Audit)} />
     <Route path="/admin/roles" component={migrating("/admin/roles")} />
-    <Route path="/settings" component={migrating("/settings")} />
+    <Route path="/settings" component={shell(Settings)} />
     <Route path="/settings/branding" component={migrating("/settings/branding")} />
     <Route path="/settings/webhooks" component={migrating("/settings/webhooks")} />
     <Route path="/settings/notifications" component={migrating("/settings/notifications")} />
-    <Route path="/profile" component={migrating("/profile")} />
-    <Route path="/local" component={migrating("/local")} />
-    <Route path="/servers" component={migrating("/servers")} />
+    <Route path="/profile" component={shell(Profile)} />
+    <Route path="/local" component={shell(Local)} />
+    <Route path="/servers" component={shell(Servers)} />
     <Route path="/versions" component={migrating("/versions")} />
     <Route path="/flashcards" component={migrating("/flashcards")} />
     <Route path="/daily" component={migrating("/daily")} />
