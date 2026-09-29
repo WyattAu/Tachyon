@@ -22,6 +22,14 @@ import Profile from "@/pages/Profile";
 import Servers from "@/pages/Servers";
 import Local from "@/pages/Local";
 import Import from "@/pages/Import";
+import Flashcards from "@/pages/Flashcards";
+import Versions from "@/pages/Versions";
+import TeamDetail from "@/pages/TeamDetail";
+import DocumentView from "@/pages/DocumentView";
+import Onboarding from "@/pages/Onboarding";
+import WebhooksSettings from "@/pages/WebhooksSettings";
+import BrandingSettings from "@/pages/BrandingSettings";
+import NotificationsSettings from "@/pages/NotificationsSettings";
 
 /**
  * Route table — mirrors the Leptos app's 34 routes (ADR-113 parity).
@@ -96,13 +104,13 @@ const App: Component = () => (
     {/* Phase B migration stubs — each replaced by its real page */}
     <Route path="/dashboard" component={shell(Dashboard)} />
     <Route path="/documents" component={shell(DocumentsList)} />
-    <Route path="/documents/:id" component={migrating("/documents/:id")} />
+    <Route path="/documents/:id" component={shell(DocumentView)} />
     <Route path="/documents/:id/edit" component={shell(DocumentEditor)} />
     <Route path="/spaces" component={shell(Spaces)} />
     <Route path="/graph" component={migrating("/graph")} />
     <Route path="/tags" component={shell(Tags)} />
     <Route path="/teams" component={shell(Teams)} />
-    <Route path="/teams/:team_id" component={migrating("/teams/:team_id")} />
+    <Route path="/teams/:team_id" component={shell(TeamDetail)} />
     <Route path="/search" component={shell(Search)} />
     <Route path="/import" component={shell(Import)} />
     <Route path="/catalog" component={shell(Catalog)} />
@@ -113,21 +121,21 @@ const App: Component = () => (
     <Route path="/audit" component={shell(Audit)} />
     <Route path="/admin/roles" component={migrating("/admin/roles")} />
     <Route path="/settings" component={shell(Settings)} />
-    <Route path="/settings/branding" component={migrating("/settings/branding")} />
-    <Route path="/settings/webhooks" component={migrating("/settings/webhooks")} />
-    <Route path="/settings/notifications" component={migrating("/settings/notifications")} />
+    <Route path="/settings/branding" component={shell(BrandingSettings)} />
+    <Route path="/settings/webhooks" component={shell(WebhooksSettings)} />
+    <Route path="/settings/notifications" component={shell(NotificationsSettings)} />
     <Route path="/profile" component={shell(Profile)} />
     <Route path="/local" component={shell(Local)} />
     <Route path="/servers" component={shell(Servers)} />
-    <Route path="/versions" component={migrating("/versions")} />
-    <Route path="/flashcards" component={migrating("/flashcards")} />
+    <Route path="/versions" component={shell(Versions)} />
+    <Route path="/flashcards" component={shell(Flashcards)} />
     <Route path="/daily" component={migrating("/daily")} />
     <Route path="/daily/:date" component={migrating("/daily/:date")} />
     <Route path="/journal" component={migrating("/journal")} />
     <Route path="/journal/:date" component={migrating("/journal/:date")} />
     <Route path="/canvas" component={migrating("/canvas")} />
     <Route path="/canvas/:id" component={migrating("/canvas/:id")} />
-    <Route path="/onboarding" component={migrating("/onboarding")} />
+    <Route path="/onboarding" component={shell(Onboarding)} />
     <Route path="/blog" component={migrating("/blog")} />
     <Route path="/blog/:slug" component={migrating("/blog/:slug")} />
     <Route path="/blog/admin/new" component={migrating("/blog/admin/new")} />
