@@ -30,6 +30,9 @@ import Onboarding from "@/pages/Onboarding";
 import WebhooksSettings from "@/pages/WebhooksSettings";
 import BrandingSettings from "@/pages/BrandingSettings";
 import NotificationsSettings from "@/pages/NotificationsSettings";
+import DailyNote from "@/pages/DailyNote";
+import AdminRoles from "@/pages/AdminRoles";
+import { BlogList, BlogPost, BlogAdminNew } from "@/pages/Blog";
 
 /**
  * Route table — mirrors the Leptos app's 34 routes (ADR-113 parity).
@@ -119,7 +122,7 @@ const App: Component = () => (
     <Route path="/ssg" component={shell(Ssg)} />
     <Route path="/billing" component={shell(Billing)} />
     <Route path="/audit" component={shell(Audit)} />
-    <Route path="/admin/roles" component={migrating("/admin/roles")} />
+    <Route path="/admin/roles" component={shell(AdminRoles)} />
     <Route path="/settings" component={shell(Settings)} />
     <Route path="/settings/branding" component={shell(BrandingSettings)} />
     <Route path="/settings/webhooks" component={shell(WebhooksSettings)} />
@@ -129,16 +132,16 @@ const App: Component = () => (
     <Route path="/servers" component={shell(Servers)} />
     <Route path="/versions" component={shell(Versions)} />
     <Route path="/flashcards" component={shell(Flashcards)} />
-    <Route path="/daily" component={migrating("/daily")} />
-    <Route path="/daily/:date" component={migrating("/daily/:date")} />
-    <Route path="/journal" component={migrating("/journal")} />
-    <Route path="/journal/:date" component={migrating("/journal/:date")} />
+    <Route path="/daily" component={shell(() => <DailyNote kind="daily" />)} />
+    <Route path="/daily/:date" component={shell(() => <DailyNote kind="daily" />)} />
+    <Route path="/journal" component={shell(() => <DailyNote kind="journal" />)} />
+    <Route path="/journal/:date" component={shell(() => <DailyNote kind="journal" />)} />
     <Route path="/canvas" component={migrating("/canvas")} />
     <Route path="/canvas/:id" component={migrating("/canvas/:id")} />
     <Route path="/onboarding" component={shell(Onboarding)} />
-    <Route path="/blog" component={migrating("/blog")} />
-    <Route path="/blog/:slug" component={migrating("/blog/:slug")} />
-    <Route path="/blog/admin/new" component={migrating("/blog/admin/new")} />
+    <Route path="/blog" component={BlogList} />
+    <Route path="/blog/:slug" component={BlogPost} />
+    <Route path="/blog/admin/new" component={shell(BlogAdminNew)} />
     <Route path="*" component={() => <div class="p-8">404 — Not Found</div>} />
   </Router>
   </ErrorBoundary>
