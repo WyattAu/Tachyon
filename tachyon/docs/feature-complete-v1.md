@@ -20,9 +20,9 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done · `[N]` won't do (
 - [ ] SSO: OIDC/SAML/LDAP — config-gated; FC = documented + sandbox-verified once
 
 ## 2. Documents domain — Phase B (migration) + E (lifecycles)
-- [ ] List/grid, search-in-list, status filter, pagination — parity gate vs Leptos
-- [ ] **Editor**: create/edit/auto-save — WASM core (engine-wasm split) + Solid view
-- [ ] `__tachyonEditor` bridge contract — frozen in apps/web/src/lib/editor/contract.ts + tests (Phase A)
+- [x] List/grid, search-in-list, status filter, pagination — Solid port verified (mock + local server)
+- [x] **Editor**: create/edit/auto-save — WASM core (editor-wasm) + Solid view; save round-trip verified vs real server
+- [x] `__tachyonEditor` bridge contract — frozen + 11/11 live contract checks PASS (control plane vs desktop); disposal-guard fix shipped
 - [ ] Markdown preview + TOC
 - [ ] Versions: list/diff/restore — drill in Phase E
 - [ ] Branches: create/diff/merge — drill in Phase E
@@ -30,14 +30,15 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done · `[N]` won't do (
 - [ ] Backlinks, references, citations UI
 - [ ] Attachments upload (multipart, 50 MB)
 - [ ] **PDF viewer + annotation persistence** (annotations currently local-only)
-- [ ] Templates: CRUD + categories + apply — server route fixed this cycle
+- [~] Templates: list + categories ported (verified); CRUD apply pending
 - [ ] Wikilinks → graph edges (server-side, done) + UI link-following
 
 ## 3. Knowledge features — Phase B
-- [ ] Graph visualization (sigma.js in Solid; Leptos canvas version retires)
+- [ ] Graph visualization (sigma.js — DECIDED; next port)
+- [x] Spaces list (typed /spaces)
 - [ ] Graph time-travel (query/at/diff endpoints)
-- [ ] Search: global, suggestions, saved searches, semantic search
-- [ ] Tags browse/filter
+- [~] Search: full-text query + results verified; suggestions/saved/semantic pending
+- [x] Tags browse/filter (verified)
 - [ ] Spaces hierarchy + members + move-document
 - [ ] Daily notes / journal pages
 - [ ] **Canvas: persistence wired** (13 API methods currently dead code — build natively in Solid)
@@ -52,7 +53,11 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done · `[N]` won't do (
 - [ ] Activity feed
 
 ## 5. Teams/Orgs/Admin — Phase B/C
-- [ ] Teams CRUD + members UI
+- [x] Audit log table + filter (port; Export CSV pending)
+- [x] Catalog: stats + projects (port)
+- [x] Plugins list (port)
+- [x] SSG config + build page (port)
+- [~] Teams list + detail + members ported; create/edit UI pending
 - [ ] Organizations CRUD + members
 - [ ] Roles/RBAC: `/admin/roles` + permission matrix drill
 - [ ] **Admin users page** (file dead on disk — revive in Solid)
@@ -98,6 +103,10 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done · `[N]` won't do (
 - [ ] Grafana dashboards: per-route latency/errors, collab WS, DB pool
 - [ ] TLS + real domain + CloudFlare
 - [ ] OpenAPI client regeneration CI gate (diff = fail)
+
+## Migration status (Phase B): 31/34 routes real
+- Remaining: /graph (sigma.js — decided), /canvas + /canvas/:id (Solid renderer + the 13 API methods)
+- Verification infra: LOCAL server (Postgres 16 @ 15433 + rustc 1.94 server @ 18080) replaces staging while offline — full stack verified live (login, documents list, WASM editor load+type+save round-trip vs real Postgres, redaction, contract E2E 11/11)
 
 ## 11. Release — Phase G
 - [ ] Docker image builds (rustc ≥ 1.94 toolchain fix)

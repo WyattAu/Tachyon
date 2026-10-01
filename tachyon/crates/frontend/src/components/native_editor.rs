@@ -894,11 +894,30 @@ pub fn NativeEditor(
 
     // Expose editor bridge for programmatic access (e.g. testing, automation)
     // Accessible via window.__tachyonEditor.insertText("text") etc.
+    //
+    // Lifecycle: the closures are `forget()`-ed (permanent) but the reactive
+    // scope that owns `editor` is disposed on unmount. External callers (the
+    // agent controller, the daily-note hand-off, background traversals) may
+    // still hold the bridge — every call MUST no-op after disposal instead
+    // of touching disposed signals (regression: "reactive value already
+    // disposed" panic when the auto-traverse navigated mid-bridge-call).
     if let Some(window) = web_sys::window() {
+        let bridge_alive = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        {
+            let bridge_alive = bridge_alive.clone();
+            on_cleanup(move || bridge_alive.store(false, std::sync::atomic::Ordering::SeqCst));
+        }
+        let _ = js_sys::Reflect::set(
+            &window,
+            &"__tachyonEditorBridge".into(),
+            &wasm_bindgen::JsValue::from_bool(true),
+        );
         let editor_sig = editor;
         let render_tick1 = render_tick;
+        let guard = bridge_alive.clone();
         let insert_clos =
             wasm_bindgen::closure::Closure::<dyn Fn(String)>::new(move |text: String| {
+                if !guard.load(std::sync::atomic::Ordering::SeqCst) { return; }
                 let _ = editor_sig.try_update(|e| {
                     e.insert_text(&text);
                 });
@@ -912,7 +931,9 @@ pub fn NativeEditor(
 
         let editor_sig2 = editor;
         let render_tick2 = render_tick;
+        let guard = bridge_alive.clone();
         let key_clos = wasm_bindgen::closure::Closure::<dyn Fn(String)>::new(move |key: String| {
+                if !guard.load(std::sync::atomic::Ordering::SeqCst) { return; }
             let _ = editor_sig2.try_update(|e| match key.as_str() {
                 "Enter" => e.auto_indent_newline(),
                 "Backspace" => e.delete_backwards(),
@@ -924,7 +945,11 @@ pub fn NativeEditor(
                 "ArrowRight" => e.move_cursor_right(),
                 "ArrowUp" => e.move_cursor_up(),
                 "ArrowDown" => e.move_cursor_down(),
-                _ => e.insert_text(&key),
+                // Single characters are typing shortcuts; multi-char names are
+                // unrecognized key identifiers (e.g. "ControlEnd") — ignore them
+                // instead of typing them literally into the document.
+                _ if key.chars().count() == 1 => e.insert_text(&key),
+                _ => {}
             });
             render_tick2.update(|t| *t += 1);
         });
@@ -935,7 +960,11 @@ pub fn NativeEditor(
         key_clos.forget();
 
         let editor_sig3 = editor;
+        let guard = bridge_alive.clone();
         let content_clos = wasm_bindgen::closure::Closure::<dyn Fn() -> String>::new(move || {
+            if !guard.load(std::sync::atomic::Ordering::SeqCst) {
+                return String::new();
+            }
             editor_sig3.with_untracked(|e| e.content().to_string())
         });
         let content_fn: js_sys::Function = content_clos
@@ -949,7 +978,9 @@ pub fn NativeEditor(
         let set_find_bridge = set_find_visible;
         let editor_find_bridge = editor;
         let rt_find_bridge = render_tick;
+        let guard = bridge_alive.clone();
         let toggle_find_clos = wasm_bindgen::closure::Closure::<dyn Fn()>::new(move || {
+                if !guard.load(std::sync::atomic::Ordering::SeqCst) { return; }
             let new_vis = !find_vis_bridge.get();
             set_find_bridge.set(new_vis);
             if new_vis {
@@ -1038,8 +1069,10 @@ pub fn NativeEditor(
         // find: run a search query
         let editor_find2 = editor;
         let rt_find2 = render_tick;
+        let guard = bridge_alive.clone();
         let find_clos =
             wasm_bindgen::closure::Closure::<dyn Fn(String)>::new(move |query: String| {
+                if !guard.load(std::sync::atomic::Ordering::SeqCst) { return; }
                 let _ = editor_find2.try_update(|e| {
                     e.find(&query);
                 });
@@ -1054,7 +1087,9 @@ pub fn NativeEditor(
         // findNext / findPrevious
         let editor_fn3 = editor;
         let rt_fn3 = render_tick;
+        let guard = bridge_alive.clone();
         let find_next_clos = wasm_bindgen::closure::Closure::<dyn Fn()>::new(move || {
+                if !guard.load(std::sync::atomic::Ordering::SeqCst) { return; }
             let _ = editor_fn3.try_update(|e| {
                 e.find_next();
             });
@@ -1068,7 +1103,9 @@ pub fn NativeEditor(
 
         let editor_fn4 = editor;
         let rt_fn4 = render_tick;
+        let guard = bridge_alive.clone();
         let find_prev_clos = wasm_bindgen::closure::Closure::<dyn Fn()>::new(move || {
+                if !guard.load(std::sync::atomic::Ordering::SeqCst) { return; }
             let _ = editor_fn4.try_update(|e| {
                 e.find_previous();
             });

@@ -60,7 +60,12 @@ const CONTRACT_JS = `
   };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  const bridge = window.__tachyonEditor;
+  // wait for the editor to mount (auto-traverse may navigate concurrently)
+  let bridge = window.__tachyonEditor;
+  for (let i = 0; i < 40 && !bridge; i++) {
+    await sleep(500);
+    bridge = window.__tachyonEditor;
+  }
   check("bridge exists", !!bridge);
   if (!bridge) return JSON.stringify(out);
 
