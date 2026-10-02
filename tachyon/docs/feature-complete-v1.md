@@ -104,9 +104,18 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done · `[N]` won't do (
 - [ ] TLS + real domain + CloudFlare
 - [ ] OpenAPI client regeneration CI gate (diff = fail)
 
-## Migration status (Phase B): 31/34 routes real
-- Remaining: /graph (sigma.js — decided), /canvas + /canvas/:id (Solid renderer + the 13 API methods)
-- Verification infra: LOCAL server (Postgres 16 @ 15433 + rustc 1.94 server @ 18080) replaces staging while offline — full stack verified live (login, documents list, WASM editor load+type+save round-trip vs real Postgres, redaction, contract E2E 11/11)
+## Migration status (Phase B): COMPLETE — 34/34 routes real
+- /graph: sigma.js + ForceAtlas2, multi-graph, normalized layout (graph port done)
+- /canvas + /canvas/:id: 2D editor, all 13 canvas API methods wired natively (5/5 E2E)
+- MIGRATION CEREMONY EXECUTED: local server static dir flipped to the Solid build —
+  parity matrix 18/18 markers (Solid; Leptos baseline 17/18), shell-verify 3/3,
+  live documents + editor save round-trip on the flipped server
+- API sync gate: apps/web/scripts/check-api-sync.sh (authoritative dump_spec vs
+  committed snapshot — structural equality verified, CI-ready)
+- Verification infra: LOCAL server (Postgres 16 @ 15433 + rustc 1.94 server @ 18080)
+  replaces staging while offline — full stack verified live
+- Note: swiftshader (headless) renders sigma v3 blank — visual check on hardware GL
+  is the one open visual item
 
 ## 11. Release — Phase G
 - [ ] Docker image builds (rustc ≥ 1.94 toolchain fix)
