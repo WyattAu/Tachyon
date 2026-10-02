@@ -32,6 +32,8 @@ import BrandingSettings from "@/pages/BrandingSettings";
 import NotificationsSettings from "@/pages/NotificationsSettings";
 import DailyNote from "@/pages/DailyNote";
 import GraphView from "@/pages/GraphView";
+import CanvasList from "@/pages/CanvasList";
+import CanvasEditor from "@/pages/CanvasEditor";
 import AdminRoles from "@/pages/AdminRoles";
 import { BlogList, BlogPost, BlogAdminNew } from "@/pages/Blog";
 
@@ -137,8 +139,8 @@ const App: Component = () => (
     <Route path="/daily/:date" component={shell(() => <DailyNote kind="daily" />)} />
     <Route path="/journal" component={shell(() => <DailyNote kind="journal" />)} />
     <Route path="/journal/:date" component={shell(() => <DailyNote kind="journal" />)} />
-    <Route path="/canvas" component={migrating("/canvas")} />
-    <Route path="/canvas/:id" component={migrating("/canvas/:id")} />
+    <Route path="/canvas" component={shell(CanvasList)} />
+    <Route path="/canvas/:id" component={shell(CanvasEditor)} />
     <Route path="/onboarding" component={shell(Onboarding)} />
     <Route path="/blog" component={BlogList} />
     <Route path="/blog/:slug" component={BlogPost} />

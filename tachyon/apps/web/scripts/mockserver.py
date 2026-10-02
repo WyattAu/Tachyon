@@ -131,6 +131,49 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 {"id": "e2", "source_id": "n2", "target_id": "n3", "label": "manages"},
             ], "total": 2}))
             return
+        if path == "/api/v1/canvases" and self.command == "GET":
+            self._send(200, json.dumps({"canvases": [
+                {"id": "cv1", "title": "Architecture Map", "updated_at": "2026-09-12T00:00:00Z"},
+            ], "total": 1}))
+            return
+        if path == "/api/v1/canvases" and self.command == "POST":
+            body = json.loads(body_in or b"{}")
+            self._send(200, json.dumps({"canvas": {
+                "id": "cv-new", "title": body.get("title", "Untitled"),
+                "owner_id": body.get("owner_id", "mock-user"),
+                "created_at": "2026-09-12T00:00:00Z", "updated_at": "2026-09-12T00:00:00Z"}}))
+            return
+        if path == "/api/v1/canvases/cv1/nodes" and self.command == "GET":
+            self._send(200, json.dumps([
+                {"id": "cn1", "canvas_id": "cv1", "node_type": "note",
+                 "data": {"label": "API Gateway"}, "position_x": 100, "position_y": 80,
+                 "created_at": "2026-09-12T00:00:00Z", "updated_at": "2026-09-12T00:00:00Z"},
+                {"id": "cn2", "canvas_id": "cv1", "node_type": "note",
+                 "data": {"label": "Auth Service"}, "position_x": 420, "position_y": 200,
+                 "created_at": "2026-09-12T00:00:00Z", "updated_at": "2026-09-12T00:00:00Z"},
+            ]))
+            return
+        if path == "/api/v1/canvases/cv1/edges" and self.command == "GET":
+            self._send(200, json.dumps([
+                {"id": "ce1", "canvas_id": "cv1", "source_id": "cn1", "target_id": "cn2",
+                 "edge_type": "default", "style": {},
+                 "created_at": "2026-09-12T00:00:00Z", "updated_at": "2026-09-12T00:00:00Z"},
+            ]))
+            return
+        if path == "/api/v1/canvases/cv1" and self.command == "GET":
+            self._send(200, json.dumps({"canvas": {
+                "id": "cv1", "title": "Architecture Map", "owner_id": "mock-user",
+                "created_at": "2026-09-12T00:00:00Z", "updated_at": "2026-09-12T00:00:00Z"}}))
+            return
+        if path.startswith("/api/v1/canvases") and self.command in ("POST", "PUT", "DELETE"):
+            self._send(200, json.dumps({"ok": True,
+                "node": {"id": "cn-new", "canvas_id": "cv1", "node_type": "note",
+                         "data": {"label": "New"}, "position_x": 10, "position_y": 10,
+                         "created_at": "", "updated_at": ""},
+                "edge": {"id": "ce-new", "canvas_id": "cv1", "source_id": "cn1",
+                         "target_id": "cn2", "edge_type": "default", "style": {},
+                         "created_at": "", "updated_at": ""}}))
+            return
         if path == "/api/v1/tags":
             self._send(200, json.dumps({"tags": [
                 {"tag": "rust", "count": 4}, {"tag": "notes", "count": 2},
