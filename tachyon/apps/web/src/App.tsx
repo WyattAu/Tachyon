@@ -31,6 +31,7 @@ import WebhooksSettings from "@/pages/WebhooksSettings";
 import BrandingSettings from "@/pages/BrandingSettings";
 import NotificationsSettings from "@/pages/NotificationsSettings";
 import DailyNote from "@/pages/DailyNote";
+import GraphView from "@/pages/GraphView";
 import AdminRoles from "@/pages/AdminRoles";
 import { BlogList, BlogPost, BlogAdminNew } from "@/pages/Blog";
 
@@ -110,7 +111,7 @@ const App: Component = () => (
     <Route path="/documents/:id" component={shell(DocumentView)} />
     <Route path="/documents/:id/edit" component={shell(DocumentEditor)} />
     <Route path="/spaces" component={shell(Spaces)} />
-    <Route path="/graph" component={migrating("/graph")} />
+    <Route path="/graph" component={shell(GraphView)} />
     <Route path="/tags" component={shell(Tags)} />
     <Route path="/teams" component={shell(Teams)} />
     <Route path="/teams/:team_id" component={shell(TeamDetail)} />

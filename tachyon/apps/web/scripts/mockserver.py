@@ -118,6 +118,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "site_title": "Tachyon Docs", "site_description": "A knowledge base",
                 "base_url": "https://docs.example.com", "theme": "auto"}))
             return
+        if path == "/api/v1/graph/nodes":
+            self._send(200, json.dumps({"nodes": [
+                {"id": "n1", "name": "Rust", "node_type": "concept", "weight": 5},
+                {"id": "n2", "name": "Tachyon", "node_type": "project", "weight": 8},
+                {"id": "n3", "name": "Knowledge", "node_type": "concept", "weight": 3},
+            ], "total": 3, "page": 1, "page_size": 200}))
+            return
+        if path == "/api/v1/graph/edges":
+            self._send(200, json.dumps({"edges": [
+                {"id": "e1", "source_id": "n1", "target_id": "n2", "label": "built_with"},
+                {"id": "e2", "source_id": "n2", "target_id": "n3", "label": "manages"},
+            ], "total": 2}))
+            return
         if path == "/api/v1/tags":
             self._send(200, json.dumps({"tags": [
                 {"tag": "rust", "count": 4}, {"tag": "notes", "count": 2},
