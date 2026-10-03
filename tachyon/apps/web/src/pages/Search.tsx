@@ -29,7 +29,7 @@ export default function Search() {
     setError(null);
     try {
       const { data } = await api.GET("/search", {
-        params: { query: { query: query() } },
+        params: { query: { q: query() } },
       } as never);
       const body = (data ?? {}) as unknown as {
         results?: SearchResultItem[];

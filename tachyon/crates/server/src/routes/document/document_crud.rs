@@ -892,7 +892,14 @@ pub async fn list_documents(
                 })
                 .collect();
 
-            let total = results.len();
+            // Global count across pages — the previous `results.len()` made
+            // the `total` field report the page size, breaking every
+            // paginator and the dashboard stat (dogfooding find).
+            let total = if results.len() < page_size {
+                offset + results.len()
+            } else {
+                state.repository.count_documents().await.unwrap_or(0) as usize
+            };
 
             let response = DocumentSearchResponse {
                 results,

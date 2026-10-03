@@ -224,6 +224,7 @@ async fn persist_documents(
 /// Uses the MarkdownZipImporter to parse and create documents.
 pub async fn import_markdown_zip(
     State(state): State<ImportState>,
+    Extension(auth): Extension<AuthContext>,
     mut multipart: Multipart,
 ) -> Result<Json<ImportResponse>, ServerError> {
     check_rate_limit(&state)?;
@@ -233,18 +234,25 @@ pub async fn import_markdown_zip(
     let (_filename, bytes) = extract_upload_bytes(&mut multipart, 100 * 1024 * 1024).await?;
 
     let zip_bytes: &[u8] = &bytes;
-    let (_documents, summary) =
+    let (documents, summary) =
         tachyon_import_export::MarkdownZipImporter::import_documents_from_bytes(zip_bytes)
             .map_err(|e| ServerError::bad_request(format!("Failed to import: {}", e)))?;
+
+    // FIX: persist the parsed documents (this handler previously reported
+    // the parser's summary while discarding every document — dogfooding
+    // found it: a 118-file repo-docs import "succeeded" and stored zero).
+    let warnings = summary.warnings.clone();
+    let (actually_imported, warnings) =
+        persist_documents(&state.pool, &auth, &documents, warnings).await;
 
     let elapsed_ms = start.elapsed().as_millis() as u64;
 
     Ok(Json(ImportResponse {
-        imported: summary.imported,
+        imported: actually_imported,
         skipped: summary.skipped,
-        failed: summary.failed,
+        failed: documents.len() - actually_imported + summary.failed,
         total: summary.total_files,
-        warnings: summary.warnings,
+        warnings,
         tags: summary.all_tags,
         elapsed_ms,
     }))
