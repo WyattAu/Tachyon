@@ -26,6 +26,7 @@ DOCS = {
     }
 }
 LAST_PUT = None
+E2E_KEYS = {}
 
 MIME = {
     ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
@@ -196,6 +197,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "edge": {"id": "ce-new", "canvas_id": "cv1", "source_id": "cn1",
                          "target_id": "cn2", "edge_type": "default", "style": {},
                          "created_at": "", "updated_at": ""}}))
+            return
+        global E2E_KEYS
+        if path == "/api/v1/e2e/keys" and self.command == "POST":
+            body = json.loads(body_in or b"{}")
+            E2E_KEYS[body.get("document_id", "?")] = body.get("public_key_fingerprint", "fp")
+            self._send(200, json.dumps({"key_id": "ek1", "registered": True}))
+            return
+        if path == "/api/v1/e2e/keys" and self.command == "GET":
+            self._send(200, json.dumps({"keys": [], "total": 0}))
+            return
+        if path == "/api/v1/e2e/status/test-doc":
+            self._send(200, json.dumps({
+                "document_id": "test-doc", "encrypted": "test-doc" in E2E_KEYS,
+                "key_algorithm": "AES-256-GCM" if E2E_KEYS else None,
+                "key_fingerprint": E2E_KEYS.get("test-doc")}))
+            return
+        if path.startswith("/api/v1/e2e/"):
+            self._send(200, json.dumps({"ok": True, "deleted": True}))
             return
         if path == "/api/v1/tags":
             self._send(200, json.dumps({"tags": [

@@ -1,6 +1,7 @@
 import { Show, createResource, createSignal } from "solid-js";
 import { useParams } from "@solidjs/router";
 import { api } from "@/lib/api/client";
+import { renderMarkdown } from "@/lib/markdown";
 
 /** Document view (read mode) — Solid port (Phase B). Rendered markdown. */
 
@@ -71,20 +72,4 @@ export default function DocumentView() {
   );
 }
 
-function renderMarkdown(content: string): string {
-  // Interim client render: escape + minimal md blocks until engine-wasm
-  // render_markdown is wired (Phase C, exact parity with docs-pipeline).
-  const esc = content
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  return esc
-    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, "<code>$1</code>")
-    .replace(/\n\n/g, "<br/><br/>")
-    .replace(/\n/g, "<br/>");
-}
+

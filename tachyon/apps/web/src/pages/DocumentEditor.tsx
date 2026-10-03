@@ -8,6 +8,16 @@ import {
 } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import { api } from "@/lib/api/client";
+import {
+  generateDocumentKey,
+  keyFingerprint,
+  encryptContent,
+  decryptContent,
+  exportKey,
+  importKey,
+  type EncryptedPayload,
+} from "@/lib/e2ee";
+import { e2eApi } from "@/lib/e2eApi";
 import { createEditor, createEditorState, type EditorHandle } from "@/lib/editor/wasmEditor";
 
 /**
@@ -29,7 +39,10 @@ export default function DocumentEditor() {
   const state = createEditorState();
   const [loadError, setLoadError] = createSignal<string | null>(null);
   const [saveState, setSaveState] = createSignal<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveMessage, setSaveMessage] = createSignal("");
   const [booted, setBooted] = createSignal(false);
+  const [encrypted, setEncrypted] = createSignal(false);
+  const [docKey, setDocKey] = createSignal<CryptoKey | null>(null);
 
   // Load document content, then boot the wasm model over it.
   const [doc] = createResource(docId, async (id) => {
@@ -43,7 +56,25 @@ export default function DocumentEditor() {
   // Boot the wasm editor once the document resource resolves — sourced on
   // `doc` so it cannot race the fetch (an onMount read returns undefined).
   const [boot] = createResource(doc, async (d) => {
-    const h = await createEditor(d?.content ?? "");
+    let content = d?.content ?? "";
+    if (content.startsWith('{"iv"')) {
+      const key = await loadKeyFromLocal();
+      const payload = JSON.parse(content) as EncryptedPayload;
+      setEncrypted(true);
+      if (key) {
+        content = await decryptContent(key, payload);
+      } else {
+        content = "";
+        setLoadError("Document is encrypted and the key is not on this device.");
+        setBooted(true);
+        return null;
+      }
+    } else {
+      // server-side status check (registered key without local payload state)
+      const status = await e2eApi.status(docId());
+      setEncrypted(status.encrypted);
+    }
+    const h = await createEditor(content);
     setHandle(h);
     state.syncFrom(h);
     setBooted(true);
@@ -53,6 +84,60 @@ export default function DocumentEditor() {
   const resync = () => {
     const h = handle();
     if (h) state.syncFrom(h);
+  };
+
+  const jwkKey = () => `e2e:doc:${docId()}`;
+  const loadKeyFromLocal = async (): Promise<CryptoKey | null> => {
+    const raw = localStorage.getItem(jwkKey());
+    if (!raw) return null;
+    try {
+      return await importKey(JSON.parse(raw));
+    } catch {
+      return null;
+    }
+  };
+
+  /** Enable encryption: generate key, register fingerprint, store JWK locally. */
+  const enableEncryption = async () => {
+    const h = handle();
+    if (!h) return;
+    const key = await generateDocumentKey();
+    const fingerprint = await keyFingerprint(key);
+    const meta = await e2eApi.registerKey(docId(), "AES-256-GCM", fingerprint);
+    if (!meta) {
+      setSaveState("error");
+      setSaveMessage("key registration failed — is the server e2e API up?");
+      return;
+    }
+    localStorage.setItem(jwkKey(), JSON.stringify(await exportKey(key)));
+    setDocKey(key);
+    setEncrypted(true);
+  };
+
+  const disableEncryption = async () => {
+    const h = handle();
+    if (!h) return;
+    // decrypt in place (content already plaintext in the model), drop key
+    await e2eApi.deleteKey(docId());
+    localStorage.removeItem(jwkKey());
+    setDocKey(null);
+    setEncrypted(false);
+  };
+
+  /** Returns content to persist — encrypted payload JSON when locked. */
+  const contentToSave = async (): Promise<string> => {
+    const h = handle();
+    if (!h) return "";
+    const plain = h.content();
+    let key = docKey();
+    if (!encrypted()) return plain;
+    if (!key) {
+      key = await loadKeyFromLocal();
+      if (!key) throw new Error("encryption key missing on this device");
+      setDocKey(key);
+    }
+    const payload = await encryptContent(key, plain);
+    return JSON.stringify(payload);
   };
 
   /** Route a KeyboardEvent into the model per the frozen contract. */
@@ -89,7 +174,7 @@ export default function DocumentEditor() {
       const d = doc();
       const { error, response } = await api.PUT("/documents/{document_id}", {
         params: { path: { document_id: docId() } },
-        body: { title: d?.title ?? "Untitled", content: h.content() } as never,
+        body: { title: d?.title ?? "Untitled", content: await contentToSave() } as never,
       });
       if (error) throw new Error(`save failed (${response.status})`);
       h.markSaved();
@@ -121,6 +206,13 @@ export default function DocumentEditor() {
           <h1 class="font-display truncate text-xl font-bold text-gray-900 dark:text-white">
             {doc()?.title ?? "Untitled"}
           </h1>
+          <button
+            class={`rounded-none px-3 py-1.5 text-sm ${encrypted() ? "bg-green-700 text-white" : "border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"}`}
+            title={encrypted() ? "Encryption ON (key on this device)" : "Enable E2E encryption"}
+            onClick={() => void (encrypted() ? disableEncryption() : enableEncryption())}
+          >
+            {encrypted() ? "🔒 Encrypted" : "🔓 Encrypt"}
+          </button>
           <button
             class="rounded-none bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
             onClick={() => void save()}
@@ -182,7 +274,7 @@ export default function DocumentEditor() {
               : saveState() === "saved"
                 ? "Saved"
                 : saveState() === "error"
-                  ? "Save failed"
+                  ? saveMessage() || "Save failed"
                   : "Ctrl+S to save"}
           </span>
         </div>
