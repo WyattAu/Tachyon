@@ -55,6 +55,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
         body_in = self.rfile.read(length) if length else b""
         parts = path.strip("/").split("/")
 
+        if path == "/api/v1/auth/password-reset/request" and self.command == "POST":
+            self._send(200, json.dumps({"message": "If an account with that email exists, a password reset link has been sent."}))
+            return
+        if path == "/api/v1/auth/password-reset/confirm" and self.command == "POST":
+            self._send(200, json.dumps({"message": "Password updated"}))
+            return
+        if path == "/api/v1/notifications" and self.command == "GET":
+            self._send(200, json.dumps({"notifications": [
+                {"id": "nt1", "title": "Mentioned by admin", "body": "admin mentioned you in Architecture Map",
+                 "type": "mention", "link": "/documents/doc1", "read": False,
+                 "created_at": "2026-09-12T09:00:00Z"},
+                {"id": "nt2", "title": "Review requested", "body": None,
+                 "type": "review", "link": None, "read": True,
+                 "created_at": "2026-09-11T09:00:00Z"},
+            ], "count": 2}))
+            return
+        if path == "/api/v1/notifications/unread-count":
+            self._send(200, json.dumps({"count": 1}))
+            return
+        if path.startswith("/api/v1/notifications"):
+            self._send(200, json.dumps({"ok": True}))
+            return
+
         # mock auth
         if path == "/api/v1/auth/me" and self.command == "GET":
             self._send(200, json.dumps({

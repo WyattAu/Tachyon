@@ -36,6 +36,9 @@ import CanvasList from "@/pages/CanvasList";
 import CanvasEditor from "@/pages/CanvasEditor";
 import AdminRoles from "@/pages/AdminRoles";
 import { BlogList, BlogPost, BlogAdminNew } from "@/pages/Blog";
+import Notifications from "@/pages/Notifications";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 
 /**
  * Route table — mirrors the Leptos app's 34 routes (ADR-113 parity).
@@ -107,6 +110,8 @@ const App: Component = () => (
   <Router>
     <Route path="/" component={Home} />
     <Route path="/login" component={LoginPage} />
+    <Route path="/forgot-password" component={ForgotPassword} />
+    <Route path="/reset-password" component={ResetPassword} />
     {/* Phase B migration stubs — each replaced by its real page */}
     <Route path="/dashboard" component={shell(Dashboard)} />
     <Route path="/documents" component={shell(DocumentsList)} />
@@ -130,6 +135,7 @@ const App: Component = () => (
     <Route path="/settings/branding" component={shell(BrandingSettings)} />
     <Route path="/settings/webhooks" component={shell(WebhooksSettings)} />
     <Route path="/settings/notifications" component={shell(NotificationsSettings)} />
+    <Route path="/notifications" component={shell(Notifications)} />
     <Route path="/profile" component={shell(Profile)} />
     <Route path="/local" component={shell(Local)} />
     <Route path="/servers" component={shell(Servers)} />
