@@ -37,6 +37,7 @@ import CanvasEditor from "@/pages/CanvasEditor";
 import AdminRoles from "@/pages/AdminRoles";
 import { BlogList, BlogPost, BlogAdminNew } from "@/pages/Blog";
 import Notifications from "@/pages/Notifications";
+import Themes from "@/pages/Themes";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 
@@ -148,6 +149,7 @@ const App: Component = () => (
     <Route path="/canvas" component={shell(CanvasList)} />
     <Route path="/canvas/:id" component={shell(CanvasEditor)} />
     <Route path="/onboarding" component={shell(Onboarding)} />
+    <Route path="/themes" component={shell(Themes)} />
     <Route path="/blog" component={BlogList} />
     <Route path="/blog/:slug" component={BlogPost} />
     <Route path="/blog/admin/new" component={shell(BlogAdminNew)} />

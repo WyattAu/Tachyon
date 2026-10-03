@@ -11,6 +11,14 @@ import "@/styles/global.css";
     <meta name="description" content="Tachyon — a deterministic, high-performance knowledge management system." />
     <meta name="theme-color" content="#2563eb" />
     <title>Tachyon — Knowledge Management Platform</title>
+    <script is:inline>
+      // pre-paint theme: same key as lib/theme.ts (no flash of wrong theme)
+      try {
+        var m = localStorage.getItem("tachyon_theme") || "dark";
+        var dark = m === "dark" || (m === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

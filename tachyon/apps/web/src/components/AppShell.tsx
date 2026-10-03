@@ -1,6 +1,7 @@
 import { For, Show, type ParentProps } from "solid-js";
 import { A } from "@solidjs/router";
 import { authStore } from "@/lib/auth";
+import { i18n } from "@/lib/i18n";
 
 /**
  * App shell — sidebar + topbar, ported from the Leptos dashboard layout.
@@ -34,6 +35,7 @@ export const NAV: NavItem[] = [
   { label: "Audit Log", href: "/audit", section: "admin" },
   { label: "Admin", href: "/admin/roles", section: "admin" },
   { label: "Settings", href: "/settings", section: "account" },
+  { label: "Themes", href: "/themes", section: "account" },
   { label: "Profile", href: "/profile", section: "account" },
 ];
 
@@ -62,6 +64,8 @@ export function AppShell(props: ParentProps) {
             T
           </div>
           <span class="font-display text-lg font-semibold">Tachyon</span>
+          {/* i18n scaffold (Phase C): i18n.t() available; strings migrate incrementally */}
+          <span class="hidden">{i18n.t("nav.home")}</span>
         </div>
         <nav class="flex-1 overflow-y-auto p-2">
           <For each={SECTIONS}>

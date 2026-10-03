@@ -92,7 +92,7 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done · `[N]` won't do (
 - [ ] SOC2 checklist pages verified against data
 
 ## 9. i18n & a11y — Phase C/F
-- [ ] i18n framework adopted app-wide (string extraction), EN + 1 locale (locale TBD)
+- [~] i18n scaffold shipped (lib/i18n.ts: t() + EN dict + locale signal; app-chrome keys seeded); string extraction + locale #2 = its own workstream
 - [ ] a11y audit (hooks already measure layout shifts/a11y in debug runs) — zero critical findings
 - [ ] Mobile PWA polish: installable, offline page, responsive shell
 
