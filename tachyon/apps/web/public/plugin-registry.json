@@ -1,0 +1,38 @@
+{
+  "$comment": "Tachyon community plugin registry — OSS v1 ships this file with the app; a future phase can serve it from a remote URL. Install = POST /api/v1/plugins with this manifest.",
+  "plugins": [
+    {
+      "name": "word-count",
+      "description": "Live word/character count with reading-time estimates",
+      "version": "0.1.0",
+      "author": "tachyon",
+      "homepage": "https://github.com/WyattAu/Tachyon",
+      "license": "MIT",
+      "extension_points": ["status_bar"],
+      "runtime_type": "wasm",
+      "entry_point": "wordcount.wasm"
+    },
+    {
+      "name": "wikilink-preview",
+      "description": "Hover cards for [[wikilinks]] rendered from linked documents",
+      "version": "0.1.0",
+      "author": "tachyon",
+      "homepage": "https://github.com/WyattAu/Tachyon",
+      "license": "MIT",
+      "extension_points": ["editor_hover"],
+      "runtime_type": "wasm",
+      "entry_point": "wikilink.wasm"
+    },
+    {
+      "name": "daily-template",
+      "description": "Auto-applies a template to new daily notes",
+      "version": "0.1.0",
+      "author": "community",
+      "homepage": "https://github.com/WyattAu/Tachyon",
+      "license": "MIT",
+      "extension_points": ["on_daily_create"],
+      "runtime_type": "wasm",
+      "entry_point": "daily.wasm"
+    }
+  ]
+}

@@ -117,11 +117,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "period_start": "2026-09-01T00:00:00Z", "period_end": "2026-10-01T00:00:00Z",
                 "documents_created": 2}}))
             return
-        if path == "/api/v1/plugins":
+        if path == "/api/v1/plugins" and self.command == "GET":
             self._send(200, json.dumps([
                 {"id": "plg1", "name": "word-count", "description": "Counts words",
-                 "author": "tachyon", "enabled": True},
+                 "version": "0.1.0", "author": "tachyon", "enabled": True},
             ]))
+            return
+        if path == "/api/v1/plugins" and self.command == "POST":
+            self._send(200, json.dumps({"plugin": {"id": "plg-new", "name": "installed", "enabled": True}}))
             return
         if path == "/api/v1/projects":
             self._send(200, json.dumps([
