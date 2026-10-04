@@ -5,7 +5,7 @@
   "identifier": "com.tachyon.desktop",
   "build": {
     "beforeBuildCommand": "cd ../.. && cd crates/frontend && trunk build --release && ./copy-public.sh",
-    "frontendDist": "../../frontend/dist"
+    "frontendDist": "../../../apps/web/dist"
   },
   "app": {
     "withGlobalTauri": true,

@@ -39,6 +39,64 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+// --- Tauri transport (desktop) ---------------------------------------------
+// Inside the Tauri webview (tauri://localhost) plain fetch cannot reach the
+// API server (origin restrictions), so requests route through the api_proxy
+// IPC command — the same bridge the desktop Leptos client used.
+function isTauri(): boolean {
+  return typeof window !== "undefined" && "__TAURI__" in window;
+}
+
+async function tauriFetch(input: Request, init?: RequestInit): Promise<Response> {
+  const core = (
+    window as unknown as {
+      __TAURI__: { core: { invoke: (cmd: string, args: unknown) => Promise<unknown> } };
+    }
+  ).__TAURI__.core;
+  const url = new URL(input.url);
+  // path includes /api/v1 — the desktop api_proxy does base + path
+  const path = url.pathname + url.search;
+  const method = (init?.method ?? input.method ?? "GET").toUpperCase();
+  let body: unknown = undefined;
+  if (init?.body && typeof init.body === "string") {
+    try {
+      body = JSON.parse(init.body);
+    } catch {
+      body = init.body;
+    }
+  } else if (init?.body) {
+    body = init.body;
+  } else if (method !== "GET" && method !== "HEAD" && input.body) {
+    // openapi-fetch may pass the payload on the Request itself (init.body
+    // undefined) — drain the stream and parse it, or api_proxy sends no
+    // body at all and the server answers 400.
+    try {
+      const text = await input.clone().text();
+      body = text ? JSON.parse(text) : undefined;
+    } catch {
+      body = undefined;
+    }
+  }
+  const headers: Record<string, string> = {};
+  new Headers(init?.headers ?? input.headers).forEach((v, k) => {
+    headers[k] = v;
+  });
+  // auth injection — the non-Tauri branch injects after we return, so the
+  // Tauri branch must do its own (regression: every authed call 401'd)
+  const token = getToken();
+  if (token && !headers["authorization"] && !headers["Authorization"]) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const result = (await core.invoke("api_proxy", { method, path, body, headers })) as {
+    status: number;
+    body: unknown;
+  };
+  return new Response(JSON.stringify(result.body ?? null), {
+    status: result.status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
 export const api = createClient<paths>({
   baseUrl: resolveBaseUrl(),
   // openapi-fetch passes a Request whose headers carry Content-Type (and
@@ -48,6 +106,7 @@ export const api = createClient<paths>({
   // (The runtime really does pass two arguments — the published type
   // under-declares it.)
   fetch: ((input: Request, init?: RequestInit) => {
+    if (isTauri()) return tauriFetch(input as Request, init);
     const headers = new Headers(input.headers);
     if (init?.headers) {
       new Headers(init.headers).forEach((v, k) => headers.set(k, v));
@@ -57,7 +116,7 @@ export const api = createClient<paths>({
       headers.set("Authorization", `Bearer ${token}`);
     }
     return fetch(input, { ...init, headers });
-  }) as unknown as (input: Request) => Promise<Response>,
+  }) as unknown as (input: Request, init?: RequestInit) => Promise<Response>,
 });
 
 /** Typed helpers for the hottest paths — thin, all types flow from schema. */
@@ -87,10 +146,25 @@ export async function health() {
 
 export async function me(): Promise<TachyonUser> {
   // NOTE: the OpenAPI spec double-prefixes this path ("/api/v1/auth/me" —
-  // utoipa annotation bug), so the typed GET would 404 at runtime. Plain
-  // fetch until the server annotation is fixed (tracked in
-  // feature-complete-v1.md Phase A). Runtime route: GET /api/v1/auth/me.
-  const res = await fetch(`${resolveBaseUrl()}/auth/me`, {
+  // utoipa annotation bug, server annotation fix tracked) so the typed
+  // client can't express it. Route through the api transport manually:
+  // same-origin fetch in web, api_proxy IPC in Tauri.
+  const path = "/auth/me";
+  if (isTauri()) {
+    const core = (
+      window as unknown as {
+        __TAURI__: { core: { invoke: (cmd: string, args: unknown) => Promise<unknown> } };
+      }
+    ).__TAURI__.core;
+    const result = (await core.invoke("api_proxy", {
+      method: "GET",
+      path,
+      headers: { Authorization: `Bearer ${getToken() ?? ""}` },
+    })) as { status: number; body: unknown };
+    if (result.status !== 200 || !result.body) throw new Error(`/auth/me ${result.status}`);
+    return result.body as unknown as TachyonUser;
+  }
+  const res = await fetch(`${resolveBaseUrl()}${path}`, {
     headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
   });
   if (!res.ok) throw new Error(`/auth/me ${res.status}`);
