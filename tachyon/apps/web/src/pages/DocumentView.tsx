@@ -2,6 +2,7 @@ import { Show, createResource, createSignal } from "solid-js";
 import { useParams } from "@solidjs/router";
 import { api } from "@/lib/api/client";
 import { renderMarkdown } from "@/lib/markdown";
+import { PdfView, findPdfAttachment } from "@/pages/PdfView";
 
 /** Document view (read mode) — Solid port (Phase B). Rendered markdown. */
 
@@ -28,6 +29,8 @@ export default function DocumentView() {
   });
 
   const [html] = createResource(doc, async (d) => renderMarkdown(d?.content ?? ""));
+
+  const [pdfAttachment] = createResource(docId, async (id) => findPdfAttachment(id));
 
   return (
     <div class="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
@@ -60,11 +63,20 @@ export default function DocumentView() {
                 <span>updated {new Date(d().updated_at as string).toLocaleDateString()}</span>
               </Show>
             </div>
+            <Show when={pdfAttachment()}>
+              {(a) => (
+                <div class="mb-4">
+                  <PdfView docId={docId()} attachment={a()} title={d().title} />
+                </div>
+              )}
+            </Show>
+            <Show when={!pdfAttachment()}>
             {/* markdown render — engine-wasm parity path (Phase C ties to SSG renderer) */}
             <article
               class="prose max-w-none dark:prose-invert prose-headings:font-display"
               innerHTML={html() ?? "<p></p>"}
             />
+            </Show>
           </>
         )}
       </Show>
