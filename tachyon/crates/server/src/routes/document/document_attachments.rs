@@ -1,5 +1,6 @@
 use crate::error::ServerError;
 use axum::{
+    Extension,
     extract::{Multipart, Path, State},
     http::StatusCode,
     response::{IntoResponse, Json},
@@ -87,9 +88,16 @@ pub async fn list_attachments(
 pub async fn upload_attachment(
     Path(document_id): Path<String>,
     State(state): State<DocumentState>,
+    auth: Option<Extension<crate::middleware::AuthContext>>,
     mut multipart: Multipart,
 ) -> Result<Json<AttachmentResponse>, ServerError> {
-    let user_id = tachyon_core::generate_user_id();
+    // created_by MUST reference an existing user (FK) — the previous
+    // generate_user_id() produced a random UUID and every upload violated
+    // document_attachments_created_by_fkey (dogfooding find).
+    let user_id = auth
+        .as_ref()
+        .map(|Extension(ctx)| ctx.user_id.as_str().to_string())
+        .unwrap_or_else(|| tachyon_core::generate_user_id().as_str().to_string());
     let repo = tachyon_database::AttachmentRepository::new(state.pool.clone());
 
     if let Some(field) = multipart.next_field().await.ok().flatten() {

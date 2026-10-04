@@ -53,7 +53,12 @@ pub struct AttachmentRepository {
 
 impl AttachmentRepository {
     pub fn new(pool: DatabasePool) -> Self {
-        let upload_dir = PathBuf::from("/uploads");
+        // Respect TACHYON_FILES_ROOT (documented default ./content/uploads).
+        // The previous hardcoded "/uploads" required root and made every
+        // attachment upload fail with EACCES on non-root deployments.
+        let upload_dir = std::env::var("TACHYON_FILES_ROOT")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("./content/uploads"));
         Self { pool, upload_dir }
     }
 
