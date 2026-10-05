@@ -44,6 +44,17 @@ pub struct ApiKeyListResponse {
     pub total: i64,
 }
 
+/// Row shape for the API-key listing query.
+type ApiKeyListRow = (
+    String,
+    String,
+    String,
+    Vec<String>,
+    chrono::DateTime<chrono::Utc>,
+    Option<chrono::DateTime<chrono::Utc>>,
+    Option<chrono::DateTime<chrono::Utc>>,
+);
+
 #[derive(Debug, Deserialize)]
 pub struct ApiKeyQuery {
     pub page: Option<i64>,
@@ -151,15 +162,7 @@ pub async fn list_api_keys(
         .await
         .map_err(|e| ServerError::database(e.to_string()))?;
 
-    let rows: Vec<(
-        String,
-        String,
-        String,
-        Vec<String>,
-        chrono::DateTime<chrono::Utc>,
-        Option<chrono::DateTime<chrono::Utc>>,
-        Option<chrono::DateTime<chrono::Utc>>,
-    )> = sqlx::query_as(
+    let rows: Vec<ApiKeyListRow> = sqlx::query_as(
         r#"SELECT id, key_prefix, name, scopes, created_at, expires_at, last_used_at
            FROM api_keys
            WHERE user_id = $1 AND is_active = true

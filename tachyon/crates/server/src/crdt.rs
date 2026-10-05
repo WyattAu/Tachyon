@@ -169,17 +169,26 @@ impl CrdtDocumentManager {
             .get(document_id)
             .ok_or("Document not in memory")?;
 
-        let (state, state_vector) = {
+        let (state, state_vector, text) = {
             let txn = doc_ref.doc.transact();
             let sv = txn.state_vector();
             let state = txn.encode_state_as_update_v1(&sv);
             let state_vector = sv.encode_v1();
-            (state, state_vector)
+            let text = doc_ref.text.get_string(&txn);
+            (state, state_vector, text)
         };
 
         tachyon_database::crdt::upsert_crdt_state(pool, uuid, &state_vector, &state)
             .await
             .map_err(|e| format!("Failed to flush CRDT state: {}", e))?;
+
+        // Project the converged room text onto documents.content so REST,
+        // search and SSG observe collaborative edits.
+        if !text.is_empty() {
+            tachyon_database::crdt::materialize_document_content(pool, uuid, &text)
+                .await
+                .map_err(|e| format!("Failed to materialize document content: {}", e))?;
+        }
 
         Ok(())
     }

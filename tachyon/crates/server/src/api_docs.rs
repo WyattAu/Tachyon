@@ -574,7 +574,7 @@ mod tests {
     #[test]
     fn openapi_list_documents_has_query_params() {
         let spec = openapi_spec();
-        let json = serde_json::to_value(&spec).unwrap();
+        let json = serde_json::to_value(spec).unwrap();
         let get = json["paths"]["/documents"]["get"].clone();
         assert!(!get.is_null(), "GET /documents missing from spec");
         let params = get["parameters"].as_array().cloned().unwrap_or_default();
@@ -590,7 +590,7 @@ mod tests {
     #[test]
     fn openapi_auth_me_has_get_and_put() {
         let spec = openapi_spec();
-        let json = serde_json::to_value(&spec).unwrap();
+        let json = serde_json::to_value(spec).unwrap();
         let me = &json["paths"]["/auth/me"];
         assert!(me["get"].is_object(), "GET /auth/me missing from spec");
         assert!(me["put"].is_object(), "PUT /auth/me missing from spec");

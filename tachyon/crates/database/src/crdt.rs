@@ -130,6 +130,32 @@ pub async fn gc_updates(pool: &PgPool, document_id: Uuid, keep_count: i64) -> sq
     Ok(result.rows_affected())
 }
 
+/// Materialize the CRDT room text into `documents.content`.
+///
+/// The in-memory room and the `crdt_documents` blob are the collaboration
+/// source of truth, but REST reads, search indexing and SSG all read
+/// `documents.content`. Flushing the room therefore has to project the
+/// converged text back onto the document row, otherwise a reload (or the
+/// static build) shows pre-collaboration content.
+pub async fn materialize_document_content(
+    pool: &PgPool,
+    document_id: Uuid,
+    content: &str,
+) -> sqlx::Result<bool> {
+    let result = sqlx::query(
+        r#"
+        UPDATE documents
+        SET content = $2, updated_at = NOW()
+        WHERE id = $1::uuid
+        "#,
+    )
+    .bind(document_id)
+    .bind(content)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
 /// Delete all CRDT state for a document.
 pub async fn delete_crdt_state(pool: &PgPool, document_id: Uuid) -> sqlx::Result<()> {
     sqlx::query("DELETE FROM crdt_updates WHERE document_id = $1")

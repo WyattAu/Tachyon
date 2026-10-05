@@ -132,11 +132,10 @@ pub async fn saml_acs(
             Some(assertion_cert) => {
                 // Normalize: strip PEM headers/whitespace for comparison
                 let normalize = |c: &str| -> String {
-                    c.replace("-----BEGIN CERTIFICATE-----", "")
-                        .replace("-----END CERTIFICATE-----", "")
-                        .replace('\n', "")
-                        .replace('\r', "")
-                        .replace(' ', "")
+                    let stripped = c
+                        .replace("-----BEGIN CERTIFICATE-----", "")
+                        .replace("-----END CERTIFICATE-----", "");
+                    stripped.chars().filter(|ch| !ch.is_whitespace()).collect()
                 };
                 let normalized_idp = normalize(idp_cert);
                 let normalized_assertion = normalize(assertion_cert);
@@ -166,10 +165,12 @@ pub async fn saml_acs(
                 "SAML assertion has Signature element but no X509Certificate reference, and no IdP certificate configured"
             );
         } else {
-            debug!(
-                certificate_reference = parsed.signature_cert_reference.as_ref().unwrap(),
-                "SAML response signature reference (no IdP certificate configured for verification)"
-            );
+            if let Some(cert_reference) = parsed.signature_cert_reference.as_ref() {
+                debug!(
+                    certificate_reference = cert_reference,
+                    "SAML response signature reference (no IdP certificate configured for verification)"
+                );
+            }
         }
     }
 

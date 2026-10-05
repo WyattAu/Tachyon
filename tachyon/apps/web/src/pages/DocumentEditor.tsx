@@ -4,6 +4,7 @@ import {
   createResource,
   createSignal,
   For,
+  onCleanup,
   Show,
 } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
@@ -18,6 +19,7 @@ import {
   type EncryptedPayload,
 } from "@/lib/e2ee";
 import { e2eApi } from "@/lib/e2eApi";
+import { connectCollab, type CollabHandle } from "@/lib/editor/collab";
 import { createEditor, createEditorState, type EditorHandle } from "@/lib/editor/wasmEditor";
 
 /**
@@ -43,6 +45,9 @@ export default function DocumentEditor() {
   const [booted, setBooted] = createSignal(false);
   const [encrypted, setEncrypted] = createSignal(false);
   const [docKey, setDocKey] = createSignal<CryptoKey | null>(null);
+  const [collabConnected, setCollabConnected] = createSignal<boolean | null>(null);
+  let collab: CollabHandle | null = null;
+  let collabDebounce: ReturnType<typeof setTimeout> | null = null;
 
   // Load document content, then boot the wasm model over it.
   const [doc] = createResource(docId, async (id) => {
@@ -78,12 +83,32 @@ export default function DocumentEditor() {
     setHandle(h);
     state.syncFrom(h);
     setBooted(true);
+    // CRDT collab: local edits broadcast as yrs updates; remote updates merge
+    // into the model. Encrypted docs skip collab until key-sharing ships.
+    if (!encrypted()) {
+      collab = connectCollab(
+        docId(),
+        {
+          encodeUpdate: () => new Uint8Array(h.encodeUpdate()),
+          applyRemoteUpdate: (u: Uint8Array) => h.applyRemoteUpdate(u),
+          encodeFullState: () => new Uint8Array(h.encodeFullState()),
+        },
+        () => state.syncFrom(h),
+        setCollabConnected
+      );
+    }
     return h;
   });
 
   const resync = () => {
     const h = handle();
     if (h) state.syncFrom(h);
+  };
+
+  const broadcastEdit = () => {
+    if (!collab) return;
+    if (collabDebounce) clearTimeout(collabDebounce);
+    collabDebounce = setTimeout(() => collab?.sendUpdate(), 350);
   };
 
   const jwkKey = () => `e2e:doc:${docId()}`;
@@ -158,10 +183,12 @@ export default function DocumentEditor() {
       e.preventDefault();
       h.key(e.key);
       resync();
+      broadcastEdit();
     } else if (e.key.length === 1) {
       e.preventDefault();
       h.insertText(e.key);
       resync();
+      broadcastEdit();
     }
     // multi-char non-named keys (IME, dead keys): browser default (v1)
   };
@@ -189,6 +216,8 @@ export default function DocumentEditor() {
   createEffect(() => {
     if (doc()) document.title = `${doc()!.title} — Tachyon`;
   });
+
+  onCleanup(() => collab?.close());
 
   return (
     <div class="mx-auto max-w-4xl px-4 py-4">
@@ -268,6 +297,14 @@ export default function DocumentEditor() {
           <span>
             {state.words()} words · {state.chars()} chars
           </span>
+          <Show when={collabConnected() !== null}>
+            <span
+              class={`mr-2 ${collabConnected() ? "text-green-500" : "text-gray-500"}`}
+              title="CRDT collaboration (y-websocket)"
+            >
+              {collabConnected() ? "collab:live" : "collab:off"}
+            </span>
+          </Show>
           <span>
             {saveState() === "saving"
               ? "Saving…"

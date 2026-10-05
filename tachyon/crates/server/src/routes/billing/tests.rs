@@ -178,8 +178,10 @@ mod tests {
         assert_eq!(Plan::Team.max_documents(), 100_000);
         assert_eq!(Plan::Team.max_members(), 50);
 
-        assert_eq!(Plan::Enterprise.max_documents(), usize::MAX);
-        assert_eq!(Plan::Enterprise.max_members(), usize::MAX);
+        // Enterprise is the JS-safe "unlimited" sentinel, not usize::MAX —
+        // usize::MAX loses precision crossing the JS number boundary.
+        assert_eq!(Plan::Enterprise.max_documents(), Plan::UNLIMITED);
+        assert_eq!(Plan::Enterprise.max_members(), Plan::UNLIMITED);
     }
 
     #[test]

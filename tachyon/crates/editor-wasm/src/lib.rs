@@ -69,12 +69,16 @@ impl TachyonEditor {
 
     /// Content of one line (no trailing newline).
     pub fn line(&self, idx: usize) -> String {
-        self.inner.buffer().line(idx).trim_end_matches('\n').to_string()
+        self.inner
+            .buffer()
+            .line(idx)
+            .trim_end_matches('\n')
+            .to_string()
     }
 
     /// Cursor position as `[line, col]` (0-based).
     pub fn cursor(&self) -> Vec<usize> {
-        let c = self.inner.cursor();
+        let (c, _) = self.inner.cursors().active();
         vec![c.line, c.col]
     }
 
@@ -179,7 +183,14 @@ mod tests {
     #[test]
     fn named_keys_do_not_type() {
         let mut e = ed("line1\nline2");
-        for k in ["End", "ArrowDown", "Home", "ArrowLeft", "ArrowUp", "ArrowRight"] {
+        for k in [
+            "End",
+            "ArrowDown",
+            "Home",
+            "ArrowLeft",
+            "ArrowUp",
+            "ArrowRight",
+        ] {
             dispatch_key(&mut e, k);
         }
         assert_eq!(e.content(), "line1\nline2");
