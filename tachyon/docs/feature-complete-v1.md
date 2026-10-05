@@ -46,10 +46,12 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done · `[N]` won't do (
 - [ ] Blog: public feed + admin editor
 
 ## 4. Collaboration — Phase E
-- [ ] **2-client CRDT editing E2E** (control plane drives two instances, one doc)
+- [x] **2-client CRDT editing E2E** — Solid editor joins `/ws/{room}` (yrs over
+      y-websocket), converges both ways, flush materializes `documents.content`
+      (`9470388`, `apps/web/scripts/crdt-e2e.mjs`)
 - [ ] Presence (PUT/GET/DELETE presence endpoints) + UI avatars
 - [ ] Comments/mentions via collaboration endpoints
-- [ ] Notifications: SSE stream → toast + `/notifications` page (page file currently dead)
+- [x] Notifications: SSE stream → toast + `/notifications` page (`587e025`)
 - [ ] Activity feed
 
 ## 5. Teams/Orgs/Admin — Phase B/C
