@@ -433,6 +433,10 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
             loop {
                 interval.tick().await;
                 cleanup_crdt.cleanup_stale_clients(300).await;
+                // Presence from clients that vanished without a clean close
+                // (crashed tab, dropped network) would otherwise haunt the
+                // room's avatar list indefinitely.
+                cleanup_crdt.expire_stale_presence().await;
             }
         });
     }
@@ -978,18 +982,17 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
         .nest("/api/v2", api_v2)
         .layer(
             ServiceBuilder::new()
-                .layer(
-                    TraceLayer::new_for_http().make_span_with(|request: &axum::extract::Request| {
+                .layer(TraceLayer::new_for_http().make_span_with(
+                    |request: &axum::extract::Request| {
                         // Redact the query string in the span's recorded URI —
                         // tower-http's default span would leak credentials
                         // (token=...) into every DEBUG-level span line.
                         let uri = request.uri();
                         let redacted_uri = match uri.query() {
                             Some(q) => {
-                                let redacted = crate::middleware::request_tracing::redact_query(
-                                    Some(q),
-                                )
-                                .unwrap_or_default();
+                                let redacted =
+                                    crate::middleware::request_tracing::redact_query(Some(q))
+                                        .unwrap_or_default();
                                 axum::http::Uri::builder()
                                     .path_and_query(format!("{}?{}", uri.path(), redacted))
                                     .build()
@@ -1004,8 +1007,8 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
                             uri = %redacted_uri,
                             version = ?request.version()
                         )
-                    }),
-                )
+                    },
+                ))
                 .layer(axum::middleware::from_fn_with_state(
                     crate::middleware::request_tracing::RequestTracingState {
                         metrics: metrics.clone(),

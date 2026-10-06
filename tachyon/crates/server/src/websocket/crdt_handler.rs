@@ -25,15 +25,43 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use futures_util::{SinkExt, StreamExt};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::{RwLock, broadcast};
 use tracing::{debug, info, warn};
+
+use yrs::sync::AwarenessUpdate;
+use yrs::sync::awareness::AwarenessUpdateEntry;
+use yrs::updates::decoder::Decode;
+use yrs::updates::encoder::Encode;
 
 use crate::broadcast_bus::{BroadcastEvent, SharedBroadcastBus};
 use crate::crdt::CrdtDocumentManager;
 use crate::websocket::types::{PresenceInfo, PresenceStatus};
 use tachyon_core::types::crdt::{CollaborationInfo, CrdtDocumentState, SelectionRange};
+
+/// One peer's presence entry, as held by the server.
+#[derive(Debug, Clone)]
+struct PresenceEntry {
+    clock: u32,
+    json: Arc<str>,
+    last_seen_ms: u64,
+}
+
+/// A peer's presence as reported to API callers.
+#[derive(Debug, Clone)]
+pub struct PresencePeer {
+    pub client_id: u64,
+    pub clock: u32,
+    pub state: Option<serde_json::Value>,
+}
+
+fn now_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
 
 // ============================================================================
 // Connection Manager
@@ -107,6 +135,22 @@ pub struct CrdtConnectionManager {
     max_message_size: usize,
     /// Shared broadcast bus for receiving OT events from collaboration routes.
     bus: Arc<SharedBroadcastBus>,
+    /// Per-room presence state.
+    ///
+    /// Awareness is a separate state-based CRDT, so the server must own it:
+    /// relaying awareness frames blind (the previous behaviour) means no
+    /// expiry, no disconnect cleanup, and no way to answer "who is in this
+    /// room" for a client that connects late. `yrs::sync::Awareness` is
+    /// deliberately not used here — it holds `Rc`-based subscribers and so is
+    /// not `Send`, which an axum handler future requires. The wire format is
+    /// identical (`yrs::sync::AwarenessUpdate`), only the storage differs.
+    room_presence: Arc<RwLock<HashMap<String, HashMap<u64, PresenceEntry>>>>,
+    /// Which awareness client IDs each connection controls. Without this the
+    /// server cannot distinguish two tabs of the same browser, and closing one
+    /// tab would strip presence from its sibling.
+    conn_clients: Arc<RwLock<HashMap<String, HashSet<u64>>>>,
+    /// Presence entries older than this are dropped by the expiry sweep.
+    awareness_timeout_secs: u64,
 }
 
 impl CrdtConnectionManager {
@@ -123,6 +167,9 @@ impl CrdtConnectionManager {
             heartbeat_interval_secs: 30,
             max_message_size: 10 * 1024 * 1024, // 10 MiB
             bus,
+            room_presence: Arc::new(RwLock::new(HashMap::new())),
+            conn_clients: Arc::new(RwLock::new(HashMap::new())),
+            awareness_timeout_secs: 30,
         }
     }
 
@@ -143,6 +190,9 @@ impl CrdtConnectionManager {
             heartbeat_interval_secs,
             max_message_size: 10 * 1024 * 1024, // 10 MiB
             bus,
+            room_presence: Arc::new(RwLock::new(HashMap::new())),
+            conn_clients: Arc::new(RwLock::new(HashMap::new())),
+            awareness_timeout_secs: 30,
         }
     }
 
@@ -159,6 +209,9 @@ impl CrdtConnectionManager {
             heartbeat_interval_secs: 30,
             max_message_size: 10 * 1024 * 1024,
             bus,
+            room_presence: Arc::new(RwLock::new(HashMap::new())),
+            conn_clients: Arc::new(RwLock::new(HashMap::new())),
+            awareness_timeout_secs: 30,
         }
     }
 
@@ -216,6 +269,175 @@ impl CrdtConnectionManager {
     /// Subscribe to relay events (used by per-connection tasks).
     fn subscribe(&self) -> broadcast::Receiver<RelayEvent> {
         self.broadcast_tx.subscribe()
+    }
+
+    /// Apply a peer's awareness update and remember which client IDs this
+    /// connection now speaks for.
+    ///
+    /// Awareness is a state-based CRDT keyed by client ID with a per-entry
+    /// clock: an entry is applied only if its clock is newer than what we
+    /// hold, and a `null` state means "this client went away".
+    ///
+    /// Returns the update to relay to the rest of the room.
+    pub async fn apply_awareness(
+        &self,
+        room: &str,
+        conn_id: &str,
+        payload: &[u8],
+    ) -> Result<Vec<u8>, String> {
+        let update = AwarenessUpdate::decode_v1(payload)
+            .map_err(|e| format!("failed to decode awareness update: {e}"))?;
+        let now_ms = now_millis();
+        let mut accepted = HashMap::with_capacity(update.clients.len());
+
+        {
+            let mut rooms = self.room_presence.write().await;
+            let peers = rooms.entry(room.to_string()).or_default();
+            let mut owned = self.conn_clients.write().await;
+            let owned_ids = owned.entry(conn_id.to_string()).or_default();
+
+            for (client_id, entry) in &update.clients {
+                // A connection may legitimately speak for several client IDs
+                // (two editors in one tab). Record them all so a disconnect can
+                // remove exactly this connection's presence and no more.
+                owned_ids.insert(*client_id);
+
+                let gone = entry.json.as_ref() == "null";
+                let known = peers.get(client_id);
+                if gone {
+                    peers.remove(client_id);
+                    accepted.insert(*client_id, entry.clone());
+                    continue;
+                }
+                // Stale clock: a late frame from a previous session.
+                if known.is_some_and(|k| k.clock >= entry.clock) {
+                    continue;
+                }
+                peers.insert(
+                    *client_id,
+                    PresenceEntry {
+                        clock: entry.clock,
+                        json: entry.json.clone(),
+                        last_seen_ms: now_ms,
+                    },
+                );
+                accepted.insert(*client_id, entry.clone());
+            }
+        }
+
+        if accepted.is_empty() {
+            // Encoding an empty AwarenessUpdate still emits a byte, which would
+            // put a meaningless frame on the wire for every stale heartbeat.
+            return Ok(Vec::new());
+        }
+        Ok(AwarenessUpdate { clients: accepted }.encode_v1())
+    }
+
+    /// Encode the room's current presence for a client that just connected.
+    pub async fn awareness_snapshot(&self, room: &str) -> Option<Vec<u8>> {
+        let rooms = self.room_presence.read().await;
+        let peers = rooms.get(room)?;
+        if peers.is_empty() {
+            return None;
+        }
+        let clients = peers
+            .iter()
+            .map(|(id, e)| {
+                (
+                    *id,
+                    AwarenessUpdateEntry {
+                        clock: e.clock,
+                        json: e.json.clone(),
+                    },
+                )
+            })
+            .collect();
+        Some(AwarenessUpdate { clients }.encode_v1())
+    }
+
+    /// Presence peers in a room, with their parsed JSON payload.
+    pub async fn presence_peers(&self, room: &str) -> Vec<PresencePeer> {
+        let rooms = self.room_presence.read().await;
+        let Some(peers) = rooms.get(room) else {
+            return Vec::new();
+        };
+        peers
+            .iter()
+            .map(|(id, e)| PresencePeer {
+                client_id: *id,
+                clock: e.clock,
+                state: serde_json::from_str::<serde_json::Value>(&e.json).ok(),
+            })
+            .collect()
+    }
+
+    /// Drop exactly the presence entries a closing connection owned.
+    ///
+    /// Clearing the whole room here would erase sibling tabs; dropping nothing
+    /// would leak ghosts until the expiry sweep.
+    pub async fn remove_connection_presence(&self, room: &str, conn_id: &str) -> Vec<u8> {
+        let client_ids: Vec<u64> = self
+            .conn_clients
+            .write()
+            .await
+            .remove(conn_id)
+            .map(|ids| ids.into_iter().collect())
+            .unwrap_or_default();
+
+        if client_ids.is_empty() {
+            return Vec::new();
+        }
+
+        let mut rooms = self.room_presence.write().await;
+        let Some(peers) = rooms.get_mut(room) else {
+            return Vec::new();
+        };
+        let mut removed = HashMap::with_capacity(client_ids.len());
+        for id in client_ids {
+            if peers.remove(&id).is_some() {
+                // A null state is how the protocol says "client is offline".
+                removed.insert(
+                    id,
+                    AwarenessUpdateEntry {
+                        clock: u32::MAX,
+                        json: "null".into(),
+                    },
+                );
+            }
+        }
+        if removed.is_empty() {
+            return Vec::new();
+        }
+        AwarenessUpdate { clients: removed }.encode_v1()
+    }
+
+    /// Drop presence entries that stopped heartbeating.
+    ///
+    /// Awareness clients re-broadcast at least every 15s; anything older than
+    /// `awareness_timeout_secs` is a client that vanished without a clean
+    /// disconnect (crashed tab, dropped network) and would otherwise haunt the
+    /// room's avatar list forever.
+    pub async fn expire_stale_presence(&self) -> usize {
+        let now_ms = now_millis();
+        let timeout_ms = self.awareness_timeout_secs.saturating_mul(1000);
+        let mut removed = 0usize;
+
+        let mut rooms = self.room_presence.write().await;
+        for peers in rooms.values_mut() {
+            let stale: Vec<u64> = peers
+                .iter()
+                .filter(|(_, e)| now_ms.saturating_sub(e.last_seen_ms) > timeout_ms)
+                .map(|(id, _)| *id)
+                .collect();
+            for id in stale {
+                peers.remove(&id);
+                removed += 1;
+            }
+        }
+        if removed > 0 {
+            debug!(removed, "expired stale presence entries");
+        }
+        removed
     }
 
     /// Register a client in a room.
@@ -410,6 +632,17 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
         }
     }
 
+    // Send current presence to the newly connected client so it can render
+    // avatars without waiting for the next heartbeat.
+    if let Some(snapshot) = manager.awareness_snapshot(&room).await {
+        let mut frame = Vec::with_capacity(snapshot.len() + 1);
+        frame.push(1); // message type: awareness
+        frame.extend_from_slice(&snapshot);
+        if let Err(e) = ws_sender.send(Message::Binary(frame.into())).await {
+            warn!(client_id = %client_id, error = %e, "Failed to send initial presence");
+        }
+    }
+
     // Forward relay events to this client's WebSocket.
     let room_for_send = room.clone();
     let client_id_for_send = client_id.clone();
@@ -578,13 +811,43 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
                             });
                         }
                         1 => {
-                            let seq = manager_for_recv.next_seq();
-                            let _ = broadcast_tx.send(RelayEvent::Binary {
-                                room: room_for_recv.clone(),
-                                sender: client_id_for_recv.clone(),
-                                data: data_vec,
-                                seq,
-                            });
+                            // Awareness (presence). Applying it server-side is
+                            // what makes expiry, disconnect cleanup and
+                            // "who is here" possible; relaying it blind (the
+                            // old behaviour) meant the server knew nothing
+                            // about who was in a room.
+                            if data_vec.len() > 1 {
+                                match manager_for_recv
+                                    .apply_awareness(
+                                        &room_for_recv,
+                                        &client_id_for_recv,
+                                        &data_vec[1..],
+                                    )
+                                    .await
+                                {
+                                    Ok(update) if !update.is_empty() => {
+                                        let mut frame = Vec::with_capacity(update.len() + 1);
+                                        frame.push(1); // message type: awareness
+                                        frame.extend_from_slice(&update);
+                                        let seq = manager_for_recv.next_seq();
+                                        let _ = broadcast_tx.send(RelayEvent::Binary {
+                                            room: room_for_recv.clone(),
+                                            sender: client_id_for_recv.clone(),
+                                            data: frame,
+                                            seq,
+                                        });
+                                    }
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        warn!(
+                                            client_id = %client_id_for_recv,
+                                            room = %room_for_recv,
+                                            error = %e,
+                                            "Failed to apply awareness update"
+                                        );
+                                    }
+                                }
+                            }
                         }
                         2 => {
                             if let Some(selection) = parse_selection_update(&data_vec) {
@@ -703,6 +966,26 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // Clean up: remove client and notify.
     if let Some(removed_room) = manager.leave_room(&client_id).await {
         info!(client_id = %client_id, room = %removed_room, "CRDT client disconnected");
+
+        // Remove only the presence this connection owned, and tell the room.
+        // Without this a peer that leaves cleanly still shows an avatar until
+        // the 30s expiry sweep catches it.
+        let gone = manager
+            .remove_connection_presence(&removed_room, &client_id)
+            .await;
+        if !gone.is_empty() {
+            let mut frame = Vec::with_capacity(gone.len() + 1);
+            frame.push(1); // message type: awareness
+            frame.extend_from_slice(&gone);
+            let seq = manager.next_seq();
+            let _ = manager.broadcast_tx.send(RelayEvent::Binary {
+                room: removed_room.clone(),
+                sender: client_id.clone(),
+                data: frame,
+                seq,
+            });
+        }
+
         let _ = manager.broadcast_tx.send(RelayEvent::Left {
             room: removed_room,
             user_id: client_id.clone(),
@@ -762,6 +1045,175 @@ fn parse_selection_update(data: &[u8]) -> Option<SelectionRange> {
 
 #[cfg(test)]
 mod tests {
+    // ─── Presence (awareness) ──────────────────────────────────────────────
+
+    fn awareness_frame(entries: &[(u64, u32, &str)]) -> Vec<u8> {
+        let clients = entries
+            .iter()
+            .map(|(id, clock, json)| {
+                (
+                    *id,
+                    AwarenessUpdateEntry {
+                        clock: *clock,
+                        json: (*json).into(),
+                    },
+                )
+            })
+            .collect();
+        let mut payload = AwarenessUpdate { clients }.encode_v1();
+        payload.insert(0, 1); // message type: awareness
+        payload
+    }
+
+    #[tokio::test]
+    async fn presence_is_stored_and_readable_by_peers() {
+        let m = CrdtConnectionManager::new(test_bus());
+        let frame = awareness_frame(&[(7, 1, r#"{"user":{"name":"ada"}}"#)]);
+        let out = m
+            .apply_awareness("doc1", "conn-a", &frame[1..])
+            .await
+            .unwrap();
+        assert!(!out.is_empty(), "accepted presence must be relayed");
+
+        let peers = m.presence_peers("doc1").await;
+        assert_eq!(peers.len(), 1);
+        assert_eq!(peers[0].client_id, 7);
+        assert_eq!(
+            peers[0].state.as_ref().unwrap()["user"]["name"],
+            serde_json::json!("ada")
+        );
+    }
+
+    #[tokio::test]
+    async fn presence_snapshot_is_empty_until_someone_joins() {
+        let m = CrdtConnectionManager::new(test_bus());
+        assert!(m.awareness_snapshot("doc1").await.is_none());
+
+        let frame = awareness_frame(&[(1, 1, r#"{"user":{"name":"a"}}"#)]);
+        m.apply_awareness("doc1", "conn-a", &frame[1..])
+            .await
+            .unwrap();
+        assert!(m.awareness_snapshot("doc1").await.is_some());
+    }
+
+    #[tokio::test]
+    async fn presence_clock_ordering_rejects_stale_update() {
+        let m = CrdtConnectionManager::new(test_bus());
+        let newer = awareness_frame(&[(5, 5, r#"{"user":{"name":"new"}}"#)]);
+        m.apply_awareness("doc1", "conn-a", &newer[1..])
+            .await
+            .unwrap();
+
+        // A late frame from a previous session must not resurrect old state.
+        let older = awareness_frame(&[(5, 2, r#"{"user":{"name":"old"}}"#)]);
+        let out = m
+            .apply_awareness("doc1", "conn-a", &older[1..])
+            .await
+            .unwrap();
+        assert!(out.is_empty(), "stale clock must not be relayed");
+
+        let peers = m.presence_peers("doc1").await;
+        assert_eq!(
+            peers[0].state.as_ref().unwrap()["user"]["name"],
+            serde_json::json!("new")
+        );
+    }
+
+    #[tokio::test]
+    async fn disconnect_removes_only_that_connections_presence() {
+        let m = CrdtConnectionManager::new(test_bus());
+
+        // Two tabs in one browser: distinct connections, distinct client IDs.
+        let tab_a = awareness_frame(&[(11, 1, r#"{"user":{"name":"tab-a"}}"#)]);
+        let tab_b = awareness_frame(&[(12, 1, r#"{"user":{"name":"tab-b"}}"#)]);
+        m.apply_awareness("doc1", "conn-a", &tab_a[1..])
+            .await
+            .unwrap();
+        m.apply_awareness("doc1", "conn-b", &tab_b[1..])
+            .await
+            .unwrap();
+        assert_eq!(m.presence_peers("doc1").await.len(), 2);
+
+        let removal = m.remove_connection_presence("doc1", "conn-a").await;
+        assert!(!removal.is_empty(), "leaving must produce a removal frame");
+
+        let peers = m.presence_peers("doc1").await;
+        assert_eq!(peers.len(), 1, "sibling tab must survive its peer's close");
+        assert_eq!(peers[0].client_id, 12);
+    }
+
+    #[tokio::test]
+    async fn null_state_removes_presence_immediately() {
+        let m = CrdtConnectionManager::new(test_bus());
+        let join = awareness_frame(&[(21, 1, r#"{"user":{"name":"x"}}"#)]);
+        m.apply_awareness("doc1", "conn-a", &join[1..])
+            .await
+            .unwrap();
+        assert_eq!(m.presence_peers("doc1").await.len(), 1);
+
+        let leave = awareness_frame(&[(21, 2, "null")]);
+        m.apply_awareness("doc1", "conn-a", &leave[1..])
+            .await
+            .unwrap();
+        assert!(m.presence_peers("doc1").await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn stale_presence_expires() {
+        let m = CrdtConnectionManager::new(test_bus());
+        let frame = awareness_frame(&[(31, 1, r#"{"user":{"name":"ghost"}}"#)]);
+        m.apply_awareness("doc1", "conn-ghost", &frame[1..])
+            .await
+            .unwrap();
+        assert_eq!(m.presence_peers("doc1").await.len(), 1);
+
+        // Backdate the entry past the 30s timeout.
+        {
+            let mut rooms = m.room_presence.write().await;
+            let entry = rooms.get_mut("doc1").unwrap().get_mut(&31).unwrap();
+            entry.last_seen_ms = now_millis().saturating_sub(120_000);
+        }
+
+        let removed = m.expire_stale_presence().await;
+        assert_eq!(removed, 1);
+        assert!(m.presence_peers("doc1").await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn fresh_presence_survives_expiry_sweep() {
+        let m = CrdtConnectionManager::new(test_bus());
+        let frame = awareness_frame(&[(41, 1, r#"{"user":{"name":"live"}}"#)]);
+        m.apply_awareness("doc1", "conn-live", &frame[1..])
+            .await
+            .unwrap();
+        assert_eq!(m.expire_stale_presence().await, 0);
+        assert_eq!(m.presence_peers("doc1").await.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn malformed_presence_frame_is_rejected() {
+        let m = CrdtConnectionManager::new(test_bus());
+        let err = m
+            .apply_awareness("doc1", "conn-a", &[0xff, 0xff, 0xff, 0xff, 0xff])
+            .await
+            .unwrap_err();
+        assert!(err.contains("decode"), "unexpected error: {err}");
+        assert!(m.presence_peers("doc1").await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn presence_is_scoped_per_room() {
+        let m = CrdtConnectionManager::new(test_bus());
+        let a = awareness_frame(&[(51, 1, r#"{"user":{"name":"a"}}"#)]);
+        let b = awareness_frame(&[(52, 1, r#"{"user":{"name":"b"}}"#)]);
+        m.apply_awareness("doc1", "conn-a", &a[1..]).await.unwrap();
+        m.apply_awareness("doc2", "conn-b", &b[1..]).await.unwrap();
+
+        assert_eq!(m.presence_peers("doc1").await.len(), 1);
+        assert_eq!(m.presence_peers("doc2").await.len(), 1);
+        assert_eq!(m.presence_peers("doc1").await[0].client_id, 51);
+    }
+
     use super::*;
 
     fn test_bus() -> Arc<SharedBroadcastBus> {

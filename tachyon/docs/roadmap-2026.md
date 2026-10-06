@@ -1,0 +1,127 @@
+# Engineering Roadmap 2026 (loop-derived)
+
+> Derived from a repo audit + a literature/protocol research pass (Oct 2026).
+> Supersedes the frozen `feature-complete-v1.md` ordering, which had drifted:
+> several rows it lists as open were already shipped, while the collaboration
+> core was marked done on the strength of a *schema and a route* that no client
+> ever used. This file is the working roadmap; `feature-complete-v1.md` stays as
+> the FC gate record.
+
+## Loop
+
+`ANALYZE → RESEARCH → ROADMAP → IMPLEMENT → TEST → VERIFY → DOGFOOD → repeat`
+
+A row closes only with a verification artifact (test output, E2E run, or
+measured number) recorded next to it. No exceptions for "it compiles".
+
+## Findings from the audit
+
+- Collab was **structurally present, functionally absent**: rooms existed, the
+  text projection worked, but there was no awareness, no offline path, no
+  per-client undo scoping, and connect shipped *full* state (O(doc) per
+  connection — state-based anti-entropy where the protocol calls for a
+  state-vector diff).
+- The FC checklist had rows marked open that were in fact done (graph, canvas,
+  admin pages, blog, onboarding, flashcards), and rows marked done whose
+  evidence was weak. Roadmap rebuilt from code, not from the checklist.
+- Stack is *behind* 2026 SOTA in Postgres (16 vs 18), Tauri (pre-2.12),
+  Playwright, and testing discipline (no CRDT property/simulation testing).
+
+## Research inputs
+
+- yrs ships `sync::Awareness` and `sync::Protocol` in-core: presence is a
+  capability we already own the hard half of. Loro offers nothing equivalent
+  in Rust — staying on yrs is the right call for a collab product.
+- `y-protocols/PROTOCOL.md` is normative: `messageSync=0`,
+  `messageAwareness=1`; sync subtypes `SyncStep1=0` (state vector),
+  `SyncStep2=1` (diff vs peer SV), `Update=2`. Awareness is a *separate*
+  state-based CRDT: apply iff incoming clock > local, 30s expiry, ≤15s
+  re-broadcast, `state=null` on disconnect.
+- Awareness payloads are **unauthenticated**; identity must be bound at the
+  handshake, above the protocol. Read-only enforcement is a two-byte check and
+  is UX, not security.
+- CRDT text overhead is 14–42× raw text before tombstones; `encode_v2` /
+  `decode_v2` roughly halves it. `gc=true` (the default) discards deleted
+  content, so version history and cross-restart undo require `gc=false` rooms
+  **plus** compaction you own.
+- `clientID` collisions permanently corrupt a document — never derive clientID
+  from user/session identity.
+- CRDT correctness in 2026 is tested with proptest convergence invariants,
+  deterministic simulation against a shadow model with per-step assertions, and
+  bounded proofs for merge commutativity/idempotence. `proptest-lockstep`
+  (Lean-verified `EventualConsistencyModel`) is purpose-built for this.
+- Projecting text into `documents.content` is a *snapshot*, not state: search,
+  export and agents read that column and cannot participate in merges. Agent
+  writes must go through the CRDT.
+- E2EE and CRDT compose only via encrypted snapshots + encrypted updates with
+  plaintext causal metadata (secsync). Server-side search over encrypted docs is
+  forfeited by construction — a product decision, not an oversight.
+
+## Roadmap
+
+### W1 — Collaboration core made correct (P0)
+1. **Presence/awareness, end to end.** Server owns `Awareness` per room with a
+   per-connection controlled-clientID set (closing one tab must not remove a
+   sibling's presence), 30s expiry, heartbeat ≤15s. Client renders avatars and
+   live cursors. Authenticate identity at the handshake.
+2. **SyncStep2 on connect.** Send a state vector, receive the diff, instead of
+   full state. Removes O(doc) per connection and stops re-sending tombstones.
+3. **Client-scoped undo.** Strict origin scoping so undo cannot revert a peer's
+   edit; native history stays disabled.
+4. **Offline queue.** Persist local updates + own state vector client-side;
+   reconnect re-handshakes. The single biggest user-visible win for a
+   self-hosted knowledge tool.
+
+### W2 — Correctness gates (P0, cheap, prevents data loss)
+5. **CRDT simulation tests.** proptest convergence invariants + a shadow-model
+   DST harness over `[Insert, Delete, Sync, Disconnect, Reconnect]` with
+   per-step assertions, plus retained regression cases for shrunk failures.
+6. **v2 update encoding** for ~2× state size, with a size-ratio metric.
+7. **Room lifecycle + compaction.** `gc=false` rooms, periodic snapshot rows
+   (additive-row model), bounded room count, flush-on-last-disconnect instead of
+   a bare 30s timer.
+
+### W3 — Documents domain gaps the FC list exposes
+8. Markdown preview + TOC (every keystroke feature still missing).
+9. Versions list/diff/restore from room snapshots.
+10. Comments + reviews, anchored via relative positions (`StickyIndex` /
+    `Quotable`) — non-negotiable before comment anchoring ships.
+11. Attachments upload UI (server side is fixed; the client path is not proven).
+
+### W4 — Stack currency (P0 by value/churn ratio)
+12. Postgres 16 → 18: async I/O, `pg_upgrade` keeps optimizer stats. Runtime
+    upgrade, no code change.
+13. Tauri → 2.12 (MSRV 1.90, `Resource` disposal, Android templates).
+14. Playwright → 1.63 with `retain-on-failure-and-retries`; add `oha` beside k6.
+15. Tailwind → 4.3.3, adopt `@container-size` for editor panes.
+16. Astro → 7.x for Vite 8/Rolldown build speed. Deferred behind W1–W4 so a
+    regression is easy to bisect.
+
+### W5 — Release (Phase F/G)
+17. k6: 100 VUs sustained, p95 target, 0 errors on core paths.
+18. Backup/restore DRILL executed (restore.sh has never been run).
+19. Docker image builds; desktop installers (deb/AppImage/NSIS); CLI binaries.
+20. Docs site dogfooding our own SSG; CHANGELOG, semver, signed v1.0.0.
+
+## Deferred on purpose (and why)
+
+- Solid 2.0 (RC, not stable), SolidStart (retired), axum 0.9 (no timeline),
+  PG 19 (not GA, actively shrinking), Tauri 3 ("long time off"), Component
+  Model 1.0 (needs ≥2 browser engines; also Memory64 is Safari-blocked and
+  threads need COOP/COEP). Re-review triggers: **Solid 2.0 stable + start
+  mode**, **PG 19 GA**.
+- Loro/Diamond Types migration: justified only if we need movable blocks
+  (Loro) or plain-text-only Eg-walker docs (Diamond Types, unlicensed). Not now.
+- Dropping Astro for Solid-on-Vite-8: the right target architecture, but only
+  once Solid 2 start mode is stable.
+
+## Companion repos (dogfooding)
+
+Goal: other projects consume Tachyon so the stack is exercised by real callers,
+not only by our own fixtures.
+
+- `tachyon-plugin-registry` — remote marketplace registry, consumed by the
+  marketplace UI (also closes the "marketplace is an unmounted stub" row).
+- `tachyon-templates` — template packs applied through the templates API.
+- `tachyon-import-fixtures` — Obsidian vault / Notion / Confluence fixtures used
+  by import E2E.
