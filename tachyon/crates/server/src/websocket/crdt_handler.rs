@@ -289,6 +289,12 @@ impl CrdtConnectionManager {
             .map_err(|e| format!("failed to decode awareness update: {e}"))?;
         let now_ms = now_millis();
         let mut accepted = HashMap::with_capacity(update.clients.len());
+        debug!(
+            room = %room,
+            conn = %conn_id,
+            entries = update.clients.len(),
+            "awareness apply"
+        );
 
         {
             let mut rooms = self.room_presence.write().await;
@@ -325,6 +331,7 @@ impl CrdtConnectionManager {
             }
         }
 
+        debug!(room = %room, accepted = accepted.len(), "awareness accepted");
         if accepted.is_empty() {
             // Encoding an empty AwarenessUpdate still emits a byte, which would
             // put a meaningless frame on the wire for every stale heartbeat.
@@ -337,6 +344,7 @@ impl CrdtConnectionManager {
     pub async fn awareness_snapshot(&self, room: &str) -> Option<Vec<u8>> {
         let rooms = self.room_presence.read().await;
         let peers = rooms.get(room)?;
+        debug!(room = %room, peers = peers.len(), "awareness snapshot requested");
         if peers.is_empty() {
             return None;
         }
@@ -617,8 +625,22 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
     // Subscribe to the shared broadcast bus for OT events scoped to this room.
     let mut bus_rx = manager.bus.subscribe_to_room(&room).await;
 
-    // Pre-load document from database if available.
-    manager.crdt_manager().get_or_load(&room).await;
+    // Pre-load document from database if available — but do not block message
+    // processing on it. The pool can stall for seconds while it is contended,
+    // and every buffered client frame (including the first presence announce)
+    // waits behind the load, so a peer joining in that window reads an empty
+    // room. Clients announce their own state on open, so the room converges
+    // regardless of which load finishes first.
+    {
+        let preload_manager = manager.clone();
+        let preload_room = room.clone();
+        tokio::spawn(async move {
+            preload_manager
+                .crdt_manager()
+                .get_or_load(&preload_room)
+                .await;
+        });
+    }
 
     // Send the current document state to the newly connected client.
     // This is the Yrs-encoded state vector + updates, which the client
