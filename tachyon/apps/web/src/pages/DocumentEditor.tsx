@@ -19,7 +19,8 @@ import {
   type EncryptedPayload,
 } from "@/lib/e2ee";
 import { e2eApi } from "@/lib/e2eApi";
-import { connectCollab, type CollabHandle } from "@/lib/editor/collab";
+import { authStore } from "@/lib/auth";
+import { connectCollab, type CollabHandle, type CollabPeer } from "@/lib/editor/collab";
 import { createEditor, createEditorState, type EditorHandle } from "@/lib/editor/wasmEditor";
 
 /**
@@ -46,10 +47,25 @@ export default function DocumentEditor() {
   const [encrypted, setEncrypted] = createSignal(false);
   const [docKey, setDocKey] = createSignal<CryptoKey | null>(null);
   const [collabConnected, setCollabConnected] = createSignal<boolean | null>(null);
+  const [collabPeers, setCollabPeers] = createSignal<CollabPeer[]>([]);
   let collab: CollabHandle | null = null;
   let collabDebounce: ReturnType<typeof setTimeout> | null = null;
 
   // Load document content, then boot the wasm model over it.
+  // Stable per-user colour so avatars are recognisable across sessions.
+  const myColor = () => {
+    const name = authStore.user()?.username ?? "me";
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+    return `hsl(${Math.abs(hash) % 360} 62% 48%)`;
+  };
+
+  const publishCaret = () => {
+    if (!collab) return;
+    const [line, col] = state.cursor();
+    collab.sendPresence({ line, col });
+  };
+
   const [doc] = createResource(docId, async (id) => {
     const { data, error, response } = await api.GET("/documents/{document_id}", {
       params: { path: { document_id: id } },
@@ -94,8 +110,14 @@ export default function DocumentEditor() {
           encodeFullState: () => new Uint8Array(h.encodeFullState()),
         },
         () => state.syncFrom(h),
-        setCollabConnected
+        setCollabConnected,
+        undefined,
+        { name: authStore.user()?.display_name || authStore.user()?.username || "me", color: myColor() },
+        setCollabPeers
       );
+      // Publish the caret so peers can render it. Presence is cheap state, so
+      // this rides the same cadence as edits rather than a second timer.
+      publishCaret();
     }
     return h;
   });
@@ -103,6 +125,7 @@ export default function DocumentEditor() {
   const resync = () => {
     const h = handle();
     if (h) state.syncFrom(h);
+    publishCaret();
   };
 
   const broadcastEdit = () => {
@@ -297,6 +320,25 @@ export default function DocumentEditor() {
           <span>
             {state.words()} words · {state.chars()} chars
           </span>
+          <Show when={collabPeers().length > 0}>
+            <span class="mr-2 flex items-center gap-1" data-testid="collab-peers">
+              <For each={collabPeers()}>
+                {(peer) => (
+                  <span
+                    class="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                    style={{ "background-color": peer.color }}
+                    title={`${peer.name}${
+                      peer.cursor ? ` — line ${peer.cursor.line + 1}` : ""
+                    }`}
+                    data-testid="collab-peer"
+                  >
+                    {peer.name.slice(0, 1).toUpperCase()}
+                  </span>
+                )}
+              </For>
+              <span class="text-xs text-gray-500">{collabPeers().length} here</span>
+            </span>
+          </Show>
           <Show when={collabConnected() !== null}>
             <span
               class={`mr-2 ${collabConnected() ? "text-green-500" : "text-gray-500"}`}

@@ -1065,6 +1065,33 @@ mod tests {
         payload
     }
 
+    /// Encodes one awareness entry and prints its bytes. Output is committed
+    /// as `apps/web/scripts/verify-awareness-codec.mjs`'s `yrsFrame`, so the
+    /// JS codec is checked against yrs' own encoding, not just against itself.
+    #[test]
+    fn encode_awareness_reference() {
+        let update = AwarenessUpdate {
+            clients: [(
+                7u64,
+                AwarenessUpdateEntry {
+                    clock: 1,
+                    json: "{\"user\":{\"name\":\"ref\"}}".into(),
+                },
+            )]
+            .into_iter()
+            .collect(),
+        };
+        let bytes = update.encode_v1();
+        println!("yrs awareness frame: {:?}", bytes);
+        assert_eq!(
+            bytes,
+            vec![
+                1, 7, 1, 23, 123, 34, 117, 115, 101, 114, 34, 58, 123, 34, 110, 97, 109, 101, 34,
+                58, 34, 114, 101, 102, 34, 125, 125
+            ]
+        );
+    }
+
     #[tokio::test]
     async fn presence_is_stored_and_readable_by_peers() {
         let m = CrdtConnectionManager::new(test_bus());

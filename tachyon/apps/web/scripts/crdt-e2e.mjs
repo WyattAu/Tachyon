@@ -38,6 +38,11 @@ async function main() {
   const B = await bootEditor(BASE, DOC, token);
   console.log("client B:", B.collab);
 
+  // Presence: B should see A's avatar once A is connected.
+  const peersA = await A.p.getByTestId("collab-peer").count();
+  const peersB = await B.p.getByTestId("collab-peer").count();
+  console.log(`presence: A sees ${peersA} peer(s), B sees ${peersB} peer(s)`);
+
   // A types first
   await type(A.p, "ALPHA-");
   await sleep(1500);
@@ -91,7 +96,9 @@ async function main() {
 
   await A.b.close();
   await B.b.close();
-  process.exit(aHasBoth && bHasBoth && persisted ? 0 : 1);
+  const presenceOk = peersA >= 1 && peersB >= 1;
+  console.log("presence propagation:", presenceOk ? "PASS" : "FAIL");
+  process.exit(aHasBoth && bHasBoth && persisted && presenceOk ? 0 : 1);
 }
 
 main().catch((e) => { console.log("ERR", String(e).slice(0, 200)); process.exit(1); });
