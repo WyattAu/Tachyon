@@ -130,6 +130,56 @@ proptest! {
         prop_assert_eq!(b.content(), after_first);
     }
 
+
+    /// Concurrent typing must preserve each side's own keystroke order. With
+    /// disjoint alphabets every merged char is attributable, so each side's
+    /// exact char sequence must appear as a subsequence of the merged text.
+    /// This is the test the whole-rope-mirror implementation failed: its
+    /// full-document replacements lost one side while the other typed.
+    #[test]
+    fn concurrent_typing_preserves_each_side_order(
+        ops_a in prop::collection::vec("[xy]", 4..24),
+        ops_b in prop::collection::vec("[pq]", 4..24),
+    ) {
+        let mut a = Editor::with_content("");
+        let mut b = Editor::with_content("");
+        for ch in ops_a.concat().chars() {
+            apply_insert(&mut a, &ch.to_string());
+        }
+        for ch in ops_b.concat().chars() {
+            apply_insert(&mut b, &ch.to_string());
+        }
+
+        // Each side's pre-merge text is the order that side committed to; the
+        // merge must preserve it as a subsequence. (Creation order is NOT the
+        // sound comparison — a side's later insert can sit at an earlier
+        // position, so visual order legitimately differs from typing order.)
+        let before_a = a.content();
+        let before_b = b.content();
+
+        sync_bidirectional(&mut a, &mut b);
+        let merged = a.content();
+        prop_assert_eq!(&b.content(), &merged, "editors diverged");
+
+        let is_subsequence_of_merged = |seq: &str| {
+            let mut it = merged.chars().peekable();
+            seq.chars().all(|want| it.any(|c| c == want))
+        };
+        prop_assert!(
+            is_subsequence_of_merged(&before_a),
+            "side A's text broken in merged {merged:?} (expected subsequence {before_a:?})"
+        );
+        prop_assert!(
+            is_subsequence_of_merged(&before_b),
+            "side B's text broken in merged {merged:?} (expected subsequence {before_b:?})"
+        );
+        prop_assert_eq!(
+            merged.chars().count(),
+            before_a.chars().count() + before_b.chars().count(),
+            "merged text lost or duplicated characters"
+        );
+    }
+
     /// A change made while a peer is offline must reach it on the next sync.
     #[test]
     fn offline_edits_survive_reconnect(

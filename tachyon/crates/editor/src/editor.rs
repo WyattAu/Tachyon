@@ -370,8 +370,57 @@ impl Editor {
 
     // ─── CRDT Sync Methods ───────────────────────────────────────────────
 
+    /// Character offset of a (line, col) cursor within the flattened text.
+    /// The yrs Text layer indexes by characters, matching the rope's own
+    /// counting (both treat a grapheme cluster's underlying scalars the same
+    /// as the rest of this file — see the existing len-vs-chars usage).
+    fn flat_index(&self, cursor: Cursor) -> u32 {
+        let mut index: usize = 0;
+        for line in 0..cursor.line.min(self.buffer.len_lines()) {
+            index += self.buffer.line_len(line) + 1; // +1 for the newline
+        }
+        index.saturating_add(cursor.col) as u32
+    }
+
+    /// Apply one local edit to the CRDT document incrementally.
+    ///
+    /// The previous implementation mirrored the whole rope on every keystroke
+    /// (remove-all + insert-all): O(document) per keystroke, and in
+    /// concurrent editing each side's replacement clobbered the room, so two
+    /// people typing at once lost text. Local edits must land as the same
+    /// insert/delete ops in yrs that the user made.
+    fn apply_edit_to_yrs(&mut self, kind: &EditKind, start: Cursor) {
+        let mut txn = self.crdt_doc.transact_mut();
+        match kind {
+            EditKind::Insert { text } => {
+                let index = self.flat_index(start);
+                self.crdt_text.insert(&mut txn, index, text);
+            }
+            EditKind::Delete { text } => {
+                let len = text.chars().count() as u32;
+                if len > 0 {
+                    let index = self.flat_index(start);
+                    self.crdt_text.remove_range(&mut txn, index, len);
+                }
+            }
+            EditKind::Replace { old_text, new_text } => {
+                let old_len = old_text.chars().count() as u32;
+                let index = self.flat_index(start);
+                if old_len > 0 {
+                    self.crdt_text.remove_range(&mut txn, index, old_len);
+                }
+                if !new_text.is_empty() {
+                    self.crdt_text.insert(&mut txn, index, new_text);
+                }
+            }
+        }
+    }
+
     /// Mirror the current rope content into the CRDT document.
-    /// Called after local edits so the CRDT layer stays in sync.
+    ///
+    /// Only for full resets (set_content / boot): mirrors replace the whole
+    /// document by design there. Local edits go through
+    /// [`Editor::apply_edit_to_yrs`] so each keystroke is one incremental op.
     fn sync_rope_to_yrs(&mut self) {
         let content = self.buffer.to_string();
         let len = self.crdt_text.len(&self.crdt_doc.transact());
@@ -555,19 +604,19 @@ impl Editor {
             }
             last.end = end;
             self.is_dirty = true;
-            self.sync_rope_to_yrs();
+            self.apply_edit_to_yrs(&kind, start);
             return;
         }
 
         let tx = Transaction {
-            kind,
+            kind: kind.clone(),
             start,
             end,
             timestamp: current_timestamp(),
         };
         self.undo_stack.push(tx);
         self.is_dirty = true;
-        self.sync_rope_to_yrs();
+        self.apply_edit_to_yrs(&kind, start);
     }
 
     pub fn insert_text(&mut self, text: &str) {
@@ -700,7 +749,10 @@ impl Editor {
             self.update_active_cursor(cursor);
             self.update_active_selection(Selection::caret(cursor));
             if !deleted.is_empty() {
-                self.push_transaction(EditKind::Delete { text: deleted }, start, cursor);
+                // The transaction start must be the deletion's left edge: the
+                // CRDT layer removes at that index. Reporting the caret (the
+                // right edge) here made word-deletes remove the wrong range.
+                self.push_transaction(EditKind::Delete { text: deleted }, cursor, start);
             }
         }
     }
@@ -982,12 +1034,16 @@ impl Editor {
         };
 
         self.undo_stack.push_redo(Transaction {
-            kind: inverse,
+            kind: inverse.clone(),
             start: tx.start,
             end: self.active_cursor(),
             timestamp: tx.timestamp,
         });
 
+        // The inverse lands in the CRDT as the same kind of incremental op
+        // the user's edit was — undo must participate in the room like any
+        // other edit, or peers keep the text this client just reverted.
+        self.apply_edit_to_yrs(&inverse, tx.start);
         self.update_active_selection(Selection::caret(self.active_cursor()));
         true
     }
@@ -1034,12 +1090,13 @@ impl Editor {
         };
 
         self.undo_stack.push_undo(Transaction {
-            kind: inverse,
+            kind: inverse.clone(),
             start: tx.start,
             end: self.active_cursor(),
             timestamp: tx.timestamp,
         });
 
+        self.apply_edit_to_yrs(&inverse, tx.start);
         self.update_active_selection(Selection::caret(self.active_cursor()));
         true
     }
