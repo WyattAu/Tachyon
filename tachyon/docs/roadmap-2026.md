@@ -109,8 +109,12 @@ optimization.
 11. Attachments upload UI (server side is fixed; the client path is not proven).
 
 ### W4 — Stack currency (P0 by value/churn ratio)
-12. Postgres 16 → 18: async I/O, `pg_upgrade` keeps optimizer stats. Runtime
-    upgrade, no code change.
+12. [x] **Postgres 16 → 18.3** — executed as dump/restore to a fresh cluster
+    (`tachyon-pg18`), verified 145 documents + users + crdt state before the
+    swap, service unit repointed. Server needed zero code changes; health,
+    login and document totals verified live against 18.3. (pg_dumpall needed
+    `-U tachyon` — the app's DB role — and the restore must run as the new
+    cluster's superuser because the dump creates the role itself.)
 13. Tauri → 2.12 (MSRV 1.90, `Resource` disposal, Android templates).
 14. Playwright → 1.63 with `retain-on-failure-and-retries`; add `oha` beside k6.
 15. Tailwind → 4.3.3, adopt `@container-size` for editor panes.
