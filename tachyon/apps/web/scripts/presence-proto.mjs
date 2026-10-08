@@ -5,7 +5,8 @@
 import { encodeAwareness, decodeAwareness } from "../src/lib/editor/collab.ts";
 
 const DOC = process.argv[2] ?? "test-room";
-const URL = `ws://127.0.0.1:18080/ws/${DOC}`;
+const TOKEN = process.env.CRDT_TOKEN ?? "";
+const URL = `ws://127.0.0.1:18080/ws/${DOC}${TOKEN ? `?token=${encodeURIComponent(TOKEN)}` : ""}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function connect(label, onFrame) {

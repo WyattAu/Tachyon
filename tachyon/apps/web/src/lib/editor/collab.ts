@@ -209,7 +209,13 @@ export function connectCollab(
   const connect = () => {
     if (!alive || suspended) return;
     reconnectAttempts += 1;
-    const socket = new WebSocket(`${proto}//${host}/ws/${encodeURIComponent(docId)}`);
+    // Identity is bound at the upgrade: awareness payloads are unauthenticated
+    // by protocol design, so the handshake is the only checkpoint.
+    const token = localStorage.getItem("tachyon_token") ?? "";
+    const authQuery = token ? `?token=${encodeURIComponent(token)}` : "";
+    const socket = new WebSocket(
+      `${proto}//${host}/ws/${encodeURIComponent(docId)}${authQuery}`
+    );
     socket.binaryType = "arraybuffer";
     ws = socket;
     wire(socket);

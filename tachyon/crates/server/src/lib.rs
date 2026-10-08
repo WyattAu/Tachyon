@@ -872,7 +872,7 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
 
     let crdt_ws_router = Router::new()
         .route("/ws/{room}", get(handle_crdt_websocket_upgrade))
-        .with_state(crdt_connection_manager)
+        .with_state(crdt_connection_manager.clone())
         .layer(RequestBodyLimitLayer::new(1024 * 1024 * 1024));
 
     let swagger_ui = crate::api_docs::create_swagger_ui();
@@ -1058,6 +1058,13 @@ pub fn build_app(state: AppState, config: &ServerConfig) -> axum::Router {
     }
 
     let auth_state = crate::middleware::AuthState::new(config.clone(), pool.clone());
+    // A second instance backs the websocket upgrade verifier. It only needs
+    // the JWT secrets (signature checks), so sharing the middleware's RBAC
+    // state is unnecessary; the middleware keeps its own by-value state.
+    crdt_connection_manager.set_auth(Arc::new(crate::middleware::AuthState::new(
+        config.clone(),
+        pool.clone(),
+    )));
     let auth_layer =
         axum::middleware::from_fn_with_state(auth_state, crate::middleware::auth_middleware);
     router = router.layer(auth_layer);

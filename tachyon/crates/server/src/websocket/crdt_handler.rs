@@ -19,7 +19,7 @@
 
 use axum::{
     extract::{
-        Path, State,
+        Path, Query, State,
         ws::{Message, WebSocket, WebSocketUpgrade},
     },
     response::{IntoResponse, Response},
@@ -151,9 +151,33 @@ pub struct CrdtConnectionManager {
     conn_clients: Arc<RwLock<HashMap<String, HashSet<u64>>>>,
     /// Presence entries older than this are dropped by the expiry sweep.
     awareness_timeout_secs: u64,
+    /// JWT verifier for the upgrade handshake, set once at startup. Awareness
+    /// payloads are unauthenticated by protocol design (PROTOCOL.md §6), so
+    /// the upgrade is the only place identity can be bound: without this any
+    /// process that can reach the port joins any room and can push arbitrary
+    /// bytes into every open document.
+    auth: Arc<std::sync::OnceLock<Arc<crate::middleware::AuthState>>>,
 }
 
 impl CrdtConnectionManager {
+    /// Bind the JWT verifier. Must be called before the router serves.
+    pub fn set_auth(&self, auth: Arc<crate::middleware::AuthState>) {
+        let _ = self.auth.set(auth);
+    }
+
+    fn validate_upgrade_token(&self, token: Option<&str>) -> Result<(), &'static str> {
+        match (self.auth.get(), token) {
+            // No verifier configured (unit tests, bare fixtures): allow, so
+            // the collaboration machinery stays testable in isolation.
+            (None, _) => Ok(()),
+            (Some(_), None) => Err("missing token"),
+            (Some(auth), Some(t)) => auth
+                .validate_jwt(t)
+                .map(|_| ())
+                .map_err(|_| "invalid token"),
+        }
+    }
+
     pub fn new(bus: Arc<SharedBroadcastBus>) -> Self {
         let (broadcast_tx, _) = broadcast::channel(1024);
         Self {
@@ -170,6 +194,7 @@ impl CrdtConnectionManager {
             room_presence: Arc::new(RwLock::new(HashMap::new())),
             conn_clients: Arc::new(RwLock::new(HashMap::new())),
             awareness_timeout_secs: 30,
+            auth: Arc::new(std::sync::OnceLock::new()),
         }
     }
 
@@ -193,6 +218,7 @@ impl CrdtConnectionManager {
             room_presence: Arc::new(RwLock::new(HashMap::new())),
             conn_clients: Arc::new(RwLock::new(HashMap::new())),
             awareness_timeout_secs: 30,
+            auth: Arc::new(std::sync::OnceLock::new()),
         }
     }
 
@@ -212,6 +238,7 @@ impl CrdtConnectionManager {
             room_presence: Arc::new(RwLock::new(HashMap::new())),
             conn_clients: Arc::new(RwLock::new(HashMap::new())),
             awareness_timeout_secs: 30,
+            auth: Arc::new(std::sync::OnceLock::new()),
         }
     }
 
@@ -588,7 +615,16 @@ pub async fn handle_crdt_websocket_upgrade(
     ws: WebSocketUpgrade,
     State(manager): State<CrdtConnectionManager>,
     Path(room): Path<String>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Response {
+    if let Err(reason) = manager.validate_upgrade_token(params.get("token").map(String::as_str)) {
+        warn!(room = %room, reason, "websocket upgrade rejected");
+        return (
+            axum::http::StatusCode::UNAUTHORIZED,
+            axum::Json(serde_json::json!({ "error": reason })),
+        )
+            .into_response();
+    }
     let current = manager.active_connection_count().await;
     if current >= manager.max_connections() {
         return (
