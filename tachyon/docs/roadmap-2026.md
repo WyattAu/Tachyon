@@ -59,18 +59,35 @@ measured number) recorded next to it. No exceptions for "it compiles".
 
 ## Roadmap
 
-### W1 — Collaboration core made correct (P0)
-1. **Presence/awareness, end to end.** Server owns `Awareness` per room with a
-   per-connection controlled-clientID set (closing one tab must not remove a
-   sibling's presence), 30s expiry, heartbeat ≤15s. Client renders avatars and
-   live cursors. Authenticate identity at the handshake.
-2. **SyncStep2 on connect.** Send a state vector, receive the diff, instead of
-   full state. Removes O(doc) per connection and stops re-sending tombstones.
-3. **Client-scoped undo.** Strict origin scoping so undo cannot revert a peer's
-   edit; native history stays disabled.
-4. **Offline queue.** Persist local updates + own state vector client-side;
-   reconnect re-handshakes. The single biggest user-visible win for a
-   self-hosted knowledge tool.
+### W1 — Collaboration core made correct (P0) — CLOSED
+1. [x] **Presence/awareness, end to end.** Server-owned per-room presence
+   (clock ordering, `null`-state removal, per-connection clientID ownership,
+   30s expiry sweep), client avatars + caret publishing, wire codec verified
+   byte-identical to yrs'. Evidence: `a078453`, `864589b`, `b4b50c0` (the
+   get_or_load pool stall that delayed frames by seconds), 9 presence tests +
+   `verify-awareness-codec.mjs` + `presence-proto.mjs`. Handshake authz is the
+   open residue (see below).
+2. [x] **Room lineage is the single content authority** (this absorbed the
+   SyncStep2 row's real risk): clients boot empty from the room, the server
+   seeds cold rooms from `documents.content` exactly once, and nothing ever
+   pushes a full-state doc into the room again — the duplication bug is dead
+   and asserted against by exact-equality E2E. Evidence: `1d5608c`. A true
+   SV-diff exchange remains as a *bandwidth* optimization only.
+3. [x] **Edits and undo land as incremental CRDT ops.** The whole-rope mirror
+   (remove-all + insert-all per keystroke) is gone; undo/redo inverses go
+   through the room. A latent word-delete transaction-origin bug was caught by
+   the property suite. Evidence: `8f81e2a`, `94a1e4b`, 167 unit + 5 property
+   tests (`crdt_simulation.rs`). yrs::undo::UndoManager (origin-scoped
+   collaborative undo) is the deeper follow-up.
+4. [x] **Offline queue.** Frames persist to localStorage (2 MiB cap),
+   exponential-backoff reconnect, suspend/resume, reload-survival E2E. Evidence:
+   `d368b06`, `offline-e2e.mjs` 9/9.
+5. [x] **Durability on last disconnect.** Room flushes immediately when the
+   last client leaves (timer remains the safety net): REST/search/SSG lag
+   dropped from ~27s to <3s. Evidence: `28fd7ea`.
+
+Residue carried forward: WS handshake authz (rooms are currently joinable
+without a token — research pitfall #7), and `yrs::undo::UndoManager`.
 
 ### W2 — Correctness gates (P0, cheap, prevents data loss)
 5. **CRDT simulation tests.** proptest convergence invariants + a shadow-model
