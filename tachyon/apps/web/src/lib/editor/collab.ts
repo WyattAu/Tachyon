@@ -136,26 +136,94 @@ export function connectCollab(
       ? window.location.host
       : "127.0.0.1:18080";
 
-  const ws = new WebSocket(`${proto}//${host}/ws/${encodeURIComponent(docId)}`);
-  ws.binaryType = "arraybuffer";
-
+  let ws: WebSocket | null = null;
   let alive = true;
   let pending: Uint8Array[] = [];
+  let receivedRoomState = false;
+  let reconnectAttempts = 0;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  // Suspended = deliberately offline (airplane mode, test isolation). The
+  // queue keeps collecting; nothing reconnects until resumed.
+  let suspended = false;
+
+  // ─── Offline queue ─────────────────────────────────────────────────────
+  // In-memory `pending` dies with the page; localStorage does not. Every
+  // queued frame is a self-contained yrs update, so replaying the whole
+  // queue on any future connection (this session or the next page load)
+  // converges: update N only references items from the room base or from
+  // updates 1..N-1, i.e. replay order preserves causal order.
+  const queueKey = `crdt-q:${docId}`;
+  const QUEUE_LIMIT = 2 * 1024 * 1024; // 2 MiB of binary updates
+
+  const loadQueue = (): Uint8Array[] => {
+    try {
+      const raw = localStorage.getItem(queueKey);
+      if (!raw) return [];
+      const arr = JSON.parse(raw) as number[][];
+      return arr.map((a) => new Uint8Array(a));
+    } catch {
+      return [];
+    }
+  };
+
+  const saveQueue = () => {
+    try {
+      // Serialize oldest-first; if the queue outgrows the cap, drop the
+      // OLDEST updates — they are the most likely to already be on the
+      // server (the tail is the freshest local work).
+      let arr = pending;
+      let serialized = JSON.stringify(arr.map((u) => Array.from(u)));
+      while (serialized.length > QUEUE_LIMIT && arr.length > 1) {
+        arr = arr.slice(1);
+        serialized = JSON.stringify(arr.map((u) => Array.from(u)));
+      }
+      if (serialized.length <= QUEUE_LIMIT) localStorage.setItem(queueKey, serialized);
+    } catch {
+      // Persistence is best-effort: quota errors must not take down editing.
+    }
+  };
+
+  const clearQueue = () => {
+    pending = [];
+    try {
+      localStorage.removeItem(queueKey);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  pending = loadQueue();
 
   const sendFrame = (payload: Uint8Array) => {
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
       const frame = new Uint8Array(payload.length + 1);
       frame[0] = 0; // sync message type
       frame.set(payload, 1);
       ws.send(frame);
     } else {
-      pending.push(payload); // queue until open
+      pending.push(payload); // queue until open (also persisted)
+      saveQueue();
     }
   };
 
-  let receivedRoomState = false;
+  const connect = () => {
+    if (!alive || suspended) return;
+    reconnectAttempts += 1;
+    const socket = new WebSocket(`${proto}//${host}/ws/${encodeURIComponent(docId)}`);
+    socket.binaryType = "arraybuffer";
+    ws = socket;
+    wire(socket);
+  };
 
-  ws.onopen = () => {
+  const scheduleReconnect = () => {
+    if (!alive || suspended) return;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    // Exponential backoff, capped: 1s, 2s, 4s, ... 15s.
+    const delay = Math.min(1000 * 2 ** Math.max(0, reconnectAttempts - 1), 15_000);
+    reconnectTimer = setTimeout(connect, delay);
+  };
+
+  const onopen = () => {
     statusChanged?.(true);
     // Announce immediately so a peer who is already here sees us without
     // waiting for the first caret move.
@@ -167,10 +235,23 @@ export function connectCollab(
     // and this client renders whatever the room holds.
     // Local updates queued while the socket was still opening are incremental
     // and lineage-consistent, so they are safe to flush.
+    // Flush updates queued offline (this session or a previous page load)
+    // before anything new: replay order preserves causal order.
+    const offline = loadQueue();
+    if (offline.length > 0) {
+      for (const payload of offline) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) break;
+        const frame = new Uint8Array(payload.length + 1);
+        frame[0] = 0;
+        frame.set(payload, 1);
+        ws.send(frame);
+      }
+      clearQueue();
+    }
     for (const p of pending) sendFrame(p);
     pending = [];
   };
-  ws.onmessage = (ev) => {
+  const onmessage = (ev: MessageEvent) => {
     const buf = ev.data instanceof ArrayBuffer ? new Uint8Array(ev.data) : null;
     if (!buf || buf.length < 2) return;
     // Message type 1 = awareness (presence), type 0 = yrs sync.
@@ -193,9 +274,51 @@ export function connectCollab(
     }
     if (handle.applyRemoteUpdate(buf.slice(1))) onRemote();
   };
-  ws.onclose = () => {
+  const onclose = () => {
     statusChanged?.(false);
+    scheduleReconnect();
   };
+
+  let onerror: ((e: unknown) => void) | null = (e) => {
+    // Close handling drives reconnect; error just logs context.
+    console.warn("[collab] socket error", e);
+  };
+
+  const wire = (socket: WebSocket) => {
+    socket.onopen = () => {
+      reconnectAttempts = 0; // healthy connection resets the backoff
+      onopen();
+    };
+    socket.onmessage = onmessage;
+    socket.onclose = onclose;
+    socket.onerror = onerror;
+  };
+
+  connect();
+
+  // Test/ops hook: the editor contract precedent (`__tachyonEditor`). Lets
+  // E2E force disconnect/reconnect without browser devtools tricks, and
+  // operators inspect queue depth.
+  if (typeof window !== "undefined") {
+    (window as unknown as Record<string, unknown>).__tachyonCollab = {
+      disconnect: () => ws?.close(),
+      reconnect: () => {
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        connect();
+      },
+      suspend: () => {
+        suspended = true;
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        ws?.close();
+      },
+      resume: () => {
+        suspended = false;
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        connect();
+      },
+      queued: () => pending.length + loadQueue().length,
+    };
+  }
 
   const sendUpdate = () => {
     if (!alive) return;
@@ -255,7 +378,7 @@ export function connectCollab(
   };
 
   const sendAwarenessFrame = (payload: Uint8Array) => {
-    if (ws.readyState !== WebSocket.OPEN) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
     const frame = new Uint8Array(payload.length + 1);
     frame[0] = 1; // message type: awareness
     frame.set(payload, 1);
@@ -290,8 +413,8 @@ export function connectCollab(
         [clientId, { clock: presenceClock, json: "null" }],
       ]);
       sendAwarenessFrame(encodeAwareness(nullState));
-      ws.close();
+      ws?.close();
     },
-    connected: () => ws.readyState === WebSocket.OPEN,
+    connected: () => (ws ? ws.readyState === WebSocket.OPEN : false),
   };
 }
