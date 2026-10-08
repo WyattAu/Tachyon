@@ -52,10 +52,14 @@ async function main() {
   await sleep(2500); // convergence window
 
   // Both should show merged content
+  // innerText interleaves gutter numbers and the caret glyph ("|"); strip
+  // them and require exact content equality — weaker assertions have hidden
+  // lineage duplication before.
+  const normText = (t) => t.replace(/[|\s\d]/g, ""); // gutter digits too
   const textA = await A.p.getByTestId("editor-surface").innerText();
   const textB = await B.p.getByTestId("editor-surface").innerText();
-  const aHasBoth = textA.includes("ALPHA") && textA.includes("BETA");
-  const bHasBoth = textB.includes("ALPHA") && textB.includes("BETA");
+  const aHasBoth = normText(textA) === "ALPHA-BETA-";
+  const bHasBoth = normText(textB) === "ALPHA-BETA-";
   console.log("A sees merged:", aHasBoth ? "PASS" : "FAIL — " + JSON.stringify(textA.slice(0, 120)));
   console.log("B sees merged:", bHasBoth ? "PASS" : "FAIL — " + JSON.stringify(textB.slice(0, 120)));
 
@@ -68,7 +72,7 @@ async function main() {
     });
     const body = await res.json().catch(() => ({}));
     const c = body?.content ?? "";
-    if (c.includes("ALPHA") && c.includes("BETA")) {
+    if (c === "ALPHA-BETA-") {
       persisted = true;
       console.log(`server persisted merged content after ~${i * 3}s:`, JSON.stringify(c));
       break;
@@ -90,15 +94,15 @@ async function main() {
   await A.p.getByTestId("editor-surface").waitFor({ timeout: 60000 });
   await sleep(6000);
   const textA2 = await A.p.getByTestId("editor-surface").innerText();
-  console.log("A after reload:", textA2.includes("ALPHA") && textA2.includes("BETA") ? "PASS" : "FAIL");
-  if (!(textA2.includes("ALPHA") && textA2.includes("BETA")))
-    console.log("A reloaded text:", JSON.stringify(textA2.slice(0, 160)));
+  const reloadOk = normText(textA2) === "ALPHA-BETA-";
+  console.log("A after reload:", reloadOk ? "PASS" : "FAIL");
+  if (!reloadOk) console.log("A reloaded text:", JSON.stringify(textA2.slice(0, 160)));
 
   await A.b.close();
   await B.b.close();
   const presenceOk = peersA >= 1 && peersB >= 1;
   console.log("presence propagation:", presenceOk ? "PASS" : "FAIL");
-  process.exit(aHasBoth && bHasBoth && persisted && presenceOk ? 0 : 1);
+  process.exit(aHasBoth && bHasBoth && persisted && presenceOk && reloadOk ? 0 : 1);
 }
 
 main().catch((e) => { console.log("ERR", String(e).slice(0, 200)); process.exit(1); });

@@ -48,6 +48,11 @@ export default function DocumentEditor() {
   const [docKey, setDocKey] = createSignal<CryptoKey | null>(null);
   const [collabConnected, setCollabConnected] = createSignal<boolean | null>(null);
   const [collabPeers, setCollabPeers] = createSignal<CollabPeer[]>([]);
+  // Set once any room state lands in the model. If the socket dies before
+  // that, the editor must not sit on an empty page — the REST text is the
+  // only content we have, so it is loaded and collab stays off.
+  let receivedRoomState = false;
+  const collabDisabled = () => collab === null || (collabConnected() === false && !receivedRoomState);
   let collab: CollabHandle | null = null;
   let collabDebounce: ReturnType<typeof setTimeout> | null = null;
 
@@ -95,7 +100,12 @@ export default function DocumentEditor() {
       const status = await e2eApi.status(docId());
       setEncrypted(status.encrypted);
     }
-    const h = await createEditor(content);
+    // Non-encrypted docs boot EMPTY: the CRDT room (server-seeded from the
+    // stored markdown) is the content authority. Booting from the REST text
+    // would give the local model a different CRDT lineage for identical
+    // characters, and any full-state push would duplicate the document. If
+    // the room never answers, the fallback below restores the REST content.
+    const h = await createEditor(encrypted() || collabDisabled() ? content : "");
     setHandle(h);
     state.syncFrom(h);
     setBooted(true);
@@ -109,8 +119,22 @@ export default function DocumentEditor() {
           applyRemoteUpdate: (u: Uint8Array) => h.applyRemoteUpdate(u),
           encodeFullState: () => new Uint8Array(h.encodeFullState()),
         },
-        () => state.syncFrom(h),
-        setCollabConnected,
+        () => {
+          receivedRoomState = true;
+          state.syncFrom(h);
+        },
+        (up) => {
+          setCollabConnected(up);
+          // Socket died before the room ever answered: fall back to the REST
+          // text so the user is not editing (and saving!) an empty page.
+          if (!up && !receivedRoomState && !encrypted()) {
+            const rest = doc()?.content ?? "";
+            if (rest && handle()?.content() === "") {
+              handle()?.setContent(rest);
+              state.syncFrom(handle()!);
+            }
+          }
+        },
         undefined,
         { name: authStore.user()?.display_name || authStore.user()?.username || "me", color: myColor() },
         setCollabPeers

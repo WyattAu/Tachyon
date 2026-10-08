@@ -156,6 +156,24 @@ pub async fn materialize_document_content(
     Ok(result.rows_affected() > 0)
 }
 
+/// The stored markdown for a document, used to seed a cold CRDT room.
+///
+/// The room must be seeded exactly once, by exactly one authority: if every
+/// client pushed its own view of the text into the room, each view would carry
+/// a fresh CRDT lineage for identical characters and the merged room would
+/// contain the document once per connection.
+pub async fn load_document_content(
+    pool: &PgPool,
+    document_id: Uuid,
+) -> sqlx::Result<Option<String>> {
+    let row: Option<(String,)> =
+        sqlx::query_as("SELECT content FROM documents WHERE id = $1::uuid")
+            .bind(document_id)
+            .fetch_optional(pool)
+            .await?;
+    Ok(row.map(|(c,)| c))
+}
+
 /// Delete all CRDT state for a document.
 pub async fn delete_crdt_state(pool: &PgPool, document_id: Uuid) -> sqlx::Result<()> {
     sqlx::query("DELETE FROM crdt_updates WHERE document_id = $1")

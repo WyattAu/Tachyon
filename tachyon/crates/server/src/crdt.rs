@@ -91,6 +91,7 @@ impl CrdtDocumentManager {
         let text = doc.get_or_insert_text("content");
 
         // Try to load persisted state from database
+        let mut loaded = false;
         if let Some(pool) = &self.pool
             && let Ok(uuid) = uuid::Uuid::parse_str(document_id)
             && let Ok(Some(row)) = tachyon_database::crdt::load_crdt_state(pool, uuid).await
@@ -101,12 +102,36 @@ impl CrdtDocumentManager {
                 let mut txn = doc.transact_mut();
                 let _ = txn.apply_update(update);
                 drop(txn);
+                loaded = true;
                 tracing::info!(
                     "Loaded CRDT state for document {} (version {})",
                     document_id,
                     row.version
                 );
             }
+        }
+
+        // Cold room: seed from the stored markdown exactly once. Clients must
+        // never seed the room themselves — their local view of the text carries
+        // a different CRDT lineage for identical characters, so pushing it
+        // would append the document a second time per connection. The server
+        // is the single bootstrap authority.
+        if !loaded
+            && let Some(pool) = &self.pool
+            && let Ok(uuid) = uuid::Uuid::parse_str(document_id)
+            && let Ok(Some(content)) =
+                tachyon_database::crdt::load_document_content(pool, uuid).await
+            && !content.is_empty()
+        {
+            let mut txn = doc.transact_mut();
+            text.insert(&mut txn, 0, &content);
+            drop(txn);
+            self.mark_dirty(document_id);
+            tracing::info!(
+                "Seeded CRDT room for document {} from stored content ({} bytes)",
+                document_id,
+                content.len()
+            );
         }
 
         let arc = Arc::new(CrdtDocument { doc, text });

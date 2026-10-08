@@ -153,14 +153,20 @@ export function connectCollab(
     }
   };
 
+  let receivedRoomState = false;
+
   ws.onopen = () => {
     statusChanged?.(true);
     // Announce immediately so a peer who is already here sees us without
     // waiting for the first caret move.
     sendPresence(lastCursor);
-    // announce our full state so the room converges with this client
-    sendFrame(handle.encodeFullState());
-    // flush queued local updates
+    // Deliberately NOT announcing our full state: the local model may have
+    // been bootstrapped from the stored markdown, which carries a different
+    // CRDT lineage than the room for identical characters. Pushing it would
+    // append the document a second time. The server seeds cold rooms itself,
+    // and this client renders whatever the room holds.
+    // Local updates queued while the socket was still opening are incremental
+    // and lineage-consistent, so they are safe to flush.
     for (const p of pending) sendFrame(p);
     pending = [];
   };
@@ -173,6 +179,7 @@ export function connectCollab(
       return;
     }
     if (buf[0] !== 0) return;
+    receivedRoomState = true;
     // The server uses two framings on the same wire format:
     //   [0, 1, ...update] initial full state pushed on connect
     //   [0, 2, ...diff]   delta-sync response
