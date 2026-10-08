@@ -467,6 +467,16 @@ impl CrdtConnectionManager {
         Some(client.room)
     }
 
+    /// How many live connections a room has.
+    pub async fn room_client_count(&self, room: &str) -> usize {
+        self.room_clients
+            .read()
+            .await
+            .get(room)
+            .map(|clients| clients.len())
+            .unwrap_or(0)
+    }
+
     /// Update the last-seen timestamp for a client.
     async fn touch_client(&self, client_id: &str) {
         if let Some(client) = self.clients.write().await.get_mut(client_id) {
@@ -1009,9 +1019,28 @@ async fn handle_crdt_socket(socket: WebSocket, manager: CrdtConnectionManager, r
         }
 
         let _ = manager.broadcast_tx.send(RelayEvent::Left {
-            room: removed_room,
+            room: removed_room.clone(),
             user_id: client_id.clone(),
         });
+
+        // Last client out: persist immediately. Waiting for the 30s flush
+        // timer means REST reads, search and SSG lag up to half a minute
+        // behind a document everyone has already closed — and a server
+        // restart in that window loses the room. Fire-and-forget: a failure
+        // is logged here and the timer remains the safety net.
+        if manager.room_client_count(&removed_room).await == 0 {
+            let flush_manager = manager.clone();
+            let flush_room = removed_room.clone();
+            tokio::spawn(async move {
+                if let Err(e) = flush_manager
+                    .crdt_manager()
+                    .flush_document(&flush_room)
+                    .await
+                {
+                    warn!(room = %flush_room, error = %e, "post-disconnect flush failed");
+                }
+            });
+        }
     }
 }
 
@@ -1067,6 +1096,39 @@ fn parse_selection_update(data: &[u8]) -> Option<SelectionRange> {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn room_client_count_gates_last_out_flush() {
+        let m = CrdtConnectionManager::new(test_bus());
+        assert_eq!(m.room_client_count("doc9").await, 0);
+
+        // The real connect path registers the client before join_room;
+        // leave_room requires the registration to find the client's room.
+        for id in ["c1", "c2"] {
+            m.clients.write().await.insert(
+                id.to_string(),
+                ConnectedClient {
+                    room: "doc9".to_string(),
+                    last_seen: std::time::Instant::now(),
+                },
+            );
+        }
+        m.join_room("c1", "doc9").await;
+        m.join_room("c2", "doc9").await;
+        assert_eq!(m.room_client_count("doc9").await, 2);
+
+        // One leaves: not last out — no flush should trigger.
+        assert_eq!(m.leave_room("c1").await.as_deref(), Some("doc9"));
+        assert_eq!(m.room_client_count("doc9").await, 1);
+
+        // Last one leaves: count hits zero, which is the flush signal.
+        assert_eq!(m.leave_room("c2").await.as_deref(), Some("doc9"));
+        assert_eq!(m.room_client_count("doc9").await, 0);
+
+        // Leaving again is a no-op that must not underflow or error.
+        assert_eq!(m.leave_room("c2").await, None);
+        assert_eq!(m.room_client_count("doc9").await, 0);
+    }
+
     // ─── Presence (awareness) ──────────────────────────────────────────────
 
     fn awareness_frame(entries: &[(u64, u32, &str)]) -> Vec<u8> {
