@@ -16,3 +16,6 @@ wasm-bindgen = "0.2"
 # wasm32-safe: tree-sitter highlighting is optional in tachyon-editor and
 # excluded on this target (see editor/Cargo.toml).
 tachyon-editor = { path = "../editor" }
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
