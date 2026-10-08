@@ -86,8 +86,11 @@ measured number) recorded next to it. No exceptions for "it compiles".
    last client leaves (timer remains the safety net): REST/search/SSG lag
    dropped from ~27s to <3s. Evidence: `28fd7ea`.
 
-Residue carried forward: WS handshake authz (rooms are currently joinable
-without a token — research pitfall #7), and `yrs::undo::UndoManager`.
+Residue resolved: WS handshake authz closed in `8d19318` (research pitfall
+#7) — the upgrade requires and validates a JWT, verified 401-without /
+presence-with. Still open: `yrs::undo::UndoManager` for origin-scoped
+collaborative undo, and the SyncStep2 SV-diff exchange as a bandwidth
+optimization.
 
 ### W2 — Correctness gates (P0, cheap, prevents data loss)
 5. **CRDT simulation tests.** proptest convergence invariants + a shadow-model
