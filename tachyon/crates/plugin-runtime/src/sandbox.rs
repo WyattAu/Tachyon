@@ -192,6 +192,36 @@ mod tests {
         }
     }
 
+    /// Executes a REAL plugin artifact from the companion `tachyon-plugins`
+    /// repo (path via TACHYON_PLUGIN_WASM env). Ignored by default: it is the
+    /// cross-repo dogfood gate — run it in CI where the sibling repo is
+    /// checked out. Proves the published artifact loads in the host runtime
+    /// and returns the JSON contract on stdout.
+    #[test]
+    fn dogfood_artifact_executes_and_reports_json() {
+        let Ok(path) = std::env::var("TACHYON_PLUGIN_WASM") else {
+            eprintln!("TACHYON_PLUGIN_WASM not set; skipping dogfood check");
+            return;
+        };
+        // enable_wasi is what attaches the stdout pipe the JSON contract
+        // rides on — the mirror default (false) is why no artifact ever
+        // produced output in tests before this one.
+        let config = SandboxConfig {
+            enable_wasi: true,
+            ..make_test_config()
+        };
+        let sandbox =
+            PluginSandbox::new(Path::new(&path), &config).expect("companion artifact must load");
+        let ctx = PluginContext {
+            hook: "on_save".to_string(),
+            input: serde_json::json!({"key": "value"}),
+            timeout_ms: 5000,
+        };
+        let out = sandbox.execute(&ctx).expect("artifact must execute");
+        assert_eq!(out["plugin"], "word-count");
+        assert_eq!(out["ok"], true);
+    }
+
     #[test]
     fn sandbox_new_with_existing_file_succeeds() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
