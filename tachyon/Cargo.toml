@@ -53,8 +53,8 @@ rust-embed = "8"
 clap = { version = "4", features = ["derive"] }
 
 # Desktop Logic
-tauri = { version = "2.0.0-beta", features = [] }
-tauri-build = { version = "2.0.0-beta", features = [] }
+tauri = { version = "2.12", features = [] }
+tauri-build = { version = "2.12", features = [] }
 
 # Testing
 proptest = "1.4"
