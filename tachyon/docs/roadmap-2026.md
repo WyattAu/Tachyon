@@ -115,9 +115,14 @@ optimization.
     login and document totals verified live against 18.3. (pg_dumpall needed
     `-U tachyon` — the app's DB role — and the restore must run as the new
     cluster's superuser because the dump creates the role itself.)
-13. Tauri → 2.12 (MSRV 1.90, `Resource` disposal, Android templates).
-14. Playwright → 1.63 with `retain-on-failure-and-retries`; add `oha` beside k6.
-15. Tailwind → 4.3.3, adopt `@container-size` for editor panes.
+13. [x] **Tauri 2.12** — resolved 2.12.1 from the old 2.0.0-beta pin,
+    desktop crate checks clean (`e5d9c2b`).
+14. [x] **Playwright 1.64** — trace retain-on-failure + trace CLI for flake
+    diagnosis; collab E2E 8/8 green on the new headless shell (`ad1eb5e`,
+    `2ce3076`). `oha` beside k6 still to add.
+15. [x] **Tailwind 4.3.3** — pinned explicitly; AOT CSS compiles (28.7 kB),
+    E2E green (`2ce3076`). `@container-size` adoption for editor panes still
+    to do.
 16. Astro → 7.x for Vite 8/Rolldown build speed. Deferred behind W1–W4 so a
     regression is easy to bisect.
 
