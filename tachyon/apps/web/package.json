@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Tachyon web client — Astro + SolidJS + generated OpenAPI client (ADR-113)",
+  "description": "Tachyon web client \u2014 Astro + SolidJS + generated OpenAPI client (ADR-113)",
   "scripts": {
     "dev": "astro dev --port 4321",
     "build": "astro build",
@@ -23,8 +23,8 @@
     "solid-js": "^1.9.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.0.0",
-    "tailwindcss": "^4.0.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3",
     "openapi-typescript": "^7.0.0",
     "typescript": "^5.6.0"
   }
