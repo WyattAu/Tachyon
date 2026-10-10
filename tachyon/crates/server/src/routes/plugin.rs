@@ -197,7 +197,7 @@ pub async fn get_plugin(
     security(("bearer_auth" = [])),
 )]
 pub async fn create_plugin(
-    State(state): State<PluginState>,
+    State(mut state): State<PluginState>,
     Json(body): Json<CreatePluginBody>,
 ) -> Result<Json<PluginResponse>, ServerError> {
     if body.name.trim().is_empty() {
@@ -225,6 +225,42 @@ pub async fn create_plugin(
         })
         .await
         .map_err(|e| ServerError::internal(format!("Failed to create plugin: {}", e)))?;
+
+    // Load the artifact if one is present, so an install is immediately
+    // invocable. The row alone is inert: invoke_hook only sees plugins the
+    // runtime actually loaded.
+    let plugins_dir = std::env::var("TACHYON_PLUGINS_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| {
+            std::env::current_dir()
+                .unwrap_or_else(|_| std::env::temp_dir())
+                .join("plugins")
+        });
+    let artifact = plugins_dir.join(&plugin.name).join("plugin.wasm");
+    let loaded = if artifact.is_file() {
+        state
+            .runtime
+            .load_plugin(tachyon_plugin_runtime::LoadedPlugin {
+                name: plugin.name.clone(),
+                version: plugin.version.clone(),
+                runtime_type: plugin.runtime_type.clone(),
+                wasm_path: artifact,
+                extension_points: serde_json::from_str::<Vec<String>>(&plugin.extension_points)
+                    .unwrap_or_else(|_| vec!["on_save".to_string()]),
+                enabled: true,
+            })
+            .is_ok()
+    } else {
+        false
+    };
+    if loaded {
+        info!(plugin = %plugin.name, "plugin artifact loaded and invocable");
+    } else {
+        info!(
+            plugin = %plugin.name,
+            "plugin registered; no artifact on disk yet, not invocable"
+        );
+    }
 
     info!("Installed plugin: {} v{}", plugin.name, plugin.version);
     let _ = state

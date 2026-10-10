@@ -366,10 +366,66 @@ pub async fn init_app_state(config: &ServerConfig) -> anyhow::Result<AppState> {
         pool: pool.clone(),
         audit_logger: audit_logger.clone(),
     };
-    let plugins_dir = std::env::current_dir()
-        .unwrap_or_else(|_| std::env::temp_dir())
-        .join("plugins");
-    let plugin_runtime = tachyon_plugin_runtime::PluginRuntime::new(plugins_dir);
+    // Plugins dir: overridable so a deployment (or the dogfood companion
+    // repo checkout) can point at real artifacts instead of relying on cwd.
+    let plugins_dir = std::env::var("TACHYON_PLUGINS_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| {
+            std::env::current_dir()
+                .unwrap_or_else(|_| std::env::temp_dir())
+                .join("plugins")
+        });
+    let mut plugin_runtime = tachyon_plugin_runtime::PluginRuntime::new(plugins_dir.clone());
+    // Startup scan: an artifact that exists on disk is loadable even before
+    // anyone installs it. Without this, invoking a hook could only ever
+    // match plugins loaded in-process by an install call, and nothing did
+    // that either.
+    if let Ok(entries) = std::fs::read_dir(&plugins_dir) {
+        for entry in entries.flatten() {
+            let dir = entry.path();
+            let artifact = dir.join("plugin.wasm");
+            if !artifact.is_file() {
+                continue;
+            }
+            let Some(name) = dir.file_name().and_then(|n| n.to_str()) else {
+                continue;
+            };
+            let meta_path = dir.join("plugin.json");
+            let (version, extension_points) = match std::fs::read_to_string(&meta_path) {
+                Ok(raw) => match serde_json::from_str::<serde_json::Value>(&raw) {
+                    Ok(meta) => (
+                        meta.get("version")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("0.1.0")
+                            .to_string(),
+                        meta.get("extension_points")
+                            .and_then(|v| v.as_array())
+                            .map(|a| {
+                                a.iter()
+                                    .filter_map(|x| x.as_str().map(str::to_string))
+                                    .collect()
+                            })
+                            .unwrap_or_else(|| vec!["on_save".to_string()]),
+                    ),
+                    Err(_) => ("0.1.0".to_string(), vec!["on_save".to_string()]),
+                },
+                Err(_) => ("0.1.0".to_string(), vec!["on_save".to_string()]),
+            };
+            let runtime_type = "wasm".to_string();
+            if let Err(e) = plugin_runtime.load_plugin(tachyon_plugin_runtime::LoadedPlugin {
+                name: name.to_string(),
+                version,
+                runtime_type,
+                wasm_path: artifact,
+                extension_points,
+                enabled: true,
+            }) {
+                tracing::warn!(plugin = %name, error = %e, "failed to load plugin artifact at startup");
+            } else {
+                tracing::info!(plugin = %name, "loaded plugin artifact from disk");
+            }
+        }
+    }
     let plugin_state = PluginState {
         pool: pool.clone(),
         runtime: plugin_runtime,
