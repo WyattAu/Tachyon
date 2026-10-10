@@ -38,7 +38,31 @@ export default function Plugins() {
     const { data } = await api.GET("/plugins", { params: { query: {} } });
     return ((data ?? []) as unknown as Plugin[]) ?? [];
   });
+  // Registry source: a remote URL when configured (localStorage override —
+  // the deployment-level knob is the same contract served by host env), with
+  // the bundled copy as offline fallback. Dogfooding happens at arm's length:
+  // the tachyon-plugins repo has its own cadence and must not require a
+  // Tachyon release to add a plugin.
+  const [registrySource, setRegistrySource] = createSignal<"remote" | "bundled">("bundled");
   const [registry] = createResource(async () => {
+    const remote =
+      localStorage.getItem("tachyon_registry_url")?.trim() ||
+      (window as unknown as { __TACHYON_REGISTRY_URL__?: string }).__TACHYON_REGISTRY_URL__ ||
+      "";
+    if (remote) {
+      try {
+        const res = await fetch(remote);
+        if (res.ok) {
+          const body = (await res.json()) as { plugins: RegistryEntry[] };
+          if (Array.isArray(body.plugins)) {
+            setRegistrySource("remote");
+            return body.plugins;
+          }
+        }
+      } catch {
+        // remote unreachable — fall through to the bundled copy
+      }
+    }
     const res = await fetch("/plugin-registry.json");
     if (!res.ok) return [];
     return ((await res.json()) as unknown as { plugins: RegistryEntry[] }).plugins ?? [];
@@ -113,7 +137,19 @@ export default function Plugins() {
         <p class="mb-3 text-sm text-green-600 dark:text-green-400">{message()}</p>
       </Show>
 
-      <Show when={tab() === "installed"} fallback={<MarketplaceList entries={marketplaceEntries()} busyName={busyName()} onInstall={install} />}>
+      <Show
+        when={tab() === "installed"}
+        fallback={
+          <div>
+            <p class="mb-3 text-xs text-gray-500" data-testid="registry-source">
+              {registrySource() === "remote"
+                ? "registry: remote (tachyon-plugins)"
+                : "registry: bundled"}
+            </p>
+            <MarketplaceList entries={marketplaceEntries()} busyName={busyName()} onInstall={install} />
+          </div>
+        }
+      >
         <Show when={!plugins.loading} fallback={<div class="h-24 animate-pulse rounded-none bg-gray-200 dark:bg-gray-700" />}>
           <Show
             when={(plugins() ?? []).length > 0}
