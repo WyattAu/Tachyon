@@ -251,6 +251,33 @@ impl PluginRuntime {
 
 #[cfg(test)]
 mod tests {
+    /// Full-runtime path: load an artifact then invoke it with the RUNTIME's
+    /// own default sandbox config (not the test mirror). This is the path
+    /// POST /plugins/invoke takes; the sandbox-only gate passes while this
+    /// hangs, so the difference matters.
+    #[test]
+    fn runtime_default_config_executes_artifact() {
+        let Ok(path) = std::env::var("TACHYON_PLUGIN_WASM") else {
+            eprintln!("TACHYON_PLUGIN_WASM not set; skipping");
+            return;
+        };
+        let tmp = std::env::temp_dir().join("tachyon-plugin-runtime-probe");
+        let _ = std::fs::create_dir_all(&tmp);
+        let mut rt = PluginRuntime::new(&tmp);
+        rt.load_plugin(LoadedPlugin {
+            name: "word-count".to_string(),
+            version: "0.2.0".to_string(),
+            runtime_type: "wasm".to_string(),
+            wasm_path: PathBuf::from(&path),
+            extension_points: vec!["on_save".to_string()],
+            enabled: true,
+        })
+        .expect("load must succeed");
+        let results = rt.invoke_hook("on_save", serde_json::json!({"k":"v"}), 5000);
+        assert_eq!(results.len(), 1, "one matching plugin expected");
+        assert!(results[0].success, "invoke failed: {:?}", results[0].error);
+    }
+
     use super::*;
 
     fn make_runtime() -> PluginRuntime {
