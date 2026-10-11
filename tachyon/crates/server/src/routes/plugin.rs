@@ -420,14 +420,24 @@ pub async fn invoke_hook(
     State(state): State<PluginState>,
     Json(req): Json<InvokeHookRequest>,
 ) -> Result<Json<InvokeHookResponse>, ServerError> {
-    let results = state
-        .runtime
-        .invoke_hook(&req.hook, req.input, req.timeout_ms);
+    // wasmtime-wasi drives its async I/O with tokio::runtime::block_on
+    // internally. Calling it straight from an async handler executes on a
+    // tokio worker, and block_on on a runtime thread PANICS ("Cannot start a
+    // runtime from within a runtime") — which surfaced as the live endpoint
+    // hanging forever. Execute on a dedicated blocking thread instead: no
+    // runtime is active there, and spawn_blocking keeps the reactor free.
+    let runtime = state.runtime;
+    let hook_name = req.hook.clone();
+    let results = tokio::task::spawn_blocking(move || {
+        runtime.invoke_hook(&req.hook, req.input, req.timeout_ms)
+    })
+    .await
+    .map_err(|e| ServerError::internal(format!("Plugin hook execution panicked: {e}")))?;
 
     let plugins_invoked = results.len();
     info!(
         "Hook '{}' invoked across {} plugins",
-        req.hook, plugins_invoked
+        hook_name, plugins_invoked
     );
 
     let results: Vec<serde_json::Value> = results
@@ -437,7 +447,7 @@ pub async fn invoke_hook(
 
     Ok(Json(InvokeHookResponse {
         results,
-        hook: req.hook,
+        hook: hook_name,
         plugins_invoked,
     }))
 }
@@ -593,6 +603,57 @@ pub fn create_plugin_router_with_state(state: PluginState) -> axum::Router {
         .route("/plugins/{plugin_id}", axum::routing::put(update_plugin))
         .route("/plugins/{plugin_id}", axum::routing::delete(delete_plugin))
         .with_state(state)
+}
+
+#[cfg(test)]
+mod invoke_tests {
+    use super::*;
+
+    /// Calls invoke_hook DIRECTLY (no axum, no HTTP) with a runtime holding a
+    /// real artifact. The live endpoint hangs while the same code passes in
+    /// isolation; this pins whether the handler body or the HTTP wiring is
+    /// at fault.
+    #[tokio::test]
+    async fn invoke_hook_direct_with_loaded_artifact() {
+        let Ok(path) = std::env::var("TACHYON_PLUGIN_WASM") else {
+            eprintln!("TACHYON_PLUGIN_WASM not set; skipping");
+            return;
+        };
+        let tmp = std::env::temp_dir().join("tachyon-invoke-direct");
+        let _ = std::fs::create_dir_all(&tmp);
+        let mut runtime = tachyon_plugin_runtime::PluginRuntime::new(&tmp);
+        runtime
+            .load_plugin(tachyon_plugin_runtime::LoadedPlugin {
+                name: "word-count".to_string(),
+                version: "0.2.0".to_string(),
+                runtime_type: "wasm".to_string(),
+                wasm_path: std::path::PathBuf::from(&path),
+                extension_points: vec!["on_save".to_string()],
+                enabled: true,
+            })
+            .expect("load must succeed");
+
+        let pool: DatabasePool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://tachyon@127.0.0.1:15433/tachyon")
+            .expect("lazy pool")
+            .into();
+        let state = PluginState {
+            pool,
+            runtime,
+            audit_logger: crate::audit::AuditLogger::new(16),
+        };
+
+        let req = InvokeHookRequest {
+            hook: "on_save".to_string(),
+            input: serde_json::json!({"k": "v"}),
+            timeout_ms: 5000,
+        };
+        let Json(resp) = invoke_hook(State(state), Json(req))
+            .await
+            .expect("handler must return");
+        assert_eq!(resp.plugins_invoked, 1, "one plugin invoked");
+        assert_eq!(resp.results.len(), 1);
+    }
 }
 
 #[cfg(test)]
