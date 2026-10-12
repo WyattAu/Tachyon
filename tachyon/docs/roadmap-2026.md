@@ -144,13 +144,24 @@ optimization.
 - Dropping Astro for Solid-on-Vite-8: the right target architecture, but only
   once Solid 2 start mode is stable.
 
-## Companion repos (dogfooding)
+## Companion repos (dogfooding) — plugins DONE, rest queued
 
 Goal: other projects consume Tachyon so the stack is exercised by real callers,
 not only by our own fixtures.
 
-- `tachyon-plugin-registry` — remote marketplace registry, consumed by the
-  marketplace UI (also closes the "marketplace is an unmounted stub" row).
-- `tachyon-templates` — template packs applied through the templates API.
-- `tachyon-import-fixtures` — Obsidian vault / Notion / Confluence fixtures used
-  by import E2E.
+- [x] **`tachyon-plugins` (repo, `9dc95f0`)** — real Rust→wasm32-wasip1
+      artifacts (word-count 0.2, echo-dogfood 0.1) built from source,
+      `registry.json` in Tachyon's schema. Proven consumable:
+      - [x] cross-repo gate executes the artifact in the host runtime
+            (`877ca20`, TACHYON_PLUGIN_WASM)
+      - [x] remote registry consumption with bundled fallback (`c68d56e`)
+      - [x] registry E2E green: "registry: remote" + word-count 0.2.0, which
+            exists only in the companion repo (`381e985`); CORS is a
+            required deployment property, learned there
+      - [x] artifacts load at startup and on install (`af6f152`)
+      - [x] install → invoke → real output (`64cd17b`), which first fixed a
+            hang whose root cause was wasmtime-wasi calling tokio
+            block_on from inside a tokio worker
+- [ ] `tachyon-templates` — template packs applied through the templates API.
+- [ ] `tachyon-import-fixtures` — Obsidian vault / Notion / Confluence
+      fixtures used by import E2E.
