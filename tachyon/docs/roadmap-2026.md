@@ -92,6 +92,31 @@ presence-with. Still open: `yrs::undo::UndoManager` for origin-scoped
 collaborative undo, and the SyncStep2 SV-diff exchange as a bandwidth
 optimization.
 
+#### Undo integration plan (API verified against yrs 0.25)
+
+`yrs::undo::UndoManager` exists and is exactly the right primitive; the
+pieces to wire:
+
+- `UndoManager::with_options(&doc, Options { capture_timeout_millis,
+  tracked_origins, .. })` — `tracked_origins` decides what is captured;
+  the default (empty) captures only transactions with NO origin. So: run
+  `apply_edit_to_yrs` inside `doc.transact_mut_with(LOCAL_ORIGIN)` and
+  set `tracked_origins = {LOCAL_ORIGIN}`. Peer updates arrive with a
+  different/no origin and are therefore never undoable — the guarantee is
+  structural, not filtered after the fact.
+- Drive it with `undo_blocking()` / `redo_blocking()` (already &self, no
+  runtime), then `sync_rope_from_yrs()` to rebuild the view. Undo ops are
+  themselves local-origin ops, so they propagate to peers exactly like an
+  edit — no special-casing needed.
+- The existing rope `undo_stack` stays only as the fallback for
+  non-CRDT operations (set_content resets); text edits move to yrs as the
+  authority, otherwise the two stacks drift.
+- Surface: expose undo/redo/can_undo/can_redo through editor-wasm, then
+  the Solid editor's toolbar + Ctrl+Z.
+- Gate: add to `crdt_simulation.rs` a two-editor case where B types, A
+  undoes its own edit, both sync — A's text must lose A's chars and keep
+  B's. That is the invariant the old position-based undo violated.
+
 ### W2 — Correctness gates (P0, cheap, prevents data loss)
 5. **CRDT simulation tests.** proptest convergence invariants + a shadow-model
    DST harness over `[Insert, Delete, Sync, Disconnect, Reconnect]` with
