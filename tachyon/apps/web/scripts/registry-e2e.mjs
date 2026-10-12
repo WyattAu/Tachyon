@@ -13,13 +13,36 @@ const BASE = process.env.PROBE_URL ?? "http://127.0.0.1:18080/";
 const TOKEN = process.env.CRDT_TOKEN ?? "";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// A real remote registry must serve CORS (the browser blocks a cross-origin
+// fetch without Access-Control-Allow-Origin, and the client correctly falls
+// back to the bundled copy). python's http.server sends no CORS headers, so
+// the test serves the registry from a tiny node server that does — exactly
+// what a production registry host must configure.
 let server;
 if (REGISTRY_DIR) {
-  server = spawn("python3", ["-m", "http.server", "4701", "--bind", "127.0.0.1"], {
-    cwd: REGISTRY_DIR,
-    stdio: "ignore",
+  const { readFile } = await import("node:fs/promises");
+  const { createServer } = await import("node:http");
+  const { join } = await import("node:path");
+  server = createServer(async (rq, rs) => {
+    if (rq.url?.startsWith("/registry.json")) {
+      try {
+        const body = await readFile(join(REGISTRY_DIR, "registry.json"));
+        rs.writeHead(200, {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        });
+        rs.end(body);
+      } catch {
+        rs.writeHead(404);
+        rs.end();
+      }
+      return;
+    }
+    rs.writeHead(404);
+    rs.end();
   });
-  await sleep(1200);
+  await new Promise((resolve) => server.listen(4701, "127.0.0.1", resolve));
+  await sleep(300);
 }
 const url = REGISTRY_URL ?? "http://127.0.0.1:4701/registry.json";
 console.log("registry url:", url);
@@ -47,9 +70,14 @@ const source = await p.getByTestId("registry-source").innerText();
 console.log("source indicator:", JSON.stringify(source));
 const remote = source.includes("remote");
 
-const marker = await p.getByText("echo-dogfood").count();
-console.log("remote marker plugin visible:", marker > 0 ? "PASS" : "FAIL");
+// The marketplace hides already-installed plugins, so "echo-dogfood" is not
+// a stable marker (it was installed in an earlier step). The version is:
+// the remote registry ships word-count 0.2.0 while the bundled copy has
+// 0.1.0, so seeing 0.2.0 can only come from the tachyon-plugins repo.
+const remoteVersion = await p.getByText("0.2.0").count();
+console.log("remote-only version visible (word-count 0.2.0):", remoteVersion > 0 ? "PASS" : "FAIL");
+const marker = remoteVersion > 0;
 
 await b.close();
-server?.kill();
+if (server) server.close();
 process.exit(remote && marker > 0 ? 0 : 1);
