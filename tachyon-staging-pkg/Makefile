@@ -32,7 +32,12 @@ NC := \033[0m # No Color
 
 # Project configuration
 PROJECT_NAME := tachyon
+# System toolchain by default; opt into the deterministic nix shell with USE_NIX=1
+ifdef USE_NIX
 NIX := nix develop --command
+else
+NIX :=
+endif
 CARGO := $(NIX) cargo
 WORKSPACE_FLAGS := --workspace --exclude tachyon-testing --exclude tachyon-frontend --exclude tachyon-desktop --exclude tachyon-desktop-app
 RELEASE_FLAGS := --release $(WORKSPACE_FLAGS)
