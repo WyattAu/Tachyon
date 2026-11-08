@@ -180,6 +180,7 @@ proptest! {
         );
     }
 
+
     /// A change made while a peer is offline must reach it on the next sync.
     #[test]
     fn offline_edits_survive_reconnect(
@@ -202,6 +203,54 @@ proptest! {
         prop_assert_eq!(a.content(), b.content());
         prop_assert!(b.content().contains(&offline_edit),
             "offline edit lost on reconnect: {offline_edit:?} not in {:?}", b.content());
+    }
+}
+
+/// Origin-scoped undo: A must be able to revert its OWN edit while B's
+/// concurrent edit survives, and B must NOT be able to undo A's text.
+/// This is the invariant the old position-based rope undo violated (it
+/// deleted by offset, so a peer's insert shifted the range).
+#[test]
+fn undo_reverts_only_local_edits() {
+
+    /// Origin-scoped undo: A must be able to revert its OWN edit while B's
+    /// concurrent edit survives, and B must NOT be able to undo A's text.
+    /// This is the invariant the old position-based rope undo violated (it
+    /// deleted by offset, so a peer's insert shifted the range).
+    #[test]
+    fn undo_reverts_only_local_edits() {
+        let mut a = Editor::with_content("");
+        let mut b = Editor::with_content("");
+        let seed = a.encode_update();
+        let _ = b.apply_remote_update(&seed);
+        let _ = a.encode_update();
+
+        // Both type, concurrently, without syncing in between.
+        a.insert_text("AAAA");
+        b.insert_text("BBBB");
+
+        sync_bidirectional(&mut a, &mut b);
+        let before = a.content();
+        assert!(before.contains('A') && before.contains('B'),
+            "both edits should be present before undo: {before:?}");
+
+        // A undoes its own edit only.
+        assert!(a.undo(), "A must be able to undo its own edit");
+        sync_bidirectional(&mut a, &mut b);
+
+        assert!(!a.content().contains('A'),
+            "A's own text should be gone after undo: {:?}", a.content());
+        assert!(a.content().contains('B'),
+            "B's text must survive A's undo: {:?}", a.content());
+
+        // B cannot undo A's work: B's undo stack holds only its own edit.
+        if b.can_undo() {
+            let _ = b.undo();
+            sync_bidirectional(&mut a, &mut b);
+            assert!(!b.content().contains('B'),
+                "B should be able to undo its own edit: {:?}", b.content());
+            assert_eq!(a.content(), b.content(), "editors diverged after B undo");
+        }
     }
 }
 

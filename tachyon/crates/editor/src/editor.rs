@@ -52,6 +52,12 @@ fn current_timestamp() -> u64 {
     }
 }
 
+/// Origin tag for transactions this client made. Peer updates arrive without
+/// it, which is exactly what the undo manager's `tracked_origins` set keys on.
+pub fn local_origin() -> yrs::Origin {
+    yrs::Origin::from("tachyon-local".to_string())
+}
+
 pub struct Editor {
     buffer: TextBuffer,
     cursors: Cursors,
@@ -88,6 +94,8 @@ pub struct Editor {
     last_encoded_state: Vec<u8>,
     /// Offline sync queue — buffers CRDT updates when no server connection.
     offline_queue: OfflineSyncQueue,
+    /// Origin-scoped undo: only local-origin transactions are captured.
+    crdt_undo: yrs::undo::UndoManager<()>,
 }
 
 impl Editor {
@@ -106,6 +114,29 @@ impl Editor {
         let crdt_doc = Doc::new();
         let crdt_text = crdt_doc.get_or_insert_text("content");
         let last_encoded_state = crdt_doc.transact().state_vector().encode_v1();
+        // Origin-scoped undo manager: captures ONLY transactions carrying the
+        // local origin, so remote edits can never be undone here.
+        // yrs 0.25's Options has no Default impl — construct explicitly.
+        // capture_timeout groups a typing burst into one undo step (the
+        // Yjs 500ms convention); tracked_origins is what makes the scoping
+        // structural rather than filtered.
+        let undo_options = yrs::undo::Options {
+            capture_timeout_millis: 500,
+            tracked_origins: std::collections::HashSet::from([local_origin()]),
+            capture_transaction: None,
+            // Portable clock: yrs' SystemClock is cfg'd out on
+            // wasm32-unknown-unknown, so the build worked natively and broke
+            // under wasm-pack. A closure implementing Clock works on both.
+            timestamp: std::sync::Arc::new(|| {
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0)
+            }),
+            init_undo_stack: Vec::new(),
+            init_redo_stack: Vec::new(),
+        };
+        let crdt_undo = yrs::undo::UndoManager::with_options(&crdt_doc, undo_options);
         Self {
             buffer: TextBuffer::new(),
             cursors: Cursors::new(),
@@ -126,6 +157,7 @@ impl Editor {
             crdt_text,
             last_encoded_state,
             offline_queue: OfflineSyncQueue::new(),
+            crdt_undo,
             last_edit_timestamp: 0.0,
             fold_regions: Vec::new(),
             folded_lines: std::collections::HashSet::new(),
@@ -390,7 +422,7 @@ impl Editor {
     /// people typing at once lost text. Local edits must land as the same
     /// insert/delete ops in yrs that the user made.
     fn apply_edit_to_yrs(&mut self, kind: &EditKind, start: Cursor) {
-        let mut txn = self.crdt_doc.transact_mut();
+        let mut txn = self.crdt_doc.transact_mut_with(local_origin());
         match kind {
             EditKind::Insert { text } => {
                 let index = self.flat_index(start);
@@ -988,6 +1020,21 @@ impl Editor {
     }
 
     pub fn undo(&mut self) -> bool {
+        // Origin-scoped CRDT undo is authoritative for text: it can only
+        // revert this client's own edits, and its inverse ops propagate to
+        // peers like any edit. The rope stack remains the fallback for
+        // operations that never touched the CRDT (whole-document resets).
+        if self.crdt_undo.can_undo() {
+            if self.crdt_undo.undo_blocking() {
+                self.sync_rope_from_yrs();
+                let col = self.active_cursor().col.min(self.buffer.line_len(0));
+                self.update_active_cursor(Cursor::new(0, col));
+                self.update_active_selection(Selection::caret(self.active_cursor()));
+                self.is_dirty = true;
+                return true;
+            }
+        }
+
         let tx = match self.undo_stack.pop_undo() {
             Some(t) => t,
             None => return false,
@@ -1049,6 +1096,18 @@ impl Editor {
     }
 
     pub fn redo(&mut self) -> bool {
+        if self.crdt_undo.can_redo() && self.crdt_undo.redo_blocking() {
+            self.sync_rope_from_yrs();
+            let col = self.active_cursor().col.min(self.buffer.line_len(0));
+            self.update_active_cursor(Cursor::new(0, col));
+            self.update_active_selection(Selection::caret(self.active_cursor()));
+            self.is_dirty = true;
+            return true;
+        }
+        self.redo_rope()
+    }
+
+    fn redo_rope(&mut self) -> bool {
         let tx = match self.undo_stack.pop_redo() {
             Some(t) => t,
             None => return false,
